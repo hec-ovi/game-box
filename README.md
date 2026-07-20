@@ -45,4 +45,15 @@ cargo run -p gb-api # serves http://127.0.0.1:8976 (GAME_BOX_PORT to change)
 
 ## Status
 
-Phase 1: the sidecar skeleton is real (loopback server, SSE chat streaming, WebSocket transcription events, schema-validated boundaries, model cache check) with stand-in engines behind the llm/stt contracts, so games can integrate against the final API shape today. Real engines (llama.cpp Vulkan, sherpa-onnx, Kyutai Pocket TTS) land behind the same contracts next. [docs/DECISIONS.md](docs/DECISIONS.md) has the decision record and open risks (Chrome's Local Network Access prompt for browser games, Vulkan driver quirks, Steam's live-AI disclosure, Nemotron's one-month-old tooling).
+Phase 1: the sidecar skeleton is real (loopback server, SSE chat streaming, WebSocket transcription events, schema-validated boundaries, model cache check) with stand-in engines behind the llm/stt contracts, so games can integrate against the final API shape today. Real LLM inference already works if you point `GAME_BOX_LLM_UPSTREAM` at a running llama-server. [docs/DECISIONS.md](docs/DECISIONS.md) has the decision record and open risks (Chrome's Local Network Access prompt for browser games, Vulkan driver quirks, Steam's live-AI disclosure, Nemotron's one-month-old tooling).
+
+## Pending
+
+- `tts/` layer: does not exist yet (decision is fresh); `/v1/audio/speech` and voice-out on `/v1/realtime` with it
+- Real STT: swap the stand-in for sherpa-onnx + Nemotron behind the existing `stt/` contract
+- Bundled LLM: ship llama.cpp (Vulkan/Metal) with the box instead of requiring an external llama-server
+- Model downloads: `models/` verifies the cache but cannot download yet (download-on-first-run with resume)
+- Validate Pocket TTS sub-sentence token input outside Python (Rust/Candle port or C++ ONNX build)
+- Browser fallback (WebGPU/WebLLM) for games that cannot reach a localhost sidecar
+- Native C-API embed path for latency-critical or single-binary titles
+- Content-filter/guardrail hooks and docs (needed for Steam's live-AI disclosure)
