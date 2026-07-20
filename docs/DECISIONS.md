@@ -43,7 +43,11 @@ Rejected: faster-whisper/CTranslate2 (CUDA+CPU only, Python-first), Whisper/whis
 
 Known risk: Nemotron-3.5 is a month old; weak on German/Chinese, sherpa-onnx support is greedy-search only. The Zipformer fallback stays wired in until it matures.
 
-## D5. TTS: sherpa-onnx running Kokoro-82M
+## D5. TTS: DISCARDED 2026-07-20, pending re-research
+
+Hector rejected the chunk-pipelined default the same day it was proposed: game-box requires true token/frame-level streaming TTS (audio starts before the utterance text is complete, continuous deltas), not per-sentence pipelining. New research is running on July-2026 token-streaming options (Kyutai TTS, OuteTTS via llama.cpp, NeuTTS Air, CSM forks, and newer releases) with an explicit hardware-floor ranking. The record below is kept for context; treat the Kokoro pick as void until the new decision lands.
+
+### Void record: sherpa-onnx running Kokoro-82M
 
 Primary: Kokoro-82M (Apache 2.0 weights, ~330 MB, best naturalness per megabyte, 8 languages). Streaming is sentence-chunk pipelining (Kokoro is non-autoregressive): feed clauses, play as they render, first audio in well under a second on capable hardware.
 

@@ -19,11 +19,11 @@ Mirroring the OpenAI surface means existing SDKs work unchanged, and running out
 | LLM runtime | llama.cpp, Vulkan build | one binary per OS covers NVIDIA/AMD/Intel dGPU and iGPU; Metal on Apple; CPU fallback |
 | LLM model | Qwen3-4B (Apache 2.0) | default tier; Qwen3-1.7B / 0.6B for weaker hardware |
 | STT | Nemotron-3.5-ASR-Streaming-0.6B via sherpa-onnx | true streaming partials from 80 ms chunks, 40 locales, real-time on CPU; Zipformer fallback |
-| TTS | Kokoro-82M via sherpa-onnx (Apache 2.0) | sentence-chunk streaming, sub-1s first audio; piper-plus (MIT) fallback for weak CPUs |
+| TTS | to be decided | Kokoro chunk-pipelining was discarded; requirement is true token-level streaming, re-research in progress |
 | VAD | Silero VAD (MIT) | voice endpointing |
 | Models | downloaded on first run | never bundled in the game install |
 
-Everything in the default stack is commercially shippable (Apache 2.0 / MIT / OpenMDW-1.1). The known trap is Kokoro's default eSpeak-NG phonemizer, which is GPL; the shipping path uses sherpa-onnx's own Apache 2.0 front end instead.
+Everything in the decided stack is commercially shippable (Apache 2.0 / MIT / OpenMDW-1.1).
 
 ## Status
 
