@@ -1,5 +1,7 @@
 # game-box
 
+> **Under construction. This is an idea, not a usable product.** What exists so far is research, the architecture decisions below, and a skeleton API with stand-in engines so the surface can be tested. No real model runs inside the box yet. Everything here can still change.
+
 Offline AI sidecar for games. It runs a tiny local LLM plus speech-to-text and text-to-speech on the player's machine, behind an OpenAI-compatible localhost API, so any game (Electron, web, Rust, C++, Unity, Godot) can have talking, listening, LLM-driven NPCs without cloud calls or per-token costs.
 
 ## Shape
