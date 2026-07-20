@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "game-box.dev/api/realtime-server-event",
+  "title": "/v1/realtime server-to-client event",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "type": { "enum": ["transcription.partial", "transcription.completed"] },
+        "text": { "type": "string" }
+      },
+      "required": ["type", "text"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": { "const": "error" },
+        "error": {
+          "type": "object",
+          "properties": {
+            "message": { "type": "string", "minLength": 1 },
+            "type": { "enum": ["invalid_request_error", "server_error"] }
+          },
+          "required": ["message", "type"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["type", "error"],
+      "additionalProperties": false
+    }
+  ]
+}

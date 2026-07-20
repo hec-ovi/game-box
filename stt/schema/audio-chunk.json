@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "game-box.dev/stt/audio-chunk",
+  "title": "audio chunk envelope (mono 16-bit PCM, base64)",
+  "type": "object",
+  "properties": {
+    "mediaType": { "const": "audio/pcm;bits=16" },
+    "sampleRate": { "type": "integer", "minimum": 8000, "maximum": 48000 },
+    "channels": { "const": 1 },
+    "dataBase64": {
+      "type": "string",
+      "minLength": 4,
+      "contentEncoding": "base64"
+    }
+  },
+  "required": ["mediaType", "sampleRate", "dataBase64"],
+  "additionalProperties": false
+}

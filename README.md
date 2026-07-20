@@ -25,6 +25,22 @@ Mirroring the OpenAI surface means existing SDKs work unchanged, and running out
 
 Everything in the decided stack is commercially shippable (Apache 2.0 / MIT / OpenMDW-1.1).
 
+## Layout
+
+A Rust workspace of contract-isolated layers; each folder is a blackbox with its own `CONTRACT.md`, JSON Schemas, and tests. Outsiders read contracts and schemas only, never `src/`. [docs/INDEX.md](docs/INDEX.md) maps "what you want to change" to the one folder to open.
+
+- `api/` builds the `game-box` binary: loopback server with `/health`, `/v1/chat/completions` (SSE), `/v1/realtime` (WebSocket transcription)
+- `llm/` text generation: deterministic stand-in by default; set `GAME_BOX_LLM_UPSTREAM` to an OpenAI-compatible server (e.g. llama-server) to proxy real inference
+- `stt/` streaming recognition sessions (stand-in engine; sherpa-onnx Nemotron is the planned swap-in)
+- `models/` model cache with sha256 integrity check (download-on-first-run comes next)
+
+## Build and test
+
+```
+cargo test          # all contract + end-to-end tests (12)
+cargo run -p gb-api # serves http://127.0.0.1:8976 (GAME_BOX_PORT to change)
+```
+
 ## Status
 
-Research and architecture decisions are done; no code yet. [docs/DECISIONS.md](docs/DECISIONS.md) has the full decision record: why each piece won, what was rejected and why, and the open risks (Chrome's Local Network Access prompt for browser games, Vulkan driver quirks, Steam's live-AI disclosure, Nemotron's one-month-old tooling).
+Phase 1: the sidecar skeleton is real (loopback server, SSE chat streaming, WebSocket transcription events, schema-validated boundaries, model cache check) with stand-in engines behind the llm/stt contracts, so games can integrate against the final API shape today. Real engines (llama.cpp Vulkan, sherpa-onnx) land behind the same contracts next; TTS is being re-researched. [docs/DECISIONS.md](docs/DECISIONS.md) has the decision record and open risks (Chrome's Local Network Access prompt for browser games, Vulkan driver quirks, Steam's live-AI disclosure, Nemotron's one-month-old tooling).

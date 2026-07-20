@@ -1,0 +1,9 @@
+[package]
+name = "gb-stt"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde_json = { workspace = true }
+jsonschema = { workspace = true }
+base64 = "0.22"
