@@ -1,0 +1,14 @@
+# local-only raw idea doc (persistent, never published)
+docs/IDEA.md
+
+# research store (may contain proprietary insights, default private)
+.research/
+
+node_modules/
+target/
+build/
+dist/
+*.gguf
+*.onnx
+models/
+.env
