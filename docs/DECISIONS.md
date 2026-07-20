@@ -43,11 +43,19 @@ Rejected: faster-whisper/CTranslate2 (CUDA+CPU only, Python-first), Whisper/whis
 
 Known risk: Nemotron-3.5 is a month old; weak on German/Chinese, sherpa-onnx support is greedy-search only. The Zipformer fallback stays wired in until it matures.
 
-## D5. TTS: DISCARDED 2026-07-20, pending re-research
+## D5. TTS: Kyutai Pocket TTS 100M (DSM, true streaming-text input)
 
-Hector rejected the chunk-pipelined default the same day it was proposed: game-box requires true token/frame-level streaming TTS (audio starts before the utterance text is complete, continuous deltas), not per-sentence pipelining. New research is running on July-2026 token-streaming options (Kyutai TTS, OuteTTS via llama.cpp, NeuTTS Air, CSM forks, and newer releases) with an explicit hardware-floor ranking. The record below is kept for context; treat the Kokoro pick as void until the new decision lands.
+Decided 2026-07-20 after the requirement changed to true token/frame-level streaming (audio starts before the utterance text is complete; the engine can consume an LLM's token stream). The re-research found the field moved: this no longer needs a big GPU.
 
-### Void record: sherpa-onnx running Kokoro-82M
+- Primary: **Kyutai Pocket TTS** (Jan 2026). 100M params (~100-160MB), Delayed-Streams-Modeling: a transformer coordinates the text stream and the Mimi-codec audio stream at 12.5 Hz, speaking word-by-word as text arrives. Real-time on 2 CPU cores (~6x RT on M4-class), ~200ms to first audio, voice cloning from ~5s, 27 voices, 6 languages. MIT code, CC-BY-4.0 weights (attribution required; individual voice licenses need auditing). CPU-only viability sidesteps the AMD/Intel GPU story entirely.
+- Quality tier (GPU present): **Kyutai TTS 1.6B**, same DSM architecture, 220ms, EN/FR, better voices; Rust moshi-server is Apache 2.0.
+- Fallback on the llama.cpp runtime: **NeuTTS Air** (748M, Apache 2.0 code AND weights, GGUF Q4 ~500MB, CPU real-time, 3s cloning). Partial fit only: it waits for a complete sentence before synthesizing (sentence-chunk pipelining), so it does not meet the sub-sentence requirement.
+
+Known caveats, recorded honestly: Pocket's shipped Python API splits input into sentences; literal sub-sentence token input means driving the lower-level DSM streaming interface, and the community Rust/Candle port (pocket-tts-candle, "full-pipeline stateful streaming") or the C++ ONNX build are the non-Python paths, both to be validated. One user issue rates Pocket's prosody below Kokoro: the tiny footprint trades some naturalness. Candle has no Vulkan backend (CPU/CUDA/Metal only), which is acceptable because Pocket is CPU-real-time.
+
+Rejected: VibeVoice-Realtime-0.5B (true text-streaming and MIT, but diffusion/Python/GPU with a 2025 repo-takedown history and use restrictions), OuteTTS 1.0 (CC-BY-NC-SA weights despite its clean llama.cpp any-vendor path), Voxtral TTS (CC-BY-NC, ~4B), Chatterbox Turbo (output-streaming only, GPU-bound), CosyVoice (no embeddable runtime), Orpheus small variants (still unshipped).
+
+### Superseded record (chunk-pipelined era): sherpa-onnx running Kokoro-82M
 
 Primary: Kokoro-82M (Apache 2.0 weights, ~330 MB, best naturalness per megabyte, 8 languages). Streaming is sentence-chunk pipelining (Kokoro is non-autoregressive): feed clauses, play as they render, first audio in well under a second on capable hardware.
 

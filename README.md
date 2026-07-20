@@ -19,11 +19,11 @@ Mirroring the OpenAI surface means existing SDKs work unchanged, and running out
 | LLM runtime | llama.cpp, Vulkan build | one binary per OS covers NVIDIA/AMD/Intel dGPU and iGPU; Metal on Apple; CPU fallback |
 | LLM model | Qwen3-4B (Apache 2.0) | default tier; Qwen3-1.7B / 0.6B for weaker hardware |
 | STT | Nemotron-3.5-ASR-Streaming-0.6B via sherpa-onnx | true streaming partials from 80 ms chunks, 40 locales, real-time on CPU; Zipformer fallback |
-| TTS | to be decided | Kokoro chunk-pipelining was discarded; requirement is true token-level streaming, re-research in progress |
+| TTS | Kyutai Pocket TTS 100M (MIT code, CC-BY-4.0 weights) | true streaming-text input (DSM): speaks while the LLM is still generating, ~200ms first audio, real-time on 2 CPU cores; Kyutai TTS 1.6B when a GPU exists; NeuTTS Air (Apache 2.0, GGUF) as sentence-chunked fallback |
 | VAD | Silero VAD (MIT) | voice endpointing |
 | Models | downloaded on first run | never bundled in the game install |
 
-Everything in the decided stack is commercially shippable (Apache 2.0 / MIT / OpenMDW-1.1).
+Everything in the decided stack is commercially shippable (Apache 2.0 / MIT / OpenMDW-1.1 / CC-BY-4.0 with attribution).
 
 ## Layout
 
@@ -43,4 +43,4 @@ cargo run -p gb-api # serves http://127.0.0.1:8976 (GAME_BOX_PORT to change)
 
 ## Status
 
-Phase 1: the sidecar skeleton is real (loopback server, SSE chat streaming, WebSocket transcription events, schema-validated boundaries, model cache check) with stand-in engines behind the llm/stt contracts, so games can integrate against the final API shape today. Real engines (llama.cpp Vulkan, sherpa-onnx) land behind the same contracts next; TTS is being re-researched. [docs/DECISIONS.md](docs/DECISIONS.md) has the decision record and open risks (Chrome's Local Network Access prompt for browser games, Vulkan driver quirks, Steam's live-AI disclosure, Nemotron's one-month-old tooling).
+Phase 1: the sidecar skeleton is real (loopback server, SSE chat streaming, WebSocket transcription events, schema-validated boundaries, model cache check) with stand-in engines behind the llm/stt contracts, so games can integrate against the final API shape today. Real engines (llama.cpp Vulkan, sherpa-onnx, Kyutai Pocket TTS) land behind the same contracts next. [docs/DECISIONS.md](docs/DECISIONS.md) has the decision record and open risks (Chrome's Local Network Access prompt for browser games, Vulkan driver quirks, Steam's live-AI disclosure, Nemotron's one-month-old tooling).
