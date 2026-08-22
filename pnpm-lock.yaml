@@ -238,6 +238,25 @@ importers:
         specifier: ^0.185.4
         version: 0.185.4
 
+  game/land:
+    dependencies:
+      '@gb/kit':
+        specifier: workspace:*
+        version: link:../kit
+      '@gb/world':
+        specifier: workspace:*
+        version: link:../world
+      three:
+        specifier: ^0.185.1
+        version: 0.185.1
+    devDependencies:
+      '@gb/forge':
+        specifier: workspace:*
+        version: link:../forge
+      '@types/three':
+        specifier: ^0.185.4
+        version: 0.185.4
+
   game/nav:
     dependencies:
       '@gb/world':

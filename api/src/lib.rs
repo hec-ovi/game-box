@@ -130,10 +130,13 @@ async fn chat(body: String) -> Response {
         json!("tool_calls")
     };
 
+    // a speaker can say something and do something in the same breath, so
+    // neither one is dropped for the other
     let mut message = json!({"role": "assistant"});
-    if calls.is_empty() {
+    if !content.is_empty() || calls.is_empty() {
         message["content"] = json!(content);
-    } else {
+    }
+    if !calls.is_empty() {
         message["tool_calls"] = json!(calls);
     }
 

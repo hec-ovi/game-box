@@ -1,5 +1,5 @@
 {
-  "name": "@gb/traffic",
+  "name": "@gb/land",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -7,16 +7,15 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "test": "vitest run",
-    "build:cars": "node tools/build-cars.ts"
+    "test": "vitest run"
   },
   "dependencies": {
     "@gb/kit": "workspace:*",
-    "@gb/world": "workspace:*"
+    "@gb/world": "workspace:*",
+    "three": "^0.185.1"
   },
   "devDependencies": {
     "@gb/forge": "workspace:*",
-    "@types/three": "^0.185.4",
-    "three": "^0.185.1"
+    "@types/three": "^0.185.4"
   }
 }
