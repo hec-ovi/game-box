@@ -34,22 +34,24 @@ A Rust workspace of contract-isolated layers; each folder is a blackbox with its
 - `api/` builds the `game-box` binary: loopback server with `/health`, `/v1/chat/completions` (SSE), `/v1/realtime` (WebSocket transcription)
 - `llm/` text generation: deterministic stand-in by default; set `GAME_BOX_LLM_UPSTREAM` to an OpenAI-compatible server (e.g. llama-server) to proxy real inference
 - `stt/` streaming recognition sessions (stand-in engine; sherpa-onnx Nemotron is the planned swap-in)
+- `tts/` streaming synthesis: text tokens in, 80 ms PCM frames out, speaking before the sentence is finished (stand-in engine; Kyutai Pocket TTS is the planned swap-in)
 - `models/` model cache with sha256 integrity check (download-on-first-run comes next)
 
 ## Build and test
 
 ```
-cargo test          # all contract + end-to-end tests (12)
+cargo test          # all contract + end-to-end tests (15)
 cargo run -p gb-api # serves http://127.0.0.1:8976 (GAME_BOX_PORT to change)
 ```
 
 ## Status
 
-Phase 1: the sidecar skeleton is real (loopback server, SSE chat streaming, WebSocket transcription events, schema-validated boundaries, model cache check) with stand-in engines behind the llm/stt contracts, so games can integrate against the final API shape today. Real LLM inference already works if you point `GAME_BOX_LLM_UPSTREAM` at a running llama-server. [docs/DECISIONS.md](docs/DECISIONS.md) has the decision record and open risks (Chrome's Local Network Access prompt for browser games, Vulkan driver quirks, Steam's live-AI disclosure, Nemotron's one-month-old tooling).
+Phase 1: the sidecar skeleton is real (loopback server, SSE chat streaming, WebSocket transcription events, schema-validated boundaries, model cache check) with stand-in engines behind the llm/stt/tts contracts, so games can integrate against the final API shape today. Real LLM inference already works if you point `GAME_BOX_LLM_UPSTREAM` at a running llama-server. [docs/DECISIONS.md](docs/DECISIONS.md) has the decision record and open risks (Chrome's Local Network Access prompt for browser games, Vulkan driver quirks, Steam's live-AI disclosure, Nemotron's one-month-old tooling).
 
 ## Pending
 
-- `tts/` layer: does not exist yet (decision is fresh); `/v1/audio/speech` and voice-out on `/v1/realtime` with it
+- `/v1/audio/speech` and voice-out on `/v1/realtime`: the `tts/` contract exists, the api layer does not call it yet
+- Real TTS: swap the stand-in for Kyutai Pocket TTS behind the existing `tts/` contract
 - Real STT: swap the stand-in for sherpa-onnx + Nemotron behind the existing `stt/` contract
 - Bundled LLM: ship llama.cpp (Vulkan/Metal) with the box instead of requiring an external llama-server
 - Model downloads: `models/` verifies the cache but cannot download yet (download-on-first-run with resume)

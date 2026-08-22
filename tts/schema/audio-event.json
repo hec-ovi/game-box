@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "game-box.dev/tts/audio-event",
+  "title": "tts audio event",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "type": { "const": "frame" },
+        "mediaType": { "const": "audio/pcm;bits=16" },
+        "sampleRate": { "type": "integer", "minimum": 8000, "maximum": 48000 },
+        "channels": { "const": 1 },
+        "dataBase64": { "type": "string", "minLength": 4, "contentEncoding": "base64" }
+      },
+      "required": ["type", "mediaType", "sampleRate", "channels", "dataBase64"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": { "const": "end" },
+        "durationMs": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["type", "durationMs"],
+      "additionalProperties": false
+    }
+  ]
+}

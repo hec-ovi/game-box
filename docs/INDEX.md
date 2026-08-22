@@ -5,6 +5,7 @@
 | HTTP/WS endpoints, SSE shapes, OpenAI compatibility, error bodies | `api/` |
 | Text generation, engine selection, llama.cpp/upstream wiring | `llm/` |
 | Speech recognition, audio envelopes, partial transcripts | `stt/` |
+| Speech synthesis, voices, streaming audio frames | `tts/` |
 | Model cache, integrity check, (future) downloads | `models/` |
 | Stack/architecture decisions and their rationale | `docs/DECISIONS.md` |
 

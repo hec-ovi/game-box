@@ -1,0 +1,12 @@
+[package]
+name = "gb-tts"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+serde_json = { workspace = true }
+jsonschema = { workspace = true }
+base64 = "0.22"

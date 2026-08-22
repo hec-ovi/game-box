@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "game-box.dev/models/resolved-model",
+  "title": "resolved model file",
+  "type": "object",
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "path": { "type": "string", "minLength": 1 },
+    "sizeBytes": { "type": "integer", "minimum": 0 },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  },
+  "required": ["id", "path", "sizeBytes", "sha256"],
+  "additionalProperties": false
+}

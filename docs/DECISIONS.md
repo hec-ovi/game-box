@@ -74,4 +74,4 @@ Rejected: XTTS-v2 and F5-TTS (non-commercial licenses), Qwen3-TTS (CUDA-only), O
 
 ## Planned layer layout (contract-isolated blackboxes)
 
-Each subsystem will be one folder with CONTRACT.md, schema/, src/, tests/; outsiders read only contracts and schemas. Planned layers: `api` (the public OpenAI-compatible surface), `llm` (llama.cpp wrapper), `stt` (sherpa-onnx streaming recognizer), `tts` (sherpa-onnx synthesizer + chunker), `models` (download, verify, cache), plus `docs/INDEX.md` as the resolver. Voice data crosses contracts as schema-validated envelopes (PCM by reference or base64 chunk), never bare byte streams.
+Each subsystem will be one folder with CONTRACT.md, schema/, src/, tests/; outsiders read only contracts and schemas. Planned layers: `api` (the public OpenAI-compatible surface), `llm` (llama.cpp wrapper), `stt` (sherpa-onnx streaming recognizer), `tts` (streaming synthesizer: text tokens in, PCM frames out), `models` (download, verify, cache), plus `docs/INDEX.md` as the resolver. Voice data crosses contracts as schema-validated envelopes (PCM by reference or base64 chunk), never bare byte streams.
