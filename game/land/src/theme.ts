@@ -9,9 +9,8 @@ export interface LandTheme {
   readonly matches: readonly string[]
 
   readonly sky: {
-    /** Degrees above the horizon, and degrees around it from north. */
-    readonly sunElevation: number
-    readonly sunAzimuth: number
+    /** Degrees the sun stands above the horizon at midday: how far south this place is. */
+    readonly noonElevation: number
     /** Preetham parameters: haze, blue depth, and the size and shape of the glow around the sun. */
     readonly turbidity: number
     readonly rayleigh: number
@@ -25,13 +24,24 @@ export interface LandTheme {
   }
 
   readonly light: {
+    /** Sun colour high in the sky and down at the horizon, and its strength at midday. */
     readonly sun: number
+    readonly lowSun: number
     readonly sunIntensity: number
+    /** Moon colour and its strength at its highest. */
+    readonly moon: number
+    readonly moonIntensity: number
+    /** Sky and bounce colours and ambient strength, by day. */
     readonly skyColour: number
     readonly bounceColour: number
     readonly ambient: number
-    /** Fog colour, where it starts biting and where it hides everything. */
+    /** The same three at night. Night is dimmer and bluer, never black. */
+    readonly nightSky: number
+    readonly nightBounce: number
+    readonly nightAmbient: number
+    /** Fog colour by day and by night, where it starts biting and where it hides everything. */
     readonly haze: number
+    readonly nightHaze: number
     readonly hazeNear: number
     readonly hazeFar: number
   }
@@ -106,8 +116,7 @@ const TEMPERATE: LandTheme = {
   id: 'temperate',
   matches: ['valley', 'meadow', 'forest', 'wood', 'alpine', 'green', 'farm', 'spring', 'quiet', 'market', 'hill'],
   sky: {
-    sunElevation: 34,
-    sunAzimuth: 140,
+    noonElevation: 52,
     turbidity: 4,
     rayleigh: 1.6,
     mie: 0.005,
@@ -119,11 +128,18 @@ const TEMPERATE: LandTheme = {
   },
   light: {
     sun: 0xfff1d8,
+    lowSun: 0xff9d5e,
     sunIntensity: 3.1,
+    moon: 0xa9c0dc,
+    moonIntensity: 0.34,
     skyColour: 0xbcd6ec,
     bounceColour: 0x5d6a4a,
     ambient: 2.2,
+    nightSky: 0x2b3c55,
+    nightBounce: 0x141a20,
+    nightAmbient: 0.78,
     haze: 0xb9cbd8,
+    nightHaze: 0x1d2836,
     hazeNear: 90,
     hazeFar: 1150,
   },
@@ -177,8 +193,7 @@ const ARID: LandTheme = {
     'arid', 'dry', 'frontier', 'mesa', 'prairie', 'gold', 'sand', 'sun-baked',
   ],
   sky: {
-    sunElevation: 58,
-    sunAzimuth: 200,
+    noonElevation: 72,
     turbidity: 8,
     rayleigh: 0.7,
     mie: 0.012,
@@ -190,11 +205,18 @@ const ARID: LandTheme = {
   },
   light: {
     sun: 0xffe9bd,
+    lowSun: 0xff8a45,
     sunIntensity: 3.8,
+    moon: 0xb6c3d4,
+    moonIntensity: 0.3,
     skyColour: 0xd6d2bd,
     bounceColour: 0x8a6b47,
     ambient: 2.0,
+    nightSky: 0x24304a,
+    nightBounce: 0x1a1712,
+    nightAmbient: 0.7,
     haze: 0xd8c9a8,
+    nightHaze: 0x1e2436,
     hazeNear: 140,
     hazeFar: 1500,
   },
@@ -248,8 +270,7 @@ const MARITIME: LandTheme = {
     'fishing', 'fog', 'foggy', 'wet', 'storm', 'dock', 'monsoon', 'island', 'soaked',
   ],
   sky: {
-    sunElevation: 17,
-    sunAzimuth: 250,
+    noonElevation: 38,
     turbidity: 14,
     rayleigh: 3,
     mie: 0.02,
@@ -261,11 +282,18 @@ const MARITIME: LandTheme = {
   },
   light: {
     sun: 0xcfd8e0,
+    lowSun: 0xe8a074,
     sunIntensity: 1.5,
+    moon: 0x9fb4cc,
+    moonIntensity: 0.36,
     skyColour: 0x93a5b2,
     bounceColour: 0x4a5147,
     ambient: 2.8,
+    nightSky: 0x2a3746,
+    nightBounce: 0x12161a,
+    nightAmbient: 0.9,
     haze: 0x9fadb6,
+    nightHaze: 0x1a222a,
     hazeNear: 45,
     hazeFar: 620,
   },

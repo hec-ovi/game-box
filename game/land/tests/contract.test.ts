@@ -272,3 +272,148 @@ describe('the sky', () => {
     expect(land.cameraFar).toBeGreaterThan(land.horizon)
   })
 })
+
+describe('time of day', () => {
+  it('puts the sun up at noon and down at midnight, with the moon opposite it', async () => {
+    const land = landOf(await town())
+
+    land.setTime(12)
+    expect(land.sun.position.y).toBeGreaterThan(0)
+    expect(land.sun.intensity).toBeGreaterThan(land.theme.light.sunIntensity * 0.9)
+    expect(land.moon.intensity).toBe(0)
+
+    land.setTime(0)
+    expect(land.sun.position.y).toBeLessThan(0)
+    expect(land.sun.intensity).toBe(0)
+    expect(land.moon.position.y).toBeGreaterThan(0)
+    expect(land.moon.intensity).toBeGreaterThan(0)
+
+    // and it comes back round: 06:00 is the sun on the horizon, east of town
+    land.setTime(6)
+    expect(land.sun.position.y).toBeCloseTo(0, 6)
+    expect(land.sun.position.x).toBeGreaterThan(land.moon.position.x)
+  })
+
+  it('runs off the end of the clock and wraps', async () => {
+    const land = landOf(await town())
+    land.setTime(30)
+    expect(land.time).toBe(6)
+    land.setTime(-3)
+    expect(land.time).toBe(21)
+  })
+
+  it('makes night about five times dimmer than noon, and never black', async () => {
+    const land = landOf(await town())
+    const lit = (): number => land.sun.intensity + land.moon.intensity + land.skyLight.intensity
+
+    land.setTime(12)
+    const noon = lit()
+    land.setTime(0)
+    const midnight = lit()
+
+    expect(noon / midnight).toBeGreaterThan(3)
+    expect(noon / midnight).toBeLessThan(8)
+    // a street you can still walk down and read
+    expect(midnight).toBeGreaterThan(0.8)
+    expect(land.moon.intensity).toBeGreaterThan(0.2)
+  })
+
+  it('brings the stars and the moon out at night and takes them away by day', async () => {
+    const land = landOf(await town())
+    const moonDisc = land.root.getObjectByName('land:moon-disc')!
+
+    land.setTime(1)
+    expect(land.stars.visible).toBe(true)
+    expect((land.stars.material as THREE.PointsMaterial).opacity).toBeGreaterThan(0.9)
+    expect(moonDisc.visible).toBe(true)
+
+    land.setTime(13)
+    expect(land.stars.visible).toBe(false)
+    expect(moonDisc.visible).toBe(false)
+  })
+
+  it('moves the light without rebuilding a single vertex of the land', async () => {
+    const land = landOf(await town())
+    const geometry = land.terrain.geometry
+    const position = geometry.getAttribute('position') as THREE.BufferAttribute
+    const version = position.version
+    const trees = land.trees.map((wood) => wood.geometry)
+
+    for (const hour of [0, 4, 7, 12, 18, 22]) land.setTime(hour)
+    land.setWeather('rain')
+    land.setWeather('clear')
+
+    expect(land.terrain.geometry).toBe(geometry)
+    expect(land.terrain.geometry.getAttribute('position')).toBe(position)
+    expect(position.version).toBe(version)
+    expect(land.trees.map((wood) => wood.geometry)).toEqual(trees)
+  })
+})
+
+describe('weather', () => {
+  it('moves the light and the haze the way each one says', async () => {
+    const land = landOf(await town())
+    land.setTime(12)
+
+    const look = (): { sun: number; ambient: number; near: number; far: number; haze: number; wet: number } => ({
+      sun: land.sun.intensity,
+      ambient: land.skyLight.intensity,
+      near: land.fog.near,
+      far: land.fog.far,
+      haze: land.fog.color.getHex(),
+      wet: land.wetness,
+    })
+
+    land.setWeather('clear')
+    const clear = look()
+    land.setWeather('overcast')
+    const overcast = look()
+    land.setWeather('rain')
+    const wet = look()
+
+    // the sun goes out of it and the haze closes in, step by step
+    expect(clear.sun).toBeGreaterThan(overcast.sun)
+    expect(overcast.sun).toBeGreaterThan(wet.sun)
+    expect(clear.far).toBeGreaterThan(overcast.far)
+    expect(overcast.far).toBeGreaterThan(wet.far)
+    expect(clear.near).toBeGreaterThan(wet.near)
+    // flatter, not darker: what the sun loses the sky puts back
+    expect(overcast.ambient).toBeGreaterThan(clear.ambient)
+    expect(new Set([clear.haze, overcast.haze, wet.haze]).size).toBe(3)
+    expect(clear.wet).toBe(0)
+    expect(wet.wet).toBeGreaterThan(overcast.wet)
+  })
+
+  it('rains inside a volume around the viewer and nowhere else', async () => {
+    const land = landOf(await town())
+    const rain = land.rain as THREE.LineSegments
+    const drawn = (): number => rain.geometry.drawRange.count
+
+    land.setWeather('clear')
+    expect(drawn()).toBe(0)
+    expect(rain.visible).toBe(false)
+
+    land.setWeather('rain')
+    expect(rain.visible).toBe(true)
+    expect(drawn()).toBe(land.cost.drops * 2)
+
+    const viewer = new THREE.Vector3(30, 1.7, 30)
+    const position = rain.geometry.getAttribute('position')
+    // walk a while, so any drop that would trail behind has had the chance to
+    for (let frame = 0; frame < 90; frame++) {
+      viewer.x += 0.05
+      viewer.z += 0.02
+      land.update(1 / 60, viewer)
+    }
+
+    const half = land.rainVolume.clone().multiplyScalar(0.5)
+    for (let vertex = 0; vertex < drawn(); vertex++) {
+      // the streak is drawn from the drop back along its fall, so it reaches a
+      // little past the box it belongs to
+      expect(Math.abs(position.getX(vertex) - viewer.x)).toBeLessThanOrEqual(half.x + 0.7)
+      expect(Math.abs(position.getZ(vertex) - viewer.z)).toBeLessThanOrEqual(half.z + 0.7)
+      expect(position.getY(vertex)).toBeGreaterThanOrEqual(viewer.y - 5.7)
+      expect(position.getY(vertex)).toBeLessThanOrEqual(viewer.y + 15.7)
+    }
+  })
+})

@@ -4,16 +4,19 @@ import * as THREE from 'three'
 import { OpenField } from './field.ts'
 import { HeightField } from './height.ts'
 import { Noise } from './noise.ts'
-import { buildAtmosphere } from './sky.ts'
+import { Atmosphere } from './sky.ts'
 import { buildTerrain } from './terrain.ts'
 import { landTheme, matchTheme, type LandTheme } from './theme.ts'
 import { buildTrees } from './trees.ts'
 import { buildWater, carveBasins } from './water.ts'
+import { RAIN_VOLUME, Rainfall, WEATHER, type Weather } from './weather.ts'
 
 /** Metres of land beyond the town, out to the horizon. */
 const HORIZON = 1600
 /** Metres a road carries on past the edge of the map before the hills close behind it. */
 const PASS = 60
+/** Streaks of rain in the volume around the viewer, at the heaviest. */
+const DROPS = 3000
 
 export type LandError =
   | { readonly code: 'unknown-theme'; readonly message: string }
@@ -26,42 +29,151 @@ export interface LandOptions {
   readonly seed?: string
   /** Metres from the edge of the map to the far edge of the land. */
   readonly horizon?: number
-  /** `low` thins the woods and pulls the horizon in, for the WebGL2 tier. */
+  /** `low` thins the woods and the rain and pulls the horizon in, for the WebGL2 tier. */
   readonly detail?: 'full' | 'low'
+  /** Hours, 0 to 24. Default midday. */
+  readonly time?: number
+  /** Default clear. */
+  readonly weather?: Weather
 }
 
-export interface Land {
-  /** Everything: sky, sun, terrain, water and woods. Add it to the scene once. */
-  readonly root: THREE.Group
+export interface LandCost {
+  readonly triangles: number
+  readonly vertices: number
+  readonly trees: number
+  readonly ponds: number
+  readonly drops: number
+  /** Draws in clear daylight. Night adds the stars and the moon, rain adds one more. */
+  readonly draws: number
+}
+
+/**
+ * The land a city stands in, and the sky over it.
+ *
+ * Built once and then driven: the time of day and the weather move the sun, the
+ * moon, the lights and the haze without touching a single vertex of the
+ * terrain, so the app can set the time every frame.
+ */
+export class Land {
+  /** Everything: sky, sun, moon, terrain, water, woods and rain. Add it to the scene once. */
+  readonly root = new THREE.Group()
   readonly terrain: THREE.Mesh
   readonly water: THREE.Mesh | undefined
   readonly trees: readonly THREE.InstancedMesh[]
-  readonly sky: THREE.Object3D
-  readonly sun: THREE.DirectionalLight
-  readonly skyLight: THREE.HemisphereLight
-  /** Haze in the theme's colour. Assign it to `scene.fog`. */
-  readonly fog: THREE.Fog
   readonly theme: LandTheme
   readonly horizon: number
   /** The smallest camera far plane that sees the whole sky. */
   readonly cameraFar: number
-  /** Height of the land in metres at any point, zero on the town and its roads. */
-  heightAt(x: number, z: number): number
+  /** Metres of the box of rain that travels with the viewer. */
+  readonly rainVolume = RAIN_VOLUME.clone()
+  readonly cost: LandCost
+
+  readonly #air: Atmosphere
+  readonly #rain: Rainfall
+  readonly #height: HeightField
+
+  constructor(parts: {
+    theme: LandTheme
+    horizon: number
+    cameraFar: number
+    height: HeightField
+    air: Atmosphere
+    rain: Rainfall
+    terrain: THREE.Mesh
+    water: THREE.Mesh | undefined
+    trees: readonly THREE.InstancedMesh[]
+    cost: Omit<LandCost, 'drops'>
+  }) {
+    this.theme = parts.theme
+    this.horizon = parts.horizon
+    this.cameraFar = parts.cameraFar
+    this.terrain = parts.terrain
+    this.water = parts.water
+    this.trees = parts.trees
+    this.#height = parts.height
+    this.#air = parts.air
+    this.#rain = parts.rain
+
+    this.root.name = 'land'
+    this.root.add(...parts.air.objects, parts.terrain, parts.rain.object)
+    if (parts.water) this.root.add(parts.water)
+    for (const wood of parts.trees) this.root.add(wood)
+
+    this.cost = { ...parts.cost, drops: parts.rain.capacity }
+  }
+
+  get sky(): THREE.Object3D {
+    return this.#air.sky
+  }
+
+  get stars(): THREE.Points {
+    return this.#air.stars
+  }
+
+  get sun(): THREE.DirectionalLight {
+    return this.#air.sun
+  }
+
+  get moon(): THREE.DirectionalLight {
+    return this.#air.moon
+  }
+
+  get skyLight(): THREE.HemisphereLight {
+    return this.#air.skyLight
+  }
+
+  /** Haze in the theme's colour, at this hour and this weather. Assign it to `scene.fog` once. */
+  get fog(): THREE.Fog {
+    return this.#air.fog
+  }
+
+  get rain(): THREE.Object3D {
+    return this.#rain.object
+  }
+
+  get time(): number {
+    return this.#air.time
+  }
+
+  get weather(): Weather {
+    return this.#air.weather
+  }
+
+  /** 0 dry to 1 soaked: what a surface should read to decide how wet to look. */
+  get wetness(): number {
+    return WEATHER[this.#air.weather].wetness
+  }
+
+  /** Hours, 0 to 24, wrapping. Cheap enough to call every frame. */
+  setTime(hours: number): void {
+    this.#air.setTime(hours)
+  }
+
+  setWeather(weather: Weather): void {
+    this.#air.setWeather(weather)
+    this.#rain.setFall(WEATHER[weather].fall)
+  }
+
+  /** Move the weather on by this many seconds, around a viewer who may have walked. */
+  update(seconds: number, viewer: THREE.Vector3): void {
+    this.#rain.update(seconds, viewer)
+  }
+
+  /** Height of the land in metres at any point, exactly zero on the town and its roads. */
+  heightAt(x: number, z: number): number {
+    return this.#height.at(x, z)
+  }
+
   /** The water level standing at a point, or undefined where the ground is dry. */
-  waterAt(x: number, z: number): number | undefined
-  readonly cost: {
-    readonly triangles: number
-    readonly vertices: number
-    readonly trees: number
-    readonly ponds: number
-    readonly draws: number
+  waterAt(x: number, z: number): number | undefined {
+    return this.#height.waterAt(x, z)
   }
 }
 
 /**
- * The land a city stands in: sky, the ring of hills its mountain cells mark,
- * the ground running out to the horizon, ponds in the low places and woods on
- * the slopes. Objects only, so it builds in Node with no canvas.
+ * Builds the land: the ring of hills the grid's mountain cells mark, the ground
+ * running out to the horizon, ponds in the low places, woods on the slopes and
+ * a sky over all of it. Objects only, so it builds in Node with no canvas.
  */
 export function buildLand(world: World, options: LandOptions = {}): Result<Land, LandError> {
   const theme = options.theme === undefined ? matchTheme(world.theme) : landTheme(options.theme)
@@ -91,33 +203,23 @@ export function buildLand(world: World, options: LandOptions = {}): Result<Land,
 
   const terrain = buildTerrain(world, height, theme, relief, horizon)
   const water = buildWater(height, basins, theme)
-  const budget = Math.round(theme.trees.max * (low ? 0.4 : 1))
-  const trees = buildTrees(world, height, theme, scatter, rng.fork('trees'), budget)
+  const trees = buildTrees(world, height, theme, scatter, rng.fork('trees'), Math.round(theme.trees.max * (low ? 0.4 : 1)))
 
   const townRadius = Math.hypot(world.grid.width * world.cellSize, world.grid.height * world.cellSize) / 2
   const skyRadius = horizon + townRadius + 100
-  const air = buildAtmosphere(theme, centre, skyRadius)
+  const air = new Atmosphere(theme, centre, skyRadius, rng.fork('stars'))
+  const rain = new Rainfall(Math.round(DROPS * (low ? 0.45 : 1)), rng.fork('rain'))
 
-  const root = new THREE.Group()
-  root.name = 'land'
-  root.add(air.sky, air.sun, air.sun.target, air.skyLight, terrain.mesh)
-  if (water) root.add(water)
-  for (const wood of trees.meshes) root.add(wood)
-
-  return ok({
-    root,
-    terrain: terrain.mesh,
-    water,
-    trees: trees.meshes,
-    sky: air.sky,
-    sun: air.sun,
-    skyLight: air.skyLight,
-    fog: air.fog,
+  const land = new Land({
     theme,
     horizon,
     cameraFar: skyRadius * 1.2,
-    heightAt: (x, z) => height.at(x, z),
-    waterAt: (x, z) => height.waterAt(x, z),
+    height,
+    air,
+    rain,
+    terrain: terrain.mesh,
+    water,
+    trees: trees.meshes,
     cost: {
       triangles: terrain.triangles,
       vertices: terrain.vertices,
@@ -127,4 +229,7 @@ export function buildLand(world: World, options: LandOptions = {}): Result<Land,
       draws: 2 + (water ? 1 : 0) + trees.meshes.length,
     },
   })
+  land.setWeather(options.weather ?? 'clear')
+  land.setTime(options.time ?? 12)
+  return ok(land)
 }
