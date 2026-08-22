@@ -14,6 +14,7 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI
 | Walking routes, reachability, waypoints | `game/nav/` |
 | Talking to the local model: one checked answer, or a streamed reply | `game/sidecar/` |
 | Asking the local model to write names, people and quests | `game/scribe/` |
+| Turning a world into three.js objects, and where art plugs in | `game/scene/` |
 | Conversations with NPCs and what they are allowed to do | `game/talk/` |
 | The `gb` command: build, inspect, check a city | `game/cli/` |
 | Determinism, ids, results, boundary validation | `game/kit/` |
@@ -44,6 +45,7 @@ game/world <- game/nav
 game/kit <- game/sidecar -> the sidecar's api contract
 game/forge, game/quest, game/world, game/sidecar <- game/scribe
 game/world, game/quest, game/play, game/sidecar <- game/talk
+game/world <- game/scene
 gb-llm, gb-stt <- gb-api
 ```
 

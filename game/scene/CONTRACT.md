@@ -1,0 +1,44 @@
+# @gb/scene contract
+
+contractVersion: 0.1.0
+
+## Purpose
+
+Turns a city into something you can stand in: ground, buildings and interiors as three.js objects, at the size and place the world says.
+
+## Inputs
+
+| Param | Schema | Preconditions |
+|---|---|---|
+| `buildCity(world, dressing)` | a `@gb/world` `World`, a `Dressing` | the world loaded, so its grid and plots agree |
+| `buildInterior(world, interior, dressing)` | one of that world's interiors | |
+| `Dressing` | `building`, `prop`, `ground`, `surface` | every object it returns has its origin at the centre of its base |
+
+## Outputs
+
+| Param | Schema | Postconditions |
+|---|---|---|
+| `buildCity` | `{ root, buildings, doorsteps }` | one object per plot at its footprint and height, its doorstep in metres on the pavement in front of it |
+| `buildInterior` | `{ root, anchors, props, entrance }` | floor, walls with the doorways cut out, ceiling, furniture standing on the floor, an empty object at every anchor carrying its kind |
+| `storeyHeight(storeys)` | metres | ground floor taller than the ones above it |
+
+## Errors (closed set)
+
+None. Nothing here validates: a world that got this far already passed `@gb/world`.
+
+## Dependencies
+
+- `@gb/world` contract: the grid, the plots, the interiors and `METRICS`.
+- `three`.
+
+## Invariants
+
+- One world unit is one metre, and everything is sized from `METRICS`: 2 m cells, 2.1 m doors, a 4 m ground floor, kerbs 15 cm above the road.
+- Ground is one mesh per surface and mountains are one instanced block per cell, so a city of thousands of cells is a handful of draws.
+- A dressing decides what things look like and nothing else. Where they go, how big they are and which way they face are decided here, so a building kit can replace the greybox without touching the builder.
+- Every object a dressing returns has its origin at the centre of its base, so placing it on the floor cannot sink it.
+- Interiors are built in their own coordinates, entered rather than carried: the city does not hold every room all the time.
+
+## How to modify this blackbox safely
+
+A real art kit is a new `Dressing`, not a change here. Anything that needs the renderer, the camera, input or a frame loop belongs in the app, not in this box: everything here builds objects and returns them, which is why it is tested in Node with no browser. Run `pnpm --filter @gb/scene test`.
