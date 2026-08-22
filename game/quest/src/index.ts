@@ -5,7 +5,10 @@ export { gameEventContract, type GameEvent } from './events.ts'
 export type { WorldView } from './world-view.ts'
 export {
   questContract,
+  questDraftContract,
+  sealQuest,
   type QuestDoc,
+  type QuestDraft,
   type Step,
   type StepKind,
   type Condition,

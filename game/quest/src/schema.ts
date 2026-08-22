@@ -90,6 +90,18 @@ export const QuestSchema = z.object({
 
 export const questContract = contract('quest', QuestSchema)
 
+/**
+ * What an author writes: a quest without the envelope. Generators are handed
+ * this so they never have to restate the format or the version, and `sealQuest`
+ * puts the envelope back on.
+ */
+export const QuestDraftSchema = QuestSchema.omit({ format: true, schemaVersion: true })
+export const questDraftContract = contract('quest-draft', QuestDraftSchema)
+
+export function sealQuest(draft: QuestDraft): QuestDoc {
+  return { format: 'game-box.quest', schemaVersion: 1, ...draft }
+}
+
 export type Condition = z.infer<typeof ConditionSchema>
 export type Effect = z.infer<typeof EffectSchema>
 export type Place = z.infer<typeof PlaceSchema>
@@ -97,3 +109,4 @@ export type Step = z.infer<typeof StepSchema>
 export type StepKind = Step['kind']
 export type Reward = z.infer<typeof RewardSchema>
 export type QuestDoc = z.infer<typeof QuestSchema>
+export type QuestDraft = z.infer<typeof QuestDraftSchema>

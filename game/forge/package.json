@@ -8,8 +8,8 @@
   },
   "scripts": {
     "test": "vitest run",
-    "schema": "node --experimental-strip-types tools/emit-schema.ts",
-    "preview": "node --experimental-strip-types tools/preview.ts"
+    "preview": "node --experimental-strip-types tools/preview.ts",
+    "generate": "node --experimental-strip-types tools/emit-schema.ts"
   },
   "dependencies": {
     "@gb/kit": "workspace:*",

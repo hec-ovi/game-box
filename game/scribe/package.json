@@ -1,5 +1,5 @@
 {
-  "name": "@gb/bundle",
+  "name": "@gb/scribe",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -8,16 +8,16 @@
   },
   "scripts": {
     "test": "vitest run",
-    "generate": "node --experimental-strip-types tools/emit-schema.ts"
+    "generate": "node --experimental-strip-types tools/bundle-prompts.ts"
   },
   "dependencies": {
+    "@gb/forge": "workspace:*",
     "@gb/kit": "workspace:*",
-    "@gb/play": "workspace:*",
     "@gb/quest": "workspace:*",
     "@gb/world": "workspace:*",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@gb/forge": "workspace:*"
+    "ajv": "^8.20.0"
   }
 }

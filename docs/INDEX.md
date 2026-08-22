@@ -12,6 +12,7 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI
 | Generating a city: streets, plots, interiors, people, quests | `game/forge/` |
 | Exporting and importing a city, and the save file | `game/bundle/` |
 | Walking routes, reachability, waypoints | `game/nav/` |
+| Asking the local model to write names, people and quests | `game/scribe/` |
 | Determinism, ids, results, boundary validation | `game/kit/` |
 
 ## Sidecar
@@ -37,6 +38,7 @@ game/kit  <- game/world <- game/forge <- game/bundle
 game/kit  <- game/play  <- game/quest <- game/forge
 game/world, game/quest, game/play <- game/bundle
 game/world <- game/nav
+game/forge, game/quest, game/world <- game/scribe -> the sidecar's api contract
 gb-llm, gb-stt <- gb-api
 ```
 
