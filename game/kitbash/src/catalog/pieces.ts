@@ -55,7 +55,11 @@ export type PieceId = keyof typeof PIECES
 
 export const PIECE_IDS = Object.keys(PIECES) as PieceId[]
 
-/** Every material the kit hands us: also the draw-call budget for one merged building. */
+/**
+ * Every material name in the kit's own files: the draw-call ceiling for one
+ * merged building. The pack folds names sharing a texture set together, so a
+ * building out of `assets/dist/downtown-kit.glb` draws with fewer than these.
+ */
 export const KIT_MATERIALS: readonly string[] = [...new Set(PIECE_IDS.flatMap((id) => PIECES[id].materials))].sort()
 
 /**

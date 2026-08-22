@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { PIECES, PIECE_IDS, type PieceId } from '../catalog/pieces.ts'
+import { canonical } from './geometry.ts'
 import { KitLibrary, type KitPart } from './library.ts'
 
 /** Roughly what each kit material looks like, so a kitless city still reads as a street. */
@@ -31,9 +32,11 @@ export function placeholderKit(): KitLibrary {
       if (!materials.has(name)) {
         materials.set(name, new THREE.MeshStandardMaterial({ name, color: COLOURS[name] ?? 0x8a8a8a }))
       }
-      const geometry = new THREE.BoxGeometry(max[0] - min[0], max[1] - min[1], max[2] - min[2])
-      geometry.clearGroups()
-      geometry.translate((min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2)
+      const box = new THREE.BoxGeometry(max[0] - min[0], max[1] - min[1], max[2] - min[2])
+      box.translate((min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2)
+      // the same shape a loaded kit is brought to, so both merge the same way
+      const geometry = canonical(box)
+      box.dispose()
       return { material: name, geometry }
     }))
   }

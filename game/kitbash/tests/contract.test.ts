@@ -1,7 +1,7 @@
 import { BUILDING_KINDS, METRICS, type AnchorKind, type CellKind, type FurnitureProp, type Item, type Npc, type Plot } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { KIT_MATERIALS, KitDressing, KitIncomplete, PIECES, PIECE_IDS, placeholderKit, RELIEF, loadKit } from '../src/index.ts'
+import { KIT_MATERIALS, KitDressing, KitIncomplete, KitLibrary, KitUnmergeable, PIECES, PIECE_IDS, placeholderKit, RELIEF, loadKit, type KitPart, type PieceId } from '../src/index.ts'
 import { boundsOf, CELL, fingerprint, meshesOf, plotOf, sizeOf, trianglesOf } from './support.ts'
 
 const kit = placeholderKit()
@@ -94,9 +94,21 @@ describe('building', () => {
 })
 
 describe('loadKit', () => {
-  it('indexes a kit by piece name and shares one material per name', () => {
+  it('indexes a kit by piece name, in the frame the pack put it in', () => {
     const library = loadKit(fakeKit())
-    for (const id of PIECE_IDS) expect(library.parts(id).length, id).toBeGreaterThan(0)
+    for (const id of PIECE_IDS) {
+      const parts = library.parts(id)
+      expect(parts.length, id).toBeGreaterThan(0)
+      for (const part of parts) {
+        part.geometry.computeBoundingBox()
+        // the pack carries the piece's scale above the mesh, so it has to be baked in
+        expect(part.geometry.boundingBox!.getSize(new THREE.Vector3()).x, id).toBeCloseTo(FAKE_SCALE, 6)
+      }
+    }
+  })
+
+  it('shares one material instance per name', () => {
+    const library = loadKit(fakeKit())
     expect(library.material('MI_RedBrick')).toBe(library.material('MI_RedBrick'))
   })
 
@@ -109,6 +121,28 @@ describe('loadKit', () => {
     } catch (error) {
       expect((error as KitIncomplete).code).toBe('kit-incomplete')
       expect((error as KitIncomplete).missing).toEqual(['Brick_Plain_3'])
+    }
+  })
+})
+
+describe('a library whose pieces do not agree', () => {
+  it('says which material will not weld instead of building a mesh out of nothing', () => {
+    const parts = new Map<PieceId, KitPart[]>(PIECE_IDS.map((id, at) => {
+      const geometry = new THREE.BoxGeometry(1, 1, 1)
+      if (at % 2) geometry.deleteAttribute('uv') // the unevenness a raw kit export has
+      return [id, [{ material: 'MI_RedBrick', geometry }]]
+    }))
+    const rogue = new KitLibrary(parts, new Map([['MI_RedBrick', new THREE.MeshStandardMaterial({ name: 'MI_RedBrick' })]]))
+    const plot = plotOf({ kind: 'shop', rect: { x: 4, y: 4, w: 3, h: 3 }, entrance: { cell: { x: 5, y: 7 }, facing: 'south' } })
+
+    try {
+      new KitDressing(rogue).building(plot, sizeOf(plot, heightOf(2)))
+      expect.unreachable('a library that cannot weld has to say so')
+    } catch (error) {
+      expect(error).toBeInstanceOf(KitUnmergeable)
+      expect((error as KitUnmergeable).code).toBe('kit-unmergeable')
+      expect((error as KitUnmergeable).material).toBe('MI_RedBrick')
+      expect((error as KitUnmergeable).pieces.length).toBeGreaterThan(1)
     }
   })
 })
@@ -137,13 +171,16 @@ describe('everything that is not a building', () => {
   })
 })
 
+/** How much bigger the fake pack's node transform makes a piece than its mesh. */
+const FAKE_SCALE = 2
+
 /** A stand-in for the packed kit: one named node per piece, one mesh per material on it. */
 function fakeKit(): THREE.Object3D {
   const root = new THREE.Group()
   for (const id of PIECE_IDS) {
     const node = new THREE.Group()
     node.name = id
-    node.position.set(3, 0, 0) // pieces are indexed in their own frame, not the pack's
+    node.scale.setScalar(FAKE_SCALE) // the pack leaves a piece's dequantization on its node
     for (const name of PIECES[id].materials) {
       node.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ name })))
     }
