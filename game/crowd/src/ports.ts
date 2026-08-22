@@ -19,6 +19,16 @@ export interface CrowdActor {
   release(): void
 }
 
+/** Somebody who walks with the player until the game says otherwise. */
+export interface Companion {
+  /** Who they are. Their id is what `stopFollowing` takes, and what `following()` reports. */
+  readonly npc: Npc
+  /** Where they are standing when they set off. Defaults to where the player is. */
+  readonly at?: Point
+  /** A body the game already has for them. With none, the crowd asks its cast for one and gives it back later. */
+  readonly actor?: CrowdActor
+}
+
 /** Where bodies come from. `SceneCast` wraps `@gb/cast`; a test passes its own. */
 export interface CrowdCast {
   spawn(npc: Npc): CrowdActor
