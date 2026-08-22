@@ -27,10 +27,18 @@ export class Ground {
     return cellCentre(cell.x, cell.y, this.cellSize)
   }
 
+  /**
+   * True where a walker is off the roadway: the pavement and park kinds it was
+   * built with. Straight to the grid rather than through `cellAt`, because
+   * every walker asks this of every step it takes.
+   */
+  pavement(x: number, z: number): boolean {
+    const kind = this.#world.grid.at(Math.floor(x / this.cellSize), Math.floor(z / this.cellSize))
+    return kind !== undefined && this.#raised.has(kind)
+  }
+
   /** Pavement and parks sit a kerb above the roadway; everything else is at zero. */
   heightAt(x: number, z: number): number {
-    const cell = this.cellAt(x, z)
-    const kind = this.#world.grid.at(cell.x, cell.y)
-    return kind !== undefined && this.#raised.has(kind) ? this.#kerbHeight : 0
+    return this.pavement(x, z) ? this.#kerbHeight : 0
   }
 }

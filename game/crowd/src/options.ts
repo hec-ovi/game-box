@@ -26,6 +26,10 @@ export interface CrowdOptions {
   avoidStrength: number
   /** After this long boxed in, a walker drops its route and asks for another, in seconds. */
   stuckSeconds: number
+  /** How many seconds of traffic a walker looks for before stepping off the kerb. */
+  kerbLook: number
+  /** Below this speed a hazard is standing still, not coming, in metres per second. */
+  hazardSpeed: number
   /** Ground the walkers stand on. Cheapest first: the crowd prefers pavement. */
   pavement: readonly CellKind[]
   /** How high those cells sit above the roadway. Set 0 for flat ground. */
@@ -54,6 +58,8 @@ export const CROWD_DEFAULTS: CrowdOptions = {
   avoidRadius: 2.2,
   avoidStrength: 1.6,
   stuckSeconds: 2,
+  kerbLook: 2.5,
+  hazardSpeed: 0.5,
   pavement: ['sidewalk', 'park'],
   kerbHeight: METRICS.street.curbHeight,
   maxStep: 0.25,

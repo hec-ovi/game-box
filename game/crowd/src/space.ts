@@ -41,6 +41,8 @@ export class Space {
   /** Who is near, and who they are near. Worked out once per body per frame and reused, and it allocates nothing. */
   #near: Body[] = []
   #focus: Body | undefined
+  /** One cell handed to nav and never kept, because this is asked of every step. */
+  #asked = { x: 0, y: 0 }
 
   constructor(ground: Ground, nav: CrowdNav, options: CrowdOptions) {
     this.#ground = ground
@@ -71,7 +73,10 @@ export class Space {
 
   /** True when a body may stand here: on the map, and not inside a building, a mountain or water. */
   open(x: number, z: number): boolean {
-    return this.#nav.walkable(this.#ground.cellAt(x, z))
+    const cell = this.#asked
+    cell.x = Math.floor(x / this.#ground.cellSize)
+    cell.y = Math.floor(z / this.#ground.cellSize)
+    return this.#nav.walkable(cell)
   }
 
   /** True when nobody is standing within personal space of this point. Used before putting somebody new on the street. */

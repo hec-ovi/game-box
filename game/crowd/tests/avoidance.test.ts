@@ -127,4 +127,30 @@ describe('people keep out of each other', () => {
     // a minute of walking on a busy pavement, and every last one of them got somewhere: nobody deadlocked
     expect(arrived.size).toBeGreaterThanOrEqual(40)
   })
+
+  it('gets out from under a player who parks on top of them, and stays out', () => {
+    const world = testTown()
+    const nav = CityNav.from(world)
+    const middle = { x: (world.grid.width * world.cellSize) / 2, z: (world.grid.height * world.cellSize) / 2 }
+    const crowd = Crowd.create({ world, nav, cast: new FakeCast(), seed: 'underfoot' }, { population: 1, retireRadius: 500 })
+    for (let frame = 0; frame < 60; frame++) crowd.update(STEP, middle)
+
+    // the player plants themselves exactly where the walker is standing and does not move again
+    const on = { ...crowd.walkers()[0]! }
+    let escaped = -1
+    let backInside = 0
+
+    for (let frame = 0; frame < 600; frame++) {
+      crowd.update(STEP, on)
+      const gap = distance(crowd.walkers()[0]!, on)
+      if (escaped === -1) {
+        if (gap >= crowd.options.personalSpace) escaped = frame
+      } else if (gap < crowd.options.personalSpace) backInside++
+    }
+
+    // out from under them within three seconds, walking away rather than shuffling against them
+    expect(escaped).toBeGreaterThanOrEqual(0)
+    expect(escaped).toBeLessThan(180)
+    expect(backInside).toBe(0)
+  })
 })

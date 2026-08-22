@@ -10,7 +10,7 @@ Keeps a city's streets populated: pedestrians who appear on the pavement near th
 
 | Param | Schema | Preconditions |
 |---|---|---|
-| `Crowd.create(deps, options?)` | `deps`: `{ world, nav, cast, seed? }` | `world` is a loaded `@gb/world` `World`; `nav` is a `CrowdNav` (a `@gb/nav` `CityNav` is one); `cast` is a `CrowdCast`; `seed` defaults to `${world.seed}/crowd` |
+| `Crowd.create(deps, options?)` | `deps`: `{ world, nav, cast, hazards?, seed? }` | `world` is a loaded `@gb/world` `World`; `nav` is a `CrowdNav` (a `@gb/nav` `CityNav` is one); `cast` is a `CrowdCast`; `hazards` is a `Hazards`, what is moving on the roads, and with none given walkers cross without looking; `seed` defaults to `${world.seed}/crowd` |
 | `options` | `Partial<CrowdOptions>` in [src/options.ts](src/options.ts), defaults in `CROWD_DEFAULTS` | any subset; contradictory numbers are settled, not rejected |
 | `update(seconds, viewer)` | frame time in seconds, `viewer` a `Point` in metres | call once per frame with where the player is standing; walkers keep their distance from it |
 | `SceneCast(cast, root)` | a `@gb/cast` `Cast` (`CastSpawner`), a `three` `Object3D` | the cast is loaded; `root` is in the scene |
@@ -19,7 +19,7 @@ Keeps a city's streets populated: pedestrians who appear on the pavement near th
 
 | Param | Schema | Postconditions |
 |---|---|---|
-| `Crowd.walkers()` | `readonly WalkerView[]` in [src/ports.ts](src/ports.ts) | a snapshot: id, position in metres, heading in radians, `walking` or `idle`, the clip playing, metres left on the trip |
+| `Crowd.walkers()` | `readonly WalkerView[]` in [src/ports.ts](src/ports.ts) | a snapshot: id, position in metres, heading in radians, `walking`, `waiting` at a kerb or `idle`, the clip playing, metres left on the trip |
 | `Crowd.count` | number | how many are alive right now, never above `population` |
 | `Crowd.options` | `CrowdOptions` | the settled numbers, after defaults and clamping |
 | `Crowd.clear()` | | every body released, count back to zero |
@@ -47,6 +47,7 @@ None. Nothing here throws and nothing returns a failure: a city with no pavement
 - A walker follows a route from `@gb/nav` corner to corner, leaning around whoever is in the way. Every step, the route's own and any step around somebody, is taken only onto ground `CrowdNav.walkable` allows, so they cross roads but never stand inside a building, a mountain or water.
 - Nobody is ever closer to anybody than `personalSpace`: a step that would enter somebody's is refused, and a body already inside one may only move out. That holds for the player too, who is one more body in the way, and for the moment somebody is born: a spot with somebody standing in it is not spawned on.
 - Somebody coming the other way is passed on the right, and a walker boxed in for `stuckSeconds` drops its route and asks for another rather than shuffling on the spot. A walker standing about that the player walks into cuts its pause short and moves off.
+- A walker leaving the pavement looks first: given `Hazards`, it asks what is moving near the spot it is about to step into and holds on the kerb, standing in an idle rather than frozen mid-stride, while anything would come within its personal space in the next `kerbLook` seconds. Once in the road it keeps going, so a crossing is never abandoned half way. Anything slower than `hazardSpeed` is standing still rather than coming, so a stopped car never strands anybody, and traffic that brakes for pedestrians cannot deadlock against pedestrians waiting for traffic.
 - Walkers spawn only on the ground kinds in `options.pavement` (pavement and parks by default), between `spawnNear` and `spawnFar` of the player, and are retired past `retireRadius`, which is always kept at least 5 m outside `spawnFar` so nobody is deleted the frame they appear.
 - Feet sit on the kerb: `options.kerbHeight` above the roadway on pavement and park cells, zero elsewhere. Set it to 0 for flat ground.
 - Walking pace is `METRICS.player.walkSpeed` give or take `speedSpread`, and a walker turns at `turnRate` towards the leg they are on, so corners are turned rather than snapped.
@@ -58,4 +59,4 @@ None. Nothing here throws and nothing returns a failure: a city with no pavement
 
 Steering lives in `src/space.ts` and is a pass over the same routes, never a change to `@gb/nav`: the routes stay the city's business and the elbows stay this box's. Interior crowds need a second navigation source, so widen `CrowdNav` before widening `Crowd`. Anything to do with vehicles is `@gb/traffic`. Run `pnpm --filter @gb/crowd test`.
 
-Measured on a 48x48 cell city with bodies stubbed out: 12 us per update for 32 walkers, 20 us for 48, 46 us for 96, worst frame under 0.4 ms including path searches. Keeping people out of each other is about 9 us of the 12 at the default population: everybody is bucketed once a frame and each walker looks at one three-by-three block of buckets, so it grows with the crowd rather than with the crowd squared. The cost that matters at a few dozen walkers is still the animation the cast does, not the walking.
+Measured on a 48x48 cell city with bodies stubbed out: 14 us per update for 32 walkers, 42 us for 96, worst frame under 0.4 ms including path searches. Keeping people out of each other is about 9 us of the 14 at the default population: everybody is bucketed once a frame and each walker looks at one three-by-three block of buckets, so it grows with the crowd rather than with the crowd squared. Looking before crossing adds about 1 us at 32 walkers with a dozen cars on the roads, because a walker already in the road stops asking after one lookup. The cost that matters at a few dozen walkers is still the animation the cast does, not the walking.

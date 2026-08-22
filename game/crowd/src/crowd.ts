@@ -5,7 +5,8 @@ import { Ground } from './ground.ts'
 import { resolveOptions, type CrowdOptions } from './options.ts'
 import { Pavement } from './pavement.ts'
 import { pedestrian } from './people.ts'
-import type { CrowdCast, CrowdNav, Point, WalkerView } from './ports.ts'
+import { Kerb } from './kerb.ts'
+import type { CrowdCast, CrowdNav, Hazards, Point, WalkerView } from './ports.ts'
 import { Space } from './space.ts'
 import { Walker } from './walker.ts'
 
@@ -13,6 +14,8 @@ export interface CrowdDeps {
   readonly world: World
   readonly nav: CrowdNav
   readonly cast: CrowdCast
+  /** What is moving on the roads, so walkers look before they step off the kerb. None means no traffic to look for. */
+  readonly hazards?: Hazards
   /** Defaults to the city's own seed, so one city crowds the same way for everybody. */
   readonly seed?: string
 }
@@ -30,6 +33,7 @@ export class Crowd {
   #ground: Ground
   #pavement: Pavement
   #space: Space
+  #kerb: Kerb
   #rng: Rng
   #walkers: Walker[] = []
   #serial = 0
@@ -43,6 +47,7 @@ export class Crowd {
     this.#ground = new Ground(deps.world, options.pavement, options.kerbHeight)
     this.#pavement = Pavement.from(deps.world, options.pavement)
     this.#space = new Space(this.#ground, deps.nav, options)
+    this.#kerb = new Kerb(this.#ground, options, deps.hazards)
     this.#rng = new Rng(deps.seed ?? `${deps.world.seed}/crowd`)
   }
 
@@ -144,6 +149,7 @@ export class Crowd {
       actor: this.#cast.spawn(pedestrian(serial, rng)),
       ground: this.#ground,
       space: this.#space,
+      kerb: this.#kerb,
       at,
       speed: METRICS.player.walkSpeed * rng.range(1 - spread, 1 + spread),
       turnRate: this.options.turnRate,

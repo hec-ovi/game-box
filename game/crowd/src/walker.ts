@@ -2,6 +2,7 @@ import { CLIPS } from '@gb/cast'
 import type { Rng } from '@gb/kit'
 import { distance, headingOf, turnToward } from './geometry.ts'
 import type { Ground } from './ground.ts'
+import type { Kerb } from './kerb.ts'
 import type { CrowdActor, Point, WalkerState, WalkerView } from './ports.ts'
 import type { Space, Vector } from './space.ts'
 
@@ -10,6 +11,7 @@ export interface WalkerSetup {
   readonly actor: CrowdActor
   readonly ground: Ground
   readonly space: Space
+  readonly kerb: Kerb
   readonly at: Point
   readonly speed: number
   readonly turnRate: number
@@ -42,6 +44,7 @@ export class Walker {
   #actor: CrowdActor
   #ground: Ground
   #space: Space
+  #kerb: Kerb
   #speed: number
   #turnRate: number
   #stuckSeconds: number
@@ -65,6 +68,7 @@ export class Walker {
     this.#actor = setup.actor
     this.#ground = setup.ground
     this.#space = setup.space
+    this.#kerb = setup.kerb
     this.#speed = setup.speed
     this.#turnRate = setup.turnRate
     this.#stuckSeconds = setup.stuckSeconds
@@ -115,8 +119,8 @@ export class Walker {
 
   /** Walk for this long, then turn a little further towards where we are going. */
   advance(seconds: number): void {
-    if (this.#state === 'walking') this.#travel(seconds)
-    else this.#wait(seconds)
+    if (this.#state === 'idle') this.#pauseFor(seconds)
+    else this.#travel(seconds)
     this.heading = turnToward(this.heading, this.#facing, this.#turnRate * seconds)
     this.#report()
   }
@@ -138,7 +142,7 @@ export class Walker {
   }
 
   /** Standing about. Somebody walking into us is reason enough to move on early. */
-  #wait(seconds: number): void {
+  #pauseFor(seconds: number): void {
     this.#pause -= seconds
     if (this.#pause > 0 && this.#space.crowded(this)) this.#pause = 0
   }
@@ -162,6 +166,11 @@ export class Walker {
       const step = Math.min(budget, gap)
       this.#aside(dx / gap, dz / gap)
       this.#facing = headingOf(this.#wayX, this.#wayZ)
+      if (!this.#kerb.safe(this.x, this.z, this.x + this.#wayX * step, this.z + this.#wayZ * step)) {
+        this.#hold()
+        return
+      }
+      if (this.#state === 'waiting') this.#walkOn()
       if (!this.#stride(step)) break
       budget -= step
     }
@@ -171,6 +180,19 @@ export class Walker {
       return
     }
     this.#wearOut(seconds, wanted, distance(fromX, fromZ, this.x, this.z))
+  }
+
+  /** Something is coming: stand at the kerb and look like somebody waiting, not somebody frozen mid-stride. */
+  #hold(): void {
+    this.#state = 'waiting'
+    this.#stalled = 0
+    this.#setClip(CLIPS.idle)
+  }
+
+  /** The road is clear: cross, and no dawdling about it. */
+  #walkOn(): void {
+    this.#state = 'walking'
+    this.#setClip(CLIPS.walk)
   }
 
   /** The way to step: the route, bent by whoever is standing in it. */
