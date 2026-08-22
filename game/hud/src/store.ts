@@ -9,11 +9,16 @@ const EMPTY: HudState = {
   talk: undefined,
   journal: [],
   journalOpen: false,
+  controls: [],
+  helpOpen: false,
   notices: [],
 }
 
-/** How long a notice stays on screen when the caller does not say. */
-export const NOTICE_MS = 3200
+/** How long a notice takes to fade once its time is up. */
+const NOTICE_EXIT_MS = 180
+
+/** Past this many at once the oldest goes, so a busy minute stays readable. */
+const MAX_NOTICES = 4
 
 /**
  * The one place interface state lives. Panels, the conversation and the
@@ -45,29 +50,51 @@ export class HudStore {
       ...(patch.talk !== undefined ? { talk: mergeTalk(before.talk, patch.talk) } : {}),
       ...(patch.journal ? { journal: patch.journal } : {}),
       ...(patch.journalOpen !== undefined ? { journalOpen: patch.journalOpen } : {}),
+      ...(patch.controls ? { controls: patch.controls } : {}),
+      ...(patch.helpOpen !== undefined ? { helpOpen: patch.helpOpen } : {}),
     }
     this.#onChange()
   }
 
-  /** Adds a notice and schedules the same store to drop it again. */
+  /** Adds a notice, then fades it and drops it again on its own clock. */
   announce(notice: Notice, ms: number): void {
     const id = this.#nextId++
-    const live: LiveNotice = { id, notice }
-    this.#state = { ...this.#state, notices: [...this.#state.notices, live] }
-    this.#timers.set(
-      id,
-      setTimeout(() => {
+    const live: LiveNotice = { id, notice, leaving: false }
+    let notices = [...this.#state.notices, live]
+    while (notices.length > MAX_NOTICES) {
+      const oldest = notices[0]!
+      this.#stop(oldest.id)
+      notices = notices.slice(1)
+    }
+    this.#state = { ...this.#state, notices }
+    this.#after(id, Math.max(0, ms - NOTICE_EXIT_MS), () => {
+      this.#write(this.#state.notices.map((n) => (n.id === id ? { ...n, leaving: true } : n)))
+      this.#after(id, NOTICE_EXIT_MS, () => {
         this.#timers.delete(id)
-        this.#state = { ...this.#state, notices: this.#state.notices.filter((n) => n.id !== id) }
-        this.#onChange()
-      }, ms),
-    )
+        this.#write(this.#state.notices.filter((n) => n.id !== id))
+      })
+    })
     this.#onChange()
   }
 
   dispose(): void {
     for (const timer of this.#timers.values()) clearTimeout(timer)
     this.#timers.clear()
+  }
+
+  #write(notices: readonly LiveNotice[]): void {
+    this.#state = { ...this.#state, notices }
+    this.#onChange()
+  }
+
+  #after(id: number, ms: number, run: () => void): void {
+    this.#timers.set(id, setTimeout(run, ms))
+  }
+
+  #stop(id: number): void {
+    const timer = this.#timers.get(id)
+    if (timer) clearTimeout(timer)
+    this.#timers.delete(id)
   }
 }
 

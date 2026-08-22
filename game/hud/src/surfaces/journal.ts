@@ -1,51 +1,53 @@
+import { HUD_KEYS, hintList } from '../controls.ts'
 import { el } from '../dom.ts'
 import type { HudIntent, HudState, JournalQuest } from '../types.ts'
 import type { Surface } from './surface.ts'
+import { HudWindow } from './window.ts'
 
-/** The quest log the player can open: what is active and how far it got. */
+/** The quest log: what is under way and how far each one got. */
 export class JournalSurface implements Surface {
-  readonly node = el('section', 'gb-journal')
-  #toggle = el('button', 'gb-journal-open', 'Journal')
-  #panel = el('div', 'gb-journal-panel')
-  #close = el('button', 'gb-journal-close', 'Close')
+  #window: HudWindow
   #list = el('div', 'gb-journal-list')
-  #open = false
   #key: string | null = null
 
   constructor(emit: (intent: HudIntent) => void) {
-    this.#toggle.type = 'button'
-    this.#close.type = 'button'
-    this.#panel.hidden = true
-    this.#panel.setAttribute('aria-label', 'Journal')
-    this.#panel.append(el('h2', undefined, 'Journal'), this.#list, this.#close)
-    this.node.append(this.#toggle, this.#panel)
-
-    this.#toggle.addEventListener('click', () => emit({ kind: 'journal', open: !this.#open }))
-    this.#close.addEventListener('click', () => emit({ kind: 'journal', open: false }))
-    this.#panel.addEventListener('keydown', (event) => {
-      event.stopPropagation()
-      if (event.key === 'Escape') emit({ kind: 'journal', open: false })
+    this.#window = new HudWindow({
+      className: 'gb-journal',
+      title: 'Journal',
+      onClose: () => emit({ kind: 'journal', open: false }),
+      // A window nobody can see holds no text, so nothing reads a quest that
+      // is not on screen. It waits for the fade so the last frame still reads.
+      onClosed: () => this.#clear(),
     })
+    this.#window.body.append(this.#list, hintList([{ keys: [HUD_KEYS.close, HUD_KEYS.journal], text: 'Close' }]))
+  }
+
+  get node(): HTMLElement {
+    return this.#window.node
   }
 
   render(state: HudState): void {
-    this.#toggle.setAttribute('aria-expanded', String(state.journalOpen))
-    this.#panel.hidden = !state.journalOpen
-
-    // A closed journal holds no text, so nothing reads a quest that is not on screen.
-    const key = state.journalOpen ? state.journal.map(signature).join('|') : null
-    if (key !== this.#key) {
+    const key = state.journalOpen ? state.journal.map(signature).join('|') : this.#key
+    if (state.journalOpen && key !== this.#key) {
       this.#key = key
       this.#list.replaceChildren(
-        ...(key === null
-          ? []
-          : state.journal.length
-            ? state.journal.map(entry)
-            : [el('p', 'gb-empty', 'No quests yet.')]),
+        ...(state.journal.length ? state.journal.map(entry) : [el('p', 'gb-empty', 'No quests yet.')]),
       )
     }
-    if (state.journalOpen && !this.#open) this.#close.focus()
-    this.#open = state.journalOpen
+    this.#window.set(state.journalOpen)
+  }
+
+  trap(back: boolean): boolean {
+    return this.#window.trap(back)
+  }
+
+  dispose(): void {
+    this.#window.dispose()
+  }
+
+  #clear(): void {
+    this.#key = null
+    this.#list.replaceChildren()
   }
 }
 

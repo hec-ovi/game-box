@@ -7,4 +7,6 @@ import type { HudState } from '../types.ts'
 export interface Surface {
   readonly node: HTMLElement
   render(state: HudState): void
+  /** Drop anything still ticking. Only surfaces that animate need one. */
+  dispose?(): void
 }

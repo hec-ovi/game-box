@@ -13,6 +13,17 @@ export interface Carried {
   readonly quest?: boolean
 }
 
+/**
+ * One line of "these keys do this". The game sends its own so the player can
+ * read every control in one place; the interface adds the keys it owns.
+ */
+export interface ControlHint {
+  readonly keys: readonly string[]
+  readonly text: string
+  /** Heading to file it under: "Move", "World". Ungrouped hints read first. */
+  readonly group?: string
+}
+
 export interface JournalStep {
   readonly stepId: string
   readonly text: string
@@ -64,12 +75,19 @@ export type Notice =
 
 export type NoticeKind = Notice['kind']
 
+/**
+ * How loudly an announcement lands. A finished quest is `major`: big, slow to
+ * go, impossible to miss. Picking up a bottle is `minor`: small and quiet.
+ */
+export type NoticeTone = 'major' | 'minor'
+
 /** What the player did in the interface. */
 export type HudIntent =
   | { readonly kind: 'say'; readonly text: string }
   | { readonly kind: 'talk-closed' }
   | { readonly kind: 'typing'; readonly typing: boolean }
   | { readonly kind: 'journal'; readonly open: boolean }
+  | { readonly kind: 'help'; readonly open: boolean }
 
 export interface HudHandlers {
   onIntent(intent: HudIntent): void
@@ -87,12 +105,15 @@ export interface HudPatch {
   readonly talk?: TalkPatch | null
   readonly journal?: readonly JournalQuest[]
   readonly journalOpen?: boolean
+  readonly controls?: readonly ControlHint[]
+  readonly helpOpen?: boolean
 }
 
-/** A notice that is on screen right now, with the id its timer will drop. */
+/** A notice on screen right now. `leaving` is its last moments as it fades. */
 export interface LiveNotice {
   readonly id: number
   readonly notice: Notice
+  readonly leaving: boolean
 }
 
 /** Everything the surfaces draw from. */
@@ -104,5 +125,7 @@ export interface HudState {
   readonly talk: TalkState | undefined
   readonly journal: readonly JournalQuest[]
   readonly journalOpen: boolean
+  readonly controls: readonly ControlHint[]
+  readonly helpOpen: boolean
   readonly notices: readonly LiveNotice[]
 }

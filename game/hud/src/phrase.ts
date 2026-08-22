@@ -1,28 +1,41 @@
-import type { Notice, Reward } from './types.ts'
+import type { Notice, NoticeTone, Reward } from './types.ts'
 
 export interface Phrased {
   readonly text: string
   readonly detail: string | undefined
+  readonly tone: NoticeTone
 }
+
+/** How long each kind of event stays on screen, in milliseconds. */
+const DWELL: Record<NoticeTone, number> = { major: 5200, minor: 2600 }
+
+/** Finishing a quest is not the same event as picking up a bottle. */
+const MAJOR = new Set<Notice['kind']>(['quest-started', 'quest-complete', 'quest-failed'])
 
 /** Turns an event into the line the player reads. All wording lives here. */
 export function phrase(notice: Notice): Phrased {
+  const tone = MAJOR.has(notice.kind) ? 'major' : 'minor'
   switch (notice.kind) {
     case 'quest-started':
-      return { text: `New quest: ${notice.title}`, detail: undefined }
+      return { text: `New quest: ${notice.title}`, detail: undefined, tone }
     case 'step-done':
-      return { text: `Done: ${notice.text}`, detail: undefined }
+      return { text: `Done: ${notice.text}`, detail: undefined, tone }
     case 'quest-complete':
-      return { text: `Quest complete: ${notice.title}`, detail: reward(notice.reward) }
+      return { text: `Quest complete: ${notice.title}`, detail: reward(notice.reward), tone }
     case 'quest-failed':
-      return { text: `Quest failed: ${notice.title}`, detail: undefined }
+      return { text: `Quest failed: ${notice.title}`, detail: undefined, tone }
     case 'item-taken':
-      return { text: `Picked up ${notice.item}`, detail: undefined }
+      return { text: `Picked up ${notice.item}`, detail: undefined, tone }
     case 'money':
-      return { text: coin(notice.delta), detail: undefined }
+      return { text: coin(notice.delta), detail: undefined, tone }
     case 'note':
-      return { text: notice.text, detail: undefined }
+      return { text: notice.text, detail: undefined, tone }
   }
+}
+
+/** How long it stays when the caller does not say. */
+export function dwell(notice: Notice): number {
+  return DWELL[MAJOR.has(notice.kind) ? 'major' : 'minor']
 }
 
 function reward(value: Reward | undefined): string | undefined {
