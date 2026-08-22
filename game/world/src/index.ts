@@ -25,6 +25,7 @@ export {
   NPC_ROLES,
   ITEM_ARCHETYPES,
   FURNITURE_PROPS,
+  BODY_KINDS,
   FACINGS,
   ENTERABLE_KINDS,
   type BuildingKind,
@@ -33,5 +34,6 @@ export {
   type NpcRole,
   type ItemArchetype,
   type FurnitureProp,
+  type BodyKind,
   type Facing,
 } from './model/vocabulary.ts'

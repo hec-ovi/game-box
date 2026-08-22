@@ -14,3 +14,4 @@ dist/
 *.safetensors
 .env
 tsconfig.tsbuildinfo
+assets/src/

@@ -153,7 +153,8 @@ describe('spawn', () => {
 
     const spawn = city.spawn
     const distance = Math.hypot(spawn.x - doorstep.x, spawn.z - doorstep.z)
-    expect(distance).toBeCloseTo(world.cellSize, 5)
+    // back far enough to see the front of the building, not its render
+    expect(distance).toBeGreaterThan(world.cellSize * 2)
 
     // standing somewhere you can stand, not inside the building
     expect(world.grid.at(Math.floor(spawn.x / world.cellSize), Math.floor(spawn.z / world.cellSize))).not.toBe('building')
@@ -162,5 +163,22 @@ describe('spawn', () => {
     const look = { x: -Math.sin(spawn.heading), z: -Math.cos(spawn.heading) }
     const toDoor = { x: (doorstep.x - spawn.x) / distance, z: (doorstep.z - spawn.z) / distance }
     expect(look.x * toDoor.x + look.z * toDoor.z).toBeCloseTo(1, 5)
+  })
+})
+
+describe('coming in', () => {
+  it('faces into the room, from a door on the street side of it', async () => {
+    const world = await town()
+    for (const interior of world.interiors()) {
+      const build = buildInterior(world, interior, new Greybox())
+      const inside = {
+        x: build.entrance.x + build.inward.x * 1.2,
+        z: build.entrance.z + build.inward.z * 1.2,
+      }
+      expect(inside.x).toBeGreaterThan(0)
+      expect(inside.z).toBeGreaterThan(0)
+      expect(inside.x).toBeLessThan(interior.size.w)
+      expect(inside.z).toBeLessThan(interior.size.h)
+    }
   })
 })

@@ -648,8 +648,10 @@
             "properties": {
               "base": {
                 "type": "string",
-                "minLength": 1,
-                "maxLength": 40
+                "enum": [
+                  "male",
+                  "female"
+                ]
               },
               "variant": {
                 "type": "integer",

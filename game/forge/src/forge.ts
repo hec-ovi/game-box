@@ -1,6 +1,7 @@
 import { err, ok, Rng, type Result, type SchemaViolation } from '@gb/kit'
 import { validateQuest, type QuestDoc, type QuestProblem } from '@gb/quest'
 import {
+  BODY_KINDS,
   METRICS,
   World,
   type Anchor,
@@ -201,7 +202,7 @@ export class Forge {
         id: world.mintId('door'),
         from: 'outside',
         to: entry.id,
-        pos: { x: entry.rect.x + entry.rect.w / 2, y: entry.rect.y + entry.rect.h },
+        pos: { x: entry.rect.x + entry.rect.w / 2, y: entry.rect.y },
         rot: 0,
         locked: false,
       },
@@ -250,7 +251,7 @@ export class Forge {
           id: world.mintId('npc'),
           name: profile.name,
           role,
-          appearance: { base: `civilian-${index % 8}`, variant: interiorRng.int(0, 8) },
+          appearance: { base: interiorRng.pick(BODY_KINDS), variant: interiorRng.int(0, 8) },
           station: { interiorId: interior.id, anchorId: anchor.id },
           workPlotId: plot.id,
           personality: profile.personality,

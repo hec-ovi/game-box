@@ -67,7 +67,8 @@ function spawnAt(world: World, doorsteps: ReadonlyMap<string, THREE.Vector3>): {
     east: { x: 1, z: 0 },
   }[plot.entrance.facing]
 
-  const back = world.cellSize
+  // far enough back to see the front of the building, not its render
+  const back = world.cellSize * 3
   return {
     x: doorstep.x + away.x * back,
     z: doorstep.z + away.z * back,

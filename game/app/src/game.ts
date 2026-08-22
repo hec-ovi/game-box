@@ -1,7 +1,8 @@
 import type { OpenedBundle } from '@gb/bundle'
 import { PlayerState } from '@gb/play'
 import { QuestLog, type Change } from '@gb/quest'
-import { buildCity, buildInterior, Greybox, type CityBuild, type InteriorBuild } from '@gb/scene'
+import type { Cast } from '@gb/cast'
+import { buildCity, buildInterior, type CityBuild, type Dressing, type InteriorBuild } from '@gb/scene'
 import { Sidecar } from '@gb/sidecar'
 import { Conversation } from '@gb/talk'
 import type { Interior, World } from '@gb/world'
@@ -31,7 +32,8 @@ export class Game {
   #place: Place = { kind: 'city' }
   #talking: Conversation | undefined
   #target: Target | undefined
-  #dressing = new Greybox()
+  #dressing: Dressing
+  #cast: Cast | undefined
 
   private constructor(input: {
     bundle: OpenedBundle
@@ -40,6 +42,8 @@ export class Game {
     player: PlayerState
     log: QuestLog
     sidecar: Sidecar
+    dressing: Dressing
+    cast?: Cast
   }) {
     this.#world = input.bundle.world
     this.#log = input.log
@@ -47,6 +51,8 @@ export class Game {
     this.#sidecar = input.sidecar
     this.#stage = input.stage
     this.#hud = input.hud
+    this.#dressing = input.dressing
+    this.#cast = input.cast
 
     this.#city = buildCity(this.#world, this.#dressing)
     this.#stage.show(this.#city.root)
@@ -58,7 +64,11 @@ export class Game {
     this.#refresh()
   }
 
-  static async start(mount: HTMLElement, bundle: OpenedBundle, options: { sidecar?: Sidecar } = {}): Promise<Game> {
+  static async start(
+    mount: HTMLElement,
+    bundle: OpenedBundle,
+    options: { sidecar?: Sidecar; dressing: Dressing; cast?: Cast },
+  ): Promise<Game> {
     const stage = await createStage(mount)
     const player = PlayerState.create(bundle.world.id, 5)
     const log = QuestLog.create(bundle.quests, player)
@@ -68,14 +78,45 @@ export class Game {
       onSay: (text) => void game?.say(text),
       onTyping: (typing) => game?.setTyping(typing),
     })
-    game = new Game({ bundle, stage, hud, player, log, sidecar: options.sidecar ?? new Sidecar() })
+    game = new Game({
+      bundle,
+      stage,
+      hud,
+      player,
+      log,
+      sidecar: options.sidecar ?? new Sidecar(),
+      dressing: options.dressing,
+      ...(options.cast ? { cast: options.cast } : {}),
+    })
 
     stage.start((seconds) => game!.frame(seconds))
     return game
   }
 
+  /** Advance and draw one frame. A hidden tab suspends the frame loop, so a
+   * test or a console can drive the game by hand. */
+  tick(seconds = 1 / 60): void {
+    this.frame(seconds)
+    this.#stage.draw()
+  }
+
+  /** Where the player is and what they could act on. For the dev console. */
+  look(): Record<string, unknown> {
+    return {
+      place: this.#place.kind,
+      at: this.#body.position,
+      heading: this.#body.heading,
+      target: this.#target?.label,
+      nearest: this.#targets()
+        .map((t) => ({ label: t.label, away: Math.hypot(t.at.x - this.#body.position.x, t.at.z - this.#body.position.z) }))
+        .toSorted((a, b) => a.away - b.away)
+        .slice(0, 3),
+    }
+  }
+
   frame(seconds: number): void {
     this.#body.update(seconds)
+    this.#cast?.update(seconds)
     this.#target = pick(this.#body.position, this.#body.heading, this.#targets())
     this.#hud.showPrompt(this.#talking ? undefined : this.#target)
   }
@@ -151,7 +192,12 @@ export class Game {
     this.#place = { kind: 'interior', interior, plotId }
     this.#stage.show(built.root)
     this.#body.setSolid(interiorSolid(interior))
-    this.#body.placeAt(built.entrance.x, built.entrance.z + 1.2, Math.PI)
+    const step = 1.2
+    this.#body.placeAt(
+      built.entrance.x + built.inward.x * step,
+      built.entrance.z + built.inward.z * step,
+      Math.atan2(-built.inward.x, -built.inward.z),
+    )
     this.#hud.say(`${plot!.name}`)
     this.#report(this.#log.handle({ kind: 'arrived', place: { plotId } }))
     this.#report(this.#log.handle({ kind: 'arrived', place: { interiorId: interior.id } }))

@@ -13,8 +13,19 @@
     "generate": "pnpm -r --if-present run generate"
   },
   "devDependencies": {
+    "@gltf-transform/cli": "^4.4.2",
+    "@gltf-transform/core": "^4.4.2",
+    "@gltf-transform/extensions": "^4.4.2",
+    "@gltf-transform/functions": "^4.4.2",
+    "@types/node": "^26.2.0",
+    "jsdom": "^30.0.1",
+    "meshoptimizer": "^1.2.0",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.11",
-    "@types/node": "^26.2.0"
+    "vitest": "^4.1.11"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "sharp"
+    ]
   }
 }

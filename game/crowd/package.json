@@ -1,0 +1,22 @@
+{
+  "name": "@gb/crowd",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@gb/cast": "workspace:*",
+    "@gb/nav": "workspace:*",
+    "@gb/world": "workspace:*",
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "@gb/forge": "workspace:*",
+    "@types/three": "^0.185.4"
+  }
+}

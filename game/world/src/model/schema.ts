@@ -2,6 +2,7 @@ import { contract } from '@gb/kit'
 import { z } from 'zod'
 import {
   ANCHOR_KINDS,
+  BODY_KINDS,
   BUILDING_KINDS,
   FACINGS,
   FURNITURE_PROPS,
@@ -104,8 +105,8 @@ export const NpcSchema = z.object({
   id: id('npc'),
   name: z.string().min(1).max(60),
   role: z.enum(NPC_ROLES),
-  /** Which character mesh and which variation of it. */
-  appearance: z.object({ base: z.string().min(1).max(40), variant: z.number().int().min(0).max(63) }),
+  /** Which body, and which variation of its colours. */
+  appearance: z.object({ base: z.enum(BODY_KINDS), variant: z.number().int().min(0).max(63) }),
   /** Where they are found by default, and what they are doing there. */
   station: z.object({ interiorId: id('interior'), anchorId: id('anchor') }).optional(),
   homePlotId: id('plot').optional(),

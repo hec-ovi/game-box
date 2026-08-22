@@ -1,4 +1,4 @@
-import { METRICS, type Interior, type World } from '@gb/world'
+import { METRICS, type AnchorKind, type Interior, type World } from '@gb/world'
 import * as THREE from 'three'
 import type { Dressing } from './dressing.ts'
 
@@ -17,6 +17,8 @@ export interface InteriorBuild {
   readonly pickups: ReadonlyMap<string, THREE.Object3D>
   /** Where the player appears when they come in, and where they leave from. */
   readonly entrance: THREE.Vector3
+  /** The way into the room from that door, so entering faces the room. */
+  readonly inward: THREE.Vector3
 }
 
 /**
@@ -70,7 +72,7 @@ export function buildInterior(world: World, interior: Interior, dressing: Dressi
   for (const npc of world.npcs()) {
     const spot = npc.station?.interiorId === interior.id ? anchors.get(npc.station.anchorId) : undefined
     if (!spot) continue
-    const body = dressing.character(npc)
+    const body = dressing.character(npc, spot.userData.kind as AnchorKind)
     body.position.copy(spot.position)
     body.rotation.copy(spot.rotation)
     body.userData.npcId = npc.id
@@ -94,7 +96,11 @@ export function buildInterior(world: World, interior: Interior, dressing: Dressi
 
   const door = interior.doors.find((d) => d.from === 'outside') ?? interior.doors[0]
   const entrance = new THREE.Vector3(door?.pos.x ?? interior.size.w / 2, 0, door?.pos.y ?? 0)
-  return { root, anchors, props, people, pickups, entrance }
+  const inward = new THREE.Vector3(interior.size.w / 2, 0, interior.size.h / 2).sub(entrance)
+  inward.y = 0
+  inward.normalize()
+
+  return { root, anchors, props, people, pickups, entrance, inward }
 }
 
 /** Four walls around a room, split wherever a door sits on them. */

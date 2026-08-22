@@ -1,0 +1,98 @@
+{
+  "quaternius-ual1": {
+    "page": "https://quaternius.itch.io/universal-animation-library",
+    "license": "CC0-1.0",
+    "downloadedAt": "2026-08-22",
+    "files": [
+      {
+        "name": "Universal Animation Library[Standard].zip",
+        "bytes": 15904933,
+        "sha256": "cc73fc4e495b82958207316596317a3f40b9fa38065bde1027937452da537724"
+      }
+    ]
+  },
+  "quaternius-ual2": {
+    "page": "https://quaternius.itch.io/universal-animation-library-2",
+    "license": "CC0-1.0",
+    "downloadedAt": "2026-08-22",
+    "files": [
+      {
+        "name": "Universal Animation Library 2[Standard].zip",
+        "bytes": 18735003,
+        "sha256": "4008ea208a604773a2b2177d965f0f5d3195498b5bf838c3f5785d68e95f2a68"
+      }
+    ]
+  },
+  "quaternius-ubc": {
+    "page": "https://quaternius.itch.io/universal-base-characters",
+    "license": "CC0-1.0",
+    "downloadedAt": "2026-08-22",
+    "files": [
+      {
+        "name": "Universal Base Characters[Standard].zip",
+        "bytes": 128968391,
+        "sha256": "fdbf1804c90dfc1ea03e992bff7da2dfd1a79318e13270a660180f9308455f40"
+      }
+    ]
+  },
+  "quaternius-downtown": {
+    "page": "https://quaternius.itch.io/downtown-city-megakit",
+    "license": "CC0-1.0",
+    "downloadedAt": "2026-08-22",
+    "files": [
+      {
+        "name": "Downtown City MegaKit[Standard].zip",
+        "bytes": 234753092,
+        "sha256": "5b1a945576d54cdbb4ccc9c3d52711e6d530da74c74c586407ecc28b165335da"
+      }
+    ]
+  },
+  "kaykit-animations": {
+    "page": "https://kaylousberg.itch.io/kaykit-character-animations",
+    "license": "CC0-1.0",
+    "downloadedAt": "2026-08-22",
+    "files": [
+      {
+        "name": "Free 1.1",
+        "bytes": 14858957,
+        "sha256": "65882f31f905ad2e953819648a59287cdeab8f623908d5ef701971d3758be20f"
+      }
+    ]
+  },
+  "quaternius-outfits": {
+    "page": "https://quaternius.itch.io/modular-character-outfits-fantasy",
+    "license": "CC0-1.0",
+    "downloadedAt": "2026-08-22",
+    "files": [
+      {
+        "name": "Modular Character Outfits - Fantasy[Standard].zip",
+        "bytes": 294347394,
+        "sha256": "c3468b18871cc8c8f05ab14df7712baf22cb9f389cbd870babf130e595187f70"
+      }
+    ]
+  },
+  "quaternius-cars": {
+    "page": "https://quaternius.itch.io/lowpoly-cars",
+    "license": "CC0-1.0",
+    "downloadedAt": "2026-08-22",
+    "files": [
+      {
+        "name": "Realistic Car Pack - Nov 2018.zip",
+        "bytes": 2774430,
+        "sha256": "af8f45d6e2135cc53870e5d0882cc41ca329bd87b9923b4773d471f161d2bdc7"
+      }
+    ]
+  },
+  "quaternius-street": {
+    "page": "https://quaternius.itch.io/lowpoly-modular-street",
+    "license": "CC0-1.0",
+    "downloadedAt": "2026-08-22",
+    "files": [
+      {
+        "name": "Modular Street Pack by Quaternius.zip",
+        "bytes": 3852278,
+        "sha256": "183b4f944e9f298426a8e1fd9b31d3ce2562d033223773fa36ad17942e9c997c"
+      }
+    ]
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "$comment": "Every art source we ship from. A pack that is not redistributable cannot be listed here: our world files hand assets to other players by design. See docs/DECISIONS.md D12.",
+  "packs": [
+    {
+      "id": "quaternius-ual1",
+      "name": "Universal Animation Library",
+      "author": "Quaternius",
+      "page": "https://quaternius.itch.io/universal-animation-library",
+      "file": "Universal Animation Library[Standard].zip",
+      "license": "CC0-1.0",
+      "attribution": null,
+      "redistributable": true,
+      "take": "Locomotion, idles, sitting, talking, pickup, drive. Binds to the canonical skeleton with no retargeting."
+    },
+    {
+      "id": "quaternius-ual2",
+      "name": "Universal Animation Library 2",
+      "author": "Quaternius",
+      "page": "https://quaternius.itch.io/universal-animation-library-2",
+      "file": "Universal Animation Library 2[Standard].zip",
+      "license": "CC0-1.0",
+      "attribution": null,
+      "redistributable": true,
+      "take": "Carry, consume, lean on rail, fold arms, phone, yes/no. Same skeleton."
+    },
+    {
+      "id": "quaternius-ubc",
+      "name": "Universal Base Characters",
+      "author": "Quaternius",
+      "page": "https://quaternius.itch.io/universal-base-characters",
+      "file": "Universal Base Characters[Standard].zip",
+      "license": "CC0-1.0",
+      "attribution": null,
+      "redistributable": true,
+      "take": "The bodies every NPC is built from, and the skeleton the clips bind to."
+    },
+    {
+      "id": "quaternius-downtown",
+      "name": "Downtown City MegaKit",
+      "author": "Quaternius",
+      "page": "https://quaternius.itch.io/downtown-city-megakit",
+      "file": "Downtown City MegaKit[Standard].zip",
+      "license": "CC0-1.0",
+      "attribution": null,
+      "redistributable": true,
+      "take": "Street level: shopfronts, cornices, fire escapes, rooftop plant, street furniture."
+    },
+    {
+      "id": "kaykit-animations",
+      "name": "KayKit Character Animations",
+      "author": "Kay Lousberg",
+      "page": "https://kaylousberg.itch.io/kaykit-character-animations",
+      "file": null,
+      "license": "CC0-1.0",
+      "attribution": "Kay Lousberg, www.kaylousberg.com (asked for, not required)",
+      "redistributable": true,
+      "take": "Second clip source: sits, waves, strafes, tool loops. Retargeted onto the canonical skeleton."
+    },
+    {
+      "id": "quaternius-outfits",
+      "name": "Modular Character Outfits",
+      "author": "Quaternius",
+      "page": "https://quaternius.itch.io/modular-character-outfits-fantasy",
+      "file": null,
+      "license": "CC0-1.0",
+      "attribution": null,
+      "redistributable": true,
+      "take": "Clothing parts on the same rig as the base bodies, so NPCs are dressed."
+    },
+    {
+      "id": "quaternius-cars",
+      "name": "Low Poly Cars",
+      "author": "Quaternius",
+      "page": "https://quaternius.itch.io/lowpoly-cars",
+      "file": null,
+      "license": "CC0-1.0",
+      "attribution": null,
+      "redistributable": true,
+      "take": "The traffic and the car the player drives."
+    },
+    {
+      "id": "quaternius-street",
+      "name": "Low Poly Modular Street",
+      "author": "Quaternius",
+      "page": "https://quaternius.itch.io/lowpoly-modular-street",
+      "file": null,
+      "license": "CC0-1.0",
+      "attribution": null,
+      "redistributable": true,
+      "take": "Road pieces, kerbs, crossings, street furniture."
+    }
+  ]
+}

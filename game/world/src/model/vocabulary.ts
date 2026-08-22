@@ -122,6 +122,9 @@ export const FURNITURE_PROPS = [
   'jukebox',
 ] as const
 
+/** The bodies an NPC can be built on. Every value must be a body the cast ships. */
+export const BODY_KINDS = ['male', 'female'] as const
+
 export const FACINGS = ['north', 'east', 'south', 'west'] as const
 
 export type BuildingKind = (typeof BUILDING_KINDS)[number]
@@ -130,6 +133,7 @@ export type AnchorKind = (typeof ANCHOR_KINDS)[number]
 export type NpcRole = (typeof NPC_ROLES)[number]
 export type ItemArchetype = (typeof ITEM_ARCHETYPES)[number]
 export type FurnitureProp = (typeof FURNITURE_PROPS)[number]
+export type BodyKind = (typeof BODY_KINDS)[number]
 export type Facing = (typeof FACINGS)[number]
 
 /** Which building kinds a player can walk into. */

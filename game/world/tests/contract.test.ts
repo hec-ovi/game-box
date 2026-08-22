@@ -41,7 +41,7 @@ function hamlet() {
     id: world.mintId('npc'),
     name: 'Mara Cole',
     role: 'bartender',
-    appearance: { base: 'adult-female-a', variant: 3 },
+    appearance: { base: 'female', variant: 3 },
     station: { interiorId: interior.id, anchorId: interior.anchors[0]!.id },
     workPlotId: plot.value.id,
     personality: 'Dry, unhurried, remembers every face that ever stiffed her on a tab.',

@@ -1,4 +1,4 @@
-import { METRICS, type BuildingKind, type CellKind, type FurnitureProp, type Item, type Npc, type Plot } from '@gb/world'
+import { METRICS, type AnchorKind, type BuildingKind, type CellKind, type FurnitureProp, type Item, type Npc, type Plot } from '@gb/world'
 import * as THREE from 'three'
 
 /**
@@ -11,8 +11,8 @@ export interface Dressing {
   building(plot: Plot, size: { width: number; depth: number; height: number }): THREE.Object3D
   /** A piece of furniture, origin at the centre of its base, facing north. */
   prop(prop: FurnitureProp): THREE.Object3D
-  /** A person, origin at their feet, facing north. */
-  character(npc: Npc): THREE.Object3D
+  /** A person, origin at their feet, facing north, doing what the anchor implies. */
+  character(npc: Npc, doing: AnchorKind): THREE.Object3D
   /** Something lying about that can be picked up, origin at the centre of its base. */
   pickup(item: Item): THREE.Object3D
   /** The surface of one kind of ground. */
@@ -112,7 +112,7 @@ export class Greybox implements Dressing {
     return base
   }
 
-  character(npc: Npc): THREE.Object3D {
+  character(npc: Npc, _doing: AnchorKind): THREE.Object3D {
     const height = METRICS.player.height
     const body = new THREE.Mesh(
       new THREE.CapsuleGeometry(0.3, height - 0.6, 4, 12),

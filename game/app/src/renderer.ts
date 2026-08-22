@@ -8,6 +8,8 @@ export interface Stage {
   /** Swap what is being rendered: the city, or the inside of a building. */
   show(root: THREE.Object3D): void
   start(frame: (seconds: number) => void): void
+  /** Draw one frame now, whatever the browser is doing with its frame loop. */
+  draw(): void
   dispose(): void
 }
 
@@ -26,10 +28,18 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
   scene.background = new THREE.Color(SKY)
   scene.fog = new THREE.Fog(SKY, 40, 220)
 
-  const sun = new THREE.DirectionalLight(0xfff2e0, 2.4)
+  renderer.toneMapping = THREE.AgXToneMapping
+  renderer.toneMappingExposure = 1.15
+
+  const sun = new THREE.DirectionalLight(0xfff2e0, 3.2)
   sun.position.set(60, 90, 40)
   scene.add(sun)
-  scene.add(new THREE.HemisphereLight(0xbfd8ea, 0x4a4438, 1.1))
+  // the sky is most of the light outdoors, and it is what keeps the faces the
+  // sun does not reach from going black
+  scene.add(new THREE.HemisphereLight(0xbfd8ea, 0x6a6152, 2.6))
+  const fill = new THREE.DirectionalLight(0xdfe8f0, 0.8)
+  fill.position.set(-40, 30, -50)
+  scene.add(fill)
 
   const camera = new THREE.PerspectiveCamera(75, aspect(mount), 0.1, 500)
 
@@ -43,10 +53,14 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
       current = root
       scene.add(root)
     },
+    draw() {
+      renderer.render(scene, camera)
+    },
     start(frame) {
-      const clock = new THREE.Clock()
+      const timer = new THREE.Timer()
       renderer.setAnimationLoop(() => {
-        frame(Math.min(clock.getDelta(), 0.1))
+        timer.update()
+        frame(Math.min(timer.getDelta(), 0.1))
         renderer.render(scene, camera)
       })
     },

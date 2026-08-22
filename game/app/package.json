@@ -23,7 +23,8 @@
     "@gb/world": "workspace:*",
     "three": "^0.185.1",
     "@gb/forge": "workspace:*",
-    "@gb/scribe": "workspace:*"
+    "@gb/scribe": "workspace:*",
+    "@gb/cast": "workspace:*"
   },
   "devDependencies": {
     "@types/three": "^0.185.4",
