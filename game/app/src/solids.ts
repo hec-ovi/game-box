@@ -2,24 +2,38 @@ import type { Interior, World } from '@gb/world'
 import { METRICS } from '@gb/world'
 import type { Solid } from './walk.ts'
 
+/** The little the city needs to know about the land it stands on. */
+export interface Ground {
+  heightAt(x: number, z: number): number
+  walkableAt(x: number, z: number): boolean
+}
+
 /**
  * How high the ground is under a point outside. The pavement stands a kerb
  * above the road, so walking onto it is a step up rather than a clip through.
+ * Past the built area the land answers, which is what lets the player walk out
+ * of town onto open country instead of into an invisible wall.
  */
-export function cityGround(world: World): (x: number, z: number) => number {
+export function cityGround(world: World, land?: Ground): (x: number, z: number) => number {
   const size = world.cellSize
   return (x, z) => {
     const kind = world.grid.at(Math.floor(x / size), Math.floor(z / size))
-    return kind === 'sidewalk' || kind === 'park' ? METRICS.street.curbHeight : 0
+    if (kind === 'sidewalk' || kind === 'park') return METRICS.street.curbHeight
+    return land?.heightAt(x, z) ?? 0
   }
 }
 
-/** Outside: buildings, mountains and water are solid; everything else is walkable. */
-export function citySolid(world: World): Solid {
+/**
+ * Outside: buildings and water stop you, and beyond the built area the land
+ * decides, so a cliff or a pond stops you and a hillside does not. With no land
+ * given, the edge of the grid is the edge of the world.
+ */
+export function citySolid(world: World, land?: Ground): Solid {
   const size = world.cellSize
   return (x, z) => {
     const kind = world.grid.at(Math.floor(x / size), Math.floor(z / size))
-    return kind === undefined || kind === 'building' || kind === 'mountain' || kind === 'water'
+    if (kind === undefined) return land ? !land.walkableAt(x, z) : true
+    return kind === 'building' || kind === 'water'
   }
 }
 

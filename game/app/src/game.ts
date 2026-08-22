@@ -79,8 +79,9 @@ export class Game {
     this.#city = buildCity(this.#world, this.#dressing)
     this.#stage.show(this.#city.root)
     this.#openTheHorizon()
+
     this.#body = new Player(this.#stage.camera, this.#stage.renderer.domElement, this.#outdoors())
-    this.#body.setGround(cityGround(this.#world))
+    this.#body.setGround(cityGround(this.#world, this.#land))
     this.#body.placeAt(this.#city.spawn.x, this.#city.spawn.z, this.#city.spawn.heading)
 
     if (this.#cast) {
@@ -148,7 +149,7 @@ export class Game {
   /** The street: its walls, and whoever is walking or driving on it. */
   #outdoors() {
     return alsoBlockedBy(
-      citySolid(this.#world),
+      citySolid(this.#world, this.#land),
       () => this.#crowd?.walkers() ?? [],
       () => this.#traffic?.cars() ?? [],
     )
@@ -435,7 +436,7 @@ export class Game {
     this.#stage.show(this.#city.root)
     if (this.#land) this.#land.root.visible = true
     this.#body.setSolid(this.#outdoors())
-    this.#body.setGround(cityGround(this.#world))
+    this.#body.setGround(cityGround(this.#world, this.#land))
     if (doorstep) {
       this.#body.placeAt(doorstep.x, doorstep.z)
       this.#regroup({ x: doorstep.x, z: doorstep.z })

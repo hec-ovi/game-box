@@ -2,6 +2,7 @@ import { METRICS } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { blocked, slide, step } from '../src/walk.ts'
 import { alsoBlockedBy } from '../src/bodies.ts'
+import { cityGround, citySolid } from '../src/solids.ts'
 import { Body, CROUCH_EYE, JUMP_SPEED } from '../src/stance.ts'
 import { CLOSE_FOV, WIDE_FOV, Zoom } from '../src/zoom.ts'
 
@@ -210,5 +211,46 @@ describe('bumping into people and cars', () => {
     expect(solid(0, 0)).toBe(true)
     people = []
     expect(solid(0, 0)).toBe(false)
+  })
+})
+
+describe('leaving town', () => {
+  const town = {
+    cellSize: 2,
+    grid: {
+      at: (x: number, y: number) => {
+        if (x < 0 || y < 0 || x > 3 || y > 3) return undefined
+        return x === 1 && y === 1 ? ('building' as const) : ('street' as const)
+      },
+    },
+  } as unknown as Parameters<typeof citySolid>[0]
+
+  /** A hill outside town, with a cliff on one side of it. */
+  const land = {
+    heightAt: (x: number) => (x > 8 ? (x - 8) * 0.5 : 0),
+    walkableAt: (x: number) => x < 30,
+  }
+
+  it('walls the world at the grid edge when there is no land', () => {
+    const solid = citySolid(town)
+    expect(solid(1, 1)).toBe(false)
+    expect(solid(20, 1)).toBe(true)
+  })
+
+  it('lets the player walk out onto open country when there is', () => {
+    const solid = citySolid(town, land)
+    expect(solid(20, 1)).toBe(false)
+    // and stops them where the land itself is not walkable
+    expect(solid(40, 1)).toBe(true)
+  })
+
+  it('still stops them walking into a building', () => {
+    expect(citySolid(town, land)(3, 3)).toBe(true)
+  })
+
+  it('stands them on the land outside and on the kerb inside', () => {
+    const ground = cityGround(town, land)
+    expect(ground(20, 1)).toBeCloseTo(6, 5)
+    expect(ground(1, 1)).toBe(0)
   })
 })

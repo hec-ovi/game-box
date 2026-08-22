@@ -33,7 +33,7 @@ None at the boundary: a missing asset pack is a duller city, not a blank screen,
 ## Invariants
 
 - This box holds no rules. Quests advance in `@gb/quest`, inventory changes in `@gb/play`, conversations happen in `@gb/talk`, geometry is built in `@gb/scene`. Everything here is wiring, input and frames.
-- One unit is one metre, and the walls come from the same grid the city was generated on: no physics engine, no baked collision.
+- One unit is one metre. Inside the built area the walls come from the grid the city was generated on; past it the land says how high the ground is and whether it can be stood on, so the player walks out of town onto open country rather than into the edge of the map. No physics engine, no baked collision.
 - The player is placed on the pavement facing the first door in town, and entering a building puts them inside it facing the room.
 - Looking closer narrows the field of view and slows the mouse by the same amount, so the same hand movement covers the same distance on screen however far in you are.
 - The floor has height: the pavement stands a kerb above the road, and walking onto it steps up rather than clipping through. Crouching and standing ease between heights for the same reason.
