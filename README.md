@@ -1,61 +1,88 @@
 # game-box
 
-> **Under construction. This is an idea, not a usable product.** What exists so far is research, the architecture decisions below, and a skeleton API with stand-in engines so the surface can be tested. No real model runs inside the box yet. Everything here can still change.
+> **Under construction.** The city generates, you can walk it, go into buildings, talk to the people in them and run errands for them. Plenty is unfinished and everything here can still change.
 
-Offline AI sidecar for games. It runs a tiny local LLM plus speech-to-text and text-to-speech on the player's machine, behind an OpenAI-compatible localhost API, so any game (Electron, web, Rust, C++, Unity, Godot) can have talking, listening, LLM-driven NPCs without cloud calls or per-token costs.
+A browser game where the city is written for you. Give it a theme and a seed, and a local model lays out a town, furnishes its interiors, invents the people standing in them and writes the errands they hand out. The result is one file you can send to someone else, and they walk the same city with the same people and the same jobs.
 
-## Shape
+The loop is quests, not combat: talk to somebody, cross town, go into a building, find a person or a thing, take it, carry it, deliver it, get paid.
 
-One sidecar process bound to 127.0.0.1. The game talks to it over HTTP and WebSocket:
+## Playing it
 
-- `POST /v1/chat/completions` (SSE streaming) for NPC dialogue and agent calls
-- `POST /v1/audio/speech` for one-shot TTS
-- `/v1/realtime` WebSocket for streaming voice both ways (PCM chunks, OpenAI Realtime shape)
+```
+pnpm install
+pnpm --filter @gb/app run dev        # http://localhost:5180
+```
 
-Mirroring the OpenAI surface means existing SDKs work unchanged, and running out of process means an inference crash or VRAM OOM cannot take the game down. A native C-API embed path and an in-browser WebGPU fallback are planned as secondary options.
+Click to take the mouse, WASD to walk, shift to run, hold the right button to look closer, E to act on whatever is in front of you, Escape to leave a conversation.
 
-## Stack (decided 2026-07-20)
+By default the city is generated in the browser from the seed in the URL, so nothing else has to be running:
 
-| Piece | Pick | Notes |
-|---|---|---|
-| LLM runtime | llama.cpp, Vulkan build | one binary per OS covers NVIDIA/AMD/Intel dGPU and iGPU; Metal on Apple; CPU fallback |
-| LLM model | Qwen3-4B (Apache 2.0) | default tier; Qwen3-1.7B / 0.6B for weaker hardware |
-| STT | Nemotron-3.5-ASR-Streaming-0.6B via sherpa-onnx | true streaming partials from 80 ms chunks, 40 locales, real-time on CPU; Zipformer fallback |
-| TTS | Kyutai Pocket TTS 100M (MIT code, CC-BY-4.0 weights) | true streaming-text input (DSM): speaks while the LLM is still generating, ~200ms first audio, real-time on 2 CPU cores; Kyutai TTS 1.6B when a GPU exists; NeuTTS Air (Apache 2.0, GGUF) as sentence-chunked fallback |
-| VAD | Silero VAD (MIT) | voice endpointing |
-| Models | downloaded on first run | never bundled in the game install |
+```
+http://localhost:5180/?seed=gulch&theme=dusty+western+town
+```
 
-Everything in the decided stack is commercially shippable (Apache 2.0 / MIT / OpenMDW-1.1 / CC-BY-4.0 with attribution).
+Add `&model` to have a local model write the names, the people and the quests instead of the offline author. That needs the sidecar (below).
+
+## Building a city from the terminal
+
+```
+pnpm --filter @gb/cli run gb build --theme "rain-soaked port" --seed harbour --out city.json
+pnpm --filter @gb/cli run gb inspect city.json     # the grid, its places, its quests
+pnpm --filter @gb/cli run gb check city.json       # opens it the way the game does, then walks it
+```
+
+`gb check` is the honest test of a shipped city: it opens the bundle exactly as the game would, then proves every building can actually be reached on foot.
+
+## The model
+
+NPC dialogue and the world author both talk to a small sidecar on 127.0.0.1 that speaks the OpenAI shape. It runs a stand-in by default; point it at any OpenAI-compatible server for the real thing:
+
+```
+cargo run -p gb-api                                          # stand-in
+GAME_BOX_LLM_UPSTREAM=http://127.0.0.1:8080 cargo run -p gb-api   # a real model
+```
+
+Everything generated comes back as a **tool call whose parameters are the JSON Schema of the contract that will validate it**, so the thing that defines the shape and the thing that checks it are the same object. Nothing a model writes is trusted: a quest is refused unless every path ends, every person and thing it names exists, and every item is in the player's hands before they are asked for it.
 
 ## Layout
 
-A Rust workspace of contract-isolated layers; each folder is a blackbox with its own `CONTRACT.md`, JSON Schemas, and tests. Outsiders read contracts and schemas only, never `src/`. [docs/INDEX.md](docs/INDEX.md) maps "what you want to change" to the one folder to open.
+One box is one folder with one owner, a `CONTRACT.md`, and tests that prove what the contract promises. To use a box you read its contract; you never read its `src/`. [docs/INDEX.md](docs/INDEX.md) maps every box to the thing you would want to change.
 
-- `api/` builds the `game-box` binary: loopback server with `/health`, `/v1/chat/completions` (SSE), `/v1/realtime` (WebSocket transcription)
-- `llm/` text generation: deterministic stand-in by default; set `GAME_BOX_LLM_UPSTREAM` to an OpenAI-compatible server (e.g. llama-server) to proxy real inference
-- `stt/` streaming recognition sessions (stand-in engine; sherpa-onnx Nemotron is the planned swap-in)
-- `tts/` streaming synthesis: text tokens in, 80 ms PCM frames out, speaking before the sentence is finished (stand-in engine; Kyutai Pocket TTS is the planned swap-in)
-- `models/` model cache with sha256 integrity check (download-on-first-run comes next)
+The game, in TypeScript under `game/`:
 
-## Build and test
+| | |
+|---|---|
+| `world` | the city as a grid of cells, its plots, interiors, people and things, and what makes one sound |
+| `forge` | generates a city: streets and plots by arithmetic, names and quests by a model |
+| `quest`, `play` | quests as checked flows, and the playthrough they run against |
+| `bundle` | the sealed file a city travels in, and the save that belongs to it |
+| `scene`, `cast`, `kitbash`, `land` | turning all that into something you can stand in |
+| `crowd`, `traffic` | people on the pavement, cars on the road |
+| `nav`, `talk`, `hud`, `app` | getting about, conversation, the interface, and the running game |
+
+The sidecar, in Rust at the root: `api`, `llm`, `stt`, `tts`, `models`.
+
+## The art
+
+Everything shipped is CC0, from Quaternius and KayKit, because a world file hands assets to whoever opens it: a licence that forbids redistributing the file is unusable here however free it is. `assets/registry/sources.json` records every source and its licence, and `tools/fetch-assets.mjs` refuses anything that is not redistributable.
 
 ```
-cargo test          # all contract + end-to-end tests (15)
-cargo run -p gb-api # serves http://127.0.0.1:8976 (GAME_BOX_PORT to change)
+node tools/fetch-assets.mjs      # download the packs
+node tools/build-anims.mjs && node tools/build-pack.mjs && node tools/build-wardrobe.mjs
+node tools/check-rig.mjs <canonical> assets/dist/characters/*.glb
 ```
 
-## Status
+Every skinned file has to carry the same 65-joint skeleton or a clip written for one tears another apart, and `check-rig.mjs` is the gate that enforces it.
 
-Phase 1: the sidecar skeleton is real (loopback server, SSE chat streaming, WebSocket transcription events, schema-validated boundaries, model cache check) with stand-in engines behind the llm/stt/tts contracts, so games can integrate against the final API shape today. Real LLM inference already works if you point `GAME_BOX_LLM_UPSTREAM` at a running llama-server. [docs/DECISIONS.md](docs/DECISIONS.md) has the decision record and open risks (Chrome's Local Network Access prompt for browser games, Vulkan driver quirks, Steam's live-AI disclosure, Nemotron's one-month-old tooling).
+## Verifying
 
-## Pending
+```
+pnpm run verify     # generate, typecheck, box isolation, every test
+cargo test          # the sidecar
+```
 
-- `/v1/audio/speech` and voice-out on `/v1/realtime`: the `tts/` contract exists, the api layer does not call it yet
-- Real TTS: swap the stand-in for Kyutai Pocket TTS behind the existing `tts/` contract
-- Real STT: swap the stand-in for sherpa-onnx + Nemotron behind the existing `stt/` contract
-- Bundled LLM: ship llama.cpp (Vulkan/Metal) with the box instead of requiring an external llama-server
-- Model downloads: `models/` verifies the cache but cannot download yet (download-on-first-run with resume)
-- Validate Pocket TTS sub-sentence token input outside Python (Rust/Candle port or C++ ONNX build)
-- Browser fallback (WebGPU/WebLLM) for games that cannot reach a localhost sidecar
-- Native C-API embed path for latency-critical or single-binary titles
-- Content-filter/guardrail hooks and docs (needed for Steam's live-AI disclosure)
+Isolation is enforced, not just documented: each box exposes one entry, and the check fails on a deep import into another box or a dependency that is not declared.
+
+## Decisions
+
+[docs/DECISIONS.md](docs/DECISIONS.md) records what was chosen and why, including the things that were rejected and the risks still open.
