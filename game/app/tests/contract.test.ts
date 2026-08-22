@@ -62,7 +62,7 @@ describe('zoom', () => {
 
     zoom.close = true
     for (let i = 0; i < 60; i++) zoom.update(1 / 60)
-    expect(zoom.lookScale).toBeLessThan(0.55)
-    expect(zoom.lookScale).toBeGreaterThan(0.3)
+    expect(zoom.lookScale).toBeLessThan(0.85)
+    expect(zoom.lookScale).toBeGreaterThan(0.6)
   })
 })

@@ -4,7 +4,7 @@
  * same distance on screen however far in you are.
  */
 export const WIDE_FOV = 75
-export const CLOSE_FOV = 38
+export const CLOSE_FOV = 55
 /** Seconds to go all the way in or all the way out. */
 const TRAVEL = 0.18
 
