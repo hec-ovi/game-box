@@ -2,9 +2,16 @@ import { METRICS } from '@gb/world'
 
 /** Eye height while crouched. Low enough to read as crouching, high enough to see. */
 export const CROUCH_EYE = 1.05
-/** Straight up off the ground, in metres per second. About a 0.9 m hop. */
-export const JUMP_SPEED = 4.2
-const GRAVITY = 9.8
+/**
+ * Straight up off the ground, in metres per second. Real gravity makes a jump
+ * feel like floating: you hang at the top and drift down. Games pull harder and
+ * push off faster for the same height, so the jump is quick and lands with
+ * weight. This is a 1 m hop that takes about 0.6 s instead of 0.9 s.
+ */
+export const JUMP_SPEED = 6.6
+const GRAVITY = 22
+/** Falling is faster still, which is most of what makes a jump feel solid. */
+const FALL_GRAVITY = 30
 /** How fast the eye slides between standing and crouching. */
 const STANCE_SPEED = 6
 
@@ -65,7 +72,7 @@ export class Body {
     const standing: number = groundY + (this.#crouching ? CROUCH_EYE : METRICS.player.eyeHeight)
 
     if (this.#airborne) {
-      this.#rise -= GRAVITY * seconds
+      this.#rise -= (this.#rise > 0 ? GRAVITY : FALL_GRAVITY) * seconds
       this.#eye += this.#rise * seconds
       if (this.#eye <= standing) {
         this.#eye = standing

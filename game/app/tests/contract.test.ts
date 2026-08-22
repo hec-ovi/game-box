@@ -95,6 +95,25 @@ describe('standing, crouching, jumping', () => {
     expect(body.eye).toBeCloseTo(METRICS.player.eyeHeight, 5)
   })
 
+  it('comes down faster than it went up, so the jump has weight', () => {
+    const body = new Body()
+    settle(body)
+    body.jump()
+
+    let rising = 0
+    let falling = 0
+    let last = body.eye
+    for (let i = 0; i < 200 && (body.airborne || i === 0); i++) {
+      body.update(1 / 60, 0)
+      if (body.eye > last) rising++
+      else if (body.airborne) falling++
+      last = body.eye
+    }
+    expect(rising).toBeGreaterThan(0)
+    expect(falling).toBeGreaterThan(0)
+    expect(falling).toBeLessThan(rising)
+  })
+
   it('jumps up and comes back down to the ground it left', () => {
     const body = new Body()
     settle(body)
@@ -106,7 +125,8 @@ describe('standing, crouching, jumping', () => {
       body.update(1 / 60, 0)
       highest = Math.max(highest, body.eye)
     }
-    expect(highest).toBeGreaterThan(METRICS.player.eyeHeight + 0.5)
+    expect(highest).toBeGreaterThan(METRICS.player.eyeHeight + 0.8)
+    expect(highest).toBeLessThan(METRICS.player.eyeHeight + 1.3)
     expect(body.eye).toBeCloseTo(METRICS.player.eyeHeight, 5)
     expect(body.airborne).toBe(false)
   })
