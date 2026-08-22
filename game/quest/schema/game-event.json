@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "talked"
+        },
+        "npcId": {
+          "type": "string",
+          "pattern": "^npc_\\d{4,}$"
+        },
+        "topic": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        }
+      },
+      "required": [
+        "kind",
+        "npcId"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "arrived"
+        },
+        "place": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "plotId": {
+                  "type": "string",
+                  "pattern": "^plot_\\d{4,}$"
+                }
+              },
+              "required": [
+                "plotId"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "interiorId": {
+                  "type": "string",
+                  "pattern": "^interior_\\d{4,}$"
+                }
+              },
+              "required": [
+                "interiorId"
+              ]
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "place"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "acquired"
+        },
+        "itemId": {
+          "type": "string",
+          "pattern": "^item_\\d{4,}$"
+        },
+        "stolen": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "kind",
+        "itemId"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "gave"
+        },
+        "itemId": {
+          "type": "string",
+          "pattern": "^item_\\d{4,}$"
+        },
+        "npcId": {
+          "type": "string",
+          "pattern": "^npc_\\d{4,}$"
+        }
+      },
+      "required": [
+        "kind",
+        "itemId",
+        "npcId"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "stashed"
+        },
+        "itemId": {
+          "type": "string",
+          "pattern": "^item_\\d{4,}$"
+        },
+        "interiorId": {
+          "type": "string",
+          "pattern": "^interior_\\d{4,}$"
+        },
+        "anchorId": {
+          "type": "string",
+          "pattern": "^anchor_\\d{4,}$"
+        }
+      },
+      "required": [
+        "kind",
+        "itemId",
+        "interiorId",
+        "anchorId"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "chose"
+        },
+        "questId": {
+          "type": "string",
+          "pattern": "^quest_\\d{4,}$"
+        },
+        "stepId": {
+          "type": "string",
+          "pattern": "^step_\\d{4,}$"
+        },
+        "optionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        }
+      },
+      "required": [
+        "kind",
+        "questId",
+        "stepId",
+        "optionId"
+      ]
+    }
+  ]
+}

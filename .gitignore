@@ -1,5 +1,6 @@
-# local-only raw idea doc (persistent, never published)
+# local-only raw idea and requirement docs (persistent, never published)
 docs/IDEA.md
+docs/REQUIREMENTS.md
 
 # research store (may contain proprietary insights, default private)
 .research/
@@ -12,3 +13,4 @@ dist/
 *.onnx
 *.safetensors
 .env
+tsconfig.tsbuildinfo

@@ -1,0 +1,15 @@
+{
+  "name": "@gb/play",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "test": "vitest run",
+    "schema": "node --experimental-strip-types tools/emit-schema.ts"
+  },
+  "dependencies": {
+    "@gb/kit": "workspace:*",
+    "zod": "^4.4.3"
+  }
+}

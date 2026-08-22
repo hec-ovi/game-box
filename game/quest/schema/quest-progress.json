@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "format": {
+      "type": "string",
+      "const": "game-box.quest-progress"
+    },
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "quests": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "unstarted",
+              "active",
+              "complete",
+              "failed"
+            ]
+          },
+          "open": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "done": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "open",
+          "done"
+        ]
+      }
+    }
+  },
+  "required": [
+    "format",
+    "schemaVersion",
+    "quests"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "name": "game-box-workspace",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "schema": "pnpm -r --if-present run schema",
+    "check:isolation": "node tools/check-isolation.mjs",
+    "verify": "pnpm run schema && pnpm run typecheck && pnpm run check:isolation && pnpm run test"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11",
+    "@types/node": "^26.2.0"
+  }
+}

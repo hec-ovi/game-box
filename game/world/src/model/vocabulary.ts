@@ -1,0 +1,150 @@
+/**
+ * The closed vocabularies. Every generator, including a language model, must
+ * pick from these lists, which is what keeps generated content buildable: each
+ * value maps to something the game can actually render, animate or place.
+ */
+
+export const BUILDING_KINDS = [
+  'house',
+  'apartment',
+  'bar',
+  'cafe',
+  'restaurant',
+  'shop',
+  'market',
+  'office',
+  'workshop',
+  'warehouse',
+  'clinic',
+  'hotel',
+  'station',
+  'chapel',
+] as const
+
+export const ROOM_KINDS = [
+  'main',
+  'bedroom',
+  'kitchen',
+  'bathroom',
+  'storage',
+  'office',
+  'hall',
+  'cellar',
+  'backroom',
+] as const
+
+/**
+ * A place an NPC can stand and do something. Each kind names the animation set
+ * the NPC plays there, so placing an NPC on an anchor is all it takes to make
+ * them look busy.
+ */
+export const ANCHOR_KINDS = [
+  'stand',
+  'sit',
+  'sit-drink',
+  'serve',
+  'cook',
+  'work-desk',
+  'sleep',
+  'browse',
+  'lean',
+  'guard',
+] as const
+
+export const NPC_ROLES = [
+  'bartender',
+  'patron',
+  'clerk',
+  'resident',
+  'worker',
+  'vendor',
+  'cook',
+  'receptionist',
+  'mechanic',
+  'courier',
+  'guard',
+  'wanderer',
+] as const
+
+/** Physical shapes we can put in the world. A generated item must be one of these. */
+export const ITEM_ARCHETYPES = [
+  'bottle',
+  'glass',
+  'crate',
+  'box',
+  'parcel',
+  'book',
+  'ledger',
+  'envelope',
+  'key',
+  'keycard',
+  'bag',
+  'briefcase',
+  'toolbox',
+  'wrench',
+  'painting',
+  'statue',
+  'phone',
+  'radio',
+  'plate',
+  'cup',
+  'cash',
+  'gem',
+  'flower',
+  'medkit',
+  'fuelcan',
+] as const
+
+export const FURNITURE_PROPS = [
+  'bar-counter',
+  'bar-stool',
+  'table',
+  'chair',
+  'sofa',
+  'bed',
+  'desk',
+  'office-chair',
+  'shelf',
+  'cabinet',
+  'wardrobe',
+  'fridge',
+  'stove',
+  'sink',
+  'counter',
+  'register',
+  'display-case',
+  'crate-stack',
+  'plant',
+  'lamp',
+  'rug',
+  'tv',
+  'coffee-machine',
+  'jukebox',
+] as const
+
+export const FACINGS = ['north', 'east', 'south', 'west'] as const
+
+export type BuildingKind = (typeof BUILDING_KINDS)[number]
+export type RoomKind = (typeof ROOM_KINDS)[number]
+export type AnchorKind = (typeof ANCHOR_KINDS)[number]
+export type NpcRole = (typeof NPC_ROLES)[number]
+export type ItemArchetype = (typeof ITEM_ARCHETYPES)[number]
+export type FurnitureProp = (typeof FURNITURE_PROPS)[number]
+export type Facing = (typeof FACINGS)[number]
+
+/** Which building kinds a player can walk into. */
+export const ENTERABLE_KINDS: readonly BuildingKind[] = [
+  'house',
+  'apartment',
+  'bar',
+  'cafe',
+  'restaurant',
+  'shop',
+  'market',
+  'office',
+  'workshop',
+  'clinic',
+  'hotel',
+  'station',
+  'chapel',
+]
