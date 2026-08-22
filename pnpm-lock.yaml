@@ -158,6 +158,24 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
 
+  game/talk:
+    dependencies:
+      '@gb/kit':
+        specifier: workspace:*
+        version: link:../kit
+      '@gb/play':
+        specifier: workspace:*
+        version: link:../play
+      '@gb/quest':
+        specifier: workspace:*
+        version: link:../quest
+      '@gb/sidecar':
+        specifier: workspace:*
+        version: link:../sidecar
+      '@gb/world':
+        specifier: workspace:*
+        version: link:../world
+
   game/world:
     dependencies:
       '@gb/kit':
