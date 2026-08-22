@@ -20,6 +20,17 @@ import { pick, type Target } from './targets.ts'
 
 type Place = { kind: 'city' } | { kind: 'interior'; interior: Interior; plotId: string }
 
+/** What the game binds, for the interface to list where the player can read it. */
+const CONTROLS = [
+  { keys: ['W', 'A', 'S', 'D'], text: 'Walk', group: 'Move' },
+  { keys: ['Shift'], text: 'Run', group: 'Move' },
+  { keys: ['C'], text: 'Crouch', group: 'Move' },
+  { keys: ['Space'], text: 'Jump', group: 'Move' },
+  { keys: ['Mouse'], text: 'Look around', group: 'Move' },
+  { keys: ['Right mouse'], text: 'Look closer', group: 'Move' },
+  { keys: ['E'], text: 'Go in, talk to someone, take a thing', group: 'World' },
+] as const
+
 /**
  * The game itself: a city you walk around, buildings you go into, people you
  * talk to, things you carry from one to another. Everything it knows how to do
@@ -43,6 +54,7 @@ export class Game {
   #crowd: Crowd | undefined
   #traffic: Traffic | undefined
   #land: Land | undefined
+  #weather: string | undefined
   #cars: CarPack | undefined
 
   private constructor(input: {
@@ -83,6 +95,7 @@ export class Game {
     }
 
     document.addEventListener('keydown', this.#key)
+    this.#hud.show({ controls: CONTROLS })
     this.#refresh()
   }
 
@@ -206,6 +219,7 @@ export class Game {
   }
 
   frame(seconds: number): void {
+    this.#tickClock(seconds)
     this.#body.update(seconds)
     this.#cast?.update(seconds)
     // the street only carries on while the player is out in it
@@ -220,11 +234,31 @@ export class Game {
     this.#hud.show({ prompt })
   }
 
+  /**
+   * Time passes, the sky follows it, and quests on a timer hear about it. The
+   * clock is game time, so a paused game cannot run a quest out.
+   */
+  #tickClock(seconds: number): void {
+    const clock = this.#player.clock
+    clock.advance(seconds)
+    this.#log.handle({ kind: 'clock', seconds: clock.totalSeconds })
+
+    if (!this.#land || this.#place.kind !== 'city') return
+    this.#land.setTime(clock.hour + clock.minute / 60)
+    if (clock.weather !== this.#weather) {
+      this.#weather = clock.weather
+      this.#land.setWeather(clock.weather)
+    }
+    this.#land.update(seconds, this.#stage.camera.position)
+  }
+
   /** What the player did in the interface. */
   intent(intent: HudIntent): void {
     if (intent.kind === 'say') void this.say(intent.text)
     if (intent.kind === 'typing') this.#body.setTyping(intent.typing)
     if (intent.kind === 'talk-closed') this.#endTalk()
+    // a window the player has to click needs the pointer back; walking carries on
+    if ((intent.kind === 'journal' || intent.kind === 'help') && intent.open) document.exitPointerLock()
   }
 
   /** What the player can act on where they are standing. */
@@ -255,10 +289,6 @@ export class Game {
   }
 
   #key = (event: KeyboardEvent): void => {
-    if (event.key === 'Escape' && this.#talking) {
-      this.#endTalk()
-      return
-    }
     if (event.code !== 'KeyE' || this.#hud.typing || this.#talking || !this.#target) return
     this.#act(this.#target)
   }
