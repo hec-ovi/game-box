@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "format": {
+      "type": "string",
+      "const": "game-box.save"
+    },
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "worldId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "contentHash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "player": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "type": "string",
+          "const": "game-box.player"
+        },
+        "schemaVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "worldId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "money": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "inventory": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "stolen": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "flags": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "boolean"
+          }
+        },
+        "reputation": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": -100,
+            "maximum": 100
+          }
+        },
+        "companions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "format",
+        "schemaVersion",
+        "worldId",
+        "money",
+        "inventory",
+        "stolen",
+        "flags",
+        "reputation",
+        "companions"
+      ]
+    },
+    "questProgress": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "type": "string",
+          "const": "game-box.quest-progress"
+        },
+        "schemaVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "quests": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "unstarted",
+                  "active",
+                  "complete",
+                  "failed"
+                ]
+              },
+              "open": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "done": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "status",
+              "open",
+              "done"
+            ]
+          }
+        }
+      },
+      "required": [
+        "format",
+        "schemaVersion",
+        "quests"
+      ]
+    }
+  },
+  "required": [
+    "format",
+    "schemaVersion",
+    "worldId",
+    "contentHash",
+    "player",
+    "questProgress"
+  ]
+}
