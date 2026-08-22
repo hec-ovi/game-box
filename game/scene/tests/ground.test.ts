@@ -83,6 +83,7 @@ describe('the ground', () => {
     const walls = groundTriangles(city).filter((triangle) => Math.abs(triangle.normal.y) < 1e-6)
     const cell = world.cellSize
     const open: string[] = []
+    const drops = new Set<string>()
 
     for (let y = 0; y < world.grid.height; y++) {
       for (let x = 0; x < world.grid.width; x++) {
@@ -105,17 +106,20 @@ describe('the ground', () => {
               wall.normal.dot(new THREE.Vector3(side.x, 0, side.z)) > 0.99 &&
               wall.box.clone().expandByScalar(1e-4).containsBox(gap),
           )
+          drops.add(`${world.grid.at(x, y)} -> ${beside}`)
           if (!closed) open.push(`${x},${y} -> ${x + side.x},${y + side.z}`)
         }
       }
     }
     expect(open).toEqual([])
+    // and the street this was asked of really does put those cases next to each other
+    expect([...drops].sort()).toEqual(['park -> empty', 'sidewalk -> building', 'sidewalk -> empty', 'sidewalk -> street'])
   })
 
   it('closes the ground where the grid runs out, so the world has no open edge', () => {
     const world = street()
     const city = buildCity(world, new Greybox())
-    const edge = (world.grid.height - 1 + 1) * world.cellSize
+    const edge = world.grid.height * world.cellSize
 
     // the pavement along the last row has nothing south of it and is walled off
     const closed = groundTriangles(city, 'ground:sidewalk').some(
@@ -176,18 +180,24 @@ describe('the ground', () => {
   })
 
   it('measures the texture in metres, so a surface tiles at street scale', () => {
-    const world = street()
-    const city = buildCity(world, new Greybox())
+    const city = buildCity(street(), new Greybox())
     const road = city.root.children.find((child) => child.name === 'ground:street') as THREE.Mesh
     const position = road.geometry.getAttribute('position')
+    const normal = road.geometry.getAttribute('normal')
     const uv = road.geometry.getAttribute('uv')
-
     expect(uv.count).toBe(position.count)
+
     for (let i = 0; i < position.count; i++) {
-      // the top of the road: u and v are where the corner is on the ground
-      if (Math.abs(position.getY(i)) > 1e-6) continue
-      expect(uv.getX(i)).toBeCloseTo(position.getX(i), 5)
-      expect(uv.getY(i)).toBeCloseTo(position.getZ(i), 5)
+      if (normal.getY(i) > 0.999) {
+        // on a surface you walk on, the texture is laid out on the ground itself
+        expect(uv.getX(i)).toBeCloseTo(position.getX(i), 5)
+        expect(uv.getY(i)).toBeCloseTo(position.getZ(i), 5)
+      } else {
+        // up a kerb it climbs with the height, and runs with the road along the face
+        expect(uv.getY(i)).toBeCloseTo(position.getY(i), 5)
+        const along = Math.abs(normal.getX(i)) > 0.5 ? position.getZ(i) : position.getX(i)
+        expect(uv.getX(i)).toBeCloseTo(along, 5)
+      }
     }
   })
 })

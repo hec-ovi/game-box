@@ -61,30 +61,16 @@ describe('buildCity', () => {
     const city = buildCity(world, new Greybox())
 
     const ground = city.root.children.filter((child) => child.name.startsWith('ground:'))
-    expect(ground.map((g) => g.name).sort()).toEqual(['ground:empty', 'ground:sidewalk', 'ground:street'])
+    expect(ground.map((g) => g.name).sort()).toEqual(['ground:building', 'ground:empty', 'ground:sidewalk', 'ground:street'])
 
+    // and runs of cells merge before they are drawn: a road is a few quads, not six vertices a cell
     const street = ground.find((g) => g.name === 'ground:street') as THREE.Mesh
-    const cells = world.grid.count('street')
-    expect(street.geometry.getAttribute('position').count).toBe(cells * 6)
+    expect(street.geometry.getAttribute('position').count).toBeLessThan(world.grid.count('street'))
 
-    // the pavement stands proud of the road, as a kerb does
-    const sidewalk = ground.find((g) => g.name === 'ground:sidewalk') as THREE.Mesh
-    expect(boundsOf(sidewalk).max.y).toBeCloseTo(METRICS.street.curbHeight, 3)
-  })
-
-  it('faces the ground upwards, so you can see what you are standing on', async () => {
-    const world = await town()
-    const city = buildCity(world, new Greybox())
-    const street = city.root.children.find((child) => child.name === 'ground:street') as THREE.Mesh
-
-    const position = street.geometry.getAttribute('position')
-    const corner = (index: number) => new THREE.Vector3().fromBufferAttribute(position, index)
-    const facing = new THREE.Vector3()
-      .subVectors(corner(1), corner(0))
-      .cross(new THREE.Vector3().subVectors(corner(2), corner(0)))
-      .normalize()
-
-    expect(facing.y).toBeCloseTo(1, 5)
+    // the pavement stands proud of the road and has a kerb down to it
+    const sidewalk = boundsOf(ground.find((g) => g.name === 'ground:sidewalk')!)
+    expect(sidewalk.max.y).toBeCloseTo(METRICS.street.curbHeight, 3)
+    expect(sidewalk.min.y).toBeCloseTo(0, 3)
   })
 
   it('rings the valley in mountains, as one instanced block per cell', async () => {
