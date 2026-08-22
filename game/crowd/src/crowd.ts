@@ -68,7 +68,7 @@ export class Crowd {
   update(seconds: number, viewer: Point): void {
     const step = Math.min(Math.max(seconds, 0), this.options.maxStep)
     this.#retire(viewer)
-    this.#space.begin(this.#walkers, viewer)
+    this.#space.begin(this.#walkers, viewer, step)
     for (const walker of this.#walkers) walker.advance(step)
     this.#route()
     this.#populate(viewer)

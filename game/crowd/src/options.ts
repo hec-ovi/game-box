@@ -20,8 +20,10 @@ export interface CrowdOptions {
   turnRate: number
   /** The closest two bodies ever get, in metres. Nobody steps inside somebody else's. */
   personalSpace: number
-  /** How far off a body starts leaning away from other people, in metres. Never below `personalSpace`. */
+  /** How far off a body notices other people at all, in metres. Never below `personalSpace`. */
   avoidRadius: number
+  /** How many seconds ahead a walker watches where other people are going, so it eases apart early. */
+  anticipate: number
   /** How hard that lean is against the pull of the route. At 1 they are an even match when two people touch. */
   avoidStrength: number
   /** After this long boxed in, a walker drops its route and asks for another, in seconds. */
@@ -55,7 +57,8 @@ export const CROWD_DEFAULTS: CrowdOptions = {
   speedSpread: 0.15,
   turnRate: 8,
   personalSpace: 0.7,
-  avoidRadius: 2.2,
+  avoidRadius: 5,
+  anticipate: 2,
   avoidStrength: 1.6,
   stuckSeconds: 2,
   kerbLook: 2.5,

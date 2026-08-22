@@ -11,20 +11,30 @@ abstract class RunNav implements CrowdNav {
   destination: Point | undefined
   protected readonly cellSize: number
   protected readonly legs: number
+  /** With a row given, only that row is walkable, which makes a pavement exactly one cell wide. */
+  readonly lane: number | undefined
 
-  constructor(cellSize: number, legs: number) {
+  constructor(cellSize: number, legs: number, lane?: number) {
     this.cellSize = cellSize
     this.legs = legs
+    this.lane = lane
   }
 
-  walkable(): boolean {
-    return true
+  walkable(cell: Cell): boolean {
+    return this.lane === undefined || cell.y === this.lane
   }
 
   abstract path(from: Cell): Cell[]
 
+  /** Corners only, the way `@gb/nav` gives them: a straight run is one leg, not one waypoint per cell. */
   waypoints(path: readonly Cell[]): Point[] {
-    const points = path.map((cell) => cellCentre(cell.x, cell.y, this.cellSize))
+    const corners = path.filter((cell, i) => {
+      const before = path[i - 1]
+      const after = path[i + 1]
+      if (!before || !after) return true
+      return cell.x - before.x !== after.x - cell.x || cell.y - before.y !== after.y - cell.y
+    })
+    const points = corners.map((cell) => cellCentre(cell.x, cell.y, this.cellSize))
     this.destination = points[points.length - 1]
     return points
   }
@@ -40,8 +50,8 @@ abstract class RunNav implements CrowdNav {
 export class StraightNav extends RunNav {
   #way: Cell
 
-  constructor(cellSize: number, legs: number, way: Cell) {
-    super(cellSize, legs)
+  constructor(cellSize: number, legs: number, way: Cell, lane?: number) {
+    super(cellSize, legs, lane)
     this.#way = way
   }
 

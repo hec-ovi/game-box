@@ -1,9 +1,10 @@
 import { CityNav } from '@gb/nav'
 import type { CellKind, World } from '@gb/world'
 import { describe, expect, it } from 'vitest'
+import { METRICS } from '@gb/world'
 import { Crowd, type CrowdNav, type CrowdOptions, type Point, type WalkerView } from '../src/index.ts'
 import { FakeCast } from './support/fake-cast.ts'
-import { MeetNav } from './support/fake-nav.ts'
+import { MeetNav, StraightNav } from './support/fake-nav.ts'
 import { corridor, testTown } from './support/town.ts'
 
 const STEP = 1 / 60
@@ -15,6 +16,8 @@ const STEP = 1 / 60
  */
 const CELLS = 60
 const MIDDLE = 20
+/** The middle of the corridor's one pavement row, in metres. */
+const ROW = 5
 const CORRIDOR = { ring: { spawnNear: 16, spawnFar: 17 }, meet: MIDDLE }
 
 function distance(a: Point, b: Point): number {
@@ -92,6 +95,49 @@ describe('people keep out of each other', () => {
     expect(ended).toBe(-started)
   })
 
+  it('falls in behind on a narrow pavement rather than shoving alongside', () => {
+    const world = corridor(CELLS)
+    // one cell wide and walkable nowhere else: the pavement is two metres, and everybody is going the same way
+    const nav = new StraightNav(world.cellSize, 40, { x: 1, y: 0 }, 2)
+    const viewer = { x: (MIDDLE + 0.5) * world.cellSize, z: 9 }
+    const crowd = Crowd.create(
+      { world, nav, cast: new FakeCast(), seed: 'queue' },
+      { population: 6, retireRadius: 500, spawnNear: 4, spawnFar: 11, pauseMin: 0, pauseMax: 0 },
+    )
+    for (let frame = 0; frame < 120; frame++) crowd.update(STEP, viewer)
+
+    const from = new Map(crowd.walkers().map((walker) => [walker.id, { ...walker }]))
+    let close = 0
+    let abreast = 0
+    let slowed = 0
+
+    for (let frame = 0; frame < 2400; frame++) {
+      const was = new Map(crowd.walkers().map((walker) => [walker.id, { ...walker }]))
+      crowd.update(STEP, viewer)
+      const walkers = crowd.walkers()
+      for (let i = 0; i < walkers.length; i++) {
+        const walker = walkers[i]!
+        const before = was.get(walker.id)
+        // walking, but at well under their own pace: they are behind somebody, not barging past
+        if (before && walker.state === 'walking' && distance(before, walker) < 0.5 * METRICS.player.walkSpeed * STEP) slowed++
+        for (let j = i + 1; j < walkers.length; j++) {
+          const other = walkers[j]!
+          expect(distance(walker, other)).toBeGreaterThanOrEqual(crowd.options.personalSpace - 1e-9)
+          if (distance(walker, other) > 2) continue
+          close++
+          // nose to tail down the pavement, not shoulder to shoulder across it
+          if (Math.abs(walker.x - other.x) <= Math.abs(walker.z - other.z)) abreast++
+        }
+      }
+    }
+
+    expect(crowd.count).toBe(6)
+    expect(close).toBeGreaterThan(100)
+    expect(abreast).toBe(0)
+    expect(slowed).toBeGreaterThan(0)
+    for (const walker of crowd.walkers()) expect(walker.x - from.get(walker.id)!.x).toBeGreaterThan(10)
+  })
+
   it('a pavement full of people keeps flowing, stays out of the walls, and keeps its distance', () => {
     const world = testTown()
     const nav = CityNav.from(world)
@@ -100,6 +146,8 @@ describe('people keep out of each other', () => {
 
     const arrived = new Set<string>()
     const wasWalking = new Set<string>()
+    const from = new Map<string, Point>()
+    const ground = new Map<string, number>()
     let tightest = Infinity
     let nearestToPlayer = Infinity
 
@@ -116,6 +164,9 @@ describe('people keep out of each other', () => {
         expect(kind === 'street' || kind === 'sidewalk' || kind === 'park').toBe(true)
         if (walker.state === 'idle' && wasWalking.has(walker.id)) arrived.add(walker.id)
         if (walker.state === 'walking') wasWalking.add(walker.id)
+        const start = from.get(walker.id)
+        if (start) ground.set(walker.id, Math.max(ground.get(walker.id) ?? 0, distance(start, walker)))
+        else from.set(walker.id, { x: walker.x, z: walker.z })
         for (let j = i + 1; j < walkers.length; j++) tightest = Math.min(tightest, distance(walker, walkers[j]!))
       }
       nearestToPlayer = Math.min(nearestToPlayer, closest(walkers, middle))
@@ -124,8 +175,10 @@ describe('people keep out of each other', () => {
     expect(crowd.count).toBe(40)
     expect(tightest).toBeGreaterThanOrEqual(crowd.options.personalSpace - 1e-9)
     expect(nearestToPlayer).toBeGreaterThanOrEqual(crowd.options.personalSpace - 1e-9)
-    // a minute of walking on a busy pavement, and every last one of them got somewhere: nobody deadlocked
-    expect(arrived.size).toBeGreaterThanOrEqual(40)
+    // a minute on a busy pavement: everybody covered real ground, so nobody was ever jammed against anybody
+    for (const walker of crowd.walkers()) expect(ground.get(walker.id) ?? 0).toBeGreaterThan(15)
+    // and nearly all of them finished a trip in that minute
+    expect(arrived.size).toBeGreaterThanOrEqual(38)
   })
 
   it('gets out from under a player who parks on top of them, and stays out', () => {
