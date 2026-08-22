@@ -1,7 +1,8 @@
 /**
- * Packs the kit pieces this box builds with into one file the game loads once.
- * The pieces share their textures, so the pack is a fraction of the size of
- * the folder it comes from.
+ * Packs the kit pieces this box builds with, and the tiling surfaces the city
+ * floor is made of, into one file the game loads once. Everything shares the
+ * kit's textures, so the pack is a fraction of the size of the folder it comes
+ * from.
  *
  * Run: node game/kitbash/tools/build-kit.ts
  * Reads:  assets/src/quaternius-downtown/... (GB_DOWNTOWN_KIT overrides)
@@ -11,6 +12,8 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { nodeNamesOf, PIECE_IDS } from '../src/catalog/pieces.ts'
+import { GROUND_TEXTURES, GROUND_TEXTURE_IDS } from '../src/ground/surfaces.ts'
+import { writeGroundSurfaces } from './ground-surfaces.ts'
 import { KIT_DIRECTORY } from './measure.ts'
 
 const DIST = process.env['GB_ASSETS_DIST'] ?? join(resolve(import.meta.dirname, '../../..'), 'assets/dist')
@@ -18,26 +21,34 @@ mkdirSync(DIST, { recursive: true })
 
 const output = join(DIST, 'downtown-kit.glb')
 const working = join(DIST, 'downtown-kit.working.glb')
+const ground = join(DIST, 'downtown-ground.working.glb')
 
 const run = (...args: string[]): void => {
   execFileSync('npx', ['gltf-transform', ...args], { stdio: ['ignore', 'ignore', 'inherit'] })
 }
 
-// One scene with every piece in it, so the game can hand the loaded scene over
-// whole. The steps are spelled out rather than run through `optimize`, because
-// that one joins meshes and flattens the graph, and this pack is only useful
-// while every piece is still its own named node.
-run('merge', ...PIECE_IDS.map((id) => join(KIT_DIRECTORY, `${id}.gltf`)), working, '--merge-scenes')
+// One scene with every piece and every ground surface in it, so the game can
+// hand the loaded scene over whole. The steps are spelled out rather than run
+// through `optimize`, because that one joins meshes and flattens the graph, and
+// this pack is only useful while every piece is still its own named node.
+await writeGroundSurfaces(ground)
+run('merge', ...PIECE_IDS.map((id) => join(KIT_DIRECTORY, `${id}.gltf`)), ground, working, '--merge-scenes')
+// the ground shares the buildings' asphalt and concrete: dedup folds it to one copy
 run('dedup', working, working)
 run('prune', working, working)
 run('resize', working, working, '--width', '1024', '--height', '1024')
 run('webp', working, working)
 run('meshopt', working, output, '--level', 'high')
 rmSync(working)
+rmSync(ground)
 
-// a piece the game cannot find by name is a building it cannot draw
+// a piece the game cannot find by name is a building it cannot draw, and a
+// surface it cannot find is a street back to flat colour
 const packed = nodeNames(output)
-const missing = PIECE_IDS.filter((id) => !nodeNamesOf(id).some((name) => packed.has(name)))
+const missing = [
+  ...PIECE_IDS.filter((id) => !nodeNamesOf(id).some((name) => packed.has(name))),
+  ...GROUND_TEXTURE_IDS.map((id) => GROUND_TEXTURES[id].node).filter((node) => !packed.has(node)),
+]
 if (missing.length) throw new Error(`build-kit: the pack has no node for ${missing.join(', ')}`)
 
 /** Every node name in a .glb, read out of its JSON chunk. */
@@ -47,4 +58,7 @@ function nodeNames(file: string): Set<string> {
   return new Set(json.nodes.map((node) => node.name).filter((name) => name !== undefined))
 }
 
-console.log(`${PIECE_IDS.length} pieces -> ${output} (${(statSync(output).size / 1e6).toFixed(2)} MB)`)
+console.log(
+  `${PIECE_IDS.length} pieces, ${GROUND_TEXTURE_IDS.length} ground surfaces` +
+  ` -> ${output} (${(statSync(output).size / 1e6).toFixed(2)} MB)`,
+)

@@ -6,9 +6,9 @@ import { planBuilding, type BuildingSize } from './build/plan.ts'
 import type { KitLibrary } from './kit/library.ts'
 
 /**
- * The city dressed in the Downtown kit. It answers for buildings and hands
- * everything else to the dressing behind it, because the kit is a street kit:
- * it has no furniture, no people and no ground cover.
+ * The city dressed in the Downtown kit. It answers for buildings and for the
+ * ground they stand on, and hands everything else to the dressing behind it,
+ * because the kit is a street kit: it has no furniture and no people in it.
  */
 export class KitDressing implements Dressing {
   readonly #kit: KitLibrary
@@ -46,7 +46,7 @@ export class KitDressing implements Dressing {
   }
 
   ground(kind: CellKind): THREE.Material {
-    return this.#rest.ground(kind)
+    return this.#kit.ground?.material(kind) ?? this.#rest.ground(kind)
   }
 
   surface(part: 'floor' | 'wall' | 'ceiling'): THREE.Material {

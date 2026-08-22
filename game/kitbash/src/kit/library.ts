@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { PIECES, type PieceId } from '../catalog/pieces.ts'
+import type { GroundLibrary } from '../ground/library.ts'
 
 /** One material's worth of one piece: the geometry in the piece's own frame. */
 export interface KitPart {
@@ -15,10 +16,13 @@ export interface KitPart {
 export class KitLibrary {
   readonly #parts: ReadonlyMap<PieceId, readonly KitPart[]>
   readonly #materials: ReadonlyMap<string, THREE.Material>
+  /** The tiling ground surfaces, when the pack carries them. Nothing else in the kit is ground. */
+  readonly ground: GroundLibrary | undefined
 
-  constructor(parts: Map<PieceId, KitPart[]>, materials: Map<string, THREE.Material>) {
+  constructor(parts: Map<PieceId, KitPart[]>, materials: Map<string, THREE.Material>, ground?: GroundLibrary) {
     this.#parts = parts
     this.#materials = materials
+    this.ground = ground
   }
 
   /** Which pieces of the catalog this library is missing. Empty means it can build anything. */
@@ -40,5 +44,6 @@ export class KitLibrary {
   dispose(): void {
     for (const parts of this.#parts.values()) for (const part of parts) part.geometry.dispose()
     for (const material of this.#materials.values()) material.dispose()
+    this.ground?.dispose()
   }
 }

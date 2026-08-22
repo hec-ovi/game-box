@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { nodeNamesOf, PIECE_IDS, type PieceId } from '../catalog/pieces.ts'
+import { loadGround } from '../ground/load.ts'
 import { KitIncomplete } from './error.ts'
 import { canonical } from './geometry.ts'
 import { KitLibrary, type KitPart } from './library.ts'
@@ -15,7 +16,8 @@ import { KitLibrary, type KitPart } from './library.ts'
  * is brought to one shape on the way through, so any two of them weld.
  *
  * Materials are shared by name across pieces, so the whole city ends up drawing
- * with the handful the kit actually has.
+ * with the handful the kit actually has. The pack's tiling ground surfaces come
+ * out of the same scene, when it has them.
  */
 export function loadKit(scenes: THREE.Object3D | readonly THREE.Object3D[]): KitLibrary {
   const roots = Array.isArray(scenes) ? scenes : [scenes as THREE.Object3D]
@@ -40,7 +42,7 @@ export function loadKit(scenes: THREE.Object3D | readonly THREE.Object3D[]): Kit
 
   const missing = KitLibrary.missing(parts)
   if (missing.length) throw new KitIncomplete(missing)
-  return new KitLibrary(parts, materials)
+  return new KitLibrary(parts, materials, loadGround(roots))
 }
 
 function find(roots: readonly THREE.Object3D[], names: readonly string[]): THREE.Object3D | undefined {

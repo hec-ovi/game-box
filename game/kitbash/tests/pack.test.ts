@@ -49,6 +49,24 @@ describe.skipIf(!packed)('the shipped kit', () => {
     }
   })
 
+  it('carries the tiling surfaces the ground is made of', () => {
+    expect(kit!.ground, 'the pack has no ground surfaces in it').toBeDefined()
+
+    const road = dressing!.ground('street') as THREE.MeshStandardMaterial
+    const pavement = dressing!.ground('sidewalk') as THREE.MeshStandardMaterial
+    const park = dressing!.ground('park') as THREE.MeshStandardMaterial
+
+    for (const material of [road, pavement, park]) {
+      expect(material.map, material.name).toBeInstanceOf(THREE.Texture)
+      // colour is authored in sRGB and relief is not: swapped slots wash a surface out
+      expect(material.map!.colorSpace, material.name).toBe(THREE.SRGBColorSpace)
+    }
+    for (const material of [road, pavement]) {
+      expect(material.normalMap, material.name).toBeInstanceOf(THREE.Texture)
+      expect(material.normalMap!.colorSpace, material.name).toBe(THREE.NoColorSpace)
+    }
+  })
+
   it('holds every piece at the bounds the catalog measured', () => {
     for (const id of PIECE_IDS) {
       const bounds = new THREE.Box3()
