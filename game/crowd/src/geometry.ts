@@ -1,8 +1,15 @@
 const TWO_PI = Math.PI * 2
 
 /**
- * The yaw that looks along a direction on the ground. Zero faces north (-Z),
- * which is the way `@gb/cast` spawns a body, and yaw grows towards east (+X).
+ * The yaw a body needs for its own -Z axis, which is its front, to point along
+ * a direction on the ground. It is three.js `rotation.y` straight: zero looks
+ * north (-Z), the way `@gb/cast` stands somebody up and the way the player's
+ * own heading works, and it grows anticlockwise seen from above, so -PI/2
+ * looks east (+X) and +PI/2 looks west.
+ *
+ * This is the yaw that points the body along the travel vector, not the angle
+ * of the travel vector: get the two mixed up and the walk cycle runs while the
+ * body slides backwards.
  */
 export function headingOf(dx: number, dz: number): number {
   return Math.atan2(-dx, -dz)

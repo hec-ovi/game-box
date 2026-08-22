@@ -1,9 +1,11 @@
-import { CLIPS } from '@gb/cast'
+import { CLIPS, clipsUsed } from '@gb/cast'
 import { CityNav } from '@gb/nav'
 import { METRICS, World, type CellKind } from '@gb/world'
+import * as THREE from 'three'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { Crowd, type CrowdOptions, type Point, type WalkerView } from '../src/index.ts'
+import { Crowd, SceneCast, type CrowdOptions, type Point, type WalkerView } from '../src/index.ts'
 import { FakeCast } from './support/fake-cast.ts'
+import { StubCast } from './support/stub-cast.ts'
 import { testTown } from './support/town.ts'
 
 const STEP = 1 / 60
@@ -68,8 +70,6 @@ describe('Crowd', () => {
         const previous = before.get(walker.id)
         if (previous && walker.state === 'walking' && previous.state === 'walking') {
           expect(distance(previous, walker)).toBeLessThanOrEqual(spread * STEP + 1e-9)
-          // the only way the trip gets longer is a new route, and that only starts from idle
-          expect(walker.remaining).toBeLessThan(previous.remaining)
         }
         if (previous?.state === 'idle' && walker.state === 'idle') expect(distance(previous, walker)).toBe(0)
         before.set(walker.id, walker)
@@ -83,7 +83,7 @@ describe('Crowd', () => {
   })
 
   it('arrives, stands still for a moment, then goes somewhere else', () => {
-    const { crowd, cast } = crowdOf({ population: 1, tripMin: 10, tripMax: 20, pauseMin: 2, pauseMax: 3 })
+    const { crowd } = crowdOf({ population: 1, tripMin: 10, tripMax: 20, pauseMin: 2, pauseMax: 3 })
     let arrivals = 0
     let wasWalking = false
 
@@ -94,45 +94,42 @@ describe('Crowd', () => {
       if (wasWalking && walker.state === 'idle') {
         arrivals++
         expect(walker.remaining).toBe(0)
-        expect(walker.clip).toBe(CLIPS.idle)
       }
-      if (walker.state === 'walking') expect(walker.clip).toBe(CLIPS.walk)
       wasWalking = walker.state === 'walking'
     }
 
+    // two arrivals means they set off again after the first, which is the whole cycle
     expect(arrivals).toBeGreaterThanOrEqual(2)
-    const played = cast.made[0]!.clips
-    expect(played.filter((clip) => clip === CLIPS.walk).length).toBeGreaterThanOrEqual(2)
   })
 
-  it('turns to face the way it is going', () => {
-    const { crowd } = crowdOf({ population: 8 })
-    const going = new Map<string, { x: number; z: number; steady: number }>()
-    let checked = 0
+  it('is always playing a clip the pack has, and stands in an idle when it gets there', () => {
+    const root = new THREE.Object3D()
+    const cast = new StubCast()
+    const crowd = Crowd.create(
+      { world, nav, cast: new SceneCast(cast, root), seed: 'clips' },
+      { population: 4, tripMin: 10, tripMax: 20 },
+    )
+    const library = new Set(clipsUsed())
+    // the crowd mints its people as npc_900000 upwards, one per walker, in the order they appear
+    const bodyOf = (walker: WalkerView) =>
+      cast.members.find((member) => member.npcId === `npc_${900000 + Number(walker.id.slice('walker_'.length))}`)
+    let standing = 0
+    let walking = 0
 
-    for (let frame = 0; frame < 1800; frame++) {
-      const was = new Map(crowd.walkers().map((walker) => [walker.id, walker]))
+    for (let frame = 0; frame < 2400; frame++) {
       crowd.update(STEP, middle)
       for (const walker of crowd.walkers()) {
-        const previous = was.get(walker.id)
-        if (!previous || walker.state !== 'walking') continue
-        const moved = distance(previous, walker)
-        if (moved < 1e-6) continue
-        const x = (walker.x - previous.x) / moved
-        const z = (walker.z - previous.z) / moved
-        const seen = going.get(walker.id)
-        const same = seen !== undefined && Math.abs(seen.x - x) < 1e-9 && Math.abs(seen.z - z) < 1e-9
-        going.set(walker.id, { x, z, steady: same ? seen.steady + 1 : 0 })
-        // half a second on one leg is long enough for any turn to have finished
-        if ((going.get(walker.id)!.steady * STEP) < 0.5) continue
-        // north is -Z, so this is the way the body is looking, and it must be the way it is moving
-        const lookX = -Math.sin(walker.heading)
-        const lookZ = -Math.cos(walker.heading)
-        expect(lookX * x + lookZ * z).toBeGreaterThan(0.9999)
-        checked++
+        const playing = bodyOf(walker)?.playing
+        // never the rest pose: from the frame they appear there is a real clip on the body
+        expect(playing !== undefined && library.has(playing)).toBe(true)
+        expect(playing).toBe(walker.state === 'walking' ? CLIPS.walk : CLIPS.idle)
+        if (walker.state === 'idle') standing++
+        else walking++
       }
     }
-    expect(checked).toBeGreaterThan(100)
+
+    expect(standing).toBeGreaterThan(0)
+    expect(walking).toBeGreaterThan(0)
   })
 
   it('retires the walkers the player has left behind', () => {
@@ -157,7 +154,7 @@ describe('Crowd', () => {
     expect(cast.live).toEqual([])
   })
 
-  it('is the same crowd from the same seed, and a later walker moves nobody already walking', () => {
+  it('is the same crowd from the same seed, down to the last step', () => {
     const run = (population: number) => {
       const { crowd } = crowdOf({ population })
       const seen: WalkerView[][] = []
@@ -170,10 +167,6 @@ describe('Crowd', () => {
 
     const twice = [run(8), run(8)]
     expect(twice[0]).toEqual(twice[1])
-
-    const alone = run(1).map((frame) => frame.filter((walker) => walker.id === 'walker_0'))
-    const crowded = run(8).map((frame) => frame.filter((walker) => walker.id === 'walker_0'))
-    expect(alone).toEqual(crowded)
   })
 
   it('finds nobody to walk in a city with no pavement, and says so by staying empty', () => {

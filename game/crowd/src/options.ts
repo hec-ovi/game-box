@@ -18,6 +18,14 @@ export interface CrowdOptions {
   speedSpread: number
   /** How fast a walker swings round to face where they are going, radians per second. */
   turnRate: number
+  /** The closest two bodies ever get, in metres. Nobody steps inside somebody else's. */
+  personalSpace: number
+  /** How far off a body starts leaning away from other people, in metres. Never below `personalSpace`. */
+  avoidRadius: number
+  /** How hard that lean is against the pull of the route. At 1 they are an even match when two people touch. */
+  avoidStrength: number
+  /** After this long boxed in, a walker drops its route and asks for another, in seconds. */
+  stuckSeconds: number
   /** Ground the walkers stand on. Cheapest first: the crowd prefers pavement. */
   pavement: readonly CellKind[]
   /** How high those cells sit above the roadway. Set 0 for flat ground. */
@@ -42,6 +50,10 @@ export const CROWD_DEFAULTS: CrowdOptions = {
   pauseMax: 5,
   speedSpread: 0.15,
   turnRate: 8,
+  personalSpace: 0.7,
+  avoidRadius: 2.2,
+  avoidStrength: 1.6,
+  stuckSeconds: 2,
   pavement: ['sidewalk', 'park'],
   kerbHeight: METRICS.street.curbHeight,
   maxStep: 0.25,
@@ -52,16 +64,21 @@ export const CROWD_DEFAULTS: CrowdOptions = {
 
 /**
  * Settle the numbers so they cannot contradict each other. A retire radius
- * inside the spawn ring would delete walkers the same frame they appear.
+ * inside the spawn ring would delete walkers the same frame they appear, and
+ * an avoid radius inside personal space would let people touch before they
+ * ever started to lean away.
  */
 export function resolveOptions(given: Partial<CrowdOptions> = {}): CrowdOptions {
   const merged = { ...CROWD_DEFAULTS, ...given }
   const spawnFar = Math.max(merged.spawnFar, merged.spawnNear)
+  const personalSpace = Math.max(merged.personalSpace, 0)
   return {
     ...merged,
     spawnFar,
     retireRadius: Math.max(merged.retireRadius, spawnFar + 5),
     tripMax: Math.max(merged.tripMax, merged.tripMin),
     pauseMax: Math.max(merged.pauseMax, merged.pauseMin),
+    personalSpace,
+    avoidRadius: Math.max(merged.avoidRadius, personalSpace * 1.5),
   }
 }

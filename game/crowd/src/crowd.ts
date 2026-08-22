@@ -6,6 +6,7 @@ import { resolveOptions, type CrowdOptions } from './options.ts'
 import { Pavement } from './pavement.ts'
 import { pedestrian } from './people.ts'
 import type { CrowdCast, CrowdNav, Point, WalkerView } from './ports.ts'
+import { Space } from './space.ts'
 import { Walker } from './walker.ts'
 
 export interface CrowdDeps {
@@ -28,9 +29,12 @@ export class Crowd {
   #cast: CrowdCast
   #ground: Ground
   #pavement: Pavement
+  #space: Space
   #rng: Rng
   #walkers: Walker[] = []
   #serial = 0
+  /** The next walker's stream, kept between attempts so a blocked spot is not drawn again forever. */
+  #pending: Rng | undefined
 
   private constructor(deps: CrowdDeps, options: CrowdOptions) {
     this.options = options
@@ -38,6 +42,7 @@ export class Crowd {
     this.#cast = deps.cast
     this.#ground = new Ground(deps.world, options.pavement, options.kerbHeight)
     this.#pavement = Pavement.from(deps.world, options.pavement)
+    this.#space = new Space(this.#ground, deps.nav, options)
     this.#rng = new Rng(deps.seed ?? `${deps.world.seed}/crowd`)
   }
 
@@ -58,6 +63,7 @@ export class Crowd {
   update(seconds: number, viewer: Point): void {
     const step = Math.min(Math.max(seconds, 0), this.options.maxStep)
     this.#retire(viewer)
+    this.#space.begin(this.#walkers, viewer)
     for (const walker of this.#walkers) walker.advance(step)
     this.#route()
     this.#populate(viewer)
@@ -119,28 +125,36 @@ export class Crowd {
 
   /**
    * One new walker. Their whole stream is forked from the seed and their
-   * serial alone, so the tenth walker to appear draws the same numbers whether
-   * they are the tenth or the only one, and adding one later moves nothing.
+   * serial alone, so the same city crowds the same way every time. A spot
+   * somebody is already standing in is refused and the stream carries on, so
+   * the next attempt draws somewhere else rather than the same doorway.
    */
   #spawn(viewer: Point): boolean {
     const serial = this.#serial
-    const rng = this.#rng.fork(`walker/${serial}`)
+    const rng = (this.#pending ??= this.#rng.fork(`walker/${serial}`))
     const cell = this.#pavement.pick(viewer, this.options.spawnNear, this.options.spawnFar, rng)
     if (!cell || !this.#nav.walkable(cell)) return false
+    // nobody is born standing inside somebody else, and the stream carries on, so the next try is somewhere else
+    const at = this.#ground.centreOf(cell)
+    if (!this.#space.clear(at.x, at.z)) return false
 
     const spread = this.options.speedSpread
     const walker = new Walker({
       id: `walker_${serial}`,
       actor: this.#cast.spawn(pedestrian(serial, rng)),
       ground: this.#ground,
-      at: this.#ground.centreOf(cell),
+      space: this.#space,
+      at,
       speed: METRICS.player.walkSpeed * rng.range(1 - spread, 1 + spread),
       turnRate: this.options.turnRate,
+      stuckSeconds: this.options.stuckSeconds,
       rng,
       pauseMin: this.options.pauseMin,
       pauseMax: this.options.pauseMax,
     })
     this.#walkers.push(walker)
+    this.#space.add(walker)
+    this.#pending = undefined
     this.#serial++
     return true
   }

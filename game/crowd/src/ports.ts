@@ -11,7 +11,7 @@ export type { Cell, Point }
 export interface CrowdActor {
   /** Stand here. Metres, Y up, feet on the ground. */
   placeAt(x: number, y: number, z: number): void
-  /** Face this way. Yaw in radians about Y, 0 looking north (-Z). */
+  /** Face this way: three.js `rotation.y`, so a body at 0 looks north (-Z), along its own front. */
   faceTo(heading: number): void
   /** Cross-fade to this clip. An unknown name is ignored by the cast, never thrown. */
   play(clip: string): void
@@ -39,7 +39,7 @@ export interface WalkerView {
   /** Metres. */
   readonly x: number
   readonly z: number
-  /** Yaw in radians about Y, 0 looking north. */
+  /** Three.js `rotation.y`: 0 looks north (-Z), and it points the body along the way it is walking. */
   readonly heading: number
   readonly state: WalkerState
   readonly clip: string

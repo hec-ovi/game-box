@@ -57,3 +57,16 @@ export function testTown(seed = 'crowd-town'): World {
   }
   return world
 }
+
+/**
+ * One pavement running east-west with roadway either side: the narrowest place
+ * two people have to pass each other, and the only ground the crowd will spawn
+ * on, so a test knows exactly which row everybody is standing in.
+ */
+export function corridor(cells = 60, seed = 'crowd-corridor'): World {
+  const world = World.create({ name: 'Corridor', theme: 'test', seed, width: cells, height: 5 })
+  world.paint({ x: 0, y: 1, w: cells, h: 1 }, 'street')
+  world.paint({ x: 0, y: 2, w: cells, h: 1 }, 'sidewalk')
+  world.paint({ x: 0, y: 3, w: cells, h: 1 }, 'street')
+  return world
+}

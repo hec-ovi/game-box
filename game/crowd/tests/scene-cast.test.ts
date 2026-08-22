@@ -1,36 +1,8 @@
-import type { CastMember } from '@gb/cast'
 import type { Npc } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { SceneCast, type CastSpawner } from '../src/index.ts'
-
-/** The cast without the art pack: same `spawn`, an empty object instead of a body. */
-class StubCast implements CastSpawner {
-  readonly spawned: Npc[] = []
-
-  spawn(npc: Npc, doing = ''): CastMember {
-    this.spawned.push(npc)
-    const object = new THREE.Object3D()
-    object.name = `${npc.appearance.base}/${npc.appearance.variant}`
-    let playing = doing
-    return {
-      npcId: npc.id,
-      object,
-      outfit: 'stub',
-      play: (clip: string) => {
-        playing = clip
-      },
-      get playing() {
-        return playing
-      },
-      gesture: () => {},
-      stopGesture: () => {},
-      gesturing: undefined,
-      lookAt: () => {},
-      lookAway: () => {},
-    }
-  }
-}
+import { SceneCast } from '../src/index.ts'
+import { StubCast } from './support/stub-cast.ts'
 
 function walkerNpc(id: string, base: 'male' | 'female', variant: number): Npc {
   return {
