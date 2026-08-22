@@ -1,0 +1,40 @@
+{
+  "bodies": {
+    "male": "quaternius-ubc/extracted/Universal Base Characters[Standard]/Base Characters/Godot - UE/Superhero_Male_FullBody.gltf",
+    "female": "quaternius-ubc/extracted/Universal Base Characters[Standard]/Base Characters/Godot - UE/Superhero_Female_FullBody.gltf"
+  },
+  "outfits": [
+    {
+      "id": "male-peasant",
+      "body": "male",
+      "dir": "quaternius-outfits/extracted/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Modular Parts",
+      "parts": ["Male_Peasant_Body", "Male_Peasant_Arms", "Male_Peasant_Legs", "Male_Peasant_Feet"],
+      "roles": ["bartender", "patron", "clerk", "resident", "cook", "vendor", "receptionist"],
+      "themes": ["village", "harbour", "market", "medieval", "fantasy", "rural"]
+    },
+    {
+      "id": "female-peasant",
+      "body": "female",
+      "dir": "quaternius-outfits/extracted/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Modular Parts",
+      "parts": ["Female_Peasant_Body", "Female_Peasant_Arms", "Female_Peasant_Legs", "Female_Peasant_Feet"],
+      "roles": ["bartender", "patron", "clerk", "resident", "cook", "vendor", "receptionist"],
+      "themes": ["village", "harbour", "market", "medieval", "fantasy", "rural"]
+    },
+    {
+      "id": "male-ranger",
+      "body": "male",
+      "dir": "quaternius-outfits/extracted/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Modular Parts",
+      "parts": ["Male_Ranger_Body", "Male_Ranger_Arms", "Male_Ranger_Legs", "Male_Ranger_Feet_Boots"],
+      "roles": ["guard", "courier", "wanderer", "mechanic", "worker"],
+      "themes": ["forest", "frontier", "wilderness", "mountain", "road", "expedition"]
+    },
+    {
+      "id": "female-ranger",
+      "body": "female",
+      "dir": "quaternius-outfits/extracted/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Modular Parts",
+      "parts": ["Female_Ranger_Body", "Female_Ranger_Arms", "Female_Ranger_Legs", "Female_Ranger_Feet"],
+      "roles": ["guard", "courier", "wanderer", "mechanic", "worker"],
+      "themes": ["forest", "frontier", "wilderness", "mountain", "road", "expedition"]
+    }
+  ]
+}

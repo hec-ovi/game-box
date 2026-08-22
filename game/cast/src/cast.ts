@@ -1,43 +1,37 @@
-import type { AnchorKind, BodyKind, Npc } from '@gb/world'
+import type { AnchorKind, Npc } from '@gb/world'
 import * as THREE from 'three'
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js'
 import { CLIP_FOR_ANCHOR, CLIPS } from './clips.ts'
-
-export type CastError =
-  | { readonly code: 'unreadable-asset'; readonly what: string; readonly message: string }
-  | { readonly code: 'missing-clip'; readonly clips: readonly string[] }
-  | { readonly code: 'rig-mismatch'; readonly body: string; readonly message: string }
+import { CastError } from './error.ts'
+import { Person, type CastMember } from './member.ts'
+import { chooseCharacter, parseWardrobe, type Wardrobe } from './wardrobe.ts'
 
 export interface CastSource {
-  /** The shared clip library. */
+  /** The shared clip library, `anims.glb`. */
   readonly anims: ArrayBuffer
-  /** One body per `BODY_KIND`. */
-  readonly bodies: Readonly<Partial<Record<BodyKind, ArrayBuffer>>>
-  /** Clothes, by outfit name. Parts bind to the same skeleton as the bodies. */
-  readonly outfits?: Readonly<Record<string, ArrayBuffer>>
-}
-
-export interface CastMember {
-  readonly npcId: string
-  readonly object: THREE.Object3D
-  /** Cross-fade to a clip. Unknown names are ignored, never thrown. */
-  play(clip: string, fadeSeconds?: number): void
-  readonly playing: string | undefined
+  /** `wardrobe.json` from the pack, parsed but not checked. */
+  readonly wardrobe: unknown
+  /** Every character file the wardrobe names, keyed by its entry id. */
+  readonly characters: Readonly<Record<string, ArrayBuffer>>
 }
 
 /**
- * The people. One clip library and one body per kind are loaded once, then
- * every NPC is a clone sharing that geometry with its own skeleton and its own
- * mixer. Nothing here decides who stands where: it makes a person and plays
- * what they are doing.
+ * The people. One clip library and one dressed character per outfit are loaded
+ * once, then every NPC is a clone sharing that geometry with its own skeleton
+ * and its own mixer. Nothing here decides who stands where: it makes a person,
+ * dresses them for the part, and plays what they are doing.
  */
 export class Cast {
+  /** The world these people live in. Set it before the scene is built. */
+  theme = ''
+
   #clips = new Map<string, THREE.AnimationClip>()
-  #bodies = new Map<BodyKind, THREE.Object3D>()
-  #outfits = new Map<string, THREE.SkinnedMesh[]>()
-  #mixers: THREE.AnimationMixer[] = []
+  #additive = new Map<string, THREE.AnimationClip>()
+  #characters = new Map<string, THREE.Object3D>()
+  #wardrobe: Wardrobe = { characters: [] }
+  #people: Person[] = []
 
   private constructor() {}
 
@@ -50,110 +44,44 @@ export class Cast {
     const anims = await parse(loader, source.anims, 'the clip library')
     for (const clip of anims.animations) cast.#clips.set(clip.name, clip)
 
-    for (const [kind, buffer] of Object.entries(source.bodies) as Array<[BodyKind, ArrayBuffer]>) {
-      const body = await parse(loader, buffer, `the ${kind} body`)
-      cast.#bodies.set(kind, body.scene)
-    }
-
-    for (const [name, buffer] of Object.entries(source.outfits ?? {})) {
-      const outfit = await parse(loader, buffer, `the ${name} outfit`)
-      const parts: THREE.SkinnedMesh[] = []
-      outfit.scene.traverse((child) => {
-        if ((child as THREE.SkinnedMesh).isSkinnedMesh) parts.push(child as THREE.SkinnedMesh)
-      })
-      cast.#outfits.set(name, parts)
+    cast.#wardrobe = parseWardrobe(source.wardrobe)
+    for (const entry of cast.#wardrobe.characters) {
+      const buffer = source.characters[entry.id]
+      if (!buffer) throw new CastError('missing-character', entry.file, 'the wardrobe names it, the pack has not got it')
+      const character = await parse(loader, buffer, entry.file)
+      cast.#characters.set(entry.id, character.scene)
     }
     return cast
   }
 
-  outfits(): readonly string[] {
-    return [...this.#outfits.keys()]
+  /** The dressed characters this cast can spawn, by wardrobe id. */
+  characters(): readonly string[] {
+    return [...this.#characters.keys()]
   }
 
   clips(): readonly string[] {
     return [...this.#clips.keys()]
   }
 
-  bodies(): readonly BodyKind[] {
-    return [...this.#bodies.keys()]
-  }
-
   has(clip: string): boolean {
     return this.#clips.has(clip)
   }
 
-  /** A person, standing at the origin facing north, already doing something. */
+  /** A person, dressed for their role, standing at the origin facing north, already doing something. */
   spawn(npc: Npc, doing: string = CLIPS.idle): CastMember {
-    const source = this.#bodies.get(npc.appearance.base) ?? [...this.#bodies.values()][0]
-    if (!source) throw new Error('the cast has no bodies loaded')
+    const entry = chooseCharacter(this.#wardrobe, npc, this.theme)
+    const source = this.#characters.get(entry.id)
+    if (!source) throw new CastError('missing-character', entry.id, 'nothing loaded under that name')
 
     const object = cloneSkinned(source)
     object.name = npc.id
     object.userData.npcId = npc.id
-    this.#dress(object, npc)
+    object.userData.outfit = entry.id
 
-    const mixer = new THREE.AnimationMixer(object)
-    this.#mixers.push(mixer)
-
-    let playing: string | undefined
-    let action: THREE.AnimationAction | undefined
-
-    const member: CastMember = {
-      npcId: npc.id,
-      object,
-      get playing() {
-        return playing
-      },
-      play: (name, fadeSeconds = 0.25) => {
-        const clip = this.#clips.get(name)
-        if (!clip || name === playing) return
-        const next = mixer.clipAction(clip)
-        next.reset()
-        next.setLoop(THREE.LoopRepeat, Infinity)
-        // start somewhere else in the loop so a room of people is not one person
-        next.time = clip.duration * hash01(`${npc.id}/${name}`)
-        next.enabled = true
-        next.setEffectiveWeight(1)
-        if (action) next.crossFadeFrom(action, fadeSeconds, false)
-        next.play()
-        action = next
-        playing = name
-      },
-    }
-    member.play(doing, 0)
-    return member
-  }
-
-  /**
-   * Puts clothes on. The parts were rigged to the same skeleton as the body,
-   * so they only have to be bound to this person's copy of it.
-   */
-  #dress(object: THREE.Object3D, npc: Npc): void {
-    let host: THREE.SkinnedMesh | undefined
-    object.traverse((child) => {
-      const skinned = child as THREE.SkinnedMesh
-      if (skinned.isSkinnedMesh && !host) host = skinned
-    })
-    const skeleton = host?.skeleton
-
-    const names = [...this.#outfits.keys()].filter((name) =>
-      name.toLowerCase().startsWith(npc.appearance.base === 'female' ? 'female' : 'male'),
-    )
-    const outfit = names.length ? names[Math.floor(hash01(npc.id) * names.length)]! : undefined
-    const parts = outfit ? this.#outfits.get(outfit) : undefined
-    if (!host || !skeleton || !parts) return
-
-    for (const part of parts) {
-      const worn = new THREE.SkinnedMesh(part.geometry, part.material)
-      worn.name = part.name
-      worn.frustumCulled = false
-      worn.castShadow = true
-      // a sibling of the body's own skinned mesh, so the transform above them
-      // is the same one, and bound with the body's bind matrix
-      ;(host.parent ?? object).add(worn)
-      worn.bind(skeleton, host.bindMatrix)
-    }
-    object.userData.outfit = outfit
+    const person = new Person(npc, object, entry.id, this.#clips, this.#additive)
+    this.#people.push(person)
+    person.play(doing, 0)
+    return person
   }
 
   /** What somebody stationed on this kind of anchor is doing. */
@@ -162,27 +90,18 @@ export class Cast {
   }
 
   update(seconds: number): void {
-    for (const mixer of this.#mixers) mixer.update(seconds)
+    for (const person of this.#people) person.update(seconds)
   }
 }
 
 async function parse(loader: GLTFLoader, buffer: ArrayBuffer, what: string) {
   return new Promise<{ scene: THREE.Group; animations: THREE.AnimationClip[] }>((resolve, reject) => {
-    loader.parse(
-      buffer,
-      '',
-      (gltf) => resolve({ scene: gltf.scene, animations: gltf.animations }),
-      (cause) => reject(new Error(`${what}: ${String(cause)}`)),
-    )
+    const fail = (cause: unknown) => reject(new CastError('unreadable-asset', what, String(cause)))
+    // a truncated file throws out of parse instead of reaching the callback
+    try {
+      loader.parse(buffer, '', (gltf) => resolve({ scene: gltf.scene, animations: gltf.animations }), fail)
+    } catch (cause) {
+      fail(cause)
+    }
   })
-}
-
-/** A stable number in [0,1) from a string. */
-function hash01(text: string): number {
-  let hash = 2166136261
-  for (let i = 0; i < text.length; i++) {
-    hash ^= text.charCodeAt(i)
-    hash = Math.imul(hash, 16777619)
-  }
-  return (hash >>> 0) / 4294967296
 }

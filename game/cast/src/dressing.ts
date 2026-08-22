@@ -1,7 +1,8 @@
 import { Greybox, type Dressing } from '@gb/scene'
 import type { AnchorKind, CellKind, FurnitureProp, Item, Npc, Plot } from '@gb/world'
 import type * as THREE from 'three'
-import { Cast, type CastMember } from './cast.ts'
+import { Cast } from './cast.ts'
+import type { CastMember } from './member.ts'
 
 /**
  * The dressing that puts real people in the world. Everything that is not a

@@ -1,4 +1,7 @@
-/** @gb/cast: the people, their bodies and what they are doing. See CONTRACT.md. */
-export { Cast, type CastMember, type CastSource, type CastError } from './cast.ts'
+/** @gb/cast: the people, their bodies, their clothes and what they are doing. See CONTRACT.md. */
+export { Cast, type CastSource } from './cast.ts'
+export { type CastMember } from './member.ts'
+export { CastError, type CastErrorCode } from './error.ts'
 export { CLIP_FOR_ANCHOR, CLIPS, clipsUsed } from './clips.ts'
 export { CastDressing } from './dressing.ts'
+export { parseWardrobe, chooseCharacter, type Wardrobe, type WardrobeEntry } from './wardrobe.ts'
