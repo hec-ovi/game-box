@@ -13,7 +13,7 @@ import type { Interior, World } from '@gb/world'
 import * as THREE from 'three'
 import { Player } from './player.ts'
 import { createStage, type Stage } from './renderer.ts'
-import { citySolid, interiorSolid } from './solids.ts'
+import { cityGround, citySolid, interiorSolid } from './solids.ts'
 import { pick, type Target } from './targets.ts'
 
 type Place = { kind: 'city' } | { kind: 'interior'; interior: Interior; plotId: string }
@@ -64,6 +64,7 @@ export class Game {
     this.#city = buildCity(this.#world, this.#dressing)
     this.#stage.show(this.#city.root)
     this.#body = new Player(this.#stage.camera, this.#stage.renderer.domElement, citySolid(this.#world))
+    this.#body.setGround(cityGround(this.#world))
     this.#body.placeAt(this.#city.spawn.x, this.#city.spawn.z, this.#city.spawn.heading)
 
     if (this.#cast) {
@@ -251,6 +252,7 @@ export class Game {
     this.#place = { kind: 'interior', interior, plotId }
     this.#stage.show(built.root)
     this.#body.setSolid(interiorSolid(interior))
+    this.#body.setGround(() => 0)
     const step = 1.2
     this.#body.placeAt(
       built.entrance.x + built.inward.x * step,
@@ -268,6 +270,7 @@ export class Game {
     this.#place = { kind: 'city' }
     this.#stage.show(this.#city.root)
     this.#body.setSolid(citySolid(this.#world))
+    this.#body.setGround(cityGround(this.#world))
     if (doorstep) this.#body.placeAt(doorstep.x, doorstep.z)
   }
 

@@ -1,6 +1,7 @@
 import { METRICS } from '@gb/world'
 import * as THREE from 'three'
 import { slide, step, type Solid, type Vec2 } from './walk.ts'
+import { Body } from './stance.ts'
 import { Zoom } from './zoom.ts'
 
 const LOOK_SPEED = 0.0022
@@ -20,6 +21,8 @@ export class Player {
   #held = new Set<string>()
   #typing = false
   #zoom = new Zoom()
+  #stance = new Body()
+  #ground: (x: number, z: number) => number = () => 0
 
   constructor(camera: THREE.PerspectiveCamera, element: HTMLElement, solid: Solid) {
     this.#camera = camera
@@ -51,6 +54,11 @@ export class Player {
     this.#solid = solid
   }
 
+  /** How high the floor is under a point. Flat indoors, kerbed outdoors. */
+  setGround(ground: (x: number, z: number) => number): void {
+    this.#ground = ground
+  }
+
   /** While the player is typing, the keys belong to the text box. */
   setTyping(typing: boolean): void {
     this.#typing = typing
@@ -68,7 +76,7 @@ export class Player {
   }
 
   placeAt(x: number, z: number, facing = this.#yaw): void {
-    this.#camera.position.set(x, METRICS.player.eyeHeight, z)
+    this.#camera.position.set(x, this.#ground(x, z) + METRICS.player.eyeHeight, z)
     this.#yaw = facing
     this.#pitch = 0
     this.#apply()
@@ -80,6 +88,10 @@ export class Player {
       this.#camera.updateProjectionMatrix()
     }
 
+    this.#stance.crouching = this.#down_('KeyC')
+    this.#stance.update(seconds, this.#ground(this.#camera.position.x, this.#camera.position.z))
+    this.#camera.position.y = this.#stance.eye
+
     const input = {
       forward: (this.#down_('KeyW') ? 1 : 0) - (this.#down_('KeyS') ? 1 : 0),
       strafe: (this.#down_('KeyD') ? 1 : 0) - (this.#down_('KeyA') ? 1 : 0),
@@ -87,7 +99,7 @@ export class Player {
     }
     if (!input.forward && !input.strafe) return
 
-    const delta = step(input, this.#yaw, seconds)
+    const delta = step(input, this.#yaw, seconds, this.#stance.speedScale)
     const moved = slide(this.position, delta, this.#solid)
     this.#camera.position.x = moved.x
     this.#camera.position.z = moved.z
@@ -115,6 +127,10 @@ export class Player {
 
   #down = (event: KeyboardEvent): void => {
     if (this.#typing) return
+    if (event.code === 'Space') {
+      event.preventDefault()
+      this.#stance.jump()
+    }
     this.#held.add(event.code)
   }
 
@@ -124,7 +140,6 @@ export class Player {
 
   #apply(): void {
     this.#camera.rotation.set(this.#pitch, this.#yaw, 0, 'YXZ')
-    this.#camera.position.y = METRICS.player.eyeHeight
   }
 }
 

@@ -2,6 +2,18 @@ import type { Interior, World } from '@gb/world'
 import { METRICS } from '@gb/world'
 import type { Solid } from './walk.ts'
 
+/**
+ * How high the ground is under a point outside. The pavement stands a kerb
+ * above the road, so walking onto it is a step up rather than a clip through.
+ */
+export function cityGround(world: World): (x: number, z: number) => number {
+  const size = world.cellSize
+  return (x, z) => {
+    const kind = world.grid.at(Math.floor(x / size), Math.floor(z / size))
+    return kind === 'sidewalk' || kind === 'park' ? METRICS.street.curbHeight : 0
+  }
+}
+
 /** Outside: buildings, mountains and water are solid; everything else is walkable. */
 export function citySolid(world: World): Solid {
   const size = world.cellSize

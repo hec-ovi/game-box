@@ -35,11 +35,16 @@ export function blocked(x: number, z: number, solid: Solid, radius = METRICS.pla
 }
 
 /** How far the body moves this frame, from what is held down and where it is looking. */
-export function step(input: { forward: number; strafe: number; running: boolean }, heading: number, seconds: number): Vec2 {
+export function step(
+  input: { forward: number; strafe: number; running: boolean },
+  heading: number,
+  seconds: number,
+  scale = 1,
+): Vec2 {
   const length = Math.hypot(input.forward, input.strafe)
   if (length === 0) return { x: 0, z: 0 }
 
-  const speed = (input.running ? METRICS.player.runSpeed : METRICS.player.walkSpeed) * seconds
+  const speed = (input.running ? METRICS.player.runSpeed : METRICS.player.walkSpeed) * seconds * scale
   const forward = (input.forward / length) * speed
   const strafe = (input.strafe / length) * speed
 
