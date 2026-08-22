@@ -18,6 +18,7 @@ The game you can play: the renderer, the frame loop, the first-person body, and 
 | Param | Schema | Postconditions |
 |---|---|---|
 | the running game | | walk, look, go into buildings, talk, take, carry, deliver |
+| the controls | | mouse looks, WASD walks, shift runs, E acts on what is in reach, right button held looks closer, Escape leaves a conversation |
 | `tick(seconds)` | | advances and draws one frame by hand, for when the browser suspends the loop |
 | `look()` | plain record | where the player is and what they could act on, for the console |
 
@@ -34,6 +35,7 @@ None at the boundary: a missing asset pack is a duller city, not a blank screen,
 - This box holds no rules. Quests advance in `@gb/quest`, inventory changes in `@gb/play`, conversations happen in `@gb/talk`, geometry is built in `@gb/scene`. Everything here is wiring, input and frames.
 - One unit is one metre, and the walls come from the same grid the city was generated on: no physics engine, no baked collision.
 - The player is placed on the pavement facing the first door in town, and entering a building puts them inside it facing the room.
+- Looking closer narrows the field of view and slows the mouse by the same amount, so the same hand movement covers the same distance on screen however far in you are.
 
 ## How to modify this blackbox safely
 

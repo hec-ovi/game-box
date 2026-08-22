@@ -1,6 +1,7 @@
 import { METRICS } from '@gb/world'
 import * as THREE from 'three'
 import { slide, step, type Solid, type Vec2 } from './walk.ts'
+import { Zoom } from './zoom.ts'
 
 const LOOK_SPEED = 0.0022
 const PITCH_LIMIT = Math.PI / 2 - 0.05
@@ -18,7 +19,7 @@ export class Player {
   #pitch = 0
   #held = new Set<string>()
   #typing = false
-  #onLook?: () => void
+  #zoom = new Zoom()
 
   constructor(camera: THREE.PerspectiveCamera, element: HTMLElement, solid: Solid) {
     this.#camera = camera
@@ -31,12 +32,18 @@ export class Player {
     document.addEventListener('mousemove', this.#look)
     document.addEventListener('keydown', this.#down)
     document.addEventListener('keyup', this.#up)
+    document.addEventListener('mousedown', this.#press)
+    document.addEventListener('mouseup', this.#release)
+    // the right button is a game control here, not a menu
+    element.addEventListener('contextmenu', (event) => event.preventDefault())
   }
 
   dispose(): void {
     document.removeEventListener('mousemove', this.#look)
     document.removeEventListener('keydown', this.#down)
     document.removeEventListener('keyup', this.#up)
+    document.removeEventListener('mousedown', this.#press)
+    document.removeEventListener('mouseup', this.#release)
   }
 
   /** Where the walls are now: the street outside, or the room you just entered. */
@@ -48,6 +55,7 @@ export class Player {
   setTyping(typing: boolean): void {
     this.#typing = typing
     this.#held.clear()
+    this.#zoom.close = false
     if (typing && document.pointerLockElement === this.#element) document.exitPointerLock()
   }
 
@@ -67,6 +75,11 @@ export class Player {
   }
 
   update(seconds: number): void {
+    if (this.#zoom.update(seconds)) {
+      this.#camera.fov = this.#zoom.fov
+      this.#camera.updateProjectionMatrix()
+    }
+
     const input = {
       forward: (this.#down_('KeyW') ? 1 : 0) - (this.#down_('KeyS') ? 1 : 0),
       strafe: (this.#down_('KeyD') ? 1 : 0) - (this.#down_('KeyA') ? 1 : 0),
@@ -86,10 +99,18 @@ export class Player {
 
   #look = (event: MouseEvent): void => {
     if (document.pointerLockElement !== this.#element) return
-    this.#yaw -= event.movementX * LOOK_SPEED
-    this.#pitch = clamp(this.#pitch - event.movementY * LOOK_SPEED, -PITCH_LIMIT, PITCH_LIMIT)
+    const speed = LOOK_SPEED * this.#zoom.lookScale
+    this.#yaw -= event.movementX * speed
+    this.#pitch = clamp(this.#pitch - event.movementY * speed, -PITCH_LIMIT, PITCH_LIMIT)
     this.#apply()
-    this.#onLook?.()
+  }
+
+  #press = (event: MouseEvent): void => {
+    if (event.button === 2 && !this.#typing) this.#zoom.close = true
+  }
+
+  #release = (event: MouseEvent): void => {
+    if (event.button === 2) this.#zoom.close = false
   }
 
   #down = (event: KeyboardEvent): void => {
