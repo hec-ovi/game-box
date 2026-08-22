@@ -66,6 +66,11 @@ async fn chat(body: String) -> Response {
     if let Some(m) = request.get("model") {
         llm_request["model"] = m.clone();
     }
+    for passthrough in ["tools", "tool_choice"] {
+        if let Some(v) = request.get(passthrough) {
+            llm_request[passthrough] = v.clone();
+        }
+    }
 
     let stream = match gb_llm::generate(llm_request).await {
         Ok(s) => s,
@@ -88,6 +93,11 @@ async fn chat(body: String) -> Response {
                         "id": id, "object": "chat.completion.chunk", "created": created, "model": model,
                         "choices": [{"index": 0, "delta": {"content": evt["text"]}, "finish_reason": null}]
                     })
+                } else if evt["type"] == "tool-call" {
+                    json!({
+                        "id": id, "object": "chat.completion.chunk", "created": created, "model": model,
+                        "choices": [{"index": 0, "delta": {"tool_calls": [tool_call(&evt)]}, "finish_reason": null}]
+                    })
                 } else {
                     json!({
                         "id": id, "object": "chat.completion.chunk", "created": created, "model": model,
@@ -108,18 +118,44 @@ async fn chat(body: String) -> Response {
         .filter(|e| e["type"] == "token")
         .filter_map(|e| e["text"].as_str())
         .collect();
-    let finish = events
-        .iter()
-        .rev()
-        .find(|e| e["type"] == "done")
-        .map(|e| e["finishReason"].clone())
-        .unwrap_or_else(|| json!("stop"));
+    let calls: Vec<Value> = events.iter().filter(|e| e["type"] == "tool-call").map(tool_call).collect();
+    let finish = if calls.is_empty() {
+        events
+            .iter()
+            .rev()
+            .find(|e| e["type"] == "done")
+            .map(|e| e["finishReason"].clone())
+            .unwrap_or_else(|| json!("stop"))
+    } else {
+        json!("tool_calls")
+    };
+
+    let mut message = json!({"role": "assistant"});
+    if calls.is_empty() {
+        message["content"] = json!(content);
+    } else {
+        message["tool_calls"] = json!(calls);
+    }
 
     Json(json!({
         "id": id, "object": "chat.completion", "created": created, "model": model,
-        "choices": [{"index": 0, "message": {"role": "assistant", "content": content}, "finish_reason": finish}]
+        "choices": [{"index": 0, "message": message, "finish_reason": finish}]
     }))
     .into_response()
+}
+
+/// A gb-llm tool-call event in the OpenAI shape: arguments as JSON text.
+fn tool_call(event: &Value) -> Value {
+    static N: AtomicU64 = AtomicU64::new(1);
+    let id = event["id"]
+        .as_str()
+        .map(str::to_string)
+        .unwrap_or_else(|| format!("call_gb{}", N.fetch_add(1, Ordering::Relaxed)));
+    json!({
+        "id": id,
+        "type": "function",
+        "function": {"name": event["name"], "arguments": event["arguments"].to_string()}
+    })
 }
 
 async fn realtime(ws: WebSocketUpgrade) -> Response {

@@ -4,23 +4,123 @@
   "title": "POST /v1/chat/completions request (OpenAI-compatible subset)",
   "type": "object",
   "properties": {
-    "model": { "type": "string" },
+    "model": {
+      "type": "string"
+    },
     "messages": {
       "type": "array",
       "minItems": 1,
       "items": {
         "type": "object",
         "properties": {
-          "role": { "enum": ["system", "user", "assistant"] },
-          "content": { "type": "string" }
+          "role": {
+            "enum": [
+              "system",
+              "user",
+              "assistant"
+            ]
+          },
+          "content": {
+            "type": "string"
+          }
         },
-        "required": ["role", "content"],
+        "required": [
+          "role",
+          "content"
+        ],
         "additionalProperties": false
       }
     },
-    "stream": { "type": "boolean" },
-    "temperature": { "type": "number", "minimum": 0, "maximum": 2 }
+    "stream": {
+      "type": "boolean"
+    },
+    "temperature": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 2
+    },
+    "tools": {
+      "type": "array",
+      "description": "Callable tools. The model answers by calling one instead of writing prose.",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "const": "function"
+          },
+          "function": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "description": {
+                "type": "string"
+              },
+              "parameters": {
+                "type": "object",
+                "description": "JSON Schema for the arguments"
+              }
+            },
+            "required": [
+              "name",
+              "parameters"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "type",
+          "function"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "tool_choice": {
+      "description": "auto lets the model decide, required forces some call, or name the one tool it must call.",
+      "oneOf": [
+        {
+          "enum": [
+            "auto",
+            "none",
+            "required"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "function"
+            },
+            "function": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "type",
+            "function"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
   },
-  "required": ["messages"],
+  "required": [
+    "messages"
+  ],
   "additionalProperties": false
 }

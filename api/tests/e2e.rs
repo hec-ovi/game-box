@@ -161,3 +161,105 @@ async fn realtime_streams_partials_final_and_survives_bad_input() {
     assert!(server_validator.is_valid(&done));
     assert_eq!(done, json!({"type": "transcription.completed", "text": "heard 1500ms total"}));
 }
+
+/// The tool a caller offers when it wants structured data rather than prose.
+fn name_city_tool() -> Value {
+    json!({
+        "tools": [{
+            "type": "function",
+            "function": {
+                "name": "name_city",
+                "description": "Name the city",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"name": {"type": "string"}},
+                    "required": ["name"],
+                    "additionalProperties": false
+                }
+            }
+        }],
+        "tool_choice": {"type": "function", "function": {"name": "name_city"}}
+    })
+}
+
+fn with_messages(mut request: Value, content: &str) -> Value {
+    request["messages"] = json!([{"role": "user", "content": content}]);
+    request
+}
+
+#[tokio::test]
+async fn chat_answers_a_forced_tool_call_as_tool_calls() {
+    let addr = spawn_server().await;
+    let resp = reqwest::Client::new()
+        .post(format!("http://{addr}/v1/chat/completions"))
+        .json(&with_messages(name_city_tool(), "name a western town"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), 200);
+
+    let body: Value = resp.json().await.unwrap();
+    assert!(
+        validator(include_str!("../schema/chat-response.json")).is_valid(&body),
+        "response off-contract: {body}"
+    );
+    let choice = &body["choices"][0];
+    assert_eq!(choice["finish_reason"], "tool_calls");
+    let call = &choice["message"]["tool_calls"][0];
+    assert_eq!(call["type"], "function");
+    assert_eq!(call["function"]["name"], "name_city");
+    // arguments cross as JSON text, as the OpenAI shape requires
+    let arguments: Value = serde_json::from_str(call["function"]["arguments"].as_str().unwrap()).unwrap();
+    assert!(arguments.is_object());
+    assert!(choice["message"]["content"].is_null());
+}
+
+#[tokio::test]
+async fn streaming_chat_sends_the_tool_call_as_a_chunk() {
+    let addr = spawn_server().await;
+    let mut request = with_messages(name_city_tool(), "name a western town");
+    request["stream"] = json!(true);
+
+    let body = reqwest::Client::new()
+        .post(format!("http://{addr}/v1/chat/completions"))
+        .json(&request)
+        .send()
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
+
+    let chunk_validator = validator(include_str!("../schema/chat-stream-event.json"));
+    let mut saw_call = false;
+    for line in body.lines().filter_map(|l| l.strip_prefix("data: ")) {
+        if line == "[DONE]" {
+            continue;
+        }
+        let chunk: Value = serde_json::from_str(line).unwrap();
+        assert!(chunk_validator.is_valid(&chunk), "chunk off-contract: {chunk}");
+        if chunk["choices"][0]["delta"]["tool_calls"][0]["function"]["name"] == "name_city" {
+            saw_call = true;
+        }
+    }
+    assert!(saw_call, "the stream never carried the tool call");
+    assert!(body.trim_end().ends_with("data: [DONE]"));
+}
+
+#[tokio::test]
+async fn a_malformed_tool_definition_is_refused() {
+    let addr = spawn_server().await;
+    let resp = reqwest::Client::new()
+        .post(format!("http://{addr}/v1/chat/completions"))
+        .json(&json!({
+            "messages": [{"role": "user", "content": "hi"}],
+            "tools": [{"type": "function", "function": {"name": "no_parameters"}}]
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), 400);
+    let body: Value = resp.json().await.unwrap();
+    assert!(validator(include_str!("../schema/error.json")).is_valid(&body), "error off-contract: {body}");
+    assert_eq!(body["error"]["type"], "invalid_request_error");
+}

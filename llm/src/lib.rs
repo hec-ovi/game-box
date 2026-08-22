@@ -68,6 +68,16 @@ mod standin {
             .and_then(|m| m["content"].as_str())
             .unwrap_or("")
             .to_string();
+        // Asked for a tool call, the stand-in makes the call with no arguments:
+        // the caller's own schema is then what rejects it, rather than prose
+        // being read as data.
+        if let Some(name) = forced_tool(req) {
+            return stream::iter(vec![
+                json!({"type": "tool-call", "name": name, "arguments": {}}),
+                json!({"type": "done", "finishReason": "stop"}),
+            ])
+            .boxed();
+        }
         let text = format!("You said: {last_user}");
         let mut events: Vec<Value> = text
             .split_inclusive(' ')
@@ -76,10 +86,62 @@ mod standin {
         events.push(json!({"type": "done", "finishReason": "stop"}));
         stream::iter(events).boxed()
     }
+
+    /// The tool the request insists on, if it insists on one.
+    fn forced_tool(req: &Value) -> Option<String> {
+        let named = req["tool_choice"]["function"]["name"].as_str();
+        if let Some(name) = named {
+            return Some(name.to_string());
+        }
+        let required = req["tool_choice"].as_str() == Some("required");
+        if !required {
+            return None;
+        }
+        req["tools"][0]["function"]["name"].as_str().map(str::to_string)
+    }
 }
 
 mod upstream {
     use super::*;
+
+    /// A tool call being assembled from stream deltas.
+    #[derive(Default)]
+    pub struct PendingCall {
+        id: Option<String>,
+        name: String,
+        arguments: String,
+    }
+
+    impl PendingCall {
+        fn absorb(&mut self, delta: &Value) {
+            if let Some(id) = delta["id"].as_str() {
+                self.id = Some(id.to_string());
+            }
+            if let Some(name) = delta["function"]["name"].as_str() {
+                self.name.push_str(name);
+            }
+            if let Some(args) = delta["function"]["arguments"].as_str() {
+                self.arguments.push_str(args);
+            }
+        }
+
+        /// An event only if the call is named and its arguments are a JSON object.
+        fn finish(self) -> Option<Value> {
+            if self.name.is_empty() {
+                return None;
+            }
+            let text = if self.arguments.trim().is_empty() { "{}" } else { self.arguments.trim() };
+            let parsed: Value = serde_json::from_str(text).ok()?;
+            if !parsed.is_object() {
+                return None;
+            }
+            let mut event = json!({"type": "tool-call", "name": self.name, "arguments": parsed});
+            if let Some(id) = self.id {
+                event["id"] = json!(id);
+            }
+            Some(event)
+        }
+    }
 
     pub async fn generate(base: String, req: &Value) -> Result<BoxStream<'static, Value>, LlmError> {
         // No output-length cap is ever sent: the model must finish naturally.
@@ -90,6 +152,12 @@ mod upstream {
         });
         if let Some(t) = req.get("temperature") {
             body["temperature"] = t.clone();
+        }
+        if let Some(tools) = req.get("tools") {
+            body["tools"] = tools.clone();
+        }
+        if let Some(choice) = req.get("tool_choice") {
+            body["tool_choice"] = choice.clone();
         }
 
         let resp = reqwest::Client::new()
@@ -105,6 +173,9 @@ mod upstream {
         let mut bytes = resp.bytes_stream();
         let s = async_stream::stream! {
             let mut buf = String::new();
+            // A tool call arrives split across deltas; it is only an event once
+            // it is whole and its arguments parse.
+            let mut call: Option<PendingCall> = None;
             while let Some(chunk) = bytes.next().await {
                 let Ok(chunk) = chunk else {
                     yield json!({"type": "done", "finishReason": "error"});
@@ -116,6 +187,9 @@ mod upstream {
                     buf.drain(..=pos);
                     let Some(data) = line.strip_prefix("data: ") else { continue };
                     if data == "[DONE]" {
+                        if let Some(event) = call.take().and_then(PendingCall::finish) {
+                            yield event;
+                        }
                         yield json!({"type": "done", "finishReason": "stop"});
                         return;
                     }
@@ -125,8 +199,21 @@ mod upstream {
                             yield json!({"type": "token", "text": t});
                         }
                     }
+                    for delta in v["choices"][0]["delta"]["tool_calls"].as_array().into_iter().flatten() {
+                        let pending = call.get_or_insert_with(PendingCall::default);
+                        pending.absorb(delta);
+                    }
                     if let Some(fr) = v["choices"][0]["finish_reason"].as_str() {
-                        let reason = if fr == "length" { "length" } else { "stop" };
+                        let finished = call.take().and_then(PendingCall::finish);
+                        let unparseable = fr == "tool_calls" && finished.is_none();
+                        if let Some(event) = finished {
+                            yield event;
+                        }
+                        let reason = match fr {
+                            "length" => "length",
+                            _ if unparseable => "error",
+                            _ => "stop",
+                        };
                         yield json!({"type": "done", "finishReason": reason});
                         return;
                     }

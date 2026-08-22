@@ -10,17 +10,17 @@ Turn a chat-message list into a stream of generated text tokens.
 
 | Param | Schema | Preconditions |
 |---|---|---|
-| `request` | [schema/generate-request.json](schema/generate-request.json) | `messages` non-empty; roles limited to system/user/assistant |
+| `request` | [schema/generate-request.json](schema/generate-request.json) | `messages` non-empty; roles limited to system/user/assistant; `tools` each carry a name and a JSON Schema for their arguments; `tool_choice` may name the one tool that must be called |
 
 ## Outputs
 
 | Param | Schema | Postconditions |
 |---|---|---|
-| stream of `token-event` | [schema/token-event.json](schema/token-event.json) | zero or more `token` events, then exactly one `done` event; stream ends after `done` |
+| stream of `token-event` | [schema/token-event.json](schema/token-event.json) | zero or more `token` or `tool-call` events, then exactly one `done` event; stream ends after `done` |
 
 ## Events
 
-The output stream itself is the event surface; no other events.
+`token` (a piece of text), `tool-call` (a whole call with parsed arguments) and `done`. The stream itself is the event surface; no other events.
 
 ## Errors (closed set)
 
@@ -35,8 +35,9 @@ None (no other layer contracts).
 
 - Every emitted event validates against `schema/token-event.json`; non-conforming events are dropped at the boundary (fail closed).
 - Exactly one `done` event terminates every successful stream.
+- A tool call crosses this boundary whole or not at all: fragments are assembled internally, arguments must parse as a JSON object, and a call that never completes ends the stream with `finishReason: "error"` instead of handing over half a call.
 - No output-length cap is ever sent to any engine (no max_tokens or equivalent); generation ends naturally.
-- Engine selection is internal: `GAME_BOX_LLM_UPSTREAM` set means proxy to that OpenAI-compatible server; unset means the deterministic stand-in (reply `You said: <last user message>`).
+- Engine selection is internal: `GAME_BOX_LLM_UPSTREAM` set means proxy to that OpenAI-compatible server; unset means the deterministic stand-in (reply `You said: <last user message>`, or the forced tool called with no arguments, so the caller's own schema is what rejects it).
 
 ## How to modify this blackbox safely
 
