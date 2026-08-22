@@ -92,6 +92,11 @@ export class Space {
     for (const body of bodies) this.add(body)
   }
 
+  /** The player, as the crowd sees them: where they are standing and how fast they got there. */
+  get viewer(): Body {
+    return this.#viewer
+  }
+
   /** A body that appeared after `begin`, so the next one to spawn can see it. */
   add(body: Body): void {
     this.#bucketAt(body.x, body.z).push(body)

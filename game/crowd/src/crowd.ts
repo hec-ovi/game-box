@@ -1,14 +1,28 @@
 import { Rng } from '@gb/kit'
-import { METRICS, type World } from '@gb/world'
+import { METRICS, type Npc, type World } from '@gb/world'
+import { Follower } from './follower.ts'
 import { distance } from './geometry.ts'
 import { Ground } from './ground.ts'
+import { Kerb } from './kerb.ts'
 import { resolveOptions, type CrowdOptions } from './options.ts'
 import { Pavement } from './pavement.ts'
 import { pedestrian } from './people.ts'
-import { Kerb } from './kerb.ts'
-import type { CrowdCast, CrowdNav, Hazards, Point, WalkerView } from './ports.ts'
+import type { CrowdActor, CrowdCast, CrowdNav, Hazards, Point, WalkerView } from './ports.ts'
 import { Space } from './space.ts'
 import { Walker } from './walker.ts'
+
+/** Somebody who walks with the player until the game says otherwise. */
+export interface Companion {
+  /** Who they are. Their id is what `stopFollowing` takes, and what `following()` reports. */
+  readonly npc: Npc
+  /** Where they are standing when they set off. Defaults to where the player is. */
+  readonly at?: Point
+  /** A body the game already has for them. With none, the crowd asks its cast for one and gives it back later. */
+  readonly actor?: CrowdActor
+}
+
+/** Where a companion stands relative to the way the player is going: behind, then fanned out either side. */
+const FAN = [0, 0.6, -0.6, 1.2, -1.2]
 
 export interface CrowdDeps {
   readonly world: World
@@ -36,7 +50,15 @@ export class Crowd {
   #kerb: Kerb
   #rng: Rng
   #walkers: Walker[] = []
+  #followers: Follower[] = []
+  /** Everybody the steering has to know about, rebuilt each frame rather than allocated. */
+  #bodies: (Walker | Follower)[] = []
   #serial = 0
+  /** The way the player was last seen going, so companions keep to the same side when the player stops. */
+  #wayX = 0
+  #wayZ = 1
+  /** The spot a companion is walking to, filled in per companion rather than allocated. */
+  #slot = { x: 0, z: 0 }
   /** The next walker's stream, kept between attempts so a blocked spot is not drawn again forever. */
   #pending: Rng | undefined
 
@@ -64,20 +86,100 @@ export class Crowd {
     return this.#walkers.map((walker) => walker.view())
   }
 
+  /** Who is walking with the player, in the order they joined. Their ids are their NPC ids. */
+  following(): readonly WalkerView[] {
+    return this.#followers.map((follower) => follower.view())
+  }
+
+  /**
+   * Somebody comes along with the player. Following twice is following once.
+   * They are never retired by distance, so they last as long as this crowd
+   * does; `clear()` sends them home with everybody else.
+   */
+  follow(who: Companion): void {
+    this.stopFollowing(who.npc.id)
+    const at = who.at ?? { x: this.#space.viewer.x, z: this.#space.viewer.z }
+    const walker = new Walker({
+      id: who.npc.id,
+      actor: who.actor ?? this.#cast.spawn(who.npc),
+      ground: this.#ground,
+      space: this.#space,
+      kerb: this.#kerb,
+      at,
+      speed: METRICS.player.walkSpeed,
+      turnRate: this.options.turnRate,
+      stuckSeconds: this.options.stuckSeconds,
+      rng: this.#rng.fork(`companion/${who.npc.id}`),
+      pauseMin: 0,
+      pauseMax: 0,
+    })
+    const deps = { nav: this.#nav, ground: this.#ground, space: this.#space, options: this.options, owned: !who.actor }
+    this.#followers.push(new Follower(who.npc.id, walker, deps))
+  }
+
+  /** They stop walking with the player. A body the crowd spawned goes back to the cast; one the game handed over does not. */
+  stopFollowing(npcId: string): void {
+    const index = this.#followers.findIndex((follower) => follower.npcId === npcId)
+    if (index === -1) return
+    this.#followers.splice(index, 1)[0]!.release()
+  }
+
   /** One frame: retire, walk, re-route, top up. In that order, so a fresh walker is never retired unwalked. */
   update(seconds: number, viewer: Point): void {
     const step = Math.min(Math.max(seconds, 0), this.options.maxStep)
     this.#retire(viewer)
-    this.#space.begin(this.#walkers, viewer, step)
+    this.#space.begin(this.#everybody(), viewer, step)
     for (const walker of this.#walkers) walker.advance(step)
+    this.#escort(step)
     this.#route()
     this.#populate(viewer)
   }
 
-  /** Send everyone home. The cast gets every body back. */
+  /** Send everyone home, companions included. The cast gets every body back. */
   clear(): void {
     for (const walker of this.#walkers) walker.release()
     this.#walkers.length = 0
+    for (const follower of this.#followers) follower.release()
+    this.#followers.length = 0
+  }
+
+  /** Walkers and companions together: everybody the steering has to keep apart. */
+  #everybody(): readonly Walker[] {
+    const bodies = this.#bodies
+    bodies.length = 0
+    for (const walker of this.#walkers) bodies.push(walker)
+    for (const follower of this.#followers) bodies.push(follower.walker)
+    return bodies as readonly Walker[]
+  }
+
+  /** Companions, each to their own spot behind the player, so two of them do not walk in one pair of shoes. */
+  #escort(step: number): void {
+    if (this.#followers.length === 0) return
+    const player = this.#space.viewer
+    const pace = Math.hypot(player.vx, player.vz)
+    if (pace > 0.2) {
+      this.#wayX = player.vx / pace
+      this.#wayZ = player.vz / pace
+    }
+    for (let i = 0; i < this.#followers.length; i++) {
+      this.#followers[i]!.advance(step, this.#spotFor(i, player))
+    }
+  }
+
+  /** Behind the player, fanned out, and moved along to open ground if that spot is inside a wall. */
+  #spotFor(index: number, player: Point): Point {
+    const gap = this.options.followGap
+    for (let turn = 0; turn < FAN.length; turn++) {
+      const angle = FAN[(index + turn) % FAN.length]!
+      const cos = Math.cos(angle)
+      const sin = Math.sin(angle)
+      this.#slot.x = player.x - (this.#wayX * cos - this.#wayZ * sin) * gap
+      this.#slot.z = player.z - (this.#wayX * sin + this.#wayZ * cos) * gap
+      if (this.#space.open(this.#slot.x, this.#slot.z)) return this.#slot
+    }
+    this.#slot.x = player.x
+    this.#slot.z = player.z
+    return this.#slot
   }
 
   #retire(viewer: Point): void {

@@ -51,6 +51,8 @@ export class Walker {
   vz = 0
   /** Metres per second. A follower winds this up to catch the player. */
   speed: number
+  /** The clip to play while moving. A follower swaps it for a run when it has ground to make up. */
+  moving: string = CLIPS.walk
 
   #actor: CrowdActor
   #ground: Ground
@@ -126,7 +128,7 @@ export class Walker {
       return
     }
     this.#state = 'walking'
-    this.#setClip(CLIPS.walk)
+    this.#setClip(this.moving)
     this.#aimAtLeg()
   }
 
@@ -136,6 +138,7 @@ export class Walker {
     const fromZ = this.z
     if (this.#state === 'idle') this.#pauseFor(seconds)
     else this.#travel(seconds)
+    if (this.#state === 'walking') this.#setClip(this.moving)
     this.vx = seconds > 0 ? (this.x - fromX) / seconds : 0
     this.vz = seconds > 0 ? (this.z - fromZ) / seconds : 0
     this.heading = turnToward(this.heading, this.#facing, this.#turnRate * seconds)
@@ -152,6 +155,14 @@ export class Walker {
       clip: this.#clip,
       remaining: this.remaining,
     }
+  }
+
+  /** Stand here, now, with nothing left to walk. For putting a companion back beside the player. */
+  putAt(x: number, z: number): void {
+    this.x = x
+    this.z = z
+    this.#stop(0)
+    this.#report()
   }
 
   release(): void {
@@ -237,7 +248,7 @@ export class Walker {
   /** Clear again: walk on, and no dawdling about it. */
   #walkOn(): void {
     this.#state = 'walking'
-    this.#setClip(CLIPS.walk)
+    this.#setClip(this.moving)
   }
 
   /** The way to step and how fast: the route, bent and slowed by everybody else on the pavement. */

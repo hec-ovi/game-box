@@ -32,6 +32,12 @@ export interface CrowdOptions {
   kerbLook: number
   /** Below this speed a hazard is standing still, not coming, in metres per second. */
   hazardSpeed: number
+  /** How far behind the player a companion walks, in metres. */
+  followGap: number
+  /** Further behind than this and a companion breaks into a jog, in metres. */
+  catchUp: number
+  /** Further behind than this and a companion is put back beside the player, in metres. */
+  lostRadius: number
   /** Ground the walkers stand on. Cheapest first: the crowd prefers pavement. */
   pavement: readonly CellKind[]
   /** How high those cells sit above the roadway. Set 0 for flat ground. */
@@ -63,6 +69,9 @@ export const CROWD_DEFAULTS: CrowdOptions = {
   stuckSeconds: 2,
   kerbLook: 2.5,
   hazardSpeed: 0.5,
+  followGap: 2,
+  catchUp: 5,
+  lostRadius: 30,
   pavement: ['sidewalk', 'park'],
   kerbHeight: METRICS.street.curbHeight,
   maxStep: 0.25,
@@ -89,5 +98,7 @@ export function resolveOptions(given: Partial<CrowdOptions> = {}): CrowdOptions 
     pauseMax: Math.max(merged.pauseMax, merged.pauseMin),
     personalSpace,
     avoidRadius: Math.max(merged.avoidRadius, personalSpace * 1.5),
+    catchUp: Math.max(merged.catchUp, merged.followGap),
+    lostRadius: Math.max(merged.lostRadius, merged.catchUp + 5),
   }
 }
