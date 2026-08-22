@@ -5,7 +5,7 @@ import { sealQuest, questDraftContract } from '@gb/quest'
 import type { BuildingKind, ItemArchetype, NpcRole } from '@gb/world'
 import { z } from 'zod'
 import { PROMPTS } from './prompts.generated.ts'
-import { Sidecar, type SidecarError } from './sidecar.ts'
+import { Sidecar, type SidecarError } from '@gb/sidecar'
 
 const CityName = contract('name_city', z.object({ name: z.string().min(2).max(60) }))
 const PlaceName = contract('name_place', z.object({ name: z.string().min(2).max(80) }))

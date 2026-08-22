@@ -3,7 +3,8 @@ import { join } from 'node:path'
 import { Forge } from '@gb/forge'
 import Ajv2020 from 'ajv/dist/2020.js'
 import { describe, expect, it } from 'vitest'
-import { Scribe, Sidecar } from '../src/index.ts'
+import { Sidecar } from '@gb/sidecar'
+import { Scribe } from '../src/index.ts'
 
 /** The sidecar's own published request schema, read from its box. */
 const chatRequestSchema = JSON.parse(

@@ -11,8 +11,6 @@ The narrator backed by the local model: names, personalities, what people know a
 | Param | Schema | Preconditions |
 |---|---|---|
 | `new Scribe(options?)` | `sidecar?`, `fallback?`, `seed?`, `attempts?` | defaults: a `Sidecar` on `GAME_BOX_URL` or `http://127.0.0.1:8976`, `OfflineNarrator` as the fallback, two attempts |
-| `new Sidecar(options?)` | `base?`, `model?`, `fetch?` | `fetch` is injectable, so this runs in a browser, in Node, and in a test |
-| `Sidecar.ask(contract, options)` | a `@gb/kit` `Contract` plus system text, user text and a tool name | the contract's JSON Schema becomes the tool's parameters |
 
 Scribe implements `@gb/forge`'s `Narrator`, so a `Forge` takes one and builds a city with it.
 
@@ -20,14 +18,13 @@ Scribe implements `@gb/forge`'s `Narrator`, so a `Forge` takes one and builds a 
 
 | Param | Schema | Postconditions |
 |---|---|---|
-| `Sidecar.ask` | `Result<T, SidecarError>` | `T` already validated against the contract; never prose, never a partial call |
 | `nameCity`, `namePlace`, `describeNpc`, `describeItem` | the `Narrator` shapes | always answered: the fallback covers whatever the model cannot |
 | `writeQuests` | quest documents, sealed | one call per quest, ready for `@gb/quest` to validate; the forge still drops any that do not hold up |
 | `problems()` | `ScribeProblem[]` | every call that failed, so a thin world can be explained rather than guessed at |
 
 ## Errors (closed set)
 
-`Sidecar.ask` returns, and `Scribe` records:
+`Scribe` records what `@gb/sidecar` returned:
 
 - `unreachable`: the sidecar could not be contacted.
 - `refused`: it answered with a non-2xx status.
@@ -39,10 +36,11 @@ Scribe implements `@gb/forge`'s `Narrator`, so a `Forge` takes one and builds a 
 ## Dependencies
 
 - `@gb/kit` contract: contracts, results.
+- `@gb/sidecar` contract (game/sidecar/CONTRACT.md): the client that makes the call.
 - `@gb/forge` contract: the `Narrator` interface it implements and the `OfflineNarrator` it falls back to.
 - `@gb/quest` contract: the quest draft shape a quest writer fills in.
 - `@gb/world` contract: the closed vocabularies a narrator must choose from.
-- The sidecar's `api` contract (api/CONTRACT.md): `POST /v1/chat/completions` with `tools` and `tool_choice`.
+
 
 ## Invariants
 

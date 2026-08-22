@@ -131,6 +131,9 @@ importers:
       '@gb/quest':
         specifier: workspace:*
         version: link:../quest
+      '@gb/sidecar':
+        specifier: workspace:*
+        version: link:../sidecar
       '@gb/world':
         specifier: workspace:*
         version: link:../world
@@ -141,6 +144,19 @@ importers:
       ajv:
         specifier: ^8.20.0
         version: 8.20.0
+
+  game/sidecar:
+    dependencies:
+      '@gb/kit':
+        specifier: workspace:*
+        version: link:../kit
+    devDependencies:
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
 
   game/world:
     dependencies:

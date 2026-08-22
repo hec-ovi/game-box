@@ -15,7 +15,8 @@
     "@gb/kit": "workspace:*",
     "@gb/quest": "workspace:*",
     "@gb/world": "workspace:*",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "@gb/sidecar": "workspace:*"
   },
   "devDependencies": {
     "ajv": "^8.20.0"
