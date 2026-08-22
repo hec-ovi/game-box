@@ -5,6 +5,16 @@ import type { Dressing } from './dressing.ts'
 const CEILING_HEIGHT = METRICS.building.groundFloorHeight
 const DOOR_GAP = METRICS.building.doorWidth + 0.2
 
+/**
+ * A stored heading as a three.js yaw. The world writes compass degrees, 0
+ * north and 90 east, which runs clockwise seen from above; a turn about +Y
+ * runs the other way. Without the sign, north and south still land and east
+ * and west swap, which sits a bartender with their back to the bar.
+ */
+function yawOf(heading: number): number {
+  return THREE.MathUtils.degToRad(-heading)
+}
+
 export interface InteriorBuild {
   readonly root: THREE.Group
   /** Where each anchor is and which way it faces: drop an NPC here and they belong. */
@@ -51,7 +61,7 @@ export function buildInterior(world: World, interior: Interior, dressing: Dressi
   for (const piece of interior.furniture) {
     const object = dressing.prop(piece.prop)
     object.position.set(piece.pos.x, 0, piece.pos.y)
-    object.rotation.y = THREE.MathUtils.degToRad(piece.rot)
+    object.rotation.y = yawOf(piece.rot)
     object.name = piece.id
     root.add(object)
     props.set(piece.id, object)
@@ -61,7 +71,7 @@ export function buildInterior(world: World, interior: Interior, dressing: Dressi
   for (const anchor of interior.anchors) {
     const spot = new THREE.Object3D()
     spot.position.set(anchor.pos.x, 0, anchor.pos.y)
-    spot.rotation.y = THREE.MathUtils.degToRad(anchor.rot)
+    spot.rotation.y = yawOf(anchor.rot)
     spot.name = anchor.id
     spot.userData.kind = anchor.kind
     root.add(spot)
