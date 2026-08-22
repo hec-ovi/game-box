@@ -11,12 +11,12 @@
   },
   "dependencies": {
     "@gb/cast": "workspace:*",
+    "@gb/kit": "workspace:*",
     "@gb/nav": "workspace:*",
     "@gb/world": "workspace:*",
     "three": "^0.185.1"
   },
   "devDependencies": {
-    "@gb/forge": "workspace:*",
     "@types/three": "^0.185.4"
   }
 }
