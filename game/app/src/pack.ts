@@ -51,3 +51,13 @@ async function bytes(url: string): Promise<ArrayBuffer> {
   if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`)
   return response.arrayBuffer()
 }
+
+/** The car models, or nothing: empty roads are better than a broken boot. */
+export async function loadCars(base = ''): Promise<ArrayBuffer | undefined> {
+  try {
+    return await bytes(`${base}/cars.glb`)
+  } catch (cause) {
+    console.warn(`no cars in the art pack (${String(cause)}); the roads stay empty`)
+    return undefined
+  }
+}

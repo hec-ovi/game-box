@@ -7,6 +7,7 @@ import { PlayerState } from '@gb/play'
 import { QuestLog, type Change } from '@gb/quest'
 import { buildCity, buildInterior, type CityBuild, type Dressing, type InteriorBuild } from '@gb/scene'
 import { Sidecar } from '@gb/sidecar'
+import { CarPack, Traffic } from '@gb/traffic'
 import { Conversation } from '@gb/talk'
 import type { Interior, World } from '@gb/world'
 import * as THREE from 'three'
@@ -38,6 +39,8 @@ export class Game {
   #dressing: Dressing
   #cast: Cast | undefined
   #crowd: Crowd | undefined
+  #traffic: Traffic | undefined
+  #cars: CarPack | undefined
 
   private constructor(input: {
     bundle: OpenedBundle
@@ -78,10 +81,34 @@ export class Game {
     this.#refresh()
   }
 
+  /**
+   * Put cars on the roads. Separate from the constructor because the models
+   * have to be parsed, and a city with no cars is still a city.
+   */
+  async openRoads(cars: ArrayBuffer): Promise<void> {
+    const parked = new THREE.Group()
+    parked.name = 'traffic'
+    this.#city.root.add(parked)
+
+    try {
+      const bodies = await CarPack.parse(cars, parked)
+      const made = Traffic.fromWorld(this.#world, { bodies })
+      if (!made.ok) {
+        console.warn(`no traffic (${made.error.code}); the roads stay empty`)
+        return
+      }
+      made.value.populate(this.#body.position)
+      this.#traffic = made.value
+      this.#cars = bodies
+    } catch (cause) {
+      console.warn(`no cars (${String(cause)}); the roads stay empty`)
+    }
+  }
+
   static async start(
     mount: HTMLElement,
     bundle: OpenedBundle,
-    options: { sidecar?: Sidecar; dressing: Dressing; cast?: Cast },
+    options: { sidecar?: Sidecar; dressing: Dressing; cast?: Cast; cars?: ArrayBuffer },
   ): Promise<Game> {
     const stage = await createStage(mount)
     const player = PlayerState.create(bundle.world.id, 5)
@@ -100,6 +127,7 @@ export class Game {
       ...(options.cast ? { cast: options.cast } : {}),
     })
 
+    if (options.cars) await game.openRoads(options.cars)
     stage.start((seconds) => game!.frame(seconds))
     return game
   }
@@ -113,6 +141,11 @@ export class Game {
     this.#stage.draw()
   }
 
+  /** The scene as it stands, for the dev console to poke at. */
+  scene(): THREE.Scene {
+    return this.#stage.scene
+  }
+
   /** Where the player is and what they could act on. For the dev console. */
   look(): Record<string, unknown> {
     return {
@@ -121,6 +154,7 @@ export class Game {
       heading: this.#body.heading,
       target: this.#target?.label,
       walkers: this.#crowd?.count ?? 0,
+      cars: this.#traffic?.count ?? 0,
       nearest: this.#targets()
         .map((t) => ({ label: t.label, away: Math.hypot(t.at.x - this.#body.position.x, t.at.z - this.#body.position.z) }))
         .toSorted((a, b) => a.away - b.away)
@@ -132,7 +166,11 @@ export class Game {
     this.#body.update(seconds)
     this.#cast?.update(seconds)
     // the street only carries on while the player is out in it
-    if (this.#place.kind === 'city') this.#crowd?.update(seconds, this.#body.position)
+    if (this.#place.kind === 'city') {
+      this.#crowd?.update(seconds, this.#body.position)
+      this.#traffic?.update(seconds, this.#body.position)
+      this.#cars?.update()
+    }
 
     this.#target = pick(this.#body.position, this.#body.heading, this.#targets())
     const prompt = this.#talking || !this.#target ? null : { key: 'E', text: this.#target.label }

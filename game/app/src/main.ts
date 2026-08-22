@@ -7,7 +7,7 @@ import { Forge, OfflineNarrator } from '@gb/forge'
 import { Scribe } from '@gb/scribe'
 import { Sidecar } from '@gb/sidecar'
 import { Game } from './game.ts'
-import { loadDressing } from './pack.ts'
+import { loadCars, loadDressing } from './pack.ts'
 
 const mount = document.querySelector<HTMLDivElement>('#game')!
 const query = new URLSearchParams(location.search)
@@ -15,8 +15,8 @@ const sidecarBase = query.get('sidecar')
 const sidecar = new Sidecar(sidecarBase ? { base: sidecarBase } : {})
 
 const bundle = await load()
-const art = await loadDressing(bundle.world.theme)
-const game = await Game.start(mount, bundle, { sidecar, dressing: art.dressing, ...(art.cast ? { cast: art.cast } : {}) })
+const [art, cars] = await Promise.all([loadDressing(bundle.world.theme), loadCars()])
+const game = await Game.start(mount, bundle, { sidecar, dressing: art.dressing, ...(art.cast ? { cast: art.cast } : {}), ...(cars ? { cars } : {}) })
 
 if (import.meta.env.DEV) {
   // so the dev console can ask the running game where it thinks it is
