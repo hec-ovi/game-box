@@ -10,11 +10,12 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@gb/world": "workspace:*",
-    "three": "^0.185.1"
+    "@gb/kit": "workspace:*",
+    "@gb/world": "workspace:*"
   },
   "devDependencies": {
     "@gb/forge": "workspace:*",
-    "@types/three": "^0.185.4"
+    "@types/three": "^0.185.4",
+    "three": "^0.185.1"
   }
 }

@@ -1,12 +1,15 @@
 import type { OpenedBundle } from '@gb/bundle'
+import type { Cast } from '@gb/cast'
+import { Crowd, SceneCast } from '@gb/crowd'
+import { Hud, type Carried, type HudIntent, type JournalQuest } from '@gb/hud'
+import { CityNav } from '@gb/nav'
 import { PlayerState } from '@gb/play'
 import { QuestLog, type Change } from '@gb/quest'
-import type { Cast } from '@gb/cast'
 import { buildCity, buildInterior, type CityBuild, type Dressing, type InteriorBuild } from '@gb/scene'
 import { Sidecar } from '@gb/sidecar'
 import { Conversation } from '@gb/talk'
 import type { Interior, World } from '@gb/world'
-import { Hud } from './hud.ts'
+import * as THREE from 'three'
 import { Player } from './player.ts'
 import { createStage, type Stage } from './renderer.ts'
 import { citySolid, interiorSolid } from './solids.ts'
@@ -34,6 +37,7 @@ export class Game {
   #target: Target | undefined
   #dressing: Dressing
   #cast: Cast | undefined
+  #crowd: Crowd | undefined
 
   private constructor(input: {
     bundle: OpenedBundle
@@ -57,8 +61,18 @@ export class Game {
     this.#city = buildCity(this.#world, this.#dressing)
     this.#stage.show(this.#city.root)
     this.#body = new Player(this.#stage.camera, this.#stage.renderer.domElement, citySolid(this.#world))
-
     this.#body.placeAt(this.#city.spawn.x, this.#city.spawn.z, this.#city.spawn.heading)
+
+    if (this.#cast) {
+      const walkers = new THREE.Group()
+      walkers.name = 'crowd'
+      this.#city.root.add(walkers)
+      this.#crowd = Crowd.create({
+        world: this.#world,
+        nav: CityNav.from(this.#world),
+        cast: new SceneCast(this.#cast, walkers),
+      })
+    }
 
     document.addEventListener('keydown', this.#key)
     this.#refresh()
@@ -74,10 +88,7 @@ export class Game {
     const log = QuestLog.create(bundle.quests, player)
 
     let game: Game | undefined
-    const hud = new Hud(mount, {
-      onSay: (text) => void game?.say(text),
-      onTyping: (typing) => game?.setTyping(typing),
-    })
+    const hud = new Hud(mount, { onIntent: (intent) => game?.intent(intent) })
     game = new Game({
       bundle,
       stage,
@@ -93,8 +104,10 @@ export class Game {
     return game
   }
 
-  /** Advance and draw one frame. A hidden tab suspends the frame loop, so a
-   * test or a console can drive the game by hand. */
+  /**
+   * Advance and draw one frame. A hidden tab suspends the frame loop, so a test
+   * or a console can drive the game by hand.
+   */
   tick(seconds = 1 / 60): void {
     this.frame(seconds)
     this.#stage.draw()
@@ -107,6 +120,7 @@ export class Game {
       at: this.#body.position,
       heading: this.#body.heading,
       target: this.#target?.label,
+      walkers: this.#crowd?.count ?? 0,
       nearest: this.#targets()
         .map((t) => ({ label: t.label, away: Math.hypot(t.at.x - this.#body.position.x, t.at.z - this.#body.position.z) }))
         .toSorted((a, b) => a.away - b.away)
@@ -117,12 +131,19 @@ export class Game {
   frame(seconds: number): void {
     this.#body.update(seconds)
     this.#cast?.update(seconds)
+    // the street only carries on while the player is out in it
+    if (this.#place.kind === 'city') this.#crowd?.update(seconds, this.#body.position)
+
     this.#target = pick(this.#body.position, this.#body.heading, this.#targets())
-    this.#hud.showPrompt(this.#talking ? undefined : this.#target)
+    const prompt = this.#talking || !this.#target ? null : { key: 'E', text: this.#target.label }
+    this.#hud.show({ prompt })
   }
 
-  setTyping(typing: boolean): void {
-    this.#body.setTyping(typing)
+  /** What the player did in the interface. */
+  intent(intent: HudIntent): void {
+    if (intent.kind === 'say') void this.say(intent.text)
+    if (intent.kind === 'typing') this.#body.setTyping(intent.typing)
+    if (intent.kind === 'talk-closed') this.#endTalk()
   }
 
   /** What the player can act on where they are standing. */
@@ -157,7 +178,7 @@ export class Game {
       this.#endTalk()
       return
     }
-    if (event.code !== 'KeyE' || this.#hud.isTalking || !this.#target) return
+    if (event.code !== 'KeyE' || this.#hud.typing || this.#talking || !this.#target) return
     this.#act(this.#target)
   }
 
@@ -198,7 +219,7 @@ export class Game {
       built.entrance.z + built.inward.z * step,
       Math.atan2(-built.inward.x, -built.inward.z),
     )
-    this.#hud.say(`${plot!.name}`)
+    this.#hud.announce({ kind: 'note', text: plot!.name })
     this.#report(this.#log.handle({ kind: 'arrived', place: { plotId } }))
     this.#report(this.#log.handle({ kind: 'arrived', place: { interiorId: interior.id } }))
   }
@@ -221,7 +242,7 @@ export class Game {
 
     const stolen = item.ownerNpcId !== undefined
     this.#player.take(itemId, { stolen })
-    this.#hud.say(stolen ? `Took the ${item.name.toLowerCase()}. Somebody owns that.` : `Picked up the ${item.name.toLowerCase()}`)
+    this.#hud.announce({ kind: 'item-taken', item: item.name })
     this.#report(this.#log.handle({ kind: 'acquired', itemId, stolen }))
   }
 
@@ -236,8 +257,9 @@ export class Game {
     if (!opened.ok) return
 
     this.#talking = opened.value.conversation
+    this.#faceMe(npcId, true)
     this.#report({ ok: true, value: opened.value.changes })
-    this.#hud.openTalk(this.#world.npc(npcId)?.name ?? 'Someone')
+    this.#hud.show({ talk: { speaker: this.#world.npc(npcId)?.name ?? 'Someone' } })
   }
 
   /** Send a line to whoever the player is talking to and play back the reply. */
@@ -245,10 +267,10 @@ export class Game {
     const conversation = this.#talking
     if (!conversation) return
 
-    this.#hud.clearSaid()
+    this.#hud.show({ talk: { reply: '' } })
     for await (const event of conversation.say(text)) {
-      if (event.kind === 'said') this.#hud.appendSaid(event.text)
-      if (event.kind === 'did') this.#hud.appendDid(event.action.replace(/_/g, ' '))
+      if (event.kind === 'said') this.#hud.show({ talk: { replyChunk: event.text } })
+      if (event.kind === 'did') this.#hud.show({ talk: { acted: event.action.replace(/_/g, ' ') } })
       if (event.kind === 'changed') this.#announce(event.change)
       if (event.kind === 'over') this.#endTalk()
     }
@@ -256,9 +278,19 @@ export class Game {
   }
 
   #endTalk(): void {
+    if (this.#talking) this.#faceMe(this.#talking.npcId, false)
     this.#talking = undefined
-    this.#hud.closeTalk()
+    this.#hud.show({ talk: null })
     this.#body.setTyping(false)
+  }
+
+  /** Somebody being spoken to turns their head to whoever is speaking. */
+  #faceMe(npcId: string, towards: boolean): void {
+    const members = (this.#dressing as { members?: () => ReadonlyMap<string, { lookAt(p: THREE.Vector3): void; lookAway(): void }> }).members?.()
+    const member = members?.get(npcId)
+    if (!member) return
+    if (towards) member.lookAt(this.#stage.camera.position)
+    else member.lookAway()
   }
 
   #report(result: { ok: true; value: readonly Change[] } | { ok: false; error: unknown }): void {
@@ -268,19 +300,36 @@ export class Game {
   }
 
   #announce(change: Change): void {
-    if (change.kind === 'quest-started') {
-      this.#hud.say(`New: ${this.#log.quests().find((q) => q.id === change.questId)?.title ?? 'a job'}`)
+    const title = (id: string) => this.#log.quests().find((q) => q.id === id)?.title ?? 'a job'
+    if (change.kind === 'quest-started') this.#hud.announce({ kind: 'quest-started', title: title(change.questId) })
+    if (change.kind === 'quest-complete') {
+      this.#hud.announce({ kind: 'quest-complete', title: title(change.questId), reward: { money: change.reward.money } })
     }
-    if (change.kind === 'quest-complete') this.#hud.say(`Done. ${change.reward.money} coin`)
-    if (change.kind === 'quest-failed') this.#hud.say('That went badly')
+    if (change.kind === 'quest-failed') this.#hud.announce({ kind: 'quest-failed', title: title(change.questId) })
     this.#refresh()
   }
 
   #refresh(): void {
-    this.#hud.showObjectives(this.#log.objectives())
-    this.#hud.showPurse(
-      this.#player.money,
-      this.#player.inventory().map((id) => this.#world.item(id)?.name ?? id),
-    )
+    const carrying: Carried[] = this.#player.inventory().map((id) => ({
+      id,
+      name: this.#world.item(id)?.name ?? id,
+      quest: this.#log.isQuestItem(id),
+    }))
+    this.#hud.show({ objectives: this.#log.objectives(), money: this.#player.money, carrying, journal: this.#journal() })
+  }
+
+  /** Every quest under way, with the steps behind and ahead of the player. */
+  #journal(): JournalQuest[] {
+    const open = new Set(this.#log.objectives().map((objective) => objective.stepId))
+    return this.#log
+      .quests()
+      .filter((quest) => this.#log.status(quest.id) === 'active')
+      .map((quest) => ({
+        questId: quest.id,
+        title: quest.title,
+        steps: quest.steps
+          .filter((step) => step.kind !== 'complete' && step.kind !== 'fail' && step.kind !== 'join')
+          .map((step) => ({ stepId: step.id, text: step.objective, done: !open.has(step.id) })),
+      }))
   }
 }

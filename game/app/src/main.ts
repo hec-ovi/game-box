@@ -14,7 +14,8 @@ const query = new URLSearchParams(location.search)
 const sidecarBase = query.get('sidecar')
 const sidecar = new Sidecar(sidecarBase ? { base: sidecarBase } : {})
 
-const [bundle, art] = await Promise.all([load(), loadDressing()])
+const bundle = await load()
+const art = await loadDressing(bundle.world.theme)
 const game = await Game.start(mount, bundle, { sidecar, dressing: art.dressing, ...(art.cast ? { cast: art.cast } : {}) })
 
 if (import.meta.env.DEV) {

@@ -1,5 +1,5 @@
 import type { Rng } from '@gb/kit'
-import type { AnchorKind, BuildingKind, ItemArchetype, NpcRole } from '@gb/world'
+import type { Anchor, AnchorKind, BuildingKind, ItemArchetype, NpcRole } from '@gb/world'
 
 /** Who stands at an anchor of this kind, in this kind of building. */
 export function roleFor(anchor: AnchorKind, building: BuildingKind): NpcRole | undefined {
@@ -50,6 +50,12 @@ export function occupancy(anchor: AnchorKind): number {
     default:
       return 0.25
   }
+}
+
+/** Where a loose item sits: on a surface somebody uses, before bare floor. */
+export function surfacesOf(anchors: readonly Anchor[]): readonly Anchor[] {
+  const surfaces = anchors.filter((anchor) => anchor.propId !== undefined)
+  return surfaces.length ? surfaces : anchors
 }
 
 /** What is lying around in this kind of building, and whether it belongs to someone. */

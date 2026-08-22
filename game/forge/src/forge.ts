@@ -14,12 +14,11 @@ import {
   type Room,
 } from '@gb/world'
 import { briefContract, type Brief } from './brief.ts'
-import { furnish } from './interior/furnish.ts'
-import { cutRooms } from './interior/rooms.ts'
+import { planInterior } from './interior/plan.ts'
 import { sitesInBlock, storeysFor, type PlotSite } from './layout/plots.ts'
 import { gridSize, layStreets } from './layout/streets.ts'
 import type { Narrator, WorldSummary } from './narrator.ts'
-import { bulkOf, itemsFor, occupancy, roleFor } from './populate.ts'
+import { bulkOf, itemsFor, occupancy, roleFor, surfacesOf } from './populate.ts'
 
 export type ForgeError =
   | { readonly code: 'invalid-brief'; readonly violations: readonly SchemaViolation[] }
@@ -181,46 +180,8 @@ export class Forge {
       w: site.rect.w * world.cellSize - wall * 2,
       h: site.rect.h * world.cellSize - wall * 2,
     }
-    const rooms: Room[] = cutRooms(kind, size, rng).map((box) => ({
-      id: world.mintId('room'),
-      kind: box.kind,
-      name: box.name,
-      rect: box.rect,
-    }))
-
-    const furniture: Interior['furniture'] = []
-    const anchors: Anchor[] = []
-    for (const room of rooms) {
-      const dressed = furnish(kind, room, (idKind) => world.mintId(idKind), rng.fork(`room/${room.id}`))
-      furniture.push(...dressed.furniture)
-      anchors.push(...dressed.anchors)
-    }
-
-    const entry = rooms[0]!
-    const doors: Interior['doors'] = [
-      {
-        id: world.mintId('door'),
-        from: 'outside',
-        to: entry.id,
-        pos: { x: entry.rect.x + entry.rect.w / 2, y: entry.rect.y },
-        rot: 0,
-        locked: false,
-      },
-    ]
-    for (let i = 1; i < rooms.length; i++) {
-      const previous = rooms[i - 1]!
-      const room = rooms[i]!
-      doors.push({
-        id: world.mintId('door'),
-        from: previous.id,
-        to: room.id,
-        pos: { x: room.rect.x, y: room.rect.y + room.rect.h / 2 },
-        rot: 90,
-        locked: false,
-      })
-    }
-
-    return { id: world.mintId('interior'), plotId, kind, size, rooms, doors, furniture, anchors }
+    const plan = planInterior({ kind, size, entrance: site.facing, mint: (idKind) => world.mintId(idKind), rng })
+    return { id: world.mintId('interior'), plotId, kind, size, ...plan }
   }
 
   /** Puts people on anchors and things on surfaces. */
@@ -260,8 +221,9 @@ export class Forge {
         if (world.addNpc(npc).ok && anchor.kind === 'serve') staff ??= npc.id
       }
 
+      const surfaces = surfacesOf(interior.anchors)
       for (const [i, archetype] of itemsFor(interior.kind, interiorRng).entries()) {
-        const anchor = interior.anchors[i % Math.max(1, interior.anchors.length)]
+        const anchor = surfaces[i % Math.max(1, surfaces.length)]
         if (!anchor) break
         const index = world.items().length
         const profile = await this.#narrator.describeItem({ archetype, theme: world.theme, index })

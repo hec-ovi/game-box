@@ -9,6 +9,7 @@
   "scripts": {
     "test": "vitest run",
     "preview": "node --experimental-strip-types tools/preview.ts",
+    "plans": "node --experimental-strip-types tools/floorplan.ts",
     "generate": "node --experimental-strip-types tools/emit-schema.ts"
   },
   "dependencies": {

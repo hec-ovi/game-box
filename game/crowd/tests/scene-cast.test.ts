@@ -16,12 +16,18 @@ class StubCast implements CastSpawner {
     return {
       npcId: npc.id,
       object,
+      outfit: 'stub',
       play: (clip: string) => {
         playing = clip
       },
       get playing() {
         return playing
       },
+      gesture: () => {},
+      stopGesture: () => {},
+      gesturing: undefined,
+      lookAt: () => {},
+      lookAway: () => {},
     }
   }
 }

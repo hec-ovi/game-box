@@ -44,9 +44,18 @@ importers:
       '@gb/cast':
         specifier: workspace:*
         version: link:../cast
+      '@gb/crowd':
+        specifier: workspace:*
+        version: link:../crowd
       '@gb/forge':
         specifier: workspace:*
         version: link:../forge
+      '@gb/hud':
+        specifier: workspace:*
+        version: link:../hud
+      '@gb/kitbash':
+        specifier: workspace:*
+        version: link:../kitbash
       '@gb/nav':
         specifier: workspace:*
         version: link:../nav
@@ -68,6 +77,9 @@ importers:
       '@gb/talk':
         specifier: workspace:*
         version: link:../talk
+      '@gb/traffic':
+        specifier: workspace:*
+        version: link:../traffic
       '@gb/world':
         specifier: workspace:*
         version: link:../world
@@ -149,6 +161,9 @@ importers:
       '@gb/cast':
         specifier: workspace:*
         version: link:../cast
+      '@gb/kit':
+        specifier: workspace:*
+        version: link:../kit
       '@gb/nav':
         specifier: workspace:*
         version: link:../nav
@@ -159,9 +174,6 @@ importers:
         specifier: ^0.185.1
         version: 0.185.1
     devDependencies:
-      '@gb/forge':
-        specifier: workspace:*
-        version: link:../forge
       '@types/three':
         specifier: ^0.185.4
         version: 0.185.4
@@ -222,9 +234,6 @@ importers:
         specifier: ^0.185.1
         version: 0.185.1
     devDependencies:
-      '@gb/forge':
-        specifier: workspace:*
-        version: link:../forge
       '@types/three':
         specifier: ^0.185.4
         version: 0.185.4
@@ -334,12 +343,12 @@ importers:
 
   game/traffic:
     dependencies:
+      '@gb/kit':
+        specifier: workspace:*
+        version: link:../kit
       '@gb/world':
         specifier: workspace:*
         version: link:../world
-      three:
-        specifier: ^0.185.1
-        version: 0.185.1
     devDependencies:
       '@gb/forge':
         specifier: workspace:*
@@ -347,6 +356,9 @@ importers:
       '@types/three':
         specifier: ^0.185.4
         version: 0.185.4
+      three:
+        specifier: ^0.185.1
+        version: 0.185.1
 
   game/world:
     dependencies:

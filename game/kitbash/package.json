@@ -7,7 +7,8 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:kit": "node tools/build-kit.ts"
   },
   "dependencies": {
     "@gb/scene": "workspace:*",
@@ -15,7 +16,6 @@
     "three": "^0.185.1"
   },
   "devDependencies": {
-    "@gb/forge": "workspace:*",
     "@types/three": "^0.185.4"
   }
 }
