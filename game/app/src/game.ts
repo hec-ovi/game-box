@@ -12,7 +12,7 @@ import { CarPack, Traffic } from '@gb/traffic'
 import { Conversation } from '@gb/talk'
 import type { Interior, World } from '@gb/world'
 import * as THREE from 'three'
-import { alsoBlockedBy } from './bodies.ts'
+import { alsoBlockedBy, PERSON_CLEAR } from './bodies.ts'
 import { Player } from './player.ts'
 import { createStage, type Stage } from './renderer.ts'
 import { cityGround, citySolid, interiorSolid } from './solids.ts'
@@ -99,6 +99,27 @@ export class Game {
     this.#refresh()
   }
 
+  /**
+   * Who a driver has to stop for: the people on the pavement and the road, and
+   * the player, who is the one most likely to step out without looking.
+   */
+  #peopleOnTheRoad() {
+    return {
+      near: (centre: { x: number; z: number }, radius: number) => {
+        const found: Array<{ x: number; z: number; radius: number }> = []
+        const reach = radius * radius
+        const consider = (x: number, z: number) => {
+          const dx = x - centre.x
+          const dz = z - centre.z
+          if (dx * dx + dz * dz <= reach) found.push({ x, z, radius: PERSON_CLEAR })
+        }
+        for (const walker of this.#crowd?.walkers() ?? []) consider(walker.x, walker.z)
+        if (this.#place.kind === 'city') consider(this.#body.position.x, this.#body.position.z)
+        return found
+      },
+    }
+  }
+
   /** The street: its walls, and whoever is walking or driving on it. */
   #outdoors() {
     return alsoBlockedBy(
@@ -148,7 +169,7 @@ export class Game {
 
     try {
       const bodies = await CarPack.parse(cars, parked)
-      const made = Traffic.fromWorld(this.#world, { bodies })
+      const made = Traffic.fromWorld(this.#world, { bodies, obstacles: this.#peopleOnTheRoad() })
       if (!made.ok) {
         console.warn(`no traffic (${made.error.code}); the roads stay empty`)
         return
