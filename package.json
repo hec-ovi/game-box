@@ -7,7 +7,7 @@
   },
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p game/app",
     "check:isolation": "node tools/check-isolation.mjs",
     "verify": "pnpm run generate && pnpm run typecheck && pnpm run check:isolation && pnpm run test",
     "generate": "pnpm -r --if-present run generate"

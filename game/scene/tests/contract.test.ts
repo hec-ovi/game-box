@@ -72,6 +72,21 @@ describe('buildCity', () => {
     expect(boundsOf(sidewalk).max.y).toBeCloseTo(METRICS.street.curbHeight, 3)
   })
 
+  it('faces the ground upwards, so you can see what you are standing on', async () => {
+    const world = await town()
+    const city = buildCity(world, new Greybox())
+    const street = city.root.children.find((child) => child.name === 'ground:street') as THREE.Mesh
+
+    const position = street.geometry.getAttribute('position')
+    const corner = (index: number) => new THREE.Vector3().fromBufferAttribute(position, index)
+    const facing = new THREE.Vector3()
+      .subVectors(corner(1), corner(0))
+      .cross(new THREE.Vector3().subVectors(corner(2), corner(0)))
+      .normalize()
+
+    expect(facing.y).toBeCloseTo(1, 5)
+  })
+
   it('rings the valley in mountains, as one instanced block per cell', async () => {
     const world = await town()
     const city = buildCity(world, new Greybox())
@@ -126,5 +141,26 @@ describe('buildInterior', () => {
     })
     expect(blocking).toEqual([])
     expect(build.entrance.x).toBeCloseTo(door.pos.x, 5)
+  })
+})
+
+describe('spawn', () => {
+  it('starts the player on the pavement looking at the first door in town', async () => {
+    const world = await town()
+    const city = buildCity(world, new Greybox())
+    const plot = world.plots().find((p) => p.interiorId)!
+    const doorstep = city.doorsteps.get(plot.id)!
+
+    const spawn = city.spawn
+    const distance = Math.hypot(spawn.x - doorstep.x, spawn.z - doorstep.z)
+    expect(distance).toBeCloseTo(world.cellSize, 5)
+
+    // standing somewhere you can stand, not inside the building
+    expect(world.grid.at(Math.floor(spawn.x / world.cellSize), Math.floor(spawn.z / world.cellSize))).not.toBe('building')
+
+    // and looking at the door
+    const look = { x: -Math.sin(spawn.heading), z: -Math.cos(spawn.heading) }
+    const toDoor = { x: (doorstep.x - spawn.x) / distance, z: (doorstep.z - spawn.z) / distance }
+    expect(look.x * toDoor.x + look.z * toDoor.z).toBeCloseTo(1, 5)
   })
 })

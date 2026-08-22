@@ -11,5 +11,8 @@
     "game/*/src/**/*.ts",
     "game/*/tests/**/*.ts",
     "game/*/tools/**/*.ts"
+  ],
+  "exclude": [
+    "game/app"
   ]
 }

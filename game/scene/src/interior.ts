@@ -11,6 +11,10 @@ export interface InteriorBuild {
   readonly anchors: ReadonlyMap<string, THREE.Object3D>
   /** Furniture by prop id, for looking at and interacting with. */
   readonly props: ReadonlyMap<string, THREE.Object3D>
+  /** The people stationed in here, by npc id, standing on their anchor. */
+  readonly people: ReadonlyMap<string, THREE.Object3D>
+  /** What is lying about in here, by item id. */
+  readonly pickups: ReadonlyMap<string, THREE.Object3D>
   /** Where the player appears when they come in, and where they leave from. */
   readonly entrance: THREE.Vector3
 }
@@ -62,10 +66,35 @@ export function buildInterior(world: World, interior: Interior, dressing: Dressi
     anchors.set(anchor.id, spot)
   }
 
+  const people = new Map<string, THREE.Object3D>()
+  for (const npc of world.npcs()) {
+    const spot = npc.station?.interiorId === interior.id ? anchors.get(npc.station.anchorId) : undefined
+    if (!spot) continue
+    const body = dressing.character(npc)
+    body.position.copy(spot.position)
+    body.rotation.copy(spot.rotation)
+    body.userData.npcId = npc.id
+    root.add(body)
+    people.set(npc.id, body)
+  }
+
+  const pickups = new Map<string, THREE.Object3D>()
+  for (const placement of world.placements()) {
+    if (placement.at !== 'anchor' || placement.interiorId !== interior.id) continue
+    const spot = anchors.get(placement.anchorId)
+    const item = world.item(placement.itemId)
+    if (!spot || !item) continue
+    const object = dressing.pickup(item)
+    // beside whoever is standing there, not inside them
+    object.position.set(spot.position.x + 0.45, 0.9, spot.position.z)
+    object.userData.itemId = item.id
+    root.add(object)
+    pickups.set(item.id, object)
+  }
+
   const door = interior.doors.find((d) => d.from === 'outside') ?? interior.doors[0]
   const entrance = new THREE.Vector3(door?.pos.x ?? interior.size.w / 2, 0, door?.pos.y ?? 0)
-  void world
-  return { root, anchors, props, entrance }
+  return { root, anchors, props, people, pickups, entrance }
 }
 
 /** Four walls around a room, split wherever a door sits on them. */

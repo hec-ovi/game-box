@@ -75,3 +75,72 @@ Rejected: XTTS-v2 and F5-TTS (non-commercial licenses), Qwen3-TTS (CUDA-only), O
 ## Planned layer layout (contract-isolated blackboxes)
 
 Each subsystem will be one folder with CONTRACT.md, schema/, src/, tests/; outsiders read only contracts and schemas. Planned layers: `api` (the public OpenAI-compatible surface), `llm` (llama.cpp wrapper), `stt` (sherpa-onnx streaming recognizer), `tts` (streaming synthesizer: text tokens in, PCM frames out), `models` (download, verify, cache), plus `docs/INDEX.md` as the resolver. Voice data crosses contracts as schema-validated envelopes (PCM by reference or base64 chunk), never bare byte streams.
+
+---
+
+# game decision record (2026-08-22)
+
+The game itself, decided after three research passes (quest-loop gameplay, engine and systems, art and animation), each verified against primary sources by a second pass that read the licence files and the repos rather than the blog posts.
+
+## D7. Shape: quests first, contract-isolated boxes, browser three.js
+
+The game is a first-person city where the loop is talk, travel, take, carry, deliver, get paid. Combat is not a pillar. The city, its interiors, its people and its quests are generated, exported as one file, and replayed identically by anyone who opens it.
+
+Everything is cut into boxes with a CONTRACT.md, a published JSON Schema and a closed error set: `kit`, `world`, `play`, `quest`, `forge`, `bundle`, `nav`, `sidecar`, `scribe`, `talk`, `scene`, `app`, `cli`. Isolation is enforced, not documented: one public entry per box, and `pnpm run check:isolation` fails the build on a deep import or an undeclared dependency.
+
+## D8. The model writes meaning, code writes geometry
+
+Streets, plot footprints, entrances, rooms, furniture and anchors are arithmetic from a seeded stream. Names, personalities, what people know and quest logic come from the model. A narrator is never asked for a coordinate.
+
+Every answer from the model is a **forced tool call** whose parameters are the JSON Schema of the contract that will validate it, so the thing that defines the shape and the thing that checks it are the same object. A rejected call is retried once with the exact violations quoted back, then falls through to a deterministic offline narrator, so generation always finishes. Quests are written one call at a time.
+
+Nothing generated is trusted: a quest is refused unless every path ends, every reference resolves, and every item is guaranteed to be in hand before the player is asked for it.
+
+## D9. Same seed, same city
+
+One PRNG stream, forked per block, per site and per interior, so adding a building later cannot change one already built. `extend` fills empty land without moving anything. This is what makes "add three more houses" cheap and what makes a shared world file reproducible.
+
+## D10. Renderer: three.js r185, WebGPU with a real WebGL2 path
+
+`WebGPURenderer` from `three/webgpu`, TSL for shading, vanilla three.js for the scene graph, plain DOM for the HUD. WebGPU is where new capability lives and it carries a WebGL2 backend in the same class.
+
+Known risk: WebGPU is about 86% coverage, Firefox on Linux has none at all, and this project is developed on Linux. The WebGL2 tier is a real path that renders a smaller city, not an uglier one, and a `forceWebGL` switch stays wired for A/B on the same build.
+
+Rejected: react-three-fiber (its own guidance is to bypass React for per-frame work, which is all of this), Draco (its decoder is 344 KB against meshopt's 29 KB, and neither speeds up rendering).
+
+## D11. Art direction: stylized low-poly from one hand
+
+Incoherence is what reads as amateur, not polycount. Characters, clothes, animation and the city kit all come from Quaternius, all CC0, all on one skeleton.
+
+- Bodies: Universal Base Characters. Clips: Universal Animation Library 1 and 2, which bind to that skeleton with no retargeting.
+- City: Downtown City MegaKit for street level.
+- Second clip source: KayKit Character Animations, CC0, retargeted.
+- Interior dressing: Ultimate House Interior, Ultimate Furniture, Sushi Restaurant kits.
+
+## D12. Only CC0 animation ships
+
+A browser game serves `.glb` over HTTP and a shared world file is a redistribution vector by design, so "use it but do not redistribute the file" licences are unusable here whatever they cost.
+
+Rejected for that reason alone: Adobe Mixamo (its own terms forbid free distribution of raw animation files), Fab and Unity Asset Store standard terms, MoCap Online and MoCap Central (both require distribution "in such a manner that prevents their extraction"), Ready Player Me, Epic's Game Animation Sample and MetaHuman (Unreal-only content).
+
+Usable beyond CC0: 100STYLE under CC BY 4.0 with a modification notice, and CMU mocap, which permits commercial use but not resale of the data, so CMU-derived clips exist only as heavily retargeted derivatives merged into the shared clip file, never as extractable per-clip files.
+
+The clip library ships with the runtime. A world file carries clip names, never clip data.
+
+## D13. Buildings: our own generator, plus a kit at street level
+
+Massing and facades come from `glb-buildings-skill` (MIT, ours): a building is a JSON document of floor bands that builds into validated glTF, with contact, support and triangle budget proved before a file exists. Roofs get a closed-form hip/gable/pyramidal pass with a mandatory eave overhang and fascia cap, because a roof that does not meet its wall is the classic generated-building failure. Windows get parallax interior mapping and a lit night mask, because black windows are the second one. Street level and shopfronts come from the Downtown kit.
+
+Plots stay rectilinear, which removes any need for a straight-skeleton library and therefore any GPL exposure.
+
+## D14. Scale contract
+
+One unit is one metre, Y up. Grid cell 2 m. Roadway 6 m, pavement 2 m, kerb 15 cm. Ground floor 4 m, upper storeys 3.2 m, doors 2.1 m. Bar counter 1.1 m, table 0.75 m, stool 0.75 m: those three drive the sit, drink and serve clips, so they are fixed before any animation is bound. Eye height 1.7 m, walk 1.4 m/s, run 4.5 m/s, reach 2.5 m. Everything generated obeys these or is rejected at intake.
+
+## D15. Navigation: the grid is the navmesh
+
+Pedestrians walk an A* over the same cell grid the city was generated on, with pavement cheap and roadway expensive. Nothing is baked, so adding a building needs no rebuild. A navmesh runtime (navcat, or recast-navigation-js) is the answer for interiors and crowds when they need it, not before.
+
+## D16. What a world file is
+
+One sealed JSON document: the world, its quests, and the asset packs it needs, under a sha-256 of a stable serialisation. Opening one checks shape, then hash, then world soundness, then every quest, and refuses at the first failure. A save carries the world id and the same content hash, so a playthrough can only resume against the exact city it was made in. Static world data and playthrough state never mix.

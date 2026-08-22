@@ -11,6 +11,8 @@ export interface CityBuild {
   readonly buildings: ReadonlyMap<string, THREE.Object3D>
   /** Where each building's door is, in metres. */
   readonly doorsteps: ReadonlyMap<string, THREE.Vector3>
+  /** Where the player starts: on the pavement, facing the first door in town. */
+  readonly spawn: { x: number; z: number; heading: number }
 }
 
 /**
@@ -49,7 +51,29 @@ export function buildCity(world: World, dressing: Dressing): CityBuild {
     doorsteps.set(plot.id, new THREE.Vector3(doorstep.x, 0, doorstep.z))
   }
 
-  return { root, buildings, doorsteps }
+  return { root, buildings, doorsteps, spawn: spawnAt(world, doorsteps) }
+}
+
+/** A step back from the first doorstep, looking at it. */
+function spawnAt(world: World, doorsteps: ReadonlyMap<string, THREE.Vector3>): { x: number; z: number; heading: number } {
+  const plot = world.plots().find((p) => p.interiorId) ?? world.plots()[0]
+  const doorstep = plot ? doorsteps.get(plot.id) : undefined
+  if (!plot || !doorstep) return { x: 0, z: 0, heading: 0 }
+
+  const away = {
+    north: { x: 0, z: -1 },
+    south: { x: 0, z: 1 },
+    west: { x: -1, z: 0 },
+    east: { x: 1, z: 0 },
+  }[plot.entrance.facing]
+
+  const back = world.cellSize
+  return {
+    x: doorstep.x + away.x * back,
+    z: doorstep.z + away.z * back,
+    // look back the way we stepped: three.js cameras look down -z at heading 0
+    heading: Math.atan2(away.x, away.z),
+  }
 }
 
 /** Ground floor is taller than the rest, the way a real street front is. */
@@ -76,13 +100,14 @@ function groundMesh(world: World, kind: CellKind, dressing: Dressing): THREE.Mes
   cells.forEach((cell, index) => {
     const centre = cellCentre(cell.x, cell.y, size)
     const half = size / 2
+    // wound anticlockwise seen from above, so the face you walk on points up
     const corners = [
       [centre.x - half, centre.z - half],
+      [centre.x + half, centre.z + half],
       [centre.x + half, centre.z - half],
-      [centre.x + half, centre.z + half],
       [centre.x - half, centre.z - half],
-      [centre.x + half, centre.z + half],
       [centre.x - half, centre.z + half],
+      [centre.x + half, centre.z + half],
     ]
     corners.forEach(([px, pz], corner) => {
       const at = (index * 6 + corner) * 3

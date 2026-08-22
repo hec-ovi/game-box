@@ -1,4 +1,4 @@
-import { METRICS, type BuildingKind, type CellKind, type FurnitureProp, type Plot } from '@gb/world'
+import { METRICS, type BuildingKind, type CellKind, type FurnitureProp, type Item, type Npc, type Plot } from '@gb/world'
 import * as THREE from 'three'
 
 /**
@@ -11,6 +11,10 @@ export interface Dressing {
   building(plot: Plot, size: { width: number; depth: number; height: number }): THREE.Object3D
   /** A piece of furniture, origin at the centre of its base, facing north. */
   prop(prop: FurnitureProp): THREE.Object3D
+  /** A person, origin at their feet, facing north. */
+  character(npc: Npc): THREE.Object3D
+  /** Something lying about that can be picked up, origin at the centre of its base. */
+  pickup(item: Item): THREE.Object3D
   /** The surface of one kind of ground. */
   ground(kind: CellKind): THREE.Material
   /** Interior floor, walls and ceiling. */
@@ -104,6 +108,36 @@ export class Greybox implements Dressing {
     // has to say where on the floor it goes
     const base = new THREE.Group()
     base.name = prop
+    base.add(mesh)
+    return base
+  }
+
+  character(npc: Npc): THREE.Object3D {
+    const height = METRICS.player.height
+    const body = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.3, height - 0.6, 4, 12),
+      this.#material(0xb0743f + npc.appearance.variant * 0x040404),
+    )
+    body.position.y = height / 2
+    body.castShadow = true
+
+    const nose = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.2), this.#material(0x2a2320))
+    nose.position.set(0, height - 0.35, -0.28)
+
+    const person = new THREE.Group()
+    person.name = npc.id
+    person.add(body)
+    person.add(nose)
+    return person
+  }
+
+  pickup(item: Item): THREE.Object3D {
+    const size = item.bulk === 'two-handed' ? 0.7 : item.bulk === 'bag' ? 0.35 : 0.2
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(size, size, size), this.#material(0xd8b45a))
+    mesh.position.y = size / 2
+
+    const base = new THREE.Group()
+    base.name = item.id
     base.add(mesh)
     return base
   }

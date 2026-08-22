@@ -18,6 +18,49 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11(@types/node@26.2.0)(vite@8.2.2(@types/node@26.2.0))
 
+  game/app:
+    dependencies:
+      '@gb/bundle':
+        specifier: workspace:*
+        version: link:../bundle
+      '@gb/forge':
+        specifier: workspace:*
+        version: link:../forge
+      '@gb/nav':
+        specifier: workspace:*
+        version: link:../nav
+      '@gb/play':
+        specifier: workspace:*
+        version: link:../play
+      '@gb/quest':
+        specifier: workspace:*
+        version: link:../quest
+      '@gb/scene':
+        specifier: workspace:*
+        version: link:../scene
+      '@gb/scribe':
+        specifier: workspace:*
+        version: link:../scribe
+      '@gb/sidecar':
+        specifier: workspace:*
+        version: link:../sidecar
+      '@gb/talk':
+        specifier: workspace:*
+        version: link:../talk
+      '@gb/world':
+        specifier: workspace:*
+        version: link:../world
+      three:
+        specifier: ^0.185.1
+        version: 0.185.1
+    devDependencies:
+      '@types/three':
+        specifier: ^0.185.4
+        version: 0.185.4
+      vite:
+        specifier: ^8.2.2
+        version: 8.2.2(@types/node@26.2.0)
+
   game/bundle:
     dependencies:
       '@gb/kit':
