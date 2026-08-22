@@ -1,0 +1,23 @@
+{
+  "name": "@gb/forge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "schema": "node --experimental-strip-types tools/emit-schema.ts",
+    "preview": "node --experimental-strip-types tools/preview.ts"
+  },
+  "dependencies": {
+    "@gb/kit": "workspace:*",
+    "@gb/quest": "workspace:*",
+    "@gb/world": "workspace:*",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@gb/play": "workspace:*"
+  }
+}

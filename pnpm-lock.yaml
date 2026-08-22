@@ -18,6 +18,25 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11(@types/node@26.2.0)(vite@8.2.2(@types/node@26.2.0))
 
+  game/forge:
+    dependencies:
+      '@gb/kit':
+        specifier: workspace:*
+        version: link:../kit
+      '@gb/quest':
+        specifier: workspace:*
+        version: link:../quest
+      '@gb/world':
+        specifier: workspace:*
+        version: link:../world
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@gb/play':
+        specifier: workspace:*
+        version: link:../play
+
   game/kit:
     dependencies:
       zod:

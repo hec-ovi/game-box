@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "theme": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "seed": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "blocksX": {
+      "default": 3,
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 24
+    },
+    "blocksY": {
+      "default": 3,
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 24
+    },
+    "blockCells": {
+      "default": 14,
+      "type": "integer",
+      "minimum": 6,
+      "maximum": 40
+    },
+    "density": {
+      "default": 0.8,
+      "type": "number",
+      "minimum": 0.2,
+      "maximum": 1
+    },
+    "maxStoreys": {
+      "default": 3,
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 40
+    },
+    "exits": {
+      "default": 1,
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4
+    }
+  },
+  "required": [
+    "theme",
+    "seed"
+  ]
+}

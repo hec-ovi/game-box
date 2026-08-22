@@ -9,6 +9,7 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI
 | The city: grid, plots, interiors, NPCs, items, and what a sound world means | `game/world/` |
 | Quests: the flow schema, what makes one playable, how it advances | `game/quest/` |
 | The playthrough: inventory, money, flags, reputation, companions | `game/play/` |
+| Generating a city: streets, plots, interiors, people, quests | `game/forge/` |
 | Determinism, ids, results, boundary validation | `game/kit/` |
 
 ## Sidecar
@@ -30,9 +31,8 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI
 ## Dependency edges
 
 ```
-game/kit  <- game/world
-game/kit  <- game/play  <- game/quest
-game/kit  <- game/quest
+game/kit  <- game/world <- game/forge
+game/kit  <- game/play  <- game/quest <- game/forge
 gb-llm, gb-stt <- gb-api
 ```
 
