@@ -63,6 +63,49 @@ for (const box of boxes) {
   }
 }
 
+checkHost()
+
+/**
+ * The local AI service is not part of the game. It stands on its own so it can
+ * be taken on its own: nothing in it may import the game, and nothing in the
+ * game may import it. They meet over HTTP and nowhere else.
+ */
+function checkHost() {
+  const HOST = join(ROOT, 'host')
+  try {
+    statSync(HOST)
+  } catch {
+    return
+  }
+
+  const hostFiles = []
+  walk(HOST, (f) => (f.endsWith('.ts') || f.endsWith('.mjs')) && hostFiles.push(f))
+
+  for (const file of hostFiles) {
+    for (const [, spec] of readFileSync(file, 'utf8').matchAll(IMPORT)) {
+      if (spec.startsWith('@gb/')) {
+        violations.push(`${rel(file)}: the service imports the game (${spec}); it must stand on its own`)
+      }
+      if (spec.startsWith('.') && !resolve(dirname(file), spec).startsWith(HOST)) {
+        violations.push(`${rel(file)}: relative import escapes the service -> ${spec}`)
+      }
+    }
+  }
+
+  for (const { box, file } of files) {
+    for (const [, spec] of readFileSync(file, 'utf8').matchAll(IMPORT)) {
+      const reachesHost = spec.includes('/host/') || spec.startsWith('host/') || spec === '@gb/host'
+      if (reachesHost) violations.push(`${rel(file)}: game/${box} imports the service; talk to it over HTTP`)
+    }
+  }
+
+  try {
+    statSync(join(HOST, 'CONTRACT.md'))
+  } catch {
+    violations.push('host: missing CONTRACT.md')
+  }
+}
+
 function rel(f) {
   return relative(ROOT, f)
 }
