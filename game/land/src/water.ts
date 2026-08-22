@@ -20,19 +20,23 @@ export function carveBasins(height: HeightField, theme: LandTheme, centre: { x: 
   const { count, radius, depth } = theme.water
   if (count <= 0) return []
 
-  const wanted = radius + CLEARANCE
-  const candidates: Array<Basin & { spread: number }> = []
-  for (let i = 0; i < count * 12; i++) {
-    const angle = (i + rng.float() * 0.85) * ((Math.PI * 2) / (count * 12))
-    const site = marchOut(height, centre, angle, wanted + rng.float() * 55)
+  const spread = theme.relief.open * 0.85
+  const candidates: Array<Basin & { tilt: number }> = []
+  for (let i = 0; i < count * 14; i++) {
+    const angle = (i + rng.float() * 0.85) * ((Math.PI * 2) / (count * 14))
+    const out = rng.float() * spread
+    // the further out a pond is the bigger it has to be, because the ground it
+    // sits in is drawn in bigger squares out there
+    const reach = radius * rng.range(0.7, 1.9) * (1 + out / 620)
+    const site = marchOut(height, centre, angle, reach + CLEARANCE + out)
     if (!site) continue
-    if (height.awayFromTown(site.x, site.z) < wanted) continue
+    if (height.awayFromTown(site.x, site.z) < reach + CLEARANCE) continue
 
     let low = Infinity
     let high = -Infinity
     for (let spoke = 0; spoke < SPOKES; spoke++) {
       const theta = (spoke / SPOKES) * Math.PI * 2
-      const rim = height.base(site.x + Math.cos(theta) * radius, site.z + Math.sin(theta) * radius)
+      const rim = height.base(site.x + Math.cos(theta) * reach, site.z + Math.sin(theta) * reach)
       low = Math.min(low, rim)
       high = Math.max(high, rim)
     }
@@ -42,20 +46,23 @@ export function carveBasins(height: HeightField, theme: LandTheme, centre: { x: 
     candidates.push({
       x: site.x,
       z: site.z,
-      radius,
+      radius: reach,
       rim: low,
       surface: low - LIP,
       bed: low - LIP - depth,
-      spread: high - low,
+      tilt: high - low,
     })
   }
 
-  // the flattest ground first, then anywhere its own basin does not already reach
-  candidates.sort((a, b) => a.spread - b.spread || a.rim - b.rim)
+  // even ground first, and low ground over high, because water gathers downhill
+  candidates.sort((a, b) => a.tilt + a.rim * 0.25 - (b.tilt + b.rim * 0.25))
   const taken: Basin[] = []
   for (const candidate of candidates) {
     if (taken.length >= count) break
-    if (taken.some((other) => Math.hypot(other.x - candidate.x, other.z - candidate.z) < radius * 2.2)) continue
+    const clear = taken.every(
+      (other) => Math.hypot(other.x - candidate.x, other.z - candidate.z) > (other.radius + candidate.radius) * 3,
+    )
+    if (!clear) continue
     const basin: Basin = {
       x: candidate.x,
       z: candidate.z,
@@ -79,7 +86,7 @@ function marchOut(
 ): { x: number; z: number } | undefined {
   const dx = Math.cos(angle)
   const dz = Math.sin(angle)
-  for (let distance = 0; distance < 2000; distance += 4) {
+  for (let distance = 0; distance < 5000; distance += 8) {
     const x = centre.x + dx * distance
     const z = centre.z + dz * distance
     if (height.awayFromTown(x, z) >= wanted) return { x, z }
@@ -92,18 +99,27 @@ function marchOut(
  * by walking outward until the land comes back up through the water level, so
  * the surface always meets the ground it sits in.
  */
-export function buildWater(height: HeightField, basins: readonly Basin[], theme: LandTheme): THREE.Mesh | undefined {
-  if (!basins.length) return undefined
-
+export function buildWater(ground: Surface, carved: readonly Basin[], theme: LandTheme): WaterBuild {
   const positions: number[] = []
   const indices: number[] = []
-  for (const basin of basins) {
+  const basins: Basin[] = []
+
+  for (const basin of carved) {
+    const shore: number[] = []
+    for (let spoke = 0; spoke < SPOKES; spoke++) {
+      const reach = shoreline(ground, basin, (spoke / SPOKES) * Math.PI * 2)
+      if (reach === undefined) break
+      shore.push(reach)
+    }
+    // a bowl the drawn ground does not close on every side stays a dry hollow
+    if (shore.length < SPOKES) continue
+
+    basins.push(basin)
     const centre = positions.length / 3
     positions.push(basin.x, basin.surface, basin.z)
     for (let spoke = 0; spoke < SPOKES; spoke++) {
       const theta = (spoke / SPOKES) * Math.PI * 2
-      const reach = shoreline(height, basin, theta)
-      positions.push(basin.x + Math.cos(theta) * reach, basin.surface, basin.z + Math.sin(theta) * reach)
+      positions.push(basin.x + Math.cos(theta) * shore[spoke]!, basin.surface, basin.z + Math.sin(theta) * shore[spoke]!)
     }
     for (let spoke = 0; spoke < SPOKES; spoke++) {
       const here = centre + 1 + spoke
@@ -111,6 +127,7 @@ export function buildWater(height: HeightField, basins: readonly Basin[], theme:
       indices.push(centre, next, here)
     }
   }
+  if (!basins.length) return { mesh: undefined, basins }
 
   const geometry = new THREE.BufferGeometry()
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
@@ -129,7 +146,13 @@ export function buildWater(height: HeightField, basins: readonly Basin[], theme:
   )
   mesh.name = 'land:water'
   mesh.receiveShadow = true
-  return mesh
+  return { mesh, basins }
+}
+
+export interface WaterBuild {
+  readonly mesh: THREE.Mesh | undefined
+  /** The basins that hold water. Any other carve is just a dip in the ground. */
+  readonly basins: readonly Basin[]
 }
 
 /**
@@ -137,10 +160,10 @@ export function buildWater(height: HeightField, basins: readonly Basin[], theme:
  * first comes back up through the surface, then closed in on it. The answer is
  * always the wet side of that line, so the shore is never drawn over dry ground.
  */
-function shoreline(height: HeightField, basin: Basin, theta: number): number {
+function shoreline(ground: Surface, basin: Basin, theta: number): number | undefined {
   const dx = Math.cos(theta)
   const dz = Math.sin(theta)
-  const at = (reach: number): number => height.at(basin.x + dx * reach, basin.z + dz * reach)
+  const at = (reach: number): number => ground.heightAt(basin.x + dx * reach, basin.z + dz * reach)
 
   const steps = 64
   let wet = 0
@@ -156,7 +179,31 @@ function shoreline(height: HeightField, basin: Basin, theta: number): number {
       if (at(middle) < basin.surface) wet = middle
       else dry = middle
     }
-    return wet
+    return inset(wet)
   }
-  return wet
+  return undefined
+}
+
+/** A centimetre back from the line, so the edge stays wet once it is a float32. */
+function inset(reach: number): number {
+  return Math.max(0, reach - 0.01)
+}
+
+/** Anything that can say how high the ground is: the built ground, in practice. */
+export interface Surface {
+  heightAt(x: number, z: number): number
+}
+
+/** The water level standing at a point, or undefined where the ground is dry. */
+export function waterLevelAt(
+  basins: readonly Basin[],
+  ground: Surface,
+  x: number,
+  z: number,
+): number | undefined {
+  for (const basin of basins) {
+    if (Math.hypot(x - basin.x, z - basin.z) >= basin.radius) continue
+    if (ground.heightAt(x, z) <= basin.surface) return basin.surface
+  }
+  return undefined
 }

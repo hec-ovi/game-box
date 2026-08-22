@@ -4,16 +4,22 @@ import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { buildLand, matchTheme, THEMES, type Land } from '../src/index.ts'
 
-async function town(theme = 'quiet valley town', seed = 'land'): Promise<World> {
-  const built = await new Forge(new OfflineNarrator(seed)).build({
-    theme,
-    seed,
-    blocksX: 1,
-    blocksY: 1,
-    blockCells: 14,
-  })
-  if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 400))
-  return built.value.world
+const towns = new Map<string, Promise<World>>()
+
+/** Forging a city is slow, so each one is built once and read many times. */
+function town(theme = 'quiet valley town', seed = 'land'): Promise<World> {
+  const key = `${theme}/${seed}`
+  let made = towns.get(key)
+  if (!made) {
+    made = new Forge(new OfflineNarrator(seed))
+      .build({ theme, seed, blocksX: 1, blocksY: 1, blockCells: 14 })
+      .then((built) => {
+        if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 400))
+        return built.value.world
+      })
+    towns.set(key, made)
+  }
+  return made
 }
 
 function landOf(world: World, options: Parameters<typeof buildLand>[1] = {}): Land {
@@ -25,6 +31,19 @@ function landOf(world: World, options: Parameters<typeof buildLand>[1] = {}): La
 /** Which cell of the grid a point in metres falls on, or undefined off the map. */
 function cellAt(world: World, x: number, z: number): CellKind | undefined {
   return world.grid.at(Math.floor(x / world.cellSize), Math.floor(z / world.cellSize))
+}
+
+function middleOf(world: World): { x: number; z: number } {
+  return { x: (world.grid.width * world.cellSize) / 2, z: (world.grid.height * world.cellSize) / 2 }
+}
+
+/** Points on a circle of this radius around the middle of town. */
+function around(world: World, radius: number, steps = 24): Array<{ x: number; z: number }> {
+  const middle = middleOf(world)
+  return Array.from({ length: steps }, (_, i) => {
+    const angle = (i / steps) * Math.PI * 2
+    return { x: middle.x + Math.cos(angle) * radius, z: middle.z + Math.sin(angle) * radius }
+  })
 }
 
 function instances(mesh: THREE.InstancedMesh): THREE.Vector3[] {
@@ -47,14 +66,62 @@ function shape(land: Land): string {
   return `${position.count}:${digest}:${land.cost.trees}:${land.cost.ponds}`
 }
 
+describe('the open ground', () => {
+  it('runs a kilometre in every direction before anything rises', async () => {
+    const world = await town()
+    const land = landOf(world)
+
+    // level where the town is, and still low ground a kilometre out
+    expect(land.heightAt(middleOf(world).x, middleOf(world).z)).toBe(0)
+    for (const spot of around(world, 1000)) {
+      expect(Math.abs(land.heightAt(spot.x, spot.z))).toBeLessThan(110)
+    }
+    // and rolling rather than a table: hills and dips, not one flat height
+    const heights = around(world, 700, 64).map((spot) => land.heightAt(spot.x, spot.z))
+    expect(Math.max(...heights) - Math.min(...heights)).toBeGreaterThan(25)
+  })
+
+  it('can be walked, all the way out', async () => {
+    const world = await town()
+    const land = landOf(world)
+
+    let walkable = 0
+    let total = 0
+    for (let radius = 60; radius <= 1200; radius += 60) {
+      for (const spot of around(world, radius, 36)) {
+        total++
+        if (land.walkableAt(spot.x, spot.z)) walkable++
+      }
+    }
+    expect(walkable / total).toBeGreaterThan(0.95)
+  })
+
+  it('keeps the high ground kilometres away, where you would not walk to it', async () => {
+    const world = await town()
+    const land = landOf(world)
+
+    const mean = (radius: number): number => {
+      const heights = around(world, radius, 32).map((spot) => land.heightAt(spot.x, spot.z))
+      return heights.reduce((sum, height) => sum + height, 0) / heights.length
+    }
+
+    expect(mean(1200)).toBeLessThan(80)
+    expect(mean(2000)).toBeGreaterThan(mean(1200))
+    // and it really is a mountain by the time you get there
+    expect(mean(2900)).toBeGreaterThan(300)
+    expect(land.horizon).toBeGreaterThan(4000)
+  })
+})
+
 describe('terrain', () => {
-  it('grows out of the mountain cells and never lies over the town', async () => {
+  it('covers the verge the grid marks and never lies over the town', async () => {
     const world = await town()
     const land = landOf(world)
     const position = land.terrain.geometry.getAttribute('position')
     const index = land.terrain.geometry.getIndex()!
 
     const covered = new Set<string>()
+    let overTown = 0
     for (let triangle = 0; triangle < index.count; triangle += 3) {
       let x = 0
       let z = 0
@@ -64,27 +131,11 @@ describe('terrain', () => {
         z += position.getZ(vertex) / 3
       }
       const kind = cellAt(world, x, z)
-      // a face is either out beyond the map or on a mountain cell: never on the town
-      expect(kind === undefined || kind === 'mountain').toBe(true)
+      if (kind !== undefined && kind !== 'mountain') overTown++
       if (kind === 'mountain') covered.add(`${Math.floor(x / world.cellSize)},${Math.floor(z / world.cellSize)}`)
     }
+    expect(overTown).toBe(0)
     expect(covered.size).toBe(world.grid.count('mountain'))
-  })
-
-  it('rises out of the valley floor and keeps going to the horizon', async () => {
-    const world = await town()
-    const land = landOf(world)
-    const middle = (world.grid.width * world.cellSize) / 2
-
-    // level where the town is, climbing away from it, still there far out
-    expect(land.heightAt(middle, middle)).toBe(0)
-    const climb = [8, 40, 100, 180].map((away) => land.heightAt(middle, -away))
-    for (let i = 1; i < climb.length; i++) expect(climb[i]!).toBeGreaterThan(climb[i - 1]!)
-    expect(climb.at(-1)!).toBeGreaterThan(40)
-
-    const bounds = new THREE.Box3().setFromObject(land.terrain)
-    expect(bounds.min.x).toBeLessThan(-land.horizon)
-    expect(bounds.max.x).toBeGreaterThan(world.grid.width * world.cellSize + land.horizon)
   })
 
   it('is one welded mesh, wound to be seen from above', async () => {
@@ -95,24 +146,50 @@ describe('terrain', () => {
 
     const seen = new Set<string>()
     for (let i = 0; i < position.count; i++) seen.add(`${Math.round(position.getX(i))}:${Math.round(position.getZ(i))}`)
-    // one vertex per place: the skirt shares the band's edge instead of cracking away from it
+    // one vertex per place: the coarse steps share the fine ones' edges rather
+    // than cracking away from them
     expect(seen.size).toBe(position.count)
 
     const a = new THREE.Vector3()
     const b = new THREE.Vector3()
     const c = new THREE.Vector3()
+    let facingDown = 0
     for (let triangle = 0; triangle < index.count; triangle += 3) {
       a.fromBufferAttribute(position, index.getX(triangle))
       b.fromBufferAttribute(position, index.getX(triangle + 1))
       c.fromBufferAttribute(position, index.getX(triangle + 2))
-      const facing = b.clone().sub(a).cross(c.clone().sub(a))
-      expect(facing.y).toBeGreaterThan(0)
+      if (b.clone().sub(a).cross(c.clone().sub(a)).y <= 0) facingDown++
     }
+    expect(facingDown).toBe(0)
+  })
+
+  it('answers the height query with the very ground it draws', async () => {
+    const world = await town()
+    const land = landOf(world)
+    const caster = new THREE.Raycaster()
+    caster.far = 6000
+    const down = new THREE.Vector3(0, -1, 0)
+
+    // a line straight out of town, which crosses every seam between one step of
+    // resolution and the next
+    const middle = middleOf(world)
+    let checked = 0
+    let worst = 0
+    for (let away = 60; away < 2600; away += 64) {
+      caster.set(new THREE.Vector3(middle.x, 3000, middle.z - away), down)
+      const hit = caster.intersectObject(land.terrain, false)[0]
+      expect(hit).toBeDefined()
+      checked++
+      worst = Math.max(worst, Math.abs(hit!.point.y - land.heightAt(middle.x, middle.z - away)))
+    }
+    expect(checked).toBeGreaterThan(30)
+    // the query reads the same triangle the eye does, so this is float rounding
+    expect(worst).toBeLessThan(0.01)
   })
 })
 
 describe('the road out', () => {
-  it('stays at ground level through the pass and beyond the map', async () => {
+  it('leaves town at ground level and stays walkable into the open', async () => {
     const world = await town()
     const land = landOf(world)
     const cell = world.cellSize
@@ -131,11 +208,17 @@ describe('the road out', () => {
       const x = (exit.x + 0.5) * cell
       const z = (exit.y + 0.5) * cell
       expect(land.heightAt(x, z)).toBe(0)
-      for (let out = 4; out <= 50; out += 6) {
+
+      let walkable = 0
+      let steps = 0
+      for (let out = 4; out <= 800; out += 8) {
         const ox = exit.x === 0 ? -out : exit.x === width - 1 ? width * cell + out : x
         const oz = exit.y === 0 ? -out : exit.y === height - 1 ? height * cell + out : z
-        expect(land.heightAt(ox, oz)).toBe(0)
+        steps++
+        if (land.walkableAt(ox, oz)) walkable++
+        if (out <= 100) expect(land.heightAt(ox, oz)).toBeLessThan(1)
       }
+      expect(walkable / steps).toBeGreaterThan(0.9)
     }
   })
 })
@@ -159,6 +242,8 @@ describe('water', () => {
       // the bed is under the surface
       expect(land.heightAt(centre.x, centre.z)).toBeLessThan(centre.y)
       expect(land.waterAt(centre.x, centre.z)).toBeCloseTo(centre.y, 4)
+      // and you cannot walk on it
+      expect(land.walkableAt(centre.x, centre.z)).toBe(false)
     }
 
     const rim = new THREE.Vector3()
@@ -188,7 +273,7 @@ describe('trees', () => {
     const world = await town()
     const land = landOf(world)
     expect(land.trees.length).toBeGreaterThan(0)
-    expect(land.cost.trees).toBeGreaterThan(50)
+    expect(land.cost.trees).toBeGreaterThan(500)
 
     for (const wood of land.trees) {
       for (const spot of instances(wood)) {
@@ -200,6 +285,20 @@ describe('trees', () => {
         expect(spot.y).toBeLessThanOrEqual(land.theme.trees.treeLine)
       }
     }
+  })
+
+  it('spread out across the open ground instead of hugging the town', async () => {
+    const world = await town()
+    const land = landOf(world)
+    const middle = middleOf(world)
+
+    let far = 0
+    for (const wood of land.trees) {
+      for (const spot of instances(wood)) {
+        if (Math.hypot(spot.x - middle.x, spot.z - middle.z) > 800) far++
+      }
+    }
+    expect(far / land.cost.trees).toBeGreaterThan(0.4)
   })
 })
 
@@ -218,7 +317,7 @@ describe('themes', () => {
     const dry = landOf(world, { theme: 'arid' })
 
     expect(shape(wet)).not.toBe(shape(dry))
-    expect(wet.fog.far).toBeLessThan(dry.fog.far)
+    expect(wet.fog.density).toBeGreaterThan(dry.fog.density)
     expect(wet.cost.ponds).toBeGreaterThan(dry.cost.ponds)
     expect(wet.trees.map((wood) => wood.name)).not.toEqual(dry.trees.map((wood) => wood.name))
   })
@@ -249,14 +348,25 @@ describe('a map with no town on it', () => {
 })
 
 describe('cost', () => {
-  it('stays background: a handful of draws and a few thousand triangles', async () => {
+  it('buys kilometres with a handful of draws', async () => {
     const land = landOf(await town('rain-soaked port'))
 
     expect(land.cost.draws).toBeLessThanOrEqual(6)
-    expect(land.cost.triangles).toBeLessThan(20000)
+    expect(land.cost.triangles).toBeLessThan(200000)
     expect(land.cost.trees).toBeLessThanOrEqual(land.theme.trees.max)
-    // the whole landscape is the terrain, the water, the woods and the sky
     expect(land.root.children.filter((child) => child instanceof THREE.Mesh).length).toBeLessThanOrEqual(6)
+  })
+
+  it('drops to a quarter of the geometry when asked for less', async () => {
+    const world = await town()
+    const full = landOf(world)
+    const thin = landOf(world, { detail: 'low' })
+
+    expect(thin.cost.triangles).toBeLessThan(full.cost.triangles * 0.4)
+    expect(thin.cost.trees).toBeLessThan(full.cost.trees)
+    expect(thin.cost.drops).toBeLessThan(full.cost.drops)
+    // and it is still the same world, just fewer pieces of it
+    expect(thin.horizon).toBeGreaterThan(4000)
   })
 })
 
@@ -267,7 +377,7 @@ describe('the sky', () => {
     expect(land.sky.renderOrder).toBeLessThan(0)
     expect(land.sun.position.y).toBeGreaterThan(0)
     expect(land.fog.color.getHex()).toBe(land.theme.light.haze)
-    expect(land.fog.far).toBeGreaterThan(land.fog.near)
+    expect(land.fog.density).toBeGreaterThan(0)
     // far enough back that the whole dome is inside a camera set up from it
     expect(land.cameraFar).toBeGreaterThan(land.horizon)
   })
@@ -355,11 +465,10 @@ describe('weather', () => {
     const land = landOf(await town())
     land.setTime(12)
 
-    const look = (): { sun: number; ambient: number; near: number; far: number; haze: number; wet: number } => ({
+    const look = (): { sun: number; ambient: number; density: number; haze: number; wet: number } => ({
       sun: land.sun.intensity,
       ambient: land.skyLight.intensity,
-      near: land.fog.near,
-      far: land.fog.far,
+      density: land.fog.density,
       haze: land.fog.color.getHex(),
       wet: land.wetness,
     })
@@ -371,12 +480,11 @@ describe('weather', () => {
     land.setWeather('rain')
     const wet = look()
 
-    // the sun goes out of it and the haze closes in, step by step
+    // the sun goes out of it and the air thickens, step by step
     expect(clear.sun).toBeGreaterThan(overcast.sun)
     expect(overcast.sun).toBeGreaterThan(wet.sun)
-    expect(clear.far).toBeGreaterThan(overcast.far)
-    expect(overcast.far).toBeGreaterThan(wet.far)
-    expect(clear.near).toBeGreaterThan(wet.near)
+    expect(clear.density).toBeLessThan(overcast.density)
+    expect(overcast.density).toBeLessThan(wet.density)
     // flatter, not darker: what the sun loses the sky puts back
     expect(overcast.ambient).toBeGreaterThan(clear.ambient)
     expect(new Set([clear.haze, overcast.haze, wet.haze]).size).toBe(3)

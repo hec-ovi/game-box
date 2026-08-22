@@ -2,6 +2,13 @@ import type { OpenField } from './field.ts'
 import type { Noise } from './noise.ts'
 import type { LandTheme } from './theme.ts'
 
+/** Metres of open ground kept perfectly flat around the town and its roads. */
+const FLAT = 12
+/** Metres over which the rolling ground fades in past that. */
+const FEATHER = 90
+/** Metres of height that doubles the relief: the higher the land, the rougher it gets. */
+const CRAG = 200
+
 /** A carved bowl in the land, with the water level it holds. */
 export interface Basin {
   readonly x: number
@@ -15,20 +22,19 @@ export interface Basin {
 }
 
 /**
- * The height of the land at any point, in metres above the city's plain.
+ * The height of the land at any point, in metres above the town's ground.
  *
- * Zero on the town and its roads, a gentle skirt around them, then the ring
- * climbing to its crest and coming back down to a plain that runs to the
- * horizon. Hills are laid over the ring and fade out before they reach the
- * town, so the streets never end in a slope.
+ * Zero on the town and its roads, then kilometres of open ground that rolls but
+ * barely climbs, then the ring: foothills, a long climb to the crest, and a
+ * descent to a plateau that runs to the horizon. The rolling comes from three
+ * sizes of noise laid over the profile and fades out before it reaches the
+ * streets, so the town sits on a flat floor and everything outside it does not.
  */
 export class HeightField {
   readonly #field: OpenField
   readonly #theme: LandTheme
   readonly #noise: Noise
   readonly #flat: number
-  readonly #shore: number
-  readonly #feather: number
   readonly #basins: Basin[] = []
 
   constructor(field: OpenField, theme: LandTheme, noise: Noise, flat: number) {
@@ -36,14 +42,12 @@ export class HeightField {
     this.#theme = theme
     this.#noise = noise
     this.#flat = flat
-    this.#shore = theme.relief.skirt * 0.4
-    this.#feather = theme.relief.skirt + theme.relief.climb * 0.5
   }
 
-  /** How far out the ring reaches before the land settles into its outer plain. */
+  /** How far out the ring reaches before the land settles into its outer plateau. */
   static reach(theme: LandTheme): number {
-    const { skirt, climb, crest, descent } = theme.relief
-    return skirt + climb + crest + descent
+    const { open, climb, crest, descent } = theme.relief
+    return open + climb + crest + descent
   }
 
   addBasin(basin: Basin): void {
@@ -54,13 +58,16 @@ export class HeightField {
   base(x: number, z: number): number {
     const away = Math.max(0, this.#field.at(x, z) - this.#flat)
     const height = this.#profile(away)
-    const mask = clamp01((away - this.#shore) / this.#feather)
-    if (mask <= 0) return height
+    if (away <= FLAT) return height
 
-    const { hills, hillScale, rough, roughScale } = this.#theme.relief
-    const broad = this.#noise.fbm(x / hillScale, z / hillScale, 4) * hills
-    const grain = this.#noise.fbm(x / roughScale + 71.3, z / roughScale - 19.7, 2) * rough
-    return height + (broad + grain * mask) * mask
+    const mask = clamp01((away - FLAT) / FEATHER)
+    const { broad, broadScale, mid, midScale, fine, fineScale } = this.#theme.relief
+    const rolling =
+      this.#noise.fbm(x / broadScale, z / broadScale, 4) * broad +
+      this.#noise.fbm(x / midScale + 31.7, z / midScale - 12.3, 3) * mid +
+      this.#noise.fbm(x / fineScale + 71.3, z / fineScale - 19.7, 2) * fine
+    // high ground is broken ground: the same shapes, taller, once the ring lifts
+    return height + rolling * mask * (1 + height / CRAG)
   }
 
   /** The land as it is built: base height with every basin cut into it. */
@@ -77,32 +84,23 @@ export class HeightField {
     return height
   }
 
-  /** The water level at a point, when it is standing in one of the basins. */
-  waterAt(x: number, z: number): number | undefined {
-    for (const basin of this.#basins) {
-      if (Math.hypot(x - basin.x, z - basin.z) >= basin.radius) continue
-      if (this.at(x, z) <= basin.surface) return basin.surface
-    }
-    return undefined
-  }
-
   /** Metres from the nearest open ground: zero on the town and on the road out. */
   awayFromTown(x: number, z: number): number {
     return this.#field.at(x, z)
   }
 
   #profile(away: number): number {
-    const { skirt, skirtHeight, climb, peak, crest, descent, plain } = this.#theme.relief
+    const { open, openLift, climb, peak, crest, descent, plateau } = this.#theme.relief
     if (away <= 0) return 0
-    if (away < skirt) return skirtHeight * smoothstep01(away / skirt)
+    if (away < open) return openLift * smoothstep01(away / open)
 
-    const up = away - skirt
-    if (up < climb) return skirtHeight + peak * smoothstep01(up / climb)
-    if (up < climb + crest) return skirtHeight + peak
+    const up = away - open
+    if (up < climb) return openLift + peak * smoothstep01(up / climb)
+    if (up < climb + crest) return openLift + peak
     const down = up - climb - crest
-    if (down >= descent) return plain
-    const top = skirtHeight + peak
-    return top + (plain - top) * smoothstep01(down / descent)
+    if (down >= descent) return plateau
+    const top = openLift + peak
+    return top + (plateau - top) * smoothstep01(down / descent)
   }
 }
 

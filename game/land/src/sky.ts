@@ -28,7 +28,7 @@ export class Atmosphere {
   readonly skyLight: THREE.HemisphereLight
   readonly stars: THREE.Points
   readonly moonDisc: THREE.Mesh
-  readonly fog: THREE.Fog
+  readonly fog: THREE.FogExp2
   /** Everything to hang in the scene, in the order it should be added. */
   readonly objects: readonly THREE.Object3D[]
 
@@ -92,7 +92,7 @@ export class Atmosphere {
     this.skyLight = new THREE.HemisphereLight(light.skyColour, light.bounceColour, light.ambient)
     this.skyLight.name = 'land:skylight'
 
-    this.fog = new THREE.Fog(light.haze, light.hazeNear, light.hazeFar)
+    this.fog = new THREE.FogExp2(light.haze, light.density)
     this.objects = [
       this.sky,
       this.stars,
@@ -160,8 +160,7 @@ export class Atmosphere {
     this.skyLight.intensity = (theme.light.nightAmbient + (theme.light.ambient - theme.light.nightAmbient) * day) * look.ambient
 
     this.fog.color.copy(this.#night.haze).lerp(this.#day.haze, day).lerp(STORM, look.grey)
-    this.fog.near = theme.light.hazeNear * look.fogNear
-    this.fog.far = theme.light.hazeFar * look.fogFar * (0.55 + 0.45 * day)
+    this.fog.density = theme.light.density * look.fog * (1.25 - 0.25 * day)
 
     // stars go out as the sun comes up to the horizon, before the sky itself brightens
     const showNight = (1 - smoothstep01((this.#sunward.y + 0.22) / 0.24)) * (1 - cloud * 0.85)

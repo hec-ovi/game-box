@@ -2,21 +2,37 @@ import { err, ok, Rng, type Result } from '@gb/kit'
 import type { World } from '@gb/world'
 import * as THREE from 'three'
 import { OpenField } from './field.ts'
-import { HeightField } from './height.ts'
+import { Ground, type TierSpec } from './ground.ts'
+import { HeightField, type Basin } from './height.ts'
 import { Noise } from './noise.ts'
 import { Atmosphere } from './sky.ts'
 import { buildTerrain } from './terrain.ts'
 import { landTheme, matchTheme, type LandTheme } from './theme.ts'
 import { buildTrees } from './trees.ts'
-import { buildWater, carveBasins } from './water.ts'
+import { buildWater, carveBasins, waterLevelAt } from './water.ts'
 import { RAIN_VOLUME, Rainfall, WEATHER, type Weather } from './weather.ts'
 
-/** Metres of land beyond the town, out to the horizon. */
-const HORIZON = 1600
-/** Metres a road carries on past the edge of the map before the hills close behind it. */
-const PASS = 60
+/** Metres of ground measured to the metre around the town, and how far the road out is graded. */
+const FIELD_MARGIN = 300
+const PASS = 120
 /** Streaks of rain in the volume around the viewer, at the heaviest. */
 const DROPS = 3000
+/** Rise over run past which a slope is not something you can walk up. */
+const MAX_WALK_SLOPE = 0.7
+
+/**
+ * How fine the ground is, and how far each step of it reaches past the map.
+ * Six metre quads for the half kilometre you are most likely to walk, then
+ * four times coarser twice over, which is what makes kilometres affordable.
+ */
+function tiers(theme: LandTheme, horizon: number, coarse: boolean): TierSpec[] {
+  const scale = coarse ? 2 : 1
+  return [
+    { step: 6 * scale, reach: 460 },
+    { step: 24 * scale, reach: 1800 },
+    { step: 96 * scale, reach: horizon },
+  ]
+}
 
 export type LandError =
   | { readonly code: 'unknown-theme'; readonly message: string }
@@ -27,7 +43,7 @@ export interface LandOptions {
   readonly theme?: string
   /** Left out, the world's seed. Same seed, same landscape. */
   readonly seed?: string
-  /** Metres from the edge of the map to the far edge of the land. */
+  /** Metres from the edge of the map to the far edge of the land. Default: past the far side of the ring. */
   readonly horizon?: number
   /** `low` thins the woods and the rain and pulls the horizon in, for the WebGL2 tier. */
   readonly detail?: 'full' | 'low'
@@ -70,13 +86,17 @@ export class Land {
 
   readonly #air: Atmosphere
   readonly #rain: Rainfall
+  readonly #ground: Ground
   readonly #height: HeightField
+  readonly #basins: readonly Basin[]
 
   constructor(parts: {
     theme: LandTheme
     horizon: number
     cameraFar: number
+    ground: Ground
     height: HeightField
+    basins: readonly Basin[]
     air: Atmosphere
     rain: Rainfall
     terrain: THREE.Mesh
@@ -90,7 +110,9 @@ export class Land {
     this.terrain = parts.terrain
     this.water = parts.water
     this.trees = parts.trees
+    this.#ground = parts.ground
     this.#height = parts.height
+    this.#basins = parts.basins
     this.#air = parts.air
     this.#rain = parts.rain
 
@@ -123,7 +145,7 @@ export class Land {
   }
 
   /** Haze in the theme's colour, at this hour and this weather. Assign it to `scene.fog` once. */
-  get fog(): THREE.Fog {
+  get fog(): THREE.FogExp2 {
     return this.#air.fog
   }
 
@@ -159,14 +181,29 @@ export class Land {
     this.#rain.update(seconds, viewer)
   }
 
-  /** Height of the land in metres at any point, exactly zero on the town and its roads. */
+  /**
+   * Height of the ground in metres at any point, which is the very triangle the
+   * mesh draws there. Zero over the town and its roads. Cheap: two searches
+   * along a lattice and four numbers, so a player's feet can ask it every frame.
+   */
   heightAt(x: number, z: number): number {
-    return this.#height.at(x, z)
+    return this.#ground.heightAt(x, z)
+  }
+
+  /** Rise over run of the ground under a point, off the same triangle. */
+  slopeAt(x: number, z: number): number {
+    return this.#ground.slopeAt(x, z)
+  }
+
+  /** Whether a foot can go here: not too steep, and not in the water. */
+  walkableAt(x: number, z: number): boolean {
+    if (this.#ground.slopeAt(x, z) > MAX_WALK_SLOPE) return false
+    return this.waterAt(x, z) === undefined
   }
 
   /** The water level standing at a point, or undefined where the ground is dry. */
   waterAt(x: number, z: number): number | undefined {
-    return this.#height.waterAt(x, z)
+    return waterLevelAt(this.#basins, this.#ground, x, z)
   }
 }
 
@@ -182,11 +219,11 @@ export function buildLand(world: World, options: LandOptions = {}): Result<Land,
   }
 
   const low = options.detail === 'low'
-  const horizon = options.horizon ?? (low ? HORIZON * 0.6 : HORIZON)
+  const horizon = options.horizon ?? HeightField.reach(theme) + 1400
   const rng = new Rng(options.seed ?? world.seed)
 
   const field = OpenField.of(world, {
-    margin: HeightField.reach(theme) + 60,
+    margin: FIELD_MARGIN,
     step: world.cellSize * 2,
     passLength: PASS,
   })
@@ -201,32 +238,35 @@ export function buildLand(world: World, options: LandOptions = {}): Result<Land,
   const centre = { x: (world.grid.width * world.cellSize) / 2, z: (world.grid.height * world.cellSize) / 2 }
   const basins = carveBasins(height, theme, centre, rng.fork('water'))
 
-  const terrain = buildTerrain(world, height, theme, relief, horizon)
-  const water = buildWater(height, basins, theme)
-  const trees = buildTrees(world, height, theme, scatter, rng.fork('trees'), Math.round(theme.trees.max * (low ? 0.4 : 1)))
+  const ground = Ground.build(world, height, tiers(theme, horizon, low))
+  const terrain = buildTerrain(world, ground, height, theme, relief)
+  const water = buildWater(ground, basins, theme)
+  const trees = buildTrees(world, ground, height, water.basins, theme, scatter, rng.fork('trees'), Math.round(theme.trees.max * (low ? 0.4 : 1)))
 
   const townRadius = Math.hypot(world.grid.width * world.cellSize, world.grid.height * world.cellSize) / 2
-  const skyRadius = horizon + townRadius + 100
+  const skyRadius = ground.reach + townRadius + 200
   const air = new Atmosphere(theme, centre, skyRadius, rng.fork('stars'))
   const rain = new Rainfall(Math.round(DROPS * (low ? 0.45 : 1)), rng.fork('rain'))
 
   const land = new Land({
     theme,
-    horizon,
+    horizon: ground.reach,
     cameraFar: skyRadius * 1.2,
+    ground,
     height,
+    basins: water.basins,
     air,
     rain,
     terrain: terrain.mesh,
-    water,
+    water: water.mesh,
     trees: trees.meshes,
     cost: {
       triangles: terrain.triangles,
       vertices: terrain.vertices,
       trees: trees.count,
-      ponds: basins.length,
+      ponds: water.basins.length,
       // the terrain, the sky, the water if there is any, and one per tree species
-      draws: 2 + (water ? 1 : 0) + trees.meshes.length,
+      draws: 2 + (water.mesh ? 1 : 0) + trees.meshes.length,
     },
   })
   land.setWeather(options.weather ?? 'clear')

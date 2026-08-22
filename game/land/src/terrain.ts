@@ -1,12 +1,9 @@
 import type { World } from '@gb/world'
 import * as THREE from 'three'
+import type { Ground } from './ground.ts'
 import { clamp01, smoothstep01, type HeightField } from './height.ts'
 import type { Noise } from './noise.ts'
 import type { LandTheme } from './theme.ts'
-
-/** Metres of the first step outward from the map, and how fast the steps grow. */
-const FIRST_STEP = 3
-const STEP_GROWTH = 1.28
 
 export interface TerrainBuild {
   readonly mesh: THREE.Mesh
@@ -17,21 +14,28 @@ export interface TerrainBuild {
 /**
  * The land, as one mesh.
  *
- * Two pieces welded into the same vertices: the grid's mountain cells, at cell
- * resolution, and a skirt of rings that carries the ground outward to the
- * horizon in steps that grow with distance. The town's own cells are left out
- * entirely, so nothing here is ever laid over a street or a plot.
+ * Two pieces welded into the same vertices: the verge, one quad per cell the
+ * grid marks as the edge of the built area, and the ground, squares that get
+ * bigger the further out they are. The town's own cells are left out entirely,
+ * so nothing here is ever laid over a street or a plot.
  */
 export function buildTerrain(
   world: World,
+  ground: Ground,
   height: HeightField,
   theme: LandTheme,
   noise: Noise,
-  horizon: number,
 ): TerrainBuild {
-  const mesher = new Mesher(height)
-  band(mesher, world)
-  skirt(mesher, world, horizon)
+  const mesher = new Mesher()
+  verge(mesher, world, ground, height)
+  for (const quad of ground.quads()) {
+    mesher.quad(
+      [quad.x0, quad.z0, quad.h00],
+      [quad.x1, quad.z0, quad.h10],
+      [quad.x1, quad.z1, quad.h11],
+      [quad.x0, quad.z1, quad.h01],
+    )
+  }
 
   const geometry = new THREE.BufferGeometry()
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(mesher.positions, 3))
@@ -49,108 +53,60 @@ export function buildTerrain(
   return { mesh, triangles: mesher.indices.length / 3, vertices: mesher.positions.length / 3 }
 }
 
-/** One quad per mountain cell: the footprint the grid marks, grown into real ground. */
-function band(mesher: Mesher, world: World): void {
+/**
+ * One quad per cell the grid marks `mountain`. Those cells are no longer where
+ * the mountains are: they are the strip between the last pavement and the open
+ * ground, so this is flat and it exists to close the gap the city leaves.
+ */
+function verge(mesher: Mesher, world: World, ground: Ground, height: HeightField): void {
   const cell = world.cellSize
+  const edgeX = world.grid.width * cell
+  const edgeZ = world.grid.height * cell
+  // on the edge of the map the verge takes the ground's own line, so the two
+  // cannot part company between the ground's much wider vertices
+  const at = (x: number, z: number): number =>
+    x === 0 || z === 0 || x === edgeX || z === edgeZ ? ground.seamAt(x, z) : height.at(x, z)
+
   for (let y = 0; y < world.grid.height; y++) {
     for (let x = 0; x < world.grid.width; x++) {
       if (world.grid.at(x, y) !== 'mountain') continue
       const x0 = x * cell
       const z0 = y * cell
-      mesher.quad([x0, z0], [x0 + cell, z0], [x0 + cell, z0 + cell], [x0, z0 + cell])
+      const x1 = x0 + cell
+      const z1 = z0 + cell
+      mesher.quad([x0, z0, at(x0, z0)], [x1, z0, at(x1, z0)], [x1, z1, at(x1, z1)], [x0, z1, at(x0, z1)])
     }
   }
 }
 
-/** Rings around the map, out to the horizon, sharing their inner edge with the band. */
-function skirt(mesher: Mesher, world: World, horizon: number): void {
-  const outline = boundary(world)
-  const radii = [0]
-  let step = FIRST_STEP
-  let reach = 0
-  while (reach < horizon) {
-    reach += step
-    step *= STEP_GROWTH
-    radii.push(reach)
-  }
-
-  let inner = outline.map((point) => mesher.vertex(point.x, point.z))
-  for (let ring = 1; ring < radii.length; ring++) {
-    const spread = radii[ring]!
-    const outer = outline.map((point) => mesher.vertex(point.x + point.ax * spread, point.z + point.az * spread))
-    for (let i = 0; i < outline.length; i++) {
-      const next = (i + 1) % outline.length
-      mesher.face(inner[i]!, outer[i]!, outer[next]!, inner[next]!)
-    }
-    inner = outer
-  }
-}
-
-interface Edge {
-  readonly x: number
-  readonly z: number
-  /** Which way this point moves when the ring grows. */
-  readonly ax: number
-  readonly az: number
-}
-
-/** The edge of the map, one point per cell, walked once with the land on the left. */
-function boundary(world: World): Edge[] {
-  const cell = world.cellSize
-  const right = world.grid.width * cell
-  const bottom = world.grid.height * cell
-  const points: Edge[] = []
-  const push = (x: number, z: number): void => {
-    points.push({
-      x,
-      z,
-      ax: x === 0 ? -1 : x === right ? 1 : 0,
-      az: z === 0 ? -1 : z === bottom ? 1 : 0,
-    })
-  }
-
-  for (let x = 0; x < right; x += cell) push(x, 0)
-  for (let z = 0; z < bottom; z += cell) push(right, z)
-  for (let x = right; x > 0; x -= cell) push(x, bottom)
-  for (let z = bottom; z > 0; z -= cell) push(0, z)
-  return points
-}
-
-/** Builds one welded vertex list, so the band and the skirt cannot crack apart. */
+/** Builds one welded vertex list, so the pieces cannot crack apart. */
 class Mesher {
   readonly positions: number[] = []
   readonly indices: number[] = []
-  readonly #height: HeightField
-  readonly #seen = new Map<string, number>()
+  readonly #seen = new Map<number, number>()
 
-  constructor(height: HeightField) {
-    this.#height = height
+  /** Four corners in order around the quad, each `[x, z, height]`. */
+  quad(a: Corner, b: Corner, c: Corner, d: Corner): void {
+    const p0 = this.#vertex(a)
+    const p1 = this.#vertex(b)
+    const p2 = this.#vertex(c)
+    const p3 = this.#vertex(d)
+    this.indices.push(p0, p2, p1, p0, p3, p2)
   }
 
-  vertex(x: number, z: number): number {
-    const key = `${Math.round(x * 100)}:${Math.round(z * 100)}`
+  #vertex(corner: Corner): number {
+    // one number per place, to a tenth of a metre: every lattice lands on those
+    const key = (Math.round(corner[0] * 10) + 1e6) * 4194304 + Math.round(corner[1] * 10) + 1e6
     const known = this.#seen.get(key)
     if (known !== undefined) return known
     const index = this.positions.length / 3
-    this.positions.push(x, this.#height.at(x, z), z)
+    this.positions.push(corner[0], corner[2], corner[1])
     this.#seen.set(key, index)
     return index
   }
-
-  /** Four corners in order around the quad, seen from above with the ground on the left. */
-  quad(a: [number, number], b: [number, number], c: [number, number], d: [number, number]): void {
-    this.face(
-      this.vertex(a[0], a[1]),
-      this.vertex(b[0], b[1]),
-      this.vertex(c[0], c[1]),
-      this.vertex(d[0], d[1]),
-    )
-  }
-
-  face(a: number, b: number, c: number, d: number): void {
-    this.indices.push(a, c, b, a, d, c)
-  }
 }
+
+type Corner = readonly [x: number, z: number, height: number]
 
 /** Grass low down, bare rock where it is steep, snow on the tops. */
 function paint(geometry: THREE.BufferGeometry, theme: LandTheme, noise: Noise): THREE.BufferAttribute {
@@ -174,7 +130,7 @@ function paint(geometry: THREE.BufferGeometry, theme: LandTheme, noise: Noise): 
 
     colour.copy(lowColour).lerp(highColour, smoothstep01(y / highAt))
     colour.lerp(rockColour, smoothstep01((tilt - rockSlope) / 0.35))
-    colour.lerp(snowColour, smoothstep01((y - snowAt) / 25))
+    colour.lerp(snowColour, smoothstep01((y - snowAt) / 60))
 
     const shade = 1 + noise.fbm(x / 26 + 5.5, z / 26 - 3.1, 2) * 0.07
     colours[i * 3] = clamp01(colour.r * shade)

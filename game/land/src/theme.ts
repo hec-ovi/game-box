@@ -39,30 +39,31 @@ export interface LandTheme {
     readonly nightSky: number
     readonly nightBounce: number
     readonly nightAmbient: number
-    /** Fog colour by day and by night, where it starts biting and where it hides everything. */
+    /** Haze colour by day and by night, and how thick the air is per metre. */
     readonly haze: number
     readonly nightHaze: number
-    readonly hazeNear: number
-    readonly hazeFar: number
+    readonly density: number
   }
 
-  /** Metres. The shape of the ring, measured outward from the edge of the open ground. */
+  /** Metres. The shape of the land, measured outward from the edge of the built area. */
   readonly relief: {
-    /** The flat-ish skirt the town sits in, and how much it lifts across it. */
-    readonly skirt: number
-    readonly skirtHeight: number
+    /** The open ground the town stands on, and the little it lifts across all of it. */
+    readonly open: number
+    readonly openLift: number
     /** Where the ring climbs, how high, how wide its top is and how far it takes to come down. */
     readonly climb: number
     readonly peak: number
     readonly crest: number
     readonly descent: number
     /** Height of the land beyond the ring, out to the horizon. */
-    readonly plain: number
-    /** Amplitude and size of the hills laid over the ring, and of the roughness over those. */
-    readonly hills: number
-    readonly hillScale: number
-    readonly rough: number
-    readonly roughScale: number
+    readonly plateau: number
+    /** Three sizes of rolling laid over all of it: amplitude and wavelength of each. */
+    readonly broad: number
+    readonly broadScale: number
+    readonly mid: number
+    readonly midScale: number
+    readonly fine: number
+    readonly fineScale: number
   }
 
   readonly ground: {
@@ -140,33 +141,34 @@ const TEMPERATE: LandTheme = {
     nightAmbient: 0.78,
     haze: 0xb9cbd8,
     nightHaze: 0x1d2836,
-    hazeNear: 90,
-    hazeFar: 1150,
+    density: 0.00032,
   },
   relief: {
-    skirt: 45,
-    skirtHeight: 6,
-    climb: 130,
-    peak: 84,
-    crest: 70,
-    descent: 170,
-    plain: 14,
-    hills: 16,
-    hillScale: 170,
-    rough: 3,
-    roughScale: 34,
+    open: 1500,
+    openLift: 30,
+    climb: 1400,
+    peak: 470,
+    crest: 500,
+    descent: 1600,
+    plateau: 150,
+    broad: 34,
+    broadScale: 620,
+    mid: 16,
+    midScale: 190,
+    fine: 3.2,
+    fineScale: 72,
   },
   ground: {
     low: 0x6f7d47,
     high: 0x59613c,
     rock: 0x6c665c,
     snow: 0xdfe4e8,
-    highAt: 55,
-    snowAt: 78,
+    highAt: 200,
+    snowAt: 380,
     rockSlope: 0.6,
   },
   water: {
-    count: 2,
+    count: 5,
     radius: 28,
     depth: 6,
     colour: 0x33566b,
@@ -179,10 +181,10 @@ const TEMPERATE: LandTheme = {
     ],
     spacing: 8,
     density: 0.42,
-    treeLine: 62,
+    treeLine: 260,
     maxSlope: 0.85,
-    reach: 260,
-    max: 800,
+    reach: 1900,
+    max: 3200,
   },
 }
 
@@ -217,34 +219,35 @@ const ARID: LandTheme = {
     nightAmbient: 0.7,
     haze: 0xd8c9a8,
     nightHaze: 0x1e2436,
-    hazeNear: 140,
-    hazeFar: 1500,
+    density: 0.00022,
   },
   relief: {
-    skirt: 70,
-    skirtHeight: 5,
-    climb: 150,
-    peak: 96,
-    crest: 55,
-    descent: 200,
-    plain: 18,
-    hills: 20,
-    hillScale: 210,
-    rough: 4,
-    roughScale: 28,
+    open: 1900,
+    openLift: 26,
+    climb: 1500,
+    peak: 540,
+    crest: 420,
+    descent: 1800,
+    plateau: 190,
+    broad: 40,
+    broadScale: 760,
+    mid: 19,
+    midScale: 230,
+    fine: 3.6,
+    fineScale: 84,
   },
   ground: {
     low: 0xa8875a,
     high: 0x8c6440,
     rock: 0x7b5b42,
     snow: 0xbfae92,
-    highAt: 48,
-    snowAt: 400,
+    highAt: 220,
+    snowAt: 2000,
     rockSlope: 0.42,
   },
   water: {
-    count: 1,
-    radius: 20,
+    count: 2,
+    radius: 22,
     depth: 4,
     colour: 0x4a5a4a,
     opacity: 0.78,
@@ -256,10 +259,10 @@ const ARID: LandTheme = {
     ],
     spacing: 9,
     density: 0.4,
-    treeLine: 44,
+    treeLine: 200,
     maxSlope: 0.8,
-    reach: 300,
-    max: 520,
+    reach: 2000,
+    max: 2200,
   },
 }
 
@@ -294,33 +297,34 @@ const MARITIME: LandTheme = {
     nightAmbient: 0.9,
     haze: 0x9fadb6,
     nightHaze: 0x1a222a,
-    hazeNear: 45,
-    hazeFar: 620,
+    density: 0.00055,
   },
   relief: {
-    skirt: 35,
-    skirtHeight: 7,
-    climb: 110,
-    peak: 66,
-    crest: 60,
-    descent: 150,
-    plain: 10,
-    hills: 13,
-    hillScale: 140,
-    rough: 2.4,
-    roughScale: 30,
+    open: 1200,
+    openLift: 34,
+    climb: 1100,
+    peak: 380,
+    crest: 450,
+    descent: 1400,
+    plateau: 110,
+    broad: 28,
+    broadScale: 540,
+    mid: 14,
+    midScale: 170,
+    fine: 2.8,
+    fineScale: 66,
   },
   ground: {
     low: 0x4c6142,
     high: 0x3d4f39,
     rock: 0x5b5f5e,
     snow: 0xc9d3d6,
-    highAt: 40,
-    snowAt: 300,
+    highAt: 150,
+    snowAt: 320,
     rockSlope: 0.55,
   },
   water: {
-    count: 3,
+    count: 7,
     radius: 30,
     depth: 7,
     colour: 0x2b4450,
@@ -333,10 +337,10 @@ const MARITIME: LandTheme = {
     ],
     spacing: 6,
     density: 0.58,
-    treeLine: 52,
+    treeLine: 230,
     maxSlope: 0.95,
-    reach: 220,
-    max: 900,
+    reach: 1800,
+    max: 4000,
   },
 }
 

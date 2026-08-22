@@ -10,9 +10,8 @@ export interface WeatherLook {
   /** Multipliers on the sun and moon, and on the ambient that fills in behind them. */
   readonly light: number
   readonly ambient: number
-  /** Multipliers on where the haze starts and ends. */
-  readonly fogNear: number
-  readonly fogFar: number
+  /** Multiplier on how thick the air is. */
+  readonly fog: number
   /** How far the haze and the light are pulled towards storm grey. */
   readonly grey: number
   /** How far the sky's cloud is pushed towards solid overcast. */
@@ -24,9 +23,9 @@ export interface WeatherLook {
 }
 
 export const WEATHER: Record<Weather, WeatherLook> = {
-  clear: { light: 1, ambient: 1, fogNear: 1, fogFar: 1, grey: 0, cloud: 0, fall: 0, wetness: 0 },
-  overcast: { light: 0.45, ambient: 1.15, fogNear: 0.6, fogFar: 0.55, grey: 0.55, cloud: 0.75, fall: 0, wetness: 0.15 },
-  rain: { light: 0.28, ambient: 1.1, fogNear: 0.35, fogFar: 0.3, grey: 0.78, cloud: 0.92, fall: 1, wetness: 1 },
+  clear: { light: 1, ambient: 1, fog: 1, grey: 0, cloud: 0, fall: 0, wetness: 0 },
+  overcast: { light: 0.45, ambient: 1.15, fog: 2.6, grey: 0.55, cloud: 0.75, fall: 0, wetness: 0.15 },
+  rain: { light: 0.28, ambient: 1.1, fog: 5, grey: 0.78, cloud: 0.92, fall: 1, wetness: 1 },
 }
 
 /** Metres of the box of rain carried around the viewer. */
