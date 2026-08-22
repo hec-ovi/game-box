@@ -92,30 +92,45 @@ function ledgerQuest(mara: string, ledger: string): QuestDoc {
   } as QuestDoc
 }
 
-/** A model that says one line and optionally takes one action. */
-function speaker(script: { text?: string; call?: { name: string; args: unknown }; fail?: boolean }) {
-  const offered: Array<{ names: string[]; parameters: Record<string, unknown>[] }> = []
-  const fetch = (async (_url: string, init: RequestInit) => {
-    const body = JSON.parse(String(init.body))
-    const tools = (body.tools ?? []) as Array<{ function: { name: string; parameters: Record<string, unknown> } }>
-    offered.push({ names: tools.map((t) => t.function.name), parameters: tools.map((t) => t.function.parameters) })
-    if (script.fail) return new Response('down', { status: 503 })
+interface Script {
+  /** What the voice track says, in the pieces it streams. */
+  readonly text?: string | readonly string[]
+  /** What the action track answers when it is shown the menu. */
+  readonly pick?: string | number
+  /** No sidecar at all. */
+  readonly fail?: boolean
+}
 
-    const chunks: unknown[] = []
-    if (script.text) {
-      chunks.push(chunk({ content: script.text }))
+/** A model with two tracks: a line it speaks, and the number it picks off the menu. */
+function speaker(script: Script) {
+  const voice: Array<{ system: string; messages: Array<{ role: string; content: string }> }> = []
+  const decisions: Array<{ system: string; user: string }> = []
+
+  const fetch = (async (_url: string, init: RequestInit) => {
+    if (script.fail) throw new TypeError('fetch failed')
+    const body = JSON.parse(String(init.body)) as {
+      messages: Array<{ role: string; content: string }>
+      tools?: unknown[]
     }
-    if (script.call) {
-      chunks.push(
-        chunk({ tool_calls: [{ id: 'c1', type: 'function', function: { name: script.call.name, arguments: JSON.stringify(script.call.args) } }] }),
-      )
+    const system = body.messages[0]!.content
+    const last = body.messages[body.messages.length - 1]!.content
+
+    if (last.includes('Which number?')) {
+      decisions.push({ system, user: last })
+      return stream([String(script.pick ?? 1)])
     }
-    chunks.push(chunk({}, 'stop'))
-    const sse = `${chunks.map((c) => `data: ${JSON.stringify(c)}`).join('\n\n')}\n\ndata: [DONE]\n\n`
-    return new Response(sse, { headers: { 'content-type': 'text/event-stream' } })
+    voice.push({ system, messages: body.messages })
+    const said = script.text === undefined ? [] : typeof script.text === 'string' ? [script.text] : [...script.text]
+    return stream(said)
   }) as unknown as typeof globalThis.fetch
 
-  return { offered, sidecar: new Sidecar({ base: 'http://127.0.0.1:8976', fetch }) }
+  return { voice, decisions, sidecar: new Sidecar({ base: 'http://127.0.0.1:8976', fetch }) }
+
+  function stream(pieces: readonly string[]): Response {
+    const chunks = [...pieces.map((piece) => chunk({ content: piece })), chunk({}, 'stop')]
+    const sse = `${chunks.map((c) => `data: ${JSON.stringify(c)}`).join('\n\n')}\n\ndata: [DONE]\n\n`
+    return new Response(sse, { headers: { 'content-type': 'text/event-stream' } })
+  }
 
   function chunk(delta: unknown, finish: string | null = null) {
     return { id: 'x', object: 'chat.completion.chunk', created: 0, model: 'm', choices: [{ index: 0, delta, finish_reason: finish }] }
@@ -128,7 +143,14 @@ async function collect(stream: AsyncGenerator<TalkEvent>): Promise<TalkEvent[]> 
   return out
 }
 
-function setup(script: Parameters<typeof speaker>[0], options: { withQuest?: boolean } = {}) {
+function said(events: readonly TalkEvent[]): string {
+  return events
+    .filter((event) => event.kind === 'said')
+    .map((event) => event.text)
+    .join('')
+}
+
+function setup(script: Script) {
   const fixture = bar()
   const quest = ledgerQuest(fixture.mara.id, fixture.ledger.id)
   const validated = validateQuest(quest, {
@@ -141,7 +163,7 @@ function setup(script: Parameters<typeof speaker>[0], options: { withQuest?: boo
   if (!validated.ok) throw new Error(JSON.stringify(validated.error))
 
   const player = PlayerState.create(fixture.world.id)
-  const log = QuestLog.create(options.withQuest === false ? [] : [validated.value], player)
+  const log = QuestLog.create([validated.value], player)
   const model = speaker(script)
   const opened = Conversation.open({
     world: fixture.world,
@@ -189,30 +211,37 @@ describe('Conversation', () => {
     if (!opened.ok) expect(opened.error.code).toBe('unknown-npc')
   })
 
-  it('streams what they say, in pieces', async () => {
-    const { conversation } = setup({ text: 'We close at midnight.' })
+  it('streams what they say, in pieces, and the voice track is offered nothing to call', async () => {
+    const { conversation, model } = setup({ text: ['We close ', 'at midnight.'] })
     const events = await collect(conversation.say('when do you close?'))
 
-    expect(events.filter((e) => e.kind === 'said').map((e) => (e as { text: string }).text).join('')).toBe('We close at midnight.')
+    expect(events.filter((e) => e.kind === 'said').length).toBeGreaterThan(1)
+    expect(said(events)).toBe('We close at midnight.')
     expect(conversation.history()).toEqual([
       { role: 'user', content: 'when do you close?' },
       { role: 'assistant', content: 'We close at midnight.' },
     ])
+    expect(model.voice[0]!.messages.some((m) => m.role === 'user' && m.content === 'when do you close?')).toBe(true)
   })
 
-  it('offers only the actions that are legal, with the ids written into the schema', async () => {
+  it('puts only the legal moves to the decider, in plain words, with no ids anywhere', async () => {
     const { conversation, model } = setup({ text: 'Aye.' })
     // before the quest is taken, Mara can hand it out and nothing else
     expect(conversation.available()).toEqual(['give_quest', 'end_talk'])
 
     await collect(conversation.say('anything going?'))
-    const questTool = model.offered[0]!.parameters[0]!
-    expect(questTool).toMatchObject({ properties: { questId: { enum: ['quest_0001'] } } })
-    expect(model.offered[0]!.names).not.toContain('take_delivery')
+    const menu = model.decisions[0]!.system
+    expect(menu).toContain('1. nothing but talk')
+    expect(menu).toContain('2. hand them the job: The Ledger')
+    expect(menu).toContain('3. be done with them')
+    expect(menu).not.toContain('take the salt-stained ledger')
+    for (const text of [menu, model.decisions[0]!.user, model.voice[0]!.system]) {
+      expect(text).not.toMatch(/[a-z]+_\d{4}/)
+    }
   })
 
-  it('hands out a quest by calling for it, and the log moves', async () => {
-    const { conversation, log } = setup({ text: 'Fetch me the ledger.', call: { name: 'give_quest', args: { questId: 'quest_0001' } } })
+  it('hands out a quest when the decider picks it, and the log moves', async () => {
+    const { conversation, log } = setup({ text: 'Fetch me the ledger.', pick: 2 })
 
     const events = await collect(conversation.say('anything going?'))
     expect(events).toContainEqual({ kind: 'did', action: 'give_quest', detail: 'quest_0001' })
@@ -221,11 +250,21 @@ describe('Conversation', () => {
     expect(log.objectives()[0]!.text).toBe('Take the ledger')
   })
 
+  it('does nothing when nothing is called for, and the conversation goes on', async () => {
+    const { conversation, log } = setup({ text: 'Weather does what it likes here.', pick: 1 })
+
+    const events = await collect(conversation.say('nice weather'))
+    expect(events.some((e) => e.kind === 'did')).toBe(false)
+    expect(events.some((e) => e.kind === 'over')).toBe(false)
+    expect(conversation.isOpen).toBe(true)
+    expect(log.status('quest_0001')).toBe('unstarted')
+  })
+
   it('takes a delivery only once the player is actually carrying it, and the quest completes', async () => {
-    const { conversation, log, player, ledger } = setup({ call: { name: 'take_delivery', args: { itemId: 'item_0001' } } })
+    const { conversation, log, player, ledger } = setup({ pick: 2 })
     log.start('quest_0001')
 
-    // empty-handed, the action is not even on the table
+    // empty-handed, the move is not even on the menu
     expect(conversation.available()).not.toContain('take_delivery')
 
     player.take(ledger.id)
@@ -239,13 +278,30 @@ describe('Conversation', () => {
     expect(player.money).toBe(30)
   })
 
-  it('ignores a call for something the player is not carrying', async () => {
-    const { conversation, log, player } = setup({ call: { name: 'take_delivery', args: { itemId: 'item_0001' } } })
+  it('refuses an action that was never on the menu, however the decider answers', async () => {
+    // Mara is owed the ledger, but the player is not carrying it: taking it is not offered.
+    const { conversation, log, player } = setup({ pick: 9 })
     log.start('quest_0001')
 
-    const events = await collect(conversation.say('here it is'))
-    expect(events.some((e) => e.kind === 'did')).toBe(false)
+    expect(await collect(conversation.say('here it is'))).not.toContainEqual(
+      expect.objectContaining({ kind: 'did' }),
+    )
     expect(player.money).toBe(0)
+
+    // and prose instead of a number is not an action either
+    const prose = setup({ pick: 'give them the job, obviously' })
+    expect(await collect(prose.conversation.say('anything going?'))).not.toContainEqual(
+      expect.objectContaining({ kind: 'did' }),
+    )
+    expect(prose.log.status('quest_0001')).toBe('unstarted')
+  })
+
+  it('never says an id out loud, even when the model writes one', async () => {
+    const { conversation } = setup({ text: ['One job going: qu', 'est_0001. The item_00', '02 is on the stool.'] })
+
+    const events = await collect(conversation.say('anything going?'))
+    expect(said(events)).toBe('One job going: it. it is on the stool.')
+    expect(said(events)).not.toMatch(/_\d/)
   })
 
   it('walks with the player and stops when asked', async () => {
@@ -275,7 +331,7 @@ describe('Conversation', () => {
       world: escortFixture.world,
       log,
       player,
-      sidecar: speaker({ call: { name: 'follow_player', args: {} } }).sidecar,
+      sidecar: speaker({ pick: 2 }).sidecar,
       npcId: escortFixture.mara.id,
     })
     if (!joining.ok) throw new Error('did not open')
@@ -287,7 +343,7 @@ describe('Conversation', () => {
   })
 
   it('ends when they end it', async () => {
-    const { conversation } = setup({ text: 'Busy.', call: { name: 'end_talk', args: {} } })
+    const { conversation } = setup({ text: 'Busy.', pick: 3 })
     const events = await collect(conversation.say('got a minute?'))
 
     expect(events).toContainEqual({ kind: 'did', action: 'end_talk' })
@@ -295,11 +351,42 @@ describe('Conversation', () => {
     expect(conversation.isOpen).toBe(false)
   })
 
-  it('says something true and in character when the model cannot be reached', async () => {
-    const { conversation, mara } = setup({ fail: true })
-    const events = await collect(conversation.say('hello?'))
+  it('with no sidecar at all, the job is still offered, taken and delivered', async () => {
+    const { conversation, log, player, ledger } = setup({ fail: true })
 
-    expect(events[0]).toEqual({ kind: 'said', text: mara.knowledge[0] })
-    expect(events[events.length - 1]).toEqual({ kind: 'over' })
+    const greeting = await collect(conversation.say('hello'))
+    expect(said(greeting)).toContain('The Ledger')
+    expect(said(greeting)).toContain('Take the ledger. Say the word.')
+    expect(greeting.some((e) => e.kind === 'over')).toBe(false)
+
+    const accepted = await collect(conversation.say('yes'))
+    expect(accepted).toContainEqual({ kind: 'did', action: 'give_quest', detail: 'quest_0001' })
+    expect(log.status('quest_0001')).toBe('active')
+
+    player.take(ledger.id)
+    log.handle({ kind: 'acquired', itemId: ledger.id, stolen: true })
+
+    const delivered = await collect(conversation.say('here you go'))
+    expect(delivered).toContainEqual({ kind: 'did', action: 'take_delivery', detail: ledger.id })
+    expect(log.status('quest_0001')).toBe('complete')
+    expect(player.money).toBe(30)
+  })
+
+  it('with no sidecar, someone with nothing to give still talks and never says an id', async () => {
+    const { conversation, hollis, world, log, player } = setup({ fail: true })
+    const chat = Conversation.open({ world, log, player, sidecar: speaker({ fail: true }).sidecar, npcId: hollis.id })
+    if (!chat.ok) throw new Error('did not open')
+
+    const first = await collect(chat.value.conversation.say('what do you know?'))
+    expect(said(first)).toBe(hollis.knowledge[0])
+    expect(said(first)).not.toMatch(/_\d/)
+    expect(chat.value.conversation.isOpen).toBe(true)
+
+    const parting = await collect(chat.value.conversation.say('see you later'))
+    expect(parting).toContainEqual({ kind: 'did', action: 'end_talk' })
+    expect(chat.value.conversation.isOpen).toBe(false)
+
+    // conversation is unused beyond opening the fixture
+    expect(conversation.isOpen).toBe(true)
   })
 })
