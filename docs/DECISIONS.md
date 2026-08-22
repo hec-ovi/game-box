@@ -144,3 +144,17 @@ Pedestrians walk an A* over the same cell grid the city was generated on, with p
 ## D16. What a world file is
 
 One sealed JSON document: the world, its quests, and the asset packs it needs, under a sha-256 of a stable serialisation. Opening one checks shape, then hash, then world soundness, then every quest, and refuses at the first failure. A save carries the world id and the same content hash, so a playthrough can only resume against the exact city it was made in. Static world data and playthrough state never mix.
+
+## D17. Which way a body faces
+
+A body at `rotation.y = 0` faces -Z. That is the direction a three.js camera looks at heading 0, and it is what the player's own walk maths uses (`forward = (-sin(heading), -cos(heading))`).
+
+Two boxes have to agree about this or people walk backwards, which is exactly what happened. `@gb/cast` guarantees a spawned body obeys the convention whatever its source file does, and everything that points a body, crowd and traffic included, measures heading in the same frame.
+
+## D18. Speaking and acting are separate tracks
+
+The model behind NPC dialogue is llama.cpp serving Qwen3.8-27B. Measured on it: with `tool_choice: "auto"` it answers in prose and does not call the tool, and it will happily read a raw id out loud. With `tool_choice: "required"` it returns a correct call and a spoken line together.
+
+So a conversation turn runs two tracks: the voice track, which never waits on a decision, and an action track that is a forced choice among the actions that are legal at that moment plus an explicit "do nothing". The sidecar carries both halves of a reply, because a character who says something while doing it must not lose either.
+
+The ids an NPC may name are written into the tool's schema as an enum, so an illegal action is not something they can say, and every action is checked again before it is carried out.
