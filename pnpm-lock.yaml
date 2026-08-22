@@ -40,6 +40,30 @@ importers:
         specifier: workspace:*
         version: link:../forge
 
+  game/cli:
+    dependencies:
+      '@gb/bundle':
+        specifier: workspace:*
+        version: link:../bundle
+      '@gb/forge':
+        specifier: workspace:*
+        version: link:../forge
+      '@gb/nav':
+        specifier: workspace:*
+        version: link:../nav
+      '@gb/play':
+        specifier: workspace:*
+        version: link:../play
+      '@gb/quest':
+        specifier: workspace:*
+        version: link:../quest
+      '@gb/scribe':
+        specifier: workspace:*
+        version: link:../scribe
+      '@gb/world':
+        specifier: workspace:*
+        version: link:../world
+
   game/forge:
     dependencies:
       '@gb/kit':

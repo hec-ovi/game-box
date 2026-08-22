@@ -13,6 +13,7 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI
 | Exporting and importing a city, and the save file | `game/bundle/` |
 | Walking routes, reachability, waypoints | `game/nav/` |
 | Asking the local model to write names, people and quests | `game/scribe/` |
+| The `gb` command: build, inspect, check a city | `game/cli/` |
 | Determinism, ids, results, boundary validation | `game/kit/` |
 
 ## Sidecar
