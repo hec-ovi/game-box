@@ -39,6 +39,10 @@ export interface Objective {
   readonly questTitle: string
   readonly stepId: string
   readonly text: string
+  /** Short label for the world marker, when the objective line is too long for it. */
+  readonly markerLabel?: string
+  /** A nudge to show if the player stalls. */
+  readonly hint?: string
   readonly place?: Place
   readonly npcId?: string
 }
@@ -135,6 +139,26 @@ export class QuestLog {
     return ok(changes)
   }
 
+  /**
+   * True while some live quest still needs this item. Being a quest item is a
+   * binding from a quest, not a property of the thing, so the same ledger can
+   * be untouchable in one playthrough and ordinary loot in another.
+   */
+  isQuestItem(itemId: string): boolean {
+    for (const quest of this.#quests.values()) {
+      const progress = this.#progress.get(quest.id)!
+      if (progress.status !== 'active') continue
+      for (const step of quest.steps) {
+        if (progress.done.has(step.id)) continue
+        if ('itemId' in step && step.itemId === itemId) return true
+        if (step.effects.some((e) => 'itemId' in e && e.itemId === itemId)) return true
+        if (step.requires.some((c) => 'itemId' in c && c.itemId === itemId)) return true
+      }
+      if (quest.reward.items.includes(itemId)) return true
+    }
+    return false
+  }
+
   /** What the HUD and the journal show right now. */
   objectives(): readonly Objective[] {
     const out: Objective[] = []
@@ -149,6 +173,8 @@ export class QuestLog {
           questTitle: quest.title,
           stepId: step.id,
           text: step.objective,
+          ...(step.markerLabel ? { markerLabel: step.markerLabel } : {}),
+          ...(step.hint ? { hint: step.hint } : {}),
           ...('place' in step ? { place: step.place } : {}),
           ...('npcId' in step ? { npcId: step.npcId } : {}),
         })

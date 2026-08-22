@@ -771,9 +771,14 @@
             "minimum": 0,
             "maximum": 100000
           },
-          "questItem": {
-            "default": false,
-            "type": "boolean"
+          "bulk": {
+            "default": "pocket",
+            "type": "string",
+            "enum": [
+              "pocket",
+              "bag",
+              "two-handed"
+            ]
           },
           "ownerNpcId": {
             "type": "string",

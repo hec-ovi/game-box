@@ -21,7 +21,8 @@ Quests as flows: a checked graph of steps ("talk to her, go there, take that, br
 |---|---|---|
 | `validateQuest` | a `QuestDoc` | every step reachable, every path ends, every reference exists, every item in hand before it is asked for |
 | `QuestLog.handle` | `Change[]` | `quest-started`, `step-opened`, `step-done`, `quest-complete`, `quest-failed`; empty when nothing moved |
-| `QuestLog.objectives()` | `Objective[]` | one line per open step, with the place or person it points at, for the HUD and the journal |
+| `QuestLog.objectives()` | `Objective[]` | one line per open step, with its marker label, hint, and the place or person it points at |
+| `QuestLog.isQuestItem(itemId)` | boolean | true while a live quest still needs that item |
 | `QuestLog.toJSON()` | [schema/quest-progress.json](schema/quest-progress.json) | resumes to exactly the same open steps |
 
 ## Step kinds (closed set)
@@ -49,6 +50,7 @@ Quests as flows: a checked graph of steps ("talk to her, go there, take that, br
 - Steps that need no player action (`join`, `complete`, `fail`) resolve the moment they open.
 - The runtime reads the world only through `WorldView`, and touches the player only through `@gb/play`, so it runs headless with no renderer.
 - Effects are the only way a quest changes the player: nothing is applied implicitly by an event.
+- Being a quest item is a binding from a live quest, not a property of the thing, so the same ledger can be untouchable in one playthrough and ordinary loot in another. Shipped RPGs bind it the same way, per quest rather than per item.
 
 ## How to modify this blackbox safely
 

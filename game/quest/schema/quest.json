@@ -57,6 +57,16 @@
                 "minLength": 1,
                 "maxLength": 160
               },
+              "markerLabel": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "hint": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
               "next": {
                 "default": [],
                 "maxItems": 8,
@@ -364,6 +374,16 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 160
+              },
+              "markerLabel": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "hint": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
               },
               "next": {
                 "default": [],
@@ -692,6 +712,16 @@
                 "minLength": 1,
                 "maxLength": 160
               },
+              "markerLabel": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "hint": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
               "next": {
                 "default": [],
                 "maxItems": 8,
@@ -998,6 +1028,16 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 160
+              },
+              "markerLabel": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "hint": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
               },
               "next": {
                 "default": [],
@@ -1306,6 +1346,16 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 160
+              },
+              "markerLabel": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "hint": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
               },
               "next": {
                 "default": [],
@@ -1619,6 +1669,16 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 160
+              },
+              "markerLabel": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "hint": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
               },
               "next": {
                 "default": [],
@@ -1951,6 +2011,16 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 160
+              },
+              "markerLabel": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "hint": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
               },
               "next": {
                 "default": [],
@@ -2286,6 +2356,16 @@
                 "minLength": 1,
                 "maxLength": 160
               },
+              "markerLabel": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "hint": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
               "next": {
                 "default": [],
                 "maxItems": 8,
@@ -2594,6 +2674,16 @@
                 "minLength": 1,
                 "maxLength": 160
               },
+              "markerLabel": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "hint": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
               "next": {
                 "default": [],
                 "maxItems": 8,
@@ -2891,6 +2981,16 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 160
+              },
+              "markerLabel": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "hint": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
               },
               "next": {
                 "default": [],

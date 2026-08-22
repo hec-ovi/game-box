@@ -55,7 +55,7 @@ function hamlet() {
     description: 'Half full, label worn to nothing.',
     archetype: 'bottle',
     value: 4,
-    questItem: false,
+    bulk: 'pocket',
     ownerNpcId: bartender.id,
   }
   const placement: Placement = { at: 'anchor', itemId: bottle.id, interiorId: interior.id, anchorId: interior.anchors[0]!.id }

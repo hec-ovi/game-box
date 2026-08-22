@@ -43,6 +43,7 @@ Holds a city: its grid of streets and plots, the buildings you can enter, the pe
 - Ids are minted once and never reused; a document loaded and saved keeps every id it had.
 - The grid is the single source of truth for what occupies a cell, which is what makes "add three more houses later" a lookup rather than a regeneration.
 - Vocabularies (`BUILDING_KINDS`, `ANCHOR_KINDS`, `NPC_ROLES`, `ITEM_ARCHETYPES`, `FURNITURE_PROPS`) are closed: every value maps to something the game can render, animate or place.
+- An item carries what it is (archetype, value, bulk, who owns it). Whether it matters to a quest is not stored here: `@gb/quest` answers that from the live quest log.
 - One world unit is one metre; cell coordinates convert through `cellSize`, and `METRICS` holds the proportions everything is sized from.
 
 ## How to modify this blackbox safely

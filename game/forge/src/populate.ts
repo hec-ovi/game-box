@@ -74,3 +74,12 @@ export function itemsFor(building: BuildingKind, rng: Rng): ItemArchetype[] {
   const count = rng.int(1, Math.min(4, pool.length + 1))
   return rng.shuffle(pool).slice(0, count)
 }
+
+/** How much of the player an item takes to carry. */
+export function bulkOf(archetype: ItemArchetype): 'pocket' | 'bag' | 'two-handed' {
+  const twoHanded: readonly ItemArchetype[] = ['crate', 'statue', 'painting', 'fuelcan']
+  const bagged: readonly ItemArchetype[] = ['box', 'parcel', 'bag', 'briefcase', 'toolbox', 'medkit', 'radio']
+  if (twoHanded.includes(archetype)) return 'two-handed'
+  if (bagged.includes(archetype)) return 'bag'
+  return 'pocket'
+}

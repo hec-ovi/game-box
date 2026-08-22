@@ -123,8 +123,8 @@ export const ItemSchema = z.object({
   description: z.string().min(1).max(300),
   archetype: z.enum(ITEM_ARCHETYPES),
   value: z.number().int().min(0).max(100000),
-  /** Quest items cannot be sold or dropped. */
-  questItem: z.boolean().default(false),
+  /** How much of the player it takes to carry: a pocket, a bag, or both hands. */
+  bulk: z.enum(['pocket', 'bag', 'two-handed']).default('pocket'),
   /** Taking an owned item without permission is stealing. */
   ownerNpcId: id('npc').optional(),
 })

@@ -34,6 +34,10 @@ const stepBase = {
   id: id('step'),
   /** The line the journal and the HUD show while this step is the one to do. */
   objective: z.string().min(1).max(160),
+  /** Short label for the marker in the world, when the objective line is too long for it. */
+  markerLabel: z.string().min(1).max(40).optional(),
+  /** A nudge to show if the player stops making progress. */
+  hint: z.string().min(1).max(200).optional(),
   /** Steps that open when this one is done. Several means they open together. */
   next: z.array(id('step')).max(8).default([]),
   requires: z.array(ConditionSchema).max(6).default([]),

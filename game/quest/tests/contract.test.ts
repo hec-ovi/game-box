@@ -275,6 +275,43 @@ describe('QuestLog', () => {
     expect(log.objectives().map((o) => o.text)).toEqual(['Return to Mara'])
   })
 
+  it('treats an item as a quest item only while a live quest still needs it', () => {
+    const { log, player } = playthrough()
+    expect(log.isQuestItem(LEDGER)).toBe(false)
+
+    log.start('quest_0001')
+    expect(log.isQuestItem(LEDGER)).toBe(true)
+    expect(log.isQuestItem('item_0002')).toBe(false)
+
+    log.handle({ kind: 'talked', npcId: MARA })
+    log.handle({ kind: 'arrived', place: { plotId: 'plot_0001' } })
+    player.take(LEDGER)
+    log.handle({ kind: 'acquired', itemId: LEDGER, stolen: false })
+    expect(log.isQuestItem(LEDGER)).toBe(true)
+
+    log.handle({ kind: 'gave', itemId: LEDGER, npcId: HOLLIS })
+    expect(log.status('quest_0001')).toBe('complete')
+    expect(log.isQuestItem(LEDGER)).toBe(false)
+  })
+
+  it('carries a short marker label and a hint through to the objective', () => {
+    const signposted = fetchQuest()
+    signposted.steps[1] = {
+      ...signposted.steps[1]!,
+      markerLabel: 'Warehouse',
+      hint: 'It is the long shed at the end of the freight road.',
+    } as QuestDoc['steps'][number]
+    const validated = validateQuest(signposted, world)
+    if (!validated.ok) throw new Error('fixture broken')
+    const log = QuestLog.create([validated.value], PlayerState.create('world_0001'))
+
+    log.start('quest_0001')
+    log.handle({ kind: 'talked', npcId: MARA })
+    const objective = log.objectives()[0]!
+    expect(objective.markerLabel).toBe('Warehouse')
+    expect(objective.hint).toContain('freight road')
+  })
+
   it('resumes exactly where a save left off, and rejects a broken save or event', () => {
     const { log, player } = playthrough()
     log.start('quest_0001')

@@ -18,7 +18,7 @@ import { cutRooms } from './interior/rooms.ts'
 import { sitesInBlock, storeysFor, type PlotSite } from './layout/plots.ts'
 import { gridSize, layStreets } from './layout/streets.ts'
 import type { Narrator, WorldSummary } from './narrator.ts'
-import { itemsFor, occupancy, roleFor } from './populate.ts'
+import { bulkOf, itemsFor, occupancy, roleFor } from './populate.ts'
 
 export type ForgeError =
   | { readonly code: 'invalid-brief'; readonly violations: readonly SchemaViolation[] }
@@ -270,7 +270,7 @@ export class Forge {
           description: profile.description,
           archetype,
           value: interiorRng.int(1, 60),
-          questItem: false,
+          bulk: bulkOf(archetype),
           ...(staff ? { ownerNpcId: staff } : {}),
         }
         const placement: Placement = { at: 'anchor', itemId: item.id, interiorId: interior.id, anchorId: anchor.id }
