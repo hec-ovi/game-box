@@ -27,6 +27,213 @@
       "type": "string",
       "pattern": "^npc_\\d{4,}$"
     },
+    "difficulty": {
+      "type": "string",
+      "enum": [
+        "errand",
+        "small",
+        "standard",
+        "hard",
+        "epic"
+      ]
+    },
+    "requires": {
+      "maxItems": 4,
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "has-item"
+              },
+              "itemId": {
+                "type": "string",
+                "pattern": "^item_\\d{4,}$"
+              }
+            },
+            "required": [
+              "kind",
+              "itemId"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "flag"
+              },
+              "flag": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 60
+              },
+              "value": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "kind",
+              "flag",
+              "value"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "money-at-least"
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "kind",
+              "amount"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "reputation-at-least"
+              },
+              "faction": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": -100,
+                "maximum": 100
+              }
+            },
+            "required": [
+              "kind",
+              "faction",
+              "amount"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "reputation-below"
+              },
+              "faction": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": -100,
+                "maximum": 100
+              }
+            },
+            "required": [
+              "kind",
+              "faction",
+              "amount"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "has-companion"
+              },
+              "npcId": {
+                "type": "string",
+                "pattern": "^npc_\\d{4,}$"
+              }
+            },
+            "required": [
+              "kind",
+              "npcId"
+            ]
+          }
+        ]
+      }
+    },
+    "failWhen": {
+      "maxItems": 4,
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "time-limit"
+              },
+              "seconds": {
+                "type": "integer",
+                "minimum": 30,
+                "maximum": 86400
+              }
+            },
+            "required": [
+              "kind",
+              "seconds"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "npc-lost"
+              },
+              "npcId": {
+                "type": "string",
+                "pattern": "^npc_\\d{4,}$"
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "died",
+                  "left"
+                ]
+              }
+            },
+            "required": [
+              "kind",
+              "npcId"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "item-lost"
+              },
+              "itemId": {
+                "type": "string",
+                "pattern": "^item_\\d{4,}$"
+              }
+            },
+            "required": [
+              "kind",
+              "itemId"
+            ]
+          }
+        ]
+      }
+    },
     "startStepId": {
       "type": "string",
       "pattern": "^step_\\d{4,}$"
@@ -137,6 +344,30 @@
                         "kind": {
                           "type": "string",
                           "const": "reputation-at-least"
+                        },
+                        "faction": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 40
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "minimum": -100,
+                          "maximum": 100
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "faction",
+                        "amount"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "reputation-below"
                         },
                         "faction": {
                           "type": "string",
@@ -330,9 +561,32 @@
                         "kind",
                         "npcId"
                       ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "reveal"
+                        },
+                        "stepId": {
+                          "type": "string",
+                          "pattern": "^step_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "stepId"
+                      ]
                     }
                   ]
                 }
+              },
+              "optional": {
+                "type": "boolean"
+              },
+              "hidden": {
+                "type": "boolean"
               },
               "kind": {
                 "type": "string",
@@ -478,6 +732,30 @@
                       "properties": {
                         "kind": {
                           "type": "string",
+                          "const": "reputation-below"
+                        },
+                        "faction": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 40
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "minimum": -100,
+                          "maximum": 100
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "faction",
+                        "amount"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
                           "const": "has-companion"
                         },
                         "npcId": {
@@ -648,9 +926,32 @@
                         "kind",
                         "npcId"
                       ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "reveal"
+                        },
+                        "stepId": {
+                          "type": "string",
+                          "pattern": "^step_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "stepId"
+                      ]
                     }
                   ]
                 }
+              },
+              "optional": {
+                "type": "boolean"
+              },
+              "hidden": {
+                "type": "boolean"
               },
               "kind": {
                 "type": "string",
@@ -815,300 +1116,7 @@
                       "properties": {
                         "kind": {
                           "type": "string",
-                          "const": "has-companion"
-                        },
-                        "npcId": {
-                          "type": "string",
-                          "pattern": "^npc_\\d{4,}$"
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "npcId"
-                      ]
-                    }
-                  ]
-                }
-              },
-              "effects": {
-                "default": [],
-                "maxItems": 8,
-                "type": "array",
-                "items": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "give-item"
-                        },
-                        "itemId": {
-                          "type": "string",
-                          "pattern": "^item_\\d{4,}$"
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "itemId"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "take-item"
-                        },
-                        "itemId": {
-                          "type": "string",
-                          "pattern": "^item_\\d{4,}$"
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "itemId"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "pay"
-                        },
-                        "amount": {
-                          "type": "integer",
-                          "minimum": 0,
-                          "maximum": 100000
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "amount"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "charge"
-                        },
-                        "amount": {
-                          "type": "integer",
-                          "minimum": 0,
-                          "maximum": 100000
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "amount"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "reputation"
-                        },
-                        "faction": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 40
-                        },
-                        "delta": {
-                          "type": "integer",
-                          "minimum": -50,
-                          "maximum": 50
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "faction",
-                        "delta"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "set-flag"
-                        },
-                        "flag": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 60
-                        },
-                        "value": {
-                          "type": "boolean"
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "flag",
-                        "value"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "companion-join"
-                        },
-                        "npcId": {
-                          "type": "string",
-                          "pattern": "^npc_\\d{4,}$"
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "npcId"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "companion-leave"
-                        },
-                        "npcId": {
-                          "type": "string",
-                          "pattern": "^npc_\\d{4,}$"
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "npcId"
-                      ]
-                    }
-                  ]
-                }
-              },
-              "kind": {
-                "type": "string",
-                "const": "collect"
-              },
-              "itemId": {
-                "type": "string",
-                "pattern": "^item_\\d{4,}$"
-              },
-              "allowSteal": {
-                "default": false,
-                "type": "boolean"
-              }
-            },
-            "required": [
-              "id",
-              "objective",
-              "kind",
-              "itemId"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "pattern": "^step_\\d{4,}$"
-              },
-              "objective": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 160
-              },
-              "markerLabel": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 40
-              },
-              "hint": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 200
-              },
-              "next": {
-                "default": [],
-                "maxItems": 8,
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "pattern": "^step_\\d{4,}$"
-                }
-              },
-              "requires": {
-                "default": [],
-                "maxItems": 6,
-                "type": "array",
-                "items": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "has-item"
-                        },
-                        "itemId": {
-                          "type": "string",
-                          "pattern": "^item_\\d{4,}$"
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "itemId"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "flag"
-                        },
-                        "flag": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 60
-                        },
-                        "value": {
-                          "type": "boolean"
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "flag",
-                        "value"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "money-at-least"
-                        },
-                        "amount": {
-                          "type": "integer",
-                          "minimum": 0,
-                          "maximum": 9007199254740991
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "amount"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "reputation-at-least"
+                          "const": "reputation-below"
                         },
                         "faction": {
                           "type": "string",
@@ -1302,8 +1310,421 @@
                         "kind",
                         "npcId"
                       ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "reveal"
+                        },
+                        "stepId": {
+                          "type": "string",
+                          "pattern": "^step_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "stepId"
+                      ]
                     }
                   ]
+                }
+              },
+              "optional": {
+                "type": "boolean"
+              },
+              "hidden": {
+                "type": "boolean"
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20
+              },
+              "alternates": {
+                "maxItems": 19,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^item_\\d{4,}$"
+                }
+              },
+              "kind": {
+                "type": "string",
+                "const": "collect"
+              },
+              "itemId": {
+                "type": "string",
+                "pattern": "^item_\\d{4,}$"
+              },
+              "allowSteal": {
+                "default": false,
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "objective",
+              "kind",
+              "itemId"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^step_\\d{4,}$"
+              },
+              "objective": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "markerLabel": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "hint": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "next": {
+                "default": [],
+                "maxItems": 8,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^step_\\d{4,}$"
+                }
+              },
+              "requires": {
+                "default": [],
+                "maxItems": 6,
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "has-item"
+                        },
+                        "itemId": {
+                          "type": "string",
+                          "pattern": "^item_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "itemId"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "flag"
+                        },
+                        "flag": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 60
+                        },
+                        "value": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "flag",
+                        "value"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "money-at-least"
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "amount"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "reputation-at-least"
+                        },
+                        "faction": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 40
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "minimum": -100,
+                          "maximum": 100
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "faction",
+                        "amount"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "reputation-below"
+                        },
+                        "faction": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 40
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "minimum": -100,
+                          "maximum": 100
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "faction",
+                        "amount"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "has-companion"
+                        },
+                        "npcId": {
+                          "type": "string",
+                          "pattern": "^npc_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "npcId"
+                      ]
+                    }
+                  ]
+                }
+              },
+              "effects": {
+                "default": [],
+                "maxItems": 8,
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "give-item"
+                        },
+                        "itemId": {
+                          "type": "string",
+                          "pattern": "^item_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "itemId"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "take-item"
+                        },
+                        "itemId": {
+                          "type": "string",
+                          "pattern": "^item_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "itemId"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "pay"
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 100000
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "amount"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "charge"
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 100000
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "amount"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "reputation"
+                        },
+                        "faction": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 40
+                        },
+                        "delta": {
+                          "type": "integer",
+                          "minimum": -50,
+                          "maximum": 50
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "faction",
+                        "delta"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "set-flag"
+                        },
+                        "flag": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 60
+                        },
+                        "value": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "flag",
+                        "value"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "companion-join"
+                        },
+                        "npcId": {
+                          "type": "string",
+                          "pattern": "^npc_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "npcId"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "companion-leave"
+                        },
+                        "npcId": {
+                          "type": "string",
+                          "pattern": "^npc_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "npcId"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "reveal"
+                        },
+                        "stepId": {
+                          "type": "string",
+                          "pattern": "^step_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "stepId"
+                      ]
+                    }
+                  ]
+                }
+              },
+              "optional": {
+                "type": "boolean"
+              },
+              "hidden": {
+                "type": "boolean"
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20
+              },
+              "alternates": {
+                "maxItems": 19,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^item_\\d{4,}$"
                 }
               },
               "kind": {
@@ -1450,6 +1871,30 @@
                       "properties": {
                         "kind": {
                           "type": "string",
+                          "const": "reputation-below"
+                        },
+                        "faction": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 40
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "minimum": -100,
+                          "maximum": 100
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "faction",
+                        "amount"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
                           "const": "has-companion"
                         },
                         "npcId": {
@@ -1620,8 +2065,44 @@
                         "kind",
                         "npcId"
                       ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "reveal"
+                        },
+                        "stepId": {
+                          "type": "string",
+                          "pattern": "^step_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "stepId"
+                      ]
                     }
                   ]
+                }
+              },
+              "optional": {
+                "type": "boolean"
+              },
+              "hidden": {
+                "type": "boolean"
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20
+              },
+              "alternates": {
+                "maxItems": 19,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^item_\\d{4,}$"
                 }
               },
               "kind": {
@@ -1773,6 +2254,30 @@
                       "properties": {
                         "kind": {
                           "type": "string",
+                          "const": "reputation-below"
+                        },
+                        "faction": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 40
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "minimum": -100,
+                          "maximum": 100
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "faction",
+                        "amount"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
                           "const": "has-companion"
                         },
                         "npcId": {
@@ -1943,9 +2448,32 @@
                         "kind",
                         "npcId"
                       ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "reveal"
+                        },
+                        "stepId": {
+                          "type": "string",
+                          "pattern": "^step_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "stepId"
+                      ]
                     }
                   ]
                 }
+              },
+              "optional": {
+                "type": "boolean"
+              },
+              "hidden": {
+                "type": "boolean"
               },
               "kind": {
                 "type": "string",
@@ -2115,6 +2643,30 @@
                       "properties": {
                         "kind": {
                           "type": "string",
+                          "const": "reputation-below"
+                        },
+                        "faction": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 40
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "minimum": -100,
+                          "maximum": 100
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "faction",
+                        "amount"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
                           "const": "has-companion"
                         },
                         "npcId": {
@@ -2285,9 +2837,32 @@
                         "kind",
                         "npcId"
                       ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "reveal"
+                        },
+                        "stepId": {
+                          "type": "string",
+                          "pattern": "^step_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "stepId"
+                      ]
                     }
                   ]
                 }
+              },
+              "optional": {
+                "type": "boolean"
+              },
+              "hidden": {
+                "type": "boolean"
               },
               "kind": {
                 "type": "string",
@@ -2459,6 +3034,30 @@
                       "properties": {
                         "kind": {
                           "type": "string",
+                          "const": "reputation-below"
+                        },
+                        "faction": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 40
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "minimum": -100,
+                          "maximum": 100
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "faction",
+                        "amount"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
                           "const": "has-companion"
                         },
                         "npcId": {
@@ -2629,9 +3228,32 @@
                         "kind",
                         "npcId"
                       ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "reveal"
+                        },
+                        "stepId": {
+                          "type": "string",
+                          "pattern": "^step_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "stepId"
+                      ]
                     }
                   ]
                 }
+              },
+              "optional": {
+                "type": "boolean"
+              },
+              "hidden": {
+                "type": "boolean"
               },
               "kind": {
                 "type": "string",
@@ -2777,291 +3399,7 @@
                       "properties": {
                         "kind": {
                           "type": "string",
-                          "const": "has-companion"
-                        },
-                        "npcId": {
-                          "type": "string",
-                          "pattern": "^npc_\\d{4,}$"
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "npcId"
-                      ]
-                    }
-                  ]
-                }
-              },
-              "effects": {
-                "default": [],
-                "maxItems": 8,
-                "type": "array",
-                "items": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "give-item"
-                        },
-                        "itemId": {
-                          "type": "string",
-                          "pattern": "^item_\\d{4,}$"
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "itemId"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "take-item"
-                        },
-                        "itemId": {
-                          "type": "string",
-                          "pattern": "^item_\\d{4,}$"
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "itemId"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "pay"
-                        },
-                        "amount": {
-                          "type": "integer",
-                          "minimum": 0,
-                          "maximum": 100000
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "amount"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "charge"
-                        },
-                        "amount": {
-                          "type": "integer",
-                          "minimum": 0,
-                          "maximum": 100000
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "amount"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "reputation"
-                        },
-                        "faction": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 40
-                        },
-                        "delta": {
-                          "type": "integer",
-                          "minimum": -50,
-                          "maximum": 50
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "faction",
-                        "delta"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "set-flag"
-                        },
-                        "flag": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 60
-                        },
-                        "value": {
-                          "type": "boolean"
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "flag",
-                        "value"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "companion-join"
-                        },
-                        "npcId": {
-                          "type": "string",
-                          "pattern": "^npc_\\d{4,}$"
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "npcId"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "companion-leave"
-                        },
-                        "npcId": {
-                          "type": "string",
-                          "pattern": "^npc_\\d{4,}$"
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "npcId"
-                      ]
-                    }
-                  ]
-                }
-              },
-              "kind": {
-                "type": "string",
-                "const": "complete"
-              }
-            },
-            "required": [
-              "id",
-              "objective",
-              "kind"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "pattern": "^step_\\d{4,}$"
-              },
-              "objective": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 160
-              },
-              "markerLabel": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 40
-              },
-              "hint": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 200
-              },
-              "next": {
-                "default": [],
-                "maxItems": 8,
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "pattern": "^step_\\d{4,}$"
-                }
-              },
-              "requires": {
-                "default": [],
-                "maxItems": 6,
-                "type": "array",
-                "items": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "has-item"
-                        },
-                        "itemId": {
-                          "type": "string",
-                          "pattern": "^item_\\d{4,}$"
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "itemId"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "flag"
-                        },
-                        "flag": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 60
-                        },
-                        "value": {
-                          "type": "boolean"
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "flag",
-                        "value"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "money-at-least"
-                        },
-                        "amount": {
-                          "type": "integer",
-                          "minimum": 0,
-                          "maximum": 9007199254740991
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "amount"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "reputation-at-least"
+                          "const": "reputation-below"
                         },
                         "faction": {
                           "type": "string",
@@ -3255,9 +3593,752 @@
                         "kind",
                         "npcId"
                       ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "reveal"
+                        },
+                        "stepId": {
+                          "type": "string",
+                          "pattern": "^step_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "stepId"
+                      ]
                     }
                   ]
                 }
+              },
+              "optional": {
+                "type": "boolean"
+              },
+              "hidden": {
+                "type": "boolean"
+              },
+              "kind": {
+                "type": "string",
+                "const": "any-of"
+              },
+              "oneOf": {
+                "minItems": 2,
+                "maxItems": 8,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^step_\\d{4,}$"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "objective",
+              "kind",
+              "oneOf"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^step_\\d{4,}$"
+              },
+              "objective": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "markerLabel": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "hint": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "next": {
+                "default": [],
+                "maxItems": 8,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^step_\\d{4,}$"
+                }
+              },
+              "requires": {
+                "default": [],
+                "maxItems": 6,
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "has-item"
+                        },
+                        "itemId": {
+                          "type": "string",
+                          "pattern": "^item_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "itemId"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "flag"
+                        },
+                        "flag": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 60
+                        },
+                        "value": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "flag",
+                        "value"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "money-at-least"
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "amount"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "reputation-at-least"
+                        },
+                        "faction": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 40
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "minimum": -100,
+                          "maximum": 100
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "faction",
+                        "amount"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "reputation-below"
+                        },
+                        "faction": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 40
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "minimum": -100,
+                          "maximum": 100
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "faction",
+                        "amount"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "has-companion"
+                        },
+                        "npcId": {
+                          "type": "string",
+                          "pattern": "^npc_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "npcId"
+                      ]
+                    }
+                  ]
+                }
+              },
+              "effects": {
+                "default": [],
+                "maxItems": 8,
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "give-item"
+                        },
+                        "itemId": {
+                          "type": "string",
+                          "pattern": "^item_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "itemId"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "take-item"
+                        },
+                        "itemId": {
+                          "type": "string",
+                          "pattern": "^item_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "itemId"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "pay"
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 100000
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "amount"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "charge"
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 100000
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "amount"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "reputation"
+                        },
+                        "faction": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 40
+                        },
+                        "delta": {
+                          "type": "integer",
+                          "minimum": -50,
+                          "maximum": 50
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "faction",
+                        "delta"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "set-flag"
+                        },
+                        "flag": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 60
+                        },
+                        "value": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "flag",
+                        "value"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "companion-join"
+                        },
+                        "npcId": {
+                          "type": "string",
+                          "pattern": "^npc_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "npcId"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "companion-leave"
+                        },
+                        "npcId": {
+                          "type": "string",
+                          "pattern": "^npc_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "npcId"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "reveal"
+                        },
+                        "stepId": {
+                          "type": "string",
+                          "pattern": "^step_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "stepId"
+                      ]
+                    }
+                  ]
+                }
+              },
+              "optional": {
+                "type": "boolean"
+              },
+              "hidden": {
+                "type": "boolean"
+              },
+              "kind": {
+                "type": "string",
+                "const": "complete"
+              }
+            },
+            "required": [
+              "id",
+              "objective",
+              "kind"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^step_\\d{4,}$"
+              },
+              "objective": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "markerLabel": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "hint": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "next": {
+                "default": [],
+                "maxItems": 8,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^step_\\d{4,}$"
+                }
+              },
+              "requires": {
+                "default": [],
+                "maxItems": 6,
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "has-item"
+                        },
+                        "itemId": {
+                          "type": "string",
+                          "pattern": "^item_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "itemId"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "flag"
+                        },
+                        "flag": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 60
+                        },
+                        "value": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "flag",
+                        "value"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "money-at-least"
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "amount"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "reputation-at-least"
+                        },
+                        "faction": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 40
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "minimum": -100,
+                          "maximum": 100
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "faction",
+                        "amount"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "reputation-below"
+                        },
+                        "faction": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 40
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "minimum": -100,
+                          "maximum": 100
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "faction",
+                        "amount"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "has-companion"
+                        },
+                        "npcId": {
+                          "type": "string",
+                          "pattern": "^npc_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "npcId"
+                      ]
+                    }
+                  ]
+                }
+              },
+              "effects": {
+                "default": [],
+                "maxItems": 8,
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "give-item"
+                        },
+                        "itemId": {
+                          "type": "string",
+                          "pattern": "^item_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "itemId"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "take-item"
+                        },
+                        "itemId": {
+                          "type": "string",
+                          "pattern": "^item_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "itemId"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "pay"
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 100000
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "amount"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "charge"
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 100000
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "amount"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "reputation"
+                        },
+                        "faction": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 40
+                        },
+                        "delta": {
+                          "type": "integer",
+                          "minimum": -50,
+                          "maximum": 50
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "faction",
+                        "delta"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "set-flag"
+                        },
+                        "flag": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 60
+                        },
+                        "value": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "flag",
+                        "value"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "companion-join"
+                        },
+                        "npcId": {
+                          "type": "string",
+                          "pattern": "^npc_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "npcId"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "companion-leave"
+                        },
+                        "npcId": {
+                          "type": "string",
+                          "pattern": "^npc_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "npcId"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "reveal"
+                        },
+                        "stepId": {
+                          "type": "string",
+                          "pattern": "^step_\\d{4,}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "stepId"
+                      ]
+                    }
+                  ]
+                }
+              },
+              "optional": {
+                "type": "boolean"
+              },
+              "hidden": {
+                "type": "boolean"
               },
               "kind": {
                 "type": "string",

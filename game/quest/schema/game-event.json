@@ -161,6 +161,66 @@
         "stepId",
         "optionId"
       ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "clock"
+        },
+        "seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "kind",
+        "seconds"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "npc-gone"
+        },
+        "npcId": {
+          "type": "string",
+          "pattern": "^npc_\\d{4,}$"
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "died",
+            "left"
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "npcId",
+        "reason"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "item-destroyed"
+        },
+        "itemId": {
+          "type": "string",
+          "pattern": "^item_\\d{4,}$"
+        }
+      },
+      "required": [
+        "kind",
+        "itemId"
+      ]
     }
   ]
 }

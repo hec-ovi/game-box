@@ -2,7 +2,7 @@
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { gameEventContract } from '../src/events.ts'
-import { questProgressContract } from '../src/runtime.ts'
+import { questProgressContract } from '../src/progress.ts'
 import { questContract, questDraftContract } from '../src/schema.ts'
 
 const dir = join(import.meta.dirname, '..', 'schema')
