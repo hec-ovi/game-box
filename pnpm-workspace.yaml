@@ -1,5 +1,6 @@
 packages:
   - 'game/*'
+  - 'host'
 
 allowBuilds:
   sharp: true

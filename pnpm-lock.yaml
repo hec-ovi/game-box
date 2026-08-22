@@ -56,6 +56,9 @@ importers:
       '@gb/kitbash':
         specifier: workspace:*
         version: link:../kitbash
+      '@gb/land':
+        specifier: workspace:*
+        version: link:../land
       '@gb/nav':
         specifier: workspace:*
         version: link:../nav
@@ -196,6 +199,25 @@ importers:
       '@gb/play':
         specifier: workspace:*
         version: link:../play
+
+  game/furnish:
+    dependencies:
+      '@gb/scene':
+        specifier: workspace:*
+        version: link:../scene
+      '@gb/world':
+        specifier: workspace:*
+        version: link:../world
+      three:
+        specifier: ^0.185.1
+        version: 0.185.1
+    devDependencies:
+      '@gb/forge':
+        specifier: workspace:*
+        version: link:../forge
+      '@types/three':
+        specifier: ^0.185.4
+        version: 0.185.4
 
   game/hud:
     dependencies:
@@ -368,6 +390,9 @@ importers:
       '@gb/world':
         specifier: workspace:*
         version: link:../world
+      three:
+        specifier: ^0.185.1
+        version: 0.185.1
     devDependencies:
       '@gb/forge':
         specifier: workspace:*
@@ -375,9 +400,6 @@ importers:
       '@types/three':
         specifier: ^0.185.4
         version: 0.185.4
-      three:
-        specifier: ^0.185.1
-        version: 0.185.1
 
   game/world:
     dependencies:
@@ -387,6 +409,19 @@ importers:
       zod:
         specifier: ^4.4.3
         version: 4.4.3
+
+  host:
+    dependencies:
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@types/node':
+        specifier: ^26.2.0
+        version: 26.2.0
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
 
 packages:
 

@@ -1,0 +1,26 @@
+{
+  "name": "game-box-host",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local AI sidecar for game clients: OpenAI-compatible chat, speech recognition and speech synthesis on 127.0.0.1.",
+  "engines": {
+    "node": ">=22"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "node --experimental-strip-types src/main.ts",
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "generate": "node --experimental-strip-types tools/emit-schema.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "typescript": "^7.0.2"
+  }
+}

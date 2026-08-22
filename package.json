@@ -9,7 +9,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit && tsc --noEmit -p game/app",
     "check:isolation": "node tools/check-isolation.mjs",
-    "verify": "pnpm run generate && pnpm run typecheck && pnpm run check:isolation && pnpm run test",
+    "verify": "pnpm run generate && pnpm run typecheck && pnpm run check:isolation && pnpm run test && pnpm -C host test",
     "generate": "pnpm -r --if-present run generate"
   },
   "devDependencies": {
