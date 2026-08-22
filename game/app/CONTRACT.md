@@ -18,7 +18,7 @@ The game you can play: the renderer, the frame loop, the first-person body, and 
 | Param | Schema | Postconditions |
 |---|---|---|
 | the running game | | walk, look, go into buildings, talk, take, carry, deliver |
-| the controls | | mouse looks, WASD walks, shift runs, C held crouches, space jumps, E acts on what is in reach, right button held looks closer, Escape leaves a conversation |
+| the controls | | mouse looks, WASD walks, shift runs, C held crouches, space jumps, E acts on what is in reach, left click on somebody asks them along, right button held looks closer, Escape leaves a conversation |
 | `tick(seconds)` | | advances and draws one frame by hand, for when the browser suspends the loop |
 | `look()` | plain record | where the player is and what they could act on, for the console |
 
@@ -37,6 +37,8 @@ None at the boundary: a missing asset pack is a duller city, not a blank screen,
 - The player is placed on the pavement facing the first door in town, and entering a building puts them inside it facing the room.
 - Looking closer narrows the field of view and slows the mouse by the same amount, so the same hand movement covers the same distance on screen however far in you are.
 - The floor has height: the pavement stands a kerb above the road, and walking onto it steps up rather than clipping through. Crouching and standing ease between heights for the same reason.
+- Boxes that must not know about each other are joined here and only here: the crowd is told what is driving, traffic is told who is walking, and neither imports the other.
+- A companion who followed the player into a building is waiting by the door when they come out, rather than where they were standing when the door closed.
 - The player is stopped by people and by cars, not only by walls. Both move every frame, so what is solid is asked fresh rather than baked, and a car is treated as the long thing it is rather than as a circle.
 - The landscape brings its own sky and light. Plain daylight only comes out if the landscape fails to build, so a scene is never unlit.
 

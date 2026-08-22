@@ -1,4 +1,5 @@
 import { Cast, CastDressing, parseWardrobe } from '@gb/cast'
+import { FurnishDressing, loadFurnish } from '@gb/furnish'
 import { KitDressing, loadKit } from '@gb/kitbash'
 import { Greybox, type Dressing } from '@gb/scene'
 import { guarded } from './guarded.ts'
@@ -12,7 +13,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
  * rather than a blank screen.
  */
 export async function loadDressing(theme: string, base = ''): Promise<{ dressing: Dressing; cast?: Cast }> {
-  const behind = (await loadBuildings(base)) ?? new Greybox()
+  const behind = await loadInteriors(base, (await loadBuildings(base)) ?? new Greybox())
   const cast = await loadPeople(base)
   if (!cast) return { dressing: guarded(behind) }
 
@@ -35,15 +36,31 @@ async function loadPeople(base: string): Promise<Cast | undefined> {
   }
 }
 
+/** Furniture, floors and walls. Behind it, whatever answers for the outside. */
+async function loadInteriors(base: string, behind: Dressing): Promise<Dressing> {
+  try {
+    const gltf = await read(`${base}/interior-kit.glb`)
+    return new FurnishDressing(loadFurnish(gltf.scenes), behind)
+  } catch (cause) {
+    console.warn(`no interior kit (${String(cause)}); rooms stay grey`)
+    return behind
+  }
+}
+
 async function loadBuildings(base: string): Promise<Dressing | undefined> {
   try {
-    const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder)
-    const gltf = await loader.parseAsync(await bytes(`${base}/downtown-kit.glb`), '')
+    const gltf = await read(`${base}/downtown-kit.glb`)
     return new KitDressing(loadKit(gltf.scenes), new Greybox())
   } catch (cause) {
     console.warn(`no building kit (${String(cause)}); the city will be blocks`)
     return undefined
   }
+}
+
+/** One compressed glTF from the pack. */
+async function read(url: string) {
+  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder)
+  return loader.parseAsync(await bytes(url), '')
 }
 
 async function bytes(url: string): Promise<ArrayBuffer> {

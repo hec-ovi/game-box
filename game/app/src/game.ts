@@ -10,7 +10,7 @@ import { buildCity, buildInterior, type CityBuild, type Dressing, type InteriorB
 import { Sidecar } from '@gb/sidecar'
 import { CarPack, Traffic } from '@gb/traffic'
 import { Conversation } from '@gb/talk'
-import type { Interior, World } from '@gb/world'
+import { METRICS, type Interior, type World } from '@gb/world'
 import * as THREE from 'three'
 import { alsoBlockedBy, PERSON_CLEAR } from './bodies.ts'
 import { Player } from './player.ts'
@@ -91,12 +91,36 @@ export class Game {
         world: this.#world,
         nav: CityNav.from(this.#world),
         cast: new SceneCast(this.#cast, walkers),
+        hazards: this.#trafficOnTheRoad(),
       })
     }
 
     document.addEventListener('keydown', this.#key)
+    this.#stage.renderer.domElement.addEventListener('mousedown', this.#click)
     this.#hud.show({ controls: CONTROLS })
     this.#refresh()
+  }
+
+  /**
+   * What a pedestrian has to look out for before stepping off the kerb. A car
+   * that has already stopped is not coming, which is what keeps a car and a
+   * pedestrian from deferring to each other forever.
+   */
+  #trafficOnTheRoad() {
+    return {
+      near: (x: number, z: number, radius: number) => {
+        const reach = radius * radius
+        return (this.#traffic?.cars() ?? [])
+          .filter((car) => (car.x - x) ** 2 + (car.z - z) ** 2 <= reach)
+          .map((car) => ({
+            x: car.x,
+            z: car.z,
+            vx: -Math.sin(car.heading) * car.speed,
+            vz: -Math.cos(car.heading) * car.speed,
+            radius: METRICS.vehicle.carLength / 2,
+          }))
+      },
+    }
   }
 
   /**
@@ -114,6 +138,7 @@ export class Game {
           if (dx * dx + dz * dz <= reach) found.push({ x, z, radius: PERSON_CLEAR })
         }
         for (const walker of this.#crowd?.walkers() ?? []) consider(walker.x, walker.z)
+        for (const companion of this.#crowd?.following() ?? []) consider(companion.x, companion.z)
         if (this.#place.kind === 'city') consider(this.#body.position.x, this.#body.position.z)
         return found
       },
@@ -127,6 +152,17 @@ export class Game {
       () => this.#crowd?.walkers() ?? [],
       () => this.#traffic?.cars() ?? [],
     )
+  }
+
+  /** Companions waited outside; put them back beside the door the player came out of. */
+  #regroup(at: { x: number; z: number }): void {
+    if (!this.#crowd) return
+    for (const npcId of this.#player.companions()) {
+      const npc = this.#world.npc(npcId)
+      if (!npc) continue
+      this.#crowd.stopFollowing(npcId)
+      this.#crowd.follow({ npc, at })
+    }
   }
 
   /** The people standing about in the room the player is in. */
@@ -314,6 +350,40 @@ export class Game {
     this.#act(this.#target)
   }
 
+  /** Clicking somebody asks them along, or tells them to stay. */
+  #click = (event: MouseEvent): void => {
+    if (event.button !== 0 || document.pointerLockElement === null) return
+    if (this.#talking || this.#target?.kind !== 'talk') return
+    this.#toggleCompanion(this.#target.id)
+  }
+
+  #toggleCompanion(npcId: string): void {
+    const npc = this.#world.npc(npcId)
+    if (!npc || !this.#crowd) return
+
+    if (this.#player.isCompanion(npcId)) {
+      this.#player.removeCompanion(npcId)
+      this.#crowd.stopFollowing(npcId)
+      this.#showIndoors(npcId, true)
+      this.#hud.announce({ kind: 'note', text: `${npc.name} stays here` })
+      return
+    }
+
+    this.#player.addCompanion(npcId)
+    this.#crowd.follow({ npc, at: this.#body.position })
+    // they have left their post to come with you
+    this.#showIndoors(npcId, false)
+    this.#hud.announce({ kind: 'note', text: `${npc.name} comes with you` })
+  }
+
+  /** An NPC who is walking with the player is not also standing at their anchor. */
+  #showIndoors(npcId: string, visible: boolean): void {
+    for (const built of this.#interiors.values()) {
+      const body = built.people.get(npcId)
+      if (body) body.visible = visible
+    }
+  }
+
   #act(target: Target): void {
     switch (target.kind) {
       case 'enter':
@@ -366,7 +436,10 @@ export class Game {
     if (this.#land) this.#land.root.visible = true
     this.#body.setSolid(this.#outdoors())
     this.#body.setGround(cityGround(this.#world))
-    if (doorstep) this.#body.placeAt(doorstep.x, doorstep.z)
+    if (doorstep) {
+      this.#body.placeAt(doorstep.x, doorstep.z)
+      this.#regroup({ x: doorstep.x, z: doorstep.z })
+    }
   }
 
   #take(itemId: string): void {

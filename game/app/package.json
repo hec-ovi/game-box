@@ -29,7 +29,8 @@
     "@gb/crowd": "workspace:*",
     "@gb/traffic": "workspace:*",
     "@gb/hud": "workspace:*",
-    "@gb/land": "workspace:*"
+    "@gb/land": "workspace:*",
+    "@gb/furnish": "workspace:*"
   },
   "devDependencies": {
     "@types/three": "^0.185.4",
