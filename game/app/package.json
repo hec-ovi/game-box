@@ -28,7 +28,8 @@
     "@gb/kitbash": "workspace:*",
     "@gb/crowd": "workspace:*",
     "@gb/traffic": "workspace:*",
-    "@gb/hud": "workspace:*"
+    "@gb/hud": "workspace:*",
+    "@gb/land": "workspace:*"
   },
   "devDependencies": {
     "@types/three": "^0.185.4",

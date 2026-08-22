@@ -2,6 +2,7 @@ import type { OpenedBundle } from '@gb/bundle'
 import type { Cast } from '@gb/cast'
 import { Crowd, SceneCast } from '@gb/crowd'
 import { Hud, type Carried, type HudIntent, type JournalQuest } from '@gb/hud'
+import { buildLand, type Land } from '@gb/land'
 import { CityNav } from '@gb/nav'
 import { PlayerState } from '@gb/play'
 import { QuestLog, type Change } from '@gb/quest'
@@ -11,6 +12,7 @@ import { CarPack, Traffic } from '@gb/traffic'
 import { Conversation } from '@gb/talk'
 import type { Interior, World } from '@gb/world'
 import * as THREE from 'three'
+import { alsoBlockedBy } from './bodies.ts'
 import { Player } from './player.ts'
 import { createStage, type Stage } from './renderer.ts'
 import { cityGround, citySolid, interiorSolid } from './solids.ts'
@@ -40,6 +42,7 @@ export class Game {
   #cast: Cast | undefined
   #crowd: Crowd | undefined
   #traffic: Traffic | undefined
+  #land: Land | undefined
   #cars: CarPack | undefined
 
   private constructor(input: {
@@ -63,7 +66,8 @@ export class Game {
 
     this.#city = buildCity(this.#world, this.#dressing)
     this.#stage.show(this.#city.root)
-    this.#body = new Player(this.#stage.camera, this.#stage.renderer.domElement, citySolid(this.#world))
+    this.#openTheHorizon()
+    this.#body = new Player(this.#stage.camera, this.#stage.renderer.domElement, this.#outdoors())
     this.#body.setGround(cityGround(this.#world))
     this.#body.placeAt(this.#city.spawn.x, this.#city.spawn.z, this.#city.spawn.heading)
 
@@ -80,6 +84,44 @@ export class Game {
 
     document.addEventListener('keydown', this.#key)
     this.#refresh()
+  }
+
+  /** The street: its walls, and whoever is walking or driving on it. */
+  #outdoors() {
+    return alsoBlockedBy(
+      citySolid(this.#world),
+      () => this.#crowd?.walkers() ?? [],
+      () => this.#traffic?.cars() ?? [],
+    )
+  }
+
+  /** The people standing about in the room the player is in. */
+  #peopleInHere(): readonly { x: number; z: number }[] {
+    if (this.#place.kind !== 'interior') return []
+    const built = this.#interiors.get(this.#place.interior.id)
+    return [...(built?.people.values() ?? [])].map((body) => ({ x: body.position.x, z: body.position.z }))
+  }
+
+  /**
+   * Sky, hills, water and trees around the town. The landscape brings its own
+   * light, so the plain daylight only comes out if there is no landscape.
+   */
+  #openTheHorizon(): void {
+    const built = buildLand(this.#world)
+    if (!built.ok) {
+      console.warn(`no landscape (${built.error.code}); plain daylight instead`)
+      this.#stage.plainDaylight()
+      return
+    }
+
+    this.#land = built.value
+    this.#stage.scene.add(this.#land.root)
+    this.#stage.scene.fog = this.#land.fog
+    this.#stage.camera.far = this.#land.cameraFar
+    this.#stage.camera.updateProjectionMatrix()
+    // the city's ring of blocks was standing in for hills; now there are hills
+    const blocks = this.#city.root.getObjectByName('mountains')
+    if (blocks) blocks.visible = false
   }
 
   /**
@@ -251,7 +293,8 @@ export class Game {
 
     this.#place = { kind: 'interior', interior, plotId }
     this.#stage.show(built.root)
-    this.#body.setSolid(interiorSolid(interior))
+    if (this.#land) this.#land.root.visible = false
+    this.#body.setSolid(alsoBlockedBy(interiorSolid(interior), () => this.#peopleInHere()))
     this.#body.setGround(() => 0)
     const step = 1.2
     this.#body.placeAt(
@@ -269,7 +312,8 @@ export class Game {
     const doorstep = this.#city.doorsteps.get(this.#place.plotId)
     this.#place = { kind: 'city' }
     this.#stage.show(this.#city.root)
-    this.#body.setSolid(citySolid(this.#world))
+    if (this.#land) this.#land.root.visible = true
+    this.#body.setSolid(this.#outdoors())
     this.#body.setGround(cityGround(this.#world))
     if (doorstep) this.#body.placeAt(doorstep.x, doorstep.z)
   }

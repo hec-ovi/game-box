@@ -1,6 +1,7 @@
 import { METRICS } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { blocked, slide, step } from '../src/walk.ts'
+import { alsoBlockedBy } from '../src/bodies.ts'
 import { Body, CROUCH_EYE, JUMP_SPEED } from '../src/stance.ts'
 import { CLOSE_FOV, WIDE_FOV, Zoom } from '../src/zoom.ts'
 
@@ -140,5 +141,54 @@ describe('standing, crouching, jumping', () => {
 
     settle(body, kerb)
     expect(body.eye).toBeCloseTo(METRICS.player.eyeHeight + kerb, 5)
+  })
+})
+
+describe('bumping into people and cars', () => {
+  const open: (x: number, z: number) => boolean = () => false
+
+  it('stops the player walking through somebody', () => {
+    const solid = alsoBlockedBy(open, () => [{ x: 10, z: 10 }])
+    expect(solid(10, 10)).toBe(true)
+    expect(solid(10.3, 10)).toBe(true)
+    expect(solid(11, 10)).toBe(false)
+  })
+
+  it('lets the player slide past somebody rather than sticking to them', () => {
+    const solid = alsoBlockedBy(open, () => [{ x: 10, z: 10 }])
+    // walking straight at them, diagonally: the blocked axis stops, the other carries on
+    const moved = slide({ x: 9.2, z: 10 }, { x: 0.4, z: 0.4 }, solid)
+    expect(moved.x).toBe(9.2)
+    expect(moved.z).toBeCloseTo(10.4, 5)
+  })
+
+  it('treats a car as the long thing it is, not as a circle', () => {
+    // pointing down -Z, so it is long north to south and narrow east to west
+    const solid = alsoBlockedBy(open, () => [], () => [{ x: 0, z: 0, heading: 0 }])
+    expect(solid(0, 2)).toBe(true)
+    expect(solid(0, 2.4)).toBe(false)
+    expect(solid(1.2, 0)).toBe(false)
+    expect(solid(0.8, 0)).toBe(true)
+  })
+
+  it('turns with the car', () => {
+    // the same car turned a quarter turn is long east to west instead
+    const solid = alsoBlockedBy(open, () => [], () => [{ x: 0, z: 0, heading: Math.PI / 2 }])
+    expect(solid(2, 0)).toBe(true)
+    expect(solid(0, 2)).toBe(false)
+  })
+
+  it('still respects the walls underneath', () => {
+    const solid = alsoBlockedBy((x) => x > 5, () => [])
+    expect(solid(6, 0)).toBe(true)
+    expect(solid(4, 0)).toBe(false)
+  })
+
+  it('asks fresh every time, because everybody is moving', () => {
+    let people = [{ x: 0, z: 0 }]
+    const solid = alsoBlockedBy(open, () => people)
+    expect(solid(0, 0)).toBe(true)
+    people = []
+    expect(solid(0, 0)).toBe(false)
   })
 })

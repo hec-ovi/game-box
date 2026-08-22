@@ -37,6 +37,8 @@ None at the boundary: a missing asset pack is a duller city, not a blank screen,
 - The player is placed on the pavement facing the first door in town, and entering a building puts them inside it facing the room.
 - Looking closer narrows the field of view and slows the mouse by the same amount, so the same hand movement covers the same distance on screen however far in you are.
 - The floor has height: the pavement stands a kerb above the road, and walking onto it steps up rather than clipping through. Crouching and standing ease between heights for the same reason.
+- The player is stopped by people and by cars, not only by walls. Both move every frame, so what is solid is asked fresh rather than baked, and a car is treated as the long thing it is rather than as a circle.
+- The landscape brings its own sky and light. Plain daylight only comes out if the landscape fails to build, so a scene is never unlit.
 
 ## How to modify this blackbox safely
 
