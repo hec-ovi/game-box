@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { FURNITURE, FURNITURE_IDS, KitDressing, LAMP_LENS, LAMP_POST, PIECES, PIECE_IDS, RELIEF, type FurnitureId, type PieceId } from '../src/index.ts'
 import { KIT_FILE, loadPackedKit } from './pack.ts'
-import { boundsOf, meshesOf, plotOf, sizeOf, trianglesOf, wallBounds } from './support.ts'
+import { meshesOf, plotOf, sizeOf, trianglesOf, wallBounds } from './support.ts'
 
 // the pack arrives with tools/fetch-assets.mjs and tools/build-kit.ts; without it there is nothing to build from
 const packed = existsSync(KIT_FILE)

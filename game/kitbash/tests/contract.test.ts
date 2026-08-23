@@ -2,7 +2,7 @@ import { BUILDING_KINDS, CELL as CELL_CHARS, METRICS, type AnchorKind, type Cell
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { GROUND_LOOKS, GROUND_TEXTURES, KIT_MATERIALS, KitDressing, KitIncomplete, KitLibrary, KitUnmergeable, PIECES, PIECE_IDS, placeholderKit, RELIEF, loadKit, type KitPart, type PieceId } from '../src/index.ts'
-import { boundsOf, CELL, fingerprint, meshesOf, plotOf, sizeOf, trianglesOf, wallBounds } from './support.ts'
+import { CELL, fingerprint, meshesOf, plotOf, sizeOf, trianglesOf, wallBounds } from './support.ts'
 
 const kit = placeholderKit()
 const dressing = new KitDressing(kit)

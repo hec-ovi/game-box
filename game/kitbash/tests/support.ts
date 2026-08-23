@@ -23,10 +23,6 @@ export function sizeOf(plot: Plot, height: number): { width: number; depth: numb
   return { width: plot.rect.w * CELL, depth: plot.rect.h * CELL, height }
 }
 
-export function boundsOf(object: THREE.Object3D): THREE.Box3 {
-  return new THREE.Box3().setFromObject(object)
-}
-
 /** The building without its signage: the walls the plot boundary is a promise about. */
 export function wallBounds(object: THREE.Object3D): THREE.Box3 {
   const box = new THREE.Box3()
