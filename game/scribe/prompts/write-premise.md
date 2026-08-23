@@ -11,9 +11,13 @@ come out as two towns, so let it push you off the first idea the theme suggests.
 
 Do not name the town. Its name is decided after this, out of what you write
 here, and a town that gets named twice is a town whose own people disagree about
-where they live. Everything you put here is carried into every later call about
-this city, so write what somebody would actually tell you about the place and
-stop when you have told it.
+where they live.
+
+Everything here is talk: what one person says to another about where they live,
+not what a report says about a region. Every later call about this city carries
+the whole of it, so say what somebody would actually tell you and stop when you
+have told it. A history written as a report is thrown out before the town is
+founded, and the town is built as though nobody wrote one.
 
 ## The surfaces this gets rendered on
 
@@ -86,3 +90,7 @@ fewer cafes. A research campus that has just opened runs the other way.
   demands.
 
 A kind cannot be in both `moreOf` and `fewerOf`.
+
+These three lists are not spent at the founding. The city is grown against them
+again every time it is extended, so a mix that does not follow from the story
+goes on being wrong for as long as the town keeps building.
