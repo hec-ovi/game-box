@@ -106,8 +106,8 @@ describe('buildInterior', () => {
       const prop = build.props.get(piece.id)!
       expect(prop.position.x).toBeCloseTo(piece.pos.x, 5)
       expect(prop.position.z).toBeCloseTo(piece.pos.y, 5)
-      // standing on the floor
-      expect(boundsOf(prop).min.y).toBeCloseTo(0, 2)
+      // standing where it was put: on the floor, or on whatever it was lifted onto
+      expect(boundsOf(prop).min.y).toBeCloseTo(piece.lift ?? 0, 2)
     }
 
     const floor = build.root.getObjectByName('floor')!
