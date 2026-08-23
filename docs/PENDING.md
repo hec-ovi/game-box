@@ -699,6 +699,50 @@ living city rather than a static one.
 Boxes: `app` for who goes out, `forge` for the harness, `hud` and `app` for the
 marker if 2 is taken.
 
+### The weather is one line in three, by construction (2026-08-23, measured)
+
+He noticed people keep talking about the sun. He is right and it is not the
+model: `game/talk/prompts/greeting.md` puts `{{sky}}` in **one of three options
+for every stance**, so about a third of all openings mention the weather because
+the template hands it to them.
+
+```
+serve: What'll it be? | You're at the right counter. | I've been on this counter all day, and {{sky}}.
+cook:  Mind the stove. | I've a pan on, so make it quick. | Kitchen's hot, and {{sky}}.
+guard: State your business. | Nobody goes past me. | The post is mine, and {{sky}}.
+```
+
+Ten weather references in that one file, six more in `surroundings.md`.
+
+It was a reasonable idea (a line that changes with the world so a greeting is not
+fixed per person) and it is the wrong variable. The weather is the same for
+everybody in the city at once, so using it as the varying part makes every
+character sound like the same person. What should vary is what *they* are doing
+and why they are there, which is the per-character context design above.
+
+Fix: cut `{{sky}}` from the greeting beats and let the varying slot be their own
+business. Keep weather available for the model to use when it matters (somebody
+sheltering in a doorway in the rain has a reason to mention it) but stop seeding
+it into a third of all first lines. Same for `surroundings.md`: check whether six
+mentions is describing a room or padding it.
+
+Box: `talk`.
+
+### The chat window should close when you walk away (2026-08-23, found by him)
+
+Walking out of range leaves the conversation panel open on nobody.
+
+`@gb/crowd` publishes exactly the signal: a held walker is retired past
+`retireRadius`, and `held === false` with no entry in `members()` is the tested
+cue. `@gb/app` wired an `Attending.gone` port to `talking.end()` for street
+walkers. So either that path is not firing, or it does not cover somebody
+stationed indoors, which has no equivalent range rule.
+
+Check indoors first: walking out of a shop mid-conversation is the likelier case
+and the one with no publisher behind it.
+
+Box: `app`, possibly `crowd` if an interior needs its own range rule.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
