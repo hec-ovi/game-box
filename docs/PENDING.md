@@ -338,36 +338,44 @@ Worth settling while doing it, because they interact:
 
 Box: `hud`, with whatever `@gb/app` must push from the transcript.
 
-### NPCs have no context and do not know their own names (2026-08-23, found by him)
+### NPCs answer with the last place's context (2026-08-23, found by him)
 
-The worst one from his session, and unresolved: characters answer with no
-knowledge of who they are.
+The worst one from his session. Characters do not know who they are or where
+they are, and the sharpening detail is his second report: **they behave as if
+they are in the instance he was in previously.**
+
+That is stale state, not missing state, and it almost certainly explains both
+symptoms with one cause: a brief, a `Situation` or a `Conversation` built once
+and reused, so it still describes the place, the people and the stock of
+wherever the player was last. A brief carrying the wrong place would also carry
+the wrong person.
 
 **The prompt is not the fault.** `game/talk/prompts/npc.md` opens
-`You are {{name}}, the {{role}} at {{place}}, in {{city}}.` and goes on to
-personality, surroundings, what they know for a fact, their standing with the
-player, and the situation. `brief.ts` reads `npc.name` and the world name. The
-template and the reader are both correct, so this is the fill, the path, or the
-speaker.
+`You are {{name}}, the {{role}} at {{place}}, in {{city}}.` and goes on through
+personality, surroundings, what they know for a fact, standing and situation.
+`brief.ts` reads `npc.name` and the world name. Template and reader are both
+correct.
 
-Three candidates, and one question separates them. **Does the panel show the
-NPC's name above the conversation?**
+**Where to look, in order:**
 
-1. **Panel names them, they do not know it** -> the brief is being filled with
-   blanks. Check what `brief.ts` actually produces at the moment of the call.
-2. **Panel does not name them either** -> they have no profile. This is what a
-   street walker looks like: only people stationed in a building are written by
-   the narrator. Talking to a passer-by may simply have no character behind it.
-3. **The model never answered** (502, or the free-tier rate limit) and the
-   offline reader spoke instead, which has no personality to draw on. The
-   reported reply had real flavour, so this is the least likely, but the day's
-   sidecar failures make it worth ruling out.
+1. **Lifetime.** What owns the `Situation` and the brief, and when is it rebuilt?
+   If it is constructed with the game or with the first conversation rather than
+   per conversation, that is the bug outright.
+2. **`Buildings.enter` / `leave`.** Does anything tell talk the player changed
+   building? `@gb/app` publishes `peopleHere()` and `cityPosition()`; if the talk
+   side reads a place captured at construction, entering a new one changes
+   nothing it can see.
+3. **Reuse across NPCs.** One `Conversation` reused for a second speaker would
+   carry the first speaker's transcript, which would also give the model the
+   wrong name to echo.
 
-First thing to do: reproduce with a stationed NPC inside a building, model
-confirmed answering, and print the brief that goes out. Do not change anything
-before that; all three causes look identical from the outside.
+**Reproduce before changing anything:** talk to somebody in building A, walk to
+building B, talk to somebody there, and print the brief that goes out on the
+second conversation. Compare it with the first. Do not fix on a hypothesis; two
+of the three above look identical from the player's seat.
 
-Box: `talk`, unless it turns out to be 2, which is `forge` and `crowd`.
+Box: `talk`, possibly `app` if the fault is that nothing tells talk the player
+moved.
 
 ### Running right now
 
