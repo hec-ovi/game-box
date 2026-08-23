@@ -868,31 +868,41 @@ more than finding it out on a hospital.
 Boxes: `world` for the `dance` anchor kind, `cast` for the shelf, `forge` and
 `furnish` for the charter's room and dressing.
 
-### Follow did nothing (2026-08-23, found by him)
+### Following does nothing: confirmed, and it is the indoors case (2026-08-23)
 
-"i clicked follow and they are not follow, it was in a quest, did not worked."
+He picked the conversation move "ask them to come with you". The menu then
+offered "ask them to stay here", so **the state flipped and no body moved.** That
+rules out the naming confusion and confirms the known half-wired path:
+`addCompanion` sets a flag and only the direct click path actually moves a body.
 
-Two candidates, both real, and they need separating before either is fixed.
+**The sharper hypothesis, and the first thing to check:** the person was
+stationed inside a building. Companions are handed over from `@gb/crowd`'s
+walkers, and today's crowd pass made `follow` take the walker off the pavement
+and reuse the very body they were wearing, passing `at: { x, z }` from
+`walkers()`. That path assumes a walker exists. **A person standing at an anchor
+indoors is not a walker**, so there is no body to convert and nothing to route.
+Following would then work on the street and silently do nothing indoors, which
+matches the report exactly.
 
-1. **The word means two things.** The quests tab's `Follow` button means *track
-   this quest* and sets the marker. Making a person walk with you is a different
-   feature with the same name. If he pressed the quest button expecting an NPC to
-   follow, the bug is the word, and it is worth fixing on its own: rename the
-   quest control to `Track`, which is what it does.
-2. **`addCompanion` from quest effects has no listener.** Already logged earlier
-   as half-wired: the quest effect flips a boolean and only the direct click path
-   actually moves a body, so **an escort step can credit while nobody walks with
-   you**. If it was an escort quest, this is it.
+What to check, in order:
 
-Reproduce by asking which button: the one in the quests tab, or a choice in a
-conversation. They are different code paths and fixing the wrong one leaves the
-fault.
+1. Does the same move work on a passer-by in the street? If yes, it is the
+   indoors case and the fix is a way to make a stationed person into a walker.
+2. Is `Companions.toggle` reached at all from the talk action, or does the effect
+   stop at the flag? One is a missing listener, the other is a missing body.
+3. `@gb/crowd` needs to accept somebody who was never on the pavement: a spawn at
+   the interior's doorstep rather than a hand-over from `walkers()`.
 
-Worth noting the companion machinery itself is sound and tested (203-cell route,
-worst gap 3.43 m, no teleports, rides in a car, resumes beside the player), so
-this is wiring or naming, not the follow behaviour.
+Separately, and worth doing anyway: the quests tab's `Follow` button means *track
+this quest* and should be called `Track`. One word, two features, and the
+collision is what made this ambiguous to report in the first place.
 
-Boxes: `hud` for the name, `app` and `quest` for the effect with no listener.
+The companion machinery itself is sound and tested (203-cell route, worst gap
+3.43 m, no teleports, rides in a car, resumes beside the player), so this is
+getting a body into it, not the walking.
+
+Boxes: `app` and `quest` for the effect, `crowd` for a companion who was never a
+walker, `hud` for the name.
 
 ### Running right now
 
