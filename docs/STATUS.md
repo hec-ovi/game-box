@@ -14,7 +14,7 @@ Three states, and the difference matters:
 | Requirement | State | Evidence or what is missing |
 |---|---|---|
 | Browser three.js game, first person | verified | Walked it |
-| Quests are the point, not shooting | verified | 300 quests driven to completion, 0 rejected |
+| Quests are the point, not shooting | verified | 444 of 444 generated quests completable by a player, two themes, four city sizes, credited only through the boxes that really produce each event |
 | Main quest and side quests | verified | Main line gates side work by standing; 3 to 16 offered at start, not all 101 |
 | Quests as reusable flows | verified | 8 step shapes, escort, choice, counts, hidden, timers |
 | Talk to NPCs | verified | Played in a browser: a job offered, taken, delivered and paid, twice, once with the model and once with the sidecar dead |
