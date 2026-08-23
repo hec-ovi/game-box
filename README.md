@@ -1,10 +1,10 @@
 # game-box
 
-> **Under construction.** The city generates, you can walk it, go into buildings, talk to the people in them and run errands for them. Plenty is unfinished and everything here can still change.
+> **Under construction.** The loop works end to end: a city generates, you walk it, go into the places that open, talk to the people there and finish the jobs they hand out. Plenty is unfinished and everything here can still change.
 
 A browser game where the city is written for you. Give it a theme and a seed, and a local model lays out a town, furnishes its interiors, invents the people standing in them and writes the errands they hand out. The result is one file you can send to someone else, and they walk the same city with the same people and the same jobs.
 
-The loop is quests, not combat: talk to somebody, cross town, go into a building, find a person or a thing, take it, carry it, deliver it, get paid.
+The loop is quests, not combat: talk to somebody, cross town, go into a building, find a person or a thing, take it, carry it, leave it somewhere, deliver it, get paid. Quests branch, and a branch you did not take stays in the journal so the choice reads as one.
 
 ## Playing it
 
@@ -32,6 +32,17 @@ pnpm --filter @gb/cli run gb check city.json       # opens it the way the game d
 ```
 
 `gb check` is the honest test of a shipped city: it opens the bundle exactly as the game would, then proves every building can actually be reached on foot.
+
+## How a city gets written
+
+Four passes, in this order, each one blind to the others' working:
+
+1. **A history.** Why the town is here, what happened recently, what is at stake, and who wants what. Everything after is built out of it: two histories on one seed change 38% of the buildings, and the main quest's fork is two named sides who cannot both win.
+2. **The city.** Streets, plots and buildings by arithmetic from the seed. About one building in eight opens; the rest have doors, windows, signs and names, and no way in.
+3. **The places that open.** One agent per place, in parallel, each knowing only its own shell: what it is called, who is in it, what they know, what is lying about.
+4. **The quests**, written against place names, people and distances, never against geometry.
+
+A city built this way is checked before it ships: every generated quest is driven to completion through the same events a player produces, and a step kind with no way for a player to trigger it is reported as unplayable rather than counted as passing.
 
 ## The model
 
@@ -62,9 +73,17 @@ The game, in TypeScript under `game/`:
 
 The sidecar, in `host/`: `api`, `llm`, `stt`, `tts`, `models`. Node with one dependency and no build step.
 
+## Sending a city to someone
+
+`gb build` writes one file. Whoever opens it walks the same city with the same people and the same jobs, and the file records the art it was built against: every plot names the exact building model it was given, so growing the catalogue later leaves an already-shared city untouched. Measured: add one building look and 53 of 123 plots change in an unpinned city, and none in a pinned one.
+
+Opening a city against art you do not have, or a newer version of it, is not refused. The file opens and says which packs disagree.
+
 ## The art
 
-Everything shipped is CC0, from Quaternius and KayKit, because a world file hands assets to whoever opens it: a licence that forbids redistributing the file is unusable here however free it is. `assets/registry/sources.json` records every source and its licence, and `tools/fetch-assets.mjs` refuses anything that is not redistributable.
+Everything shipped is CC0 or generated here, because a world file hands assets to whoever opens it: a licence that forbids redistributing the file is unusable however free it is. Models and animations are Quaternius and KayKit. Surfaces are generated: `docs/textures/IMAGES.md` holds every prompt, where each file lands, and what was rejected and why. `assets/registry/sources.json` records every downloaded source and its licence, and `tools/fetch-assets.mjs` refuses anything that is not redistributable.
+
+A generated tile is measured rather than eyeballed: seam strength on both axes, light spread across the frame, and a repeat sheet checked for any landmark you would notice tiling up a building.
 
 ```
 node tools/fetch-assets.mjs      # download the packs
