@@ -196,6 +196,12 @@ importers:
         specifier: ^0.185.4
         version: 0.185.4
 
+  game/drive:
+    dependencies:
+      '@gb/world':
+        specifier: workspace:*
+        version: link:../world
+
   game/forge:
     dependencies:
       '@gb/kit':
@@ -315,6 +321,49 @@ importers:
       zod:
         specifier: ^4.4.3
         version: 4.4.3
+
+  game/prefab:
+    dependencies:
+      '@gb/kit':
+        specifier: workspace:*
+        version: link:../kit
+      '@gb/kitbash':
+        specifier: workspace:*
+        version: link:../kitbash
+      '@gb/scene':
+        specifier: workspace:*
+        version: link:../scene
+      '@gb/world':
+        specifier: workspace:*
+        version: link:../world
+      three:
+        specifier: ^0.185.1
+        version: 0.185.1
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@gb/forge':
+        specifier: workspace:*
+        version: link:../forge
+      '@gltf-transform/core':
+        specifier: ^4.4.2
+        version: 4.4.2
+      '@gltf-transform/extensions':
+        specifier: ^4.4.2
+        version: 4.4.2
+      '@gltf-transform/functions':
+        specifier: ^4.4.2
+        version: 4.4.2(@types/node@26.2.0)
+      '@types/three':
+        specifier: ^0.185.4
+        version: 0.185.4
+      meshoptimizer:
+        specifier: ^1.2.0
+        version: 1.2.0
+      sharp:
+        specifier: ^0.35.3
+        version: 0.35.3(@types/node@26.2.0)
 
   game/quest:
     dependencies:

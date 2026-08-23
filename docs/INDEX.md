@@ -22,6 +22,7 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI
 | Sky, sun and moon, terrain, water, trees, rain | `game/land/` |
 | Pedestrians walking the streets | `game/crowd/` |
 | Cars driving the roads | `game/traffic/` |
+| The car the player drives: getting in, the handling, who rides with them | `game/drive/` |
 | The interface: objectives, prompts, conversation, announcements, the quests, map, items and controls window, and how it all looks | `game/hud/` |
 | Determinism, ids, results, boundary validation | `game/kit/` |
 | The running game: the panel you make a city in, renderer, frame loop, first-person body, wiring, and how the night is graded | `game/app/` |
@@ -55,6 +56,7 @@ game/kit <- game/sidecar -> the sidecar's api contract
 game/forge, game/quest, game/world, game/sidecar <- game/scribe
 game/world, game/quest, game/play, game/sidecar <- game/talk
 game/world <- game/nav;  game/kit, game/world <- game/scene, game/traffic
+game/world <- game/drive   (the traffic, the car art, the crowd and the player all arrive as ports)
 game/scene, game/kit <- game/kitbash
 game/scene, game/world, game/kit <- game/furnish
 game/scene <- game/cast

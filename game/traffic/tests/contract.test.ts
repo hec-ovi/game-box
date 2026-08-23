@@ -210,4 +210,73 @@ describe('Traffic', () => {
     expect(released).toBeGreaterThan(0)
     expect(live.size).toBe(traffic.count)
   })
+
+  it('hands a car over to somebody else, and never touches it again', () => {
+    const live = new Map<string, Object3D>()
+    const bodies: CarBodies = {
+      acquire(spawn: CarSpawn) {
+        const object = new Object3D()
+        live.set(spawn.id, object)
+        return object
+      },
+      release(_body: CarBody, spawn: CarSpawn) {
+        live.delete(spawn.id)
+      },
+    }
+    const traffic = open(lattice({ across: 3, down: 3, span: 20 }), { maxCars: 6, bodies })
+    traffic.populate({ x: 40, z: 40 })
+    for (let frame = 0; frame < 120; frame++) traffic.update(1 / 60, { x: 40, z: 40 })
+
+    const taking = traffic.cars()[0]!
+    const was = { id: taking.id, x: taking.x, z: taking.z, heading: taking.heading, model: taking.model }
+    const given = traffic.handOver(was.id)
+
+    expect(given).toEqual({ ...was, speed: expect.any(Number) })
+    expect(traffic.cars().some((car) => car.id === was.id)).toBe(false)
+    // the body went back to the pool, so whoever took the car draws their own
+    expect(live.has(was.id)).toBe(false)
+    // and nothing on the road is still queued behind it
+    for (const lane of traffic.graph.lanes) {
+      expect(lane.cars.some((car) => car.id === was.id)).toBe(false)
+    }
+
+    for (let frame = 0; frame < 600; frame++) traffic.update(1 / 60, { x: 40, z: 40 })
+    expect(traffic.count).toBeGreaterThan(0)
+    expect(live.size).toBe(traffic.count)
+
+    expect(traffic.handOver(was.id)).toBeUndefined()
+    expect(traffic.handOver('nobody')).toBeUndefined()
+  })
+
+  it('gives back the junction a car was crossing when it is taken mid-turn', () => {
+    const traffic = open(lattice({ across: 3, down: 3, span: 16 }), { maxCars: 8 })
+    const focus = { x: 60, z: 60 }
+    traffic.populate(focus)
+
+    const crossing = new Map<string, string>()
+    for (const junction of traffic.graph.junctions) {
+      for (const link of junction.links) crossing.set(link.id, junction.id)
+    }
+
+    let taken: { id: string; junctionId: string } | undefined
+    for (let frame = 0; frame < 6000 && !taken; frame++) {
+      traffic.update(1 / 60, focus)
+      const inside = traffic.cars().find((car) => crossing.has(car.trackId))
+      if (inside) taken = { id: inside.id, junctionId: crossing.get(inside.trackId)! }
+    }
+    if (!taken) throw new Error('nobody ever reached a junction')
+
+    expect(traffic.handOver(taken.id)).toBeDefined()
+    for (const junction of traffic.graph.junctions) {
+      for (const link of junction.links) expect(link.cars.some((car) => car.id === taken!.id)).toBe(false)
+    }
+
+    // the junction is free again: somebody else drives across it
+    let crossed = false
+    for (let frame = 0; frame < 6000 && !crossed; frame++) {
+      traffic.update(1 / 60, focus)
+      crossed = traffic.cars().some((car) => crossing.get(car.trackId) === taken!.junctionId)
+    }
+    expect(crossed).toBe(true)
+  })
 })

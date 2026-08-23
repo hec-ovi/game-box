@@ -19,6 +19,20 @@ export interface CarView {
 }
 
 /**
+ * A car the moment it stopped being the traffic's: where it stood, which way it
+ * pointed and how fast it was going. Plain numbers, because whoever asked for
+ * it now owns it and nothing here will move it again.
+ */
+export interface CarHandover {
+  readonly id: string
+  readonly model: CarModel
+  readonly x: number
+  readonly z: number
+  readonly heading: number
+  readonly speed: number
+}
+
+/**
  * One car: which piece of road it is on, how far along, how fast, and where
  * that puts it. Position is worked out when it moves and kept, so reading a
  * hundred cars a frame costs a hundred property reads.

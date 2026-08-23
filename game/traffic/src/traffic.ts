@@ -1,6 +1,6 @@
 import { err, ok, type Result } from '@gb/kit'
 import { METRICS, type World } from '@gb/world'
-import type { Car, CarView } from './car.ts'
+import type { Car, CarHandover, CarView } from './car.ts'
 import type { TrafficError } from './errors.ts'
 import { distance, type Point } from './geometry.ts'
 import { Hazards } from './hazards.ts'
@@ -71,6 +71,23 @@ export class Traffic {
 
   cars(): readonly CarView[] {
     return this.#cars
+  }
+
+  /**
+   * Give a car to whoever is asking for it. The traffic forgets it entirely:
+   * its place in the queue and any junction it was holding are given back, its
+   * body goes to the pool, and another car may take its place on the road.
+   *
+   * What comes back is a snapshot rather than the live car, because from here
+   * on it is somebody else's, and it is enough to carry on driving it: where it
+   * was, which way it was pointing and how fast it was going.
+   */
+  handOver(carId: string): CarHandover | undefined {
+    const index = this.#cars.findIndex((car) => car.id === carId)
+    if (index < 0) return undefined
+    const car = this.#cars[index]!
+    this.#takeOff(index)
+    return { id: car.id, model: car.model, x: car.x, z: car.z, heading: car.heading, speed: car.speed }
   }
 
   get count(): number {
@@ -229,13 +246,19 @@ export class Traffic {
       const away = distance(car, focus)
       const jammed = car.stalled > PATIENCE && away > nearRadius
       if (!jammed && away <= despawnRadius) continue
-      leave(car.track, car)
-      this.#junctions.release(car)
-      if (car.body && this.#settings.bodies) {
-        this.#settings.bodies.release(car.body, { id: car.id, model: car.model })
-      }
-      this.#cars.splice(i, 1)
+      this.#takeOff(i)
     }
+  }
+
+  /** Off the road, out of the queue, out of the junction, body back to the pool. */
+  #takeOff(index: number): void {
+    const car = this.#cars[index]!
+    leave(car.track, car)
+    this.#junctions.release(car)
+    if (car.body && this.#settings.bodies) {
+      this.#settings.bodies.release(car.body, { id: car.id, model: car.model })
+    }
+    this.#cars.splice(index, 1)
   }
 
   #add(focus: Point): boolean {

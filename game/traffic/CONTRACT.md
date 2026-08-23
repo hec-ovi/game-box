@@ -1,6 +1,6 @@
 # @gb/traffic contract
 
-contractVersion: 0.3.0
+contractVersion: 0.4.0
 
 ## Purpose
 
@@ -13,6 +13,7 @@ Drives cars around a generated city: reads its road graph, puts cars on lanes, f
 | `Traffic.fromWorld(world, options?)` | a `@gb/world` `World`, `TrafficOptions` | the world's `roads` are nodes and segments that resolve |
 | `Traffic.populate(focus)` | `Point` in metres, `{ x, z }` | fills the streets in one go, for the moment a city opens |
 | `Traffic.update(dt, focus)` | seconds since the last call, the player's position | `dt` outside `(0, maxStep]` is clamped, `NaN` is ignored |
+| `Traffic.handOver(carId)` | the `id` off a `CarView` | takes that car off the road for good, for somebody else to drive. An id nobody answers to is not an error |
 | `LaneGraph.build(roads, shape)` | `Roads` from `world.toJSON().roads`, `GraphShape` | the same graph `fromWorld` builds, if you want it on its own |
 | `CarPack.load(url, root)` | where the app serves `cars.glb`, a `three` `Object3D` | the pack is built; cars are added to and removed from `root` |
 | `CarPack.parse(bytes, root)` | the pack's bytes, a `three` `Object3D` | the same, for bytes the app already fetched |
@@ -58,6 +59,7 @@ Without `setTime` the pack stays at midday and the lamps never light.
 | `Traffic.fromWorld` | `Result<Traffic, TrafficError>` | never throws, never partly built |
 | `Traffic.cars()` | `readonly CarView[]` | live objects: `id`, `model`, `x`, `z`, `heading`, `speed`, `trackId`. Read only, and the same array every frame |
 | `Traffic.count` | number | cars alive now |
+| `Traffic.handOver` | `CarHandover` or undefined | a snapshot, not the live car: `id`, `model`, `x`, `z`, `heading`, `speed`. Undefined when no car has that id |
 | `Traffic.graph` | `LaneGraph` | `lanes`, `junctions`, `linksFrom(lane)`. A junction has `centre`, `half` and `contains(point)` |
 | bodies | written in place | `position.x/y/z` and `rotation.y` of every car that moved this frame |
 | `CarPack` | a `CarBodies` | pass it as `bodies`. `root` is where the cars hang, `parked` is how many bodies wait for reuse, `paint` is the one material every car wears and `paint.lamps` is how lit the lamps are, 0 by day and 1 in the dark |
@@ -96,6 +98,7 @@ Catch it and leave `bodies` out. The traffic still runs; it is just not drawn.
 - The road out of town carries on past the last junction. An `exit` lane with no junction to turn into runs off the edge of the map for 120 m, which is how far `@gb/land` grades the ground under a road out, so a car leaving town drives away into the distance instead of stopping ten metres past the last building. No other dead end does this: driving off the end of a street in the middle of the city would put a car through a building, so a car there stops at the kerb and is taken away out of sight.
 - Everything random comes from `@gb/kit`'s `Rng`, forked per car: the same seed, city and sequence of updates gives the same traffic, position for position.
 - Cars are never created in front of a car already driving: a new one joins at the back of its lane.
+- **A car handed over stops existing here entirely.** Its place in the queue and any junction it was holding are given back the same way a retired car gives them back, and its body goes to the pool, so nothing is left queued behind a ghost and no junction is held by a car nobody is driving any more. What comes back is a snapshot rather than the live car, because from that moment it is somebody else's. `@gb/drive` is what asks: the car the player gets into is a car that was already on the road.
 - A segment's `lanes` count is not read. The graph carries no direction and no width, so the rule above is fixed here instead. The width comes from `@gb/world`'s `METRICS.street.roadwayCells`, not from a number written down here.
 - One material paints the whole pack, a `MeshPhysicalNodeMaterial` keyed off the surface each vertex carries: paint is metal under a clear coat, glass is a near-black mirror, rims are brightwork, tyres are matte, and the lamps carry their own light. There is a sky to reflect, so what a car looks like is mostly what is above it. Every car shares the instance, so an hour of the day is one uniform write and a car stays four draws.
 - Cars cast shadows and receive them. Whether anything is drawn into a shadow map is the app's business; the pack marks its meshes either way.
@@ -147,6 +150,6 @@ Cars never cover more than a fifth of a city frame, so the clear coat, the glass
 
 The behaviour lives in four places and they stay separate: `idm.ts` is the car following model, `junctions.ts` is right of way, `hazards.ts` turns the people into distances a driver can brake against, and `lane-graph.ts` is the geometry lanes are cut from. Multi-lane roads, one way streets and traffic lights are all changes to `lane-graph.ts` plus one of the other two, not new boxes.
 
-Where a car leaves the world is `src/runoff.ts`, and nothing else knows about it.
+Where a car leaves the world is `src/runoff.ts`, and nothing else knows about it. Taking a car off the road, whether it was retired or handed to a driver, is `#takeOff` in `src/traffic.ts` and is one path, so the two cannot drift apart.
 
 The art is separate again: `tools/car-source.ts` is the conversion, `tools/car-shading.ts` the normals and the vertex colours, `tools/car-underbody.ts` the box under the car, `src/pack-layout.ts` what the file is called and how it is laid out, `src/car-paint.ts` the one material, and `src/car-pack.ts` the loading and pooling. Changing the layout or the surface vocabulary means rebuilding the pack, so the converter and the loader read the same constants out of `pack-layout.ts`. Run `pnpm --filter @gb/traffic test`; the tests that measure the pack skip when it has not been built.
