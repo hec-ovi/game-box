@@ -56,6 +56,7 @@ export class Game {
   #traffic: Traffic | undefined
   #land: Land | undefined
   #weather: string | undefined
+  #reflectedHour = -1
   #cars: CarPack | undefined
   #kit: KitDressing | undefined
 
@@ -111,6 +112,18 @@ export class Game {
     this.#stage.renderer.domElement.addEventListener('mousedown', this.#click)
     this.#hud.show({ controls: CONTROLS })
     this.#refresh()
+  }
+
+  /**
+   * Take the light off the sky, so a window has something to reflect and a wall
+   * in shade is not flat. Prefiltering costs about 20 ms, so it happens when
+   * the hour turns rather than every frame: the sky does not change faster
+   * than that.
+   */
+  #reflect(): void {
+    if (!this.#land) return
+    this.#reflectedHour = this.#player.clock.hour
+    this.#stage.reflect(this.#land.sky)
   }
 
   /**
@@ -198,6 +211,7 @@ export class Game {
 
     this.#land = built.value
     this.#stage.scene.add(this.#land.root)
+    this.#reflect()
     this.#stage.scene.fog = this.#land.fog
     this.#stage.camera.far = this.#land.cameraFar
     this.#stage.camera.updateProjectionMatrix()
@@ -317,6 +331,7 @@ export class Game {
     this.#kit?.setTime(hours)
     if (!this.#land || this.#place.kind !== 'city') return
     this.#land.setTime(hours)
+    if (clock.hour !== this.#reflectedHour) this.#reflect()
     if (clock.weather !== this.#weather) {
       this.#weather = clock.weather
       this.#land.setWeather(clock.weather)

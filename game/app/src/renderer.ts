@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { WebGPURenderer } from 'three/webgpu'
+import { PMREMGenerator, WebGPURenderer } from 'three/webgpu'
 
 export interface Stage {
   readonly renderer: WebGPURenderer
@@ -7,6 +7,12 @@ export interface Stage {
   readonly scene: THREE.Scene
   /** Sky, sun and colour for when the landscape is not there to provide them. */
   plainDaylight(): void
+  /**
+   * Light every surface with the sky itself. Without this the world is lit by
+   * three lamps and nothing else, which is most of why it reads as a cartoon:
+   * a metal or glass surface has no surroundings to reflect.
+   */
+  reflect(sky: THREE.Object3D): void
   /**
    * Light a room, and stop lighting it on the way out. Outdoor light belongs to
    * the landscape and goes dark with it, so without this a building is pitch
@@ -33,6 +39,9 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
   mount.appendChild(renderer.domElement)
 
   const scene = new THREE.Scene()
+  // every castShadow flag in the art boxes was doing nothing without this
+  renderer.shadowMap.enabled = true
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap
   renderer.toneMapping = THREE.AgXToneMapping
   renderer.toneMappingExposure = 1.15
 
@@ -41,6 +50,8 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
   let current: THREE.Object3D | undefined
   let roomLight: THREE.Group | undefined
   let daylight: THREE.Group | undefined
+  let horizon: PMREMGenerator | undefined
+  let reflected: ReturnType<PMREMGenerator['fromScene']> | undefined
   const stage: Stage = {
     renderer,
     camera,
@@ -63,6 +74,20 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
       outdoor.add(fill)
       scene.add(outdoor)
       daylight = outdoor
+    },
+    reflect(sky) {
+      horizon ??= new PMREMGenerator(renderer)
+      const holder = new THREE.Scene()
+      const parent = sky.parent
+      // prefilter the sky on its own: the city reflecting itself would cost far
+      // more and look worse
+      holder.add(sky)
+      const next = horizon.fromScene(holder)
+      parent?.add(sky)
+
+      reflected?.dispose()
+      reflected = next
+      scene.environment = next.texture
     },
     indoors(on) {
       if (!roomLight) {
@@ -98,6 +123,8 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
       })
     },
     dispose() {
+      reflected?.dispose()
+      horizon?.dispose()
       renderer.setAnimationLoop(null)
       renderer.dispose()
       window.removeEventListener('resize', resize)
