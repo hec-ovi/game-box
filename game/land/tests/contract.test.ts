@@ -56,6 +56,17 @@ function instances(mesh: THREE.InstancedMesh): THREE.Vector3[] {
   return out
 }
 
+/**
+ * The state the stars and the moon were stuck in: a blended material is drawn
+ * after every solid object in the frame, so with the depth test off it covers
+ * walls, cars and people whatever its `renderOrder` says.
+ */
+function paintsOverEverything(object: THREE.Object3D): boolean {
+  const material = (object as THREE.Mesh).material as THREE.Material | undefined
+  if (!material) return false
+  return material.transparent === true && material.depthTest === false
+}
+
 /** Rounded position stream: two landscapes are the same when this is. */
 function shape(land: Land): string {
   const position = land.terrain.geometry.getAttribute('position')
@@ -380,6 +391,53 @@ describe('the sky', () => {
     expect(land.fog.density).toBeGreaterThan(0)
     // far enough back that the whole dome is inside a camera set up from it
     expect(land.cameraFar).toBeGreaterThan(land.horizon)
+  })
+
+  it('hangs the stars and the moon in the depth buffer, not over the frame', async () => {
+    const land = landOf(await town(), { time: 1 })
+    const moon = land.root.getObjectByName('land:moon-disc')!
+
+    expect(paintsOverEverything(land.stars)).toBe(false)
+    expect(paintsOverEverything(moon)).toBe(false)
+    const overhead: string[] = []
+    land.root.traverse((object) => {
+      if (object !== land.sky && paintsOverEverything(object)) overhead.push(object.name)
+    })
+    expect(overhead).toEqual([])
+
+    // the skydome is the one exception and it earns it: it is a background, not
+    // a thing at a distance, so it is solid, drawn first and writes no depth
+    const dome = (land.sky as THREE.Mesh).material as THREE.Material
+    expect(dome.transparent).toBe(false)
+    expect(dome.depthWrite).toBe(false)
+    expect(land.sky.renderOrder).toBeLessThan(land.stars.renderOrder)
+    // and the moon covers the stars behind it
+    expect(moon.renderOrder).toBeGreaterThan(land.stars.renderOrder)
+  })
+
+  it('gives the moon a face: maria, a limb and a phase, painted from the seed', async () => {
+    const world = await town()
+    const moon = landOf(world, { time: 1 }).root.getObjectByName('land:moon-disc') as THREE.Sprite
+    const map = moon.material.map as THREE.DataTexture
+    const side = map.image.width
+    const face = map.image.data as Uint8Array
+
+    // clear at the corners, solid in the middle: it is a moon, not a square
+    expect(face[3]).toBe(0)
+    expect(face[((side / 2) * side + side / 2) * 4 + 3]).toBe(255)
+
+    const lit: number[] = []
+    for (let texel = 0; texel < face.length; texel += 4) {
+      if (face[texel + 3]! > 250) lit.push(face[texel]!)
+    }
+    // a white ball is one brightness; a moon runs from a dark mare on the unlit
+    // side to bright highland on the lit one
+    expect(Math.min(...lit)).toBeLessThan(70)
+    expect(Math.max(...lit)).toBeGreaterThan(200)
+
+    // and the same world hangs the same moon, every time
+    const again = landOf(world, { time: 1 }).root.getObjectByName('land:moon-disc') as THREE.Sprite
+    expect((again.material.map as THREE.DataTexture).image.data).toEqual(face)
   })
 })
 

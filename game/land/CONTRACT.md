@@ -1,6 +1,6 @@
 # @gb/land contract
 
-contractVersion: 0.3.0
+contractVersion: 0.3.1
 
 ## Purpose
 
@@ -33,7 +33,7 @@ Builds the world the city stands in and the sky over it: kilometres of open, rol
 | `Land.water` | one `THREE.Mesh` named `land:water`, or undefined | every pond, each drawn out to its own shoreline |
 | `Land.trees` | one `THREE.InstancedMesh` per species, `land:trees:<species>` | each tree standing on the ground at its position |
 | `Land.sky` | the skydome, named `land:sky` | Preetham daylight with clouds, drawn first and never into the depth buffer |
-| `Land.stars` | `THREE.Points` named `land:stars` | 1,200 stars, faded out before the sun reaches the horizon; the moon is `land:moon-disc` |
+| `Land.stars` | `THREE.Points` named `land:stars` | 1,200 stars, a handful bright and most of them faint, faded out before the sun reaches the horizon; the moon beside them is the sprite `land:moon-disc` |
 | `Land.sun`, `Land.moon`, `Land.skyLight` | two directional lights and a hemisphere light | the sun and the moon on opposite ends of the same arc, and the sky filling in behind them |
 | `Land.rain` | `THREE.LineSegments` named `land:rain` | streaks inside `Land.rainVolume`, centred on the last viewer it was given |
 | `Land.fog` | `THREE.FogExp2` | assign to `scene.fog` once: the same object is edited as the time and weather change |
@@ -68,9 +68,11 @@ Builds the world the city stands in and the sky over it: kilometres of open, rol
 - Water is carved, not floated. A pond's level is set below the lowest point of its own rim and its shore is walked out to where the ground comes back up through the surface. A bowl the drawn ground does not close on every side stays a dry hollow rather than a pond hanging over the land.
 - Time and weather move light, never geometry. `setTime` and `setWeather` write the sun and moon positions, the sky's uniforms and the colours and strengths of the lights and the fog, all in place. No vertex is touched again after the build.
 - The sun and the moon are the two ends of one arc: sunrise at 06:00, noon overhead at the theme's `noonElevation`, sunset at 18:00, the moon opposite it all the way round. Twilight runs from seven degrees below the horizon to eleven above.
+- The night sky is depth-correct. The stars and the moon are geometry at a real distance and they read the depth buffer like anything else, so a wall, a tree or someone standing in front of them hides them, and the moon comes up from behind the hills rather than over them. The skydome is the one object that ignores depth, and it may: it is a background, it draws before everything and it writes nothing back.
+- The moon is generated, never downloaded: maria, a limb that darkens towards the edge, a faint halo and a phase, painted once from the seed into a 128 px texture carried on two triangles that face the camera. The phase belongs to the world, not to the hour, because this box is handed a time of day and no date.
 - Night is dim, not black. Moonlight plus a lifted blue ambient leaves it about five times darker than noon (5.3 light units at noon against 1.1 at midnight, on the temperate theme). Cloud takes less off the moon than off the sun, so a wet night stays walkable.
 - Rain is a box of streaks that travels with the viewer. Drops keep world positions and wrap when they leave the box, so walking moves you through the rain instead of dragging it along, and no drop is ever drawn outside the volume.
-- Same seed, same landscape, always. Every random choice comes from a `@gb/kit` `Rng` forked per feature (`relief`, `scatter`, `water`, `trees`, `stars`, `rain`), so retuning the woods cannot move the hills.
+- Same seed, same landscape, always. Every random choice comes from a `@gb/kit` `Rng` forked per feature (`relief`, `scatter`, `water`, `trees`, `stars`, `rain`), so retuning the woods cannot move the hills. The moon forks again under `stars`, so retuning it cannot move them either.
 - This box holds no clock. It remembers the last time and weather it was told and renders them; whoever owns the clock calls `setTime`.
 - Objects only. No renderer, no camera, no frame loop, which is why the whole box is tested in Node with no canvas.
 - The sky is a node material, which is what `WebGPURenderer` needs and what its WebGL2 backend compiles for itself. Everything else is ordinary three.js: mesh, instanced mesh, points and line segments, which render the same on both backends. Rain is stepped on the CPU for the same reason.
@@ -85,7 +87,7 @@ Measured on three towns, at the default detail:
 | 89x89 cells, arid | 159,568 tris | 2,200 trees, 61,600 tris | 2 | 5 | 75 ms |
 | 51x51 cells, maritime | 131,990 tris | 4,000 trees, 93,400 tris | 7 | 5 | 78 ms |
 
-The land is 6 to 7 km across and it is still five draws: the terrain, the water, the sky and one instanced mesh per tree species. Night adds two (1,200 stars in one `Points` draw and a 96 triangle moon), rain adds one.
+The land is 6 to 7 km across and it is still five draws: the terrain, the water, the sky and one instanced mesh per tree species. Night adds two (1,200 stars in one `Points` draw and a two triangle moon sprite carrying a 64 KB face it paints at build time), rain adds one.
 
 Ground resolution is 6 m quads for the first half kilometre out of town, 24 m to about 1.8 km, then 96 m to the horizon. `detail: 'low'` doubles all three, which is a quarter of the geometry (35,300 tris) and a 28 ms build.
 

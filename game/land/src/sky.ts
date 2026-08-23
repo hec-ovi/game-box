@@ -2,11 +2,17 @@ import type { Rng } from '@gb/kit'
 import * as THREE from 'three'
 import { SkyMesh } from 'three/addons/objects/SkyMesh.js'
 import { smoothstep01 } from './height.ts'
+import { buildMoon } from './moon.ts'
+import { buildStars } from './stars.ts'
 import type { LandTheme } from './theme.ts'
 import { WEATHER, type Weather } from './weather.ts'
 
-/** How many stars are hung on the night sky. */
-const STARS = 1200
+/**
+ * The skydome draws before everything and writes no depth, so it is the one
+ * object here that is allowed to ignore the depth buffer: it is a background,
+ * not a thing at a distance.
+ */
+const SKY_ORDER = -1000
 /** The grey a storm pulls the haze and the light towards. */
 const STORM = new THREE.Color(0x8b96a0)
 const COLD = new THREE.Color(0xb9c7d4)
@@ -27,7 +33,7 @@ export class Atmosphere {
   readonly moon: THREE.DirectionalLight
   readonly skyLight: THREE.HemisphereLight
   readonly stars: THREE.Points
-  readonly moonDisc: THREE.Mesh
+  readonly moonDisc: THREE.Sprite
   readonly fog: THREE.FogExp2
   /** Everything to hang in the scene, in the order it should be added. */
   readonly objects: readonly THREE.Object3D[]
@@ -65,7 +71,7 @@ export class Atmosphere {
     this.sky.name = 'land:sky'
     this.sky.scale.setScalar(radius * 2)
     this.sky.position.copy(this.#centre)
-    this.sky.renderOrder = -1000
+    this.sky.renderOrder = SKY_ORDER
     this.sky.material.fog = false
     this.sky.material.depthTest = false
     this.sky.turbidity.value = theme.sky.turbidity
@@ -77,7 +83,8 @@ export class Atmosphere {
 
     this.stars = buildStars(this.#centre, radius * 0.96, rng)
     this.#moonReach = radius * 0.92
-    this.moonDisc = buildMoonDisc(radius * 0.018)
+    // forked after the stars are hung, so retuning the moon cannot move them
+    this.moonDisc = buildMoon(radius * 0.018, rng.fork('moon'))
 
     this.sun = new THREE.DirectionalLight(light.sun, light.sunIntensity)
     this.sun.name = 'land:sun'
@@ -167,7 +174,7 @@ export class Atmosphere {
     this.stars.rotation.y = (this.#time / 24) * Math.PI * 2
     setFade(this.stars.material as THREE.PointsMaterial, showNight, this.stars)
     this.moonDisc.position.copy(this.#moonward).multiplyScalar(this.#moonReach).add(this.#centre)
-    setFade(this.moonDisc.material as THREE.MeshBasicMaterial, showNight, this.moonDisc)
+    setFade(this.moonDisc.material, showNight, this.moonDisc)
   }
 }
 
@@ -183,55 +190,3 @@ function setFade(material: THREE.Material & { opacity: number }, opacity: number
   object.visible = opacity > 0.02
 }
 
-/** Points on a sphere, in whites and faint blues, one draw for the whole sky. */
-function buildStars(centre: THREE.Vector3, reach: number, rng: Rng): THREE.Points {
-  const positions = new Float32Array(STARS * 3)
-  const colours = new Float32Array(STARS * 3)
-  const shade = new THREE.Color()
-  for (let star = 0; star < STARS; star++) {
-    // even over the sphere, then only the half above the horizon is ever seen
-    const height = rng.range(-0.15, 1)
-    const ring = Math.sqrt(Math.max(0, 1 - height * height))
-    const angle = rng.float() * Math.PI * 2
-    positions[star * 3] = Math.cos(angle) * ring * reach
-    positions[star * 3 + 1] = height * reach
-    positions[star * 3 + 2] = Math.sin(angle) * ring * reach
-
-    shade.setHSL(rng.range(0.55, 0.66), rng.range(0, 0.35), rng.range(0.45, 1))
-    colours[star * 3] = shade.r
-    colours[star * 3 + 1] = shade.g
-    colours[star * 3 + 2] = shade.b
-  }
-
-  const geometry = new THREE.BufferGeometry()
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
-  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colours, 3))
-  const stars = new THREE.Points(
-    geometry,
-    new THREE.PointsMaterial({
-      size: 2.2,
-      sizeAttenuation: false,
-      vertexColors: true,
-      transparent: true,
-      depthWrite: false,
-      depthTest: false,
-      fog: false,
-    }),
-  )
-  stars.name = 'land:stars'
-  stars.position.copy(centre)
-  stars.renderOrder = -999
-  stars.frustumCulled = false
-  return stars
-}
-
-function buildMoonDisc(size: number): THREE.Mesh {
-  const moon = new THREE.Mesh(
-    new THREE.SphereGeometry(size, 12, 8),
-    new THREE.MeshBasicMaterial({ color: 0xdde5f2, transparent: true, depthWrite: false, depthTest: false, fog: false }),
-  )
-  moon.name = 'land:moon-disc'
-  moon.renderOrder = -999
-  moon.frustumCulled = false
-  return moon
-}
