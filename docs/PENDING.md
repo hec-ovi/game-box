@@ -1109,6 +1109,36 @@ three as one piece of work.
 Boxes: `app` for the panel, `forge` and `scribe` for consuming the fields,
 `world` for carrying them.
 
+### A companion should come inside with you (2026-08-23, his ask)
+
+Today they do not, and it is deliberate rather than broken: `Companions.regroup`
+places them at the doorstep, and the box's stated invariant is that a companion
+waits by the door of a building the player is inside. It was the cheap correct
+thing when interiors were built without them in mind.
+
+What changing it needs:
+
+- **A body inside the room.** Companions are drawn through the crowd's street
+  cast, which is a city-scale system; an interior is dressed by `@gb/furnish`
+  and populated by the people forge stationed there. A companion is neither, so
+  something has to place and animate a person in a room who was not generated
+  for it.
+- **Somewhere to stand.** Interiors are a matrix of claimed cells with measured
+  aisles, and forge just spent a pass proving a body fits down them. An extra
+  person must not end up inside a table or blocking the door the player came
+  through.
+- **Leaving together.** Regroup already handles coming out; going in is the
+  mirror and should reuse it rather than grow a second path.
+- **The escort quest depends on it.** An escort that sends you into a building
+  cannot be finished by a companion who waits outside, which may be a second
+  reason those quests behave oddly beyond the flag-crediting bug.
+
+Do it after the follow wiring, not before: following does nothing indoors at all
+right now, so there is no companion to bring in.
+
+Boxes: `app` for placing them, `crowd` for a body away from the street, `scene`
+or `furnish` if a room must publish where a visitor can stand.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
