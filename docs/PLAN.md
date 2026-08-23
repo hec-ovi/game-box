@@ -39,21 +39,21 @@ Two more numbers that make every city read the same at street level. At the defa
 |---|---|---|
 | 1 | `world` | done, `005b8f8` |
 | 2 | `quest` | done, `3c3f0a9` |
-| 3 | `forge` | running |
+| 3 | `forge` | done, seeded streets and the junction fix |
 | 5 | `hud` | running |
 | 6, 7, 18 | `app` | running |
-| 11 | `nav` | running |
+| 11 | `nav` | done, 56 s to 13 ms |
 | 15 | `scribe` | running |
 | 16 | `sidecar` | done, `f82e6a6` |
 | 17 | `talk` | running |
 | shadows | `land` | running |
 | cars | `traffic` | running |
-| 4 | `forge` | waits for 3 |
+| 4 | `forge` | running |
 | 8, 9 | `app` | waits for 6 |
-| 10 | `crowd` | waits for 9 |
-| 12 | `cli` | waits for 11 |
+| 10 | `crowd` | running, plus a crossing regression forge uncovered |
+| 12 | `cli` | done, `08a3066` |
 | 13 | `forge` | folded into 3 |
-| 14 | `scene`, `kitbash` | not started, biggest scale win |
+| 14 | `scene`, `kitbash` | running |
 | 19 | repo | not started |
 
 Done outside the plan: the world lit by the sky and the shadow map enabled
