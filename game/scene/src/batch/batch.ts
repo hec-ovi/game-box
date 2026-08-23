@@ -26,14 +26,30 @@ export class MaterialBatch {
 
   /** Puts one piece of geometry in at one place, and answers where it landed. */
   add(geometry: THREE.BufferGeometry, at: THREE.Matrix4): number {
+    return this.place(this.hold(geometry), at)
+  }
+
+  /**
+   * Copies one geometry into the buffer and answers its id. A batch that draws
+   * the same model many times holds it once and places it many times; a batch
+   * of buildings, where every geometry is different, holds each of them once.
+   */
+  hold(geometry: THREE.BufferGeometry): number {
     const vertices = geometry.getAttribute('position').count
     const indices = geometry.getIndex()?.count ?? 0
     this.#makeRoomFor(vertices, indices)
-
-    const id = this.mesh.addInstance(this.mesh.addGeometry(geometry))
-    this.mesh.setMatrixAt(id, at)
     this.#vertices += vertices
     this.#indices += indices
+    return this.mesh.addGeometry(geometry)
+  }
+
+  /** One more copy of a geometry the batch already holds, at one place. */
+  place(geometry: number, at: THREE.Matrix4): number {
+    if (this.mesh.instanceCount >= this.mesh.maxInstanceCount) {
+      this.mesh.setInstanceCount(Math.ceil(this.mesh.maxInstanceCount * GROWTH) + 1)
+    }
+    const id = this.mesh.addInstance(geometry)
+    this.mesh.setMatrixAt(id, at)
     return id
   }
 
@@ -45,9 +61,6 @@ export class MaterialBatch {
   }
 
   #makeRoomFor(vertices: number, indices: number): void {
-    if (this.mesh.instanceCount >= this.mesh.maxInstanceCount) {
-      this.mesh.setInstanceCount(Math.ceil(this.mesh.maxInstanceCount * GROWTH) + 1)
-    }
     if (this.#vertices + vertices <= this.#room.vertices && this.#indices + indices <= this.#room.indices) return
 
     this.#room = {

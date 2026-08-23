@@ -1,5 +1,5 @@
 /** @gb/scene: turning a world into something you can stand in. See CONTRACT.md. */
-export { buildCity, storeyHeight, type CityBuild } from './city.ts'
+export { buildCity, storeyHeight, type CityBuild, type CityOptions } from './city.ts'
 export { CityBuilding } from './batch/building.ts'
 export { plotOf } from './batch/batcher.ts'
 export { buildInterior, type InteriorBuild } from './interior.ts'
@@ -7,3 +7,6 @@ export { STEP_OVER_HEIGHT } from './blockers.ts'
 export { PropFootprint } from './footprint.ts'
 export { Greybox, type Dressing } from './dressing.ts'
 export { MARKING, type Marking, type MarkingKind, type MarkingPaint } from './markings.ts'
+export { BAND, CLEARANCE, CLUTTER, CLUTTER_MAX_HEIGHT, type ClutterKind } from './clutter/catalog.ts'
+export { CLUTTER_DENSITY, type ClutterDensity, type ClutterPiece } from './clutter/plan.ts'
+export { SURFACE } from './street/sizes.ts'

@@ -330,6 +330,9 @@ importers:
 
   game/scene:
     dependencies:
+      '@gb/kit':
+        specifier: workspace:*
+        version: link:../kit
       '@gb/world':
         specifier: workspace:*
         version: link:../world

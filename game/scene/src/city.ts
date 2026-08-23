@@ -2,11 +2,26 @@ import { METRICS, cellCentre, type Plot, type World } from '@gb/world'
 import * as THREE from 'three'
 import { CityBatcher } from './batch/batcher.ts'
 import type { CityBuilding } from './batch/building.ts'
+import { clutterMesh } from './clutter/mesh.ts'
+import { CLUTTER_DENSITY, planClutter, type ClutterDensity, type ClutterPiece } from './clutter/plan.ts'
 import type { Dressing } from './dressing.ts'
 import { GROUND_KINDS, groundMesh, mountainMesh } from './ground.ts'
 import { markingMeshes } from './marking-mesh.ts'
 import { planMarkings, type Marking } from './markings.ts'
 import { RoadNetwork } from './roads.ts'
+import { StreetSkin } from './street/skin.ts'
+
+/** What a city may be built differently. Left out, it comes out of the world itself. */
+export interface CityOptions {
+  /** Where every random choice on the street comes from. Left out, the world's own seed. */
+  readonly seed?: string
+  /** 0 dry to 1 soaked, to start at. Whoever owns the weather moves it after that. */
+  readonly wetness?: number
+  /** 0 by day to 1 after dark, to start at. Left out, after dark. */
+  readonly night?: number
+  /** How much rubbish the streets carry, or `false` for a city that has been swept. */
+  readonly clutter?: false | Partial<ClutterDensity>
+}
 
 export interface CityBuild {
   readonly root: THREE.Group
@@ -20,6 +35,12 @@ export interface CityBuild {
   readonly spawn: { x: number; z: number; heading: number }
   /** Every rectangle of paint on the streets, in metres. */
   readonly markings: readonly Marking[]
+  /** Everything lying on the streets, in metres. */
+  readonly clutter: readonly ClutterPiece[]
+  /** How wet the streets are, 0 to 1: read `@gb/land`'s `wetness` into this. */
+  wetness: number
+  /** How dark it is, 0 by day to 1 after dark: the same hour the buildings light up on. */
+  night: number
 }
 
 /**
@@ -29,11 +50,13 @@ export interface CityBuild {
  *
  * The buildings go into one batch per material rather than one object each, so
  * the city costs a draw per material instead of a draw per building, and every
- * building still culls, hides and raycasts on its own.
+ * building still culls, hides and raycasts on its own. The street surface and
+ * everything lying on it are one draw each on the same principle.
  */
-export function buildCity(world: World, dressing: Dressing): CityBuild {
+export function buildCity(world: World, dressing: Dressing, options: CityOptions = {}): CityBuild {
   const root = new THREE.Group()
   root.name = world.id
+  const seed = options.seed ?? world.seed
 
   for (const kind of GROUND_KINDS) {
     const mesh = groundMesh(world, kind, dressing)
@@ -44,6 +67,13 @@ export function buildCity(world: World, dressing: Dressing): CityBuild {
 
   const markings = planMarkings(new RoadNetwork(world).links())
   for (const mesh of markingMeshes(markings, dressing)) root.add(mesh)
+
+  const skin = StreetSkin.over(world, seed)
+  if (skin) {
+    skin.wetness = options.wetness ?? 0
+    skin.night = options.night ?? 1
+    root.add(skin.mesh)
+  }
 
   const batcher = new CityBatcher(root)
   const doorsteps = new Map<string, THREE.Vector3>()
@@ -64,7 +94,48 @@ export function buildCity(world: World, dressing: Dressing): CityBuild {
   for (const plot of world.plots()) put(plot)
   const buildings = batcher.seal()
 
-  return { root, buildings, doorsteps, add: (plot) => put(plot)!, spawn: spawnAt(world, doorsteps), markings }
+  const clutter = litterOf(world, doorsteps, markings, seed, options.clutter)
+  const rubbish = clutterMesh(clutter, seed, dressing)
+  if (rubbish) root.add(rubbish)
+
+  return {
+    root,
+    buildings,
+    doorsteps,
+    add: (plot) => put(plot)!,
+    spawn: spawnAt(world, doorsteps),
+    markings,
+    clutter,
+    get wetness(): number {
+      return skin?.wetness ?? 0
+    },
+    set wetness(wetness: number) {
+      if (skin) skin.wetness = wetness
+    },
+    get night(): number {
+      return skin?.night ?? 0
+    },
+    set night(darkness: number) {
+      if (skin) skin.night = darkness
+    },
+  }
+}
+
+/** The rubbish the streets carry, unless the city was asked for without any. */
+function litterOf(
+  world: World,
+  doorsteps: ReadonlyMap<string, THREE.Vector3>,
+  markings: readonly Marking[],
+  seed: string,
+  wanted: CityOptions['clutter'],
+): ClutterPiece[] {
+  if (wanted === false) return []
+  return planClutter(world, doorsteps.values(), markings, seed, density(wanted))
+}
+
+function density(over: Partial<ClutterDensity> | undefined): ClutterDensity | undefined {
+  if (!over) return undefined
+  return { ...CLUTTER_DENSITY, ...over }
 }
 
 /** A step back from the first doorstep, looking at it. */

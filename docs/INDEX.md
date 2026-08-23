@@ -15,7 +15,7 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI
 | Talking to the local model: one checked answer, or a streamed reply | `game/sidecar/` |
 | Asking the local model to write names, people and quests | `game/scribe/` |
 | Conversations with NPCs and what they are allowed to do | `game/talk/` |
-| Turning a world into three.js objects, and where art plugs in | `game/scene/` |
+| Turning a world into three.js objects, the wet street and the rubbish on it, and where art plugs in | `game/scene/` |
 | The people: bodies, clothes, clips, who is doing what | `game/cast/` |
 | Buildings that look like buildings, their lit windows, their neon signs and the street lamps, from the city kit | `game/kitbash/` |
 | Inside a building: furniture generated from parameters, floors and walls | `game/furnish/` |
@@ -54,7 +54,7 @@ game/world, game/quest, game/play <- game/bundle
 game/kit <- game/sidecar -> the sidecar's api contract
 game/forge, game/quest, game/world, game/sidecar <- game/scribe
 game/world, game/quest, game/play, game/sidecar <- game/talk
-game/world <- game/nav, game/scene, game/traffic
+game/world <- game/nav;  game/kit, game/world <- game/scene, game/traffic
 game/scene, game/kit <- game/kitbash
 game/scene, game/world, game/kit <- game/furnish
 game/scene <- game/cast

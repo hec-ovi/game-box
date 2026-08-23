@@ -6,6 +6,9 @@ import { QuadMesh, type Corner } from './quads.ts'
 /** The surfaces the city floor is made of. Mountains are blocks, not ground, and get their own mesh. */
 export const GROUND_KINDS: readonly CellKind[] = ['street', 'sidewalk', 'park', 'building', 'empty', 'water']
 
+/** The surfaces rain lands on and rubbish gathers on: the street and the pavement beside it. */
+export const PAVED_KINDS: readonly CellKind[] = ['street', 'sidewalk']
+
 /** Pavement and parks stand a kerb above the roadway; roads, land and water are at zero. */
 const RAISED = new Set<CellKind>(['sidewalk', 'park'])
 
@@ -26,7 +29,7 @@ const SIDES: readonly Side[] = [
 ]
 
 /** Top of the ground in a cell, in metres. Past the edge of the grid the ground has already ended. */
-function groundTop(kind: CellKind | undefined): number {
+export function groundTop(kind: CellKind | undefined): number {
   if (kind === undefined) return GROUND_BASE
   if (kind === 'mountain') return GROUND_BASE + MOUNTAIN_HEIGHT
   return RAISED.has(kind) ? METRICS.street.curbHeight : 0
@@ -39,13 +42,18 @@ function groundTop(kind: CellKind | undefined): number {
  * under.
  */
 export function groundMesh(world: World, kind: CellKind, dressing: Dressing): THREE.Mesh | undefined {
-  const geometry = new Surface(world, kind).geometry()
+  const geometry = surfaceGeometry(world, kind)
   if (!geometry) return undefined
 
   const mesh = new THREE.Mesh(geometry, dressing.ground(kind))
   mesh.name = `ground:${kind}`
   mesh.receiveShadow = true
   return mesh
+}
+
+/** The tops and kerbs of one kind of cell, or nothing when the city has none of them. */
+export function surfaceGeometry(world: World, kind: CellKind): THREE.BufferGeometry | undefined {
+  return new Surface(world, kind).geometry()
 }
 
 /** The ring that closes the valley, as one instanced block per mountain cell. */

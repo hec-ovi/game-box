@@ -1,5 +1,6 @@
 import { METRICS, type AnchorKind, type BuildingKind, type CellKind, type FurnitureProp, type Item, type Npc, type Plot } from '@gb/world'
 import * as THREE from 'three'
+import { clutterMaterial } from './clutter/mesh.ts'
 import { PAINT_COLOUR, type MarkingPaint } from './markings.ts'
 
 /**
@@ -22,16 +23,26 @@ export interface Dressing {
   surface(part: 'floor' | 'wall' | 'ceiling'): THREE.Material
   /** Road paint. Left out, the street gets a plain white and yellow. */
   marking?(paint: MarkingPaint): THREE.Material
+  /**
+   * One material for every piece of rubbish on the street. Colour rides on the
+   * vertices, so this is asked for once and never per piece. Left out, the
+   * street gets a plain dull one.
+   */
+  clutter?(): THREE.Material
 }
 
+/**
+ * Dark and desaturated, because the city is lit at night by signs and lamps and
+ * anything pale on the ground has no contrast left to reflect them into.
+ */
 const PALETTE: Record<CellKind, number> = {
-  street: 0x3a3a3e,
-  sidewalk: 0x8a8a86,
-  building: 0x6b6560,
-  park: 0x4e6b46,
-  mountain: 0x5a5348,
-  water: 0x2c4a63,
-  empty: 0x6f6a5e,
+  street: 0x14151a,
+  sidewalk: 0x24252a,
+  building: 0x1e1d1f,
+  park: 0x1c2a1e,
+  mountain: 0x17161a,
+  water: 0x0d1720,
+  empty: 0x1b1a17,
 }
 
 const BUILDING_TINT: Partial<Record<BuildingKind, number>> = {
@@ -155,6 +166,10 @@ export class Greybox implements Dressing {
 
   marking(paint: MarkingPaint): THREE.Material {
     return this.#material(PAINT_COLOUR[paint])
+  }
+
+  clutter(): THREE.Material {
+    return clutterMaterial()
   }
 
   /** A slab on the face the entrance is on, so you can see where to go in. */

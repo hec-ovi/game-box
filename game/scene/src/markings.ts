@@ -43,8 +43,12 @@ export const MARKING = {
   stopBarSetback: 1,
   /** Shorter than this and a stretch of road is all junction: no lines. */
   minLine: 1,
-  /** How far the paint stands above the road, so it does not flicker against it. */
-  lift: 0.01,
+  /**
+   * How far the paint stands above the road. It clears the wet film the street
+   * wears (`SURFACE.lift`), so the grime and the water go under the lines
+   * rather than over them and a dark road still reads as a marked road.
+   */
+  lift: 0.03,
 } as const
 
 /**

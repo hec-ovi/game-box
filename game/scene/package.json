@@ -3,11 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "test": "vitest run"
   },
   "dependencies": {
+    "@gb/kit": "workspace:*",
     "@gb/world": "workspace:*",
     "three": "^0.185.1"
   },
