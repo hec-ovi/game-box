@@ -10,7 +10,8 @@ import type { SurfacePart } from './surfaces/surfaces.ts'
 /**
  * The inside of a building in one of the two interior languages: furniture
  * generated to the cells the planner claimed and the heights a body reaches
- * for, on a floor and walls that tile at real-world size.
+ * for, the things lying on it that a player can pick up, on a floor and walls
+ * that tile at real-world size.
  *
  * Everything else, the buildings, the people, the ground outside, goes straight
  * to the dressing behind it.
@@ -75,8 +76,16 @@ export class FurnishDressing implements Dressing {
     return this.#rest.character(npc, doing)
   }
 
+  /**
+   * The thing itself, at the size it really is, standing on the centre of its
+   * own base so it lands on whatever it is put on rather than in it.
+   */
   pickup(item: Item): THREE.Object3D {
-    return this.#rest.pickup(item)
+    const mesh = new THREE.Mesh(this.#kit.item(item), this.#kit.material)
+    mesh.name = item.archetype
+    mesh.castShadow = true
+    mesh.receiveShadow = true
+    return mesh
   }
 
   ground(kind: CellKind): THREE.Material {

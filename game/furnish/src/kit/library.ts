@@ -1,28 +1,33 @@
-import type { FurnitureProp } from '@gb/world'
+import type { FurnitureProp, Item, ItemArchetype } from '@gb/world'
 import type * as THREE from 'three'
 import { PROP_SPECS } from '../catalog/specs.ts'
+import { buildItems, itemKey, type BuiltItem } from '../items/build.ts'
+import { castIndex } from '../items/cast.ts'
 import type { SurfaceLibrary } from '../surfaces/library.ts'
 import { buildCatalog, keyOf, type Built } from './build.ts'
 import { solidMaterial } from '../style/material.ts'
 import type { FurnishStyle } from '../style/palette.ts'
 
 /**
- * The furniture, built once from a seed.
+ * The furniture and the things lying on it, built once from a seed.
  *
  * Every piece of it already stands on y = 0, faces north and fills the cells
  * the planner claims, so placing one is a `new Mesh` over shared geometry. The
- * whole catalog, both languages, draws on one material.
+ * whole catalog, both languages and every cast of every item, draws on one
+ * material.
  */
 export class FurnishLibrary {
   readonly #props: ReadonlyMap<string, Built>
+  readonly #items: ReadonlyMap<string, BuiltItem>
   readonly #material: THREE.Material
   /** Interior floor, walls and ceiling, when the pack carries their textures. */
   readonly surfaces: SurfaceLibrary | undefined
-  /** The town's seed: what the furniture, the walls and the surfaces are all drawn from. */
+  /** The town's seed: what the furniture, the items, the walls and the surfaces are all drawn from. */
   readonly seed: string
 
   constructor(seed: string, surfaces?: SurfaceLibrary) {
     this.#props = buildCatalog(seed)
+    this.#items = buildItems(seed)
     this.#material = solidMaterial()
     this.surfaces = surfaces
     this.seed = seed
@@ -33,6 +38,28 @@ export class FurnishLibrary {
     const built = this.#props.get(keyOf(style, prop))
     if (!built) throw new Error(`furnish: no builder for ${style}/${prop}`)
     return built.geometry
+  }
+
+  /** One thing a player can pick up, in the cast its id draws. Shared per cast. */
+  item(item: Item): THREE.BufferGeometry {
+    return this.itemGeometry(item.archetype, castIndex(this.seed, item.id))
+  }
+
+  /** Which cast of its archetype an item is drawn in. */
+  castOf(item: Item): number {
+    return castIndex(this.seed, item.id)
+  }
+
+  /** One archetype in one named cast. */
+  itemGeometry(archetype: ItemArchetype, cast: number): THREE.BufferGeometry {
+    const built = this.#items.get(itemKey(archetype, cast))
+    if (!built) throw new Error(`furnish: no builder for ${archetype} cast ${cast}`)
+    return built.geometry
+  }
+
+  /** Triangles in one cast of one archetype. */
+  itemTriangles(archetype: ItemArchetype, cast: number): number {
+    return this.#items.get(itemKey(archetype, cast))?.triangles ?? 0
   }
 
   /** The one material everything here draws with. */
@@ -75,6 +102,7 @@ export class FurnishLibrary {
 
   dispose(): void {
     for (const built of this.#props.values()) built.geometry.dispose()
+    for (const built of this.#items.values()) built.geometry.dispose()
     this.#material.dispose()
     this.surfaces?.dispose()
   }

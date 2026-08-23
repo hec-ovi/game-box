@@ -9,6 +9,9 @@ export {
   type ContactKind,
   type PropSpec,
 } from './catalog/specs.ts'
+export { ITEM_SPECS, type ItemSpec } from './items/specs.ts'
+export { ITEM_CASTS, castIndex, itemCast, type ItemCast } from './items/cast.ts'
+export { MATTER, type Matter } from './items/matter.ts'
 export { FurnishLibrary } from './kit/library.ts'
 export { DEFAULT_SEED, furnishKit, loadFurnish } from './kit/load.ts'
 export { type Built } from './kit/build.ts'

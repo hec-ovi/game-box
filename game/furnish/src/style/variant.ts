@@ -20,21 +20,29 @@ export type EdgeKind = 'sharp' | 'chamfer' | 'round'
 /** What holds a piece off the floor. */
 export type Support = 'post' | 'frame' | 'plinth' | 'panel'
 
-export interface Variant {
-  readonly style: FurnishStyle
-  readonly palette: Palette
+/**
+ * How a thing is moulded: the profile of an edge, the radius on a plan corner
+ * and how chunky it is. A prop's variant is one, and so is a carried item's
+ * cast, so both draw through the same three helpers below.
+ */
+export interface Moulding {
   readonly edge: EdgeKind
   /** Metres of radius on a rounded plan corner. */
   readonly radius: number
   /** Which plan corners take the radius. */
   readonly rounding: 'square' | 'front' | 'all'
+  /** A proportion knob, 0 slim to 1 chunky. */
+  readonly heft: number
+}
+
+export interface Variant extends Moulding {
+  readonly style: FurnishStyle
+  readonly palette: Palette
   readonly support: Support
   /** Whether the piece carries a lit strip. */
   readonly trim: boolean
   /** How many panels, shelves or cushions a front divides into. */
   readonly divisions: number
-  /** A proportion knob, 0 slim to 1 chunky. */
-  readonly heft: number
 }
 
 interface Taste {
@@ -107,9 +115,9 @@ export function variantOf(style: FurnishStyle, prop: string, seed: string): Vari
   }
 }
 
-/** The variant's edge treatment at a given size, ready for a block. */
-export function edgeOf(variant: Variant, size: number): Edge {
-  switch (variant.edge) {
+/** A moulding's edge treatment at a given size, ready for a block. */
+export function edgeOf(moulding: Pick<Moulding, 'edge'>, size: number): Edge {
+  switch (moulding.edge) {
     case 'sharp':
       return { kind: 'sharp' }
     case 'chamfer':
@@ -119,10 +127,10 @@ export function edgeOf(variant: Variant, size: number): Edge {
   }
 }
 
-/** The variant's plan corners at a given radius cap. */
-export function cornersOf(variant: Variant, cap = Infinity): Corners {
-  const radius = Math.min(variant.radius, cap)
-  switch (variant.rounding) {
+/** A moulding's plan corners at a given radius cap. */
+export function cornersOf(moulding: Omit<Moulding, 'edge' | 'heft'>, cap = Infinity): Corners {
+  const radius = Math.min(moulding.radius, cap)
+  switch (moulding.rounding) {
     case 'square':
       return everyCorner(0)
     case 'front':
@@ -132,7 +140,7 @@ export function cornersOf(variant: Variant, cap = Infinity): Corners {
   }
 }
 
-/** Between two numbers, by how chunky this variant is. */
-export function heft(variant: Variant, slim: number, chunky: number): number {
-  return slim + (chunky - slim) * variant.heft
+/** Between two numbers, by how chunky this moulding is. */
+export function heft(moulding: Pick<Moulding, 'heft'>, slim: number, chunky: number): number {
+  return slim + (chunky - slim) * moulding.heft
 }

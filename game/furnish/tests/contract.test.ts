@@ -127,9 +127,13 @@ describe('the rest of the dressing', () => {
 
     furnished.building(plot, { width: 6, depth: 6, height: 4 })
     furnished.character(npc, 'stand')
-    furnished.pickup(item)
     furnished.ground('street')
 
-    expect(behind.asked).toEqual([`building:${plot.id}`, `character:${npc.id}`, `pickup:${item.id}`, 'ground:street'])
+    expect(behind.asked).toEqual([`building:${plot.id}`, `character:${npc.id}`, 'ground:street'])
+
+    // what is lying on the furniture is the inside of a building too, so it is
+    // answered here and never handed on
+    expect(trianglesOf(furnished.pickup(item))).toBeGreaterThan(0)
+    expect(behind.asked).not.toContain(`pickup:${item.id}`)
   })
 })
