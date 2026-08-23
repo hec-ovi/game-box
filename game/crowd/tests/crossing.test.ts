@@ -1,39 +1,44 @@
 import { CityNav } from '@gb/nav'
-import type { CellKind } from '@gb/world'
+import type { CellKind, World } from '@gb/world'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { Crowd, type CrowdOptions, type WalkerView } from '../src/index.ts'
 import { FakeCast } from './support/fake-cast.ts'
-import { atCrossing, testTown } from './support/town.ts'
+import { atCrossing, classTown, testTown } from './support/town.ts'
 
 const STEP = 1 / 60
 
-let world: ReturnType<typeof testTown>
-let nav: CityNav
+interface Town {
+  readonly world: World
+  readonly nav: CityNav
+  readonly atCrossing: (x: number, y: number) => boolean
+}
+
+let grid: Town
 
 beforeAll(() => {
-  world = testTown()
-  nav = CityNav.from(world)
+  const world = testTown()
+  grid = { world, nav: CityNav.from(world), atCrossing }
 })
 
-function cellOf(walker: WalkerView): { x: number; y: number; kind: CellKind | undefined } {
-  const x = Math.floor(walker.x / world.cellSize)
-  const y = Math.floor(walker.z / world.cellSize)
-  return { x, y, kind: world.grid.at(x, y) }
+function cellOf(town: Town, walker: WalkerView): { x: number; y: number; kind: CellKind | undefined } {
+  const x = Math.floor(walker.x / town.world.cellSize)
+  const y = Math.floor(walker.z / town.world.cellSize)
+  return { x, y, kind: town.world.grid.at(x, y) }
 }
 
 /** Walk one crowd for a while and watch every moment somebody steps off a kerb. */
-function watch(seconds: number, viewer: { x: number; z: number }, options: Partial<CrowdOptions>) {
+function watch(seconds: number, viewer: { x: number; z: number }, options: Partial<CrowdOptions>, town: Town = grid) {
   const cast = new FakeCast()
-  const crowd = Crowd.create({ world, nav, cast, seed: 'crossing' }, options)
+  const crowd = Crowd.create({ world: town.world, nav: town.nav, cast, seed: 'crossing' }, options)
   const onRoad = new Map<string, boolean>()
   const steps: { at: boolean; x: number; y: number }[] = []
   const reached = { west: Infinity, east: -Infinity }
   for (let frame = 0; frame < seconds * 60; frame++) {
     crowd.update(STEP, viewer)
     for (const walker of crowd.walkers()) {
-      const cell = cellOf(walker)
+      const cell = cellOf(town, walker)
       const road = cell.kind === 'street'
-      if (road && !(onRoad.get(walker.id) ?? false)) steps.push({ at: atCrossing(cell.x, cell.y), ...cell })
+      if (road && !(onRoad.get(walker.id) ?? false)) steps.push({ at: town.atCrossing(cell.x, cell.y), ...cell })
       onRoad.set(walker.id, road)
       reached.west = Math.min(reached.west, walker.x)
       reached.east = Math.max(reached.east, walker.x)
@@ -58,8 +63,26 @@ describe('crossing the road', () => {
     expect(steps.some((step) => !step.at)).toBe(true)
   })
 
+  it('crosses at a crossing on a road of any width, the avenue and the road out included', () => {
+    const laid = classTown()
+    const town = { world: laid.world, nav: CityNav.from(laid.world), atCrossing: laid.atCrossing }
+    const across = laid.world.grid.width * laid.world.cellSize
+    const { steps } = watch(
+      400,
+      { x: 24, z: 60 },
+      { population: 1, spawnNear: 0, spawnFar: 14, tripMin: across * 0.5, tripMax: across, retireRadius: 500 },
+      town,
+    )
+
+    expect(steps.length).toBeGreaterThan(6)
+    expect(steps.filter((step) => !step.at)).toEqual([])
+    // and it really did cross the widest roads in town, not only the streets
+    const widths = new Set(steps.map((step) => laid.widthAt(step.x, step.y)))
+    expect([...widths].sort((a, b) => b - a)[0]).toBe(9)
+  })
+
   it('gets a walker from one side of the city to the other, over the roads in between', () => {
-    const town = world.grid.width * world.cellSize
+    const town = grid.world.grid.width * grid.world.cellSize
     const { steps, reached } = watch(600, { x: 8, z: 48 }, {
       population: 1,
       spawnNear: 0,

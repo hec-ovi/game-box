@@ -28,7 +28,7 @@ export interface CrowdOptions {
   avoidStrength: number
   /** After this long boxed in, a walker drops its route and asks for another, in seconds. */
   stuckSeconds: number
-  /** How many seconds of traffic a walker looks for before stepping off the kerb. */
+  /** The least a walker looks before stepping off the kerb, in seconds. A wide crossing scales it up to how long the crossing takes. */
   kerbLook: number
   /** Below this speed a hazard is standing still, not coming, in metres per second. */
   hazardSpeed: number

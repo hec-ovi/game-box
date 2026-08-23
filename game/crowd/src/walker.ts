@@ -287,7 +287,7 @@ export class Walker implements Attender {
 
     this.#aside(target)
     this.#facing = headingOf(this.#wayX, this.#wayZ)
-    if (!this.#kerb.safe(this.x, this.z, this.x + this.#wayX * wanted, this.z + this.#wayZ * wanted)) {
+    if (!this.#kerb.safe(this.x, this.z, this.x + this.#wayX * wanted, this.z + this.#wayZ * wanted, this.speed)) {
       this.#hold()
       return
     }

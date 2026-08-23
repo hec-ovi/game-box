@@ -1,3 +1,4 @@
+import { METRICS } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { Crowd, type Point, type WalkerView } from '../src/index.ts'
 import { FakeCast } from './support/fake-cast.ts'
@@ -11,20 +12,22 @@ const CELLS = 60
 const MIDDLE = 20
 
 /**
- * One walker on the pavement of the corridor, walking north across the lane
- * beside it. The two cells sixteen metres from the player are the only ones in
- * the spawn ring, so the walker starts on the row and nowhere else.
+ * One walker on the pavement of the corridor, walking north across the roadway
+ * beside it. The pavement is the only ground the crowd will spawn on, and the
+ * two cells sixteen metres from the player are the only ones in the ring, so
+ * the walker starts on that row and nowhere else.
  */
-function crossing(cars: Cars) {
-  const world = corridor(CELLS)
-  const nav = new StraightNav(world.cellSize, 20, { x: 0, y: -1 })
-  const viewer: Point = { x: (MIDDLE + 0.5) * world.cellSize, z: 5 }
+function crossing(cars: Cars, road = 1) {
+  const world = corridor(CELLS, 'crowd-corridor', road)
+  const cell = world.cellSize
+  const nav = new StraightNav(cell, 20, { x: 0, y: -1 })
+  const viewer: Point = { x: (MIDDLE + 0.5) * cell, z: (road + 1.5) * cell }
   const crowd = Crowd.create(
     { world, nav, cast: new FakeCast(), hazards: cars, seed: 'kerb' },
     { population: 1, retireRadius: 500, spawnNear: 16, spawnFar: 17 },
   )
-  // the kerb the walker steps off, and the far side of the lane it crosses
-  return { crowd, viewer, kerb: 2 * world.cellSize, across: world.cellSize }
+  // the kerb the walker steps off, and the far side of the roadway it crosses
+  return { crowd, viewer, kerb: (road + 1) * cell, across: cell }
 }
 
 interface Crossing {
@@ -37,8 +40,13 @@ interface Crossing {
 }
 
 /** `each` runs every frame the walker is alive, counted from the first, so a test can put a car on the road or park it. */
-function walkAcross(cars: Cars, frames: number, each?: (walker: WalkerView, frame: number) => void): Crossing {
-  const { crowd, viewer, kerb, across } = crossing(cars)
+function walkAcross(
+  cars: Cars,
+  frames: number,
+  each?: (walker: WalkerView, frame: number) => void,
+  road = 1,
+): Crossing {
+  const { crowd, viewer, kerb, across } = crossing(cars, road)
   let waited = 0
   let over = -1
   let closest = Infinity
@@ -86,6 +94,30 @@ describe('a walker looks before stepping off the kerb', () => {
     expect(empty.over).toBeGreaterThan(0)
     // the same walker, the same route: the one that waited got over later
     expect(empty.over).toBeLessThan(held.over)
+  })
+
+  it('waits for a car in the oncoming half of a wide road, which it is in for most of the crossing', () => {
+    const road = METRICS.road.avenue.roadwayCells
+    const cell = 2
+    // the outer oncoming lane of a 14 m avenue, twelve metres from the kerb the
+    // walker steps off: nothing a look at the kerb alone would ever notice
+    const middle = cell * (1 + road / 2)
+    const lane = middle - 1.5 * ((road * cell) / METRICS.road.avenue.lanes)
+    const cars = new Cars()
+    const run = walkAcross(
+      cars,
+      3000,
+      (walker, frame) => {
+        // an avenue's speed limit is 13.9 m/s, so this one arrives in about nine seconds
+        if (frame === 0) cars.add(new Car({ x: walker.x - 120, z: lane }, { vx: 13.9, vz: 0 }))
+      },
+      road,
+    )
+
+    // it held on the kerb until it could be out of that lane in time
+    expect(run.waited).toBeGreaterThan(60)
+    expect(run.over).toBeGreaterThan(0)
+    expect(run.closest).toBeGreaterThan(cars.cars[0]!.radius)
   })
 
   it('is not stranded by a car that has stopped in the road', () => {

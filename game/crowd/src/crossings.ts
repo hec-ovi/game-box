@@ -1,4 +1,4 @@
-import { METRICS, type CellKind, type World } from '@gb/world'
+import { WIDEST_ROADWAY_CELLS, type CellKind, type World } from '@gb/world'
 import type { Cell } from './ports.ts'
 import { Sides } from './sides.ts'
 
@@ -35,11 +35,12 @@ export interface Crossing {
  * which is what a junction leaves behind once the roadway is painted through
  * it in both directions and the pavement keeps a corner in each quarter.
  *
- * A gap counts when the walk carries on at the far kerb: either the pavement
- * runs on behind you, so you are walking a band the road cuts through, or the
- * run you are on ends here against a road, which is a corner. Stepping off the
- * long side of a band, with pavement either side of you, is not a crossing: it
- * is the middle of the block, and this is what tells the two apart.
+ * A gap counts where the pavement run you are on ends against a road, which is
+ * the corner a junction leaves, and the walk carries on at a corner on the far
+ * kerb. Stepping off the long side of a band, with the road running on beside
+ * you, is not a crossing: it is the middle of the block, and this is what tells
+ * the two apart. Pavement behind you does not make a crossing either, because a
+ * pavement is two cells deep and there is pavement behind you all along it.
  */
 export class Crossings {
   readonly sides: Sides
@@ -75,10 +76,15 @@ export class Crossings {
       return kind !== undefined && walk.has(kind)
     }
     const isRoad = (x: number, y: number): boolean => world.grid.at(x, y) === ROADWAY
-    // a kerb worth crossing from: the pavement runs on behind you, or your run ends here against a road
+    // a kerb worth crossing from: your run ends here against a road, which is
+    // the corner a junction leaves. Anywhere else along the band the pavement
+    // simply runs on beside the road, and stepping off it is the middle of the
+    // block, whether or not there is more pavement behind you
     const kerb = (x: number, y: number, dx: number, dy: number): boolean =>
-      isWalk(x - dx, y - dy) || isRoad(x - dy, y - dx) || isRoad(x + dy, y + dx)
-    const widest = METRICS.street.roadwayCells + 1
+      isRoad(x - dy, y - dx) || isRoad(x + dy, y + dx)
+    // the widest road there is, plus the far kerb: an avenue and the road out
+    // are wider than a street, and a cap read off one class misses them all
+    const widest = WIDEST_ROADWAY_CELLS + 1
 
     for (const { dx, dy } of [WAYS[0], WAYS[2]]) {
       for (let y = 0; y < height; y++) {
