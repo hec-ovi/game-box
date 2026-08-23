@@ -20,7 +20,9 @@ Concretely, in order:
 
 | What | Box | Diagnosis |
 |---|---|---|
-| A pavement strip runs down open ground with no road beside it | `forge` or `scene`, to be pinned | Sidewalk cells laid where nothing adjoins them. |
+| You can see under the pavement where it meets the verge | `scene` and `land` disagree | `scene` treats a `mountain` cell as 24 m tall when deciding kerbs, so it draws no kerb face there; `land` now lays that cell flat at ground level. About 172 cell-edges of 15 cm gap around the outer ring, and now on the road out of town too. |
+| Cars drive out of town and vanish in plain sight | `traffic` | A car that runs out of graph is retired. The exit road now reaches the map edge, so it happens about 10 m past the last building. Traffic already defers retiring a stuck car until the player cannot see it; the same rule fits. |
+| `nav` calls a mountain cell impassable, `land` calls it walkable verge | `nav` and `land` disagree | Does not block walking out, since the corridor is street and pavement the whole way, but the two boxes describe the same cells differently. |
 | An NPC in front of you still crowds your step | `crowd` | Personal space is tighter now, but walkers do not steer around the player: the crowd is fed cars as hazards and never the player. |
 | NPC clothing is medieval | `cast` | The only clothing we ship is Quaternius Modular Character Outfits **Fantasy**: Peasant and Ranger, two genders. |
 
