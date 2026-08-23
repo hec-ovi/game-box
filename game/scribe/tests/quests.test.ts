@@ -1,5 +1,5 @@
 import type { WorldSummary } from '@gb/forge'
-import { REWARD_TABLE, sealQuest, validateQuest } from '@gb/quest'
+import { REWARD_TABLE, validateQuest } from '@gb/quest'
 import { describe, expect, it } from 'vitest'
 import { Scribe } from '../src/index.ts'
 import { fakeModel, type Sent } from './fake-model.ts'
@@ -50,11 +50,11 @@ const VIEW = {
 function draft(id: string) {
   return {
     id,
-    kind: id === 'quest_0001' ? 'main' : 'side',
+    kind: id === 'quest_0001' ? ('main' as const) : ('side' as const),
     title: `The Ledger ${id}`,
     summary: 'Bez wants his book back.',
     giverNpcId: 'npc_0002',
-    difficulty: 'small',
+    difficulty: 'small' as const,
     startStepId: 'step_0001',
     steps: [
       { id: 'step_0001', kind: 'talk', npcId: 'npc_0002', objective: 'Hear Bez out', next: ['step_0002'] },
@@ -71,6 +71,11 @@ function draft(id: string) {
     ],
     reward: { money: 45, reputation: 3, faction: 'town', items: [] },
   }
+}
+
+/** The same quest as a finished document, the shape a fallback narrator hands back. */
+function sealed(id: string) {
+  return { format: 'game-box.quest', schemaVersion: 1, ...draft(id) }
 }
 
 /** The id the prompt told the model to use. */
@@ -166,7 +171,7 @@ describe('writing quests', () => {
       namePlace: async () => 'Somewhere',
       describeNpc: async () => ({ name: 'Someone', personality: 'Stands there.', knowledge: ['a', 'b'] }),
       describeItem: async () => ({ name: 'Something', description: 'A thing.' }),
-      writeQuests: async () => [sealQuest(draft('quest_0001')), sealQuest(draft('quest_0002'))],
+      writeQuests: async () => [sealed('quest_0001'), sealed('quest_0002')],
     }
     const scribe = new Scribe({ sidecar, fallback, concurrency: 1 })
 
