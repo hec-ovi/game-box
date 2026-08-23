@@ -972,6 +972,44 @@ Also from the same message: **the map needs the quest icons** (main distinct fro
 side) and generally more information. Already in the interface entry above; he
 has now asked twice, so it should not slip again.
 
+### Place names all sound the same (2026-08-23, found by him)
+
+"instance names are all too similar, the Lattern this the Lattern that, and names
+are too confusing, we need better namings."
+
+The cause is structural rather than a bad word list. Names come from
+`game/forge/src/narrator/places.ts` `PATTERNS`, one template per building kind,
+filled from the theme's word pool. A short pool plus a per-kind template gives
+The Lantern Cup, The Lantern Rest, The Lantern anything, and a player reads them
+as one name repeated.
+
+Two things make it worse right now:
+
+- **Facades stopped asking the model today.** That was a good change (5,558
+  descriptive calls down to 444 at twenty blocks) but it means every shut
+  building's sign now comes from the local composer, so the composer's
+  repetitiveness went from occasional to citywide in one step.
+- **The model repeats its own examples.** `@gb/scribe` observed the model
+  reusing "The Copper Wheel" straight out of the house-style example in the
+  system prompt. An example in a prompt comes back as output, so examples need
+  to be obviously unusable or absent.
+
+What would actually fix it, in order of value:
+
+1. **No word may head two names in a town.** A uniqueness rule at composition
+   time, held over the whole city rather than per plot. This alone removes the
+   symptom he is describing.
+2. **More than one shape of name.** Not only "The X Y": a family name
+   (Endicott & Daughters), a trade plainly stated (Harbour Repairs), a number, a
+   place, a person's first name. Real streets mix these and that mixture is most
+   of what makes them read as real.
+3. **Let the premise reach the names.** A town built on a collapsed freight trade
+   should have names that sound like it. The premise is now in the world file and
+   the composer does not read it.
+
+Boxes: `forge` for the composer and the uniqueness rule, `scribe` for the example
+leak.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
