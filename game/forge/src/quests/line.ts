@@ -1,5 +1,6 @@
 import type { Rng } from '@gb/kit'
-import type { Premise, PremiseSide } from '../premise/shape.ts'
+import type { Premise } from '@gb/world'
+import type { PremiseSide } from '../premise/check.ts'
 import type { CastPerson, CityCast } from './cast.ts'
 import { allied } from './marks.ts'
 import type { Job, Stake } from './recipes/recipe.ts'

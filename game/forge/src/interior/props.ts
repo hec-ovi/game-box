@@ -65,11 +65,15 @@ export interface SeatSpec {
   readonly pad: readonly [number, number]
 }
 
-/** Every piece a body sits or lies on, and nothing else. */
+/**
+ * Every piece a body sits or lies on, and nothing else. A bar stool is not one
+ * of them: the seated clip has its soles on the floor and its underside at
+ * 0.423 m, which is a chair, not a 0.75 m stool, so a stool is a piece a body
+ * walks round until `@gb/cast` has a pose for a raised seat.
+ */
 export const SEAT_SPECS = {
   chair: { back: 0.194, pad: [-0.22, 0.22] },
   'office-chair': { back: 0.235, pad: [-0.232, 0.232] },
-  'bar-stool': { pad: [-0.162, 0.162] },
   sofa: { back: 0.37, pad: [-0.402, 0.242] },
   bed: { back: 0.95, pad: [-0.97, 0.867] },
 } as const satisfies Partial<Record<FurnitureProp, SeatSpec>>

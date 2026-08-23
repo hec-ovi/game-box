@@ -1,4 +1,4 @@
-import type { Premise } from './shape.ts'
+import type { Premise } from '@gb/world'
 
 /**
  * The premise as a few labelled lines, which is how it reaches a prompt.

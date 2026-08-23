@@ -6,6 +6,7 @@ import {
   World,
   type IntegrityProblem,
   type Item,
+  type Premise,
   type Rect,
   type WorldError,
 } from '@gb/world'
@@ -18,7 +19,7 @@ import { paintStreets } from './layout/streets.ts'
 import type { Narrator, WorldSummary } from './narrator.ts'
 import { writeEachPlace } from './narrator/one-at-a-time.ts'
 import { Signs } from './narrator/signs.ts'
-import { premiseOf, type Premise } from './premise/shape.ts'
+import { premiseOf } from './premise/check.ts'
 import { surfacesOf } from './populate.ts'
 import { questDemand } from './quests/demand.ts'
 import { assemble } from './raise/assemble.ts'
@@ -76,6 +77,9 @@ export class Forge {
       seed: brief.seed,
       width: streets.size.width,
       height: streets.size.height,
+      // the history goes into the file, so a city somebody is sent still knows
+      // what it is about and growing it later grows it against the same story
+      ...(premise ? { premise } : {}),
       generator: { name: 'forge', version: GENERATOR_VERSION },
     })
     if (!found.ok) return err({ code: 'invalid-brief', violations: violationsOf(found.error) })
@@ -104,8 +108,12 @@ export class Forge {
    * without touching anything already there.
    */
   async extend(world: World, count: number, rng = new Rng(`${world.seed}/extend`)): Promise<Result<readonly string[], ForgeError>> {
-    const added = await this.#raise(world, this.#gapSites(world, count, rng), {
+    // the city carries its own history, so what goes into its gaps is the same
+    // kind of town as what is already standing
+    const premise = world.premise()
+    const added = await this.#raise(world, this.#gapSites(world, count, rng, premise), {
       theme: world.theme,
+      ...(premise ? { premise } : {}),
       density: EXTEND_DENSITY,
       signs: new Signs(world.seed),
       // the town's own stream: how big a share of it opens is a fact about the
@@ -164,14 +172,14 @@ export class Forge {
   }
 
   /** What `extend` drops into the gaps: one building at a time, into land nothing has claimed. */
-  #gapSites(world: World, count: number, rng: Rng): Chosen[] {
+  #gapSites(world: World, count: number, rng: Rng, premise: Premise | undefined): Chosen[] {
     const chosen: Chosen[] = []
     const taken: Rect[] = []
     for (let i = 0; i < count; i++) {
       const site = this.#freeSite(world, rng, taken)
       if (!site) break
       taken.push(site.rect)
-      const kind = rng.weighted(kindWeights(flavourOf(world.theme), rng.fork(`extend/mix/${i}`)))
+      const kind = rng.weighted(kindWeights(flavourOf(world.theme), rng.fork(`extend/mix/${i}`), premise?.build))
       const siteRng = rng.fork(`extend/${i}`)
       chosen.push({ site, kind, onAvenue: false, storeys: storeysFor(kind, EXTEND_STOREYS, siteRng, false), rng: siteRng })
     }

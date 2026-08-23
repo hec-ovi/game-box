@@ -1,5 +1,4 @@
-import type { BuildingKind, ItemArchetype, NpcRole, RoomKind } from '@gb/world'
-import type { Premise } from './premise/shape.ts'
+import type { BuildingKind, ItemArchetype, NpcRole, Premise, RoomKind } from '@gb/world'
 
 export interface NpcProfile {
   readonly name: string

@@ -3,7 +3,8 @@ export { Forge, summarise, type ForgeError, type ForgeResult } from './forge.ts'
 export { briefContract, type Brief } from './brief.ts'
 export { OfflineNarrator } from './offline-narrator.ts'
 export { premiseLines } from './premise/render.ts'
-export { premiseContract, type Premise, type PremiseBuild, type PremiseSide } from './premise/shape.ts'
+/** The history's own shape is `@gb/world`'s. Passed through here while `@gb/scribe` still reads it off this box. */
+export { premiseContract, type Premise } from '@gb/world'
 export type {
   Instance,
   InstancePerson,

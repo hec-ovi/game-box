@@ -1,5 +1,5 @@
 import type { Rng } from '@gb/kit'
-import type { PremiseSide } from '../../premise/shape.ts'
+import type { PremiseSide } from '../../premise/check.ts'
 import type { Flavour } from '../../theme/flavour.ts'
 import type { CastItem, CastPerson, CityCast } from '../cast.ts'
 import { payFor, type Load } from '../difficulty.ts'

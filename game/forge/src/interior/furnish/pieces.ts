@@ -1,5 +1,5 @@
 import type { AnchorKind, FurnitureProp } from '@gb/world'
-import { alongWall, faceReach, inward, onWall, outward, step, wallBand, wallOf, type Side } from '../geometry.ts'
+import { alongWall, faceReach, headingTo, inward, onWall, outward, step, wallBand, wallOf, type Side } from '../geometry.ts'
 import { specOf } from '../props.ts'
 import type { Placed, RoomPlan } from '../room-plan.ts'
 import { standoff } from '../stance.ts'
@@ -15,7 +15,6 @@ export interface ServeOptions {
   readonly prop?: Extract<FurnitureProp, 'bar-counter' | 'counter'>
   /** Seats on the customer side, if the counter has any. */
   readonly stool?: Extract<FurnitureProp, 'bar-stool' | 'chair'>
-  readonly seatKind?: AnchorKind
   /** What stands on the counter top: a till, a coffee machine. */
   readonly onTop?: Extract<FurnitureProp, 'register' | 'coffee-machine'>
 }
@@ -67,7 +66,9 @@ function counterRun(plan: RoomPlan, side: Side, options: Run): Placed[] {
     for (let i = 0; i < seats; i++) {
       const at = start + i * spacing
       const pos = onWall(wall, at, strip + spec.d + 0.15 + seat.d / 2)
-      plan.seat(options.stool, pos, onWall(wall, at, strip), options.seatKind ?? 'sit-drink')
+      // furniture, not a post: nobody perches on a stool until there is a clip
+      // that sits a body on a raised seat, and the drinkers are at the tables
+      plan.at(options.stool, pos, headingTo(pos, onWall(wall, at, strip)))
     }
   }
   return segments

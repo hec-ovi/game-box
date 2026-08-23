@@ -1,7 +1,7 @@
 import type { Rng } from '@gb/kit'
 import type { CastPerson, CityCast } from '../cast.ts'
 import { allied, crossed, owed, partyOf, sided, TOWN } from '../marks.ts'
-import type { PremiseSide } from '../../premise/shape.ts'
+import type { PremiseSide } from '../../premise/check.ts'
 import { clip, stepId, type Draft, type Effect } from '../shape.ts'
 import { RecipeBase, type Job } from './recipe.ts'
 

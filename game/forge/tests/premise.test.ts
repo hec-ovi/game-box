@@ -1,9 +1,8 @@
 import { Rng } from '@gb/kit'
-import type { BuildingKind } from '@gb/world'
+import { World, type BuildingKind, type Premise } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { Forge, OfflineNarrator, premiseLines } from '../src/index.ts'
 import type { Instance, InstanceRequest, Narrator } from '../src/narrator.ts'
-import type { Premise } from '../src/premise/shape.ts'
 import { FLAVOURS } from '../src/theme/flavour.ts'
 import { tradesFor, turnsFor } from '../src/premise/wording.ts'
 import { composePremise } from '../src/premise/write.ts'
@@ -137,6 +136,43 @@ describe('a city written against a history', () => {
     }
   })
 
+  it('writes the history into the city file, and grows the city later against the one it started from', async () => {
+    // a city that is steered by a history and does not carry it forgets what it
+    // is: whoever it is sent to cannot read it, and its empty land fills up with
+    // a town of no particular kind
+    const forge = new Forge(new Told('grow', SHIPPING))
+    const built = await forge.build({ theme: 'quiet coastal town', seed: 'grow', blocksX: 3, blocksY: 3 })
+    if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 200))
+    expect(built.value.world.premise()).toEqual(SHIPPING)
+
+    const document = built.value.world.toJSON()
+    const { premise: _lost, ...forgotten } = document as Record<string, unknown>
+    // the same city on the same land with the same hand of dice, once with its
+    // history and once without: every difference below is the history alone
+    const grown = ([document, forgotten] as const).map((value) => {
+      const loaded = World.load(value)
+      expect(loaded.ok, 'the city would not reopen').toBe(true)
+      if (!loaded.ok) throw new Error('unreachable')
+      const world = loaded.value
+      const standing = new Set(world.plots().map((plot) => plot.id))
+      return { world, standing }
+    })
+    expect(grown[0]!.world.premise(), 'the history did not survive the file').toEqual(SHIPPING)
+    expect(grown[1]!.world.premise()).toBeUndefined()
+
+    const added = await Promise.all(
+      grown.map(async ({ world, standing }) => {
+        const grew = await forge.extend(world, 40, new Rng('one-hand'))
+        expect(grew.ok).toBe(true)
+        expect(world.premise(), 'growing the city rewrote its history').toEqual(world === grown[0]!.world ? SHIPPING : undefined)
+        return counts(world.plots().filter((plot) => !standing.has(plot.id)).map((plot) => plot.kind))
+      }),
+    )
+
+    const wharf = (held: Map<BuildingKind, number>) => (held.get('warehouse') ?? 0) + (held.get('market') ?? 0)
+    expect(wharf(added[0]!), 'the city grew the same either way').toBeGreaterThan(wharf(added[1]!) * 2)
+  })
+
   it('shows every place that opens the town it stands in', async () => {
     const told = new Told(SEED, SHIPPING)
     await build(told)
@@ -174,6 +210,9 @@ describe('a city written against a history', () => {
       { livesOn: 'somewhere' },
       { ...SHIPPING, sides: [{ name: 'only one side', wants: 'everything' }] },
       { ...SHIPPING, build: { moreOf: ['hospital'], fewerOf: [], mustHave: [] } },
+      // longer than a world document will hold: dropped here, rather than taken
+      // as far as `World.found` and refused with the whole city
+      { ...SHIPPING, stake: 'x'.repeat(500) },
       'a paragraph of prose',
       null,
     ]) {

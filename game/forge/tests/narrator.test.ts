@@ -2,7 +2,7 @@ import { Rng } from '@gb/kit'
 import { describe, expect, it } from 'vitest'
 import { Forge, OfflineNarrator } from '../src/index.ts'
 import type { Instance, InstanceRequest, Narrator, NpcProfile, WorldSummary } from '../src/narrator.ts'
-import type { Premise } from '../src/premise/shape.ts'
+import type { Premise } from '@gb/world'
 import { digest } from './support.ts'
 
 const BRIEF = { theme: 'rain-soaked port city under a permanent drizzle', seed: 'fanned', blocksX: 3, blocksY: 3 }

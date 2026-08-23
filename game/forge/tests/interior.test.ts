@@ -304,6 +304,25 @@ describe('interior plans', () => {
     expect(checked).toBeGreaterThan(100)
   })
 
+  it('leaves the bar stools to be walked round, and still fills the room', () => {
+    // `@gb/cast`'s seated clip has its soles on the floor and its underside at
+    // 0.423 m, so on a 0.75 m stool a body is a third of a metre out. Until
+    // there is a pose for a raised seat a stool is a piece a body walks round,
+    // and the drinkers are at the tables and against the walls
+    let stools = 0
+    let drinkers = 0
+    for (const { kind, seed, made } of everyPlan()) {
+      const raised = new Set(made.furniture.filter((piece) => piece.prop === 'bar-stool').map((piece) => piece.id))
+      stools += raised.size
+      for (const anchor of made.anchors) {
+        expect(anchor.propId === undefined || !raised.has(anchor.propId), `${kind}/${seed}: somebody is perched on a bar stool`).toBe(true)
+        if (kind === 'bar' && (anchor.kind === 'sit-drink' || anchor.kind === 'lean')) drinkers++
+      }
+    }
+    expect(stools, 'no bar has a stool at its counter').toBeGreaterThan(5)
+    expect(drinkers, 'a bar with nobody in it').toBeGreaterThan(10)
+  })
+
   it('draws a desk worker up to their desk, close enough to put their hands on it', () => {
     // `@gb/cast` measured the seated desk pose: the wrists land 0.20 to 0.24 m
     // in front of the root at 0.78 m off the floor, and a desk top is 0.75 m.

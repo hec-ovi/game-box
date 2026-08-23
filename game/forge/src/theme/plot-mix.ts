@@ -1,6 +1,6 @@
 import type { Rng } from '@gb/kit'
 import { BUILDING_KINDS, type BuildingKind } from '@gb/world'
-import type { PremiseBuild } from '../premise/shape.ts'
+import type { PremiseBuild } from '../premise/check.ts'
 import type { Flavour } from './flavour.ts'
 
 export type KindWeights = ReadonlyArray<readonly [BuildingKind, number]>

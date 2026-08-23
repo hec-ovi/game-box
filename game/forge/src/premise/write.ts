@@ -1,7 +1,7 @@
 import type { Rng } from '@gb/kit'
-import type { BuildingKind } from '@gb/world'
+import type { BuildingKind, Premise } from '@gb/world'
 import { flavourOf } from '../theme/flavour.ts'
-import type { Premise, PremiseBuild } from './shape.ts'
+import type { PremiseBuild } from './check.ts'
 import { tradesFor, turnsFor, type Kinds } from './wording.ts'
 
 /** How many of the turn's facts everybody in town has heard. */
