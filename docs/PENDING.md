@@ -204,6 +204,31 @@ Related and already known: an engine that dies mid-reply now ends with
 `finish_reason: "error"` rather than claiming success. A 429 deserves the same
 honesty.
 
+### On screen, from his own screenshots (2026-08-23, 19:43-19:47)
+
+Three, all visual, all in the look boxes. Screenshots in `~/Pictures/Screenshots/`.
+
+1. **`light_colums_over_doors.png` — the light columns are enormous.** Standing
+   at a doorway, two vertical strips run floor to roof at full white, wider and
+   brighter than anything around them, and they wash out the entrance they are
+   meant to frame. They read as geometry, not as light. Whatever their intended
+   size is, at door distance they dominate the frame. Boxes: `kitbash` (the
+   strip) or `prefab` (the entrance).
+2. **`displays_wrong_proportion_ugly_borders.png` — the screens.** The portrait
+   advert is stretched to the panel rather than fitted, so the face is wrong,
+   and every panel carries a thick glowing border that reads as a frame around a
+   picture instead of a lit screen. The same shot also shows **loose white light
+   bars floating clear of any surface** across the building and out over the
+   street, at angles that match no wall. Box: `prefab`, and the floating bars
+   may be `kitbash`.
+3. **`bald_people_wrong_hair_render.png` — hair is not drawing.** Reported by
+   the shot's own name; not yet opened and read in detail. Box: `cast`.
+
+Worth noting what these three have in common: every one is a lit thing being
+drawn too big, too bright or in the wrong place. That is the same family as the
+missing point lights, and it suggests the emissive pass is doing too much work
+because nothing else lights anything.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
