@@ -187,6 +187,23 @@ the control that starts it.
 Worth doing before any more generation features: a city you cannot leave is a
 city you can only see once per tab.
 
+### A rate limit is reported as an upstream failure (2026-08-23, seen live)
+
+OpenRouter answered `429` and the sidecar surfaced `502 Bad Gateway`, so the
+game treated a temporary cap as a dead endpoint and retried in a tight loop,
+filling the console. `stealth/ox-alpha` is free tier and free models are capped
+per minute and per day, so this is the normal path, not an edge case.
+
+What it needs: `429` distinguished from a real upstream failure, honoured with
+the `Retry-After` header when present and a backoff when not, surfaced to the
+player as "the model is busy" rather than as a failure, and **never** retried
+tightly. Boxes: `host` for the classification, `@gb/sidecar` for the backoff,
+`@gb/app` for what the player is told.
+
+Related and already known: an engine that dies mid-reply now ends with
+`finish_reason: "error"` rather than claiming success. A 429 deserves the same
+honesty.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
