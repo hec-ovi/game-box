@@ -9,11 +9,11 @@ import type { Look } from '../build/look.ts'
  * across town for one wants it to look the same at both ends. So items paint
  * from matter, not from a palette, and the two languages share every buffer.
  *
- * Nothing here is a mirror. Indoors there is no environment to reflect (the
- * strips in a room are emissive geometry no probe has seen), so a metal at full
- * metalness comes out black. Metal reads instead as a pale colour at a low
- * roughness with the metalness held under two thirds, which still catches the
- * room's own light.
+ * Nothing here is a mirror. The room's probe is hung on its surfaces, not on
+ * the one material every prop and every carried thing shares, so a metal at
+ * full metalness indoors comes out black. Metal reads instead as a pale colour
+ * at a low roughness with the metalness held under two thirds, which still
+ * catches the room's own light.
  */
 export const MATTER = {
   /** Writing paper, a note, the pages of a book. */
