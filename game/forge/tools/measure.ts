@@ -9,7 +9,20 @@ const sizes = (process.argv[3] ?? '2,5,10,20').split(',').map(Number)
 const theme = process.argv[4] ?? 'dusty western mining town'
 
 const row = (cells: string[]) => cells.map((cell, i) => (i ? cell.padStart(11) : cell.padEnd(8))).join('')
-console.log(row(['blocks', 'grid', 'metres', 'walk min', 'buildings', 'open', 'people', 'quests', 'build s', 'file MB']))
+console.log(row(['blocks', 'grid', 'metres', 'walk min', 'avenues', 'buildings', 'open', 'people', 'quests', 'build s', 'file MB']))
+
+/** How many avenue bands the town was laid with, read off the graph the way another box reads it. */
+function avenuesIn(roads: { nodes: { id: string; cell: { x: number; y: number } }[]; segments: { from: string; to: string; kind: string }[] }): number {
+  const cellOf = (id: string) => roads.nodes.find((node) => node.id === id)!.cell
+  const lines = new Set<string>()
+  for (const segment of roads.segments) {
+    if (segment.kind !== 'avenue') continue
+    const from = cellOf(segment.from)
+    const to = cellOf(segment.to)
+    lines.add(from.y === to.y ? `row ${from.y}` : `column ${from.x}`)
+  }
+  return lines.size
+}
 
 for (const blocks of sizes) {
   const started = performance.now()
@@ -27,6 +40,7 @@ for (const blocks of sizes) {
       `${world.grid.width}x${world.grid.height}`,
       String(Math.round(across)),
       (across / 1.4 / 60).toFixed(1),
+      String(avenuesIn(world.toJSON().roads)),
       String(world.plots().length),
       String(world.interiors().length),
       String(world.npcs().length),

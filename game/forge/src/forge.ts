@@ -19,7 +19,8 @@ import {
 import { briefContract, type Brief } from './brief.ts'
 import { openDoors, type Frontage } from './interior/open.ts'
 import { planInterior } from './interior/plan.ts'
-import { planStreets } from './layout/plan.ts'
+import { Avenues } from './layout/avenues.ts'
+import { planStreets, type StreetPlan } from './layout/plan.ts'
 import { sitesInBlock, storeysFor, type PlotSite } from './layout/plots.ts'
 import { layRoads } from './layout/roads.ts'
 import { paintStreets } from './layout/streets.ts'
@@ -47,6 +48,8 @@ interface Raised {
   readonly plotId: string
   readonly kind: BuildingKind
   readonly site: PlotSite
+  /** Whether its door is on one of the town's avenues. */
+  readonly onAvenue: boolean
   /** Its own stream, so the inside is planned off the same seed the outside was. */
   readonly rng: Rng
 }
@@ -85,7 +88,7 @@ export class Forge {
     paintStreets(world, streets)
 
     layRoads(world, streets.crossings, streets.exits)
-    await this.#raise(world, brief, streets.blocks, rng)
+    await this.#raise(world, brief, streets, rng)
     await this.#populate(world, brief, rng)
 
     const problems = world.check()
@@ -122,8 +125,9 @@ export class Forge {
    * few places the town is known for are dropped on seeded sites before the
    * rest is rolled.
    */
-  async #raise(world: World, brief: Brief, blocks: readonly { x: number; y: number; w: number; h: number }[], rng: Rng): Promise<void> {
-    const sites = blocks.flatMap((block, index) => sitesInBlock(block, rng.fork(`block/${index}`)))
+  async #raise(world: World, brief: Brief, streets: StreetPlan, rng: Rng): Promise<void> {
+    const sites = streets.blocks.flatMap((block, index) => sitesInBlock(block, rng.fork(`block/${index}`)))
+    const avenues = Avenues.from(streets.columns, streets.rows)
     const mix = rng.fork('plots')
     const flavour = flavourOf(brief.theme)
     const weights = kindWeights(flavour, mix)
@@ -139,7 +143,7 @@ export class Forge {
       const rolled = siteRng.weighted(weights)
       const kind = staples.get(index) ?? (built ? rolled : undefined)
       if (!kind) continue
-      const up = await this.#raiseOne(world, site, kind, brief.theme, brief.maxStoreys, siteRng)
+      const up = await this.#raiseOne(world, site, kind, brief.theme, brief.maxStoreys, siteRng, avenues)
       if (up) raised.push(up)
     }
     this.#openDoors(world, raised, rng.fork('doors'))
@@ -152,18 +156,20 @@ export class Forge {
     theme: string,
     maxStoreys: number,
     rng: Rng,
+    avenues?: Avenues,
   ): Promise<Raised | undefined> {
     const name = await this.#narrator.namePlace({ kind, theme, index: world.plots().length })
+    const onAvenue = avenues?.has(site.entrance) ?? false
     const plot = world.addPlot({
       kind,
       name,
       rect: site.rect,
       entrance: { cell: site.entrance, facing: site.facing },
-      storeys: storeysFor(kind, maxStoreys, rng),
+      storeys: storeysFor(kind, maxStoreys, rng, onAvenue),
       style: `${theme.split(/\s+/)[0]?.toLowerCase() ?? 'plain'}-${kind}`,
     })
     if (!plot.ok) return undefined
-    return { plotId: plot.value.id, kind, site, rng }
+    return { plotId: plot.value.id, kind, site, onAvenue, rng }
   }
 
   /**
@@ -179,6 +185,7 @@ export class Forge {
       plotId: one.plotId,
       kind: one.kind,
       nearness: 1 - Math.hypot(one.site.entrance.x - middle.x, one.site.entrance.y - middle.y) / furthest,
+      onAvenue: one.onAvenue,
     }))
 
     const open = openDoors(frontages, rng)

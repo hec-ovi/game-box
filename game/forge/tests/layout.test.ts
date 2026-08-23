@@ -1,21 +1,20 @@
 import { Rng } from '@gb/kit'
 import { World, type CellKind } from '@gb/world'
 import { describe, expect, it } from 'vitest'
-import { briefContract, Forge, MOUNTAIN_CELLS, OfflineNarrator, SIDEWALK_CELLS, STREET_CELLS } from '../src/index.ts'
+import { BANDS, briefContract, Forge, MOUNTAIN_CELLS, OfflineNarrator } from '../src/index.ts'
 import { BLOCKS_MAX } from '../src/brief.ts'
-import { MIN_BLOCK, planStreets, widestGrid } from '../src/layout/plan.ts'
+import { avenueCount, Avenues } from '../src/layout/avenues.ts'
+import { MAX_BLOCK, MIN_BLOCK, planStreets, widestGrid } from '../src/layout/plan.ts'
 import { cutsFourWays } from '../src/layout/plots.ts'
 import { buildTown, digest } from './support.ts'
 
-const HALF = Math.floor(STREET_CELLS / 2)
-const BAND = STREET_CELLS + SIDEWALK_CELLS * 2
 
 interface Cell {
   x: number
   y: number
 }
 
-/** Every cell the road graph claims: each segment's centreline, and the roadway around it. */
+/** Every cell the road graph claims: each segment's centreline, and its own width of roadway around it. */
 function roadway(world: World): { centres: Cell[]; cells: Cell[] } {
   const { nodes, segments } = world.toJSON().roads
   const cellOf = (id: string) => nodes.find((node) => node.id === id)!.cell
@@ -25,12 +24,13 @@ function roadway(world: World): { centres: Cell[]; cells: Cell[] } {
   for (const segment of segments) {
     const from = cellOf(segment.from)
     const to = cellOf(segment.to)
+    const half = BANDS[segment.kind].halfRoadway
     const step = { x: Math.sign(to.x - from.x), y: Math.sign(to.y - from.y) }
     const length = Math.abs(to.x - from.x) + Math.abs(to.y - from.y)
     for (let i = 0; i <= length; i++) {
       const centre = { x: from.x + step.x * i, y: from.y + step.y * i }
       centres.set(`${centre.x},${centre.y}`, centre)
-      for (let n = -HALF; n <= HALF; n++) {
+      for (let n = -half; n <= half; n++) {
         const cell = step.x === 0 ? { x: centre.x + n, y: centre.y } : { x: centre.x, y: centre.y + n }
         cells.set(`${cell.x},${cell.y}`, cell)
       }
@@ -47,7 +47,7 @@ function skeleton(world: World): string {
     .join('\n')
 }
 
-/** Is there an open square in this town, this many cells across? Wider than any street band. */
+/** Is there an open square in this town, this many cells across? Bigger than any pavement a band leaves. */
 function hasSquare(world: World, side: number): boolean {
   const open = (x: number, y: number) => {
     const kind = world.grid.at(x, y)
@@ -86,17 +86,49 @@ describe('the street plan', () => {
     }
     expect(stranded).toEqual([])
 
-    // the pavement is still there: every crossing keeps a corner of it in each quarter
+    // the pavement is still there: every crossing keeps a corner of it in each quarter,
+    // one cell past the widest roadway that meets there
     const { nodes, segments } = world.toJSON().roads
-    const crossings = nodes.filter((node) => segments.filter((s) => s.from === node.id || s.to === node.id).length > 1)
+    const arms = (id: string) => segments.filter((s) => s.from === id || s.to === id)
+    const crossings = nodes.filter((node) => arms(node.id).length > 1)
     expect(crossings.length).toBeGreaterThan(3)
     for (const node of crossings) {
-      for (const dx of [-(HALF + 1), HALF + 1]) {
-        for (const dy of [-(HALF + 1), HALF + 1]) {
+      const reach = Math.max(...arms(node.id).map((s) => BANDS[s.kind].halfRoadway)) + 1
+      for (const dx of [-reach, reach]) {
+        for (const dy of [-reach, reach]) {
           const corner = { x: node.cell.x + dx, y: node.cell.y + dy }
           expect(world.grid.at(corner.x, corner.y), `corner at ${corner.x},${corner.y}`).toBe('sidewalk')
         }
       }
+    }
+  })
+
+  it('plans the town off the streets stream alone, and paints exactly what it planned', async () => {
+    // the plan is the only place a street number comes from: read it here with
+    // nothing but the seed, and the town the forge paints has to agree with it,
+    // twice over. A draw added before the fork, or a second stream drawing the
+    // plan, shows up as a town that no longer matches its own plan.
+    for (const seed of ['ash', 'birch', 'cedar']) {
+      const brief = { blocksX: 4, blocksY: 3 }
+      const plan = planStreets(brief, new Rng(seed).fork('streets'))
+      expect(digest(plan), seed).toBe(digest(planStreets(brief, new Rng(seed).fork('streets'))))
+
+      const { world } = await buildTown(seed, brief)
+      expect([world.grid.width, world.grid.height], seed).toEqual([plan.size.width, plan.size.height])
+
+      // and every band is painted where the plan put it, at its own class's
+      // width: pavement, roadway, pavement, read across the middle of a block
+      const block = plan.blocks[0]!
+      const across = (line: (typeof plan.columns)[number], at: number, cell: (i: number) => CellKind | undefined) => {
+        const road = BANDS[line.kind]
+        for (let i = 0; i < line.width; i++) {
+          const want = i < road.pavement || i >= road.pavement + road.roadway ? 'sidewalk' : 'street'
+          expect(cell(line.start + i), `${seed}: ${line.kind} band at ${line.start}+${i}, ${at}`).toBe(want)
+        }
+        expect(cell(line.centre), `${seed}: centreline of the ${line.kind} at ${line.centre}`).toBe('street')
+      }
+      for (const line of plan.columns) across(line, block.y + 1, (x) => world.grid.at(x, block.y + 1))
+      for (const line of plan.rows) across(line, block.x + 1, (y) => world.grid.at(block.x + 1, y))
     }
   })
 
@@ -125,12 +157,13 @@ describe('the street plan', () => {
     // block sizes differ, so the towns are not one grid at different scales
     expect(new Set(towns.map((town) => `${town.world.grid.width}x${town.world.grid.height}`)).size).toBeGreaterThan(3)
     // and some of them leave a block open as a square or a green
-    expect(towns.some((town) => hasSquare(town.world, BAND * 2 + 1))).toBe(true)
+    expect(towns.some((town) => hasSquare(town.world, MIN_BLOCK))).toBe(true)
   })
 
   it('lays the blocks the brief asked for when it asks', async () => {
     const { world } = await buildTown('pinned', { blocksX: 1, blocksY: 1, blockCells: 30 })
-    const around = (cells: number) => MOUNTAIN_CELLS * 2 + BAND * 2 + cells
+    // one block has two street bands round it and no avenue: a town needs an inner street for a spine
+    const around = (cells: number) => MOUNTAIN_CELLS * 2 + BANDS.street.width * 2 + cells
 
     expect(world.grid.width).toBeGreaterThanOrEqual(around(28))
     expect(world.grid.width).toBeLessThanOrEqual(around(33))
@@ -140,10 +173,14 @@ describe('the street plan', () => {
     const specs = [
       { blocksX: 3, blocksY: 3 },
       { blocksX: 1, blocksY: 1, blockCells: 30 },
+      // the widest block there is, where the jitter has nowhere to go and the
+      // only slack left in the bound is the bands themselves
+      { blocksX: 2, blocksY: 2, blockCells: MAX_BLOCK },
+      { blocksX: 5, blocksY: 5, blockCells: MAX_BLOCK },
       { blocksX: BLOCKS_MAX, blocksY: BLOCKS_MAX, blockCells: MIN_BLOCK },
     ]
     for (const spec of specs) {
-      for (const seed of ['ash', 'birch', 'cedar', 'dune']) {
+      for (const seed of ['ash', 'birch', 'cedar', 'dune', 'elm', 'fir']) {
         const plan = planStreets(spec, new Rng(seed).fork('streets'))
         const widest = widestGrid(spec)
         const asked = `${spec.blocksX}x${spec.blocksY} of ${spec.blockCells ?? 'any'} on ${seed}`
@@ -176,5 +213,86 @@ describe('the street plan', () => {
     })
     expect(built.ok).toBe(false)
     if (!built.ok) expect(built.error.code).toBe('invalid-brief')
+  })
+})
+
+describe('the avenues', () => {
+  /** Which lines of an axis are avenues, as ordinals. */
+  const spines = (lines: readonly { kind: string }[]) =>
+    lines.flatMap((line, index) => (line.kind === 'avenue' ? [index] : []))
+
+  it('gives every town a spine, spread out, and never two side by side', () => {
+    // eight blocks is the tightest a town gets: two avenues with four inner
+    // streets to put them on, which is where a pair could end up side by side
+    for (const blocks of [2, 4, 6, 8, 9, 12, 20]) {
+      for (const seed of ['ash', 'birch', 'cedar', 'dune', 'elm', 'fir', 'gorse', 'holly']) {
+        const plan = planStreets({ blocksX: blocks, blocksY: blocks }, new Rng(seed).fork('streets'))
+        for (const lines of [plan.columns, plan.rows]) {
+          const avenues = spines(lines)
+          const where = `${blocks} blocks on ${seed}: ${avenues.join(',')} of ${lines.length}`
+          expect(avenues.length, where).toBe(avenueCount(lines.length))
+          // an axis with an inner street has a main one, and they thin out rather than stack up.
+          // an axis with none left after the merges is one long block, and has nothing to promote
+          if (lines.length >= 3) {
+            expect(avenues.length, where).toBeGreaterThan(0)
+            expect(avenues.length, where).toBeLessThanOrEqual(Math.ceil(lines.length / 4))
+          }
+          // never the ring road round the edge of town, and never a pair with one street between
+          expect(avenues.every((index) => index > 0 && index < lines.length - 1), where).toBe(true)
+          for (let i = 1; i < avenues.length; i++) expect(avenues[i]! - avenues[i - 1]!, where).toBeGreaterThan(1)
+        }
+      }
+    }
+  })
+
+  it('lays an avenue wider than the streets it crosses, and says so in the graph', async () => {
+    const { world } = await buildTown('spines', { blocksX: 6, blocksY: 6 })
+    const { nodes, segments } = world.toJSON().roads
+    const cellOf = (id: string) => nodes.find((node) => node.id === id)!.cell
+    expect(new Set(segments.map((segment) => segment.kind))).toContain('avenue')
+
+    for (const segment of segments) {
+      if (segment.kind === 'exit') continue
+      const from = cellOf(segment.from)
+      const to = cellOf(segment.to)
+      // measured across the middle of the stretch, which is never a junction mouth
+      const mid = { x: (from.x + to.x) >> 1, y: (from.y + to.y) >> 1 }
+      const step = from.y === to.y ? { x: 0, y: 1 } : { x: 1, y: 0 }
+      let span = 1
+      for (const way of [1, -1]) {
+        for (let n = 1; world.grid.at(mid.x + step.x * n * way, mid.y + step.y * n * way) === 'street'; n++) span++
+      }
+      expect(span, `a ${segment.kind} at ${mid.x},${mid.y}`).toBe(BANDS[segment.kind].roadway)
+      expect(segment.lanes, `a ${segment.kind} at ${mid.x},${mid.y}`).toBe(BANDS[segment.kind].lanes)
+    }
+  })
+
+  it('leaves the valley along a spine', () => {
+    // the way out of town is the town's own main road carrying on
+    for (const seed of ['ash', 'birch', 'cedar', 'dune']) {
+      const plan = planStreets({ blocksX: 5, blocksY: 5, exits: 4 }, new Rng(seed).fork('streets'))
+      const avenues = Avenues.from(plan.columns, plan.rows)
+      for (const exit of plan.exits) {
+        // the road out runs along the band it continues, so that band is the avenue
+        const along = exit.edge.x === exit.junction.x ? { x: exit.junction.x, y: 0 } : { x: 0, y: exit.junction.y }
+        expect(avenues.has(along), `${seed}: the road out at ${exit.junction.x},${exit.junction.y}`).toBe(true)
+      }
+    }
+  })
+
+  it('builds taller on the avenue than on the street behind it', async () => {
+    const brief = { blocksX: 6, blocksY: 6, maxStoreys: 6 }
+    const plan = planStreets(brief, new Rng('spines').fork('streets'))
+    const avenues = Avenues.from(plan.columns, plan.rows)
+    const { world } = await buildTown('spines', brief)
+
+    const height = (plots: ReturnType<typeof world.plots>) => plots.reduce((sum, plot) => sum + plot.storeys, 0) / plots.length
+    const on = world.plots().filter((plot) => avenues.has(plot.entrance.cell))
+    const off = world.plots().filter((plot) => !avenues.has(plot.entrance.cell))
+
+    expect(on.length).toBeGreaterThan(20)
+    expect(off.length).toBeGreaterThan(20)
+    // a storey taller, less whatever the ceiling and the mix of kinds take back
+    expect(height(on)).toBeGreaterThan(height(off) + 0.4)
   })
 })

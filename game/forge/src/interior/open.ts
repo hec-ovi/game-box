@@ -37,6 +37,14 @@ const NUDGE = 5
 /** An anchor somebody is stationed at to do a job, rather than to pass the time. */
 const WORKING = 0.6
 
+/**
+ * What a door on an avenue is worth: as much as moving it from the edge of town
+ * to halfway in. It is the same kind of fact as nearness, the traffic goes past
+ * it, and a door can have both. It stays under what the place itself is worth,
+ * because a lock-up on the avenue is still a lock-up.
+ */
+const SPINE = 1
+
 /** The room a probe interior is planned in: big enough that nothing is left out for want of floor. */
 const PROBE = { w: 11.6, h: 13.6 }
 
@@ -115,6 +123,8 @@ export interface Frontage {
   readonly kind: BuildingKind
   /** How near the middle of town it stands, 1 at the centre and 0 at the edge. */
   readonly nearness: number
+  /** Whether its door is on an avenue: the spine everybody walks and drives. */
+  readonly onAvenue: boolean
 }
 
 /**
@@ -122,9 +132,9 @@ export interface Frontage {
  *
  * A share of the town, swung by the seed so two towns of a size do not open the
  * same number, and then the pick: what the place has to offer, how near the
- * middle of town it stands (a door on the way to everywhere gets tried, one at
- * the edge does not), and a seeded nudge so the same town twice over is not the
- * same list of shops. Whatever the ranking says, a town still ends up with
+ * middle of town it stands and whether it is on an avenue (a door on the way to
+ * everywhere gets tried, one at the edge does not), and a seeded nudge so the
+ * same town twice over is not the same list of shops. Whatever the ranking says, a town still ends up with
  * somewhere to sit, buy, sleep and work, because those are added first.
  */
 export function openDoors(frontages: readonly Frontage[], rng: Rng): ReadonlySet<string> {
@@ -133,7 +143,7 @@ export function openDoors(frontages: readonly Frontage[], rng: Rng): ReadonlySet
 
   const scored = frontages.map((frontage) => ({
     frontage,
-    score: pullOf(frontage.kind) + frontage.nearness * 2 + rng.range(0, NUDGE),
+    score: pullOf(frontage.kind) + frontage.nearness * 2 + (frontage.onAvenue ? SPINE : 0) + rng.range(0, NUDGE),
   }))
   scored.sort((a, b) => b.score - a.score || (a.frontage.plotId < b.frontage.plotId ? -1 : 1))
 

@@ -1,6 +1,6 @@
 # @gb/forge contract
 
-contractVersion: 0.12.0
+contractVersion: 0.13.0
 
 ## Purpose
 
@@ -57,17 +57,18 @@ A narrator writing an unusable quest is not an error: those quests are dropped a
   Metres from the piece's own centre, positive towards its back. The two seat numbers are measured off the triangles `@gb/furnish` draws in both interior languages and live in `src/interior/props.ts` beside the footprints; the body numbers and the rule live in `src/interior/stance.ts`. A bed comes out negative because a headboard is 0.95 m back, so a body sits up against it rather than out in the middle of the mattress. The pelvis has to land on the pad whatever the rule says, and every seat is held to that in the tests.
 - Whether a seat is a place somebody can sit is a question about the seat, so nothing about which anchors are accepted turns on that offset: reachability, doorways and other people's furniture are all judged at the seat, exactly as they were when the body sat on its centre. Moving a body onto its seat properly cannot cost a town a single anchor.
 - A city is mostly frontage. Every plot is a building with a door, a sign and a name; about one in eight also has an interior, and the rest cannot be walked into. A plot without an interior is closed all the way through: nobody is stationed in it, nothing is lying about in it, and no quest step points into it, so a closed door offers the player nothing rather than teasing them with something they cannot reach.
-- Which doors open is never a list of building kinds. Each kind is weighed by what its own dresser turns out to make: a counter that is always staffed counts most, then anybody else who works there, then loose stock, then whether the place reads as somewhere people are. A kind added to `@gb/world` next week is weighed the same way without anybody coming back here. On top of that a plot near the middle of town scores higher, because that is the door a player tries, and a seeded nudge wide enough to let a chapel on the square in ahead of a shop at the ring road, so a town is not a list of its businesses.
+- Which doors open is never a list of building kinds. Each kind is weighed by what its own dresser turns out to make: a counter that is always staffed counts most, then anybody else who works there, then loose stock, then whether the place reads as somewhere people are. A kind added to `@gb/world` next week is weighed the same way without anybody coming back here. On top of that a plot near the middle of town scores higher, and a plot on an avenue higher again, because those are the doors a player tries, and a seeded nudge wide enough to let a chapel on the square in ahead of a shop at the ring road, so a town is not a list of its businesses.
 - A town opens somewhere to sit down, somewhere to buy something, somewhere to sleep and somewhere to work, however small it is and wherever the ranking falls, because those four go in first. Each is a question about what a place holds, not about what it is called: a nightclub answers the first and a hospital the third without anything being added here.
 - A piece that belongs on a counter top stands on one. `PROP_SPECS` marks those pieces, and the planner puts each one over the back of a counter already in the room, facing the way that counter faces, with `Furniture.lift` set to that counter's own top: `METRICS.furniture.serviceCounterHeight` for a service counter, `barCounterHeight` for a bar. It claims no floor, because the floor under it is the counter's. So a bar and a shop have a till on the counter and a cafe has its machine, and nothing is left standing beside the counter it belongs on.
 - The interior varies with the seed and stays identical for the same one: an entrance hall or none, service rooms across the back or down one side, counters on either hand, furniture swept along the walls until it fits.
 - Each kind of building is recognisable from the inside: a bar has a counter you can walk behind with stools along it, a shop a counter you queue at and cases to browse, a house a sofa facing a screen and a bed against a wall.
-- Same seed, same city, down to the byte. Sub-streams are forked by label off a root the generator never draws from: `streets` for the town plan, `plots` for the mix of buildings, `quests` for how much work the town has in it, then one per block, per site and per interior. A new stream is a new label, never a draw from an existing one, so adding one cannot shift what another already decided.
+- Same seed, same city, down to the byte. Sub-streams are forked by label off a root the generator never draws from: `streets` for the town plan, `avenues` off that for where the spines run, `plots` for the mix of buildings, `quests` for how much work the town has in it, then one per block, per site and per interior. A new stream is a new label, never a draw from an existing one, so adding one cannot shift what another already decided.
 - Nothing a narrator writes is trusted: quests are validated against the world and dropped if they do not hold up.
 - Every service post is staffed: a bar has a bartender, a shop has a clerk, whatever the density.
 - Nobody in a town shares a name, a personality or a script: names, habits and what a person knows come from a vocabulary the theme picks, not from one template.
 - Buildings leave gaps. `extend` fills them, and never moves anything already placed.
-- The roadway is `METRICS.street.roadwayCells` wide, from `@gb/world`, so the width a car drives and the width the city is laid with are one number. Cells are 2 m, pavements 1 cell, the mountain ring 4; rooms and furniture are sized in metres from the same `METRICS`.
+- **A road is as wide as its class**, from `@gb/world`'s `METRICS.road`, so the width a car drives and the width the city is laid with are one number per class. A street band is 2 cells of pavement, 5 of roadway and 2 of pavement (18 m); an avenue band is 2, 7 and 2 (22 m); the road out of the valley is 9 cells of roadway (18 m) with 2 of pavement each side. Cells are 2 m and the mountain ring is 4; rooms and furniture are sized in metres from the same `METRICS`.
+- Every roadway is an odd number of cells, so a band's centreline is a line of cell centres. That is where the road graph's nodes go, and it is what lets a wider road be laid without moving a junction off the middle of the road.
 
 ### What a town is made of
 
@@ -96,19 +97,19 @@ A town's work is written by recipes over the people and things it actually holds
 
 ### How big a city can be
 
-Nothing here holds the number of blocks down. `@gb/world` will not hold a grid over 1024 cells a side, and the brief's block limit is that bound read in blocks: how many of the smallest block the planner cuts fit across it, which is 77. Ask for more than the grid holds at the block size you named and the brief is refused before a cell is allocated, with the grid it would have needed in the message. That is why 50 blocks of 6 cells builds and 38 blocks of the default size does not: blocks are not a size, cells are.
+Nothing here holds the number of blocks down. `@gb/world` will not hold a grid over 1024 cells a side, and the brief's block limit is that bound read in blocks: how many of the smallest block the planner cuts fit across it, which is 57. Ask for more than the grid holds at the block size you named and the brief is refused before a cell is allocated, with the grid it would have needed in the message. That is why 40 blocks of 6 cells builds and 33 blocks of the default size does not: blocks are not a size, cells are, and a road takes cells too.
 
 What the sizes cost, on one seed with the offline narrator. Another seed moves the building count and the quest count by up to a third, because the plan and the appetite are both drawn:
 
-| blocks | grid | buildings | open | people | quests | build | world file |
-|---|---|---|---|---|---|---|---|
-| 2x2 | 53x57 | 29 | 6 | 16 | 4 | 0.05 s | 0.04 MB |
-| 5x5 | 119x119 | 169 | 18 | 56 | 11 | 0.04 s | 0.14 MB |
-| 10x10 | 221x211 | 598 | 65 | 212 | 25 | 0.08 s | 0.51 MB |
-| 20x20 | 427x417 | 2,344 | 256 | 750 | 80 | 0.32 s | 1.97 MB |
-| 37x37 | 769x775 | 9,656 | 1,054 | 3,318 | 310 | 1.5 s | 8.10 MB |
+| blocks | grid | avenues | buildings | open | people | quests | build | world file |
+|---|---|---|---|---|---|---|---|---|
+| 2x2 | 67x71 | 2 | 29 | 6 | 20 | 4 | 0.16 s | 0.04 MB |
+| 5x5 | 145x145 | 2 | 170 | 19 | 61 | 11 | 0.13 s | 0.16 MB |
+| 10x10 | 269x259 | 4 | 619 | 68 | 217 | 26 | 0.23 s | 0.55 MB |
+| 20x20 | 517x509 | 7 | 2,413 | 263 | 780 | 82 | 1.0 s | 2.10 MB |
+| 32x32 | 807x805 | 11 | 5,909 | 645 | 2,026 | 192 | 2.6 s | 5.26 MB |
 
-About 0.2 ms and 0.8 KB a building, flat, all the way up: a building that does not open is a footprint, an entrance and a name, and an interior is nearly everything a city costs to build and to carry. The same 20x20 town with every door open takes 11 s and 12.7 MB. Nothing in the generator degrades before the grid wall; what runs out first is the player. A 20x20 city is 854 m corner to corner, a ten-minute walk at 1.4 m/s; 37x37 is 1.5 km, eighteen minutes; the widest grid there is, 1024 cells, would be 2 km and twenty-four. Somewhere past twenty blocks a side, a city stops being a place you cross on foot and starts being a place you live in one part of.
+Avenues are counted across and down together. About 0.4 ms and 0.9 KB a building, flat, all the way up: a building that does not open is a footprint, an entrance and a name, and an interior is nearly everything a city costs to build and to carry. Nothing in the generator degrades before the grid wall; what runs out first is the player. A 20x20 city is 1,034 m corner to corner, a twelve-minute walk at 1.4 m/s; 32x32 is 1.6 km, nineteen minutes, and it is the largest town the default block size fits inside the grid. Somewhere past twenty blocks a side, a city stops being a place you cross on foot and starts being a place you live in one part of.
 
 ### The town plan
 
@@ -118,22 +119,25 @@ Two seeds are two towns to walk, not one town with the buildings shuffled. What 
 - **Every block faces four ways.** A block is cut into a strip of building on each side with a yard in the middle, and the middle has to stay deep enough for a frontage or the east and west strips are dropped. Any size that would fail that is nudged up a cell, which is why doors end up on north-south streets as well as east-west ones.
 - **A missing street.** On one axis at most, an inner street is sometimes left out and the two blocks either side become one long block. Never two in a row, so a town never grows a field in the middle.
 - **An open block.** Up to one block in four, and never the only one, is left unbuilt as a paved plaza or a green park. Both are painted on the grid, so nothing builds there afterwards and `@gb/nav`, `@gb/crowd` and `@gb/scene` read them as ground people walk on.
+- **The avenues.** One street band in every five is an avenue, and never the ring road round the edge of town, and never two with one street between them. They are picked as whole lines, so an avenue runs the length of the town without a break and the ordinary streets hang off it. The interior lines are cut into as many spans as the town has avenues and one is drawn from each span, which spreads them across the town wherever the seed puts them. An axis with an inner street always gets one, so even a hamlet has a main street; an axis whose inner street was left out has nothing to promote and gets none.
 - **The roads out**, below: how many and which walls of the valley they leave through.
+
+An avenue is not a wider street. It is where the town happens: the roadway is 14 m against a street's 10 m and carries four lanes instead of two, the road out of the valley leaves along one, buildings that face one are built a storey taller, and a door on one is ranked for opening as highly as a door in the middle of town. So a player crossing a town meets a handful of long, busy, tall roads with quiet side streets between them, rather than one grid at one size.
 
 A brief that names `blockCells` or `exits` gets what it asks for; the jitter still varies blocks around the number it named, and the size check measures the jittered width, so a brief that is accepted always plans a grid the world will found.
 
-At a crossing, the roadway runs right through in both directions and the pavement keeps a corner in each quarter. That falls out of the painting order: mountains, then every pavement band, then every roadway band on top. Paint one band at a time and the last band wins the cells they share, which is how pavement ended up lying across the middle of every north-south street.
+At a crossing, the roadway runs right through in both directions and the pavement keeps a corner in each quarter. That falls out of the painting order: mountains, then every pavement band, then every roadway band on top, each at its own class's width. Paint one band at a time and the last band wins the cells they share, which is how pavement ended up lying across the middle of every north-south street. Where an avenue crosses a street the wider roadway wins, so the junction is as wide as the widest arm of it.
 
-So a pavement ends at the kerb: crossing a street means stepping onto the roadway, whichever way you are walking. Anything that keeps people off the road (`@gb/crowd` walks `sidewalk` and `park`) walks one block's ring and no further.
+So a pavement ends at the kerb: crossing a street means stepping onto the roadway, whichever way you are walking, 10 m of it on a street, 14 m on an avenue and 18 m on the road out. Anything that keeps people off the road (`@gb/crowd` walks `sidewalk` and `park`) walks one block's ring and no further.
 
 ### The roads out
 
 The city sits in a valley ringed with mountains, and `brief.exits` says how many roads leave it: one to four, picked from the seed when the brief leaves it out, through walls the seed picks.
 
-- It is the same 6 m roadway the town is laid with, leaving from one of the town's own street crossings, straight out along that crossing's centreline. Which crossing is seeded too, so the way out is not always the middle of town.
+- It is the widest road there is, 18 m of roadway, because everything leaving the valley goes down it and nothing fronts onto it. It leaves from one of the town's own street crossings, straight out along that crossing's centreline, and it leaves along an avenue wherever the town has one running that way: the spine carries on out of the valley. Which crossing is seeded, so the way out is not always the middle of town.
 - It carries the roadway across the pavement ring, so a car meets a T junction rather than a kerb, and pedestrians get a crossing where the ring pavement meets it.
-- A 2 m pavement runs each side of it through the mountains, kerbed against the roadway by the same drop as any other street.
-- It is in the road graph: a node where the roadway leaves the map, joined to the crossing's own node by a segment of kind `exit`. `@gb/traffic` can drive it and `@gb/scene` marks it, because both read the graph.
+- A 4 m pavement runs each side of it through the mountains, kerbed against the roadway by the same drop as any other street.
+- It is in the road graph: a node where the roadway leaves the map, joined to the crossing's own node by a segment of kind `exit` carrying four lanes. `@gb/traffic` can drive it and `@gb/scene` marks it, because both read the graph.
 - The pavement stops one cell short of the map edge and the roadway runs on to it, so the road leaves the grid instead of ending in two kerbs in a field. `@gb/land` grades the corridor for 120 m past the boundary and the haze closes the view; paving past the boundary is land's ground, not this box's.
 
 ## How to modify this blackbox safely
@@ -144,9 +148,9 @@ What a theme means lives in `src/theme/`: `flavour.ts` reads the theme text, `pl
 
 Quest writing is `src/quests/`: `marks.ts` holds the four things a town remembers and how a place becomes a faction, `line.ts` plans the main line and where it forks, `demand.ts` says how much work the town has in it, `cast.ts` is the town as a writer uses it (who can give work, who will walk with you, what nothing else has claimed, how far apart two doors are), `stock.ts` is its ledger of what no quest has taken, `reach.ts` decides how far a job may send the player and picks by sampling rather than scanning, `difficulty.ts` turns the work into a band and its pay, `pace.ts` turns metres into game seconds, `write.ts` writes the line rung by rung and then the side work, and `recipes/` holds one recipe per file behind `recipes/recipe.ts`. Nothing a recipe calls may walk the whole town: a thousand quests over three thousand places is a quadratic, which is why the ledger keeps counts and every pick is sampled. A new recipe is a new file, a new entry in `recipes/index.ts`, and a `weight` that returns zero when the town cannot serve it. A recipe that can put two named people in front of the player and make them pick sets `takesSides`, and only those may write the link that forks the line. Recipes hand back drafts; `write.ts` puts them through `questDraftContract` and `sealQuest`, and a draft the door refuses is handed on unsealed so the forge reports it rather than hiding it.
 
-The layout is five files under `src/layout/`: `bands.ts` is the grid arithmetic every other one reads, `plan.ts` decides the whole town from one `Rng` and touches nothing, `streets.ts` paints that plan onto the grid, `exits.ts` plans and paints the roads out, and `roads.ts` builds the graph. Deciding and painting are apart on purpose: the plan is the only place a street number comes from, and it can be read and measured without a world.
+The layout is six files under `src/layout/`: `bands.ts` is the grid arithmetic every other one reads, with one `RoadBand` per class of road and the span of a whole town; `avenues.ts` says how many spines an axis gets, which lines they are, and whether a cell stands on one; `plan.ts` decides the whole town from one `Rng` and touches nothing; `streets.ts` paints that plan onto the grid; `exits.ts` plans and paints the roads out; and `roads.ts` builds the graph. Deciding and painting are apart on purpose: the plan is the only place a street number comes from, and it can be read and measured without a world. A width is never written down here: `bands.ts` reads `METRICS.road` and everything else reads `bands.ts`.
 
-The `streets` stream is forked off the root and drawn from only in `plan.ts`. Draw from it anywhere else, or add a draw before it, and every seed lays out a different town.
+The `streets` stream is forked off the root and drawn from only in `plan.ts`, and `avenues` is forked off that for where the spines run. Draw from either anywhere else, or add a draw before them, and every seed lays out a different town.
 
 `tests/fixtures/sealed-city.json` is a city this box built and sealed before the streets were seeded, quests included. It proves an already-exported city still loads and still validates. It is never regenerated: regenerating it is deleting the only proof that old files still open.
 

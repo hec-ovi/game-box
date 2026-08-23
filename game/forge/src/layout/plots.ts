@@ -91,8 +91,12 @@ function doorstep(rect: Rect, facing: Facing): { x: number; y: number } {
   }
 }
 
-/** How tall a building of this kind gets, within the brief's limit. */
-export function storeysFor(kind: BuildingKind, maxStoreys: number, rng: Rng): number {
+/**
+ * How tall a building of this kind gets, within the brief's limit. A building on
+ * an avenue stands a storey taller than the same building on a side street: the
+ * spine is where a town puts its frontage.
+ */
+export function storeysFor(kind: BuildingKind, maxStoreys: number, rng: Rng, onAvenue = false): number {
   const ranges: Partial<Record<BuildingKind, [number, number]>> = {
     house: [1, 2],
     apartment: [3, maxStoreys],
@@ -102,5 +106,8 @@ export function storeysFor(kind: BuildingKind, maxStoreys: number, rng: Rng): nu
     chapel: [1, 2],
   }
   const [low, high] = ranges[kind] ?? [1, 2]
-  return Math.max(1, Math.min(maxStoreys, rng.int(low, Math.max(low, Math.min(high, maxStoreys)) + 1)))
+  const lift = onAvenue ? 1 : 0
+  const floor = Math.min(maxStoreys, low + lift)
+  const ceiling = Math.max(floor, Math.min(high + lift, maxStoreys))
+  return Math.max(1, rng.int(floor, ceiling + 1))
 }

@@ -1,5 +1,5 @@
 import type { World } from '@gb/world'
-import { BAND, MOUNTAIN_CELLS, SIDEWALK_CELLS, STREET_CELLS } from './bands.ts'
+import { BANDS, MOUNTAIN_CELLS, type StreetLine } from './bands.ts'
 import { paintExit } from './exits.ts'
 import type { StreetPlan } from './plan.ts'
 
@@ -13,6 +13,10 @@ import type { StreetPlan } from './plan.ts'
  * directions, with a corner of pavement in each quarter. Painting a whole band
  * at a time and then patching the crossings back is what put 15 cm of kerb
  * across the middle of every north-south street.
+ *
+ * A band is as wide as its own class of road, so an avenue is painted 22 m
+ * across where the street beside it is 18 m, and the two still meet in a
+ * junction that is roadway all the way through.
  */
 export function paintStreets(world: World, plan: StreetPlan): void {
   const { width, height } = plan.size
@@ -24,10 +28,18 @@ export function paintStreets(world: World, plan: StreetPlan): void {
   world.paint({ x: 0, y: 0, w: MOUNTAIN_CELLS, h: height }, 'mountain')
   world.paint({ x: width - MOUNTAIN_CELLS, y: 0, w: MOUNTAIN_CELLS, h: height }, 'mountain')
 
-  for (const x of plan.columns) world.paint({ x, y: MOUNTAIN_CELLS, w: BAND, h: innerHeight }, 'sidewalk')
-  for (const y of plan.rows) world.paint({ x: MOUNTAIN_CELLS, y, w: innerWidth, h: BAND }, 'sidewalk')
-  for (const x of plan.columns) world.paint({ x: x + SIDEWALK_CELLS, y: MOUNTAIN_CELLS, w: STREET_CELLS, h: innerHeight }, 'street')
-  for (const y of plan.rows) world.paint({ x: MOUNTAIN_CELLS, y: y + SIDEWALK_CELLS, w: innerWidth, h: STREET_CELLS }, 'street')
+  const roadwayOf = (line: StreetLine) => ({ at: line.start + BANDS[line.kind].pavement, cells: BANDS[line.kind].roadway })
+
+  for (const line of plan.columns) world.paint({ x: line.start, y: MOUNTAIN_CELLS, w: line.width, h: innerHeight }, 'sidewalk')
+  for (const line of plan.rows) world.paint({ x: MOUNTAIN_CELLS, y: line.start, w: innerWidth, h: line.width }, 'sidewalk')
+  for (const line of plan.columns) {
+    const road = roadwayOf(line)
+    world.paint({ x: road.at, y: MOUNTAIN_CELLS, w: road.cells, h: innerHeight }, 'street')
+  }
+  for (const line of plan.rows) {
+    const road = roadwayOf(line)
+    world.paint({ x: MOUNTAIN_CELLS, y: road.at, w: innerWidth, h: road.cells }, 'street')
+  }
 
   for (const exit of plan.exits) paintExit(world, exit)
   for (const square of plan.open) world.paint(square.rect, square.kind === 'park' ? 'park' : 'sidewalk')

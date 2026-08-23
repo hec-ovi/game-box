@@ -1,6 +1,7 @@
 import type { Rng } from '@gb/kit'
 import type { Rect } from '@gb/world'
-import { BAND, CENTRELINE, MOUNTAIN_CELLS, spanOf, type Cell, type Size } from './bands.ts'
+import { BANDS, lineAt, MOUNTAIN_CELLS, spanOf, type Cell, type Size, type StreetLine } from './bands.ts'
+import { chooseAvenues } from './avenues.ts'
 import { planExits, type ExitRoad } from './exits.ts'
 import { cutsFourWays } from './plots.ts'
 
@@ -20,18 +21,27 @@ export interface OpenBlock {
   readonly kind: 'plaza' | 'park'
 }
 
+/** Where two street centrelines cross, and what class of road runs each way through it. */
+export interface Junction {
+  readonly cell: Cell
+  /** The band running north to south through it. */
+  readonly column: StreetLine
+  /** The band running east to west through it. */
+  readonly row: StreetLine
+}
+
 export interface StreetPlan {
   /** Inner rectangles left between the streets, where buildings go. */
   readonly blocks: readonly Rect[]
   /** Blocks kept clear: a plaza or a park, painted and never built on. */
   readonly open: readonly OpenBlock[]
-  /** Cell coordinates of every street centreline crossing. */
-  readonly crossings: readonly Cell[]
+  /** Every street centreline crossing, with the class of road on each arm. */
+  readonly crossings: readonly Junction[]
   /** The roads out through the mountains: the only ways in or out of the valley. */
   readonly exits: readonly ExitRoad[]
-  /** Where each street band starts, across and down. */
-  readonly columns: readonly number[]
-  readonly rows: readonly number[]
+  /** Every street band, across and down: where it starts, what class it is, how wide. */
+  readonly columns: readonly StreetLine[]
+  readonly rows: readonly StreetLine[]
   /** The whole grid including mountains. */
   readonly size: Size
 }
@@ -68,7 +78,10 @@ export function widestBlock(blockCells?: number | undefined): number {
  * for wider blocks than that and the grid check refuses the brief instead.
  */
 export function mostBlocks(gridCells: number): number {
-  return Math.max(1, Math.floor((gridCells - MOUNTAIN_CELLS * 2 - BAND) / (BAND + widestBlock(MIN_BLOCK))))
+  const cells = widestBlock(MIN_BLOCK)
+  let blocks = 1
+  while (spanOf(blocks + 1, cells) <= gridCells) blocks++
+  return blocks
 }
 
 /** The grid a spec needs at its widest, before a seed narrows it down. */
@@ -87,8 +100,11 @@ export function planStreets(spec: PlanSpec, rng: Rng): StreetPlan {
   const nominal = spec.blockCells ?? rng.pick(NOMINAL_BLOCKS)
   // one axis at most loses streets, so a town gets long blocks without a hole in it
   const merging = rng.pick(['across', 'down', 'neither'] as const)
-  const across = axis(spec.blocksX, nominal, merging === 'across', rng)
-  const down = axis(spec.blocksY, nominal, merging === 'down', rng)
+  // the spines come off a stream of their own, so where they run is settled
+  // without moving a block size or a merge
+  const spines = rng.fork('avenues')
+  const across = axis(spec.blocksX, nominal, merging === 'across', rng, spines.fork('across'))
+  const down = axis(spec.blocksY, nominal, merging === 'down', rng, spines.fork('down'))
 
   const size = { width: across.span, height: down.span }
   const cells = across.runs.flatMap((column) =>
@@ -100,7 +116,9 @@ export function planStreets(spec: PlanSpec, rng: Rng): StreetPlan {
   return {
     blocks: cells.filter((_, index) => !kept.includes(index)),
     open,
-    crossings: across.streets.flatMap((x) => down.streets.map((y) => ({ x: x + CENTRELINE, y: y + CENTRELINE }))),
+    crossings: across.streets.flatMap((column) =>
+      down.streets.map((row) => ({ cell: { x: column.centre, y: row.centre }, column, row })),
+    ),
     exits: planExits(spec.exits ?? rng.weighted(EXIT_COUNTS), across.streets, down.streets, size, rng),
     columns: across.streets,
     rows: down.streets,
@@ -110,36 +128,46 @@ export function planStreets(spec: PlanSpec, rng: Rng): StreetPlan {
 
 /** Street bands and the strips of land between them, along one axis. */
 interface Axis {
-  /** Where each street band starts. */
-  readonly streets: readonly number[]
+  /** Every street band, in order across the map. */
+  readonly streets: readonly StreetLine[]
   /** The land between two streets: one block, or several with the street between them left out. */
   readonly runs: ReadonlyArray<{ start: number; size: number }>
   /** Cells from one edge of the map to the other, mountains included. */
   readonly span: number
 }
 
-function axis(blocks: number, nominal: number, mayMerge: boolean, rng: Rng): Axis {
+function axis(blocks: number, nominal: number, mayMerge: boolean, rng: Rng, spines: Rng): Axis {
   const sizes = Array.from({ length: blocks }, () => blockSize(nominal, rng))
   const merges = Array.from({ length: Math.max(0, blocks - 1) }, () => mayMerge && rng.chance(MERGE_CHANCE))
   // never two in a row: three blocks in one leaves a field in the middle of town
   for (let i = 1; i < merges.length; i++) if (merges[i - 1]) merges[i] = false
 
-  const streets: number[] = []
+  // a street left out is not a line at all, so the spines are picked from what survives
+  const lines = blocks + 1 - merges.filter(Boolean).length
+  const avenues = chooseAvenues(lines, spines)
+
+  const streets: StreetLine[] = []
   const runs: Array<{ start: number; size: number }> = []
+  const band = (start: number): number => {
+    const line = lineAt(start, avenues.has(streets.length) ? 'avenue' : 'street')
+    streets.push(line)
+    return line.width
+  }
+
   let at = MOUNTAIN_CELLS
   for (let i = 0; i < blocks; i++) {
-    streets.push(at)
-    at += BAND
+    at += band(at)
     const start = at
     at += sizes[i]!
+    // the street that is left out is given to the block, so the town keeps its span
     while (i < blocks - 1 && merges[i]) {
-      at += BAND + sizes[i + 1]!
+      at += BANDS.street.width + sizes[i + 1]!
       i++
     }
     runs.push({ start, size: at - start })
   }
-  streets.push(at)
-  return { streets, runs, span: at + BAND + MOUNTAIN_CELLS }
+  const last = band(at)
+  return { streets, runs, span: at + last + MOUNTAIN_CELLS }
 }
 
 /** One block's side: the nominal, jittered, nudged up if it would face only two ways. */

@@ -1,6 +1,6 @@
 import type { World } from '@gb/world'
 import { describe, expect, it } from 'vitest'
-import { MOUNTAIN_CELLS, STREET_CELLS } from '../src/index.ts'
+import { BANDS, MOUNTAIN_CELLS } from '../src/index.ts'
 import { buildTown, digest } from './support.ts'
 
 interface Cell {
@@ -19,7 +19,10 @@ interface RoadSegment {
   lanes: number
 }
 
-const HALF = Math.floor(STREET_CELLS / 2)
+/** The road out is its own width: half of it either side of the centreline. */
+const HALF = BANDS.exit.halfRoadway
+/** And its pavement runs from the first cell past the kerb to the last. */
+const KERB = [HALF + 1, HALF + BANDS.exit.pavement]
 
 const town = (overrides: Record<string, unknown> = {}) => buildTown('town', overrides)
 
@@ -79,7 +82,8 @@ describe('the roads out of the valley', () => {
 
     expect(roads).toHaveLength(4)
     for (const road of roads) {
-      expect(road.segment.lanes).toBe(2)
+      // two lanes each way: the road out is the widest in the valley
+      expect(road.segment.lanes).toBe(4)
       // it leaves from a crossing the town's own streets meet at, not from an orphan node
       expect(road.joinsAStreet).toBe(true)
       // and it ends on the edge of the map
@@ -108,13 +112,13 @@ describe('the roads out of the valley', () => {
       const alongside = cells.slice(-MOUNTAIN_CELLS, -1)
       expect(alongside).toHaveLength(MOUNTAIN_CELLS - 1)
       for (const cell of alongside) {
-        for (const side of [HALF + 1, -(HALF + 1)]) {
+        for (const side of [...KERB, ...KERB.map((n) => -n)]) {
           const kerb = beside(cell, road.junction, road.edge, side)
           expect(world.grid.at(kerb.x, kerb.y), `pavement at ${kerb.x},${kerb.y}`).toBe('sidewalk')
         }
       }
       // and stops short of the edge, so the road runs off the map instead of ending in two kerbs
-      for (const side of [HALF + 1, -(HALF + 1)]) {
+      for (const side of [...KERB, ...KERB.map((n) => -n)]) {
         const past = beside(road.edge, road.junction, road.edge, side)
         expect(world.grid.at(past.x, past.y), `beyond the pavement at ${past.x},${past.y}`).not.toBe('sidewalk')
       }
@@ -131,7 +135,7 @@ describe('the roads out of the valley', () => {
     for (const road of roads) {
       const last = centreline(road.junction, road.edge).at(-2)!
       expect(reached.has(`${road.edge.x},${road.edge.y}`), `roadway at the edge on the ${road.segment.id} road`).toBe(true)
-      for (const side of [HALF + 1, -(HALF + 1)]) {
+      for (const side of [...KERB, ...KERB.map((n) => -n)]) {
         const kerb = beside(last, road.junction, road.edge, side)
         expect(reached.has(`${kerb.x},${kerb.y}`), `pavement at ${kerb.x},${kerb.y}`).toBe(true)
       }
@@ -162,12 +166,14 @@ describe('the roads out of the valley', () => {
     expect(after.roads.nodes).toHaveLength(before.roads.nodes.length + 3)
     expect(after.roads.segments).toHaveLength(before.roads.segments.length + 3)
 
-    // and the only cells that changed are out in the mountain ring
+    // and the only cells that changed are out in the mountain ring, plus the
+    // pavement of the ring road where the mouth of the new road cuts through it
+    const reach = MOUNTAIN_CELLS + BANDS.street.pavement
     const toEdge = (cell: Cell) => Math.min(cell.x, cell.y, after.grid.width - 1 - cell.x, after.grid.height - 1 - cell.y)
     after.grid.rows.forEach((row, y) => {
       for (let x = 0; x < row.length; x++) {
         if (row[x] === before.grid.rows[y]![x]) continue
-        expect(toEdge({ x, y }), `${x},${y}`).toBeLessThanOrEqual(MOUNTAIN_CELLS)
+        expect(toEdge({ x, y }), `${x},${y}`).toBeLessThanOrEqual(reach)
       }
     })
   })
