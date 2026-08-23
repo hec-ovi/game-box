@@ -173,7 +173,6 @@ because `follow` spawned a companion without retiring the street walker.
 | 75 | Pass `at: { x, z }` from `walkers()` when a passer-by becomes a companion | app | Otherwise they teleport to the player instead of stepping off the pavement where they stood |
 | 76 | Treat `held === false` and `members().get(id) === undefined` as the conversation ending | app | A held walker is still retired past `retireRadius`, deliberately: an app-leaked hold would otherwise pin a walker forever. Walking 70 m away with a panel open ends the person, not just the hold |
 | 77 | `GESTURES` holds only the standing and seated talk clips | cast | A held street walker always plays `Idle_Loop` underneath, so only the standing one ever applies outdoors. Both animation packs are on disk with 85 clips between them and 16 shipped |
-| 78 | Whether cars brake for somebody standing in the road | traffic | Decides how bad a kerbside conversation looks. The crowd reads hazards and cannot slow one |
 
 ## From the save
 
@@ -198,6 +197,22 @@ was a blank panel, and a two second wait to avoid a cosmetic oddity trades a
 real fault for a smaller one. Somebody answering while they finish crossing
 reads as calling back over their shoulder. Companions are exempt from the rule
 entirely, so this only ever applies to a stranger on the pavement.
+
+## From the road
+
+Row 78 is closed. The braking rule was already in `@gb/traffic` and already fed
+by the app; two ways of running somebody over had survived it. A car now stops
+at anybody it could not brake for (0.5 m short, not zero, because zero would let
+the walking side's push-out shove a body down the street), and stays out of a
+junction somebody is standing in the middle of, which used to let one car hold
+every arm for 24 seconds. Cost on the case that is actually the game, people on
+pavements: 2 to 3.5x cheaper than before, and now scaling with the crowd rather
+than crowd times roads.
+
+| # | Work | Box | Detail |
+|---|---|---|---|
+| 83 | `street.ts` passes `PERSON_CLEAR` (0.34 m) as a person's radius to traffic | app | That is the body-collision capsule, not a person's width in the road. It makes the hazard band 1.24 m either side of a lane centre, so a car passes 0.56 m from somebody's middle without slowing: it clips a shoulder. Leave `radius` out, the port defaults to 0.5, or pass 0.5. One word, and it is the difference between clearing somebody and shaving them |
+| 84 | `near()` allocates an array plus one object per person per frame | app | Traffic's contract now permits reusing one array and mutating its entries. Small, and it is the app's frame |
 
 ## Checked and closed
 
