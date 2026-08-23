@@ -230,6 +230,12 @@ function withALedger() {
   return { world, plotId: plot.value.id }
 }
 
+/** Whatever came back, or the reason it did not. */
+function loaded<T>(result: { ok: true; value: T } | { ok: false; error: unknown }): T {
+  if (!result.ok) throw new Error(JSON.stringify(result.error))
+  return result.value
+}
+
 /** Take the ledger off one end of the counter and leave it at the other. */
 function tidyingUp() {
   const doc = {
@@ -268,11 +274,12 @@ function tidyingUp() {
  * reports a quest event of its own, so the only way the job moves is the player
  * pressing the key on something that is actually in front of them.
  */
-function inTheBar() {
+function inTheBar(kept?: { player: unknown; quests: unknown }) {
   const { world, plotId } = withALedger()
-  const player = PlayerState.create(world.id)
-  const log = QuestLog.create([tidyingUp()], player)
-  log.start('quest_0001')
+  const quests = [tidyingUp()]
+  const player = kept ? loaded(PlayerState.load(kept.player, world.id)) : PlayerState.create(world.id)
+  const log = kept ? loaded(QuestLog.load(kept.quests, quests, player)) : QuestLog.create(quests, player)
+  if (!kept) log.start('quest_0001')
 
   const patches: HudPatch[] = []
   const notices: Notice[] = []
@@ -286,6 +293,7 @@ function inTheBar() {
   const street = { solid: () => () => false, floor: () => () => 0, walkers: () => [] } as unknown as Street
   const buildings = new Buildings({
     world,
+    player,
     dressing: new Greybox(),
     stage: { show: () => {}, indoors: () => {} } as unknown as Stage,
     body: { setSolid: () => {}, setGround: () => {}, placeAt: () => {}, position: { x: 11, z: 13 } } as unknown as Player,
@@ -332,7 +340,10 @@ function inTheBar() {
     player,
     patches,
     targeting,
+    buildings,
     user: userEvent.setup(),
+    /** Everything the playthrough is written down as, for opening the city again. */
+    kept: () => JSON.parse(JSON.stringify({ player: player.toJSON(), quests: log.toJSON() })) as { player: unknown; quests: unknown },
     /** Walk up to something and look at it. North is the way the counter is. */
     standAt: (at: Vec2) => void (standing = { at, heading: 0 }),
     prompt: () => pick(standing.at, standing.heading, targeting.list())?.label,
@@ -384,6 +395,43 @@ describe('putting a thing down', () => {
     // and it goes again the moment the thing is out of their hands
     bar.player.drop('item_0001')
     expect(bar.prompt()).toBeUndefined()
+  })
+
+  it('is still on the strongbox when the city is opened again, and not back on its shelf as well', async () => {
+    const bar = inTheBar()
+    bar.standAt(byTheLedger)
+    await bar.user.keyboard('e')
+    bar.standAt(byTheStrongbox)
+    await bar.user.keyboard('e')
+    expect(bar.player.inventory()).toEqual([])
+
+    // the page is reloaded: the city is built again from its own file, which
+    // says where everything started, and the playthrough says what has moved
+    const again = inTheBar(bar.kept())
+
+    again.standAt(byTheLedger)
+    expect(again.prompt()).toBeUndefined()
+    again.standAt(byTheStrongbox)
+    expect(again.prompt()).toBe('Take the ledger')
+
+    // and there is one ledger in the room, not the one the file drew plus the
+    // one the player left, either of which could be picked up
+    expect(again.targeting.list().filter((target) => target.kind === 'take')).toHaveLength(1)
+  })
+
+  it('is not drawn on its shelf as well while the player is carrying it', async () => {
+    const bar = inTheBar()
+    bar.standAt(byTheLedger)
+    await bar.user.keyboard('e')
+
+    const again = inTheBar(bar.kept())
+    expect(again.player.inventory()).toEqual(['item_0001'])
+
+    // the same thing in a pocket and on a shelf is two of it, and taking the
+    // second one puts a thing in the world twice under one id
+    again.standAt(byTheLedger)
+    expect(again.prompt()).toBeUndefined()
+    expect(again.targeting.list().filter((target) => target.kind === 'take')).toEqual([])
   })
 
   it('leaves it where the job asked and not at the first surface in the room', async () => {

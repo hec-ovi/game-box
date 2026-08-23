@@ -25,6 +25,7 @@ import type { RoomArt } from './pack.ts'
 import { marked } from './places.ts'
 import { Player } from './player.ts'
 import { createStage, type Stage } from './renderer.ts'
+import { Playthrough } from './playthrough.ts'
 import { Reporting } from './reporting.ts'
 import { Session, type SaveStore } from './session.ts'
 import { atAnOpenDoor } from './spawn.ts'
@@ -71,6 +72,7 @@ export class Game {
   #attending: Attending
   #talking: Talking
   #report: Reporting
+  #playthrough: Playthrough
   #chart: Chart
   #targeting: Targeting
   #intents: Intents
@@ -132,11 +134,12 @@ export class Game {
       log: this.#log,
       player: this.#player,
       hud: this.#hud,
-      changed: () => this.#session?.keep(this.#player, this.#log),
+      changed: () => this.keep(),
     })
 
     this.#buildings = new Buildings({
       world: this.#world,
+      player: this.#player,
       dressing: input.dressing,
       ...(input.room ? { room: input.room } : {}),
       stage: this.#stage,
@@ -194,6 +197,9 @@ export class Game {
     this.#attending = new Attending({
       street: this.#street,
       eye: this.#stage.camera.position,
+      // whoever was being talked to has been retired off the far end of the
+      // street, so there is nobody left to be in a conversation with
+      gone: () => this.#talking.end(),
       post: (npcId): Post | undefined => {
         const body = this.#buildings.inside?.people.get(npcId)
         if (!body) return undefined
@@ -210,7 +216,11 @@ export class Game {
       hud: this.#hud,
       body: this.#body,
       attending: this.#attending,
-      ...(heads ? { gestures: new Gestures((npcId) => heads.get(npcId)) } : {}),
+      // one lookup for both: `@gb/crowd` answers it in the same shape the room
+      // does, and the crowd is asked first because somebody out walking is not
+      // also standing behind their own counter. Asked fresh every time, never
+      // kept: bodies are recycled, and a held one is a stranger's arms
+      gestures: new Gestures(() => this.#riderCast?.members(), () => heads),
       report: this.#report,
     })
 
@@ -261,6 +271,19 @@ export class Game {
 
     this.#hud.show({ controls: CONTROLS })
     this.#report.refresh()
+
+    // the city is built the same way every time, so everything a playthrough
+    // knows that the city does not is put back last, over the top of it
+    this.#playthrough = new Playthrough({
+      world: this.#world,
+      player: this.#player,
+      log: this.#log,
+      buildings: this.#buildings,
+      body: this.#body,
+      companions: this.#companions,
+      report: this.#report,
+    })
+    this.#playthrough.resume()
   }
 
   static async start(mount: HTMLElement, bundle: OpenedBundle, options: GameOptions): Promise<Game> {
@@ -362,7 +385,9 @@ export class Game {
   }
 
   keep(): void {
-    this.#session?.keep(this.#player, this.#log)
+    if (!this.#session) return
+    this.#playthrough.write()
+    this.#session.keep(this.#player, this.#log)
   }
 
   /** The scene as it stands, for the dev console to poke at. */

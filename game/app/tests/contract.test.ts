@@ -21,6 +21,8 @@ import { Guide } from '../src/guide.ts'
 import { Intents } from '../src/intents.ts'
 import { DAY, darkness, lookAt, NIGHT } from '../src/night.ts'
 import { marked, type Marked } from '../src/places.ts'
+import { Companions } from '../src/companions.ts'
+import { Playthrough } from '../src/playthrough.ts'
 import { Reporting } from '../src/reporting.ts'
 import { atAnOpenDoor } from '../src/spawn.ts'
 import { Stashing } from '../src/stashing.ts'
@@ -35,6 +37,14 @@ import type { Stage } from '../src/renderer.ts'
 import type { Sky } from '../src/sky.ts'
 import type { Vec2 } from '../src/walk.ts'
 import { CLOSE_FOV, WIDE_FOV, Zoom } from '../src/zoom.ts'
+
+/** A quest doc, run past the same door the game runs one past, on a world that has everything. */
+function checked(doc: unknown) {
+  const anything = { hasNpc: () => true, hasPlot: () => true, hasInterior: () => true, hasItem: () => true, hasAnchor: () => true }
+  const validated = validateQuest(doc, anything)
+  if (!validated.ok) throw new Error(JSON.stringify(validated.error))
+  return validated.value
+}
 
 /** Everything from x = 4 east is wall. */
 const wall = (x: number) => x >= 4
@@ -593,8 +603,10 @@ function walkIn(away: () => string[]): { buildings: Buildings; targeting: Target
   const { world, plotId, doorstep } = anchorage()
   const city = { doorsteps: new Map([[plotId, doorstep]]) } as unknown as CityBuild
   const street = { solid: () => () => false, floor: () => () => 0, walkers: () => [] } as unknown as Street
+  const player = PlayerState.create(world.id)
   const buildings = new Buildings({
     world,
+    player,
     dressing: new Greybox(),
     stage: { show: () => {}, indoors: () => {} } as unknown as Stage,
     body: { setSolid: () => {}, setGround: () => {}, placeAt: () => {}, position: { x: 5, z: 21 } } as unknown as Player,
@@ -608,7 +620,6 @@ function walkIn(away: () => string[]): { buildings: Buildings; targeting: Target
   })
   buildings.enter(plotId)
   const driving = { aboard: false, target: () => undefined } as unknown as Driving
-  const player = PlayerState.create(world.id)
   const log = QuestLog.create([], player)
   const stashing = new Stashing({ world, log, player, buildings, report: new Reporting({ world, log, player, hud: screenful().hud }) })
   return { buildings, targeting: new Targeting({ world, city, buildings, stashing, street, driving }), world }
@@ -664,6 +675,175 @@ describe('what is in reach inside a room', () => {
     expect(buildings.cityPosition()).toEqual({ x: 11, z: 13 })
     buildings.leave()
     expect(buildings.cityPosition()).toEqual({ x: 5, z: 21 })
+  })
+})
+
+describe('coming back to where the playthrough left off', () => {
+  /** Whatever came back off the save, or the reason it would not load. */
+  function came<T>(result: { ok: true; value: T } | { ok: false; error: unknown }): T {
+    if (!result.ok) throw new Error(JSON.stringify(result.error))
+    return result.value
+  }
+
+  /** One errand from the bartender, so there is a job that can be followed. */
+  const errand = checked({
+    format: 'game-box.quest',
+    schemaVersion: 1,
+    id: 'quest_0001',
+    kind: 'main',
+    title: 'A word with Wren',
+    summary: 'She wants a word.',
+    giverNpcId: 'npc_0001',
+    difficulty: 'small',
+    startStepId: 'step_0001',
+    reward: rewardFor('small'),
+    steps: [
+      { id: 'step_0001', objective: 'Talk to Wren', kind: 'talk', npcId: 'npc_0001', next: ['step_0002'] },
+      { id: 'step_0002', objective: 'Done', kind: 'complete' },
+    ],
+  })
+
+  /**
+   * The city, opened. Handed what a previous visit wrote down, it is that visit
+   * coming back: the city is built from its own file the same way it always is,
+   * and the save is put back over the top of it.
+   */
+  function open(kept?: { player: unknown; quests: unknown }) {
+    const { world, plotId, doorstep } = anchorage()
+    const player = kept ? came(PlayerState.load(kept.player, world.id)) : PlayerState.create(world.id)
+    const log = kept ? came(QuestLog.load(kept.quests, [errand], player)) : QuestLog.create([errand], player)
+
+    const followed: { id: string; at: Vec2 }[] = []
+    const stood: { x: number; z: number; heading: number | undefined }[] = []
+    const street = {
+      solid: () => () => false,
+      floor: () => () => 0,
+      walkers: () => [],
+      walkable: true,
+      follow: (npc: { id: string }, at: Vec2) => void followed.push({ id: npc.id, at }),
+      stopFollowing: () => {},
+    } as unknown as Street
+    const body = {
+      setSolid: () => {},
+      setGround: () => {},
+      position: { x: 5, z: 21 },
+      heading: 0,
+      placeAt: (x: number, z: number, heading?: number) => void stood.push({ x, z, heading }),
+    } as unknown as Player
+    const city = { doorsteps: new Map([[plotId, doorstep]]) } as unknown as CityBuild
+    const buildings = new Buildings({
+      world,
+      player,
+      dressing: new Greybox(),
+      stage: { show: () => {}, indoors: () => {} } as unknown as Stage,
+      body,
+      city,
+      sky: { visible: true } as unknown as Sky,
+      street,
+      announce: () => {},
+      arrived: () => {},
+      cameOut: () => {},
+      away: () => [],
+    })
+    const { pushed, hud } = screenful()
+    const report = new Reporting({ world, log, player, hud })
+    const companions = new Companions({ world, player, street, buildings, note: () => {} })
+    const playthrough = new Playthrough({ world, player, log, buildings, body, companions, report })
+    const resumed = kept ? playthrough.resume() : false
+    return {
+      resumed,
+      stood,
+      followed,
+      buildings,
+      player,
+      log,
+      pushed,
+      playthrough,
+      plotId,
+      /** What this visit wrote down, as the store would hold it. */
+      written: () => {
+        playthrough.write()
+        return JSON.parse(JSON.stringify({ player: player.toJSON(), quests: log.toJSON() })) as {
+          player: unknown
+          quests: unknown
+        }
+      },
+    }
+  }
+
+  /** Play a little, close the tab, and open the same city again. */
+  function reopen(play: (visit: ReturnType<typeof open>) => void) {
+    const first = open()
+    play(first)
+    return open(first.written())
+  }
+
+  it('opens the door they were behind and stands them where they were standing in it', () => {
+    const back = reopen((visit) => void visit.buildings.enter(visit.plotId))
+
+    expect(back.resumed).toBe(true)
+    // a room is measured in its own metres from its own corner, so the three
+    // numbers only mean anything once the player is back through that door
+    expect(back.buildings.place.kind).toBe('interior')
+    expect(back.stood.at(-1)).toEqual({ x: 5, z: 21, heading: 0 })
+  })
+
+  it('writes the room down with the metres, so the two are never read apart', () => {
+    const visit = open()
+    expect(visit.written().player).toMatchObject({ where: { x: 5, z: 21, heading: 0 } })
+    expect(visit.player.where?.interiorId).toBeUndefined()
+
+    visit.buildings.enter(visit.plotId)
+    visit.written()
+    expect(visit.player.where?.interiorId).toBe('interior_0001')
+  })
+
+  it('starts a new playthrough wherever the city starts it', () => {
+    const fresh = open()
+    expect(fresh.resumed).toBe(false)
+    expect(fresh.stood).toEqual([])
+  })
+
+  it('brings whoever was walking with them back beside them, not to their post across town', () => {
+    const back = reopen((visit) => {
+      visit.player.addCompanion('npc_0001')
+      visit.buildings.enter(visit.plotId)
+    })
+
+    // the doorstep, because a companion waits by the door of a building the
+    // player is inside. Left at their post they either walk the whole city to
+    // catch up or snap to the player on the first frame
+    expect(back.followed).toEqual([{ id: 'npc_0001', at: { x: 11, z: 13 } }])
+    // and they are not also standing at their anchor in the room
+    expect(back.buildings.peopleHere().map((person) => person.id)).toEqual(['npc_0002'])
+  })
+
+  it('follows the job it was following, and lets go of one nobody is holding', () => {
+    const held = reopen((visit) => {
+      visit.log.start('quest_0001')
+      visit.player.setTracked('quest_0001')
+    })
+    expect(held.pushed.at(-1)?.trackedQuestId).toBe('quest_0001')
+
+    // a tracked id is a name @gb/play never resolves, so a job given up before
+    // the reload would point the map and the panel at a quest nobody holds
+    const gone = reopen((visit) => void visit.player.setTracked('quest_0404'))
+    expect(gone.pushed.some((patch) => patch.trackedQuestId === null)).toBe(true)
+    expect(gone.player.tracked).toBeUndefined()
+  })
+
+  it('puts a thing back where the city file had it when the save names a shelf this city has not got', () => {
+    const back = reopen((visit) => {
+      visit.player.take('item_0001')
+      visit.player.place('item_0001', { interiorId: 'interior_0001', anchorId: 'anchor_0404' })
+    })
+
+    // the spot is two names to @gb/play and it never looks either up, so the
+    // one box that knows the city has to settle it: forgotten, the thing is
+    // drawn where the file put it rather than nowhere at all
+    expect(back.player.placedAt('item_0001')).toBeUndefined()
+    back.buildings.enter('plot_0001')
+    expect(back.buildings.inside?.pickups.get('item_0001')?.parent).toBeTruthy()
   })
 })
 
@@ -865,10 +1045,7 @@ describe('the journal', () => {
         { id: 'step_0004', objective: 'Finished', kind: 'complete' },
       ],
     }
-    const anything = { hasNpc: () => true, hasPlot: () => true, hasInterior: () => true, hasItem: () => true, hasAnchor: () => true }
-    const checked = validateQuest(doc, anything)
-    if (!checked.ok) throw new Error(JSON.stringify(checked.error))
-    return checked.value
+    return checked(doc)
   }
 
   function journal() {
@@ -976,10 +1153,7 @@ describe('what the player did in the interface', () => {
         { id: 'step_0005', objective: 'Done', kind: 'complete' },
       ],
     }
-    const anything = { hasNpc: () => true, hasPlot: () => true, hasInterior: () => true, hasItem: () => true, hasAnchor: () => true }
-    const checked = validateQuest(doc, anything)
-    if (!checked.ok) throw new Error(JSON.stringify(checked.error))
-    return checked.value
+    return checked(doc)
   })()
 
   /** The interface reporting what the player did, wired to the boxes that own it. */
@@ -1084,10 +1258,7 @@ describe('which quest the map and the guide are following', () => {
           { id: 'step_0002', objective: 'Done', kind: 'complete' },
         ],
       }
-      const anything = { hasNpc: () => true, hasPlot: () => true, hasInterior: () => true, hasItem: () => true, hasAnchor: () => true }
-      const checked = validateQuest(doc, anything)
-      if (!checked.ok) throw new Error(JSON.stringify(checked.error))
-      return checked.value
+      return checked(doc)
     })
     const player = PlayerState.create('world_0001')
     const log = QuestLog.create(quests, player)
@@ -1254,10 +1425,7 @@ describe('a conversation you can click through', () => {
         { id: 'step_0004', objective: 'Done', kind: 'complete' },
       ],
     }
-    const anything = { hasNpc: () => true, hasPlot: () => true, hasInterior: () => true, hasItem: () => true, hasAnchor: () => true }
-    const checked = validateQuest(doc, anything)
-    if (!checked.ok) throw new Error(JSON.stringify(checked.error))
-    return checked.value
+    return checked(doc)
   })()
 
   /** A town with somebody in it and a ledger on a shelf. */
@@ -1312,7 +1480,7 @@ describe('a conversation you can click through', () => {
       hud,
       body: { setTyping: () => {} } as unknown as Player,
       attending: { hold: () => {}, release: () => {} } as unknown as Attending,
-      gestures: new Gestures(() => arms.member),
+      gestures: new Gestures(() => new Map([[npcId, arms.member]])),
       report: new Reporting({ world, log, player, hud }),
     })
     // the game pushes `@gb/talk`'s own moves, which carry the action the
@@ -1410,9 +1578,30 @@ describe('a conversation you can click through', () => {
     expect(moved).toEqual([CLIPS.talk, 'stop', CLIPS.talk, 'stop'])
   })
 
+  it('finds a passer-by on the pavement before anybody standing in a room, and asks again every time', async () => {
+    const pavement = body(CLIPS.idle)
+    const counter = body(CLIPS.idle)
+    let outside: ReadonlyMap<string, CastMember> = new Map([['npc_0001', pavement.member]])
+    const inside = new Map([['npc_0001', counter.member]])
+    const gestures = new Gestures(() => outside, () => inside)
+
+    // somebody out walking is not also standing behind their own counter
+    gestures.start('npc_0001')
+    expect(pavement.moved).toEqual([CLIPS.talk])
+    expect(counter.moved).toEqual([])
+
+    // and the crowd hands a retired walker's body to the next person out, so a
+    // member kept from the start of the turn puts the hands on a stranger
+    const stranger = body(CLIPS.idle)
+    outside = new Map([['npc_0001', stranger.member]])
+    gestures.stop()
+    expect(stranger.moved).toEqual(['stop'])
+    expect(pavement.moved).toEqual([CLIPS.talk])
+  })
+
   it('lays the seated talk over somebody who is sitting down', async () => {
     const sitting = body(Cast.doingAt('sit'))
-    new Gestures(() => sitting.member).start('npc_0001')
+    new Gestures(() => new Map([['npc_0001', sitting.member]])).start('npc_0001')
 
     // a standing talk added to a sitting pose is a person waving from a chair
     // they are not really in: the gesture is laid over the base clip, not instead

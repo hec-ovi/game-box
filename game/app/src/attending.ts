@@ -127,13 +127,21 @@ export class Attending {
   #street: Holder
   #post: (npcId: string) => Post | undefined
   #eye: THREE.Vector3
+  #gone: () => void
   #held: Attention | undefined
   #anchored: Anchored | undefined
 
-  constructor(input: { street: Holder; post: (npcId: string) => Post | undefined; eye: THREE.Vector3 }) {
+  constructor(input: {
+    street: Holder
+    post: (npcId: string) => Post | undefined
+    eye: THREE.Vector3
+    /** Whoever was being talked to is not out here any more. Nothing by default. */
+    gone?: () => void
+  }) {
     this.#street = input.street
     this.#post = input.post
     this.#eye = input.eye
+    this.#gone = input.gone ?? (() => {})
   }
 
   /** Somebody has been spoken to. Whoever was listening before goes back to what they were doing. */
@@ -151,7 +159,16 @@ export class Attending {
 
   /** One frame: keep whoever is listening pointed at the player, wherever they have moved to. */
   update(seconds: number): void {
-    this.#held?.face(this.#eye.x, this.#eye.y, this.#eye.z)
+    const held = this.#held
+    // a hold does not pin somebody on the street forever: `@gb/crowd` retires
+    // a walker who has been left far behind, hold and all, so walking away with
+    // the panel still open ends the person and not only the hold
+    if (held && !held.held) {
+      this.#held = undefined
+      this.#gone()
+      return
+    }
+    held?.face(this.#eye.x, this.#eye.y, this.#eye.z)
     if (!this.#anchored) return
     this.#anchored.update(seconds, this.#eye)
     if (!this.#anchored.settled) return

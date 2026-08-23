@@ -14,6 +14,7 @@ import { Boot, type Start } from '../src/boot/boot.ts'
 import { CityMaker } from '../src/boot/city-maker.ts'
 import { download, exportName } from '../src/boot/export.ts'
 import { Panel } from '../src/boot/panel.ts'
+import { Conditions } from '../src/conditions.ts'
 import { Session, type SaveStore } from '../src/session.ts'
 import { Street } from '../src/street.ts'
 
@@ -267,6 +268,18 @@ describe('coming back to a playthrough', () => {
 
     expect(back?.player.money).toBe(42)
     expect(back?.player.flag('met-the-clerk')).toBe(true)
+  }, 30_000)
+
+  it('never comes back with the clock frozen, whatever it was doing when it was written', async () => {
+    const bundle = await city()
+    const player = PlayerState.create(bundle.world.id, 5)
+    // the player pressed P and then closed the tab. The rate it was running at
+    // was only ever in memory, so a save written here opens frozen forever:
+    // time never moves, the sun never sets and nothing on screen says why
+    expect(new Conditions(player.clock).hold()).toBe('Time held')
+    new Session(bundle, store).keep(player, QuestLog.create(bundle.quests, player))
+
+    expect(new Session(bundle, store).restore()?.player.clock.rate).toBeGreaterThan(0)
   }, 30_000)
 
   it('starts fresh when there is nothing kept', async () => {

@@ -1,5 +1,5 @@
 import { Bundle, type OpenedBundle } from '@gb/bundle'
-import { PlayerState } from '@gb/play'
+import { DEFAULT_RATE, PlayerState } from '@gb/play'
 import { QuestLog } from '@gb/quest'
 
 /** Somewhere a save can be kept between visits. */
@@ -29,7 +29,13 @@ export class Session {
     if (kept === undefined) return undefined
 
     const resumed = Bundle.resume(this.#bundle, kept)
-    if (resumed.ok) return resumed.value
+    if (resumed.ok) {
+      // the clock is saved at the rate it was running at, and P sets that to
+      // zero. Coming back to a city where time never moves and nothing says
+      // why is worse than losing a pause nobody asked to keep
+      if (resumed.value.player.clock.rate === 0) resumed.value.player.clock.setRate(DEFAULT_RATE)
+      return resumed.value
+    }
     console.warn(`the save does not belong to this city (${resumed.error.code}); starting fresh`)
     this.#store.clear()
     return undefined

@@ -82,8 +82,11 @@ export class Stashing {
     const spot = this.spots().find((each) => each.anchorId === anchorId)
     if (!spot) return
 
-    const letGo = this.#player.drop(spot.itemId)
-    if (!letGo.ok) return
+    // the city file says where this thing started; the playthrough is the only
+    // record that it has moved. Without it a reload draws it back on the shelf
+    // it was generated on, ready to be taken a second time. `place` takes it
+    // out of their hands itself, so there is no drop to go with it
+    this.#player.place(spot.itemId, { interiorId: spot.interiorId, anchorId })
     // and it is standing on that surface from here on, so the player can see
     // where they put it and can pick it back up
     this.#buildings.putDown(spot.itemId, anchorId)

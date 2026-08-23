@@ -27,9 +27,14 @@ export class Reporting {
     this.#changed = input.changed ?? (() => {})
   }
 
-  /** The quest the player chose to follow, echoed back to the interface. */
+  /**
+   * The quest the player chose to follow, echoed back to the interface and
+   * written down: which job they are on is part of the playthrough, so a
+   * refresh comes back following the same one.
+   */
   track(questId: string | null): void {
     this.#tracked = questId
+    this.#player.setTracked(questId)
     this.#hud.show({ trackedQuestId: questId })
   }
 

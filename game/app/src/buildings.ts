@@ -1,3 +1,4 @@
+import type { PlayerState } from '@gb/play'
 import { buildInterior, type Dressing, type CityBuild, type InteriorBuild } from '@gb/scene'
 import type { Interior, World } from '@gb/world'
 import { alsoBlockedBy } from './bodies.ts'
@@ -29,6 +30,7 @@ export type Arrival = { plotId: string } | { interiorId: string }
  */
 export class Buildings {
   #world: World
+  #player: PlayerState
   #dressing: Dressing
   #room: RoomArt | undefined
   #stage: Stage
@@ -47,6 +49,7 @@ export class Buildings {
 
   constructor(input: {
     world: World
+    player: PlayerState
     dressing: Dressing
     room?: RoomArt
     stage: Stage
@@ -60,6 +63,7 @@ export class Buildings {
     away: () => Iterable<string>
   }) {
     this.#world = input.world
+    this.#player = input.player
     this.#dressing = input.dressing
     this.#room = input.room
     this.#stage = input.stage
@@ -99,6 +103,7 @@ export class Buildings {
       const room = this.#room?.(interior)
       built = buildInterior(this.#world, interior, room?.dressing ?? this.#dressing)
       if (room) built.root.add(room.decor)
+      this.#asLeft(built, interior.id)
       this.#built.set(interior.id, built)
     }
 
@@ -138,6 +143,23 @@ export class Buildings {
     if (!doorstep) return
     this.#body.placeAt(doorstep.x, doorstep.z)
     this.#cameOut({ x: doorstep.x, z: doorstep.z })
+  }
+
+  /**
+   * The room as this playthrough left it rather than as the city file wrote it.
+   * `@gb/scene` builds every room from the world's own placements, which are
+   * where things started: a thing in the player's pocket would be drawn on its
+   * shelf as well, and a thing they left on a strongbox would be back on the
+   * shelf it came from. Both are the same thing twice, and both can be picked
+   * up again. Run once, when the room is built.
+   */
+  #asLeft(built: InteriorBuild, interiorId: string): void {
+    for (const itemId of this.#player.inventory()) built.pickups.get(itemId)?.removeFromParent()
+    for (const left of this.#player.placed()) {
+      // wherever it is now, it is not where the city file drew it
+      built.pickups.get(left.itemId)?.removeFromParent()
+      if (left.interiorId === interiorId) built.leave(left.itemId, left.anchorId)
+    }
   }
 
   /** Take a thing off the shelf it was drawn on. */
