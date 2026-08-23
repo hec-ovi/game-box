@@ -103,7 +103,11 @@ export class Hud {
         return this.#talk.submit()
       case 'tab':
       case 'shift-tab':
-        return this.#panel.trap(action === 'shift-tab')
+        // The window in front takes it; failing that the conversation, which
+        // has a ring of its own as soon as it has moves to step through.
+        return open
+          ? this.#panel.trap(action === 'shift-tab')
+          : this.#store.state.talk !== undefined && this.#talk.cycle(action === 'shift-tab')
       default:
         // The key of the window already up puts it away; any other switches.
         this.#dispatch({ kind: 'window', window: open === action ? null : action })
@@ -139,9 +143,20 @@ export class Hud {
         this.#store.apply({ trackedQuestId: intent.questId })
         break
       case 'say':
+        this.#store.answered(intent.text)
+        break
+      case 'choose':
+        // The player's own line goes up whichever way they gave it, so a picked
+        // move reads as something they said rather than a silent state change.
+        this.#store.answered(this.#label(intent.key))
         break
     }
     this.#handlers.onIntent(intent)
+  }
+
+  /** What the button said, so the transcript carries the player's own words. */
+  #label(key: string): string {
+    return this.#store.state.talk?.moves.find((move) => move.key === key)?.label ?? ''
   }
 
   #render(): void {

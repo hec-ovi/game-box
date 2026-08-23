@@ -27,18 +27,22 @@ export class FocusReturn {
 }
 
 /**
- * Keep Tab inside an open window. Returns false when there is nothing to keep,
- * which lets the key carry on to whatever else wanted it.
+ * Step round a ring of stops. Returns false when the ring is empty, which lets
+ * the key carry on to whatever else wanted it.
  */
-export function trapTab(root: HTMLElement, back: boolean): boolean {
-  const stops = focusables(root)
+export function cycleFocus(stops: readonly HTMLElement[], back: boolean): boolean {
   const first = stops[0]
   const last = stops[stops.length - 1]
   if (!first || !last) return false
 
-  const active = root.ownerDocument.activeElement
+  const active = first.ownerDocument.activeElement
   const at = active instanceof HTMLElement ? stops.indexOf(active) : -1
   const next = at === -1 ? (back ? last : first) : stops[(at + (back ? -1 : 1) + stops.length) % stops.length]
   next?.focus()
   return true
+}
+
+/** Keep Tab inside an open window: the ring is everything focusable in it. */
+export function trapTab(root: HTMLElement, back: boolean): boolean {
+  return cycleFocus(focusables(root), back)
 }

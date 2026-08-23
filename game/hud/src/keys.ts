@@ -47,7 +47,12 @@ export class Keys {
   }
 
   #action(event: KeyboardEvent): KeyAction | undefined {
-    if (this.#typing()) return event.key === 'Escape' ? 'close' : event.key === 'Enter' ? 'send' : undefined
+    if (this.#typing()) {
+      if (event.key === 'Escape') return 'close'
+      if (event.key === 'Enter') return 'send'
+      if (event.key === 'Tab') return event.shiftKey ? 'shift-tab' : 'tab'
+      return undefined
+    }
     // Somewhere else on the page is taking words: none of these keys are ours.
     if (editing(event.target)) return undefined
     if (event.key === 'Escape') return 'close'

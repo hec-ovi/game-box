@@ -1,6 +1,6 @@
 # @gb/hud contract
 
-contractVersion: 0.3.0
+contractVersion: 0.4.0
 
 ## Purpose
 
@@ -18,7 +18,7 @@ hud.show({ objectives: log.objectives(), money: player.money(), prompt: { key: '
 hud.show({ quests: log.active(), trackedQuestId: 'q1' })
 hud.show({ map: { width, height, plots, marks } })
 hud.show({ controls: [{ keys: ['W', 'A', 'S', 'D'], text: 'Walk', group: 'Move' }] })
-hud.show({ talk: { speaker: npc.name } })
+hud.show({ talk: { speaker: npc.name, moves: conversation.moves() } })
 hud.show({ talk: { replyChunk: token } })
 hud.announce({ kind: 'quest-complete', title: quest.title, reward: { money: 40 } })
 ```
@@ -34,6 +34,7 @@ hud.announce({ kind: 'quest-complete', title: quest.title, reward: { money: 40 }
 | `patch.prompt` | `{ key, text }` | text without the key: "Go into The Copper Wheel" |
 | `patch.money`, `patch.carrying` | a whole number, `Carried[]` | `quest: true` marks an item a live quest wants |
 | `patch.talk` | [TalkPatch](src/types.ts) | a new `speaker` starts a fresh panel; `replyChunk` appends a piece of the reply |
+| `patch.talk.moves` | [TalkMove](src/types.ts)`[]` | what the player can do this turn, as `{ key, label }` in plain words. Replaces the menu; an empty list draws none |
 | `patch.quests` | [QuestEntry](src/types.ts)`[]` | active quests with their steps and which are done, for the quests tab |
 | `patch.map` | [MapView](src/types.ts) | the city in grid cells: size, plot rects, and marks for the player and the places to head for |
 | `patch.controls` | [ControlHint](src/types.ts)`[]` | the game's own keys for the controls tab: `{ keys, text, group? }`, replaces the whole list |
@@ -44,10 +45,10 @@ hud.announce({ kind: 'quest-complete', title: quest.title, reward: { money: 40 }
 
 | Param | Type | Postconditions |
 |---|---|---|
-| `handlers.onIntent` | [HudIntent](src/types.ts) | `say` with the trimmed line, `talk-closed`, `typing` on every change of it, `window` with the face it moved to, `track` with the quest the player chose to follow |
-| `hud.typing` | boolean | true while the player is writing, which is when the game must let its keys go |
+| `handlers.onIntent` | [HudIntent](src/types.ts) | `say` with the trimmed line, `choose` with the `key` of the move clicked, `talk-closed`, `typing` on every change of it, `window` with the face it moved to, `track` with the quest the player chose to follow |
+| `hud.typing` | boolean | true while the conversation holds the keyboard, which is when the game must let its keys go |
 | `hud.destroy()` | void | the interface leaves the page, the key listener goes, every timer is cleared |
-| `HUD_KEYS` | `{ quests, map, items, controls, close, send }` | the keys the interface claims, so the game can bind around them |
+| `HUD_KEYS` | `{ quests, map, items, controls, close, send, pick }` | the keys the interface claims, so the game can bind around them |
 | `HUD_CSS` | string | the stylesheet, already installed in the document by the constructor; exported for apps that inline their css |
 
 ## Surfaces
@@ -61,9 +62,17 @@ Every surface is handed the whole state on every change and decides for itself w
 | Prompt | `prompt` | nothing |
 | Notices | `hud.announce` | nothing |
 | Bar | `window`, `hud.typing` | `window` |
-| Conversation | `talk` | `say`, `typing`, `talk-closed` |
+| Conversation | `talk` | `say`, `choose`, `typing`, `talk-closed` |
 | Scrim | `window` | `window: null` |
 | Window | `window` | `window` |
+
+## Saying it and clicking it
+
+The conversation takes an answer two ways and treats them as the same thing. Typed words go out as `say`. The moves the game says are legal go on screen as buttons, and clicking one goes out as `choose` with that move's key, which the game hands straight back to whoever owns the rules. Both put the player's own line above the reply, so a conversation reads the same afterwards however it was held.
+
+The menu is only ever what is legal now. Nothing is drawn greyed out for later: a move the game stops sending is off the screen on the next push, and a turn with nothing on the menu shows no menu at all rather than a row of things that do nothing.
+
+Answering quiets the menu. Between the player answering and the game publishing the next menu, the moves stay on screen to read and take no clicks, so a second answer cannot land on a turn that has already moved on. The game ends every turn by publishing a menu, even an empty one, which is what makes them live again.
 
 The window is one shell with four faces behind a tab strip. Each face is handed the same state.
 
@@ -102,7 +111,7 @@ One listener, on the window in the capture phase, so it runs before anything the
 - `Escape` closes what is in front of the player, one at a time: the window, then the conversation. With nothing open it passes through to the game.
 - `J` quests, `M` map, `I` items, `?` `/` and `F1` controls. The key of the face already up puts the window away; any other switches face without closing anything.
 - `Enter` sends what is in the conversation box.
-- `Tab` cycles inside the open window and nowhere else. Left and right walk the tab strip while it has focus.
+- `Tab` cycles inside whatever is in front of the player: the open window, or failing that the conversation, where the ring is the box, then each move, then the way out. Left and right walk the tab strip while it has focus.
 - While the player is writing, every other key stops at the hud and the game hears nothing.
 - A key the interface does not use passes straight through, and so does every key while another text field on the page has focus.
 
@@ -120,10 +129,10 @@ Thrown as `HudError` with a `code`:
 - One window, one face. Opening a face closes the one before it, so there is one scrim, one focus trap and one way out whatever the player is reading.
 - Every window closes two ways: a button the player can see and click, and a key. The key is printed on the button.
 - Opening and closing are transitions of 120 to 150 ms. A window is closed the moment it is asked to close: it stops taking clicks, leaves the accessible tree and lets the keyboard go, and only its pixels linger. The key that closes one window is free to open the next in the same breath.
-- Nothing takes the keyboard except the conversation box while the player is writing in it, and it reports `typing: false` before it reports `talk-closed`, so the game has its keys back before it hears the conversation ended. `typing` is reported on change only, never twice in a row.
+- Nothing takes the keyboard except the conversation, for as long as focus is anywhere inside it, and it reports `typing: false` before it reports `talk-closed`, so the game has its keys back before it hears the conversation ended. Stepping off the box onto a move does not hand the walk keys back mid-sentence. `typing` is reported on change only, never twice in a row.
 - Focus goes where the player is: a window that opens takes focus and hands it back to whatever had it when it closes. Nothing to hand back to means the page, which is where the game listens.
 - The player can read the controls without leaving what they are doing: the buttons carry their keys, the conversation carries its own two, and the controls tab lists everything the game declared.
-- A streamed reply appends into the node already on screen: text is written only where it changed, so nothing rebuilds mid-sentence.
+- A streamed reply appends into the node already on screen: text is written only where it changed, so nothing rebuilds mid-sentence. The menu is rebuilt only when the moves themselves change, so it does not flicker under a reply arriving word by word.
 - A face the player is not looking at holds no text, and neither does a window that has finished closing.
 - The corner panels never grow down the screen: each shows what is worth a glance, points at the window for the rest, and scrolls inside itself if what is left still does not fit.
 - The conversation, the window, the scrim behind it and the bar take the pointer; the rest of the interface lets clicks through to the scene.
@@ -141,4 +150,4 @@ Thrown as `HudError` with a `code`:
 
 ## How to modify this blackbox safely
 
-A new panel is a new surface in `src/surfaces/` plus its field on `HudPatch` and `HudState`; nothing else changes, because every surface is handed the whole state. A new face of the window is an entry in `src/windows.ts` plus a `Tab` in `src/tabs/`, and it gets its chrome, its transition and its focus manners free. A new announcement is a kind on `Notice`, its wording and size in `src/phrase.ts` and its name in the kind set. A new key is a `KeyAction` in `src/keys.ts` and a case in the hud, with its label in `src/controls.ts` so it appears on screen wherever it applies. Wording lives in `phrase.ts` and `controls.ts`; the look lives in `src/style/`, one file per concern, joined into one stylesheet at load. Run `pnpm --filter @gb/hud test` in the same change.
+A new kind of answer in the conversation is a case on `HudIntent` and a branch in the hud's `#dispatch`; anything the player picks goes out as an intent and comes back as a patch, because this box never decides what a move does. A new panel is a new surface in `src/surfaces/` plus its field on `HudPatch` and `HudState`; nothing else changes, because every surface is handed the whole state. A new face of the window is an entry in `src/windows.ts` plus a `Tab` in `src/tabs/`, and it gets its chrome, its transition and its focus manners free. A new announcement is a kind on `Notice`, its wording and size in `src/phrase.ts` and its name in the kind set. A new key is a `KeyAction` in `src/keys.ts` and a case in the hud, with its label in `src/controls.ts` so it appears on screen wherever it applies. Wording lives in `phrase.ts` and `controls.ts`; the look lives in `src/style/`, one file per concern, joined into one stylesheet at load. Run `pnpm --filter @gb/hud test` in the same change.

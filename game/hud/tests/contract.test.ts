@@ -252,6 +252,117 @@ describe('conversation', () => {
   })
 })
 
+describe('the moves on the table', () => {
+  const MOVES = [
+    { key: 'give_quest#q_ledger', label: 'Take the job: The Ledger' },
+    { key: 'hand_over#i_ledger', label: 'Hand over the ledger' },
+  ]
+
+  /** Every move on screen right now, in the order the player reads them. */
+  function options(screen: HTMLElement): string[] {
+    return [...screen.querySelectorAll('.gb-move')].map((node) => node.textContent ?? '')
+  }
+
+  it('draws nothing until there is something worth clicking', () => {
+    const { hud, screen } = mount()
+    hud.show({ talk: { speaker: 'Mara Quill' } })
+    expect(options(screen)).toEqual([])
+    expect(queryByText(screen, 'Pick a reply')).toBeNull()
+
+    // A conversation with nothing left to do but leave draws no menu either.
+    hud.show({ talk: { moves: [] } })
+    expect(options(screen)).toEqual([])
+
+    hud.show({ talk: { moves: MOVES } })
+    expect(options(screen)).toEqual(['Take the job: The Ledger', 'Hand over the ledger'])
+    getByText(screen, 'Pick a reply')
+  })
+
+  it('takes exactly the move that was clicked, and says so in the player\'s own words', async () => {
+    const user = userEvent.setup()
+    const { hud, screen, intents } = mount()
+    hud.show({ talk: { speaker: 'Mara Quill', moves: MOVES } })
+    intents.length = 0
+
+    await user.click(getByRole(screen, 'button', { name: 'Take the job: The Ledger' }))
+
+    expect(intents.filter((intent) => intent.kind === 'choose' || intent.kind === 'say')).toEqual([
+      { kind: 'choose', key: 'give_quest#q_ledger' },
+    ])
+    // and it reads as something the player said, not a silent state change
+    getByText(screen, 'Take the job: The Ledger', { selector: '.gb-you' })
+  })
+
+  it('drops a move the moment it stops being legal', () => {
+    const { hud, screen } = mount()
+    hud.show({ talk: { speaker: 'Mara Quill', moves: MOVES } })
+
+    hud.show({ talk: { moves: [MOVES[1]!] } })
+    expect(options(screen)).toEqual(['Hand over the ledger'])
+    expect(queryByRole(screen, 'button', { name: 'Take the job: The Ledger' })).toBeNull()
+  })
+
+  it('goes quiet while the answer is coming and comes back with the next menu', async () => {
+    const user = userEvent.setup()
+    const { hud, screen, intents } = mount()
+    hud.show({ talk: { speaker: 'Mara Quill', moves: MOVES } })
+
+    const take = getByRole(screen, 'button', { name: 'Take the job: The Ledger' }) as HTMLButtonElement
+    await user.click(take)
+    expect(take.disabled).toBe(true)
+
+    // the reply arriving is not the turn ending, so a second click cannot land
+    hud.show({ talk: { reply: '', replyChunk: "There's work going." } })
+    await user.click(take)
+    expect(intents.filter((intent) => intent.kind === 'choose')).toHaveLength(1)
+
+    hud.show({ talk: { moves: [MOVES[1]!] } })
+    expect((getByRole(screen, 'button', { name: 'Hand over the ledger' }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('quiets the menu on a typed line too, so the two ways cannot overlap', async () => {
+    const user = userEvent.setup()
+    const { hud, screen, intents } = mount()
+    hud.show({ talk: { speaker: 'Mara Quill', moves: MOVES } })
+
+    await user.keyboard('what have you got?{Enter}')
+    expect(intents).toContainEqual({ kind: 'say', text: 'what have you got?' })
+    getByText(screen, 'what have you got?', { selector: '.gb-you' })
+    expect((getByRole(screen, 'button', { name: 'Hand over the ledger' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('reaches every move from the keyboard, and takes one on Enter', async () => {
+    const user = userEvent.setup()
+    const { hud, screen, intents } = mount()
+    hud.show({ talk: { speaker: 'Mara Quill', moves: MOVES } })
+    expect(document.activeElement).toBe(box(screen))
+
+    await user.keyboard('{Tab}')
+    expect(document.activeElement).toBe(getByRole(screen, 'button', { name: 'Take the job: The Ledger' }))
+    // the game still hears nothing, because the conversation still has the keys
+    expect(hud.typing).toBe(true)
+
+    await user.keyboard('{Tab}')
+    expect(document.activeElement).toBe(getByRole(screen, 'button', { name: 'Hand over the ledger' }))
+
+    await user.keyboard('{Enter}')
+    expect(intents).toContainEqual({ kind: 'choose', key: 'hand_over#i_ledger' })
+  })
+
+  it('starts a fresh panel for the next speaker, with none of the last one on it', async () => {
+    const user = userEvent.setup()
+    const { hud, screen } = mount()
+    hud.show({ talk: { speaker: 'Mara Quill', moves: MOVES } })
+    await user.click(getByRole(screen, 'button', { name: 'Hand over the ledger' }))
+    hud.show({ talk: { replyChunk: 'Here. Don\'t lose it.' } })
+
+    hud.show({ talk: { speaker: 'Dorn Sela' } })
+    expect(options(screen)).toEqual([])
+    expect((screen.querySelector('.gb-you') as HTMLElement).textContent).toBe('')
+    expect(queryByText(screen, "Here. Don't lose it.")).toBeNull()
+  })
+})
+
 describe('the window', () => {
   it('opens on its key, and gives the keyboard back on the way out', async () => {
     const user = userEvent.setup()

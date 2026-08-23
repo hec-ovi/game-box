@@ -13,6 +13,7 @@ export const HUD_KEYS = {
   controls: '?',
   close: 'Esc',
   send: 'Enter',
+  pick: 'Tab',
 } as const
 
 /** Under the conversation box, where the player is looking while they type. */
@@ -21,10 +22,14 @@ export const TALK_HINTS: readonly ControlHint[] = [
   { keys: [HUD_KEYS.close], text: 'Walk away' },
 ]
 
+/** Added to those while there is a menu, so the moves are reachable by hand. */
+export const TALK_PICK_HINT: ControlHint = { keys: [HUD_KEYS.pick], text: 'Pick a reply' }
+
 /** The interface's own keys, listed last in the controls tab. */
 export const HUD_HINTS: readonly ControlHint[] = [
   ...WINDOW_TABS.map((tab) => ({ keys: [tab.key], text: tab.title, group: 'Interface' })),
   { keys: [HUD_KEYS.send], text: 'Send what you typed', group: 'Interface' },
+  { keys: [HUD_KEYS.pick], text: 'Step through a conversation or a window', group: 'Interface' },
   { keys: [HUD_KEYS.close], text: 'Close the window in front of you', group: 'Interface' },
 ]
 

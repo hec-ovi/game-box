@@ -71,12 +71,28 @@ export interface MapView {
   readonly marks?: readonly MapMark[]
 }
 
+/**
+ * One thing the player can do this turn, in words they can click. `key` is the
+ * game's own handle for the move and comes straight back on `choose`; `label`
+ * is what the button says, and never carries an id.
+ */
+export interface TalkMove {
+  readonly key: string
+  readonly label: string
+}
+
 /** The conversation as the player sees it. */
 export interface TalkState {
   readonly speaker: string
+  /** The player's last line, typed or picked, so the exchange reads as one. */
+  readonly you: string
   readonly reply: string
   /** What the speaker just did, oldest first: "gave you a job". */
   readonly acted: readonly string[]
+  /** The moves that are legal this turn. Empty draws no menu at all. */
+  readonly moves: readonly TalkMove[]
+  /** Between the player answering and the next menu arriving, the menu is quiet. */
+  readonly pending: boolean
 }
 
 /**
@@ -91,6 +107,8 @@ export interface TalkPatch {
   readonly replyChunk?: string
   /** Add a line to what the speaker just did. */
   readonly acted?: string
+  /** The moves legal right now, in the order they read. Replaces the menu. */
+  readonly moves?: readonly TalkMove[]
 }
 
 export interface Reward {
@@ -122,6 +140,7 @@ export type HudWindowName = 'quests' | 'map' | 'items' | 'controls'
 /** What the player did in the interface. */
 export type HudIntent =
   | { readonly kind: 'say'; readonly text: string }
+  | { readonly kind: 'choose'; readonly key: string }
   | { readonly kind: 'talk-closed' }
   | { readonly kind: 'typing'; readonly typing: boolean }
   | { readonly kind: 'window'; readonly window: HudWindowName | null }

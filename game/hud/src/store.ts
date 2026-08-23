@@ -58,6 +58,18 @@ export class HudStore {
     this.#onChange()
   }
 
+  /**
+   * The player answered, typed or picked. Their line goes up straight away, and
+   * the menu goes quiet until the game publishes the next one, so a second
+   * answer cannot land on a turn that has already moved on.
+   */
+  answered(you: string): void {
+    const talk = this.#state.talk
+    if (!talk) return
+    this.#state = { ...this.#state, talk: { ...talk, you, pending: talk.moves.length > 0 } }
+    this.#onChange()
+  }
+
   /** Adds a notice, then fades it and drops it again on its own clock. */
   announce(notice: Notice, ms: number): void {
     const id = this.#nextId++
@@ -106,11 +118,16 @@ function mergeTalk(current: TalkState | undefined, patch: TalkPatch | null): Tal
   const fresh = patch.speaker !== undefined && patch.speaker !== current?.speaker
   if (!fresh && !current) throw new HudError('no-conversation')
 
-  const base: TalkState = fresh || !current ? { speaker: patch.speaker ?? '', reply: '', acted: [] } : current
+  const blank: TalkState = { speaker: patch.speaker ?? '', you: '', reply: '', acted: [], moves: [], pending: false }
+  const base: TalkState = fresh || !current ? blank : current
   const reply = (patch.reply ?? base.reply) + (patch.replyChunk ?? '')
   return {
     speaker: patch.speaker ?? base.speaker,
+    you: base.you,
     reply,
     acted: patch.acted ? [...base.acted, patch.acted] : base.acted,
+    moves: patch.moves ?? base.moves,
+    // A menu arriving is the turn being over, so what is on it is live again.
+    pending: patch.moves === undefined && base.pending,
   }
 }

@@ -21,5 +21,6 @@ export type {
   QuestEntry,
   QuestStep,
   Reward,
+  TalkMove,
   TalkPatch,
 } from './types.ts'
