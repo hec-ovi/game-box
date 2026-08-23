@@ -2,6 +2,84 @@
 
 Every image this project wants, in one file. Ordered by what a player notices, so if you stop halfway you have still bought the biggest part of the change.
 
+## Corrections from the first run (2026-08-23)
+
+All 17 landed, plus 8 facade variants. What was learned running them, which
+matters more than the images: **the prompts below are the originals, and several
+of them cannot hit their own quality bar.** Apply these before regenerating.
+
+**Grok composes when given a list, and light spread is the detector.** Every
+prompt with a five-item wear list came back staged: a hero streak or soot blob
+with clean edges, recognisable the moment it repeats. Those measured 22 to 50%
+light spread against a 7% target. Trimming each list to one or two inherently
+uniform features took the same materials to 5 to 9%.
+
+Exact replacements that worked:
+
+- **Entry 1**: wear list becomes `an even film of soot grime and a faint tonal
+  difference from one panel to the next`. Cut the water runs, the dust in the
+  reveals and the grime line at joins.
+- **Entry 2**: `cladding plates` becomes `weathering steel sheet` (the word
+  "plates" makes the model give every plate its own rust event), and the wear
+  list becomes `a fine even oxide grain over the whole face`. Six attempts on
+  the original never got under 10%; the reworded one hit 5.2% first try.
+- **Entry 4**: wear list becomes `the shallow horizontal ridging of timber board
+  marks pressed into the concrete running across the whole frame and an even
+  film of soot grime`. Cutting the wide pale rain runs removed a hero diagonal
+  and took it from 49.4% to 5.0%.
+- **Entry 5**: `a dark anodised brushed aluminium shopfront surround at street
+  level` reliably makes Grok draw an entire shopfront, mullions and all. Use
+  `a flat panel of dark anodised brushed aluminium`. But cutting all the wear
+  leaves blank grey, so keep `a fine brushed grain running one way, an even dark
+  grimy film over the whole face and a scatter of fine scratches through the
+  anodising`.
+- **Entry 3** needs a tile **count**, not a tile size. "roughly sixty
+  centimetres across" gives either 60 cm tiles with a hero smear or a 10 cm
+  mosaic that is sub-pixel in game. `five tiles across the frame` pins it. This
+  is still the weakest entry in the list: about one generation in fifteen passes.
+- **Entries 9, 16, 17**: `taken from outside the building straight through its
+  window` makes the model draw a window frame around the room, and the negatives
+  do not stop it. Use `camera perpendicular to the far wall so the room fills the
+  whole frame edge to edge`.
+- **Entries 8 and 13**: the safe-area clause is ignored every time. Fix it in the
+  positive list instead: `a single small drink bottle` rather than `tall`, and
+  for the figure, cut `shot from slightly below`, which is what plants the
+  subject on the bottom edge. Keep `Bold and simple, readable from a long way
+  off`, which was tested and helps.
+
+**`a faint tonal difference from one panel to the next` is the single biggest
+light-spread driver.** It costs about 3 points on a flat material and 10 on one
+that already varies.
+
+**Tone.** Every generation comes back well above the requested RGB 25 to 70, mid
+grey or fully saturated. That is fine and applies to every tiling entry, not
+only the two that say so: the sampler divides by the image's own mean and
+multiplies in linear, so the final darkness is set in code. A near-black source
+would only cost tonal resolution and bring JPEG noise with it.
+
+**Running them.** `-p` must come last. "One image per call" does not mean one
+call at a time: each `grok` process writes under
+`~/.grok/sessions/<url-encoded-cwd>/`, so calls launched from **different
+working directories** cannot cross-label each other. Eight concurrent worked
+with no mislabelling. Also, `tile.mjs` writes four files into its outdir, so tile
+into scratch and copy only the `-tile.png` rather than dropping three review
+sheets next to the asset.
+
+**Yield, for planning a future batch.** facade-c passes about 4 in 5, facade-a
+and facade-b about 1 in 6, facade-d about 1 in 15. Four variants per facade was
+not reachable at the quality bar: 34 candidates produced 8 keepers, and two
+consecutive batches of eight produced nothing new, which is a prompt ceiling
+rather than a budget one.
+
+**Memory, measured.** The pack stores 256 px layers at 0.35 MB with mips, and a
+finish is one layer in each of the two facade strips, so 0.70 MB per material.
+The 8 variants are 16 layers and 5.6 MB: the pack goes 16.8 MB over 48 layers to
+22.4 over 64, and scene-resident textures 69.1 MB to 74.7 MB. The 17 base entries
+add nothing, because they repaint layers that already exist. Downsampling to the
+pack's 256 px convention is what makes this cheap: at the delivered 896 px a
+layer is 4.28 MB, and the variants alone would cost 68.5 MB.
+
+
 ## How to run one
 
 One image per call. Batched calls come back numbered by completion order, not call order, and get mislabelled.
