@@ -39,7 +39,7 @@ Three states, and the difference matters:
 | Player can control time and weather | done | `T`, `K`, `P` in the controls tab |
 | Import and export a city | verified | Browser export reopens; `contentHash` matches headless |
 | Everyone replays the same world | verified | Same seed, byte-identical, model up or down |
-| **Add houses and people to empty space later** | **open** | `Forge.extend` exists and is tested. Nothing calls it. |
+| **Add to a finished city later, as a pack** | **open** | `Forge.extend` exists and is tested. Nothing calls it, and nothing packages a pack. Not live growth: a finished city is added to between sessions, and the result is a world file others can open |
 | Big cities | verified | 20x20, 2,102 buildings, `gb check` 1.1 s |
 
 ## Generation
@@ -118,8 +118,8 @@ Open, and who has it:
   in floor the player cannot walk to. This is what "the shopkeeper is out of
   reach" actually was.
 - Lip sync and gestures driven by conversation.
-- The city cannot grow while you play: `Forge.extend` is built, tested, and
-  called by nobody.
+- No way to add to a finished city as a pack. `Forge.extend` is built, tested,
+  and called by nobody, and nothing packages or applies a pack.
 - A timed quest is an invisible real-time stopwatch, and one model reply is 8 to
   19 s of it.
 - A TV that plays something, inside the places.

@@ -121,3 +121,35 @@ of it needs the quest writer to know about locks and money before it can write
 a line that uses them. The cheapest first step is the `forge` instance brief,
 because everything else is unwritable until a generated place can contain a
 locked thing.
+
+## Packs: adding to a city after it is finished (2026-08-23)
+
+> "city grow we do not want to grow it while we play, we do want to allow
+> "DLC" so once we finish a city, we can add more things, but thats different
+> from dynamically grow while you play"
+
+Not live growth. A city is generated, played, and later added to as a separate
+authored step; the result is a world file anyone can open, the same as the
+original. `Forge.extend` is the mechanism and it is built and tested; what is
+missing is everything around it.
+
+What a pack has to guarantee, and none of it is guaranteed today:
+
+- **The base city does not change.** Adding a pack must leave every existing
+  street, building, interior, person and quest byte-identical. Anyone who played
+  the original recognises it.
+- **The design travels in the world file.** This is handover 21 and it is now
+  the blocking one: the catalogue lives in code, so a city opened against a
+  newer catalogue is re-skinned. A pack cannot be safe until a world file
+  carries the design it was built with.
+- **Ids continue rather than restart.** `world.toJSON()` carries `idCounters`;
+  extend has to mint from where the base left off so a pack's people and things
+  can never collide with the base's.
+- **A pack's quests can use the base's places and people.** Otherwise a pack is
+  a separate town rather than more of this one.
+- **It is deterministic.** Same base plus same pack gives the same world on
+  every machine, which is what makes a pack shareable at all.
+- **Something applies it.** A command, and later a way in from the game.
+
+Order: the design in the world file first, because a pack built before that is
+a pack that can silently rewrite the city it is added to.
