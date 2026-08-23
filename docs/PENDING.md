@@ -664,6 +664,33 @@ Boxes: `talk` for the sessions and the memory, `forge` for the reason and the
 life at generation, `crowd` for a walker's destination and errand, `play` for
 what persists.
 
+**Extended, 2026-08-23:** "we want complex intricate simulation, they have their
+own context, etc, so whatever you share they remember, etc."
+
+So a person's memory is not only their own history, it is **what the player told
+them**, and it changes how they answer later. That makes a conversation
+consequential rather than a vending machine: tell the barman you took a job from
+his rival and he knows it next time.
+
+Three things that follow, and they should be decided together rather than
+discovered:
+
+- **What is worth remembering.** Not the transcript. A small set of facts a
+  person now holds, each with where it came from. A transcript per person across
+  a city of hundreds is a world file that grows without bound; a handful of facts
+  is not.
+- **Does it spread?** He said they remember, not that they gossip. But once a
+  person holds a fact, whether it reaches anyone else is the next question and
+  it changes everything: knowledge that spreads is a simulation, knowledge that
+  sits is a memory. Ask before building, because the storage and the model cost
+  are very different.
+- **The player has to be able to see it.** A person who silently knows something
+  is indistinguishable from one who does not. Whatever they remember has to
+  surface in what they say, or it is invisible machinery.
+
+This is the largest unbuilt thing in the project and it is worth a design pass of
+its own, the way `docs/PLACES.md` was, rather than being started from a brief.
+
 ### A quest sends you to somebody who is not there (2026-08-23, found by him)
 
 He was sent to find a person and the room was empty.
