@@ -31,6 +31,8 @@ Concretely, in order:
 
 ## Next up
 
+- **The vocabulary of places, for a cyberpunk city.** He named what he wants: "a hospital, a police station, an office, a corporate office, a nightclub". Today `BUILDING_KINDS` is house, apartment, bar, cafe, restaurant, shop, market, office, workshop, warehouse, clinic, hotel, station, chapel. Some of that is a market town rather than a city: a chapel is doubtful, a clinic wants to become a hospital, and there is no police station, no corporate tower and no nightclub. One coherent task across four boxes: the enum in `@gb/world`, the weights and staples and interior programmes in `@gb/forge`, a dresser per new kind in `@gb/furnish`, and a trade word for the sign in `@gb/kitbash`. A place is worth adding only if it changes what happens there, so each new kind needs its own rooms, its own staff role, and a reason a quest would send you.
+
 - **A TV that plays something.** `tv` is already in the prop vocabulary and `@gb/furnish` already generates its geometry; what it lacks is a screen with moving pictures. Queued behind that box's wall and floor pass. Approach to weigh when it starts: a generated animated screen (a broadcast, a ticker, glitch, colour bars) costs no download, carries no licence question and suits a cyberpunk room, against a real video file which would have to be CC0 or ours and would sit in a world file that people hand to each other. A screen is also emissive, so it will bloom and light the room, which is worth more than the picture itself.
 
 ## Small, found by agents, nobody assigned
