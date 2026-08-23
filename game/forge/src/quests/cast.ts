@@ -48,6 +48,8 @@ export class CityCast {
   #hiding: CastPlace[] = []
   #stock: Stock
   #jobs = new Map<string, number>()
+  #home = new Map<string, string>()
+  #busy = new Set<string>()
 
   constructor(summary: WorldSummary) {
     this.places = summary.places
@@ -58,6 +60,7 @@ export class CityCast {
       this.#peopled.push(place)
       for (const npc of place.npcs) {
         const person = { place, npc }
+        this.#home.set(npc.npcId, place.plotId)
         this.#everyone.push(person)
         if (GIVER_ROLES.has(npc.role)) this.#givers.push(person)
         if (WALKER_ROLES.has(npc.role)) this.#walkers.push(person)
@@ -134,10 +137,22 @@ export class CityCast {
     return best
   }
 
-  /** Somebody who can hand out work, and has not handed out too much already. */
+  /**
+   * Somebody who can hand out work, and has not handed out too much already.
+   *
+   * A door nothing has been asked of yet is tried before one that has already
+   * handed something out, because a player meets a town one door at a time: work
+   * stacked on two counters is a town where the first six people you walk in on
+   * have nothing for you, however much of it there is.
+   */
   giver(rng: Rng, avoid: readonly string[] = []): CastPerson | undefined {
     const spare = (person: CastPerson) => !avoid.includes(person.npc.npcId) && (this.#jobs.get(person.npc.npcId) ?? 0) < JOBS_PER_GIVER
-    return pickNear(rng, this.#givers, placeOf, spare) ?? pickNear(rng, this.#everyone, placeOf, spare)
+    const quiet = (person: CastPerson) => spare(person) && !this.#busy.has(person.place.plotId)
+    return (
+      pickNear(rng, this.#givers, placeOf, quiet) ??
+      pickNear(rng, this.#givers, placeOf, spare) ??
+      pickNear(rng, this.#everyone, placeOf, spare)
+    )
   }
 
   /** Somebody with no counter to stand behind, who can be walked somewhere. */
@@ -177,7 +192,11 @@ export class CityCast {
   /** Books things and people so nothing is promised to two quests at once. */
   book(items: readonly CastItem[], givers: readonly string[] = []): void {
     this.#stock.take(items)
-    for (const npcId of givers) this.#jobs.set(npcId, (this.#jobs.get(npcId) ?? 0) + 1)
+    for (const npcId of givers) {
+      this.#jobs.set(npcId, (this.#jobs.get(npcId) ?? 0) + 1)
+      const home = this.#home.get(npcId)
+      if (home) this.#busy.add(home)
+    }
   }
 }
 

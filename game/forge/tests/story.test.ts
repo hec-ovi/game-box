@@ -170,6 +170,33 @@ describe('a town that remembers what the player did', () => {
     }
   })
 
+  it('has somebody with work behind a good share of the doors a fresh player can open', () => {
+    // the gate is only as good as the number of ungated people a player can walk
+    // in on, and they can only walk in on the doors that open
+    for (const built of [town, city, hamlet]) {
+      const home = new Map(
+        built.world.interiors().flatMap((interior) =>
+          built.world
+            .npcs()
+            .filter((npc) => npc.station?.interiorId === interior.id)
+            .map((npc) => [npc.id, interior.plotId] as const),
+        ),
+      )
+      const player = PlayerState.create(built.world.id, 200)
+      const log = QuestLog.create(built.quests, player)
+      const givers = [...new Set(built.quests.map((quest) => quest.giverNpcId))]
+      const offering = new Set(givers.flatMap((giver) => log.offeredBy(giver)).map((quest) => home.get(quest.giverNpcId)))
+      const doors = built.world.interiors().length
+      expect(offering.size / doors, `${built.world.name} opens ${doors} doors with work behind ${offering.size}`).toBeGreaterThan(0.25)
+      // and it is spread over the doors rather than stacked on a few counters.
+      // The hamlet is left out: three doors and four jobs is somebody with two
+      // of them whatever the writer prefers
+      if (built === hamlet) continue
+      const holding = new Set(built.quests.map((quest) => home.get(quest.giverNpcId)))
+      expect(built.quests.length / holding.size, `${built.world.name} stacks its work on ${holding.size} counters`).toBeLessThan(1.4)
+    }
+  })
+
   it('stops offering work at a place the player crossed, and keeps offering it everywhere else', () => {
     const { world, quests } = city
     const crossings = quests.flatMap((quest) => quest.requires ?? []).filter((need) => need.kind === 'flag' && need.flag.startsWith('crossed:'))

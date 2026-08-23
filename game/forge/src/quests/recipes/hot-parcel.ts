@@ -23,6 +23,8 @@ export class HotParcel extends RecipeBase {
     const { place: source, item } = lifted
 
     const thing = item.name.toLowerCase()
+    // the hint is read from wherever the player is standing, which is usually not this room
+    const owner = source.npcs.find((npc) => npc.npcId === item.ownerNpcId)?.name ?? `somebody at ${source.name}`
     const walk = cast.metres(giver.place, source) * 2
     const seconds = secondsToWalk(walk)
 
@@ -44,7 +46,7 @@ export class HotParcel extends RecipeBase {
           allowSteal: true,
           objective: `Lift the ${thing} from ${source.name}`,
           markerLabel: source.name,
-          hint: 'It belongs to somebody, and they are standing right there.',
+          hint: `It belongs to ${owner}, who is in the room with it.`,
           next: [stepId(2)],
         },
         {

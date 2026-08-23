@@ -7,7 +7,20 @@ import { MainLine, standing, type Link } from './line.ts'
 import { RECIPES, type Job, type Recipe } from './recipes/index.ts'
 import { questId, type Draft } from './shape.ts'
 
-/** Side jobs that are going before the player has done anything at all. */
+/**
+ * How much of a town's side work is on the board before the player has done
+ * anything.
+ *
+ * A town opens about one door in eight, so what a fresh player meets is not a
+ * share of the quest list, it is how many of the doors they can actually walk
+ * into have somebody with something to say. Three quarters of the side work up
+ * front puts that at about a third of them, so the third or fourth place you
+ * try has a job in it. The rest, and most of the main line, is still behind the
+ * ladder.
+ */
+const OPENING = 0.75
+
+/** The fewest a town puts up front, however little work it has. */
 const FREE_SIDES = 2
 
 /**
@@ -43,9 +56,10 @@ export class QuestWriter {
       tier = rung[0]!.tier
     }
 
+    const opening = Math.max(FREE_SIDES, Math.round(sideQuests * OPENING))
     for (let i = 0; i < sideQuests; i++) {
       const rng = this.#rng.fork(`side/${i}`)
-      const gate = tier > 0 && i >= FREE_SIDES ? rng.weighted(gates(tier)) : 0
+      const gate = tier > 0 && i >= opening ? rng.weighted(gates(tier)) : 0
       const draft = this.#one(cast, rng, flavour, {
         id: questId(drafts.length + 1),
         kind: 'side',
@@ -97,7 +111,7 @@ function rungs(links: readonly Link[]): Link[][] {
   return [...byTier.keys()].sort((a, b) => a - b).map((tier) => byTier.get(tier)!)
 }
 
-/** How side work spreads over the main line: about a third up front, the rest behind it. */
+/** Where the work that is not on the board yet sits: evenly up the rungs of the main line. */
 function gates(tiers: number): ReadonlyArray<readonly [number, number]> {
-  return Array.from({ length: tiers + 1 }, (_, tier) => [tier, tier === 0 ? tiers : 2] as const)
+  return Array.from({ length: tiers }, (_, tier) => [tier + 1, 1] as const)
 }
