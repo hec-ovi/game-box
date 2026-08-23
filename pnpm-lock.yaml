@@ -50,6 +50,9 @@ importers:
       '@gb/crowd':
         specifier: workspace:*
         version: link:../crowd
+      '@gb/drive':
+        specifier: workspace:*
+        version: link:../drive
       '@gb/forge':
         specifier: workspace:*
         version: link:../forge

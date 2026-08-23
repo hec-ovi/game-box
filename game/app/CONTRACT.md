@@ -1,10 +1,10 @@
 # @gb/app contract
 
-contractVersion: 0.3.1
+contractVersion: 0.4.0
 
 ## Purpose
 
-The game you can play: the panel you make a city in, the renderer, the frame loop, the first-person body, the grade that turns the hour into a look, and the wiring that turns every other box into a city you walk around.
+The game you can play: the panel you make a city in, the renderer, the frame loop, the first-person body, the car it gets into, the grade that turns the hour into a look, and the wiring that turns every other box into a city you walk around.
 
 ## Inputs
 
@@ -21,7 +21,7 @@ The game you can play: the panel you make a city in, the renderer, the frame loo
 | Param | Schema | Postconditions |
 |---|---|---|
 | the running game | | walk, look, go into buildings, talk, take, carry, deliver |
-| the controls | | mouse looks, WASD walks, shift runs, C held crouches, space jumps, E acts on what is in reach, left click on somebody asks them along, right button held looks closer, N opens the panel, Escape leaves a conversation |
+| the controls | | mouse looks, WASD walks and drives, shift runs, C held crouches, space jumps, E acts on what is in reach, left click on somebody asks them along, right button held looks closer, G says the way to the tracked quest, T turns the time of day, K the weather, P holds the clock, N opens the panel, Escape leaves a conversation |
 | a generated city | a sealed `@gb/bundle` document | byte for byte what the same brief builds anywhere else |
 | Export | a `.gbworld.json` file | the document the game is playing, so what is kept is what was played |
 | `Game.tick(seconds)` | | advances and draws one frame by hand, for when the browser suspends the loop |
@@ -34,7 +34,7 @@ None at the boundary. A city that will not build and a file that will not open a
 
 ## Dependencies
 
-`@gb/bundle`, `@gb/cast`, `@gb/crowd`, `@gb/forge`, `@gb/furnish`, `@gb/hud`, `@gb/kitbash`, `@gb/land`, `@gb/nav`, `@gb/play`, `@gb/quest`, `@gb/scene`, `@gb/scribe`, `@gb/sidecar`, `@gb/talk`, `@gb/traffic`, `@gb/world`, `three`.
+`@gb/bundle`, `@gb/cast`, `@gb/crowd`, `@gb/drive`, `@gb/forge`, `@gb/furnish`, `@gb/hud`, `@gb/kitbash`, `@gb/land`, `@gb/nav`, `@gb/play`, `@gb/quest`, `@gb/scene`, `@gb/scribe`, `@gb/sidecar`, `@gb/talk`, `@gb/traffic`, `@gb/world`, `three`.
 
 ## Invariants
 
@@ -46,13 +46,16 @@ None at the boundary. A city that will not build and a file that will not open a
 - Export writes the document the game opened, not a fresh pack of the same world, so the file and the playthrough cannot disagree.
 - A refresh comes back to the same city and the same playthrough. The city is remembered as its brief and generated again; the playthrough is a `@gb/bundle` save in the browser's own store, and one that belongs to another city is dropped rather than forced.
 - One unit is one metre. Inside the built area the walls come from the grid the city was generated on; past it the land says how high the ground is and whether it can be stood on, so the player walks out of town onto open country rather than into the edge of the map. No physics engine, no baked collision.
-- The player is placed on the pavement facing the first door in town, and entering a building puts them inside it facing the room.
+- The player is placed on the pavement a step off the first door in town that opens, looking at it. Most buildings are shut, so the first door on the street is usually one nobody can go through, and a player who opens their eyes on a blank wall has nothing to press. The step is taken back off the kerb where the pavement is deep enough and along it where it is not, so the opening frame is a street rather than a facade. Entering a building puts them inside it facing the room.
+- **The way in is only ever offered for a building that opens.** Seven in eight have no interior, and a prompt on one of those is a lie the player walks into.
 - Looking closer narrows the field of view and slows the mouse by the same amount, so the same hand movement covers the same distance on screen however far in you are.
 - The floor has height: the pavement stands a kerb above the road, and walking onto it steps up rather than clipping through. Crouching and standing ease between heights for the same reason.
 - Boxes that must not know about each other are joined here and only here: the crowd is told what is driving, traffic is told who is walking, both are told the hour so headlamps and lit windows agree with the sky, and none of them imports another.
 - The people on the street are the city's own residents, so anybody the player passes can be named and talked to, and somebody who is out walking is not also standing behind their own counter.
 - **Whoever is being talked to turns to the player and looks them in the eye**, and goes back to what they were doing when the conversation ends. A pedestrian stops mid-route, comes round, and walks the rest of their route afterwards; a companion stops keeping up and catches up again; somebody at their post in a room stays on their post and turns only as far as their head cannot reach, so a shopkeeper never swings their back to their own counter. The turn eases rather than snapping, and the head leads it. It happens on the conversation opening, not on being looked at: a pedestrian who stopped every time the crosshair crossed them would bring the pavement to a halt.
 - A companion who followed the player into a building is waiting by the door when they come out, rather than where they were standing when the door closed.
+- **The player can drive.** Any car on the road can be taken: `E` on a car within reach gets in, and `E` behind the wheel gets out. The companions ride, and are back on the pavement beside the car when the player gets out. While driving, the first person body is ridden rather than walked: the eye is put where the seat is every frame and the view turns with the car, so the mouse still looks around inside one that is cornering.
+- **The car the player left is solid to walk into and something the traffic brakes for**, joined here the same way the crowd and the traffic are: `@gb/drive` and `@gb/traffic` never see each other.
 - The player is stopped by people and by cars, not only by walls. Both move every frame, so what is solid is asked fresh rather than baked, and a car is treated as the long thing it is rather than as a circle.
 - The landscape brings its own sky and light. Plain daylight only comes out if the landscape fails to build, so a scene is never unlit.
 - The sky lights the scene once. A prefiltered copy of the skydome in `scene.environment` is the sky doing that job, so `Land.skyLight` is taken down rather than counted alongside it: with both on, a cast shadow takes 1.4% of the light off what it falls on instead of 39%, which is no shadow at all.
@@ -63,6 +66,11 @@ None at the boundary. A city that will not build and a file that will not open a
 - The glow is taken off the finished frame, not off an emissive-only pass. What is bright is what glows, so a sign glows, and so does the sign again where a wet road is mirroring it.
 - Indoors the hour stops driving the frame. A room is lit by its own ceiling at every hour of the day and is developed the same way whatever the sky outside is doing.
 - The grade is a function of the hour and nothing else: no `Rng`, no wall clock, so the same minute of the same playthrough is the same frame on any machine.
+- **The map is the grid the city was generated on**, handed to `@gb/hud` in cells: the plots as rectangles, the player as an arrow at their own bearing, and a pin on every place the tracked quest points at. Nothing is surveyed and nothing is baked, and it is measured only while the map is the face on screen, four times a second, so a window nobody has open costs nothing.
+- **Only the places the quest points at are named on the plan.** Nine hundred labels on one map is not a map.
+- **The way somewhere is the walk, not the line.** `G` asks `@gb/nav` for the route from where the player is standing, and answers with the distance along it and the compass point of its first stretch: "The Copper Wheel: 140 m, head north-east". The map is north up, so the two read together. Nowhere to walk to says so rather than pointing through a building.
+- **A step is ticked in the journal when the quest log says it is done**, and never because the player has not reached it yet.
+- **The hour and the weather are the player's to turn.** `T` walks the time of day round dawn, midday, sundown and midnight, `K` walks the weather round clear, overcast and rain, and `P` holds the clock and lets it run again at the rate it was running at. Every one of them is a call into `@gb/play`, which owns what a reading means, and the sky follows because it reads the same clock every frame. Time only ever goes forward: a jump that wraps past midnight is tomorrow, so skipping to dawn runs a quest's timer down rather than winding it back.
 - The interface is not in the chain. `@gb/hud` is DOM over the canvas, so the glow and the tint stop at the canvas edge and a panel is never bloomed.
 - Half a game never sits on the page. A city that will not draw takes its stage and its interface back off before the panel says so, and the city itself can still be exported.
 - The look belongs to `@gb/hud`. The panel is the one surface this box draws, because it has to be up before the hud exists; it is written from the hud's own tokens and holds no colour of its own.
@@ -96,6 +104,11 @@ One responsibility each. `boot/` is everything before there is a game; the rest 
 | `index.ts` | the box's one entry |
 | `game.ts` | the pieces, and the frame |
 | `controls.ts` | the keys the game binds, for the interface to print |
+| `chart.ts` | the city from above, for the map face of the window |
+| `places.ts` | what a quest objective points at, found on the city |
+| `guide.ts` | the walk to it, and which way to set off |
+| `conditions.ts` | the hour and the weather, and what a key does to them |
+| `spawn.ts` | where the player opens their eyes |
 | `session.ts` | the playthrough between visits |
 | `renderer.ts` | renderer, camera, lights, the frame loop |
 | `grade.ts` | the chain between the scene and the screen |

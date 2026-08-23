@@ -1,6 +1,6 @@
 import type { Carried, Hud, QuestEntry } from '@gb/hud'
 import type { PlayerState } from '@gb/play'
-import type { Change, QuestLog } from '@gb/quest'
+import type { Change, Objective, QuestLog } from '@gb/quest'
 import type { World } from '@gb/world'
 
 /** What a box handed back: changes to announce, or an error to let go. */
@@ -17,6 +17,7 @@ export class Reporting {
   #player: PlayerState
   #hud: Hud
   #changed: () => void
+  #tracked: string | null | undefined
 
   constructor(input: { world: World; log: QuestLog; player: PlayerState; hud: Hud; changed?: () => void }) {
     this.#world = input.world
@@ -24,6 +25,23 @@ export class Reporting {
     this.#player = input.player
     this.#hud = input.hud
     this.#changed = input.changed ?? (() => {})
+  }
+
+  /** The quest the player chose to follow, echoed back to the interface. */
+  track(questId: string | null): void {
+    this.#tracked = questId
+    this.#hud.show({ trackedQuestId: questId })
+  }
+
+  /**
+   * The open steps of the quest being followed: what the map pins and the guide
+   * walks to. Nothing chosen follows the first quest with an open step, which
+   * is what the interface shows when it is not told which to follow.
+   */
+  following(): readonly Objective[] {
+    const objectives = this.#log.objectives()
+    const tracked = this.#tracked === undefined ? objectives[0]?.questId : this.#tracked
+    return tracked ? objectives.filter((objective) => objective.questId === tracked) : []
   }
 
   /** A result from the quest log: announce what it changed, or let it go. */
@@ -58,18 +76,25 @@ export class Reporting {
     this.#changed()
   }
 
-  /** Every quest under way, with the steps behind and ahead of the player. */
+  /**
+   * Every quest under way, with the steps behind and ahead of the player. A
+   * step is ticked when the quest log says it is finished: everything else is
+   * either open now or still ahead, and neither of those is done.
+   */
   #quests(): QuestEntry[] {
-    const open = new Set(this.#log.objectives().map((objective) => objective.stepId))
+    const progress = this.#log.toJSON().quests
     return this.#log
       .quests()
       .filter((quest) => this.#log.status(quest.id) === 'active')
-      .map((quest) => ({
-        questId: quest.id,
-        title: quest.title,
-        steps: quest.steps
-          .filter((step) => step.kind !== 'complete' && step.kind !== 'fail' && step.kind !== 'join')
-          .map((step) => ({ stepId: step.id, text: step.objective, done: !open.has(step.id) })),
-      }))
+      .map((quest) => {
+        const done = new Set(progress[quest.id]?.done ?? [])
+        return {
+          questId: quest.id,
+          title: quest.title,
+          steps: quest.steps
+            .filter((step) => step.kind !== 'complete' && step.kind !== 'fail' && step.kind !== 'join')
+            .map((step) => ({ stepId: step.id, text: step.objective, done: done.has(step.id) })),
+        }
+      })
   }
 }

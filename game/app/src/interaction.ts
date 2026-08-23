@@ -1,9 +1,12 @@
+import type { Driving } from '@gb/drive'
 import type { Hud } from '@gb/hud'
 import type { PlayerState } from '@gb/play'
 import type { QuestLog } from '@gb/quest'
 import type { World } from '@gb/world'
 import type { Buildings } from './buildings.ts'
 import type { Companions } from './companions.ts'
+import type { Conditions } from './conditions.ts'
+import type { Guide } from './guide.ts'
 import type { Player } from './player.ts'
 import type { Reporting } from './reporting.ts'
 import type { Talking } from './talking.ts'
@@ -11,8 +14,10 @@ import type { Target } from './targets.ts'
 
 /**
  * What the player did and what it does. One key acts on whatever is in reach,
- * one click asks whoever is in reach to come along. Nothing here decides an
- * outcome: the quest log, the playthrough and the conversation do that.
+ * one click asks whoever is in reach to come along, and the rest ask for the
+ * way somewhere or turn the hour and the weather over. Nothing here decides an
+ * outcome: the quest log, the playthrough, the conversation, the guide and the
+ * clock do that, and this reports back whatever they said.
  */
 export class Interaction {
   #world: World
@@ -23,6 +28,9 @@ export class Interaction {
   #buildings: Buildings
   #talking: Talking
   #companions: Companions
+  #driving: Driving
+  #guide: Guide
+  #conditions: Conditions
   #report: Reporting
   #aimed: () => Target | undefined
   #element: HTMLElement
@@ -37,6 +45,9 @@ export class Interaction {
     buildings: Buildings
     talking: Talking
     companions: Companions
+    driving: Driving
+    guide: Guide
+    conditions: Conditions
     report: Reporting
     aimed: () => Target | undefined
   }) {
@@ -49,6 +60,9 @@ export class Interaction {
     this.#buildings = input.buildings
     this.#talking = input.talking
     this.#companions = input.companions
+    this.#driving = input.driving
+    this.#guide = input.guide
+    this.#conditions = input.conditions
     this.#report = input.report
     this.#aimed = input.aimed
 
@@ -62,12 +76,36 @@ export class Interaction {
   }
 
   #key = (event: KeyboardEvent): void => {
-    const target = this.#aimed()
-    if (event.code !== 'KeyE' || this.#hud.typing || this.#talking.active || !target) return
-    // opening a conversation focuses its input, and without this the same
-    // keystroke lands in it, so every chat starts with a stray e
-    event.preventDefault()
-    this.#act(target)
+    if (this.#hud.typing || this.#talking.active || event.metaKey || event.ctrlKey || event.altKey) return
+
+    if (event.code === 'KeyE') {
+      const target = this.#aimed()
+      if (!target) return
+      // opening a conversation focuses its input, and without this the same
+      // keystroke lands in it, so every chat starts with a stray e
+      event.preventDefault()
+      this.#act(target)
+      return
+    }
+
+    const said = this.#asked(event.code)
+    if (said) this.#report.note(said)
+  }
+
+  /** The keys that ask something rather than act on something in reach. */
+  #asked(code: string): string | undefined {
+    switch (code) {
+      case 'KeyG':
+        return this.#guide.say()
+      case 'KeyT':
+        return this.#conditions.nextTime()
+      case 'KeyK':
+        return this.#conditions.nextWeather()
+      case 'KeyP':
+        return this.#conditions.hold()
+      default:
+        return undefined
+    }
   }
 
   /** Clicking somebody asks them along, or tells them to stay. */
@@ -91,6 +129,9 @@ export class Interaction {
         break
       case 'take':
         this.#take(target.id)
+        break
+      case 'drive':
+        this.#driving.act()
         break
     }
   }

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { Bundle } from '@gb/bundle'
+import { CityNav } from '@gb/nav'
 import { PlayerState } from '@gb/play'
 import { QuestLog } from '@gb/quest'
 import { Sidecar } from '@gb/sidecar'
@@ -378,7 +379,7 @@ describe('the people on the street', () => {
     let asked = 0
     const ground = { heightAt: () => (asked++, 0), walkableAt: () => true }
 
-    const street = new Street({ world, ground, playerOutdoors: () => stand })
+    const street = new Street({ world, nav: CityNav.from(world), ground, playerOutdoors: () => stand })
     street.populate({ spawn: nobody })
     for (let frame = 0; frame < 300; frame++) street.update(1 / 60, stand)
 

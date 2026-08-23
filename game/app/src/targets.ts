@@ -1,10 +1,11 @@
+import type { Driving } from '@gb/drive'
 import type { CityBuild } from '@gb/scene'
 import { METRICS, type World } from '@gb/world'
 import type { Buildings } from './buildings.ts'
 import type { Street } from './street.ts'
 import type { Vec2 } from './walk.ts'
 
-export type TargetKind = 'enter' | 'leave' | 'talk' | 'take'
+export type TargetKind = 'enter' | 'leave' | 'talk' | 'take' | 'drive'
 
 export interface Target {
   readonly kind: TargetKind
@@ -47,16 +48,22 @@ export class Targeting {
   #city: CityBuild
   #buildings: Buildings
   #street: Street
+  #driving: Driving
 
-  constructor(input: { world: World; city: CityBuild; buildings: Buildings; street: Street }) {
+  constructor(input: { world: World; city: CityBuild; buildings: Buildings; street: Street; driving: Driving }) {
     this.#world = input.world
     this.#city = input.city
     this.#buildings = input.buildings
     this.#street = input.street
+    this.#driving = input.driving
   }
 
   list(): Target[] {
-    return this.#buildings.outdoors ? this.#inTheStreet() : this.#inTheRoom()
+    const wheel = this.#driving.target()
+    // behind the wheel the door out is the only thing in reach
+    if (this.#driving.aboard) return wheel ? [wheel] : []
+    if (!this.#buildings.outdoors) return this.#inTheRoom()
+    return wheel ? [...this.#inTheStreet(), wheel] : this.#inTheStreet()
   }
 
   #inTheStreet(): Target[] {

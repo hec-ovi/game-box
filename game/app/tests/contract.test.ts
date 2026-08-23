@@ -1,14 +1,28 @@
 // @vitest-environment node
-import { PropFootprint } from '@gb/scene'
-import { METRICS, type Interior } from '@gb/world'
+import type { Driving } from '@gb/drive'
+import type { Hud, HudPatch } from '@gb/hud'
+import { CityNav } from '@gb/nav'
+import { PlayerState } from '@gb/play'
+import { QuestLog, rewardFor, validateQuest, type Objective } from '@gb/quest'
+import { PropFootprint, type CityBuild } from '@gb/scene'
+import { METRICS, World, type Interior } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { blocked, slide, step } from '../src/walk.ts'
 import { alsoBlockedBy } from '../src/bodies.ts'
 import { cityGround, citySolid, furnishedSolid } from '../src/solids.ts'
 import { Attending, type Post } from '../src/attending.ts'
+import type { Buildings } from '../src/buildings.ts'
+import { Chart } from '../src/chart.ts'
+import { Conditions } from '../src/conditions.ts'
+import { Guide } from '../src/guide.ts'
 import { DAY, darkness, lookAt, NIGHT } from '../src/night.ts'
+import { marked, type Marked } from '../src/places.ts'
+import { Reporting } from '../src/reporting.ts'
+import { atAnOpenDoor } from '../src/spawn.ts'
 import { Body, CROUCH_EYE, JUMP_SPEED } from '../src/stance.ts'
+import { Street } from '../src/street.ts'
+import { Targeting } from '../src/targets.ts'
 import { CLOSE_FOV, WIDE_FOV, Zoom } from '../src/zoom.ts'
 
 /** Everything from x = 4 east is wall. */
@@ -446,5 +460,336 @@ describe('turning to whoever is talking to you', () => {
     }
     expect(widest).toBeLessThanOrEqual(1.25 + 1e-9)
     expect(widest).toBeGreaterThan(1.25 - 1e-9)
+  })
+})
+
+/**
+ * A town with one way across it: open ground north and south, a run of water
+ * between them, and the only crossing at the east edge. Two buildings: one you
+ * can walk to the long way round, and one on an island nobody reaches.
+ */
+function town(): World {
+  const world = World.create({ name: 'Fordwater', theme: 'plain', seed: 'contract', width: 24, height: 14 })
+  world.paint({ x: 0, y: 6, w: 22, h: 1 }, 'water')
+
+  const reachable = world.addPlot({
+    kind: 'bar',
+    name: 'The Copper Wheel',
+    rect: { x: 1, y: 2, w: 3, h: 2 },
+    entrance: { cell: { x: 2, y: 4 }, facing: 'south' },
+    storeys: 2,
+    style: 'brick',
+  })
+  const island = world.addPlot({
+    kind: 'shop',
+    name: 'Kell Supply',
+    rect: { x: 18, y: 1, w: 2, h: 2 },
+    entrance: { cell: { x: 18, y: 3 }, facing: 'south' },
+    storeys: 1,
+    style: 'brick',
+  })
+  if (!reachable.ok || !island.ok) throw new Error('the town would not build')
+  // a moat round the shop's door, so the shop has a door and no way to it
+  world.paint({ x: 17, y: 3, w: 1, h: 2 }, 'water')
+  world.paint({ x: 19, y: 3, w: 1, h: 2 }, 'water')
+  world.paint({ x: 18, y: 4, w: 1, h: 1 }, 'water')
+  return world
+}
+
+/** An objective pointing at a building, the shape `@gb/quest` publishes. */
+function heading(plotId: string, label?: string): Objective {
+  return {
+    questId: 'quest_0001',
+    questTitle: 'The delivery',
+    stepId: 'step_0002',
+    text: 'Get to the bar before it shuts',
+    ...(label ? { markerLabel: label } : {}),
+    place: { plotId },
+  }
+}
+
+/** The interface, as this box sees it: a hud that records what it was pushed. */
+function screenful() {
+  const pushed: HudPatch[] = []
+  return { pushed, hud: { show: (patch: HudPatch) => void pushed.push(patch) } as unknown as Hud }
+}
+
+describe('the map the player opens', () => {
+  const world = town()
+  const at = { x: 5, z: 21 }
+
+  function chart(hud: Hud, goals: readonly Marked[] = [], heading = 0) {
+    return new Chart({ world, hud, you: () => ({ position: at, heading }), goals: () => goals })
+  }
+
+  it('draws the plan of the city and stands the player on it, pointing the way they look', () => {
+    const { pushed, hud } = screenful()
+    // looking east, which is a quarter turn clockwise from north on a north-up plan
+    chart(hud, [], -Math.PI / 2).draw()
+
+    const map = pushed[0]!.map!
+    expect(map.width).toBe(24)
+    expect(map.height).toBe(14)
+    expect(map.plots.map((plot) => plot.id)).toEqual(world.plots().map((plot) => plot.id))
+    expect(map.plots[0]!.rect).toEqual({ x: 1, y: 2, w: 3, h: 2 })
+    // a plan with every building named on it is unreadable, and most of them are nothing to the player
+    expect(map.plots.some((plot) => plot.label !== undefined)).toBe(false)
+
+    const you = map.marks!.find((mark) => mark.kind === 'you')!
+    expect(you.x).toBeCloseTo(2.5, 6)
+    expect(you.y).toBeCloseTo(10.5, 6)
+    expect(you.facing).toBeCloseTo(Math.PI / 2, 6)
+  })
+
+  it('pins where the quest is sending them, and names that building alone', () => {
+    const { pushed, hud } = screenful()
+    const bar = world.plots()[0]!
+    chart(hud, marked(world, [heading(bar.id)])).draw()
+
+    const map = pushed[0]!.map!
+    const goal = map.marks!.find((mark) => mark.kind === 'goal')!
+    // the doorstep, in cells: the pin is on the door rather than on the roof
+    expect(goal).toMatchObject({ x: 2.5, y: 4.5, label: 'The Copper Wheel' })
+    expect(map.plots.filter((plot) => plot.label !== undefined)).toEqual([{ id: bar.id, rect: bar.rect, label: 'The Copper Wheel' }])
+  })
+
+  it('pins a place once, however many steps of the quest send the player to it', () => {
+    const bar = world.plots()[0]!
+    expect(marked(world, [heading(bar.id), { ...heading(bar.id), stepId: 'step_0003' }])).toHaveLength(1)
+  })
+
+  it('measures nothing while the map is shut, and draws the moment it opens', () => {
+    const { pushed, hud } = screenful()
+    const drawn = chart(hud)
+
+    for (let frame = 0; frame < 120; frame++) drawn.update(1 / 60)
+    expect(pushed).toEqual([])
+
+    drawn.open = true
+    drawn.update(1 / 60)
+    expect(pushed).toHaveLength(1)
+  })
+})
+
+describe('the way to the quest you are following', () => {
+  const world = town()
+  const nav = CityNav.from(world)
+  const bar = world.plots()[0]!
+  const island = world.plots()[1]!
+
+  function guide(from: { x: number; z: number }, goals: readonly Marked[]) {
+    return new Guide({ world, nav, from: () => from, goals: () => goals })
+  }
+
+  it('gives the walk and the way the street runs, not the line through the water', () => {
+    // the bar is twelve metres due north, and the only crossing is away east
+    const said = guide({ x: 5, z: 21 }, marked(world, [heading(bar.id)])).say()
+    expect(said).toMatch(/^The Copper Wheel: /)
+    expect(said).toMatch(/head east/)
+    expect(Number(/(\d+) m/.exec(said)![1])).toBeGreaterThan(60)
+  })
+
+  it('calls a place by the name the quest gave it', () => {
+    expect(guide({ x: 5, z: 21 }, marked(world, [heading(bar.id, 'the bar')])).say()).toMatch(/^the bar: /)
+  })
+
+  it('says so when there is no way there on foot', () => {
+    expect(guide({ x: 5, z: 21 }, marked(world, [heading(island.id)])).say()).toBe('Kell Supply: no way there on foot')
+  })
+
+  it('says you are there when you are standing on it', () => {
+    expect(guide({ x: 5, z: 9 }, marked(world, [heading(bar.id)])).say()).toBe('The Copper Wheel: you are there')
+  })
+
+  it('says there is nothing to head for when no quest is being followed', () => {
+    expect(guide({ x: 5, z: 21 }, []).say()).toBe('Nothing to head for: follow a quest first')
+  })
+})
+
+describe('the hour and the weather', () => {
+  const clock = () => PlayerState.create('world_0001').clock
+
+  it('jumps to the next time of day, and never turns the clock back', () => {
+    const hours = clock()
+    const conditions = new Conditions(hours)
+
+    // a new playthrough opens at 08:00
+    expect(conditions.nextTime()).toBe('12:00, the middle of the day')
+    expect(hours.hour).toBe(12)
+    conditions.nextTime()
+    expect(hours.hour).toBe(18)
+
+    const before = hours.totalSeconds
+    const day = hours.day
+    conditions.nextTime()
+    expect(hours.hour).toBe(0)
+    // midnight is tomorrow's, so a quest on a timer runs down rather than back up
+    expect(hours.day).toBe(day + 1)
+    expect(hours.totalSeconds).toBeGreaterThan(before)
+  })
+
+  it('turns the weather over and round again', () => {
+    const hours = clock()
+    const conditions = new Conditions(hours)
+    expect(hours.weather).toBe('clear')
+
+    const seen = [conditions.nextWeather(), conditions.nextWeather(), conditions.nextWeather()]
+    expect(seen.every((said) => typeof said === 'string')).toBe(true)
+    expect(hours.weather).toBe('clear')
+  })
+
+  it('holds the hour where it is, and lets it run on at the rate it was running at', () => {
+    const hours = clock()
+    const conditions = new Conditions(hours)
+    hours.setRate(60)
+
+    expect(conditions.hold()).toBe('Time held')
+    expect(hours.rate).toBe(0)
+    hours.advance(10)
+    expect(hours.hour).toBe(8)
+
+    expect(conditions.hold()).toBe('Time running')
+    expect(hours.rate).toBe(60)
+  })
+})
+
+describe('the journal', () => {
+  const quest = sealed()
+
+  /** A four step job: talk, walk, talk, done. */
+  function sealed() {
+    const doc = {
+      format: 'game-box.quest',
+      schemaVersion: 1,
+      id: 'quest_0001',
+      kind: 'side',
+      title: 'The delivery',
+      summary: 'Iris wants a word, then wants you at the bar.',
+      giverNpcId: 'npc_0001',
+      difficulty: 'small',
+      startStepId: 'step_0001',
+      reward: rewardFor('small'),
+      steps: [
+        { id: 'step_0001', objective: 'Talk to Iris', kind: 'talk', npcId: 'npc_0001', next: ['step_0002'] },
+        { id: 'step_0002', objective: 'Get to the bar', kind: 'goto', place: { plotId: 'plot_0001' }, next: ['step_0003'] },
+        { id: 'step_0003', objective: 'Tell Iris it is done', kind: 'talk', npcId: 'npc_0001', next: ['step_0004'] },
+        { id: 'step_0004', objective: 'Finished', kind: 'complete' },
+      ],
+    }
+    const anything = { hasNpc: () => true, hasPlot: () => true, hasInterior: () => true, hasItem: () => true, hasAnchor: () => true }
+    const checked = validateQuest(doc, anything)
+    if (!checked.ok) throw new Error(JSON.stringify(checked.error))
+    return checked.value
+  }
+
+  function journal(): { steps: () => readonly { text: string; done: boolean }[]; log: QuestLog } {
+    const { pushed, hud } = screenful()
+    const player = PlayerState.create('world_0001')
+    const log = QuestLog.create([quest], player)
+    const report = new Reporting({ world: town(), log, player, hud })
+    return {
+      log,
+      steps: () => {
+        report.refresh()
+        return pushed[pushed.length - 1]!.quests![0]!.steps
+      },
+    }
+  }
+
+  it('ticks nothing on a job just taken, however many steps are still ahead', () => {
+    const { log, steps } = journal()
+    log.start('quest_0001')
+
+    const listed = steps()
+    expect(listed.map((step) => step.text)).toEqual(['Talk to Iris', 'Get to the bar', 'Tell Iris it is done'])
+    expect(listed.filter((step) => step.done)).toEqual([])
+  })
+
+  it('ticks a step once it is actually done, and leaves the ones ahead alone', () => {
+    const { log, steps } = journal()
+    log.start('quest_0001')
+    log.handle({ kind: 'talked', npcId: 'npc_0001' })
+
+    expect(steps().map((step) => step.done)).toEqual([true, false, false])
+  })
+})
+
+describe('what is in reach out in the street', () => {
+  const open = { id: 'plot_0001', name: 'The Copper Wheel', interiorId: 'interior_0001', rect: { x: 1, y: 2, w: 3, h: 2 } }
+  const shut = { id: 'plot_0002', name: 'Kell Supply', rect: { x: 6, y: 2, w: 3, h: 2 } }
+
+  const world = { plots: () => [open, shut], npc: () => undefined } as unknown as World
+  const city = { doorsteps: new Map([[open.id, { x: 5, z: 9 }], [shut.id, { x: 15, z: 9 }]]) } as unknown as CityBuild
+  const outside = { outdoors: true } as unknown as Buildings
+  const empty = { walkers: () => [] } as unknown as Street
+
+  /** A car sitting in the road, the way `@gb/drive` offers one. */
+  const wheel = { kind: 'drive' as const, id: 'car_3', label: 'Get in the taxi', at: { x: 8, z: 20 } }
+
+  function targeting(driving: Partial<Driving>) {
+    return new Targeting({ world, city, buildings: outside, street: empty, driving: driving as Driving })
+  }
+
+  it('offers a door only for a building that opens', () => {
+    const listed = targeting({ aboard: false, target: () => undefined }).list()
+    expect(listed).toEqual([{ kind: 'enter', id: open.id, label: 'Go into The Copper Wheel', at: { x: 5, z: 9 } }])
+  })
+
+  it('offers the car standing in the road, and only the way out once the player is in it', () => {
+    const onFoot = targeting({ aboard: false, target: () => wheel }).list()
+    expect(onFoot.map((target) => target.kind)).toEqual(['enter', 'drive'])
+
+    const driving = targeting({ aboard: true, target: () => ({ ...wheel, label: 'Get out' }) }).list()
+    expect(driving.map((target) => target.label)).toEqual(['Get out'])
+  })
+})
+
+describe('the car the player parked', () => {
+  const world = town()
+  const parked = { x: 20, z: 21, heading: 0 }
+
+  function street() {
+    const laid = new Street({ world, nav: CityNav.from(world), playerOutdoors: () => undefined })
+    laid.setPlayerCar({ rolling: () => [parked], inTheRoad: () => [{ x: parked.x, z: parked.z, radius: 1 }] })
+    return laid
+  }
+
+  it('is solid to walk into, the same way the traffic is', () => {
+    const solid = street().solid()
+    expect(solid(parked.x, parked.z)).toBe(true)
+    expect(solid(parked.x + 4, parked.z)).toBe(false)
+  })
+
+  it('is something the traffic brakes for, so an abandoned car is not driven through', () => {
+    const found = street().obstacles().near(parked, 6)
+    expect(found).toEqual([{ x: parked.x, z: parked.z, radius: 1 }])
+    expect(street().obstacles().near({ x: parked.x + 40, z: parked.z }, 6)).toEqual([])
+  })
+})
+
+describe('where the player starts', () => {
+  const shut = { id: 'plot_0001', name: 'Kell Supply', rect: { x: 1, y: 1, w: 2, h: 2 } }
+  const open = { id: 'plot_0002', name: 'The Copper Wheel', interiorId: 'interior_0001', rect: { x: 6, y: 1, w: 2, h: 2 } }
+  const doorsteps = new Map([[shut.id, { x: 4, z: 7 }], [open.id, { x: 14, z: 7 }]])
+  const pavement = (kinds: string) => ({ plots: () => [shut, open], cellSize: 2, grid: { at: () => kinds } }) as unknown as World
+
+  it('stands a step off a door that opens, looking at it, whatever came first on the street', () => {
+    const start = atAnOpenDoor(pavement('sidewalk'), { doorsteps, spawn: { x: 0, z: 0, heading: 0 } } as unknown as CityBuild)
+
+    // the open building's doorstep, a couple of metres back down the pavement, facing north into it
+    expect(start.x).toBe(14)
+    expect(start.z).toBe(9)
+    expect(start.heading).toBeCloseTo(0, 6)
+  })
+
+  it('stays on the doorstep rather than stepping back into the road', () => {
+    const start = atAnOpenDoor(pavement('street'), { doorsteps, spawn: { x: 0, z: 0, heading: 0 } } as unknown as CityBuild)
+    expect(start).toMatchObject({ x: 14, z: 7 })
+  })
+
+  it('falls back to the city\'s own spawn when nothing in town opens', () => {
+    const elsewhere = { x: 3, z: 4, heading: 1 }
+    const shutOnly = { plots: () => [shut], cellSize: 2 } as unknown as World
+    expect(atAnOpenDoor(shutOnly, { doorsteps: new Map(), spawn: elsewhere } as unknown as CityBuild)).toEqual(elsewhere)
   })
 })

@@ -1,11 +1,17 @@
 import { Crowd, type Attention, type CrowdCast } from '@gb/crowd'
-import { CityNav } from '@gb/nav'
+import type { CityNav } from '@gb/nav'
 import { CarPack, Traffic } from '@gb/traffic'
 import { METRICS, type Npc, type World } from '@gb/world'
 import * as THREE from 'three'
-import { alsoBlockedBy, PERSON_CLEAR } from './bodies.ts'
+import { alsoBlockedBy, PERSON_CLEAR, type Rolling } from './bodies.ts'
 import { cityGround, citySolid, type Ground } from './solids.ts'
 import type { Solid, Vec2 } from './walk.ts'
+
+/** The player's own car: solid to walk into, and something traffic brakes for. */
+export interface PlayerCar {
+  rolling(): readonly Rolling[]
+  inTheRoad(): readonly { x: number; z: number; radius: number }[]
+}
 
 /**
  * The street outside: its walls and its floor, the people on the pavement and
@@ -14,14 +20,17 @@ import type { Solid, Vec2 } from './walk.ts'
  */
 export class Street {
   #world: World
+  #nav: CityNav
   #ground: Ground | undefined
   #playerOutdoors: () => Vec2 | undefined
   #crowd: Crowd | undefined
   #traffic: Traffic | undefined
   #cars: CarPack | undefined
+  #playerCar: PlayerCar | undefined
 
-  constructor(input: { world: World; ground?: Ground; playerOutdoors: () => Vec2 | undefined }) {
+  constructor(input: { world: World; nav: CityNav; ground?: Ground; playerOutdoors: () => Vec2 | undefined }) {
     this.#world = input.world
+    this.#nav = input.nav
     this.#ground = input.ground
     this.#playerOutdoors = input.playerOutdoors
   }
@@ -41,7 +50,7 @@ export class Street {
     this.#crowd = Crowd.create(
       {
         world: this.#world,
-        nav: CityNav.from(this.#world),
+        nav: this.#nav,
         cast,
         hazards: this.#onTheRoad(),
         ...(this.#ground ? { ground: this.#ground } : {}),
@@ -67,7 +76,7 @@ export class Street {
 
     try {
       const bodies = await CarPack.parse(cars, parked)
-      const made = Traffic.fromWorld(this.#world, { bodies, obstacles: this.#onThePavement(), maxCars: 12 })
+      const made = Traffic.fromWorld(this.#world, { bodies, obstacles: this.obstacles(), maxCars: 12 })
       if (!made.ok) {
         console.warn(`no traffic (${made.error.code}); the roads stay empty`)
         return
@@ -80,12 +89,27 @@ export class Street {
     }
   }
 
+  /** The car the player drives, once there is one. A `@gb/drive` `Driving` is one. */
+  setPlayerCar(car: PlayerCar): void {
+    this.#playerCar = car
+  }
+
+  /** The people, for `@gb/drive` to take a companion out of and hand them back to. */
+  get people(): Crowd | undefined {
+    return this.#crowd
+  }
+
+  /** The cars, once their art has loaded, for whoever wants to drive one. */
+  get roads(): { traffic: Traffic; bodies: CarPack } | undefined {
+    return this.#traffic && this.#cars ? { traffic: this.#traffic, bodies: this.#cars } : undefined
+  }
+
   /** The walls, plus whoever is walking or driving in the way of them. */
   solid(): Solid {
     return alsoBlockedBy(
       citySolid(this.#world, this.#ground),
       () => this.#crowd?.walkers() ?? [],
-      () => this.#traffic?.cars() ?? [],
+      () => [...(this.#traffic?.cars() ?? []), ...(this.#playerCar?.rolling() ?? [])],
     )
   }
 
@@ -168,7 +192,7 @@ export class Street {
    * Who a driver has to stop for: the people on the pavement and the road, and
    * the player, who is the one most likely to step out without looking.
    */
-  #onThePavement() {
+  obstacles() {
     return {
       near: (centre: { x: number; z: number }, radius: number) => {
         const found: Array<{ x: number; z: number; radius: number }> = []
@@ -182,6 +206,13 @@ export class Street {
         for (const companion of this.#crowd?.following() ?? []) consider(companion.x, companion.z)
         const player = this.#playerOutdoors()
         if (player) consider(player.x, player.z)
+        // and the player's own car, which a driver behind brakes for the same
+        // way they brake for somebody standing in the road
+        for (const patch of this.#playerCar?.inTheRoad() ?? []) {
+          const dx = patch.x - centre.x
+          const dz = patch.z - centre.z
+          if (dx * dx + dz * dz <= reach) found.push(patch)
+        }
         return found
       },
     }

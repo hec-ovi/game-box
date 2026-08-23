@@ -1,7 +1,9 @@
 import type { OpenedBundle } from '@gb/bundle'
 import type { Cast } from '@gb/cast'
 import { SceneCast } from '@gb/crowd'
+import { CrowdRiders, Driving } from '@gb/drive'
 import { Hud, type HudIntent } from '@gb/hud'
+import { CityNav } from '@gb/nav'
 import type { KitDressing } from '@gb/kitbash'
 import { PlayerState } from '@gb/play'
 import { QuestLog } from '@gb/quest'
@@ -11,13 +13,18 @@ import type { World } from '@gb/world'
 import * as THREE from 'three'
 import { Attending, type Facing, type Post } from './attending.ts'
 import { Buildings } from './buildings.ts'
+import { Chart } from './chart.ts'
 import { Companions } from './companions.ts'
+import { Conditions } from './conditions.ts'
 import { CONTROLS } from './controls.ts'
+import { Guide } from './guide.ts'
 import { Interaction } from './interaction.ts'
+import { marked } from './places.ts'
 import { Player } from './player.ts'
 import { createStage, type Stage } from './renderer.ts'
 import { Reporting } from './reporting.ts'
 import { Session, type SaveStore } from './session.ts'
+import { atAnOpenDoor } from './spawn.ts'
 import { Sky } from './sky.ts'
 import { Street } from './street.ts'
 import { Talking } from './talking.ts'
@@ -53,12 +60,15 @@ export class Game {
   #street: Street
   #buildings: Buildings
   #companions: Companions
+  #driving: Driving
   #attending: Attending
   #talking: Talking
   #report: Reporting
+  #chart: Chart
   #targeting: Targeting
   #interaction: Interaction
   #cast: Cast | undefined
+  #riderCast: SceneCast | undefined
   #session: Session | undefined
   #target: Target | undefined
   #sinceKept = 0
@@ -95,15 +105,18 @@ export class Game {
       if (blocks) blocks.visible = false
     }
 
+    const nav = CityNav.from(this.#world)
     this.#street = new Street({
       world: this.#world,
+      nav,
       ...(this.#sky.ground ? { ground: this.#sky.ground } : {}),
       playerOutdoors: () => (this.#buildings.outdoors ? this.#body.position : undefined),
     })
 
     this.#body = new Player(this.#stage.camera, this.#stage.renderer.domElement, this.#street.solid())
     this.#body.setGround(this.#street.floor())
-    this.#body.placeAt(this.#city.spawn.x, this.#city.spawn.z, this.#city.spawn.heading)
+    const start = atAnOpenDoor(this.#world, this.#city)
+    this.#body.placeAt(start.x, start.z, start.heading)
 
     this.#report = new Reporting({
       world: this.#world,
@@ -135,6 +148,26 @@ export class Game {
       note: (text) => this.#report.note(text),
     })
 
+    if (input.cast) {
+      const walkers = new THREE.Group()
+      walkers.name = 'crowd'
+      this.#city.root.add(walkers)
+      this.#riderCast = new SceneCast(input.cast, walkers)
+      this.#street.populate(this.#riderCast)
+    }
+
+    // the car the player drives: the same art and the same pool the traffic
+    // draws from, the same walls the player walks into, and the companions
+    const people = this.#street.people
+    this.#driving = new Driving({
+      rider: this.#body,
+      solid: this.#street.solid(),
+      ground: this.#street.floor(),
+      outdoors: () => this.#buildings.outdoors,
+      ...(people && this.#riderCast ? { riders: new CrowdRiders({ crowd: people, cast: this.#riderCast }) } : {}),
+    })
+    this.#street.setPlayerCar(this.#driving)
+
     // the crowd turns the people it is walking; the people at their posts in a
     // room are this box's own bodies, so it turns those itself
     const heads = (input.dressing as { members?: () => ReadonlyMap<string, Facing> }).members?.()
@@ -160,11 +193,17 @@ export class Game {
       report: this.#report,
     })
 
+    // where the tracked quest is sending the player: the map pins it and the
+    // guide walks to it, both off the one answer
+    const goals = () => marked(this.#world, this.#report.following())
+    this.#chart = new Chart({ world: this.#world, hud: this.#hud, you: () => this.#body, goals })
+
     this.#targeting = new Targeting({
       world: this.#world,
       city: this.#city,
       buildings: this.#buildings,
       street: this.#street,
+      driving: this.#driving,
     })
 
     this.#interaction = new Interaction({
@@ -177,16 +216,12 @@ export class Game {
       buildings: this.#buildings,
       talking: this.#talking,
       companions: this.#companions,
+      driving: this.#driving,
+      guide: new Guide({ world: this.#world, nav, from: () => this.#body.position, goals }),
+      conditions: new Conditions(this.#player.clock),
       report: this.#report,
       aimed: () => this.#target,
     })
-
-    if (input.cast) {
-      const walkers = new THREE.Group()
-      walkers.name = 'crowd'
-      this.#city.root.add(walkers)
-      this.#street.populate(new SceneCast(input.cast, walkers))
-    }
 
     this.#hud.show({ controls: CONTROLS })
     this.#report.refresh()
@@ -222,7 +257,11 @@ export class Game {
       throw cause
     }
 
-    if (options.cars) await game.#street.openRoads(options.cars, game.#city.root, game.#body.position)
+    if (options.cars) {
+      await game.#street.openRoads(options.cars, game.#city.root, game.#body.position)
+      const roads = game.#street.roads
+      if (roads) game.#driving.open(roads.traffic, roads.bodies)
+    }
     stage.start((seconds) => game!.frame(seconds))
     return game
   }
@@ -236,6 +275,7 @@ export class Game {
     this.#street.setTime(clock)
 
     this.#body.update(seconds)
+    this.#driving.update(seconds)
     // the street only carries on while the player is out in it
     if (this.#buildings.outdoors) this.#street.update(seconds, this.#body.position)
     // whoever is being talked to keeps facing the player, indoors and out, and
@@ -243,6 +283,7 @@ export class Game {
     this.#attending.update(seconds)
     this.#cast?.update(seconds)
 
+    this.#chart.update(seconds)
     this.#target = pick(this.#body.position, this.#body.heading, this.#targeting.list())
     const prompt = this.#talking.active || !this.#target ? null : { key: 'E', text: this.#target.label }
     this.#hud.show({ prompt })
@@ -264,7 +305,9 @@ export class Game {
     if (intent.kind === 'talk-closed') this.#talking.end()
     // the interface holds no state of its own, so the quest it was told to
     // follow is echoed straight back to it
-    if (intent.kind === 'track') this.#hud.show({ trackedQuestId: intent.questId })
+    if (intent.kind === 'track') this.#report.track(intent.questId)
+    // the map is measured while it is being read and at no other time
+    if (intent.kind === 'window') this.#chart.open = intent.window === 'map'
     // giving up on a job: `@gb/hud` shows the control once it has somewhere to
     // send it, and this is where it lands
     const kind: string = intent.kind
@@ -315,6 +358,7 @@ export class Game {
       at: this.#body.position,
       heading: this.#body.heading,
       target: this.#target?.label,
+      driving: this.#driving.aboard,
       walkers: this.#street.walkerCount,
       cars: this.#street.carCount,
       nearest: this.#targeting

@@ -27,6 +27,7 @@
     "@gb/cast": "workspace:*",
     "@gb/kitbash": "workspace:*",
     "@gb/crowd": "workspace:*",
+    "@gb/drive": "workspace:*",
     "@gb/traffic": "workspace:*",
     "@gb/hud": "workspace:*",
     "@gb/land": "workspace:*",

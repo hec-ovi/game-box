@@ -23,6 +23,7 @@ export class Player {
   #zoom = new Zoom()
   #stance = new Body()
   #ground: (x: number, z: number) => number = () => 0
+  #riding: { x: number; y: number; z: number; roll: number } | undefined
 
   constructor(camera: THREE.PerspectiveCamera, element: HTMLElement, solid: Solid) {
     this.#camera = camera
@@ -75,6 +76,28 @@ export class Player {
     return this.#yaw
   }
 
+  /** What the movement keys say this frame. Driving reads the same keys walking does. */
+  get input(): { forward: number; strafe: number; running: boolean } {
+    return {
+      forward: (this.#down_('KeyW') ? 1 : 0) - (this.#down_('KeyS') ? 1 : 0),
+      strafe: (this.#down_('KeyD') ? 1 : 0) - (this.#down_('KeyA') ? 1 : 0),
+      running: this.#down_('ShiftLeft') || this.#down_('ShiftRight'),
+    }
+  }
+
+  /**
+   * Riding in something that moves: the eye sits where it is put and the view
+   * turns with it, so the mouse still looks around inside a car that is
+   * turning. Nothing hands walking back.
+   */
+  ride(seat: { x: number; y: number; z: number; turned: number; roll: number } | undefined): void {
+    this.#riding = seat
+    if (!seat) return
+    this.#camera.position.set(seat.x, seat.y, seat.z)
+    this.#yaw += seat.turned
+    this.#apply()
+  }
+
   placeAt(x: number, z: number, facing = this.#yaw): void {
     this.#camera.position.set(x, this.#ground(x, z) + METRICS.player.eyeHeight, z)
     this.#yaw = facing
@@ -88,15 +111,15 @@ export class Player {
       this.#camera.updateProjectionMatrix()
     }
 
+    // riding: where the eye goes is the car's business, and the stance, the
+    // walk and the kerb are all off until the player gets out
+    if (this.#riding) return
+
     this.#stance.crouching = this.#down_('KeyC')
     this.#stance.update(seconds, this.#ground(this.#camera.position.x, this.#camera.position.z))
     this.#camera.position.y = this.#stance.eye
 
-    const input = {
-      forward: (this.#down_('KeyW') ? 1 : 0) - (this.#down_('KeyS') ? 1 : 0),
-      strafe: (this.#down_('KeyD') ? 1 : 0) - (this.#down_('KeyA') ? 1 : 0),
-      running: this.#down_('ShiftLeft') || this.#down_('ShiftRight'),
-    }
+    const input = this.input
     if (!input.forward && !input.strafe) return
 
     const delta = step(input, this.#yaw, seconds, this.#stance.speedScale)
@@ -139,7 +162,7 @@ export class Player {
   }
 
   #apply(): void {
-    this.#camera.rotation.set(this.#pitch, this.#yaw, 0, 'YXZ')
+    this.#camera.rotation.set(this.#pitch, this.#yaw, this.#riding?.roll ?? 0, 'YXZ')
   }
 }
 
