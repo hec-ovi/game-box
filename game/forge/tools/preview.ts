@@ -1,8 +1,9 @@
 /** Prints a generated town to the terminal: the grid, its places and its first quest. */
 import { Forge, OfflineNarrator } from '../src/index.ts'
 
-const forge = new Forge(new OfflineNarrator('preview'))
-const built = await forge.build({ theme: 'dusty western mining town', seed: 'preview', blocksX: 2, blocksY: 2, blockCells: 14 })
+const seed = process.argv[2] ?? 'preview'
+const forge = new Forge(new OfflineNarrator(seed))
+const built = await forge.build({ theme: 'dusty western mining town', seed, blocksX: 2, blocksY: 2 })
 if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 500))
 const { world, quests, rejected } = built.value
 

@@ -1,3 +1,4 @@
+import type { Rng } from '@gb/kit'
 import type { Rect, World } from '@gb/world'
 import { CENTRELINE, HALF_ROADWAY, MOUNTAIN_CELLS, type Cell, type Size } from './bands.ts'
 
@@ -34,9 +35,18 @@ const OUTWARD: Record<ExitSide, Cell> = {
 /** Cells of pavement along a road out: the mountain ring, less the cell at the edge. */
 const PAVEMENT_CELLS = MOUNTAIN_CELLS - 1
 
-/** One road out per requested exit, taking the sides in turn. */
-export function planExits(count: number, columns: readonly number[], rows: readonly number[], size: Size): readonly ExitRoad[] {
-  return Array.from({ length: count }, (_, i) => planExit(SIDES[i % SIDES.length]!, columns, rows, size))
+/** One road out per requested exit, each through a different wall of the valley. */
+export function planExits(
+  count: number,
+  columns: readonly number[],
+  rows: readonly number[],
+  size: Size,
+  rng: Rng,
+): readonly ExitRoad[] {
+  return rng
+    .shuffle(SIDES)
+    .slice(0, count)
+    .map((side) => planExit(side, columns, rows, size, rng))
 }
 
 /** Paints one road out: roadway first, so it wins the cell where it crosses the town's pavement ring. */
@@ -45,16 +55,16 @@ export function paintExit(world: World, exit: ExitRoad): void {
   for (const pavement of exit.pavements) world.paint(pavement, 'sidewalk')
 }
 
-function planExit(side: ExitSide, columns: readonly number[], rows: readonly number[], size: Size): ExitRoad {
+function planExit(side: ExitSide, columns: readonly number[], rows: readonly number[], size: Size, rng: Rng): ExitRoad {
   const out = OUTWARD[side]
   const vertical = out.x === 0
   const bands = vertical ? rows : columns
   const across: Cell = vertical ? { x: 1, y: 0 } : { x: 0, y: 1 }
 
-  // the outermost band on the side we leave through, and the middle band the other way
+  // the outermost band on the side we leave through, and a seeded one the other way
   const leaving = (out.x + out.y > 0 ? bands[bands.length - 1]! : bands[0]!) + CENTRELINE
   const others = vertical ? columns : rows
-  const centre = others[Math.floor(others.length / 2)]! + CENTRELINE
+  const centre = rng.pick(others) + CENTRELINE
 
   const junction: Cell = vertical ? { x: centre, y: leaving } : { x: leaving, y: centre }
   const far = vertical ? size.height - 1 : size.width - 1

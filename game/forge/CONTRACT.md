@@ -1,6 +1,6 @@
 # @gb/forge contract
 
-contractVersion: 0.3.0
+contractVersion: 0.4.0
 
 ## Purpose
 
@@ -10,7 +10,7 @@ Builds a whole city from one brief: streets, plots, interiors, the people standi
 
 | Param | Schema | Preconditions |
 |---|---|---|
-| `Forge.build(brief)` | [schema/brief.json](schema/brief.json) | theme, seed, blocks across and down, cells per block, density, max storeys, roads out (1 to 4) |
+| `Forge.build(brief)` | [schema/brief.json](schema/brief.json) | theme (60 characters) and seed are yours; blocks across and down, density and max storeys have defaults; cells per block and roads out (1 to 4) are picked from the seed if you leave them out |
 | `new Forge(narrator)` | a `Narrator` | answers `nameCity`, `namePlace`, `describeNpc`, `describeItem`, `writeQuests` |
 | `Forge.extend(world, count)` | a `@gb/world` `World` | the world has empty land touching a sidewalk |
 
@@ -21,11 +21,10 @@ Builds a whole city from one brief: streets, plots, interiors, the people standi
 | `build` | `{ world, quests, rejected }` | `world.check()` is empty; every quest passed `@gb/quest` validation; `rejected` lists the ones that did not, with why. The world carries the street grid, the plots and the road graph, roads out included |
 | `extend` | plot ids added | nothing already in the world changed |
 | `summarise(world)` | `WorldSummary` | the abstract world a quest writer reads: places, who is in them, what is there |
-| `viewOf(world)` | `WorldView` | the five questions `@gb/quest` asks |
 
 ## Errors (closed set)
 
-- `invalid-brief`: the brief failed its schema. Nothing is built.
+- `invalid-brief`: the brief failed its schema, or the city it asks for is one no world will hold (blocks times cells over 1024 a side). Nothing is built, and no world constructor throws. The size bound is not expressible in JSON Schema, so it lives in the brief's own check rather than in `schema/brief.json`.
 - `unsound-world`: the generator produced a world that fails its own integrity check. Carries the problems; this is a bug in the generator, never a bad brief.
 
 A narrator writing an unusable quest is not an error: those quests are dropped and reported in `rejected`.
@@ -43,19 +42,35 @@ A narrator writing an unusable quest is not an error: those quests are dropped a
 - One door from the street, one door between rooms, and every room reachable from the street door.
 - Furniture never lands in a doorway (1.2 m across the opening, a metre either side of the wall), never overlaps another piece, and never seals off a door or a place somebody stands. Every piece is tested against the free floor before it lands, so a building that is too small simply holds less.
 - Every anchor is somewhere a person can get to: open floor for anyone standing, their own seat or bed for anyone sitting or sleeping, and never inside somebody else's furniture or in a doorway. Anyone working faces what they work at: staff behind their counter, a cook at the stove, a browser at the case, a seat drawn up to its table.
-- The layout varies with the seed and stays identical for the same one: an entrance hall or none, service rooms across the back or down one side, counters on either hand, furniture swept along the walls until it fits.
+- The interior varies with the seed and stays identical for the same one: an entrance hall or none, service rooms across the back or down one side, counters on either hand, furniture swept along the walls until it fits.
 - Each kind of building is recognisable from the inside: a bar has a counter you can walk behind with stools along it, a shop a till and cases to browse, a house a sofa facing a screen and a bed against a wall.
-- Same seed, same city, down to the byte. Sub-streams are forked per block, per site and per interior, so adding a building later cannot change one already built. Streets, roads out and the road graph are arithmetic with no randomness in them at all, so retuning the layout cannot move a building.
+- Same seed, same city, down to the byte. Sub-streams are forked by label off a root the generator never draws from: `streets` for the town plan, then one per block, per site and per interior. A new stream is a new label, never a draw from an existing one, so adding one cannot shift what another already decided.
 - Nothing a narrator writes is trusted: quests are validated against the world and dropped if they do not hold up.
 - Every service post is staffed: a bar has a bartender, a shop has a clerk, whatever the density.
 - Buildings leave gaps. `extend` fills them, and never moves anything already placed.
-- Proportions come from `@gb/world`'s `METRICS`: 2 m cells, 6 m roadways, 2 m sidewalks, rooms sized in metres.
+- The roadway is `METRICS.street.roadwayCells` wide, from `@gb/world`, so the width a car drives and the width the city is laid with are one number. Cells are 2 m, pavements 1 cell, the mountain ring 4; rooms and furniture are sized in metres from the same `METRICS`.
+
+### The town plan
+
+Two seeds are two towns to walk, not one town with the buildings shuffled. What the seed decides, before a single building is placed:
+
+- **Block sizes, per column and per row.** A nominal side of 15, 17, 19 or 20 cells, then each column band and each row band takes that give or take two. Blocks are rectangles of two of those numbers, so a town has wide blocks and narrow ones and the walk between two streets is never the same length twice.
+- **Every block faces four ways.** A block is cut into a strip of building on each side with a yard in the middle, and the middle has to stay deep enough for a frontage or the east and west strips are dropped. Any size that would fail that is nudged up a cell, which is why doors end up on north-south streets as well as east-west ones.
+- **A missing street.** On one axis at most, an inner street is sometimes left out and the two blocks either side become one long block. Never two in a row, so a town never grows a field in the middle.
+- **An open block.** Up to one block in four, and never the only one, is left unbuilt as a paved plaza or a green park. Both are painted on the grid, so nothing builds there afterwards and `@gb/nav`, `@gb/crowd` and `@gb/scene` read them as ground people walk on.
+- **The roads out**, below: how many and which walls of the valley they leave through.
+
+A brief that names `blockCells` or `exits` gets what it asks for; the jitter still varies blocks around the number it named.
+
+At a crossing, the roadway runs right through in both directions and the pavement keeps a corner in each quarter. That falls out of the painting order: mountains, then every pavement band, then every roadway band on top. Paint one band at a time and the last band wins the cells they share, which is how pavement ended up lying across the middle of every north-south street.
+
+So a pavement ends at the kerb: crossing a street means stepping onto the roadway, whichever way you are walking. Anything that keeps people off the road (`@gb/crowd` walks `sidewalk` and `park`) walks one block's ring and no further.
 
 ### The roads out
 
-The city sits in a valley ringed with mountains, and `brief.exits` says how many roads leave it: one by default, up to four, taking south, north, east then west in turn.
+The city sits in a valley ringed with mountains, and `brief.exits` says how many roads leave it: one to four, picked from the seed when the brief leaves it out, through walls the seed picks.
 
-- It is the same 6 m roadway the town is laid with, leaving from one of the town's own street crossings, straight out along that crossing's centreline.
+- It is the same 6 m roadway the town is laid with, leaving from one of the town's own street crossings, straight out along that crossing's centreline. Which crossing is seeded too, so the way out is not always the middle of town.
 - It carries the roadway across the pavement ring, so a car meets a T junction rather than a kerb, and pedestrians get a crossing where the ring pavement meets it.
 - A 2 m pavement runs each side of it through the mountains, kerbed against the roadway by the same drop as any other street.
 - It is in the road graph: a node where the roadway leaves the map, joined to the crossing's own node by a segment of kind `exit`. `@gb/traffic` can drive it and `@gb/scene` marks it, because both read the graph.
@@ -65,10 +80,12 @@ The city sits in a valley ringed with mountains, and `brief.exits` says how many
 
 The `Narrator` interface is the seam for a language model: implement it elsewhere and pass it in; `OfflineNarrator` stays as the offline default and the reference shape.
 
-The layout is four files under `src/layout/`: `bands.ts` is the grid arithmetic every other one reads, `streets.ts` paints the town, `exits.ts` plans and paints the roads out, and `roads.ts` builds the graph. Nothing there touches the `Rng`, which is what keeps the buildings where they are.
+The layout is five files under `src/layout/`: `bands.ts` is the grid arithmetic every other one reads, `plan.ts` decides the whole town from one `Rng` and touches nothing, `streets.ts` paints that plan onto the grid, `exits.ts` plans and paints the roads out, and `roads.ts` builds the graph. Deciding and painting are apart on purpose: the plan is the only place a street number comes from, and it can be read and measured without a world.
 
-`tests/fixtures/town.json` is the app's own city recorded cell by cell, with a digest of its plots, interiors, people, items and quests. It is a baseline, not something to regenerate: a change that makes that test fail has moved a city somebody may already have exported.
+The `streets` stream is forked off the root and drawn from only in `plan.ts`. Draw from it anywhere else, or add a draw before it, and every seed lays out a different town.
+
+`tests/fixtures/sealed-city.json` is a city this box built and sealed before the streets were seeded, quests included. It proves an already-exported city still loads and still validates. It is never regenerated: regenerating it is deleting the only proof that old files still open.
 
 Interiors live in `src/interior/`: `recipes.ts` says what rooms a building has, `rooms.ts` cuts them out of the shell, `doors.ts` hangs the doors, `room-plan.ts` is the only way furniture and anchors get placed (it holds the clearance and reachability tests), and `furnish/` has one dresser per family of building. A new building kind needs a programme in `recipes.ts`, a dresser in `furnish/`, and a role mapping in `populate.ts`, or it generates an empty shell. Prop sizes live in `src/interior/props.ts` and are what the planner keeps apart, so they have to match what the renderer draws.
 
-Run `pnpm --filter @gb/forge test`, and regenerate `schema/brief.json` with `pnpm --filter @gb/forge run generate` when the brief changes. `pnpm --filter @gb/forge run preview` prints a town; `pnpm --filter @gb/forge run plans [seed]` draws one interior per building kind as a floor plan, which is the fastest way to see whether a change reads.
+Run `pnpm --filter @gb/forge test`, and regenerate `schema/brief.json` with `pnpm --filter @gb/forge run generate` when the brief changes. `pnpm --filter @gb/forge run preview [seed]` prints a town; `pnpm --filter @gb/forge run plans [seed]` draws one interior per building kind as a floor plan, which is the fastest way to see whether a change reads.

@@ -1,15 +1,19 @@
+import { readFileSync } from 'node:fs'
 import { PlayerState } from '@gb/play'
-import { QuestLog } from '@gb/quest'
-import { World } from '@gb/world'
+import { QuestLog, validateQuest, type QuestDoc } from '@gb/quest'
+import { questView, World, type WorldDoc } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { Forge, OfflineNarrator, summarise } from '../src/index.ts'
+import { buildTown } from './support.ts'
 
-async function town(seed = 'dry-gulch', overrides: Record<string, unknown> = {}) {
-  const forge = new Forge(new OfflineNarrator(seed))
-  const built = await forge.build({ theme: 'dusty western mining town', seed, blocksX: 2, blocksY: 2, blockCells: 14, ...overrides })
-  if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 800))
-  return { forge, ...built.value }
+/** A city this box built and sealed before the streets were reseeded. Never regenerated. */
+const SEALED = JSON.parse(readFileSync(new URL('./fixtures/sealed-city.json', import.meta.url), 'utf8')) as {
+  brief: Record<string, unknown>
+  world: WorldDoc
+  quests: QuestDoc[]
 }
+
+const town = (seed = 'dry-gulch', overrides: Record<string, unknown> = {}) => buildTown(seed, overrides)
 
 describe('Forge', () => {
   it('builds a sound city with streets, buildings, people and things', async () => {
@@ -59,6 +63,7 @@ describe('Forge', () => {
     const c = await town('other-seed')
 
     expect(JSON.stringify(a.world.toJSON())).toEqual(JSON.stringify(b.world.toJSON()))
+    expect(JSON.stringify(a.quests)).toEqual(JSON.stringify(b.quests))
     expect(JSON.stringify(a.world.toJSON())).not.toEqual(JSON.stringify(c.world.toJSON()))
   })
 
@@ -150,6 +155,24 @@ describe('Forge', () => {
     const populated = summary.places.filter((p) => p.npcs.length > 0)
     expect(populated.length).toBeGreaterThan(2)
     expect(populated[0]!.npcs[0]!.name.length).toBeGreaterThan(2)
+  })
+
+  it('opens a city sealed by an older generator, quests and all', async () => {
+    const loaded = World.load(SEALED.world)
+    expect(loaded.ok).toBe(true)
+    if (!loaded.ok) return
+    const sealed = loaded.value
+
+    expect(sealed.check()).toEqual([])
+    expect(sealed.plots().length).toBeGreaterThan(0)
+    expect(SEALED.quests.length).toBeGreaterThan(0)
+    for (const quest of SEALED.quests) {
+      expect(validateQuest(quest, questView(sealed)).ok, quest.id).toBe(true)
+    }
+
+    // and it is genuinely an older city: this generator lays that seed out differently now
+    const today = await town(String(SEALED.brief.seed), SEALED.brief)
+    expect(today.world.grid.rows().join('')).not.toBe(sealed.grid.rows().join(''))
   })
 
   it('refuses a brief that does not make sense', async () => {

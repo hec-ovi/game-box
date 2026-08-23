@@ -1,17 +1,7 @@
-import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
 import type { World } from '@gb/world'
 import { describe, expect, it } from 'vitest'
-import { Forge, MOUNTAIN_CELLS, OfflineNarrator, STREET_CELLS } from '../src/index.ts'
-
-/** The town as it stood before the roads out were built, recorded once. */
-const RECORDED = JSON.parse(readFileSync(new URL('./fixtures/town.json', import.meta.url), 'utf8')) as {
-  brief: Record<string, unknown>
-  grid: string[]
-  roads: { nodes: RoadNode[]; segments: RoadSegment[] }
-  digests: Record<string, string>
-  idCounters: Record<string, number>
-}
+import { MOUNTAIN_CELLS, STREET_CELLS } from '../src/index.ts'
+import { buildTown, digest } from './support.ts'
 
 interface Cell {
   x: number
@@ -31,15 +21,13 @@ interface RoadSegment {
 
 const HALF = Math.floor(STREET_CELLS / 2)
 
-async function town(overrides: Record<string, unknown> = {}) {
-  const brief = { ...RECORDED.brief, ...overrides }
-  const forge = new Forge(new OfflineNarrator(String(brief.seed)))
-  const built = await forge.build(brief)
-  if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 800))
-  return built.value
-}
+const town = (overrides: Record<string, unknown> = {}) => buildTown('town', overrides)
 
-const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 32)
+interface CityDoc extends Record<string, unknown> {
+  grid: { width: number; height: number; rows: string[] }
+  roads: { nodes: RoadNode[]; segments: RoadSegment[] }
+  idCounters: Record<string, number>
+}
 
 /** Every road out, read back off the graph the way another box would read it. */
 function roadsOut(world: World) {
@@ -150,44 +138,37 @@ describe('the roads out of the valley', () => {
     }
   })
 
-  it('leaves the rest of the city exactly where it was', async () => {
-    const { world, quests } = await town()
-    const doc = world.toJSON() as unknown as {
-      grid: { width: number; height: number; rows: string[] }
-      roads: { nodes: RoadNode[]; segments: RoadSegment[] }
-      idCounters: Record<string, number>
-    } & Record<string, unknown>
+  it('leaves the rest of the city exactly where it was when more roads out are asked for', async () => {
+    const one = await town({ exits: 1 })
+    const four = await town({ exits: 4 })
+    const before = one.world.toJSON() as unknown as CityDoc
+    const after = four.world.toJSON() as unknown as CityDoc
 
-    for (const part of ['plots', 'interiors', 'npcs', 'items', 'placements']) {
-      expect(digest(doc[part]), part).toBe(RECORDED.digests[part])
+    // the town is the town: buildings, people and quests do not move when a road is added
+    for (const part of ['plots', 'interiors', 'npcs', 'items', 'placements'] as const) {
+      expect(digest(after[part]), part).toBe(digest(before[part]))
     }
-    expect(digest(quests), 'quests').toBe(RECORDED.digests.quests)
+    expect(digest(four.quests), 'quests').toBe(digest(one.quests))
 
     // ids did not shift: only the graph's own counters moved on
-    for (const [kind, count] of Object.entries(RECORDED.idCounters)) {
+    for (const [kind, count] of Object.entries(before.idCounters)) {
       if (kind === 'node' || kind === 'road') continue
-      expect(doc.idCounters[kind], kind).toBe(count)
+      expect(after.idCounters[kind], kind).toBe(count)
     }
 
-    // the street graph is the graph it was, with the road out hung on the end
-    expect(doc.roads.nodes.slice(0, RECORDED.roads.nodes.length)).toEqual(RECORDED.roads.nodes)
-    expect(doc.roads.segments.slice(0, RECORDED.roads.segments.length)).toEqual(RECORDED.roads.segments)
-    expect(doc.roads.nodes).toHaveLength(RECORDED.roads.nodes.length + 1)
-    expect(doc.roads.segments).toHaveLength(RECORDED.roads.segments.length + 1)
+    // the street graph is the graph it was, with three more roads hung on the end
+    expect(after.roads.nodes.slice(0, before.roads.nodes.length)).toEqual(before.roads.nodes)
+    expect(after.roads.segments.slice(0, before.roads.segments.length)).toEqual(before.roads.segments)
+    expect(after.roads.nodes).toHaveLength(before.roads.nodes.length + 3)
+    expect(after.roads.segments).toHaveLength(before.roads.segments.length + 3)
 
-    // and the only cells that changed are the road out through the mountain ring
-    const changed: Array<{ cell: Cell; was: string; now: string }> = []
-    doc.grid.rows.forEach((row, y) => {
-      const before = RECORDED.grid[y]!
+    // and the only cells that changed are out in the mountain ring
+    const toEdge = (cell: Cell) => Math.min(cell.x, cell.y, after.grid.width - 1 - cell.x, after.grid.height - 1 - cell.y)
+    after.grid.rows.forEach((row, y) => {
       for (let x = 0; x < row.length; x++) {
-        if (row[x] !== before[x]) changed.push({ cell: { x, y }, was: before[x]!, now: row[x]! })
+        if (row[x] === before.grid.rows[y]![x]) continue
+        expect(toEdge({ x, y }), `${x},${y}`).toBeLessThanOrEqual(MOUNTAIN_CELLS)
       }
     })
-    const tally: Record<string, number> = {}
-    for (const change of changed) tally[`${change.was}->${change.now}`] = (tally[`${change.was}->${change.now}`] ?? 0) + 1
-    expect(tally).toEqual({ 'W->S': STREET_CELLS, 'M->W': (MOUNTAIN_CELLS - 1) * 2 })
-
-    const toEdge = (cell: Cell) => Math.min(cell.x, cell.y, doc.grid.width - 1 - cell.x, doc.grid.height - 1 - cell.y)
-    for (const change of changed) expect(toEdge(change.cell), `${change.cell.x},${change.cell.y}`).toBeLessThanOrEqual(MOUNTAIN_CELLS)
   })
 })

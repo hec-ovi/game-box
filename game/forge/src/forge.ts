@@ -3,6 +3,7 @@ import { validateQuest, type QuestDoc, type QuestProblem } from '@gb/quest'
 import {
   BODY_KINDS,
   METRICS,
+  questView,
   World,
   type Anchor,
   type BuildingKind,
@@ -12,13 +13,14 @@ import {
   type Npc,
   type Placement,
   type Room,
+  type WorldError,
 } from '@gb/world'
 import { briefContract, type Brief } from './brief.ts'
 import { planInterior } from './interior/plan.ts'
-import { gridSize } from './layout/bands.ts'
+import { planStreets } from './layout/plan.ts'
 import { sitesInBlock, storeysFor, type PlotSite } from './layout/plots.ts'
 import { layRoads } from './layout/roads.ts'
-import { layStreets } from './layout/streets.ts'
+import { paintStreets } from './layout/streets.ts'
 import type { Narrator, WorldSummary } from './narrator.ts'
 import { bulkOf, itemsFor, occupancy, roleFor, surfacesOf } from './populate.ts'
 
@@ -75,17 +77,19 @@ export class Forge {
     const brief = parsed.value
     const rng = new Rng(brief.seed)
 
+    const streets = planStreets(brief, rng.fork('streets'))
     const cityName = await this.#narrator.nameCity({ theme: brief.theme, seed: brief.seed })
-    const size = gridSize(brief)
-    const world = World.create({
+    const found = World.found({
       name: cityName,
       theme: brief.theme,
       seed: brief.seed,
-      width: size.width,
-      height: size.height,
+      width: streets.size.width,
+      height: streets.size.height,
       generator: { name: 'forge', version: GENERATOR_VERSION },
     })
-    const streets = layStreets(world, brief)
+    if (!found.ok) return err({ code: 'invalid-brief', violations: violationsOf(found.error) })
+    const world = found.value
+    paintStreets(world, streets)
 
     layRoads(world, streets.crossings, streets.exits)
     await this.#raise(world, brief, streets.blocks, rng)
@@ -228,7 +232,7 @@ export class Forge {
     const rejected: Array<{ index: number; problems: readonly QuestProblem[] }> = []
 
     for (const [index, candidate] of raw.entries()) {
-      const validated = validateQuest(candidate, viewOf(world))
+      const validated = validateQuest(candidate, questView(world))
       if (validated.ok) {
         quests.push(validated.value)
       } else {
@@ -266,6 +270,13 @@ export class Forge {
   }
 }
 
+/** The world refusing a spec means the brief asked for a city that cannot exist. */
+function violationsOf(error: WorldError): readonly SchemaViolation[] {
+  if (error.code === 'invalid-document') return error.violations
+  if (error.code === 'inconsistent-world') return error.problems.map((p) => ({ path: p.where, message: p.message }))
+  return [{ path: '(root)', message: error.message }]
+}
+
 /** The abstract world a quest writer reads: places, who is in them, what is there. */
 export function summarise(world: World): WorldSummary {
   return {
@@ -290,17 +301,5 @@ export function summarise(world: World): WorldSummary {
         items: items.map((i) => ({ itemId: i.id, name: i.name, ...(i.ownerNpcId ? { ownerNpcId: i.ownerNpcId } : {}) })),
       }
     }),
-  }
-}
-
-/** The five questions the quest layer asks about a world. */
-export function viewOf(world: World) {
-  return {
-    hasNpc: (id: string) => world.hasNpc(id),
-    hasPlot: (id: string) => world.hasPlot(id),
-    hasInterior: (id: string) => world.hasInterior(id),
-    hasItem: (id: string) => world.hasItem(id),
-    hasAnchor: (interiorId: string, anchorId: string) =>
-      world.interior(interiorId)?.anchors.some((a) => a.id === anchorId) ?? false,
   }
 }

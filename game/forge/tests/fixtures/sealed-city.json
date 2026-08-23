@@ -1,0 +1,2329 @@
+{
+ "sealed": "2026-08-23, generator 0.1.0",
+ "brief": {
+  "theme": "dusty western mining town",
+  "seed": "sealed",
+  "blocksX": 1,
+  "blocksY": 1,
+  "blockCells": 14,
+  "exits": 2
+ },
+ "world": {
+  "format": "game-box.world",
+  "schemaVersion": 1,
+  "id": "world_0001",
+  "name": "Golden Flats",
+  "theme": "dusty western mining town",
+  "seed": "sealed",
+  "generator": {
+   "name": "forge",
+   "version": "0.1.0"
+  },
+  "cellSize": 2,
+  "grid": {
+   "width": 32,
+   "height": 32,
+   "rows": [
+    "MMMMMMMMMMMMMMMMMMMMMMMMSSSMMMMM",
+    "MMMMMMMMMMMMMMMMMMMMMMMWSSSWMMMM",
+    "MMMMMMMMMMMMMMMMMMMMMMMWSSSWMMMM",
+    "MMMMMMMMMMMMMMMMMMMMMMMWSSSWMMMM",
+    "MMMMWWWWWWWWWWWWWWWWWWWWSSSWMMMM",
+    "MMMMSSSSSSSSSSSSSSSSSSSSSSSSMMMM",
+    "MMMMSSSSSSSSSSSSSSSSSSSSSSSSMMMM",
+    "MMMMSSSSSSSSSSSSSSSSSSSSSSSSMMMM",
+    "MMMMWWWWWWWWWWWWWWWWWWWWWWWWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBB.WSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBB.WSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBB.WSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBB.WSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBB.WSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBB.WSSSWMMMM",
+    "MMMMWSSSW..............WSSSWMMMM",
+    "MMMMWSSSW..............WSSSWMMMM",
+    "MMMMWSSSW...BBBBBBBBBBBWSSSWMMMM",
+    "MMMMWSSSW...BBBBBBBBBBBWSSSWMMMM",
+    "MMMMWSSSW...BBBBBBBBBBBWSSSWMMMM",
+    "MMMMWSSSW...BBBBBBBBBBBWSSSWMMMM",
+    "MMMMWSSSW...BBBBBBBBBBBWSSSWMMMM",
+    "MMMMWSSSW...BBBBBBBBBBBWSSSWMMMM",
+    "MMMMWWWWWWWWWWWWWWWWWWWWWWWWMMMM",
+    "MMMMSSSSSSSSSSSSSSSSSSSSSSSSMMMM",
+    "MMMMSSSSSSSSSSSSSSSSSSSSSSSSMMMM",
+    "MMMMSSSSSSSSSSSSSSSSSSSSSSSSMMMM",
+    "MMMMWWWWWWWWWWWWWWWWWWWWSSSWMMMM",
+    "MMMMMMMMMMMMMMMMMMMMMMMWSSSWMMMM",
+    "MMMMMMMMMMMMMMMMMMMMMMMWSSSWMMMM",
+    "MMMMMMMMMMMMMMMMMMMMMMMWSSSWMMMM",
+    "MMMMMMMMMMMMMMMMMMMMMMMMSSSMMMMM"
+   ]
+  },
+  "roads": {
+   "nodes": [
+    {
+     "id": "node_0001",
+     "cell": {
+      "x": 6,
+      "y": 6
+     }
+    },
+    {
+     "id": "node_0002",
+     "cell": {
+      "x": 6,
+      "y": 25
+     }
+    },
+    {
+     "id": "node_0003",
+     "cell": {
+      "x": 25,
+      "y": 6
+     }
+    },
+    {
+     "id": "node_0004",
+     "cell": {
+      "x": 25,
+      "y": 25
+     }
+    },
+    {
+     "id": "node_0005",
+     "cell": {
+      "x": 25,
+      "y": 31
+     }
+    },
+    {
+     "id": "node_0006",
+     "cell": {
+      "x": 25,
+      "y": 0
+     }
+    }
+   ],
+   "segments": [
+    {
+     "id": "road_0001",
+     "from": "node_0001",
+     "to": "node_0002",
+     "kind": "street",
+     "lanes": 2
+    },
+    {
+     "id": "road_0002",
+     "from": "node_0001",
+     "to": "node_0003",
+     "kind": "street",
+     "lanes": 2
+    },
+    {
+     "id": "road_0003",
+     "from": "node_0002",
+     "to": "node_0004",
+     "kind": "street",
+     "lanes": 2
+    },
+    {
+     "id": "road_0004",
+     "from": "node_0003",
+     "to": "node_0004",
+     "kind": "street",
+     "lanes": 2
+    },
+    {
+     "id": "road_0005",
+     "from": "node_0004",
+     "to": "node_0005",
+     "kind": "exit",
+     "lanes": 2
+    },
+    {
+     "id": "road_0006",
+     "from": "node_0003",
+     "to": "node_0006",
+     "kind": "exit",
+     "lanes": 2
+    }
+   ]
+  },
+  "plots": [
+   {
+    "id": "plot_0001",
+    "kind": "bar",
+    "name": "The Last Anchor",
+    "rect": {
+     "x": 9,
+     "y": 9,
+     "w": 4,
+     "h": 6
+    },
+    "storeys": 1,
+    "entrance": {
+     "cell": {
+      "x": 11,
+      "y": 8
+     },
+     "facing": "north"
+    },
+    "style": "dusty-bar",
+    "interiorId": "interior_0001"
+   },
+   {
+    "id": "plot_0002",
+    "kind": "shop",
+    "name": "Reyes Supply",
+    "rect": {
+     "x": 13,
+     "y": 9,
+     "w": 5,
+     "h": 6
+    },
+    "storeys": 2,
+    "entrance": {
+     "cell": {
+      "x": 15,
+      "y": 8
+     },
+     "facing": "north"
+    },
+    "style": "dusty-shop",
+    "interiorId": "interior_0002"
+   },
+   {
+    "id": "plot_0003",
+    "kind": "house",
+    "name": "Reyes House",
+    "rect": {
+     "x": 18,
+     "y": 9,
+     "w": 4,
+     "h": 6
+    },
+    "storeys": 1,
+    "entrance": {
+     "cell": {
+      "x": 20,
+      "y": 8
+     },
+     "facing": "north"
+    },
+    "style": "dusty-house",
+    "interiorId": "interior_0003"
+   },
+   {
+    "id": "plot_0004",
+    "kind": "chapel",
+    "name": "Copper Chapel",
+    "rect": {
+     "x": 12,
+     "y": 17,
+     "w": 5,
+     "h": 6
+    },
+    "storeys": 2,
+    "entrance": {
+     "cell": {
+      "x": 14,
+      "y": 23
+     },
+     "facing": "south"
+    },
+    "style": "dusty-chapel",
+    "interiorId": "interior_0004"
+   },
+   {
+    "id": "plot_0005",
+    "kind": "house",
+    "name": "Reyes House",
+    "rect": {
+     "x": 17,
+     "y": 17,
+     "w": 6,
+     "h": 6
+    },
+    "storeys": 2,
+    "entrance": {
+     "cell": {
+      "x": 20,
+      "y": 23
+     },
+     "facing": "south"
+    },
+    "style": "dusty-house",
+    "interiorId": "interior_0005"
+   }
+  ],
+  "interiors": [
+   {
+    "id": "interior_0001",
+    "plotId": "plot_0001",
+    "kind": "bar",
+    "size": {
+     "w": 7.6,
+     "h": 11.6
+    },
+    "rooms": [
+     {
+      "id": "room_0001",
+      "kind": "main",
+      "name": "Taproom",
+      "rect": {
+       "x": 0,
+       "y": 0,
+       "w": 4.946,
+       "h": 11.6
+      }
+     },
+     {
+      "id": "room_0002",
+      "kind": "cellar",
+      "name": "Cellar",
+      "rect": {
+       "x": 4.946,
+       "y": 0,
+       "w": 2.654,
+       "h": 11.6
+      }
+     }
+    ],
+    "doors": [
+     {
+      "id": "door_0001",
+      "from": "outside",
+      "to": "room_0001",
+      "pos": {
+       "x": 1.823,
+       "y": 0
+      },
+      "rot": 0,
+      "locked": false
+     },
+     {
+      "id": "door_0002",
+      "from": "room_0001",
+      "to": "room_0002",
+      "pos": {
+       "x": 4.946,
+       "y": 3.049
+      },
+      "rot": 90,
+      "locked": false
+     }
+    ],
+    "furniture": [
+     {
+      "id": "prop_0001",
+      "prop": "bar-counter",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 2.296,
+       "y": 10
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0002",
+      "prop": "bar-stool",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 2.496,
+       "y": 9.325
+      },
+      "rot": 180
+     },
+     {
+      "id": "prop_0003",
+      "prop": "bar-stool",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 3.596,
+       "y": 9.325
+      },
+      "rot": 180
+     },
+     {
+      "id": "prop_0004",
+      "prop": "table",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 2.473,
+       "y": 4.5
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0005",
+      "prop": "chair",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 1.623,
+       "y": 4.5
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0006",
+      "prop": "chair",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 2.473,
+       "y": 5.35
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0007",
+      "prop": "table",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 2.473,
+       "y": 1.9
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0008",
+      "prop": "chair",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 3.323,
+       "y": 1.9
+      },
+      "rot": 270
+     },
+     {
+      "id": "prop_0009",
+      "prop": "table",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 2.473,
+       "y": 7.1
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0010",
+      "prop": "chair",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 1.623,
+       "y": 7.1
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0011",
+      "prop": "chair",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 2.473,
+       "y": 7.95
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0012",
+      "prop": "shelf",
+      "roomId": "room_0002",
+      "pos": {
+       "x": 7.3,
+       "y": 8.5
+      },
+      "rot": 270
+     },
+     {
+      "id": "prop_0013",
+      "prop": "shelf",
+      "roomId": "room_0002",
+      "pos": {
+       "x": 7.3,
+       "y": 3.1
+      },
+      "rot": 270
+     },
+     {
+      "id": "prop_0014",
+      "prop": "shelf",
+      "roomId": "room_0002",
+      "pos": {
+       "x": 5.946,
+       "y": 11.3
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0015",
+      "prop": "crate-stack",
+      "roomId": "room_0002",
+      "pos": {
+       "x": 6.273,
+       "y": 1.3
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0016",
+      "prop": "crate-stack",
+      "roomId": "room_0002",
+      "pos": {
+       "x": 6.273,
+       "y": 4.9
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0017",
+      "prop": "crate-stack",
+      "roomId": "room_0002",
+      "pos": {
+       "x": 6.273,
+       "y": 6.7
+      },
+      "rot": 0
+     }
+    ],
+    "anchors": [
+     {
+      "id": "anchor_0001",
+      "kind": "serve",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 2.296,
+       "y": 10.9
+      },
+      "rot": 0,
+      "propId": "prop_0001"
+     },
+     {
+      "id": "anchor_0002",
+      "kind": "sit-drink",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 2.496,
+       "y": 9.325
+      },
+      "rot": 180,
+      "propId": "prop_0002"
+     },
+     {
+      "id": "anchor_0003",
+      "kind": "sit-drink",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 3.596,
+       "y": 9.325
+      },
+      "rot": 180,
+      "propId": "prop_0003"
+     },
+     {
+      "id": "anchor_0004",
+      "kind": "sit-drink",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 1.623,
+       "y": 4.5
+      },
+      "rot": 90,
+      "propId": "prop_0005"
+     },
+     {
+      "id": "anchor_0005",
+      "kind": "sit-drink",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 2.473,
+       "y": 5.35
+      },
+      "rot": 0,
+      "propId": "prop_0006"
+     },
+     {
+      "id": "anchor_0006",
+      "kind": "sit-drink",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 3.323,
+       "y": 1.9
+      },
+      "rot": 270,
+      "propId": "prop_0008"
+     },
+     {
+      "id": "anchor_0007",
+      "kind": "sit-drink",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 1.623,
+       "y": 7.1
+      },
+      "rot": 90,
+      "propId": "prop_0010"
+     },
+     {
+      "id": "anchor_0008",
+      "kind": "stand",
+      "roomId": "room_0002",
+      "pos": {
+       "x": 6.273,
+       "y": 5.8
+      },
+      "rot": 334.249
+     }
+    ]
+   },
+   {
+    "id": "interior_0002",
+    "plotId": "plot_0002",
+    "kind": "shop",
+    "size": {
+     "w": 9.6,
+     "h": 11.6
+    },
+    "rooms": [
+     {
+      "id": "room_0003",
+      "kind": "main",
+      "name": "Shop floor",
+      "rect": {
+       "x": 0,
+       "y": 0,
+       "w": 9.6,
+       "h": 7.03
+      }
+     },
+     {
+      "id": "room_0004",
+      "kind": "backroom",
+      "name": "Back room",
+      "rect": {
+       "x": 0,
+       "y": 7.03,
+       "w": 9.6,
+       "h": 4.57
+      }
+     }
+    ],
+    "doors": [
+     {
+      "id": "door_0003",
+      "from": "outside",
+      "to": "room_0003",
+      "pos": {
+       "x": 5.947,
+       "y": 0
+      },
+      "rot": 0,
+      "locked": false
+     },
+     {
+      "id": "door_0004",
+      "from": "room_0003",
+      "to": "room_0004",
+      "pos": {
+       "x": 6.385,
+       "y": 7.03
+      },
+      "rot": 180,
+      "locked": false
+     }
+    ],
+    "furniture": [
+     {
+      "id": "prop_0018",
+      "prop": "counter",
+      "roomId": "room_0003",
+      "pos": {
+       "x": 1.15,
+       "y": 5.43
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0019",
+      "prop": "counter",
+      "roomId": "room_0003",
+      "pos": {
+       "x": 4.15,
+       "y": 5.43
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0020",
+      "prop": "register",
+      "roomId": "room_0003",
+      "pos": {
+       "x": 5.15,
+       "y": 5.555
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0021",
+      "prop": "display-case",
+      "roomId": "room_0003",
+      "pos": {
+       "x": 0.4,
+       "y": 1.4
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0022",
+      "prop": "display-case",
+      "roomId": "room_0003",
+      "pos": {
+       "x": 0.4,
+       "y": 3.05
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0023",
+      "prop": "display-case",
+      "roomId": "room_0003",
+      "pos": {
+       "x": 9.2,
+       "y": 3.95
+      },
+      "rot": 270
+     },
+     {
+      "id": "prop_0024",
+      "prop": "display-case",
+      "roomId": "room_0003",
+      "pos": {
+       "x": 9.2,
+       "y": 2.3
+      },
+      "rot": 270
+     },
+     {
+      "id": "prop_0025",
+      "prop": "shelf",
+      "roomId": "room_0003",
+      "pos": {
+       "x": 0.3,
+       "y": 4.45
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0026",
+      "prop": "shelf",
+      "roomId": "room_0004",
+      "pos": {
+       "x": 5.5,
+       "y": 11.3
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0027",
+      "prop": "shelf",
+      "roomId": "room_0004",
+      "pos": {
+       "x": 0.85,
+       "y": 11.3
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0028",
+      "prop": "shelf",
+      "roomId": "room_0004",
+      "pos": {
+       "x": 0.3,
+       "y": 10.28
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0029",
+      "prop": "shelf",
+      "roomId": "room_0004",
+      "pos": {
+       "x": 0.3,
+       "y": 8.18
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0030",
+      "prop": "crate-stack",
+      "roomId": "room_0004",
+      "pos": {
+       "x": 3,
+       "y": 8.415
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0031",
+      "prop": "crate-stack",
+      "roomId": "room_0004",
+      "pos": {
+       "x": 8.4,
+       "y": 8.415
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0032",
+      "prop": "crate-stack",
+      "roomId": "room_0004",
+      "pos": {
+       "x": 3,
+       "y": 10.215
+      },
+      "rot": 0
+     }
+    ],
+    "anchors": [
+     {
+      "id": "anchor_0009",
+      "kind": "serve",
+      "roomId": "room_0003",
+      "pos": {
+       "x": 4.15,
+       "y": 6.33
+      },
+      "rot": 0,
+      "propId": "prop_0019"
+     },
+     {
+      "id": "anchor_0010",
+      "kind": "browse",
+      "roomId": "room_0003",
+      "pos": {
+       "x": 1.3,
+       "y": 1.4
+      },
+      "rot": 270,
+      "propId": "prop_0021"
+     },
+     {
+      "id": "anchor_0011",
+      "kind": "browse",
+      "roomId": "room_0003",
+      "pos": {
+       "x": 1.3,
+       "y": 3.05
+      },
+      "rot": 270,
+      "propId": "prop_0022"
+     },
+     {
+      "id": "anchor_0012",
+      "kind": "browse",
+      "roomId": "room_0003",
+      "pos": {
+       "x": 8.3,
+       "y": 3.95
+      },
+      "rot": 90,
+      "propId": "prop_0023"
+     },
+     {
+      "id": "anchor_0013",
+      "kind": "stand",
+      "roomId": "room_0004",
+      "pos": {
+       "x": 4.8,
+       "y": 9.315
+      },
+      "rot": 34.747
+     }
+    ]
+   },
+   {
+    "id": "interior_0003",
+    "plotId": "plot_0003",
+    "kind": "house",
+    "size": {
+     "w": 7.6,
+     "h": 11.6
+    },
+    "rooms": [
+     {
+      "id": "room_0005",
+      "kind": "hall",
+      "name": "Entrance hall",
+      "rect": {
+       "x": 0,
+       "y": 0,
+       "w": 7.6,
+       "h": 2.314
+      }
+     },
+     {
+      "id": "room_0006",
+      "kind": "main",
+      "name": "Living room",
+      "rect": {
+       "x": 0,
+       "y": 2.314,
+       "w": 7.6,
+       "h": 6.278
+      }
+     },
+     {
+      "id": "room_0007",
+      "kind": "kitchen",
+      "name": "Kitchen",
+      "rect": {
+       "x": 0,
+       "y": 8.592,
+       "w": 2.533,
+       "h": 3.008
+      }
+     },
+     {
+      "id": "room_0008",
+      "kind": "bedroom",
+      "name": "Bedroom",
+      "rect": {
+       "x": 2.533,
+       "y": 8.592,
+       "w": 2.533,
+       "h": 3.008
+      }
+     },
+     {
+      "id": "room_0009",
+      "kind": "bathroom",
+      "name": "Bathroom",
+      "rect": {
+       "x": 5.066,
+       "y": 8.592,
+       "w": 2.534,
+       "h": 3.008
+      }
+     }
+    ],
+    "doors": [
+     {
+      "id": "door_0005",
+      "from": "outside",
+      "to": "room_0005",
+      "pos": {
+       "x": 3.183,
+       "y": 0
+      },
+      "rot": 0,
+      "locked": false
+     },
+     {
+      "id": "door_0006",
+      "from": "room_0005",
+      "to": "room_0006",
+      "pos": {
+       "x": 3.104,
+       "y": 2.314
+      },
+      "rot": 180,
+      "locked": false
+     },
+     {
+      "id": "door_0007",
+      "from": "room_0006",
+      "to": "room_0009",
+      "pos": {
+       "x": 6.39,
+       "y": 8.592
+      },
+      "rot": 180,
+      "locked": false
+     },
+     {
+      "id": "door_0008",
+      "from": "room_0006",
+      "to": "room_0007",
+      "pos": {
+       "x": 0.82,
+       "y": 8.592
+      },
+      "rot": 180,
+      "locked": false
+     },
+     {
+      "id": "door_0009",
+      "from": "room_0006",
+      "to": "room_0008",
+      "pos": {
+       "x": 3.283,
+       "y": 8.592
+      },
+      "rot": 180,
+      "locked": false
+     }
+    ],
+    "furniture": [
+     {
+      "id": "prop_0033",
+      "prop": "cabinet",
+      "roomId": "room_0005",
+      "pos": {
+       "x": 0.325,
+       "y": 0.65
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0034",
+      "prop": "plant",
+      "roomId": "room_0005",
+      "pos": {
+       "x": 0.35,
+       "y": 1.9
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0035",
+      "prop": "sofa",
+      "roomId": "room_0006",
+      "pos": {
+       "x": 0.525,
+       "y": 5.314
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0036",
+      "prop": "rug",
+      "roomId": "room_0006",
+      "pos": {
+       "x": 1.925,
+       "y": 5.314
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0037",
+      "prop": "tv",
+      "roomId": "room_0006",
+      "pos": {
+       "x": 7.375,
+       "y": 5.114
+      },
+      "rot": 270
+     },
+     {
+      "id": "prop_0038",
+      "prop": "lamp",
+      "roomId": "room_0006",
+      "pos": {
+       "x": 0.275,
+       "y": 2.639
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0039",
+      "prop": "shelf",
+      "roomId": "room_0006",
+      "pos": {
+       "x": 0.3,
+       "y": 7.014
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0040",
+      "prop": "stove",
+      "roomId": "room_0007",
+      "pos": {
+       "x": 0.425,
+       "y": 10.192
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0041",
+      "prop": "sink",
+      "roomId": "room_0007",
+      "pos": {
+       "x": 0.375,
+       "y": 11.042
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0042",
+      "prop": "counter",
+      "roomId": "room_0007",
+      "pos": {
+       "x": 2.133,
+       "y": 9.842
+      },
+      "rot": 270
+     },
+     {
+      "id": "prop_0043",
+      "prop": "lamp",
+      "roomId": "room_0008",
+      "pos": {
+       "x": 2.858,
+       "y": 11.325
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0044",
+      "prop": "sink",
+      "roomId": "room_0009",
+      "pos": {
+       "x": 7.225,
+       "y": 10.292
+      },
+      "rot": 270
+     },
+     {
+      "id": "prop_0045",
+      "prop": "cabinet",
+      "roomId": "room_0009",
+      "pos": {
+       "x": 6.866,
+       "y": 11.275
+      },
+      "rot": 0
+     }
+    ],
+    "anchors": [
+     {
+      "id": "anchor_0014",
+      "kind": "sit",
+      "roomId": "room_0006",
+      "pos": {
+       "x": 0.525,
+       "y": 5.314
+      },
+      "rot": 90,
+      "propId": "prop_0035"
+     },
+     {
+      "id": "anchor_0015",
+      "kind": "cook",
+      "roomId": "room_0007",
+      "pos": {
+       "x": 1.3,
+       "y": 10.192
+      },
+      "rot": 270,
+      "propId": "prop_0040"
+     }
+    ]
+   },
+   {
+    "id": "interior_0004",
+    "plotId": "plot_0004",
+    "kind": "chapel",
+    "size": {
+     "w": 9.6,
+     "h": 11.6
+    },
+    "rooms": [
+     {
+      "id": "room_0010",
+      "kind": "main",
+      "name": "Nave",
+      "rect": {
+       "x": 0,
+       "y": 0,
+       "w": 9.6,
+       "h": 11.6
+      }
+     }
+    ],
+    "doors": [
+     {
+      "id": "door_0010",
+      "from": "outside",
+      "to": "room_0010",
+      "pos": {
+       "x": 5.243,
+       "y": 11.6
+      },
+      "rot": 180,
+      "locked": false
+     }
+    ],
+    "furniture": [
+     {
+      "id": "prop_0046",
+      "prop": "table",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 4.3,
+       "y": 0.6
+      },
+      "rot": 180
+     },
+     {
+      "id": "prop_0047",
+      "prop": "chair",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 0.95,
+       "y": 2.95
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0048",
+      "prop": "chair",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 2.05,
+       "y": 2.95
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0049",
+      "prop": "chair",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 3.15,
+       "y": 2.95
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0050",
+      "prop": "chair",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 4.25,
+       "y": 2.95
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0051",
+      "prop": "chair",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 5.35,
+       "y": 2.95
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0052",
+      "prop": "chair",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 6.45,
+       "y": 2.95
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0053",
+      "prop": "chair",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 7.55,
+       "y": 2.95
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0054",
+      "prop": "chair",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 8.65,
+       "y": 2.95
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0055",
+      "prop": "chair",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 0.95,
+       "y": 4.05
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0056",
+      "prop": "chair",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 2.05,
+       "y": 4.05
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0057",
+      "prop": "chair",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 3.15,
+       "y": 4.05
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0058",
+      "prop": "chair",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 4.25,
+       "y": 4.05
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0059",
+      "prop": "chair",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 5.35,
+       "y": 4.05
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0060",
+      "prop": "chair",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 6.45,
+       "y": 4.05
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0061",
+      "prop": "chair",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 7.55,
+       "y": 4.05
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0062",
+      "prop": "chair",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 8.65,
+       "y": 4.05
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0063",
+      "prop": "lamp",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 9.175,
+       "y": 0.275
+      },
+      "rot": 180
+     }
+    ],
+    "anchors": [
+     {
+      "id": "anchor_0016",
+      "kind": "stand",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 4.3,
+       "y": 1.4
+      },
+      "rot": 180,
+      "propId": "prop_0046"
+     },
+     {
+      "id": "anchor_0017",
+      "kind": "sit",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 0.95,
+       "y": 2.95
+      },
+      "rot": 0,
+      "propId": "prop_0047"
+     },
+     {
+      "id": "anchor_0018",
+      "kind": "sit",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 2.05,
+       "y": 2.95
+      },
+      "rot": 0,
+      "propId": "prop_0048"
+     },
+     {
+      "id": "anchor_0019",
+      "kind": "sit",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 3.15,
+       "y": 2.95
+      },
+      "rot": 0,
+      "propId": "prop_0049"
+     },
+     {
+      "id": "anchor_0020",
+      "kind": "sit",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 4.25,
+       "y": 2.95
+      },
+      "rot": 0,
+      "propId": "prop_0050"
+     },
+     {
+      "id": "anchor_0021",
+      "kind": "sit",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 5.35,
+       "y": 2.95
+      },
+      "rot": 0,
+      "propId": "prop_0051"
+     },
+     {
+      "id": "anchor_0022",
+      "kind": "sit",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 6.45,
+       "y": 2.95
+      },
+      "rot": 0,
+      "propId": "prop_0052"
+     },
+     {
+      "id": "anchor_0023",
+      "kind": "sit",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 7.55,
+       "y": 2.95
+      },
+      "rot": 0,
+      "propId": "prop_0053"
+     },
+     {
+      "id": "anchor_0024",
+      "kind": "sit",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 8.65,
+       "y": 2.95
+      },
+      "rot": 0,
+      "propId": "prop_0054"
+     }
+    ]
+   },
+   {
+    "id": "interior_0005",
+    "plotId": "plot_0005",
+    "kind": "house",
+    "size": {
+     "w": 11.6,
+     "h": 11.6
+    },
+    "rooms": [
+     {
+      "id": "room_0011",
+      "kind": "hall",
+      "name": "Entrance hall",
+      "rect": {
+       "x": 0,
+       "y": 9.4,
+       "w": 11.6,
+       "h": 2.2
+      }
+     },
+     {
+      "id": "room_0012",
+      "kind": "main",
+      "name": "Living room",
+      "rect": {
+       "x": 0,
+       "y": 0,
+       "w": 7.634,
+       "h": 9.4
+      }
+     },
+     {
+      "id": "room_0013",
+      "kind": "bathroom",
+      "name": "Bathroom",
+      "rect": {
+       "x": 7.634,
+       "y": 6.266,
+       "w": 3.966,
+       "h": 3.134
+      }
+     },
+     {
+      "id": "room_0014",
+      "kind": "bedroom",
+      "name": "Bedroom",
+      "rect": {
+       "x": 7.634,
+       "y": 3.133,
+       "w": 3.966,
+       "h": 3.133
+      }
+     },
+     {
+      "id": "room_0015",
+      "kind": "kitchen",
+      "name": "Kitchen",
+      "rect": {
+       "x": 7.634,
+       "y": 0,
+       "w": 3.966,
+       "h": 3.133
+      }
+     }
+    ],
+    "doors": [
+     {
+      "id": "door_0011",
+      "from": "outside",
+      "to": "room_0011",
+      "pos": {
+       "x": 5.222,
+       "y": 11.6
+      },
+      "rot": 180,
+      "locked": false
+     },
+     {
+      "id": "door_0012",
+      "from": "room_0011",
+      "to": "room_0012",
+      "pos": {
+       "x": 4.259,
+       "y": 9.4
+      },
+      "rot": 0,
+      "locked": false
+     },
+     {
+      "id": "door_0013",
+      "from": "room_0011",
+      "to": "room_0013",
+      "pos": {
+       "x": 9.384,
+       "y": 9.4
+      },
+      "rot": 0,
+      "locked": false
+     },
+     {
+      "id": "door_0014",
+      "from": "room_0013",
+      "to": "room_0014",
+      "pos": {
+       "x": 9.81,
+       "y": 6.266
+      },
+      "rot": 0,
+      "locked": false
+     },
+     {
+      "id": "door_0015",
+      "from": "room_0012",
+      "to": "room_0015",
+      "pos": {
+       "x": 7.634,
+       "y": 2.301
+      },
+      "rot": 90,
+      "locked": false
+     }
+    ],
+    "furniture": [
+     {
+      "id": "prop_0064",
+      "prop": "cabinet",
+      "roomId": "room_0011",
+      "pos": {
+       "x": 11.275,
+       "y": 10.95
+      },
+      "rot": 270
+     },
+     {
+      "id": "prop_0065",
+      "prop": "sofa",
+      "roomId": "room_0012",
+      "pos": {
+       "x": 0.525,
+       "y": 4.35
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0066",
+      "prop": "rug",
+      "roomId": "room_0012",
+      "pos": {
+       "x": 1.925,
+       "y": 4.35
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0067",
+      "prop": "tv",
+      "roomId": "room_0012",
+      "pos": {
+       "x": 7.409,
+       "y": 5.2
+      },
+      "rot": 270
+     },
+     {
+      "id": "prop_0068",
+      "prop": "lamp",
+      "roomId": "room_0012",
+      "pos": {
+       "x": 0.325,
+       "y": 0.275
+      },
+      "rot": 180
+     },
+     {
+      "id": "prop_0069",
+      "prop": "shelf",
+      "roomId": "room_0012",
+      "pos": {
+       "x": 6.95,
+       "y": 0.3
+      },
+      "rot": 180
+     },
+     {
+      "id": "prop_0070",
+      "prop": "sink",
+      "roomId": "room_0013",
+      "pos": {
+       "x": 8.009,
+       "y": 7.666
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0071",
+      "prop": "cabinet",
+      "roomId": "room_0013",
+      "pos": {
+       "x": 7.959,
+       "y": 8.666
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0072",
+      "prop": "bed",
+      "roomId": "room_0014",
+      "pos": {
+       "x": 10.5,
+       "y": 4.533
+      },
+      "rot": 270
+     },
+     {
+      "id": "prop_0073",
+      "prop": "wardrobe",
+      "roomId": "room_0014",
+      "pos": {
+       "x": 8.034,
+       "y": 4.833
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0074",
+      "prop": "lamp",
+      "roomId": "room_0014",
+      "pos": {
+       "x": 7.909,
+       "y": 3.458
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0075",
+      "prop": "stove",
+      "roomId": "room_0015",
+      "pos": {
+       "x": 9.234,
+       "y": 2.708
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0076",
+      "prop": "sink",
+      "roomId": "room_0015",
+      "pos": {
+       "x": 10.084,
+       "y": 2.758
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0077",
+      "prop": "fridge",
+      "roomId": "room_0015",
+      "pos": {
+       "x": 11.034,
+       "y": 2.683
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0078",
+      "prop": "counter",
+      "roomId": "room_0015",
+      "pos": {
+       "x": 10.084,
+       "y": 0.4
+      },
+      "rot": 180
+     }
+    ],
+    "anchors": [
+     {
+      "id": "anchor_0025",
+      "kind": "sit",
+      "roomId": "room_0012",
+      "pos": {
+       "x": 0.525,
+       "y": 4.35
+      },
+      "rot": 90,
+      "propId": "prop_0065"
+     },
+     {
+      "id": "anchor_0026",
+      "kind": "sleep",
+      "roomId": "room_0014",
+      "pos": {
+       "x": 10.5,
+       "y": 4.533
+      },
+      "rot": 270,
+      "propId": "prop_0072"
+     },
+     {
+      "id": "anchor_0027",
+      "kind": "cook",
+      "roomId": "room_0015",
+      "pos": {
+       "x": 9.234,
+       "y": 1.833
+      },
+      "rot": 180,
+      "propId": "prop_0075"
+     }
+    ]
+   }
+  ],
+  "npcs": [
+   {
+    "id": "npc_0001",
+    "name": "Wren Marek",
+    "role": "bartender",
+    "appearance": {
+     "base": "male",
+     "variant": 6
+    },
+    "station": {
+     "interiorId": "interior_0001",
+     "anchorId": "anchor_0001"
+    },
+    "workPlotId": "plot_0001",
+    "personality": "pours slowly, listens hard, forgets nothing. Works at The Last Anchor.",
+    "knowledge": [
+     "Works at The Last Anchor as the bartender.",
+     "Knows the regulars at The Last Anchor by name."
+    ]
+   },
+   {
+    "id": "npc_0002",
+    "name": "Mara Ferro",
+    "role": "patron",
+    "appearance": {
+     "base": "male",
+     "variant": 2
+    },
+    "station": {
+     "interiorId": "interior_0001",
+     "anchorId": "anchor_0003"
+    },
+    "workPlotId": "plot_0001",
+    "personality": "here most nights, opinions on everything. Works at The Last Anchor.",
+    "knowledge": [
+     "Works at The Last Anchor as the patron.",
+     "Knows the regulars at The Last Anchor by name."
+    ]
+   },
+   {
+    "id": "npc_0003",
+    "name": "Cass Dunn",
+    "role": "clerk",
+    "appearance": {
+     "base": "male",
+     "variant": 6
+    },
+    "station": {
+     "interiorId": "interior_0002",
+     "anchorId": "anchor_0009"
+    },
+    "workPlotId": "plot_0002",
+    "personality": "polite, precise, watching the clock. Works at Reyes Supply.",
+    "knowledge": [
+     "Works at Reyes Supply as the clerk.",
+     "Knows the regulars at Reyes Supply by name."
+    ]
+   },
+   {
+    "id": "npc_0004",
+    "name": "Orla Ashby",
+    "role": "patron",
+    "appearance": {
+     "base": "male",
+     "variant": 5
+    },
+    "station": {
+     "interiorId": "interior_0002",
+     "anchorId": "anchor_0012"
+    },
+    "workPlotId": "plot_0002",
+    "personality": "here most nights, opinions on everything. Works at Reyes Supply.",
+    "knowledge": [
+     "Works at Reyes Supply as the patron.",
+     "Knows the regulars at Reyes Supply by name."
+    ]
+   },
+   {
+    "id": "npc_0005",
+    "name": "Bez Marek",
+    "role": "worker",
+    "appearance": {
+     "base": "male",
+     "variant": 7
+    },
+    "station": {
+     "interiorId": "interior_0002",
+     "anchorId": "anchor_0013"
+    },
+    "workPlotId": "plot_0002",
+    "personality": "tired, straightforward, wants the shift over. Works at Reyes Supply.",
+    "knowledge": [
+     "Works at Reyes Supply as the worker.",
+     "Knows the regulars at Reyes Supply by name."
+    ]
+   },
+   {
+    "id": "npc_0006",
+    "name": "Delia Lange",
+    "role": "patron",
+    "appearance": {
+     "base": "male",
+     "variant": 6
+    },
+    "station": {
+     "interiorId": "interior_0004",
+     "anchorId": "anchor_0019"
+    },
+    "workPlotId": "plot_0004",
+    "personality": "here most nights, opinions on everything. Works at Copper Chapel.",
+    "knowledge": [
+     "Works at Copper Chapel as the patron.",
+     "Knows the regulars at Copper Chapel by name."
+    ]
+   },
+   {
+    "id": "npc_0007",
+    "name": "Delia Cole",
+    "role": "patron",
+    "appearance": {
+     "base": "female",
+     "variant": 6
+    },
+    "station": {
+     "interiorId": "interior_0004",
+     "anchorId": "anchor_0020"
+    },
+    "workPlotId": "plot_0004",
+    "personality": "here most nights, opinions on everything. Works at Copper Chapel.",
+    "knowledge": [
+     "Works at Copper Chapel as the patron.",
+     "Knows the regulars at Copper Chapel by name."
+    ]
+   },
+   {
+    "id": "npc_0008",
+    "name": "Orla Orso",
+    "role": "patron",
+    "appearance": {
+     "base": "male",
+     "variant": 7
+    },
+    "station": {
+     "interiorId": "interior_0004",
+     "anchorId": "anchor_0022"
+    },
+    "workPlotId": "plot_0004",
+    "personality": "here most nights, opinions on everything. Works at Copper Chapel.",
+    "knowledge": [
+     "Works at Copper Chapel as the patron.",
+     "Knows the regulars at Copper Chapel by name."
+    ]
+   },
+   {
+    "id": "npc_0009",
+    "name": "Wren Stroud",
+    "role": "cook",
+    "appearance": {
+     "base": "male",
+     "variant": 2
+    },
+    "station": {
+     "interiorId": "interior_0005",
+     "anchorId": "anchor_0027"
+    },
+    "workPlotId": "plot_0005",
+    "personality": "brusque, proud of the food, hates waste. Works at Reyes House.",
+    "knowledge": [
+     "Works at Reyes House as the cook.",
+     "Knows the regulars at Reyes House by name."
+    ]
+   }
+  ],
+  "items": [
+   {
+    "id": "item_0001",
+    "name": "Worn bottle",
+    "description": "A worn bottle. Nothing about it invites questions.",
+    "archetype": "bottle",
+    "value": 20,
+    "bulk": "pocket",
+    "ownerNpcId": "npc_0001"
+   },
+   {
+    "id": "item_0002",
+    "name": "Cheap glass",
+    "description": "A cheap glass. Nothing about it invites questions.",
+    "archetype": "glass",
+    "value": 20,
+    "bulk": "pocket",
+    "ownerNpcId": "npc_0001"
+   },
+   {
+    "id": "item_0003",
+    "name": "Sealed cash",
+    "description": "A sealed cash. Nothing about it invites questions.",
+    "archetype": "cash",
+    "value": 25,
+    "bulk": "pocket",
+    "ownerNpcId": "npc_0001"
+   },
+   {
+    "id": "item_0004",
+    "name": "Heavy parcel",
+    "description": "A heavy parcel. Nothing about it invites questions.",
+    "archetype": "parcel",
+    "value": 38,
+    "bulk": "bag",
+    "ownerNpcId": "npc_0003"
+   },
+   {
+    "id": "item_0005",
+    "name": "Dented cash",
+    "description": "A dented cash. Nothing about it invites questions.",
+    "archetype": "cash",
+    "value": 48,
+    "bulk": "pocket",
+    "ownerNpcId": "npc_0003"
+   },
+   {
+    "id": "item_0006",
+    "name": "Heavy box",
+    "description": "A heavy box. Nothing about it invites questions.",
+    "archetype": "box",
+    "value": 34,
+    "bulk": "bag",
+    "ownerNpcId": "npc_0003"
+   },
+   {
+    "id": "item_0007",
+    "name": "Sealed key",
+    "description": "A sealed key. Nothing about it invites questions.",
+    "archetype": "key",
+    "value": 13,
+    "bulk": "pocket"
+   },
+   {
+    "id": "item_0008",
+    "name": "Sealed painting",
+    "description": "A sealed painting. Nothing about it invites questions.",
+    "archetype": "painting",
+    "value": 10,
+    "bulk": "two-handed"
+   },
+   {
+    "id": "item_0009",
+    "name": "Dented statue",
+    "description": "A dented statue. Nothing about it invites questions.",
+    "archetype": "statue",
+    "value": 31,
+    "bulk": "two-handed"
+   },
+   {
+    "id": "item_0010",
+    "name": "Heavy phone",
+    "description": "A heavy phone. Nothing about it invites questions.",
+    "archetype": "phone",
+    "value": 21,
+    "bulk": "pocket"
+   }
+  ],
+  "placements": [
+   {
+    "at": "anchor",
+    "itemId": "item_0001",
+    "interiorId": "interior_0001",
+    "anchorId": "anchor_0001"
+   },
+   {
+    "at": "anchor",
+    "itemId": "item_0002",
+    "interiorId": "interior_0001",
+    "anchorId": "anchor_0002"
+   },
+   {
+    "at": "anchor",
+    "itemId": "item_0003",
+    "interiorId": "interior_0001",
+    "anchorId": "anchor_0003"
+   },
+   {
+    "at": "anchor",
+    "itemId": "item_0004",
+    "interiorId": "interior_0002",
+    "anchorId": "anchor_0009"
+   },
+   {
+    "at": "anchor",
+    "itemId": "item_0005",
+    "interiorId": "interior_0002",
+    "anchorId": "anchor_0010"
+   },
+   {
+    "at": "anchor",
+    "itemId": "item_0006",
+    "interiorId": "interior_0002",
+    "anchorId": "anchor_0011"
+   },
+   {
+    "at": "anchor",
+    "itemId": "item_0007",
+    "interiorId": "interior_0003",
+    "anchorId": "anchor_0014"
+   },
+   {
+    "at": "anchor",
+    "itemId": "item_0008",
+    "interiorId": "interior_0003",
+    "anchorId": "anchor_0015"
+   },
+   {
+    "at": "anchor",
+    "itemId": "item_0009",
+    "interiorId": "interior_0004",
+    "anchorId": "anchor_0016"
+   },
+   {
+    "at": "anchor",
+    "itemId": "item_0010",
+    "interiorId": "interior_0005",
+    "anchorId": "anchor_0025"
+   }
+  ],
+  "idCounters": {
+   "world": 1,
+   "node": 6,
+   "road": 6,
+   "plot": 5,
+   "room": 15,
+   "door": 15,
+   "prop": 78,
+   "anchor": 27,
+   "interior": 5,
+   "npc": 9,
+   "item": 10
+  }
+ },
+ "quests": [
+  {
+   "format": "game-box.quest",
+   "schemaVersion": 1,
+   "id": "quest_0001",
+   "kind": "main",
+   "title": "Worn bottle for Cass Dunn",
+   "summary": "Cass Dunn at Reyes Supply wants the worn bottle that Wren Marek keeps at The Last Anchor.",
+   "giverNpcId": "npc_0003",
+   "startStepId": "step_0001",
+   "steps": [
+    {
+     "id": "step_0001",
+     "objective": "Hear Cass Dunn out at Reyes Supply",
+     "next": [
+      "step_0002"
+     ],
+     "requires": [],
+     "effects": [],
+     "kind": "talk",
+     "npcId": "npc_0003"
+    },
+    {
+     "id": "step_0002",
+     "objective": "Go to The Last Anchor",
+     "next": [
+      "step_0003"
+     ],
+     "requires": [],
+     "effects": [],
+     "kind": "goto",
+     "place": {
+      "plotId": "plot_0001"
+     }
+    },
+    {
+     "id": "step_0003",
+     "objective": "Take the worn bottle without a fuss",
+     "next": [
+      "step_0004"
+     ],
+     "requires": [],
+     "effects": [],
+     "kind": "collect",
+     "itemId": "item_0001",
+     "allowSteal": true
+    },
+    {
+     "id": "step_0004",
+     "objective": "Bring it back to Cass Dunn",
+     "next": [
+      "step_0005"
+     ],
+     "requires": [],
+     "effects": [
+      {
+       "kind": "set-flag",
+       "flag": "delivered_item_0001",
+       "value": true
+      }
+     ],
+     "kind": "deliver",
+     "itemId": "item_0001",
+     "toNpcId": "npc_0003"
+    },
+    {
+     "id": "step_0005",
+     "objective": "Get paid",
+     "next": [],
+     "requires": [],
+     "effects": [],
+     "kind": "complete"
+    }
+   ],
+   "reward": {
+    "money": 36,
+    "reputation": -2,
+    "faction": "town",
+    "items": []
+   }
+  },
+  {
+   "format": "game-box.quest",
+   "schemaVersion": 1,
+   "id": "quest_0002",
+   "kind": "side",
+   "title": "Dented cash for Delia Lange",
+   "summary": "Delia Lange at Copper Chapel wants the dented cash that Cass Dunn keeps at Reyes Supply.",
+   "giverNpcId": "npc_0006",
+   "startStepId": "step_0001",
+   "steps": [
+    {
+     "id": "step_0001",
+     "objective": "Hear Delia Lange out at Copper Chapel",
+     "next": [
+      "step_0002"
+     ],
+     "requires": [],
+     "effects": [],
+     "kind": "talk",
+     "npcId": "npc_0006"
+    },
+    {
+     "id": "step_0002",
+     "objective": "Go to Reyes Supply",
+     "next": [
+      "step_0003"
+     ],
+     "requires": [],
+     "effects": [],
+     "kind": "goto",
+     "place": {
+      "plotId": "plot_0002"
+     }
+    },
+    {
+     "id": "step_0003",
+     "objective": "Take the dented cash without a fuss",
+     "next": [
+      "step_0004"
+     ],
+     "requires": [],
+     "effects": [],
+     "kind": "collect",
+     "itemId": "item_0005",
+     "allowSteal": true
+    },
+    {
+     "id": "step_0004",
+     "objective": "Bring it back to Delia Lange",
+     "next": [
+      "step_0005"
+     ],
+     "requires": [],
+     "effects": [
+      {
+       "kind": "set-flag",
+       "flag": "delivered_item_0005",
+       "value": true
+      }
+     ],
+     "kind": "deliver",
+     "itemId": "item_0005",
+     "toNpcId": "npc_0006"
+    },
+    {
+     "id": "step_0005",
+     "objective": "Get paid",
+     "next": [],
+     "requires": [],
+     "effects": [],
+     "kind": "complete"
+    }
+   ],
+   "reward": {
+    "money": 40,
+    "reputation": -2,
+    "faction": "town",
+    "items": []
+   }
+  },
+  {
+   "format": "game-box.quest",
+   "schemaVersion": 1,
+   "id": "quest_0003",
+   "kind": "side",
+   "title": "Dented statue for Wren Stroud",
+   "summary": "Wren Stroud at Reyes House wants the dented statue that Delia Lange keeps at Copper Chapel.",
+   "giverNpcId": "npc_0009",
+   "startStepId": "step_0001",
+   "steps": [
+    {
+     "id": "step_0001",
+     "objective": "Hear Wren Stroud out at Reyes House",
+     "next": [
+      "step_0002"
+     ],
+     "requires": [],
+     "effects": [],
+     "kind": "talk",
+     "npcId": "npc_0009"
+    },
+    {
+     "id": "step_0002",
+     "objective": "Go to Copper Chapel",
+     "next": [
+      "step_0003"
+     ],
+     "requires": [],
+     "effects": [],
+     "kind": "goto",
+     "place": {
+      "plotId": "plot_0004"
+     }
+    },
+    {
+     "id": "step_0003",
+     "objective": "Pick up the dented statue",
+     "next": [
+      "step_0004"
+     ],
+     "requires": [],
+     "effects": [],
+     "kind": "collect",
+     "itemId": "item_0009",
+     "allowSteal": false
+    },
+    {
+     "id": "step_0004",
+     "objective": "Bring it back to Wren Stroud",
+     "next": [
+      "step_0005"
+     ],
+     "requires": [],
+     "effects": [
+      {
+       "kind": "set-flag",
+       "flag": "delivered_item_0009",
+       "value": true
+      }
+     ],
+     "kind": "deliver",
+     "itemId": "item_0009",
+     "toNpcId": "npc_0009"
+    },
+    {
+     "id": "step_0005",
+     "objective": "Get paid",
+     "next": [],
+     "requires": [],
+     "effects": [],
+     "kind": "complete"
+    }
+   ],
+   "reward": {
+    "money": 47,
+    "reputation": 3,
+    "faction": "town",
+    "items": []
+   }
+  }
+ ]
+}

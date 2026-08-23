@@ -1,10 +1,10 @@
 import { Rng } from '@gb/kit'
 import { BUILDING_KINDS, type Anchor, type BuildingKind, type Interior, type Room } from '@gb/world'
 import { describe, expect, it } from 'vitest'
-import { Forge, OfflineNarrator } from '../src/index.ts'
 import { boxAt, dirOf, holds, inBox, overlaps, type Box, type Side, type Vec } from '../src/interior/geometry.ts'
 import { planInterior, type InteriorPlan } from '../src/interior/plan.ts'
 import { footprintOf, PROP_SPECS } from '../src/interior/props.ts'
+import { buildTown } from './support.ts'
 
 /** The floor a doorway keeps to itself: the opening, and a metre either side of the wall. */
 const DOOR_ZONE = { w: 1.2, d: 2 }
@@ -267,11 +267,7 @@ describe('interior plans', () => {
   })
 
   it('holds all of that up in a city the forge actually built', async () => {
-    const forge = new Forge(new OfflineNarrator('interiors'))
-    const built = await forge.build({ theme: 'harbour town', seed: 'interiors', blocksX: 2, blocksY: 2, blockCells: 14 })
-    expect(built.ok).toBe(true)
-    if (!built.ok) return
-    const world = built.value.world
+    const { world } = await buildTown('interiors', { theme: 'harbour town' })
     expect(world.interiors().length).toBeGreaterThan(8)
 
     for (const interior of world.interiors()) {

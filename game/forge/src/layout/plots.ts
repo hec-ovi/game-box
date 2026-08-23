@@ -14,13 +14,30 @@ const MAX_FRONT = 6
 const MIN_DEPTH = 4
 const MAX_DEPTH = 8
 
+/** How far back from the sidewalk the buildings on a block stand. */
+function depthOf(shortSide: number): number {
+  return Math.max(MIN_DEPTH, Math.min(MAX_DEPTH, Math.floor(shortSide / 2) - 1))
+}
+
+/**
+ * Whether a square block this many cells a side gets buildings on its east and
+ * west sides too, or only the north and south strips. The north and south
+ * strips eat `depth` cells each; what is left in the middle has to be deep
+ * enough for a frontage, or those two sides are yard. The street planner picks
+ * block sizes that pass this, which is what puts doors on every street.
+ */
+export function cutsFourWays(cells: number): boolean {
+  const depth = depthOf(cells)
+  return cells >= depth * 2 + 2 && cells - depth * 2 >= MIN_FRONT
+}
+
 /**
  * Turns a block into building sites facing the sidewalk around it: a strip on
  * each side, the middle left as yard. Sites are laid out in whole cells, so the
  * grid stays the source of truth for what is occupied.
  */
 export function sitesInBlock(block: Rect, rng: Rng): PlotSite[] {
-  const depth = Math.max(MIN_DEPTH, Math.min(MAX_DEPTH, Math.floor(Math.min(block.w, block.h) / 2) - 1))
+  const depth = depthOf(Math.min(block.w, block.h))
   const sites: PlotSite[] = []
 
   // a block too small for a ring becomes one row facing south

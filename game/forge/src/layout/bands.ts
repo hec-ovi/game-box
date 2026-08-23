@@ -1,7 +1,7 @@
-import type { Brief } from '../brief.ts'
+import { METRICS } from '@gb/world'
 
-/** Cells across a roadway: two 3 m lanes at 2 m per cell. */
-export const STREET_CELLS = 3
+/** Cells across a roadway, kerb to kerb: the width `@gb/world` publishes. */
+export const STREET_CELLS = METRICS.street.roadwayCells
 /** Cells of sidewalk on each side of a street. */
 export const SIDEWALK_CELLS = 1
 /** Cells of mountain around the whole map. */
@@ -23,13 +23,11 @@ export interface Size {
   readonly height: number
 }
 
-/** The whole map, mountains included. */
-export function gridSize(brief: Brief): Size {
-  const span = (blocks: number) => MOUNTAIN_CELLS * 2 + BAND * (blocks + 1) + brief.blockCells * blocks
-  return { width: span(brief.blocksX), height: span(brief.blocksY) }
-}
-
-/** Where each street band starts, across or down. */
-export function bandStarts(blocks: number, blockCells: number): number[] {
-  return Array.from({ length: blocks + 1 }, (_, i) => MOUNTAIN_CELLS + i * (BAND + blockCells))
+/**
+ * Cells from one edge of the map to the other along one axis, mountains
+ * included: a street band before every block, one more after the last, and the
+ * mountain ring around the lot.
+ */
+export function spanOf(blocks: number, blockCells: number): number {
+  return MOUNTAIN_CELLS * 2 + BAND * (blocks + 1) + blockCells * blocks
 }

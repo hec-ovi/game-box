@@ -5,7 +5,7 @@
     "theme": {
       "type": "string",
       "minLength": 1,
-      "maxLength": 200
+      "maxLength": 60
     },
     "seed": {
       "type": "string",
@@ -25,7 +25,6 @@
       "maximum": 24
     },
     "blockCells": {
-      "default": 14,
       "type": "integer",
       "minimum": 6,
       "maximum": 40
@@ -43,7 +42,6 @@
       "maximum": 40
     },
     "exits": {
-      "default": 1,
       "type": "integer",
       "minimum": 1,
       "maximum": 4
