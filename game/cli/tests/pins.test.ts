@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { Bundle } from '@gb/bundle'
 import { Forge, OfflineNarrator } from '@gb/forge'
 import { Catalogue, PACK_MANIFEST, designFor, heightOf } from '@gb/prefab'
-import type { Plot, World } from '@gb/world'
+import type { AssetPackRef, Plot, World } from '@gb/world'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { run } from '../src/index.ts'
 import { pinDesigns } from '../src/pins.ts'
@@ -41,24 +41,22 @@ async function grown(): Promise<Catalogue> {
 }
 
 let pack: Catalogue
-let city: { world: World; file: string }
+let city: { world: World; requires: readonly AssetPackRef[]; asBuilt: boolean }
 
+// one city, built by the command and opened the way the game opens it
 beforeAll(async () => {
   pack = await Catalogue.read(await readFile(PACK_MANIFEST))
   const file = join(dir, 'pinned.json')
   expect(await run(['build', '--seed', 'pack', '--blocks', '2x2', '--out', file], silent())).toBe(0)
   const opened = await Bundle.open(JSON.parse(readFileSync(file, 'utf8')), [pack.identity])
   if (!opened.ok) throw new Error(`the built city will not open: ${opened.error.code}`)
-  city = { world: opened.value.world, file }
+  city = { world: opened.value.world, requires: opened.value.requires, asBuilt: opened.value.packs.asBuilt }
 })
 
 describe('a city gb built', () => {
-  it('names the pack it was drawn from and pins the buildings it drew', async () => {
-    const opened = await Bundle.open(JSON.parse(readFileSync(city.file, 'utf8')), [pack.identity])
-    if (!opened.ok) throw new Error(opened.error.code)
-
-    expect(opened.value.requires).toEqual([pack.identity])
-    expect(opened.value.packs.asBuilt).toBe(true)
+  it('names the pack it was drawn from and pins the buildings it drew', () => {
+    expect(city.requires).toEqual([pack.identity])
+    expect(city.asBuilt).toBe(true)
 
     const pinned = city.world.plots().filter((plot) => plot.design)
     expect(pinned.length).toBeGreaterThan(0)
