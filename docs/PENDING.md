@@ -64,6 +64,7 @@ Concretely, in order:
 - **Rust to Node switchover.** The Node service is proven: CORS passes, llama upstream answers correctly. The Rust binary is still the one bound to 8976. Once the user restarts on Node, delete `Cargo.toml`, `Cargo.lock`, `api/ llm/ stt/ tts/ models/`, `target/`, and update `game/sidecar/tests/contract.test.ts` and `docs/INDEX.md`.
 - **Outfits pack version.** We vendor v2.0; v2.1 shipped 2026-07-05 and may carry 12 outfits on the free tier rather than 4. Re-run `fetch-assets` and count before doing any clothing work, because a front-opening longcoat would change the approach.
 
-## Throwaway, delete when decided
+## The plan
 
-- `game/app/src/spike-glb.ts` and its one call in `game.ts`, plus `assets/dist/spike/`. A look at glb-buildings models in our own street, behind `?glb=`.
+[PLAN.md](PLAN.md) is the measured plan: what already works, why every seed
+gives the same city, and thirteen box-scoped tasks in dependency order.

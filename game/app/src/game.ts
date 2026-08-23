@@ -17,7 +17,6 @@ import { alsoBlockedBy, PERSON_CLEAR } from './bodies.ts'
 import { Player } from './player.ts'
 import { createStage, type Stage } from './renderer.ts'
 import { cityGround, citySolid, furnishedSolid } from './solids.ts'
-import { spikeGlb } from './spike-glb.ts'
 import { pick, type Target } from './targets.ts'
 
 type Place = { kind: 'city' } | { kind: 'interior'; interior: Interior; plotId: string }
@@ -86,7 +85,6 @@ export class Game {
     if (this.#kit) this.#city.root.add(this.#kit.streetlights(this.#world))
     this.#stage.show(this.#city.root)
     this.#openTheHorizon()
-    spikeGlb(this.#city.root, this.#city.spawn, new URLSearchParams(location.search).get('glb'))
 
     this.#body = new Player(this.#stage.camera, this.#stage.renderer.domElement, this.#outdoors())
     this.#body.setGround(cityGround(this.#world, this.#land))
