@@ -41,15 +41,15 @@ export function playEvery(world: World, quests: readonly QuestDoc[], choices: re
       runs.push(new Player(log, state, { owned, choose }).play(quest))
     }
   }
-  return summarise(runs)
+  return tally(runs)
 }
 
 /**
- * The tally for one town, one row per quest rather than per road: a quest counts
- * as completable only when every road through it pays out, which is what a town
+ * One town's runs as one row per quest rather than per road: a quest counts as
+ * completable only when every road through it pays out, which is what a town
  * that forks has to promise.
  */
-export function summarise(runs: readonly Playthrough[]): Report {
+function tally(runs: readonly Playthrough[]): Report {
   const roads = new Map<string, Playthrough[]>()
   for (const run of runs) roads.set(run.questId, [...(roads.get(run.questId) ?? []), run])
 
