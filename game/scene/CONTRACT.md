@@ -1,6 +1,6 @@
 # @gb/scene contract
 
-contractVersion: 0.4.0
+contractVersion: 0.5.0
 
 ## Purpose
 
@@ -18,7 +18,12 @@ Turns a city into something you can stand in: ground, marked streets, buildings 
 
 | Param | Schema | Postconditions |
 |---|---|---|
-| `buildCity` | `{ root, buildings, doorsteps, spawn, markings }` | one object per plot at its footprint and height, its doorstep in metres on the pavement in front of it, a spawn on the pavement facing the first door in town |
+| `buildCity` | `{ root, buildings, doorsteps, add, spawn, markings }` | every plot standing at its footprint and height, its doorstep in metres on the pavement in front of it, a spawn on the pavement facing the first door in town |
+| `buildings` | `ReadonlyMap<string, CityBuilding>` | one per plot, by plot id |
+| `CityBuilding` | `plotId`, `bounds`, `visible` | the box it occupies in city metres, and a switch that takes it out of the city or puts it back with no rebuild |
+| `add(plot)` | `CityBuilding` | one more plot built into the city that is already standing. Its ground is not repainted: the grid changed after the ground was laid, and the building covers it |
+| `plotOf(hit)` | plot id, or undefined | which building a `THREE.Intersection` landed on. Buildings share buffers, so the object a ray hits is a batch and this is what turns the hit back into a plot |
+| city meshes | `root.children` named `city:<material>` | one `THREE.BatchedMesh` per material every building is drawn with |
 | ground meshes | `root.children` named `ground:<cell kind>` | one mesh per surface, carrying its top faces and its kerbs, with position, normal and uv |
 | `markings` | `Marking[]` | every rectangle of paint on the streets: `kind`, `paint`, centre in metres, `width` across the road, `length` along it, `rot` |
 | marking meshes | `root.children` named `markings:white` and `markings:yellow` | one instanced mesh per paint, one instance per marking, in the same order as `markings` |
@@ -43,6 +48,10 @@ None. Nothing here validates: a world that got this far already passed `@gb/worl
 - Pavement and parks stand `METRICS.street.curbHeight` above the roadway; roads, land, water and building footprints are at zero.
 - The ground is solid. Every drop from one cell to the next is closed by a kerb face wound to be seen from the low side, the edge of the grid included, so there is nowhere to look under the city and no gap where one surface stops and the next starts. Tops look up.
 - Ground is one mesh per surface and mountains are one instanced block per cell, and runs of cells merge into as few quads as the grid allows, so a city of thousands of cells is a handful of draws and a road is a few triangles.
+- The buildings are drawn out of one `THREE.BatchedMesh` per material, not one object each, so the city costs a draw per material however many buildings it has. Every building keeps its own transform, its own bounds and its own visibility inside the batch, so three still culls them one at a time and submits only what the frustum reaches, in the shadow pass as well as the frame. That is the whole reason it is a batch and not a merge: a merge costs the same one draw and hands the entire town to the rasteriser every time.
+- A batch holds indexed, single-material meshes. Anything a dressing returns that a batch cannot draw the same way (an instanced mesh, a sprite, a light, a mesh cut into material groups) makes that whole building stand on its own in the city rather than being half taken. Empties and other markers hung on the object are not carried into the city: whatever a dressing wants the city to know goes through the `Dressing` seam, not through an object it hangs on a building.
+- Two geometries share a batch only when they agree attribute for attribute, so a pane carrying the room behind it never lands in the same buffer as a blank wall on the same material.
+- Batching does not depend on iteration order for what gets drawn: buildings go in in the order the world lists its plots, and a batch is named after its material, so the same city batches the same way every run.
 - Ground UVs are in metres: on a top face `u` and `v` are where the corner is on the ground, up a kerb `u` runs along the face and `v` climbs it. A texture with `repeat` 1 tiles every metre, so a road surface lands at real-world size without knowing the cell size.
 - Two headings meet here and they are not the same number. The world stores compass degrees, 0 north and 90 east, running clockwise seen from above; a three.js turn about +Y runs the other way, so furniture and anchors are placed at `-rot` radians. `spawn.heading` is already a three.js yaw in radians, the way the app turns its camera. Getting the sign wrong leaves north and south right and swaps east and west, which is why it is tested at all four points of the compass.
 - A dressing decides what things look like and nothing else. Where they go, how big they are and which way they face are decided here, so a building kit can replace the greybox without touching the builder.
@@ -64,16 +73,21 @@ None. Nothing here validates: a world that got this far already passed `@gb/worl
 
 ## What it costs
 
-Measured on the app's own city (seed `town`, 2 by 2 blocks, 51 by 51 cells, 20 plots), greybox dressing:
+Measured headless in Node on a 7 by 7 city (350 plots, 157 by 147 cells) dressed in the shipped Downtown kit, and again in Chrome on the WebGL2 fallback at 1920 by 999 with the camera at the spawn:
 
-| Part of the city | Draws | How |
-|---|---|---|
-| ground and mountains | 5 | one mesh per surface, one instanced block for the ring |
-| street markings | 2 | one instanced mesh per paint, 240 instances |
-| buildings | 40 | two per plot, and a real kit's business |
+| | meshes | draws at the spawn | triangles at the spawn | attributes | scene build |
+|---|---|---|---|---|---|
+| one object per building | 1,525 | 992 | 2,239,681 | 160.7 MB | 948 ms |
+| batched | 56 | 41 | 2,239,681 | 177.4 MB | 1,540 ms |
 
-The paint is two draws whatever the city's size: a bigger city is more instances in the same two meshes.
+The triangles are the same number twice over: per-building culling survives batching exactly, because a batch culls each instance and multi-draws the rest.
+
+In the browser, on an AMD Radeon 8060S through ANGLE, `renderer.info.render.drawCalls` at street level goes from 1,069 to 46, and the frame from 9.97 ms to 1.63 ms with shadows off, 18.14 ms to 2.49 ms with the shadow map on. The shadow pass re-submits every caster, so it is charged per object and collapses with the same fix: 7.3 ms of it becomes 0.9 ms.
+
+Attributes grow 10% because a batch's index buffer is 32 bit while a small building's own was 16 bit. Build time grows because every index is rewritten as it is copied into the shared buffer.
+
+The ground is a handful of draws whatever the size of the city, and the paint is two: a bigger city is more instances in the same two meshes.
 
 ## How to modify this blackbox safely
 
-A real art kit is a new `Dressing`, not a change here. A kit that wants worn road paint implements `marking(paint)`; leave it out and the street gets plain white and yellow. Anything that needs the renderer, the camera, input or a frame loop belongs in the app, not in this box: everything here builds objects and returns them, which is why it is tested in Node with no browser. Run `pnpm --filter @gb/scene test`.
+A real art kit is a new `Dressing`, not a change here. A dressing that wants its buildings batched has only to return indexed meshes on shared materials; welding a building's own pieces per material first, the way `@gb/kitbash` does, keeps the batch's instance count down but is not required. A kit that wants worn road paint implements `marking(paint)`; leave it out and the street gets plain white and yellow. Anything that needs the renderer, the camera, input or a frame loop belongs in the app, not in this box: everything here builds objects and returns them, which is why it is tested in Node with no browser. Run `pnpm --filter @gb/scene test`.

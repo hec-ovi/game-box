@@ -1,20 +1,33 @@
 import { Forge, OfflineNarrator } from '@gb/forge'
 import type { World } from '@gb/world'
 
-let built: Promise<World> | undefined
+const built = new Map<string, Promise<World>>()
 
 /** One generated town, the same one every time: the builders only read it. */
 export function town(): Promise<World> {
-  built ??= generate()
-  return built
+  return cached('scene', 1)
 }
 
-async function generate(): Promise<World> {
-  const result = await new Forge(new OfflineNarrator('scene')).build({
+/** A town of a size the draw budget has to hold: 25 blocks of it. */
+export function bigTown(): Promise<World> {
+  return cached('ceiling', 5)
+}
+
+function cached(seed: string, blocks: number): Promise<World> {
+  let world = built.get(seed)
+  if (!world) {
+    world = generate(seed, blocks)
+    built.set(seed, world)
+  }
+  return world
+}
+
+async function generate(seed: string, blocks: number): Promise<World> {
+  const result = await new Forge(new OfflineNarrator(seed)).build({
     theme: 'quiet coastal town',
-    seed: 'scene',
-    blocksX: 1,
-    blocksY: 1,
+    seed,
+    blocksX: blocks,
+    blocksY: blocks,
     blockCells: 14,
   })
   if (!result.ok) throw new Error(JSON.stringify(result.error).slice(0, 400))

@@ -1,7 +1,7 @@
 import { FACINGS, World, type Anchor, type Facing, type Furniture, type Npc, type Plot } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { buildCity, buildInterior, Greybox } from '../src/index.ts'
+import { buildCity, buildInterior, Greybox, storeyHeight } from '../src/index.ts'
 import { bar } from './bar.ts'
 
 /** The compass the world stores headings in: 0 north, 90 east, clockwise seen from above. */
@@ -105,12 +105,15 @@ describe('which way things point', () => {
       const city = buildCity(world, new Greybox())
       const building = city.buildings.get(plot.id)!
       const away = new THREE.Vector3(AWAY[facing].x, 0, AWAY[facing].z)
+      const centre = building.bounds.getCenter(new THREE.Vector3())
 
-      const centre = building.getWorldPosition(new THREE.Vector3())
-      const door = building.getObjectByName(`${plot.id}:door`)!
-      const out = door.getWorldPosition(new THREE.Vector3()).sub(centre).setY(0).normalize()
+      // the dressing puts the door on that wall
+      const size = { width: plot.rect.w * world.cellSize, depth: plot.rect.h * world.cellSize, height: storeyHeight(plot.storeys) }
+      const door = new Greybox().building(plot, size).getObjectByName(`${plot.id}:door`)!
+      const out = door.position.clone().setY(0).normalize()
       expect(`${facing} ${out.dot(away).toFixed(3)}`).toBe(`${facing} 1.000`)
 
+      // and the city puts the doorstep out in front of it
       const toStep = city.doorsteps.get(plot.id)!.clone().sub(centre).setY(0).normalize()
       expect(`${facing} ${toStep.dot(away).toFixed(3)}`).toBe(`${facing} 1.000`)
     }

@@ -1,7 +1,7 @@
 import { METRICS } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { buildCity, buildInterior, Greybox, storeyHeight } from '../src/index.ts'
+import { buildCity, buildInterior, Greybox, plotOf, storeyHeight } from '../src/index.ts'
 import { town } from './town.ts'
 
 function boundsOf(object: THREE.Object3D): THREE.Box3 {
@@ -15,8 +15,7 @@ describe('buildCity', () => {
 
     expect(city.buildings.size).toBe(world.plots().length)
     for (const plot of world.plots()) {
-      const object = city.buildings.get(plot.id)!
-      const bounds = boundsOf(object)
+      const bounds = city.buildings.get(plot.id)!.bounds
       const size = bounds.getSize(new THREE.Vector3())
 
       expect(size.x).toBeCloseTo(plot.rect.w * world.cellSize, 1)
@@ -40,7 +39,23 @@ describe('buildCity', () => {
       expect(doorstep.x).toBeCloseTo(expected.x, 5)
       expect(doorstep.z).toBeCloseTo(expected.z, 5)
       // and it is right next to the building it belongs to
-      expect(boundsOf(city.buildings.get(plot.id)!).distanceToPoint(doorstep)).toBeLessThan(world.cellSize * 1.5)
+      expect(city.buildings.get(plot.id)!.bounds.distanceToPoint(doorstep)).toBeLessThan(world.cellSize * 1.5)
+    }
+  })
+
+  it('says which building a ray hit, though they are all in one batch', async () => {
+    const world = await town()
+    const city = buildCity(world, new Greybox())
+    const raycaster = new THREE.Raycaster()
+
+    for (const plot of world.plots()) {
+      const centre = city.buildings.get(plot.id)!.bounds.getCenter(new THREE.Vector3())
+      // straight down onto the roof: nothing else in the city is up there
+      raycaster.set(new THREE.Vector3(centre.x, 200, centre.z), new THREE.Vector3(0, -1, 0))
+      const hit = raycaster.intersectObject(city.root, true)[0]!
+
+      expect(hit, plot.id).toBeDefined()
+      expect(plotOf(hit), plot.id).toBe(plot.id)
     }
   })
 

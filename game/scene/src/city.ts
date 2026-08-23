@@ -1,5 +1,7 @@
-import { METRICS, cellCentre, type World } from '@gb/world'
+import { METRICS, cellCentre, type Plot, type World } from '@gb/world'
 import * as THREE from 'three'
+import { CityBatcher } from './batch/batcher.ts'
+import type { CityBuilding } from './batch/building.ts'
 import type { Dressing } from './dressing.ts'
 import { GROUND_KINDS, groundMesh, mountainMesh } from './ground.ts'
 import { markingMeshes } from './marking-mesh.ts'
@@ -8,10 +10,12 @@ import { RoadNetwork } from './roads.ts'
 
 export interface CityBuild {
   readonly root: THREE.Group
-  /** Every building, by plot id, so the game can find what the player is looking at. */
-  readonly buildings: ReadonlyMap<string, THREE.Object3D>
+  /** Every building, by plot id: where it stands, and whether it is in the city. */
+  readonly buildings: ReadonlyMap<string, CityBuilding>
   /** Where each building's door is, in metres. */
   readonly doorsteps: ReadonlyMap<string, THREE.Vector3>
+  /** Builds one more plot into the city that is already standing, without rebuilding it. */
+  add(plot: Plot): CityBuilding
   /** Where the player starts: on the pavement, facing the first door in town. */
   readonly spawn: { x: number; z: number; heading: number }
   /** Every rectangle of paint on the streets, in metres. */
@@ -22,6 +26,10 @@ export interface CityBuild {
  * Turns a city into something you can stand in. Ground is one merged mesh per
  * surface, buildings come from the dressing at the size the plot says, and
  * everything lands where the grid puts it, in metres.
+ *
+ * The buildings go into one batch per material rather than one object each, so
+ * the city costs a draw per material instead of a draw per building, and every
+ * building still culls, hides and raycasts on its own.
  */
 export function buildCity(world: World, dressing: Dressing): CityBuild {
   const root = new THREE.Group()
@@ -37,27 +45,26 @@ export function buildCity(world: World, dressing: Dressing): CityBuild {
   const markings = planMarkings(new RoadNetwork(world).links())
   for (const mesh of markingMeshes(markings, dressing)) root.add(mesh)
 
-  const buildings = new Map<string, THREE.Object3D>()
+  const batcher = new CityBatcher(root)
   const doorsteps = new Map<string, THREE.Vector3>()
   const cell = world.cellSize
 
-  for (const plot of world.plots()) {
+  const put = (plot: Plot): CityBuilding | undefined => {
     const size = {
       width: plot.rect.w * cell,
       depth: plot.rect.h * cell,
       height: storeyHeight(plot.storeys),
     }
-    const object = dressing.building(plot, size)
     const centre = cellCentre(plot.rect.x + plot.rect.w / 2 - 0.5, plot.rect.y + plot.rect.h / 2 - 0.5, cell)
-    object.position.set(centre.x, 0, centre.z)
-    root.add(object)
-    buildings.set(plot.id, object)
-
     const doorstep = cellCentre(plot.entrance.cell.x, plot.entrance.cell.y, cell)
     doorsteps.set(plot.id, new THREE.Vector3(doorstep.x, 0, doorstep.z))
+    return batcher.offer(plot.id, dressing.building(plot, size), new THREE.Matrix4().makeTranslation(centre.x, 0, centre.z))
   }
 
-  return { root, buildings, doorsteps, spawn: spawnAt(world, doorsteps), markings }
+  for (const plot of world.plots()) put(plot)
+  const buildings = batcher.seal()
+
+  return { root, buildings, doorsteps, add: (plot) => put(plot)!, spawn: spawnAt(world, doorsteps), markings }
 }
 
 /** A step back from the first doorstep, looking at it. */
