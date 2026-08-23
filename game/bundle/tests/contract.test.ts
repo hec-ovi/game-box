@@ -48,7 +48,9 @@ describe('Bundle', () => {
 
   it('refuses a bundle carrying a quest that cannot be played', async () => {
     const { built } = await packedTown()
-    const broken = structuredClone(built.quests[0]!)
+    const fetching = built.quests.find((quest) => quest.steps.some((step) => step.kind === 'collect'))
+    expect(fetching, 'the town wrote nothing to break').toBeDefined()
+    const broken = structuredClone(fetching!)
     broken.steps = broken.steps.map((s) => (s.kind === 'collect' ? { ...s, itemId: 'item_9999' } : s))
     const doc = await Bundle.pack(built.world, [broken])
 
