@@ -1,10 +1,10 @@
 import { Rng } from '@gb/kit'
 import { BUILDING_KINDS, type Anchor, type BuildingKind, type Furniture, type Interior, type Room } from '@gb/world'
 import { describe, expect, it } from 'vitest'
-import { boxAt, dirOf, holds, inBox, overlaps, type Box, type Side, type Vec } from '../src/interior/geometry.ts'
+import { boxAt, dirOf, holds, inBox, inward, overlaps, SIDES, type Box, type Side, type Vec } from '../src/interior/geometry.ts'
 import { planInterior, type InteriorPlan } from '../src/interior/plan.ts'
 import { footprintOf, PROP_SPECS, SEAT_SPECS, seatSpecOf, topOf } from '../src/interior/props.ts'
-import { IN_FRONT, stanceOf, type Stance } from '../src/interior/stance.ts'
+import { IN_FRONT, LEAN_BODY, stanceOf, type Stance } from '../src/interior/stance.ts'
 import { buildTown } from './support.ts'
 
 /** The floor a doorway keeps to itself: the opening, and a metre either side of the wall. */
@@ -328,6 +328,49 @@ describe('interior plans', () => {
     }
     expect([...seen].sort()).toEqual(Object.keys(SEAT_SPECS).sort())
     expect(checked).toBeGreaterThan(100)
+  })
+
+  it('props one or two bodies against the walls of a bar and a cafe', () => {
+    // a room where everybody is sitting down reads as a waiting room, so the
+    // rooms people drink in get somebody standing at the wall as well
+    let checked = 0
+    for (const { kind, seed, made } of everyPlan()) {
+      if (kind !== 'bar' && kind !== 'cafe') continue
+      const leans = made.anchors.filter((anchor) => anchor.kind === 'lean')
+      expect(leans.length, `${kind}/${seed} has nobody propped against a wall`).toBeGreaterThan(0)
+      expect(leans.length, `${kind}/${seed} has a queue against the wall`).toBeLessThanOrEqual(2)
+      // two of them are on two walls: two bodies propped a metre apart is a queue
+      expect(new Set(leans.map((lean) => lean.rot)).size, `${kind}/${seed} props two on one wall`).toBe(leans.length)
+
+      for (const lean of leans) {
+        const where = `${kind}/${seed} lean at ${lean.pos.x},${lean.pos.y}`
+        // the wall is what they are propped on, so there is no piece under them
+        expect(lean.propId, `${where} hangs off a piece`).toBeUndefined()
+
+        const room = made.rooms.find((one) => one.id === lean.roomId)!
+        const inside = inset(room.rect, WALL)
+        // they face away from a wall, standing 0.44 m off it: the lean clips hold
+        // the body 0.414 m behind its own root, so a root on the wall is a body
+        // through it, and this is that reach with 2.6 cm to spare
+        const side = SIDES.find((one) => inward(one) === lean.rot)
+        expect(side, `${where} faces ${lean.rot}, which is not off any wall`).toBeDefined()
+        if (!side) continue
+        const face = { north: inside.y, south: inside.y + inside.h, west: inside.x, east: inside.x + inside.w }[side]
+        const out = side === 'north' || side === 'south' ? lean.pos.y : lean.pos.x
+        expect(Math.abs(out - face), `${where} is ${Math.abs(out - face)} m off its wall`).toBeCloseTo(0.44, 3)
+
+        // and the floor the propped body takes is inside the room and clear of everything
+        // 0.414 m behind the root, 0.376 in front, 0.76 across: the floor the clip needs
+        expect([LEAN_BODY.d, LEAN_BODY.w]).toEqual([0.79, 0.76])
+        const body = boxAt(lean.pos, LEAN_BODY, lean.rot)
+        expect(holds(inside, body), `${where} reaches through the wall`).toBe(true)
+        for (const piece of made.furniture) {
+          expect(overlaps(footprintOf(piece), body), `${where} stands in a ${piece.prop}`).toBe(false)
+        }
+        checked++
+      }
+    }
+    expect(checked).toBeGreaterThan(8)
   })
 
   it('stands a till on the counter rather than beside it', () => {

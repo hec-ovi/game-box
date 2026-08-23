@@ -22,7 +22,7 @@ import {
   type Vec,
 } from './geometry.ts'
 import { footprintOf, gapTo, seatSpecOf, specOf, topOf } from './props.ts'
-import { seatRoot } from './stance.ts'
+import { LEAN_BODY, LEAN_OUT, seatRoot } from './stance.ts'
 
 /** Half an interior wall: how far off a room's line anything has to stay. */
 export const WALL_CLEAR = 0.1
@@ -244,6 +244,34 @@ export class RoomPlan {
     this.#waypoints = [...this.#waypoints, footing]
     if (crowd) this.#crowd++
     return true
+  }
+
+  /**
+   * Somebody propped against a wall: back to it, facing the room, no piece
+   * under them. The wall is what they are using, so the test is the body's own
+   * box rather than a footprint: nothing may be standing along that stretch of
+   * wall, the doorway band is out, and the floor they take is kept for them.
+   * It sweeps the wall and takes the first spot that holds, so a counter at one
+   * end still leaves the other end.
+   */
+  leanOn(side: Side, prefer: 'centre' | 'ends' | 'any' = 'any'): boolean {
+    const wall = wallOf(this.floor.bounds, side)
+    const rot = inward(side)
+    const low = wall.from + LEAN_BODY.w / 2 + 0.1
+    const high = wall.to - LEAN_BODY.w / 2 - 0.1
+    if (high < low) return false
+
+    for (const along of this.#sweep(low, high, prefer)) {
+      const pos = onWall(wall, along, LEAN_OUT)
+      const body = boxAt(pos, LEAN_BODY, rot)
+      if (!this.floor.fits(body)) continue
+      if (!this.anchor('lean', pos, rot)) continue
+      // no piece claims this floor for them, so they claim it themselves: a
+      // chair drawn up afterwards would otherwise land on their feet
+      this.floor.reserve(body)
+      return true
+    }
+    return false
   }
 
   /** A seat and the person on it, facing whatever the seat is drawn up to. */

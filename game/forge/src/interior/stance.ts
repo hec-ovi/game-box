@@ -39,6 +39,23 @@ export const AT_HAND: Stance = { near: 0.1, at: 0.15, far: 0.25 }
 /** Facing a piece without touching it: close enough to read it, clear enough to pass behind. */
 export const IN_FRONT: Stance = { near: 0.2, at: 0.3, far: 0.45 }
 
+/**
+ * Propped against a wall, back to it, hands free, feet out in front. There is
+ * no piece: the wall is the piece.
+ *
+ * The lean clips hold the body well behind its own root, so a root on the wall
+ * puts the body through it. `LEAN_OUT` is where the root goes instead, measured
+ * from the inside face: 0.414 m is the deepest any of the twelve dressed
+ * characters reaches behind the root over the whole of any of the three
+ * `Idle_Wall*` clips (the back of the widest coat), and this leaves 2.6 cm.
+ * `@gb/cast` measures the same number in `tests/pose.test.ts`; this is our copy
+ * of it, because a generator cannot import a renderer.
+ */
+export const LEAN_OUT = 0.44
+
+/** The floor a propped body takes: across the wall, and out from it. */
+export const LEAN_BODY = { w: 0.76, d: 0.79 }
+
 const STANCES: Partial<Record<AnchorKind, Stance>> = {
   serve: AT_HAND,
   cook: AT_HAND,

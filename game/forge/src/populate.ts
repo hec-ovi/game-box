@@ -45,6 +45,8 @@ export function occupancy(anchor: AnchorKind): number {
     case 'sleep':
       return 0.4
     case 'sit-drink':
+    // somebody propped at the wall is a customer like somebody at a table
+    case 'lean':
       return 0.5
     case 'sit':
     case 'browse':

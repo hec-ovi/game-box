@@ -1,5 +1,5 @@
 import type { AnchorKind, FurnitureProp } from '@gb/world'
-import { alongWall, clamp, faceReach, inward, onWall, outward, step, wallBand, wallOf, type Side } from '../geometry.ts'
+import { alongWall, faceReach, inward, onWall, outward, step, wallBand, wallOf, type Side } from '../geometry.ts'
 import { specOf } from '../props.ts'
 import type { Placed, RoomPlan } from '../room-plan.ts'
 import { standoff } from '../stance.ts'
@@ -118,14 +118,19 @@ export function cornerPiece(plan: RoomPlan, prop: FurnitureProp): Placed | undef
   return undefined
 }
 
-/** Somewhere to lean and watch the room, out of the way of the door. */
-export function leanSpot(plan: RoomPlan): boolean {
-  const side = plan.openSides()[0]
-  if (!side) return false
-  const wall = wallOf(plan.bounds, side)
-  const at = clamp(wall.from + (wall.to - wall.from) * plan.rng.range(0.15, 0.85), wall.from + 0.5, wall.to - 0.5)
-  const pos = onWall(wall, at, 0.5)
-  return plan.post('lean', pos, onWall(wall, at, 2))
+/**
+ * People propped against the walls, watching the room: one per wall, on the
+ * walls with no door, longest first. One or two is what reads as a room with
+ * somebody in it rather than a room of empty chairs; a third against the same
+ * wall reads as a queue.
+ */
+export function leanSpots(plan: RoomPlan, most: number): number {
+  let placed = 0
+  for (const side of plan.openSides()) {
+    if (placed >= most) break
+    if (plan.leanOn(side)) placed++
+  }
+  return placed
 }
 
 export interface TableFieldOptions {
