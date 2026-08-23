@@ -73,6 +73,18 @@ describe('the street plan', () => {
     expect([...kindsAt(centres)]).toEqual(['street'])
     expect([...kindsAt(cells)]).toEqual(['street'])
 
+    // and nowhere in town is there a pavement cell with roadway on both sides of it,
+    // which is a street lamp standing in the middle of the road
+    const stranded: string[] = []
+    for (let y = 1; y < world.grid.height - 1; y++) {
+      for (let x = 1; x < world.grid.width - 1; x++) {
+        if (world.grid.at(x, y) !== 'sidewalk') continue
+        const road = (dx: number, dy: number) => world.grid.at(x + dx, y + dy) === 'street'
+        if ((road(-1, 0) && road(1, 0)) || (road(0, -1) && road(0, 1))) stranded.push(`${x},${y}`)
+      }
+    }
+    expect(stranded).toEqual([])
+
     // the pavement is still there: every crossing keeps a corner of it in each quarter
     const { nodes, segments } = world.toJSON().roads
     const crossings = nodes.filter((node) => segments.filter((s) => s.from === node.id || s.to === node.id).length > 1)
