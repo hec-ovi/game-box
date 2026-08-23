@@ -29,6 +29,9 @@ export interface Spot {
  * you let go, and then they carry on with whatever they were doing. Holding
  * somebody who has since gone home does nothing, so a hold is safe to keep for
  * as long as the conversation lasts.
+ *
+ * It is not a handle on their body: `SceneCast.members()` is the one of those,
+ * keyed by the same id, so a body is reached the same way indoors and out.
  */
 export interface Attention {
   /** Turn to face this point, in metres. Call it again as the player moves. */

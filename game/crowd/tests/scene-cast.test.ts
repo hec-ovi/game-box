@@ -1,3 +1,4 @@
+import { CLIPS } from '@gb/cast'
 import type { Npc } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
@@ -67,5 +68,37 @@ describe('SceneCast', () => {
     expect(root.children.map((body) => body.name)).toEqual(['male/7', 'male/3', 'female/1'])
     expect(cast.spawned.map((npc) => npc.id)).toEqual(['npc_900001', 'npc_900002', 'npc_900005'])
     expect(scene.parked).toBe(0)
+  })
+
+  it('answers for whoever is wearing a body now, never for whoever wore it before', () => {
+    const cast = new StubCast()
+    const scene = new SceneCast(cast, new THREE.Object3D())
+
+    const first = scene.spawn(walkerNpc('npc_900001', 'male', 3))
+    expect(scene.members().get('npc_900001')).toBe(cast.members[0])
+
+    first.release()
+    expect(scene.members().get('npc_900001')).toBeUndefined()
+
+    // the same body, back on the street as somebody else: it answers to the id wearing it
+    scene.spawn(walkerNpc('npc_900002', 'male', 3))
+    expect(cast.spawned.length).toBe(1)
+    expect(scene.members().get('npc_900002')).toBe(cast.members[0])
+    expect(scene.members().get('npc_900001')).toBeUndefined()
+  })
+
+  it('parks a body with its hands down, whatever it was saying when it was retired', () => {
+    const cast = new StubCast()
+    const scene = new SceneCast(cast, new THREE.Object3D())
+    const actor = scene.spawn(walkerNpc('npc_900001', 'male', 3))
+    const member = cast.members[0]!
+
+    member.gesture(CLIPS.talk)
+    expect(member.gesturing).toBe(CLIPS.talk)
+
+    // retired mid-sentence, then worn by the next passer-by, who is not talking to anybody
+    actor.release()
+    scene.spawn(walkerNpc('npc_900002', 'male', 3))
+    expect(member.gesturing).toBeUndefined()
   })
 })

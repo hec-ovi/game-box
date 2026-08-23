@@ -123,7 +123,14 @@ export class Crowd {
    * does; `clear()` sends them home with everybody else.
    */
   follow(who: Companion): void {
+    this.#offTheStreet(who.npc.id)
     this.#escort.follow(who)
+  }
+
+  /** Somebody joining the player leaves the pavement: nobody is out twice at once, so nobody has two bodies. */
+  #offTheStreet(npcId: string): void {
+    const index = this.#walkers.findIndex((walker) => walker.id === npcId)
+    if (index !== -1) this.#drop(index)
   }
 
   /** They stop walking with the player. A body the crowd spawned goes back to the cast; one the game handed over does not. */
