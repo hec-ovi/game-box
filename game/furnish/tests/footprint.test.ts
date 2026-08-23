@@ -2,7 +2,7 @@ import { FURNITURE_PROPS, type FurnitureProp } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { CELL, FURNISH_STYLES, PROP_SPECS, footprintOf } from '../src/index.ts'
-import { backwardsMass, boundsOf, dressingIn, sizeOf } from './support.ts'
+import { backwardsMass, boundsOf, dressingIn, padAt, sizeOf } from './support.ts'
 
 /**
  * The other half of the contract with `@gb/forge`: a prop is a rectangle of
@@ -15,6 +15,13 @@ import { backwardsMass, boundsOf, dressingIn, sizeOf } from './support.ts'
 
 /** A tenth of a millimetre: what a float32 buffer costs, well under a cell. */
 const SLACK = 1e-4
+
+/**
+ * Boots to crown, of the body `@gb/cast` lays on a bed: its lying clip is
+ * centred on its own root and reaches 0.96 m either way, on all twelve dressed
+ * characters. A mattress shorter than this leaves a sleeper hanging off it.
+ */
+const LYING_BODY = 2 * 0.96
 
 describe('the floor a prop claims', () => {
   it('is a whole number of 10 cm cells for every prop, because that is what the planner claims', () => {
@@ -69,6 +76,15 @@ describe('the floor a prop claims', () => {
         if (spec.height === undefined) continue
         expect(sizeOf(dressingIn(style).prop(prop)).y, `${style} ${prop} tall`).toBeCloseTo(spec.height, 5)
       }
+    }
+  })
+
+  it('claims enough of it for a whole body to lie on the bed', () => {
+    // the mattress is the length, not the anchor: centring a sleeper on the pad
+    // only shares the overhang out between the head and the foot
+    for (const style of FURNISH_STYLES) {
+      const [front, back] = padAt(dressingIn(style).prop('bed'), PROP_SPECS.bed.contact!.height)
+      expect(back - front, `${style} mattress`).toBeGreaterThanOrEqual(LYING_BODY)
     }
   })
 

@@ -69,7 +69,9 @@ export const PROP_SPECS: Record<FurnitureProp, PropSpec> = {
   table: { cells: [10, 10], contact: work(tableHeight) },
   chair: { cells: [5, 5], contact: rest(seatHeight) },
   sofa: { cells: [20, 9], contact: rest(seatHeight) },
-  bed: { cells: [12, 20], contact: rest(mattressHeight) },
+  // 21 cells deep: the body `@gb/cast` lays down is 1.92 m from boots to
+  // crown, and the headboard takes 10 cm behind it
+  bed: { cells: [12, 21], contact: rest(mattressHeight) },
   desk: { cells: [14, 7], contact: work(tableHeight) },
   'office-chair': { cells: [6, 6], contact: rest(seatHeight) },
   shelf: { cells: [10, 4], height: 1.8 },

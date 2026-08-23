@@ -149,6 +149,17 @@ describe('a wall is a run of bays', () => {
 })
 
 describe('a shelf you can put something on', () => {
+  it('is one height, and the highest one keeps its pitch of air under the head of the field', () => {
+    // the ledges are pitched off `worktopHeight` and the field of bays ends at
+    // `WALL.head`, so the two metres are not free of each other: raise the
+    // worktop far enough and the top ledge, or the bottle standing on it,
+    // pushes through the head into the lit channel washing down the wall
+    const air = WALL.shelf.pitch - WALL.shelf.ledge
+    expect(Math.max(...WALL_CONTACTS) + air, 'the top ledge under the head of the field').toBeLessThanOrEqual(WALL.head)
+    // a sill and a ledge that land on the same number are one height, not two
+    expect(new Set(WALL_CONTACTS).size, 'distinct heights').toBe(WALL_CONTACTS.length)
+  })
+
   it('draws every one of its surfaces on the number, to the micron', () => {
     let found = 0
     for (const interior of interiors) {

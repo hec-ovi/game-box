@@ -1,6 +1,6 @@
 # @gb/furnish contract
 
-contractVersion: 0.8.0
+contractVersion: 0.9.0
 
 ## Purpose
 
@@ -45,7 +45,7 @@ Dresses the inside of a building: every piece of furniture the generator can pla
 | `CELL` | metres | one room cell: 0.1 |
 | `BAY_SPECS`, `BAY_TASTE` | the eight kinds a bay can be, how wide each may be in cells, how far it stands off the wall and how low, and how often each language reaches for it | |
 | `WALL` | metres | every height a wall is divided at: the head of the field, the rail over it, the niche sill and head, the shelf ledges and their pitch |
-| `WALL_CONTACTS` | metres | every height the vocabulary can offer to stand something on |
+| `WALL_CONTACTS` | metres | every height the vocabulary can offer to stand something on, each one once: a shelf's lowest ledge and a niche's sill are two metres and land on the same number whenever the worktop and the service counter agree |
 | `SIDES` | `'north' \| 'south' \| 'east' \| 'west'` | which wall of a room a bay is on |
 | `FURNISH_STYLES`, `PALETTES` | the two interior languages and the eleven surfaces each paints | |
 | `variantOf(style, prop, seed)` | `Variant` | the shape one prop kind takes from that seed: edge profile, corner radius, what holds it up, whether a strip is lit. `'wall'` is a kind like any other |
@@ -100,6 +100,7 @@ built.root.add(room.decor)
 - A prop declares a `contact` or a `height`, never both, and the plant declares neither because nobody touches it and its own proportions are the point.
 - The contact surface is read off the triangles, never off the bounding box, because the top of a chair is its backrest and the top of a bed is its headboard. `rest` (a seat, a mattress) is the widest level plate that looks up; `work` (a counter, a desk, a hob, the run beside a sink) is the highest one covering at least a quarter of the piece's own footprint. Nothing draws a lid under something that sits on it, or that hidden plate would be the widest one on the piece.
 - The bar counter is the only piece worked from both sides, so it is the only one with two heights. The customer's drink stands on the raised rail at `barCounterHeight`; the bartender's forearms rest on the shelf behind it at `serviceCounterHeight`, which is where `@gb/cast`'s lean clip holds a body's hands (1.02 to 1.04). Both are drawn. `staffContact` publishes the second one.
+- **A bed is as long as the body that lies on it.** `@gb/cast`'s lying clip is centred on its own root and reaches 0.96 m either way, so the mattress has to draw 1.92 m of level pad. That is what makes the bed 2.1 m deep: 10 cm of headboard at the back and 1.97 m of mattress in front of it, 1.93 m of that flat once the moulded language rounds the edge. Centring the sleeper shares the last centimetres between the head and the foot; the length is the mattress's.
 - Every prop's origin is the centre of its base and its front looks north, which is where `@gb/scene` points a prop at rotation zero.
 
 ### The things you pick up
@@ -123,6 +124,7 @@ built.root.add(room.decor)
 - **A bay never fights the furniture in front of it.** A piece of furniture in that room is taken as the box around it, however it is turned; if it overlaps the bay and stands closer to the wall than the bay reaches, then the bay is only allowed when its lowest projecting part is above the top of that piece. So a shelf can run over a sofa and cannot run through a wardrobe. The one exception is `panel`, which is 3 cm and disappears behind anything standing against the wall.
 - The furniture heights that rule reads are measured off the triangles that were built (`heightOf`), not off what a prop declares, for the same reason a contact height is.
 - **A shelf you can put something on is a contact surface.** Every niche sill and every shelf ledge is drawn with its top face on the number exactly, the same contract a worktop is held to, and `FurnishRoom.contacts` publishes the ones that room actually has. The two that a body reaches for come from `METRICS.furniture`: a niche sill is at `serviceCounterHeight` and the lowest ledge is a `worktopHeight`.
+- The field of bays ends at 2.4 m and a shelf's ledges are pitched off `worktopHeight`, so the two numbers are not free of each other: the highest ledge keeps a whole pitch of clear air under the head of the field, which leaves the lit channel over the wall to itself.
 - **The things standing in a niche or on a shelf are decoration.** A cup, a bottle, a canister, a box, a tray, a stack. They are not `@gb/world` furniture, nothing can pick one up and nothing collides with one. Each is a whole number of cells across and exactly one deep, so they land on the same lattice as the bay and fit the shallow shelf a wall can afford.
 - Over the field of bays runs a rail with a lit channel under it, over every stretch of wall with nothing standing that high in front of it. That is the room's own light: emissive faces above 1, so the app's bloom finds them. There is no light object anywhere in this box.
 - Same seed, same walls, vertex for vertex, and two seeds give two different rooms. Every draw comes from an `Rng` forked per language, per interior, per room and per wall, then per bay, so retuning the taste cannot move the furniture and retuning what stands in a niche cannot change which bay is a niche.
@@ -177,13 +179,13 @@ Measured headless in Node on a generated town of nine blocks, whole rooms, shell
 
 | room | pieces | items | bays | corpo | corpo + walls | home + walls | greybox |
 |---|---|---|---|---|---|---|---|
-| restaurant | 17 | 1 | 112 | 41 draws, 9,000 tris, 7 mats | 42 draws, 18,288 tris | 42 draws, 30,440 tris | 41 draws, 964 tris, 8 mats |
-| workshop | 13 | 1 | 53 | 41 draws, 7,482 tris, 7 mats | 42 draws, 11,218 tris | 42 draws, 19,110 tris | 41 draws, 1,372 tris, 8 mats |
-| restaurant | 13 | 3 | 76 | 37 draws, 6,916 tris, 6 mats | 38 draws, 12,780 tris | 38 draws, 19,584 tris | 37 draws, 916 tris, 7 mats |
-| house | 11 | 2 | 64 | 41 draws, 6,114 tris, 7 mats | 42 draws, 11,050 tris | 42 draws, 19,966 tris | 41 draws, 964 tris, 8 mats |
-| bar | 8 | 3 | 51 | 30 draws, 5,562 tris, 8 mats | 31 draws, 8,690 tris | 31 draws, 16,828 tris | 30 draws, 1,240 tris, 9 mats |
+| cafe | 17 | 2 | 72 | 39 draws, 8,734 tris, 8 mats | 40 draws, 13,582 tris | 40 draws, 24,098 tris | 39 draws, 1,348 tris, 9 mats |
+| restaurant | 14 | 1 | 76 | 36 draws, 6,960 tris, 6 mats | 37 draws, 13,344 tris | 37 draws, 21,632 tris | 36 draws, 700 tris, 7 mats |
+| office | 14 | 2 | 57 | 38 draws, 7,598 tris, 6 mats | 39 draws, 12,246 tris | 39 draws, 18,686 tris | 38 draws, 928 tris, 7 mats |
+| clinic | 10 | 2 | 84 | 26 draws, 6,798 tris, 6 mats | 27 draws, 14,078 tris | 27 draws, 25,214 tris | 26 draws, 580 tris, 7 mats |
+| hotel | 8 | 3 | 58 | 32 draws, 3,744 tris, 7 mats | 33 draws, 7,616 tris | 33 draws, 17,708 tris | 32 draws, 856 tris, 8 mats |
 
-`node game/furnish/tools/print-cost.ts` prints the table. **One draw for the walls, whatever the bay count**: 53 bays and 86 bays both cost the same one mesh, and a finer rhythm or a bigger vocabulary buys triangles, never draws. Home is about twice corpo because every corner of every bay is moulded.
+`node game/furnish/tools/print-cost.ts` prints the table. **One draw for the walls, whatever the bay count**: 57 bays and 84 bays both cost the same one mesh, and a finer rhythm or a bigger vocabulary buys triangles, never draws. Home is about twice corpo because every corner of every bay is moulded.
 
 Giving the items shapes cost a room **no draw and one material fewer**: they were already an object each, they now draw with the furniture's material instead of the layer behind, so every room in the table lost a material.
 
@@ -205,7 +207,7 @@ Every item geometry is indexed, on the one shared material and agreeing attribut
 
 ## How to modify this blackbox safely
 
-A prop's footprint or its contact height is `src/catalog/specs.ts` alone, and both are read by `@gb/forge`, so a change there is a change to what the planner claims. **`footprintOf(prop)` is the whole answer to how much floor a piece needs**: 18 of the 24 fill their declared rectangle to the millimetre and none of them exceeds it, the widest shortfall being a lamp at 0.36 m in the 0.40 m it claimed, so a planner sizes a slot from the table and never from the triangles. What a prop looks like is one file per family under `src/props/`, one exported builder per prop kind, all of them drawing through `Solid.block` in `src/build/solid.ts`, or through `src/build/bar.ts`, which is the same block laid on its side; nothing else may make geometry.
+A prop's footprint or its contact height is `src/catalog/specs.ts` alone, and both are read by `@gb/forge`, so a change there is a change to what the planner claims. **`footprintOf(prop)` is the whole answer to how much floor a piece needs**: 16 of the 24 fill their declared rectangle to the millimetre and none of them exceeds it, the widest shortfall being a coffee machine at 0.433 m in the 0.5 m it claimed, so a planner sizes a slot from the table and never from the triangles. What a prop looks like is one file per family under `src/props/`, one exported builder per prop kind, all of them drawing through `Solid.block` in `src/build/solid.ts`, or through `src/build/bar.ts`, which is the same block laid on its side; nothing else may make geometry.
 
 A carried thing is the same shape of code one folder over. How big it is and what it is made of is `src/items/specs.ts` plus `src/items/matter.ts`; how much a cast may swing is `src/items/cast.ts`; what one looks like is one file per family under `src/items/` (`paper.ts`, `vessel.ts`, `pack.ts`, `tool.ts`), one exported builder per archetype.
 

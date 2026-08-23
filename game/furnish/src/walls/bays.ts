@@ -62,10 +62,16 @@ export const WALL = {
 /** The most cells a shelf bay ever carries. */
 export const SHELF_LEDGES = 3
 
-/** Every height a wall offers to stand something on, lowest first. */
+/**
+ * Every height a wall offers to stand something on, lowest first, each one
+ * once. A shelf's lowest ledge and a niche's sill are two different metres and
+ * land on the same number whenever the worktop and the service counter agree.
+ */
 export const WALL_CONTACTS: readonly number[] = [
-  ...Array.from({ length: SHELF_LEDGES }, (_, at) => WALL.shelf.lowest + at * WALL.shelf.pitch),
-  WALL.niche.sill,
+  ...new Set([
+    ...Array.from({ length: SHELF_LEDGES }, (_, at) => WALL.shelf.lowest + at * WALL.shelf.pitch),
+    WALL.niche.sill,
+  ]),
 ].sort((one, two) => one - two)
 
 export const BAY_SPECS: Record<BayKind, BaySpec> = {

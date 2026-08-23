@@ -18,6 +18,29 @@ import { contactOf, dressingIn, interiorsAcrossTowns, plates } from './support.t
 /** Anchor kinds where a body touches the furniture rather than standing near it. */
 const TOUCHING: readonly AnchorKind[] = ['sit', 'sit-drink', 'serve', 'cook', 'work-desk', 'sleep', 'lean']
 
+/**
+ * Every prop a real town puts a body against, and what it puts them there to
+ * do. The exact set, not a floor under it: a count says nothing when one prop
+ * loses its body and another gains one, and a floor is a number somebody
+ * lowers.
+ *
+ * A bar stool is deliberately absent. There is no clip that sits a body on a
+ * raised seat, so `@gb/forge` sits drinkers on table chairs and a stool is a
+ * piece a body walks round; it comes back carrying `sit-drink` the day
+ * `@gb/cast` ships the pose, and this is where that is noticed. `lean` is
+ * absent for a different reason: a leaning body is stationed at a spot on the
+ * floor and names no prop at all.
+ */
+const TOUCHED: Partial<Record<FurnitureProp, readonly AnchorKind[]>> = {
+  'bar-counter': ['serve'],
+  bed: ['sleep'],
+  chair: ['sit', 'sit-drink'],
+  counter: ['serve'],
+  'office-chair': ['work-desk'],
+  sofa: ['sit'],
+  stove: ['cook'],
+}
+
 /** Ten microns: float32's own precision at these sizes, not a tolerance. */
 const EXACT = 5
 
@@ -35,10 +58,15 @@ async function touched(): Promise<Map<FurnitureProp, Set<AnchorKind>>> {
   return found
 }
 
+/** One readable line per prop, sorted, so a failure names what moved. */
+function listed(pairs: Iterable<[string, Iterable<AnchorKind>]>): string[] {
+  return [...pairs].map(([prop, kinds]) => `${prop}: ${[...kinds].sort().join(', ')}`).sort()
+}
+
 describe('the height a body meets', () => {
   it('is declared for every prop a real town sits, sleeps, serves or works at', async () => {
     const used = await touched()
-    expect(used.size).toBeGreaterThan(7)
+    expect(listed(used)).toEqual(listed(Object.entries(TOUCHED)))
 
     for (const [prop, kinds] of used) {
       expect(PROP_SPECS[prop].contact, `${prop}, where somebody ${[...kinds].join(' and ')}s`).toBeDefined()

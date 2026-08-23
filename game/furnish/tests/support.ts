@@ -126,16 +126,15 @@ export interface Plate {
 }
 
 /**
- * Every height a built prop has level surface at, measured off the triangles
- * the renderer would draw. Written here rather than taken from `src/` on
- * purpose: a test that asks the box how tall its own surface is proves only
- * that it can read its own bookkeeping.
+ * Every upward-looking level face of a built object, measured off the triangles
+ * the renderer would draw and grouped to ten microns, which is what a float32
+ * position buffer can hold rather than a tolerance.
  *
- * Heights are grouped to ten microns, which is what a float32 position buffer
- * can hold, not a tolerance: the geometry was drawn to the number.
+ * Written here rather than taken from `src/` on purpose: a test that asks the
+ * box how tall its own surface is proves only that it can read its own
+ * bookkeeping.
  */
-export function plates(object: THREE.Object3D): Plate[] {
-  const areas = new Map<number, number>()
+function* levelFaces(object: THREE.Object3D): Generator<{ y: number; area: number; corners: THREE.Vector3[] }> {
   object.updateMatrixWorld(true)
   for (const mesh of meshesOf(object)) {
     const position = mesh.geometry.getAttribute('position')
@@ -153,11 +152,35 @@ export function plates(object: THREE.Object3D): Plate[] {
       const area = normal.length() / 2
       // a face is level enough to rest on within about ten degrees of flat
       if (area < 1e-7 || normal.y / (2 * area) < 0.985) continue
-      const y = Math.round(((corners[0].y + corners[1].y + corners[2].y) / 3) * 1e5) / 1e5
-      areas.set(y, (areas.get(y) ?? 0) + area)
+      yield { y: Math.round(((corners[0].y + corners[1].y + corners[2].y) / 3) * 1e5) / 1e5, area, corners }
     }
   }
+}
+
+/** Every height a built prop has level surface at, widest first. */
+export function plates(object: THREE.Object3D): Plate[] {
+  const areas = new Map<number, number>()
+  for (const face of levelFaces(object)) areas.set(face.y, (areas.get(face.y) ?? 0) + face.area)
   return [...areas].map(([y, area]) => ({ y, area })).sort((one, two) => two.area - one.area)
+}
+
+/**
+ * How far the level surface at one height runs front to back, in the prop's own
+ * metres, front edge first. What a body lying or sitting on it has under it,
+ * and the pair `@gb/forge` mirrors as a seat's pad.
+ */
+export function padAt(object: THREE.Object3D, height: number): [number, number] {
+  let front = Infinity
+  let back = -Infinity
+  for (const face of levelFaces(object)) {
+    if (Math.abs(face.y - height) > 1e-5) continue
+    for (const corner of face.corners) {
+      front = Math.min(front, corner.z)
+      back = Math.max(back, corner.z)
+    }
+  }
+  if (front > back) throw new Error(`nothing level at ${height}`)
+  return [front, back]
 }
 
 /**
