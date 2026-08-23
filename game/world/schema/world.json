@@ -526,6 +526,11 @@
                   "type": "number",
                   "minimum": -360,
                   "maximum": 360
+                },
+                "lift": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 4
                 }
               },
               "required": [

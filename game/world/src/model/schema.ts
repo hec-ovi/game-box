@@ -1,5 +1,6 @@
 import { contract } from '@gb/kit'
 import { z } from 'zod'
+import { METRICS } from '../metrics.ts'
 import {
   ANCHOR_KINDS,
   BODY_KINDS,
@@ -43,6 +44,12 @@ export const FurnitureSchema = z.object({
   roomId: id('room'),
   pos: Point,
   rot: z.number().min(-360).max(360),
+  /**
+   * Metres off the floor its base stands, for a piece that stands on another
+   * piece: the top of the counter a till is on. Left out, it is on the floor,
+   * which is where all but a handful of pieces are. Never above the ceiling.
+   */
+  lift: z.number().min(0).max(METRICS.building.groundFloorHeight).optional(),
 })
 
 export const RoomSchema = z.object({

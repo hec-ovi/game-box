@@ -1,6 +1,6 @@
 # @gb/world contract
 
-contractVersion: 0.4.0
+contractVersion: 0.5.0
 
 ## Purpose
 
@@ -48,6 +48,7 @@ Holds a city: its grid of streets and plots, the buildings you can enter, the pe
 - An anchor kind is one stance, not one job: `work-desk` is sat in the chair at a desk, `work-bench` is on their feet at a bench with their hands on the top. Two stances at one surface height are two kinds, because a clip is chosen from the kind alone.
 - An item carries what it is (archetype, value, bulk, who owns it). Whether it matters to a quest is not stored here: `@gb/quest` answers that from the live quest log.
 - One world unit is one metre; cell coordinates convert through `cellSize`, and `METRICS` holds the proportions everything is sized from. A street's roadway is `METRICS.street.roadwayCells`: 3 cells, 6 m kerb to kerb.
+- Furniture stands on the floor unless it says otherwise. `Furniture.lift` is the metres off the floor its base sits, for a piece that stands on another piece: a till or a coffee machine on a counter top. Absent is the floor, which is where all but a handful of pieces are, and the number is the host's own contact height, so nothing downstream measures anything.
 - `METRICS.furniture` is where a body meets a piece: the bar counter, service counter, worktop, table, stool, seat and mattress it sits, sleeps or works on. The art is built to those heights and the clips reach for them, so the number lives here and not in each box that needs it.
 - A city spec is measured against the world document's own bounds before a single cell is allocated (grid 4-1024 a side, name 80 characters, theme 60, seed 120, cellSize up to 16), so a world that `found` hands back is a world that `load` accepts. Nothing large is ever built only to fail validation after it has been written.
 

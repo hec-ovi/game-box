@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { questView, World, type Interior, type Item, type Npc, type Placement } from '../src/index.ts'
+import { METRICS, questView, World, type Interior, type Item, type Npc, type Placement } from '../src/index.ts'
 
 /** A two-street hamlet with one bar, its interior, its bartender and a bottle. */
 function hamlet() {
@@ -133,6 +133,33 @@ describe('World', () => {
     expect(refused.ok).toBe(false)
     if (!refused.ok && refused.error.code === 'invalid-document') {
       expect(refused.error.violations.some((v) => v.path.endsWith('anchors.4.kind'))).toBe(true)
+    } else {
+      throw new Error('expected invalid-document')
+    }
+  })
+
+  it('carries a piece standing on another piece, and refuses one over the ceiling', () => {
+    const { world, interior } = hamlet()
+    const roomId = interior.rooms[0]!.id
+    const doc = JSON.parse(JSON.stringify(world.toJSON()))
+    const furniture = doc.interiors[0].furniture as Array<Record<string, unknown>>
+    const till = { id: 'prop_9001', prop: 'register', roomId, pos: { x: 4, y: 6 }, rot: 0, lift: METRICS.furniture.barCounterHeight }
+    furniture.push(till)
+
+    const loaded = World.load(JSON.parse(JSON.stringify(doc)))
+    expect(loaded.ok).toBe(true)
+    if (!loaded.ok) return
+    expect(loaded.value.check()).toEqual([])
+    // and it is still on the counter when the city is saved and shared
+    const saved = loaded.value.toJSON()
+    expect(saved.interiors[0]!.furniture.at(-1)!.lift).toBe(METRICS.furniture.barCounterHeight)
+    expect(saved.interiors[0]!.furniture[0]!.lift).toBeUndefined()
+
+    till.lift = METRICS.building.groundFloorHeight + 0.5
+    const refused = World.load(doc)
+    expect(refused.ok).toBe(false)
+    if (!refused.ok && refused.error.code === 'invalid-document') {
+      expect(refused.error.violations.some((v) => v.path.endsWith('furniture.1.lift'))).toBe(true)
     } else {
       throw new Error('expected invalid-document')
     }
