@@ -2,6 +2,7 @@ import { err, ok, type Result, type SchemaViolation } from '@gb/kit'
 import { PlayerState } from '@gb/play'
 import { QuestLog, validateQuest, type QuestDoc, type QuestProblem } from '@gb/quest'
 import { questView, World, type IntegrityProblem } from '@gb/world'
+import { comparePacks, type PackReport } from './packs.ts'
 import { bundleContract, saveContract, type AssetPackRef, type BundleDoc, type SaveDoc } from './schema.ts'
 import { contentHash } from './stable-json.ts'
 
@@ -17,6 +18,8 @@ export interface OpenedBundle {
   readonly world: World
   readonly quests: readonly QuestDoc[]
   readonly requires: readonly AssetPackRef[]
+  /** The art the file names against the art the reader said they have. */
+  readonly packs: PackReport
   readonly contentHash: string
 }
 
@@ -42,8 +45,12 @@ export class Bundle {
     return { ...body, contentHash: await contentHash(body) }
   }
 
-  /** Open an untrusted bundle: shape, hash, world soundness, then every quest. */
-  static async open(value: unknown): Promise<Result<OpenedBundle, BundleError>> {
+  /**
+   * Open an untrusted bundle: shape, hash, world soundness, then every quest.
+   * `have` is the art the reader has loaded. A city opens whatever the answer
+   * is; `packs` says how far the reader's art is from the maker's.
+   */
+  static async open(value: unknown, have: readonly AssetPackRef[] = []): Promise<Result<OpenedBundle, BundleError>> {
     const parsed = bundleContract.parse(value)
     if (!parsed.ok) return err({ code: 'invalid-bundle', violations: parsed.error })
     const doc = parsed.value
@@ -76,7 +83,13 @@ export class Bundle {
       quests.push(validated.value)
     }
 
-    return ok({ world: world.value, quests, requires: doc.requires, contentHash: claimed })
+    return ok({
+      world: world.value,
+      quests,
+      requires: doc.requires,
+      packs: comparePacks(doc.requires, have),
+      contentHash: claimed,
+    })
   }
 
   /** A playthrough of this exact bundle. */

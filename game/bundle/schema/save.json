@@ -112,6 +112,58 @@
             "rate",
             "weather"
           ]
+        },
+        "where": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "z": {
+              "type": "number"
+            },
+            "heading": {
+              "type": "number"
+            },
+            "interiorId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "x",
+            "z",
+            "heading"
+          ]
+        },
+        "tracked": {
+          "type": "string",
+          "minLength": 1
+        },
+        "moved": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "itemId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "interiorId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "anchorId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "itemId",
+              "interiorId",
+              "anchorId"
+            ]
+          }
         }
       },
       "required": [
