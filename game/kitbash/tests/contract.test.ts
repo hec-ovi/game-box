@@ -1,7 +1,7 @@
 import { BUILDING_KINDS, CELL as CELL_CHARS, METRICS, type AnchorKind, type CellKind, type FurnitureProp, type Item, type Npc, type Plot } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { GROUND_LOOKS, GROUND_TEXTURES, KIT_MATERIALS, KitDressing, KitIncomplete, KitLibrary, KitUnmergeable, PIECES, PIECE_IDS, placeholderKit, RELIEF, loadKit, type KitPart, type PieceId } from '../src/index.ts'
+import { GROUND_LOOKS, GROUND_TEXTURES, KIT_MATERIALS, KitDressing, KitIncomplete, KitLibrary, KitUnmergeable, PAVEMENT_TONES, PIECES, PIECE_IDS, placeholderKit, RELIEF, loadKit, type KitPart, type PieceId } from '../src/index.ts'
 import { CELL, fingerprint, meshesOf, plotOf, sizeOf, trianglesOf, wallBounds } from './support.ts'
 
 const kit = placeholderKit()
@@ -206,6 +206,28 @@ describe('ground', () => {
         expect(texture!.repeat.x, `${kind} ${slot}`).toBeCloseTo(1 / GROUND_TEXTURES[id].tile, 6)
         expect(texture!.repeat.y, `${kind} ${slot}`).toBeCloseTo(1 / GROUND_TEXTURES[id].tile, 6)
       }
+    }
+  })
+
+  it('takes the pavement to the value the town asks for and leaves the roadway alone', () => {
+    const paving = (theme: string): THREE.Color =>
+      ((new KitDressing(loadKit(fakeKit(), theme)).ground('sidewalk')) as THREE.MeshStandardMaterial).color
+    const road = (theme: string): THREE.Color =>
+      ((new KitDressing(loadKit(fakeKit(), theme)).ground('street')) as THREE.MeshStandardMaterial).color
+
+    // the tone scales the authored tint, so the slabs keep their joints and their wear and only the value moves
+    const authored = new THREE.Color(GROUND_LOOKS.sidewalk.colour)
+    const night = paving('a neon city')
+    for (const channel of ['r', 'g', 'b'] as const) {
+      expect(night[channel], channel).toBeCloseTo(authored[channel] * PAVEMENT_TONES.neon, 6)
+    }
+    expect(night.getHex(), 'a night town is darker than the kit is authored').not.toBe(authored.getHex())
+    // nobody dressed a farming village for the dark, so it keeps the kit's own concrete
+    expect(paving('a farming village').getHex()).toBe(authored.getHex())
+
+    // the kit's asphalt is already as dark as the wet film wants it: no town repaints it
+    for (const theme of ['a neon city', 'a farming village']) {
+      expect(road(theme).getHex(), theme).toBe(GROUND_LOOKS.street.colour)
     }
   })
 

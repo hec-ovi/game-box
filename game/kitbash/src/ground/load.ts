@@ -1,16 +1,18 @@
 import * as THREE from 'three'
+import type { Flavour } from '../look/flavour.ts'
 import { GroundLibrary, type GroundMaps } from './library.ts'
 import { GROUND_TEXTURES, GROUND_TEXTURE_IDS, type GroundTextureId } from './surfaces.ts'
 
 /**
- * Picks the tiling ground surfaces out of a loaded pack. Each one rides on a
- * node of its own, a quad carrying nothing but the material its maps hang on.
+ * Picks the tiling ground surfaces out of a loaded pack, at the value the kind
+ * of town asks for. Each one rides on a node of its own, a quad carrying
+ * nothing but the material its maps hang on.
  *
  * A pack that does not have all of them gives nothing back, and the dressing
  * falls through to whatever is behind it: half a street textured and half of
  * it flat is worse than the greybox.
  */
-export function loadGround(roots: readonly THREE.Object3D[]): GroundLibrary | undefined {
+export function loadGround(roots: readonly THREE.Object3D[], flavour: Flavour): GroundLibrary | undefined {
   const maps = new Map<GroundTextureId, GroundMaps>()
 
   for (const id of GROUND_TEXTURE_IDS) {
@@ -20,7 +22,7 @@ export function loadGround(roots: readonly THREE.Object3D[]): GroundLibrary | un
     if (surface.relief && !found.normal) return undefined
     maps.set(id, found)
   }
-  return new GroundLibrary(maps)
+  return new GroundLibrary(maps, flavour)
 }
 
 /** The maps on the first drawable thing under a node. */

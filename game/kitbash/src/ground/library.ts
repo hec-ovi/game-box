@@ -1,6 +1,7 @@
 import type { CellKind } from '@gb/world'
 import * as THREE from 'three'
-import { GROUND_LOOKS, GROUND_TEXTURES, type GroundLook, type GroundTextureId } from './surfaces.ts'
+import type { Flavour } from '../look/flavour.ts'
+import { GROUND_LOOKS, GROUND_TEXTURES, PAVEMENT_TONES, type GroundLook, type GroundTextureId } from './surfaces.ts'
 
 /** The maps of one tiling surface, as the pack carries them. */
 export interface GroundMaps {
@@ -10,15 +11,19 @@ export interface GroundMaps {
 
 /**
  * The surfaces the city floor is made of, built once out of the pack's tiling
- * textures. A kind of cell is always the same material instance, because a
- * city has thousands of cells and a handful of surfaces.
+ * textures, at the value the town they are in asks for. A kind of cell is
+ * always the same material instance, because a city has thousands of cells and
+ * a handful of surfaces.
  */
 export class GroundLibrary {
   readonly #maps: ReadonlyMap<GroundTextureId, GroundMaps>
   readonly #materials = new Map<GroundLook, THREE.Material>()
+  /** How much of the kit's own pavement this town keeps. */
+  readonly #pavement: number
 
-  constructor(maps: ReadonlyMap<GroundTextureId, GroundMaps>) {
+  constructor(maps: ReadonlyMap<GroundTextureId, GroundMaps>, flavour: Flavour) {
     this.#maps = new Map([...maps].map(([id, surface]) => [id, tiled(surface, GROUND_TEXTURES[id].tile)]))
+    this.#pavement = PAVEMENT_TONES[flavour]
   }
 
   /** The surface of one kind of cell. */
@@ -42,9 +47,13 @@ export class GroundLibrary {
   }
 
   #build(look: GroundLook): THREE.Material {
+    // the tone scales the tint, so the slabs keep their joints and only the value moves
+    const colour = new THREE.Color(look.colour)
+    if (look.toned) colour.multiplyScalar(this.#pavement)
+
     const material = new THREE.MeshStandardMaterial({
       name: look.name,
-      color: look.colour,
+      color: colour,
       roughness: look.roughness,
       metalness: 0,
       map: (look.map && this.#maps.get(look.map)?.map) ?? null,

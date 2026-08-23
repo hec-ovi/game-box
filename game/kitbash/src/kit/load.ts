@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { FURNITURE_IDS, type FurnitureId } from '../catalog/furniture.ts'
 import { nodeNamesOf, PIECE_IDS, type PieceId } from '../catalog/pieces.ts'
 import { loadGround } from '../ground/load.ts'
+import { flavourOf } from '../look/flavour.ts'
 import { KitIncomplete } from './error.ts'
 import { canonical } from './geometry.ts'
 import { DEFAULT_THEME, KitLibrary, type KitPart } from './library.ts'
@@ -18,8 +19,9 @@ import { DEFAULT_THEME, KitLibrary, type KitPart } from './library.ts'
  *
  * Materials are shared by name across pieces, so the whole city ends up drawing
  * with the handful the kit actually has, and each of them is taken to the tone
- * the theme asks for: a neon city is near black, a farming village is not. The pack's tiling ground surfaces and
- * its street furniture come out of the same scene, when it has them: the wall
+ * the theme asks for: a neon city is near black, a farming village is not. The
+ * pack's tiling ground surfaces and its street furniture come out of the same
+ * scene, when it has them, and the ground answers to the same theme: the wall
  * pieces are the only ones a kit has to carry.
  */
 export function loadKit(scenes: THREE.Object3D | readonly THREE.Object3D[], theme = DEFAULT_THEME): KitLibrary {
@@ -45,7 +47,7 @@ export function loadKit(scenes: THREE.Object3D | readonly THREE.Object3D[], them
 
   const missing = KitLibrary.missing(parts)
   if (missing.length) throw new KitIncomplete(missing)
-  return new KitLibrary(parts, materials, loadGround(roots), theme)
+  return new KitLibrary(parts, materials, loadGround(roots, flavourOf(theme)), theme)
 }
 
 function find(roots: readonly THREE.Object3D[], names: readonly string[]): THREE.Object3D | undefined {
