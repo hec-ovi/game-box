@@ -2,7 +2,7 @@ import { PlayerState } from '@gb/play'
 import { QuestLog, type QuestDoc } from '@gb/quest'
 import type { World } from '@gb/world'
 import { describe, expect, it } from 'vitest'
-import { playThrough, type Choose } from './drive.ts'
+import { ownedItems, Player, type Choose } from './player.ts'
 import { buildTown } from './support.ts'
 
 /** Every flag a quest of this town can raise. */
@@ -25,6 +25,8 @@ interface Ending {
   readonly standings: Array<[string, number]>
   /** How many times the player had a choice of what to do next. */
   readonly boards: number[]
+  /** Work the town offered that no verb the game has can finish, by step kind. */
+  readonly unfinishable: string[]
 }
 
 /**
@@ -32,11 +34,13 @@ interface Ending {
  * it, see what that opened, and keep going until the town has nothing left.
  */
 function playTown(world: World, quests: readonly QuestDoc[], choose: Choose): Ending {
-  const player = PlayerState.create(world.id, 200)
-  const log = QuestLog.create(quests, player)
+  const state = PlayerState.create(world.id, 200)
+  const log = QuestLog.create(quests, state)
+  const player = new Player(log, state, { owned: ownedItems(world), choose })
   const givers = [...new Set(quests.map((quest) => quest.giverNpcId))]
   const finished: string[] = []
   const boards: number[] = []
+  const unfinishable = new Set<string>()
 
   for (let round = 0; round < quests.length + 5; round++) {
     const offered = givers.flatMap((giver) => log.offeredBy(giver))
@@ -44,19 +48,21 @@ function playTown(world: World, quests: readonly QuestDoc[], choose: Choose): En
     if (!offered.length) break
     for (const quest of offered) {
       if (!log.start(quest.id).ok) continue
-      playThrough(quest, log, player, choose)
-      if (log.status(quest.id) === 'complete') finished.push(quest.id)
+      const run = player.play(quest)
+      for (const block of run.blocked) unfinishable.add(block.kind)
+      if (run.status === 'complete') finished.push(quest.id)
     }
   }
 
-  const marks = [...marksIn(quests)].filter((flag) => player.flag(flag)).sort()
+  const marks = [...marksIn(quests)].filter((flag) => state.flag(flag)).sort()
   return {
     finished: finished.sort(),
     marks,
     standing: Math.max(0, ...marks.map((flag) => Number(/^standing_(\d+)$/.exec(flag)?.[1] ?? 0))),
-    money: player.money,
-    standings: [...new Set(quests.map((quest) => quest.reward.faction))].map((faction) => [faction, player.reputation(faction)] as [string, number]).sort(),
+    money: state.money,
+    standings: [...new Set(quests.map((quest) => quest.reward.faction))].map((faction) => [faction, state.reputation(faction)] as [string, number]).sort(),
     boards,
+    unfinishable: [...unfinishable].sort(),
   }
 }
 
@@ -165,7 +171,10 @@ describe('a town that remembers what the player did', () => {
         // there was always something to do until there was nothing left to do
         expect(ending.boards.at(-1)).toBe(0)
         expect(ending.boards.slice(0, -1).every((many) => many > 0), 'the town went quiet with work still in it').toBe(true)
-        expect(ending.finished.length).toBeGreaterThan(built.quests.length / 3)
+        expect(
+          ending.finished.length,
+          `${built.world.name} left work nobody can finish today: ${ending.unfinishable.join(', ') || 'none'}`,
+        ).toBeGreaterThan(built.quests.length / 3)
       }
     }
   })

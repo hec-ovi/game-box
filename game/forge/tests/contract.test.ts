@@ -4,7 +4,7 @@ import { QuestLog, validateQuest, type QuestDoc } from '@gb/quest'
 import { questView, World, type WorldDoc } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { Forge, OfflineNarrator, summarise } from '../src/index.ts'
-import { playThrough } from './drive.ts'
+import { ownedItems, Player } from './player.ts'
 import { buildTown } from './support.ts'
 
 /** A city this box built and sealed before the streets were reseeded. Never regenerated. */
@@ -73,12 +73,13 @@ describe('Forge', () => {
     expect(quests.length).toBeGreaterThan(0)
 
     const quest = quests[0]!
-    const player = PlayerState.create(world.id)
-    const log = QuestLog.create(quests, player)
+    const state = PlayerState.create(world.id)
+    const log = QuestLog.create(quests, state)
     expect(log.start(quest.id).ok).toBe(true)
 
-    expect(playThrough(quest, log, player)).toBe('complete')
-    expect(player.money).toBeGreaterThan(0)
+    const run = new Player(log, state, { owned: ownedItems(world) }).play(quest)
+    expect(run.status, `${quest.title}: ${run.blocked.map((block) => block.why).join('; ')}`).toBe('complete')
+    expect(run.paid).toBeGreaterThan(0)
   })
 
   it('hands back the quests it could not verify instead of shipping them', async () => {

@@ -88,7 +88,7 @@ export class CourierChoice extends RecipeBase {
           ],
           next: [stepId(5)],
         },
-        { id: stepId(5), kind: 'complete', objective: 'Live with it' },
+        { id: stepId(5), kind: 'complete', objective: 'The parcel went where you took it' },
       ],
     })
   }

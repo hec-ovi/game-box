@@ -103,7 +103,9 @@ export class Forge {
       theme: world.theme,
       density: EXTEND_DENSITY,
       signs: new Signs(world.seed),
-      doors: rng.fork('extend/doors'),
+      // the town's own stream: how big a share of it opens is a fact about the
+      // town, so an extension spends what is left of that rather than drawing again
+      doors: new Rng(world.seed).fork('doors'),
       people: rng.fork('extend/people'),
     })
     const problems = world.check()

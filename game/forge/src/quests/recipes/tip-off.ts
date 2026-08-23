@@ -76,7 +76,7 @@ export class TipOff extends RecipeBase {
           markerLabel: giver.place.name,
           next: [stepId(5)],
         },
-        { id: stepId(5), kind: 'complete', objective: 'Get paid' },
+        { id: stepId(5), kind: 'complete', objective: 'Paid for the word' },
       ],
     })
   }

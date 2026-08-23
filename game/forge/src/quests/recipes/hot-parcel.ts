@@ -58,7 +58,7 @@ export class HotParcel extends RecipeBase {
           markerLabel: giver.place.name,
           next: [stepId(3)],
         },
-        { id: stepId(3), kind: 'complete', objective: 'Take the money and say nothing' },
+        { id: stepId(3), kind: 'complete', objective: 'Paid, and nothing said' },
       ],
     })
   }

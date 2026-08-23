@@ -21,12 +21,14 @@ export class EscortRun extends RecipeBase {
   write(cast: CityCast, rng: Rng, job: Job): Draft | undefined {
     const giver = this.giverFor(cast, rng, job)
     if (!giver) return undefined
-    const walker = cast.walker(rng, [giver.npc.npcId])
+    // drawn near whoever is asking, so a job in a city is still a job on one side of it
+    const walker = cast.walker(rng, [giver.npc.npcId], giver.place)
     if (!walker) return undefined
     const destination = cast.elsewhere(rng, walker.place)
     if (!destination) return undefined
 
-    const walk = cast.metres(giver.place, walker.place) + cast.metres(walker.place, destination)
+    // there and back: the job is not over until whoever asked for it hears so
+    const walk = cast.metres(giver.place, walker.place) + cast.metres(walker.place, destination) + cast.metres(destination, giver.place)
     const hurried = rng.chance(IN_A_HURRY)
     const failWhen: FailWhen[] = [{ kind: 'npc-lost', npcId: walker.npc.npcId }]
     if (hurried) failWhen.push({ kind: 'time-limit', seconds: secondsToWalk(walk) })
@@ -36,7 +38,7 @@ export class EscortRun extends RecipeBase {
       title: `See ${walker.npc.name} to ${destination.name}`,
       summary: `${giver.npc.name} would rather ${walker.npc.name} did not walk from ${walker.place.name} to ${destination.name} alone${hurried ? ', and wants it done today' : ''}.`,
       items: [],
-      load: { metres: walk, legs: 2, escort: true, timed: hurried },
+      load: { metres: walk, legs: 3, escort: true, timed: hurried },
       failWhen,
       steps: [
         {
@@ -56,14 +58,18 @@ export class EscortRun extends RecipeBase {
           place: { plotId: destination.plotId },
           objective: `Walk ${walker.npc.name} over to ${destination.name}`,
           markerLabel: destination.name,
+          effects: [{ kind: 'companion-leave', npcId: walker.npc.npcId }],
           next: [stepId(3)],
         },
         {
           id: stepId(3),
-          kind: 'complete',
-          objective: `See ${walker.npc.name} inside`,
-          effects: [{ kind: 'companion-leave', npcId: walker.npc.npcId }],
+          kind: 'talk',
+          npcId: giver.npc.npcId,
+          objective: `Tell ${giver.npc.name} at ${giver.place.name} that ${walker.npc.name} got there`,
+          markerLabel: giver.place.name,
+          next: [stepId(4)],
         },
+        { id: stepId(4), kind: 'complete', objective: `${walker.npc.name} got there, and ${giver.npc.name} knows it` },
       ],
     })
   }

@@ -1,7 +1,9 @@
 import { Rng } from '@gb/kit'
 import { BUILDING_KINDS, type World } from '@gb/world'
 import { describe, expect, it } from 'vitest'
-import { drawOf, NEEDS, openDoors, pullOf, type Frontage } from '../src/interior/open.ts'
+import { DoorBudget, mostOpen } from '../src/interior/budget.ts'
+import { drawOf, NEEDS, pullOf } from '../src/interior/draw.ts'
+import { openDoors, type Frontage } from '../src/interior/open.ts'
 import { buildTown } from './support.ts'
 
 /** Which plots you can walk into. */
@@ -29,18 +31,40 @@ const town = (seed: string, blocks = 5) => buildTown(seed, { blocksX: blocks, bl
 
 const [small, big, other] = await Promise.all([town('doors-small', 3), town('doors-big', 8), town('doors-other', 8)])
 
+/**
+ * Every size the creation panel offers, built for real. The rule inverted on the
+ * smallest of them for as long as one city was the only city the tests built.
+ */
+const SIZES = [1, 1, 1, 2, 2, 3, 4, 6, 9, 12, 16, 20, 24]
+const range = await Promise.all(SIZES.map((blocks, at) => town(`doors-size-${at}`, blocks)))
+
 describe('a town of frontage with a few doors that open', () => {
-  it('leaves most of the town as buildings you cannot walk into', () => {
-    for (const built of [small, big, other]) {
+  it('leaves most of the town shut at every size the panel builds', () => {
+    // a floor applied to the batch rather than to the town turned this inside
+    // out on a hamlet: six of nine plots open, and on one seed six of six
+    for (const [at, built] of range.entries()) {
       const open = openPlots(built.world)
-      const share = open.size / built.world.plots().length
-      expect(share, `${built.world.name} opens ${(share * 100).toFixed(0)}% of its doors`).toBeLessThan(0.25)
-      expect(open.size, `${built.world.name} opens nothing`).toBeGreaterThanOrEqual(6)
+      const plots = built.world.plots().length
+      const where = `${SIZES[at]}x${SIZES[at]} (${open.size} of ${plots})`
+      expect(open.size, `${where} opens nothing at all`).toBeGreaterThan(0)
+      expect(open.size * 2, `${where} is not mostly frontage`).toBeLessThan(plots)
+      expect(open.size, `${where} opens more than the town is allowed`).toBeLessThanOrEqual(mostOpen(plots))
     }
   })
 
-  it('opens somewhere to sit, to buy, to sleep and to work, however small the town', () => {
-    for (const built of [small, big, other]) {
+  it('still has work in it at every size, however few doors it opens', () => {
+    // the floor exists for this: cut it too far and the writer has no hub, no
+    // far side and nowhere to send the player between them
+    for (const [at, built] of range.entries()) {
+      expect(built.quests.length, `${SIZES[at]}x${SIZES[at]} has nothing to do in it`).toBeGreaterThan(0)
+      expect(built.rejected, `${SIZES[at]}x${SIZES[at]} wrote work it could not verify`).toEqual([])
+    }
+  })
+
+  it('opens somewhere to sit, to buy, to sleep and to work in any town big enough to hold them', () => {
+    for (const built of [...range, small, big, other]) {
+      // a town with as many doors as it has needs has to meet all of them
+      if (built.world.interiors().length < NEEDS.length) continue
       const kinds = built.world
         .interiors()
         .map((interior) => interior.kind)
@@ -106,12 +130,16 @@ describe('a town of frontage with a few doors that open', () => {
   })
 
   it('opens what a place has to offer rather than what it is called', () => {
-    // the ranking has to beat picking at random: the doors that open are the ones worth opening
-    const open = openPlots(big.world)
+    // the ranking has to beat picking at random: the doors that open are the
+    // ones worth opening, near the top of what a door can be worth at all
     const pull = (plots: readonly { kind: (typeof BUILDING_KINDS)[number] }[]) =>
       plots.reduce((sum, plot) => sum + pullOf(plot.kind), 0) / Math.max(1, plots.length)
-    const chosen = pull(big.world.plots().filter((plot) => open.has(plot.id)))
-    expect(chosen).toBeGreaterThan(pull(big.world.plots()) * 1.4)
+    for (const built of [small, big, other]) {
+      const open = openPlots(built.world)
+      const chosen = pull(built.world.plots().filter((plot) => open.has(plot.id)))
+      expect(chosen, `${built.world.name} opens middling doors`).toBeGreaterThan(6)
+      expect(chosen, `${built.world.name} opens what the street happens to hold`).toBeGreaterThan(pull(built.world.plots()) * 1.3)
+    }
   })
 
   it('weighs a kind of building by what its own interior turns out to hold', () => {
@@ -136,24 +164,77 @@ describe('a town of frontage with a few doors that open', () => {
       ...Array.from({ length: 3 }, (_, i) => ({ id: `flat_${i}`, kind: 'apartment' as const, nearness: 0, onAvenue: false })),
     ]
     for (const seed of ['a', 'b', 'c', 'd', 'e']) {
-      const open = openDoors(frontages, new Rng(seed))
+      const open = openDoors(frontages, new Rng(seed), FRESH)
       const beds = [...open].filter((id) => id.startsWith('flat_'))
       expect(beds.length, `${seed} left the town with nowhere to sleep`).toBeGreaterThan(0)
     }
   })
 
   it('opens the doors it is told to and no more', () => {
-    const frontages: Frontage[] = Array.from({ length: 200 }, (_, i) => ({
-      id: `plot_${i}`,
-      kind: BUILDING_KINDS[i % BUILDING_KINDS.length]!,
-      nearness: 1 - i / 200,
-      onAvenue: i % 3 === 0,
-    }))
-    const sizes = ['a', 'b', 'c', 'd'].map((seed) => openDoors(frontages, new Rng(seed)).size)
+    const sizes = ['a', 'b', 'c', 'd'].map((seed) => openDoors(many(200), new Rng(seed), FRESH).size)
     for (const size of sizes) {
       expect(size).toBeGreaterThanOrEqual(200 * 0.12 * 0.7)
       expect(size).toBeLessThanOrEqual(200 * 0.12 * 1.3)
     }
-    expect(new Set(sizes).size, 'every seed opens the same number of doors').toBeGreaterThan(1)
+    expect(new Set(sizes).size, 'every town of a size opens the same number of doors').toBeGreaterThan(1)
+  })
+})
+
+/** A town nothing has been built in yet. */
+const FRESH = { built: 0, open: [] }
+
+/** A batch of buildings to hand the ranking, one of every kind and then round again. */
+const many = (count: number): Frontage[] =>
+  Array.from({ length: count }, (_, i) => ({
+    id: `plot_${i}`,
+    kind: BUILDING_KINDS[i % BUILDING_KINDS.length]!,
+    nearness: 1 - i / count,
+    onAvenue: i % 3 === 0,
+  }))
+
+describe('how many doors a town of any size opens', () => {
+  it('keeps the majority of every town shut, from a hamlet to the widest grid', () => {
+    for (let buildings = 3; buildings < 6000; buildings = Math.ceil(buildings * 1.07)) {
+      for (const seed of ['a', 'b', 'c', 'd', 'e']) {
+        const budget = new DoorBudget({ built: 0, open: 0 }, buildings, new Rng(seed))
+        expect(budget.town * 2, `${buildings} buildings, ${budget.town} open`).toBeLessThan(buildings)
+        expect(budget.town, `${buildings} buildings and nothing open`).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  it('gives the smallest town a door anyway, rather than a town nobody can walk into', () => {
+    for (const buildings of [1, 2, 3, 4]) {
+      expect(mostOpen(buildings), `${buildings} buildings`).toBe(buildings > 4 ? 2 : 1)
+    }
+  })
+
+  it('lets the majority-shut ceiling beat the floor in a town too small for both', () => {
+    // a six-building hamlet cannot have four open and still be mostly frontage
+    const budget = new DoorBudget({ built: 0, open: 0 }, 6, new Rng('hamlet'))
+    expect(NEEDS.length).toBeGreaterThan(2)
+    expect(budget.town).toBe(2)
+  })
+
+  it('opens the four things a town needs once it is big enough to hold them', () => {
+    for (const seed of ['a', 'b', 'c']) {
+      expect(new DoorBudget({ built: 0, open: 0 }, 20, new Rng(seed)).town).toBeGreaterThanOrEqual(NEEDS.length)
+    }
+  })
+
+  it('counts a batch of new buildings against the town, not against itself', async () => {
+    // a floor spent per batch opened six of every ten new plots, whatever the
+    // city they were dropped into already had open
+    const built = await town('doors-grow', 5)
+    const before = built.world.interiors().length
+    const added = await built.forge.extend(built.world, 20)
+    expect(added.ok).toBe(true)
+    const opened = built.world.interiors().length - before
+    expect(opened, `20 new plots opened ${opened} doors`).toBeLessThanOrEqual(4)
+    expect(built.world.interiors().length * 2).toBeLessThan(built.world.plots().length)
+  })
+
+  it('opens nothing more in a town already over its allowance', () => {
+    expect(new DoorBudget({ built: 100, open: 90 }, 10, new Rng('full')).spare).toBe(0)
   })
 })

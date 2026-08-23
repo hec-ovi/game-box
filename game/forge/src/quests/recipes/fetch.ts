@@ -58,7 +58,7 @@ export class FetchRun extends RecipeBase {
         markerLabel: giver.place.name,
         next: [stepId(first + 3)],
       },
-      { id: stepId(first + 3), kind: 'complete', objective: 'Collect what you are owed' },
+      { id: stepId(first + 3), kind: 'complete', objective: 'Paid what you were owed' },
     )
 
     return this.finish(cast, job, {

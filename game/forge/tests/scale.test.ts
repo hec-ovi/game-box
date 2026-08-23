@@ -4,7 +4,7 @@ import { QuestLog } from '@gb/quest'
 import { describe, expect, it } from 'vitest'
 import { summarise } from '../src/index.ts'
 import { questDemand } from '../src/quests/demand.ts'
-import { playThrough } from './drive.ts'
+import { line, playEvery } from './playable.ts'
 import { buildTown, digest } from './support.ts'
 
 /** Places with somebody in them: what the amount of work in a town is measured against. */
@@ -76,12 +76,11 @@ describe('a town offers as much as it holds', () => {
 
   it('asks about as much of the player per job in a city as in a small town, and adds a tail that crosses town', () => {
     // the middling job is about the same size of job either way: a city is more
-    // neighbourhoods, not longer errands. It may sit one band up and no further,
-    // because a town of frontage has fewer places open for a job to be about, so
-    // the writer reaches for a longer shape a little more often
+    // neighbourhoods, not longer errands. A band apart is as far as the two go,
+    // in either direction: a town with two dozen jobs in it has its median
+    // sitting on a boundary, so which side of it the middle job falls is noise
     const band = (quests: typeof city.quests) => BANDS.indexOf(median(quests))
-    expect(band(city.quests) - band(town.quests)).toBeGreaterThanOrEqual(0)
-    expect(band(city.quests) - band(town.quests)).toBeLessThanOrEqual(1)
+    expect(Math.abs(band(city.quests) - band(town.quests)), `${median(city.quests)} in a city against ${median(town.quests)} in a town`).toBeLessThanOrEqual(1)
     // and only a city is big enough to hold a side job that crosses it. The main
     // line is measured out differently: its two sides are the two ends of the
     // town's own argument, so its longest link spans whatever town it is in
@@ -93,17 +92,11 @@ describe('a town offers as much as it holds', () => {
   it('writes nothing unplayable, however much of it there is', () => {
     expect(city.quests.length).toBeGreaterThan(150)
     expect(city.rejected).toEqual([])
-    for (const quest of city.quests) {
-      // both ways round, so a choice is proved on either branch
-      for (const choose of [() => 0, () => 1]) {
-        const player = PlayerState.create(city.world.id)
-        for (const need of quest.requires ?? []) if (need.kind === 'flag') player.setFlag(need.flag, need.value)
-        const log = QuestLog.create(city.quests, player)
-        expect(log.start(quest.id).ok, quest.title).toBe(true)
-        expect(playThrough(quest, log, player, choose), quest.title).toBe('complete')
-        expect(player.money).toBeGreaterThan(0)
-      }
-    }
+    // both roads of every fork, by somebody with the verbs the game has
+    const report = playEvery(city.world, city.quests)
+    expect(report.stranded.map((run) => `${run.title} [${run.status}]`), 'a city wrote work that stops for no reason anybody owes').toEqual([])
+    expect(report.completable, line(report)).toBe(report.quests)
+    for (const run of report.runs) if (run.completable) expect(run.paid, `${run.title} finished and paid nothing`).toBeGreaterThan(0)
   })
 
   it('never walks somebody to the door they are already standing at', () => {

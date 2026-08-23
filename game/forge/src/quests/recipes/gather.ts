@@ -63,7 +63,7 @@ export class GatherRun extends RecipeBase {
           markerLabel: giver.place.name,
           next: [stepId(3)],
         },
-        { id: stepId(3), kind: 'complete', objective: 'Settle up' },
+        { id: stepId(3), kind: 'complete', objective: 'Settled up' },
       ],
     })
   }

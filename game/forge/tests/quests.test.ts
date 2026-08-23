@@ -3,7 +3,7 @@ import { QuestLog, REWARD_TABLE, type QuestDoc } from '@gb/quest'
 import { METRICS } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { secondsToWalk } from '../src/quests/pace.ts'
-import { playThrough } from './drive.ts'
+import { across, line, playEvery } from './playable.ts'
 import { buildTown, digest } from './support.ts'
 
 /** A handful of towns, built once, that the measurements below all read. */
@@ -14,10 +14,14 @@ const towns = await Promise.all([
   buildTown('recipes-4', { theme: 'quiet coastal town' }),
   buildTown('recipes-5', { theme: 'farming village on the plains', blocksX: 4, blocksY: 3 }),
   buildTown('recipes-6', { theme: 'cold industrial rail town', blocksX: 2, blocksY: 2 }),
+  buildTown('recipes-7', { theme: 'snowy alpine ski town', blocksX: 3, blocksY: 3 }),
 ])
 const everyQuest: QuestDoc[] = towns.flatMap((town) => [...town.quests])
+/** Every one of them played through, once per road, by somebody with the verbs the game has. */
+const played = towns.map((town) => playEvery(town.world, town.quests))
 const everyStep = everyQuest.flatMap((quest) => quest.steps)
 const some = (wanted: (quest: QuestDoc) => boolean) => everyQuest.filter(wanted).length
+
 
 describe('generated quests', () => {
   it('writes the same quests twice for one seed', async () => {
@@ -137,19 +141,42 @@ describe('generated quests', () => {
     }
   })
 
-  it('writes nothing the quest engine will not take, and nothing that cannot be finished', () => {
-    for (const town of towns) {
+  it('writes nothing the quest engine will not take, and nothing that dead-ends on its own', () => {
+    // a quest can stop today because the game has no verb for one of its steps.
+    // It may never stop for any other reason: that would be this box writing a
+    // job nobody can finish, whatever else ships
+    for (const [at, town] of towns.entries()) {
       expect(town.rejected).toEqual([])
-      for (const quest of town.quests) {
-        // both ways round, so a choice is proved on either branch
-        for (const choose of [() => 0, () => 1]) {
-          const player = PlayerState.create(town.world.id)
-          for (const need of quest.requires ?? []) if (need.kind === 'flag') player.setFlag(need.flag, need.value)
-          const log = QuestLog.create(town.quests, player)
-          expect(log.start(quest.id).ok, quest.title).toBe(true)
-          expect(playThrough(quest, log, player, choose), `${quest.title} (${quest.steps.map((s) => s.kind).join('>')})`).toBe('complete')
-          expect(player.money).toBeGreaterThan(0)
-        }
+      const report = played[at]!
+      expect(
+        report.stranded.map((run) => `${run.title} [${run.status}] stuck at ${run.stranded.join(', ')}`),
+        `${town.world.name} wrote work that stops for a reason nobody owes`,
+      ).toEqual([])
+      for (const run of report.runs) if (run.completable) expect(run.paid, `${run.title} finished and paid nothing`).toBeGreaterThan(0)
+    }
+  })
+
+  it('writes work a player can finish today, every job of it', () => {
+    // the figure worth quoting about this box: every generated quest, driven
+    // through the verbs the running game gives a player and no others
+    const report = across(played)
+    expect(report.quests, 'too few jobs to read anything off').toBeGreaterThan(30)
+    expect(report.completable, line(report)).toBe(report.quests)
+  })
+
+  it('ends a job in front of the person who handed it out', () => {
+    // go there, do the thing, come back. A `complete` step resolves the moment
+    // it opens and is never on the board, so the last thing the player is asked
+    // for has to be the hand-in, or the job just stops wherever they are
+    for (const quest of everyQuest) {
+      const ends = new Set(quest.steps.filter((step) => step.kind === 'complete').map((step) => step.id))
+      const closing = quest.steps.filter((step) => (step.next ?? []).some((id) => ends.has(id)))
+      expect(closing.length, `${quest.title} has no way into its ending`).toBeGreaterThan(0)
+      for (const step of closing) {
+        const facing = step.kind === 'talk' ? step.npcId : step.kind === 'deliver' ? step.toNpcId : undefined
+        // unless taking that road crossed them, which is the whole point of a road that does
+        const crossing = step.effects.some((effect) => effect.kind === 'set-flag' && effect.flag.startsWith('crossed:'))
+        expect(facing === quest.giverNpcId || crossing, `${quest.title} ends on a ${step.kind} away from ${quest.giverNpcId}`).toBe(true)
       }
     }
   })

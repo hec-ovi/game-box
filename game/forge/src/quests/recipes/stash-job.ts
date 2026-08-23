@@ -62,7 +62,7 @@ export class StashJob extends RecipeBase {
           markerLabel: giver.place.name,
           next: [stepId(4)],
         },
-        { id: stepId(4), kind: 'complete', objective: 'Get paid and forget about it' },
+        { id: stepId(4), kind: 'complete', objective: 'Paid, and forgotten about' },
       ],
     })
   }

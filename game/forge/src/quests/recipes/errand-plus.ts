@@ -64,7 +64,7 @@ export class ErrandPlus extends RecipeBase {
           hint: `Nobody is counting on it, but it is paid work.`,
           ...(pay ? { effects: [{ kind: 'pay', amount: pay } as const] } : {}),
         },
-        { id: stepId(4), kind: 'complete', objective: 'Get paid' },
+        { id: stepId(4), kind: 'complete', objective: 'Paid for the errand' },
       ],
     })
   }

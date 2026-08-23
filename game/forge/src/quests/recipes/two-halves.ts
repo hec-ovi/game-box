@@ -62,7 +62,7 @@ export class TwoHalves extends RecipeBase {
           id: stepId(4),
           kind: 'join',
           waitFor: [stepId(2), stepId(3)],
-          objective: 'Get both of them in hand',
+          objective: 'Both halves in hand',
           next: [stepId(5)],
         },
         {
@@ -76,7 +76,7 @@ export class TwoHalves extends RecipeBase {
           markerLabel: giver.place.name,
           next: [stepId(6)],
         },
-        { id: stepId(6), kind: 'complete', objective: 'Get paid for both' },
+        { id: stepId(6), kind: 'complete', objective: 'Paid for both' },
       ],
     })
   }

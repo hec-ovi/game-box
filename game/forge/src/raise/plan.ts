@@ -27,7 +27,10 @@ export interface RaiseSetup {
  */
 export function planRaise(world: World, chosen: readonly Chosen[], setup: RaiseSetup): PlannedSite[] {
   const first = world.plots().length
-  const open = openDoors(frontagesOf(world, chosen), setup.doors)
+  const open = openDoors(frontagesOf(world, chosen), setup.doors, {
+    built: first,
+    open: world.interiors().map((interior) => interior.kind),
+  })
   const counts = { npcs: world.npcs().length, items: world.items().length }
   const style = `${setup.theme.split(/\s+/)[0]?.toLowerCase() ?? 'plain'}-`
 
