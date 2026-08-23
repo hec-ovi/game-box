@@ -92,7 +92,10 @@ function stanceOf(object: THREE.Object3D): Stance {
   const turn = new THREE.Quaternion()
   object.matrixWorld.decompose(position, turn, new THREE.Vector3())
   const yaw = new THREE.Euler().setFromQuaternion(turn, 'YXZ').y
-  const matrix = new THREE.Matrix4().compose(position, new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw, 0)), UNSCALED)
+  // the frame sits on the floor under the prop, not at its base, so a piece
+  // standing on a counter top measures its height from the floor like the rest
+  const floor = new THREE.Vector3(position.x, 0, position.z)
+  const matrix = new THREE.Matrix4().compose(floor, new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw, 0)), UNSCALED)
   return { x: position.x, z: position.z, yaw, matrix }
 }
 

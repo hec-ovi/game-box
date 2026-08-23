@@ -64,7 +64,11 @@ export function buildInterior(world: World, interior: Interior, dressing: Dressi
   const props = new Map<string, THREE.Object3D>()
   for (const piece of interior.furniture) {
     const object = dressing.prop(piece.prop)
-    object.position.set(piece.pos.x, 0, piece.pos.y)
+    // a till stands on the counter it was placed on: the world carries that
+    // top's height and the object is lifted to it. It is a transform and
+    // nothing else, so the piece keeps the geometry and the material the
+    // dressing handed over and costs no draw of its own
+    object.position.set(piece.pos.x, piece.lift ?? 0, piece.pos.y)
     object.rotation.y = yawOf(piece.rot)
     object.name = piece.id
     root.add(object)

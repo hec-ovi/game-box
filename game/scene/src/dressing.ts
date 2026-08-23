@@ -77,7 +77,7 @@ const PROP_SIZE: Record<FurnitureProp, [number, number, number]> = {
   fridge: [0.7, 1.8, 0.7],
   stove: [0.8, 0.9, 0.6],
   sink: [0.6, 0.9, 0.5],
-  counter: [1.4, 0.95, 0.6],
+  counter: [1.4, METRICS.furniture.serviceCounterHeight, 0.6],
   register: [0.4, 0.3, 0.4],
   'display-case': [1.2, 1.1, 0.5],
   'crate-stack': [0.9, 1.2, 0.9],
