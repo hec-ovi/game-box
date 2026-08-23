@@ -29,6 +29,10 @@ Concretely, in order:
 | `nav` calls a mountain cell impassable, `land` calls it walkable verge | `nav` and `land` disagree | Does not block walking out, since the corridor is street and pavement the whole way, but the two boxes describe the same cells differently. |
 | NPC clothing is medieval | `cast` | The only clothing we ship is Quaternius Modular Character Outfits **Fantasy**: Peasant and Ranger, two genders. |
 
+## Next up
+
+- **A TV that plays something.** `tv` is already in the prop vocabulary and `@gb/furnish` already generates its geometry; what it lacks is a screen with moving pictures. Queued behind that box's wall and floor pass. Approach to weigh when it starts: a generated animated screen (a broadcast, a ticker, glitch, colour bars) costs no download, carries no licence question and suits a cyberpunk room, against a real video file which would have to be CC0 or ours and would sit in a world file that people hand to each other. A screen is also emissive, so it will bloom and light the room, which is worth more than the picture itself.
+
 ## Small, found by agents, nobody assigned
 
 - `work-desk` is one anchor kind covering two stances: seated at an office chair, and standing at a workshop bench. `CLIP_FOR_ANCHOR` maps one clip per kind, so one of the two is playing the wrong animation today. Splitting it is an `ANCHOR_KINDS` value in `@gb/world` plus a clip in `@gb/cast`, and it breaks cast's exhaustive map, so it needs both boxes.
