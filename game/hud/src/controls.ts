@@ -1,13 +1,16 @@
 import { el, kbd } from './dom.ts'
 import type { ControlHint } from './types.ts'
+import { WINDOW_TABS } from './windows.ts'
 
 /**
  * The keys the interface answers to. They are written on the controls that do
  * the same thing, so the player never has to be told twice.
  */
 export const HUD_KEYS = {
-  journal: 'J',
-  help: '?',
+  quests: 'J',
+  map: 'M',
+  items: 'I',
+  controls: '?',
   close: 'Esc',
   send: 'Enter',
 } as const
@@ -18,10 +21,9 @@ export const TALK_HINTS: readonly ControlHint[] = [
   { keys: [HUD_KEYS.close], text: 'Walk away' },
 ]
 
-/** The interface's own keys, listed last in the controls window. */
+/** The interface's own keys, listed last in the controls tab. */
 export const HUD_HINTS: readonly ControlHint[] = [
-  { keys: [HUD_KEYS.journal], text: 'Journal', group: 'Interface' },
-  { keys: [HUD_KEYS.help], text: 'These controls', group: 'Interface' },
+  ...WINDOW_TABS.map((tab) => ({ keys: [tab.key], text: tab.title, group: 'Interface' })),
   { keys: [HUD_KEYS.send], text: 'Send what you typed', group: 'Interface' },
   { keys: [HUD_KEYS.close], text: 'Close the window in front of you', group: 'Interface' },
 ]
@@ -42,7 +44,7 @@ export function hintList(hints: readonly ControlHint[]): HTMLUListElement {
   return list
 }
 
-/** The same hints under their headings: for the controls window. */
+/** The same hints under their headings: for the controls tab. */
 export function hintGroups(hints: readonly ControlHint[]): HTMLElement[] {
   const groups = new Map<string, ControlHint[]>()
   for (const hint of hints) {

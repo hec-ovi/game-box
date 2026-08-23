@@ -4,7 +4,7 @@ import type { HudState } from '../types.ts'
 import type { Surface } from './surface.ts'
 
 /**
- * The scene dimmed behind an open window: it says a window is up, keeps the
+ * The scene dimmed behind the open window: it says a window is up, keeps the
  * text readable over a bright street, and closes what it is behind when the
  * player clicks past it.
  */
@@ -18,7 +18,7 @@ export class ScrimSurface implements Surface {
   }
 
   render(state: HudState): void {
-    this.#reveal.set(state.journalOpen || state.helpOpen)
+    this.#reveal.set(state.window !== null)
   }
 
   dispose(): void {

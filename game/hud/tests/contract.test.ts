@@ -3,7 +3,7 @@ import { getByRole, getByText, queryByRole, queryByText, waitFor, within } from 
 import userEvent from '@testing-library/user-event'
 import type { Objective } from '@gb/quest'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { Hud, HudError, type ControlHint, type HudIntent, type JournalQuest } from '../src/index.ts'
+import { Hud, HudError, type ControlHint, type HudIntent, type MapView, type QuestEntry } from '../src/index.ts'
 
 const huds: Hud[] = []
 
@@ -30,7 +30,7 @@ function box(screen: HTMLElement): HTMLElement | null {
   return queryByRole(screen, 'textbox', { name: 'Say something' })
 }
 
-const JOURNAL: readonly JournalQuest[] = [
+const QUESTS: readonly QuestEntry[] = [
   {
     questId: 'q1',
     title: 'The Copper Wheel',
@@ -39,6 +39,7 @@ const JOURNAL: readonly JournalQuest[] = [
       { stepId: 's2', text: 'Carry the crate to the docks', done: false },
     ],
   },
+  { questId: 'q2', title: 'Salt and Lamp Oil', steps: [{ stepId: 's1', text: 'Buy lamp oil', done: false }] },
 ]
 
 const CONTROLS: readonly ControlHint[] = [{ keys: ['W', 'A', 'S', 'D'], text: 'Walk', group: 'Move' }]
@@ -57,6 +58,56 @@ describe('objectives', () => {
     expect(queryByText(screen, 'Talk to Mara')).toBeNull()
     getByText(screen, 'Carry the crate to the docks')
   })
+
+  it('follows one quest and counts the rest, however many are running', () => {
+    const { hud, screen } = mount()
+    const many = Array.from({ length: 10 }, (_, at) =>
+      objective({ questId: `q${at}`, questTitle: `Quest ${at}`, text: `Step for ${at}` }),
+    )
+    hud.show({ objectives: many, trackedQuestId: 'q7' })
+
+    getByText(screen, 'Quest 7')
+    getByText(screen, 'Step for 7')
+    expect(queryByText(screen, 'Step for 0')).toBeNull()
+    expect(queryByText(screen, 'Step for 9')).toBeNull()
+    expect((getByText(screen, '9 more quests').closest('.gb-more') as HTMLElement).hidden).toBe(false)
+
+    hud.show({ trackedQuestId: 'q3' })
+    getByText(screen, 'Step for 3')
+    expect(queryByText(screen, 'Step for 7')).toBeNull()
+
+    // One quest on the board is the whole board, so there is no rest to point at.
+    hud.show({ objectives: [objective({ text: 'Talk to Mara' })], trackedQuestId: 'q1' })
+    expect((screen.querySelector('.gb-more') as HTMLElement).hidden).toBe(true)
+  })
+
+  it('reads a counted step as a count and says which work is optional', () => {
+    const { hud, screen } = mount()
+    hud.show({
+      objectives: [
+        objective({ stepId: 's1', text: 'Collect crates', count: { done: 2, needed: 5 } }),
+        objective({ stepId: 's2', text: 'Ask about the ledger', optional: true }),
+        objective({ stepId: 's3', text: 'Take the key', count: { done: 0, needed: 1 } }),
+      ],
+    })
+
+    getByText(screen, '2/5')
+    expect(getByText(screen, 'Ask about the ledger').closest('li')?.dataset.optional).toBe('true')
+    getByText(screen, 'Optional')
+    // A count of one is not a count, so it stays out of the way.
+    expect(queryByText(screen, '0/1')).toBeNull()
+    expect(getByText(screen, 'Collect crates').closest('li')?.dataset.optional).toBeUndefined()
+  })
+
+  it('scrolls inside its corner rather than running off the screen', () => {
+    const { screen } = mount()
+    for (const selector of ['.gb-objectives', '.gb-purse']) {
+      const panel = screen.querySelector(selector) as HTMLElement
+      const style = getComputedStyle(panel)
+      expect(style.overflowY).toBe('auto')
+      expect(Number.parseFloat(style.maxHeight)).toBeGreaterThan(0)
+    }
+  })
 })
 
 describe('the looked-at prompt', () => {
@@ -67,18 +118,44 @@ describe('the looked-at prompt', () => {
     hud.show({ prompt: { key: 'E', text: 'Go into The Copper Wheel' } })
     getByText(screen, 'E')
     getByText(screen, 'Go into The Copper Wheel')
+    expect(screen.querySelector('.gb-hud')?.getAttribute('data-reach')).toBe('true')
 
     hud.show({ prompt: null })
+    expect(screen.querySelector('.gb-hud')?.getAttribute('data-reach')).toBe('false')
     await waitFor(() => expect(queryByText(screen, 'Go into The Copper Wheel')).toBeNull())
   })
 })
 
 describe('the purse', () => {
-  it('shows money and what is being carried', () => {
+  it('shows money, what is being carried, and which way the money moved', () => {
     const { hud, screen } = mount()
     hud.show({ money: 42, carrying: [{ id: 'i1', name: 'Brass ledger', quest: true }] })
-    getByText(screen, '42 coin')
-    getByText(screen, 'Brass ledger')
+    const purse = screen.querySelector('.gb-purse') as HTMLElement
+    within(purse).getByText('42')
+    within(purse).getByText('Brass ledger')
+    expect((purse.querySelector('.gb-more') as HTMLElement).hidden).toBe(true)
+
+    hud.show({ money: 60 })
+    expect((purse.querySelector('.gb-coin') as HTMLElement).dataset.flash).toBe('up')
+    hud.show({ money: 5 })
+    expect((purse.querySelector('.gb-coin') as HTMLElement).dataset.flash).toBe('down')
+  })
+
+  it('keeps the corner short and points at the items tab for the rest', () => {
+    const { hud, screen } = mount()
+    hud.show({
+      carrying: [
+        ...Array.from({ length: 9 }, (_, at) => ({ id: `i${at}`, name: `Green bottle ${at}` })),
+        { id: 'q', name: 'Brass ledger', quest: true },
+      ],
+    })
+
+    const purse = screen.querySelector('.gb-purse') as HTMLElement
+    // What a quest wants survives the cut, because it is the one not to sell.
+    within(purse).getByText('Brass ledger')
+    expect(purse.querySelectorAll('li')).toHaveLength(4)
+    within(purse).getByText('6 more in hand')
+    within(purse).getByText('I')
   })
 })
 
@@ -148,9 +225,9 @@ describe('conversation', () => {
 
     try {
       hud.show({ talk: { speaker: 'Mara Quill' } })
-      await user.keyboard('w')
+      await user.keyboard('j')
       expect(heard).toEqual([])
-      expect((box(screen) as HTMLInputElement).value).toBe('w')
+      expect((box(screen) as HTMLInputElement).value).toBe('j')
 
       await user.keyboard('{Escape}')
       await user.keyboard('w')
@@ -175,81 +252,119 @@ describe('conversation', () => {
   })
 })
 
-describe('the journal', () => {
-  it('opens on its key, lists the quests, and gives the keyboard back on the way out', async () => {
+describe('the window', () => {
+  it('opens on its key, and gives the keyboard back on the way out', async () => {
     const user = userEvent.setup()
     const { hud, screen, intents } = mount()
-    hud.show({ journal: JOURNAL })
+    hud.show({ quests: QUESTS })
     expect(queryByText(screen, 'Carry the crate to the docks')).toBeNull()
 
     await user.keyboard('j')
-    expect(intents).toContainEqual({ kind: 'journal', open: true })
+    expect(intents).toContainEqual({ kind: 'window', window: 'quests' })
 
-    const panel = getByRole(screen, 'dialog', { name: 'Journal' })
+    const panel = getByRole(screen, 'dialog', { name: 'Quests' })
     expect(document.activeElement).toBe(panel)
     within(panel).getByText('The Copper Wheel')
     expect(within(panel).getByText('Talk to Mara').closest('li')?.className).toBe('gb-step-done')
     expect(within(panel).getByText('Carry the crate to the docks').closest('li')?.className).toBe('gb-step-open')
 
     await user.keyboard('{Escape}')
-    expect(intents).toContainEqual({ kind: 'journal', open: false })
-    expect(queryByRole(screen, 'dialog', { name: 'Journal' })).toBeNull()
+    expect(intents).toContainEqual({ kind: 'window', window: null })
+    expect(queryByRole(screen, 'dialog')).toBeNull()
     expect(document.activeElement).toBe(document.body)
     await waitFor(() => expect(queryByText(screen, 'Carry the crate to the docks')).toBeNull())
   })
 
-  it('opens and closes from the buttons, which show the key that does the same', async () => {
+  it('hands the keyboard back to whatever had it', async () => {
     const user = userEvent.setup()
     const { hud, screen } = mount()
-    hud.show({ journal: JOURNAL })
+    const elsewhere = document.createElement('button')
+    document.body.append(elsewhere)
+    elsewhere.focus()
+    hud.show({ quests: QUESTS })
 
-    const opener = getByRole(screen, 'button', { name: 'Journal (J)' })
-    within(opener).getByText('J')
-    await user.click(opener)
-
-    const panel = getByRole(screen, 'dialog', { name: 'Journal' })
-    expect(opener.getAttribute('aria-expanded')).toBe('true')
-    await user.click(within(panel).getByRole('button', { name: 'Close journal (Escape)' }))
-    expect(queryByRole(screen, 'dialog', { name: 'Journal' })).toBeNull()
-  })
-
-  it('keeps Tab inside itself while it is up', async () => {
-    const user = userEvent.setup()
-    const { hud, screen } = mount()
-    hud.show({ journal: JOURNAL, journalOpen: true })
-
-    const panel = getByRole(screen, 'dialog', { name: 'Journal' })
-    await user.keyboard('{Tab}')
-    expect(panel.contains(document.activeElement)).toBe(true)
-    await user.keyboard('{Tab}')
-    expect(panel.contains(document.activeElement)).toBe(true)
-  })
-})
-
-describe('the controls window', () => {
-  it('shows what the game says its keys do next to the ones the interface owns', async () => {
-    const user = userEvent.setup()
-    const { hud, screen, intents } = mount()
-    hud.show({ controls: CONTROLS })
-
-    await user.keyboard('?')
-    expect(intents).toContainEqual({ kind: 'help', open: true })
-    const panel = getByRole(screen, 'dialog', { name: 'Controls' })
-    within(panel).getByText('Move')
-    within(panel).getByText('Walk')
-    within(panel).getByText('Journal')
-    within(panel).getByText('Close the window in front of you')
+    await user.keyboard('j')
+    expect(document.activeElement).toBe(getByRole(screen, 'dialog', { name: 'Quests' }))
 
     await user.keyboard('{Escape}')
-    expect(queryByRole(screen, 'dialog', { name: 'Controls' })).toBeNull()
+    expect(document.activeElement).toBe(elsewhere)
+    elsewhere.remove()
   })
-})
 
-describe('windows on the way out', () => {
+  it('shows one face at a time, so two windows are never up at once', async () => {
+    const user = userEvent.setup()
+    const { hud, screen } = mount()
+    hud.show({ quests: QUESTS, controls: CONTROLS })
+
+    await user.keyboard('j')
+    getByRole(screen, 'dialog', { name: 'Quests' })
+
+    await user.keyboard('?')
+    getByRole(screen, 'dialog', { name: 'Controls' })
+    expect(queryByRole(screen, 'dialog', { name: 'Quests' })).toBeNull()
+    expect(queryByText(screen, 'The Copper Wheel')).toBeNull()
+    getByText(screen, 'Walk')
+    expect(screen.querySelectorAll('.gb-bar-button[aria-expanded="true"]')).toHaveLength(1)
+
+    // The key of the face already up puts the whole window away.
+    await user.keyboard('?')
+    expect(queryByRole(screen, 'dialog')).toBeNull()
+  })
+
+  it('switches face from the tab strip and from the bar, which show their keys', async () => {
+    const user = userEvent.setup()
+    const { hud, screen } = mount()
+    hud.show({ quests: QUESTS, money: 12 })
+
+    const opener = getByRole(screen, 'button', { name: 'Quests (J)' })
+    within(opener).getByText('J')
+    await user.click(opener)
+    const panel = getByRole(screen, 'dialog', { name: 'Quests' })
+
+    await user.click(within(panel).getByRole('tab', { name: 'Items I' }))
+    getByRole(screen, 'dialog', { name: 'Items' })
+    expect(within(panel).getByRole('tab', { name: 'Items I' }).getAttribute('aria-selected')).toBe('true')
+    expect(within(panel).getByRole('tab', { name: 'Quests J' }).getAttribute('aria-selected')).toBe('false')
+
+    await user.click(within(panel).getByRole('button', { name: 'Close (Escape)' }))
+    expect(queryByRole(screen, 'dialog')).toBeNull()
+  })
+
+  it('keeps Tab inside itself while it is up, all the way round', async () => {
+    const user = userEvent.setup()
+    const { hud, screen } = mount()
+    hud.show({ quests: QUESTS, window: 'quests' })
+
+    const panel = getByRole(screen, 'dialog', { name: 'Quests' })
+    const stops = panel.querySelectorAll('button').length
+    expect(stops).toBeGreaterThan(2)
+
+    // Past the last control it comes back to the first, never out to the bar.
+    for (let press = 0; press <= stops; press += 1) {
+      await user.keyboard('{Tab}')
+      expect(panel.contains(document.activeElement)).toBe(true)
+    }
+    await user.keyboard('{Shift>}{Tab}{/Shift}')
+    expect(panel.contains(document.activeElement)).toBe(true)
+  })
+
+  it('closes the window before the conversation, one press at a time', async () => {
+    const user = userEvent.setup()
+    const { hud, screen } = mount()
+    hud.show({ quests: QUESTS, window: 'quests', talk: { speaker: 'Mara Quill' } })
+
+    await user.keyboard('{Escape}')
+    expect(queryByRole(screen, 'dialog')).toBeNull()
+    expect(box(screen)).not.toBeNull()
+
+    await user.keyboard('{Escape}')
+    expect(box(screen)).toBeNull()
+  })
+
   it('does not swallow the key that opens the next thing', async () => {
     const user = userEvent.setup()
     const { hud, screen } = mount()
-    hud.show({ journal: JOURNAL, talk: { speaker: 'Mara Quill' } })
+    hud.show({ quests: QUESTS, talk: { speaker: 'Mara Quill' } })
 
     await user.keyboard('{Escape}')
     // Still fading, already out of the way.
@@ -259,20 +374,114 @@ describe('windows on the way out', () => {
     expect(hud.typing).toBe(false)
 
     await user.keyboard('j')
-    getByRole(screen, 'dialog', { name: 'Journal' })
+    getByRole(screen, 'dialog', { name: 'Quests' })
+  })
+})
+
+describe('the quests tab', () => {
+  it('picks which quest the corner panel follows', async () => {
+    const user = userEvent.setup()
+    const { hud, screen, intents } = mount()
+    hud.show({
+      quests: QUESTS,
+      window: 'quests',
+      objectives: [
+        objective({ text: 'Carry the crate to the docks' }),
+        objective({ questId: 'q2', questTitle: 'Salt and Lamp Oil', text: 'Buy lamp oil' }),
+      ],
+    })
+    const objectives = screen.querySelector('.gb-objectives') as HTMLElement
+    within(objectives).getByText('Carry the crate to the docks')
+
+    await user.click(getByRole(screen, 'button', { name: 'Follow Salt and Lamp Oil' }))
+    expect(intents).toContainEqual({ kind: 'track', questId: 'q2' })
+
+    within(objectives).getByText('Buy lamp oil')
+    within(objectives).getByText('Salt and Lamp Oil')
+    expect(within(objectives).queryByText('Carry the crate to the docks')).toBeNull()
+
+    await user.click(getByRole(screen, 'button', { name: 'Stop following Salt and Lamp Oil' }))
+    expect(intents).toContainEqual({ kind: 'track', questId: null })
+  })
+})
+
+describe('the items tab', () => {
+  it('shows what can be spent and what is in hand, quest items first', () => {
+    const { hud, screen } = mount()
+    hud.show({
+      window: 'items',
+      money: 128,
+      carrying: [
+        { id: 'i1', name: 'Green bottle' },
+        { id: 'i2', name: 'Brass ledger', quest: true },
+      ],
+    })
+
+    const panel = getByRole(screen, 'dialog', { name: 'Items' })
+    within(panel).getByText('128')
+    const names = [...panel.querySelectorAll('.gb-carried .gb-what')].map((node) => node.textContent)
+    expect(names).toEqual(['Brass ledger', 'Green bottle'])
+    within(panel).getByText('Quest')
   })
 
-  it('closes one window at a time, front one first', async () => {
-    const user = userEvent.setup()
+  it('says so plainly when there is nothing to carry', () => {
     const { hud, screen } = mount()
-    hud.show({ journal: JOURNAL, journalOpen: true, helpOpen: true })
+    hud.show({ window: 'items' })
+    within(getByRole(screen, 'dialog', { name: 'Items' })).getByText('Your pockets are empty.')
+  })
+})
 
-    await user.keyboard('{Escape}')
-    expect(queryByRole(screen, 'dialog', { name: 'Controls' })).toBeNull()
-    getByRole(screen, 'dialog', { name: 'Journal' })
+describe('the map tab', () => {
+  const MAP: MapView = {
+    width: 40,
+    height: 30,
+    plots: [{ id: 'p1', rect: { x: 4, y: 4, w: 8, h: 6 } }],
+    marks: [
+      { x: 6, y: 20, label: 'You', kind: 'you', facing: 0 },
+      { x: 8, y: 7, label: 'The Copper Wheel', kind: 'goal' },
+    ],
+  }
 
-    await user.keyboard('{Escape}')
-    expect(queryByRole(screen, 'dialog', { name: 'Journal' })).toBeNull()
+  it('draws the survey and numbers what to head for', () => {
+    const { hud, screen } = mount()
+    hud.show({ window: 'map', map: MAP })
+
+    const panel = getByRole(screen, 'dialog', { name: 'Map' })
+    expect(panel.querySelectorAll('.gb-plan svg .gb-block')).toHaveLength(1)
+    expect(panel.querySelectorAll('.gb-plan svg .gb-you')).toHaveLength(1)
+    const bearings = panel.querySelector('.gb-bearings') as HTMLElement
+    within(bearings).getByText('The Copper Wheel')
+    expect(bearings.querySelector('.gb-pip')?.textContent).toBe('1')
+  })
+
+  it('points at the tracked steps while there is no survey', () => {
+    const { hud, screen } = mount()
+    hud.show({
+      window: 'map',
+      objectives: [objective({ text: 'Carry the crate', markerLabel: 'The docks', hint: 'Past the bridge' })],
+    })
+
+    const panel = getByRole(screen, 'dialog', { name: 'Map' })
+    within(panel).getByText('The docks')
+    within(panel).getByText('Past the bridge')
+    expect(panel.querySelector('.gb-plan svg')).toBeNull()
+  })
+})
+
+describe('the controls tab', () => {
+  it('shows what the game says its keys do next to the ones the interface owns', async () => {
+    const user = userEvent.setup()
+    const { hud, screen, intents } = mount()
+    hud.show({ controls: CONTROLS })
+
+    await user.keyboard('?')
+    expect(intents).toContainEqual({ kind: 'window', window: 'controls' })
+    const panel = getByRole(screen, 'dialog', { name: 'Controls' })
+    within(panel).getByText('Move')
+    within(panel).getByText('Walk')
+    within(panel).getByText('Close the window in front of you')
+    // The interface lists its own keys here too, next to the game's.
+    within(panel.querySelector('.gb-window-body') as HTMLElement).getByText('Map')
   })
 })
 

@@ -22,7 +22,7 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI
 | Sky, sun and moon, terrain, water, trees, rain | `game/land/` |
 | Pedestrians walking the streets | `game/crowd/` |
 | Cars driving the roads | `game/traffic/` |
-| The interface: objectives, prompts, conversation, journal, events | `game/hud/` |
+| The interface: objectives, prompts, conversation, announcements, the quests, map, items and controls window, and how it all looks | `game/hud/` |
 | Determinism, ids, results, boundary validation | `game/kit/` |
 | The running game: renderer, frame loop, first-person body, wiring | `game/app/` |
 | The `gb` command: build, inspect, check a city | `game/cli/` |

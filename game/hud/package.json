@@ -10,8 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@gb/quest": "workspace:*",
-    "@gb/world": "workspace:*"
+    "@gb/quest": "workspace:*"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",

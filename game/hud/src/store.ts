@@ -7,10 +7,11 @@ const EMPTY: HudState = {
   money: 0,
   carrying: [],
   talk: undefined,
-  journal: [],
-  journalOpen: false,
+  quests: [],
+  trackedQuestId: undefined,
+  map: undefined,
   controls: [],
-  helpOpen: false,
+  window: null,
   notices: [],
 }
 
@@ -48,10 +49,11 @@ export class HudStore {
       ...(patch.money !== undefined ? { money: patch.money } : {}),
       ...(patch.carrying ? { carrying: patch.carrying } : {}),
       ...(patch.talk !== undefined ? { talk: mergeTalk(before.talk, patch.talk) } : {}),
-      ...(patch.journal ? { journal: patch.journal } : {}),
-      ...(patch.journalOpen !== undefined ? { journalOpen: patch.journalOpen } : {}),
+      ...(patch.quests ? { quests: patch.quests } : {}),
+      ...(patch.trackedQuestId !== undefined ? { trackedQuestId: patch.trackedQuestId ?? undefined } : {}),
+      ...(patch.map !== undefined ? { map: patch.map ?? undefined } : {}),
       ...(patch.controls ? { controls: patch.controls } : {}),
-      ...(patch.helpOpen !== undefined ? { helpOpen: patch.helpOpen } : {}),
+      ...(patch.window !== undefined ? { window: patch.window } : {}),
     }
     this.#onChange()
   }

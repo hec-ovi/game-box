@@ -43,6 +43,8 @@ function card(live: LiveNotice): HTMLElement {
   const said = phrase(live.notice)
   const node = el('div', `gb-notice gb-${live.notice.kind}`)
   node.dataset.tone = said.tone
+  // Coin arriving and coin leaving read differently at a glance.
+  if (live.notice.kind === 'money') node.dataset.sign = live.notice.delta > 0 ? 'up' : 'down'
   node.append(el('span', 'gb-what', said.text))
   if (said.detail) node.append(el('span', 'gb-detail', said.detail))
   return node

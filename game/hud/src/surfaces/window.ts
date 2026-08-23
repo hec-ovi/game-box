@@ -4,10 +4,11 @@ import { FocusReturn, trapTab } from '../focus.ts'
 import { Reveal } from '../reveal.ts'
 
 /**
- * The chrome every window in the interface shares: a title, a close button with
- * its key written on it, a body, and the manners that go with taking the
- * keyboard. It arrives and leaves on a transition, keeps Tab inside itself
- * while it is up, and hands focus back to wherever it came from on the way out.
+ * The chrome the window shares whatever is inside it: a head with whatever
+ * names the contents, a close button with its key written on it, a body, and
+ * the manners that go with taking the keyboard. It arrives and leaves on a
+ * transition, keeps Tab inside itself while it is up, and hands focus back to
+ * wherever it came from on the way out.
  */
 export class HudWindow {
   readonly node: HTMLElement
@@ -15,18 +16,17 @@ export class HudWindow {
   #reveal: Reveal
   #focus = new FocusReturn()
 
-  constructor(input: { className: string; title: string; onClose: () => void; onClosed?: () => void }) {
-    this.node = el('section', `gb-window ${input.className}`)
+  constructor(input: { lead: HTMLElement; onClose: () => void; onClosed?: () => void }) {
+    this.node = el('section', 'gb-window gb-bracket')
     this.node.setAttribute('role', 'dialog')
     this.node.setAttribute('aria-modal', 'true')
-    this.node.setAttribute('aria-label', input.title)
     this.node.tabIndex = -1
 
-    const close = keyButton('gb-close', 'Close', HUD_KEYS.close, `Close ${input.title.toLowerCase()} (Escape)`)
+    const close = keyButton('gb-close', 'Close', HUD_KEYS.close, 'Close (Escape)')
     close.addEventListener('click', input.onClose)
 
     const head = el('header', 'gb-window-head')
-    head.append(el('h2', undefined, input.title), close)
+    head.append(input.lead, close)
     this.node.append(head, this.body)
 
     this.#reveal = new Reveal(this.node, {
@@ -36,6 +36,11 @@ export class HudWindow {
 
   get open(): boolean {
     return this.#reveal.open
+  }
+
+  /** What a screen reader calls the window: whichever face of it is up. */
+  label(text: string): void {
+    this.node.setAttribute('aria-label', text)
   }
 
   set(open: boolean): void {

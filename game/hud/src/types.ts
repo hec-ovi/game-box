@@ -24,16 +24,51 @@ export interface ControlHint {
   readonly group?: string
 }
 
-export interface JournalStep {
+export interface QuestStep {
   readonly stepId: string
   readonly text: string
   readonly done: boolean
 }
 
-export interface JournalQuest {
+/** One quest as the quests tab lists it: its title and how far each step got. */
+export interface QuestEntry {
   readonly questId: string
   readonly title: string
-  readonly steps: readonly JournalStep[]
+  readonly steps: readonly QuestStep[]
+}
+
+/** A rectangle in grid cells, measured from the north-west corner of the city. */
+export interface MapRect {
+  readonly x: number
+  readonly y: number
+  readonly w: number
+  readonly h: number
+}
+
+/** One building on the plan. Everything not covered by one is street. */
+export interface MapPlot {
+  readonly id: string
+  readonly rect: MapRect
+  /** "The Copper Wheel". Drawn only for the places the player has a reason to see. */
+  readonly label?: string
+}
+
+/** Something worth pointing at: where the player is, or where they are headed. */
+export interface MapMark {
+  readonly x: number
+  readonly y: number
+  readonly label: string
+  readonly kind: 'you' | 'goal'
+  /** Radians clockwise from north. Only the player mark is drawn facing. */
+  readonly facing?: number
+}
+
+/** The city from above, in grid cells. The game measures it; the map draws it. */
+export interface MapView {
+  readonly width: number
+  readonly height: number
+  readonly plots: readonly MapPlot[]
+  readonly marks?: readonly MapMark[]
 }
 
 /** The conversation as the player sees it. */
@@ -81,13 +116,16 @@ export type NoticeKind = Notice['kind']
  */
 export type NoticeTone = 'major' | 'minor'
 
+/** The four faces of the one window. Only one of them is ever up. */
+export type HudWindowName = 'quests' | 'map' | 'items' | 'controls'
+
 /** What the player did in the interface. */
 export type HudIntent =
   | { readonly kind: 'say'; readonly text: string }
   | { readonly kind: 'talk-closed' }
   | { readonly kind: 'typing'; readonly typing: boolean }
-  | { readonly kind: 'journal'; readonly open: boolean }
-  | { readonly kind: 'help'; readonly open: boolean }
+  | { readonly kind: 'window'; readonly window: HudWindowName | null }
+  | { readonly kind: 'track'; readonly questId: string | null }
 
 export interface HudHandlers {
   onIntent(intent: HudIntent): void
@@ -95,7 +133,8 @@ export interface HudHandlers {
 
 /**
  * A push of interface state. Fields left out keep the value already on screen;
- * `null` clears the prompt or closes the conversation.
+ * `null` clears the prompt, closes the conversation, shuts the window or stops
+ * following a quest.
  */
 export interface HudPatch {
   readonly objectives?: readonly Objective[]
@@ -103,10 +142,11 @@ export interface HudPatch {
   readonly money?: number
   readonly carrying?: readonly Carried[]
   readonly talk?: TalkPatch | null
-  readonly journal?: readonly JournalQuest[]
-  readonly journalOpen?: boolean
+  readonly quests?: readonly QuestEntry[]
+  readonly trackedQuestId?: string | null
+  readonly map?: MapView | null
   readonly controls?: readonly ControlHint[]
-  readonly helpOpen?: boolean
+  readonly window?: HudWindowName | null
 }
 
 /** A notice on screen right now. `leaving` is its last moments as it fades. */
@@ -123,9 +163,10 @@ export interface HudState {
   readonly money: number
   readonly carrying: readonly Carried[]
   readonly talk: TalkState | undefined
-  readonly journal: readonly JournalQuest[]
-  readonly journalOpen: boolean
+  readonly quests: readonly QuestEntry[]
+  readonly trackedQuestId: string | undefined
+  readonly map: MapView | undefined
   readonly controls: readonly ControlHint[]
-  readonly helpOpen: boolean
+  readonly window: HudWindowName | null
   readonly notices: readonly LiveNotice[]
 }

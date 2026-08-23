@@ -1,7 +1,11 @@
 /// <reference lib="dom" />
+import type { HudWindowName } from './types.ts'
 
-/** What a key press means to the interface. */
-export type KeyAction = 'close' | 'journal' | 'help' | 'send' | 'tab' | 'shift-tab'
+/** What a key press means to the interface. A window name opens that window. */
+export type KeyAction = 'close' | 'send' | 'tab' | 'shift-tab' | HudWindowName
+
+/** The letter that brings up each window. `?`, `/` and F1 all reach the controls. */
+const OPENS: Record<string, HudWindowName> = { j: 'quests', m: 'map', i: 'items' }
 
 /**
  * One listener for the whole interface, on the window in the capture phase, so
@@ -49,9 +53,8 @@ export class Keys {
     if (event.key === 'Escape') return 'close'
     if (event.key === 'Tab') return event.shiftKey ? 'shift-tab' : 'tab'
     if (event.ctrlKey || event.metaKey || event.altKey) return undefined
-    if (event.key === 'F1' || event.key === '?' || event.key === '/') return 'help'
-    if (event.key.toLowerCase() === 'j') return 'journal'
-    return undefined
+    if (event.key === 'F1' || event.key === '?' || event.key === '/') return 'controls'
+    return OPENS[event.key.toLowerCase()]
   }
 }
 

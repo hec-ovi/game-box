@@ -13,6 +13,16 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   return node
 }
 
+/** The same for the map, which is drawn rather than laid out. */
+export function svg<K extends keyof SVGElementTagNameMap>(
+  tag: K,
+  attrs: Record<string, string | number> = {},
+): SVGElementTagNameMap[K] {
+  const node = document.createElementNS('http://www.w3.org/2000/svg', tag)
+  for (const [name, value] of Object.entries(attrs)) node.setAttribute(name, String(value))
+  return node
+}
+
 /** Write text only when it changed, so a streamed reply never rebuilds its node. */
 export function setText(node: HTMLElement, text: string): void {
   if (node.textContent !== text) node.textContent = text
@@ -33,6 +43,17 @@ export function keyButton(className: string, label: string, key: string, aria: s
   node.setAttribute('aria-label', aria)
   node.append(el('span', 'gb-label', label), kbd(key))
   return node
+}
+
+/**
+ * Say that a number moved, and which way. Restarting the animation needs the
+ * browser to see the node without it first, which is what reading the layout
+ * forces.
+ */
+export function flash(node: HTMLElement, way: 'up' | 'down'): void {
+  node.removeAttribute('data-flash')
+  void node.offsetWidth
+  node.dataset.flash = way
 }
 
 /** Every element inside that the player can tab to, in tab order. */

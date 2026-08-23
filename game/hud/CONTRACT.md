@@ -1,20 +1,22 @@
 # @gb/hud contract
 
-contractVersion: 0.2.0
+contractVersion: 0.3.0
 
 ## Purpose
 
-Everything the player reads over the 3D scene, and every window they open on top of it: what they are meant to be doing, what is in reach, what is being said to them, what they are carrying, what just happened, and how to get out of whatever they are in.
+Everything the player reads over the 3D scene, and the one window they open on top of it: what they are meant to be doing, what is in reach, what is being said to them, what they are carrying, where things are, what just happened, and how to get out of whatever they are in.
 
 ## Shape
 
-The game pushes state, the hud draws it. There is one store behind the whole interface and one render pass over it, so objectives, the prompt, the purse, the conversation, the announcements, the journal and the controls window are the same mechanism with different surfaces. Nothing here reads the game: it renders what it is handed and reports what the player did through one callback.
+The game pushes state, the hud draws it. There is one store behind the whole interface and one render pass over it, so objectives, the prompt, the purse, the conversation, the announcements and the window are the same mechanism with different surfaces. Nothing here reads the game: it renders what it is handed and reports what the player did through one callback.
 
 ```ts
 import { Hud } from '@gb/hud'
 
-const hud = new Hud(document.body, { onIntent: (intent) => { /* say, talk-closed, typing, journal, help */ } })
+const hud = new Hud(document.body, { onIntent: (intent) => { /* say, talk-closed, typing, window, track */ } })
 hud.show({ objectives: log.objectives(), money: player.money(), prompt: { key: 'E', text: target.label } })
+hud.show({ quests: log.active(), trackedQuestId: 'q1' })
+hud.show({ map: { width, height, plots, marks } })
 hud.show({ controls: [{ keys: ['W', 'A', 'S', 'D'], text: 'Walk', group: 'Move' }] })
 hud.show({ talk: { speaker: npc.name } })
 hud.show({ talk: { replyChunk: token } })
@@ -26,34 +28,81 @@ hud.announce({ kind: 'quest-complete', title: quest.title, reward: { money: 40 }
 | Param | Type | Preconditions |
 |---|---|---|
 | `new Hud(mount, handlers)` | an element to draw in, [HudHandlers](src/types.ts) | the element is in a document; the hud appends one child to it and one key listener to its window |
-| `hud.show(patch)` | [HudPatch](src/types.ts) | fields left out keep what is on screen; `prompt: null` clears, `talk: null` closes |
-| `patch.objectives` | `@gb/quest` `Objective[]` | the open steps, in the order they should read |
+| `hud.show(patch)` | [HudPatch](src/types.ts) | fields left out keep what is on screen; `null` clears the prompt, closes the conversation, shuts the window or stops following a quest |
+| `patch.objectives` | `@gb/quest` `Objective[]` | every open step of every live quest, in the order they should read |
+| `patch.trackedQuestId` | `string \| null` | the quest the objectives panel follows; unset means the first quest with an open step |
 | `patch.prompt` | `{ key, text }` | text without the key: "Go into The Copper Wheel" |
 | `patch.money`, `patch.carrying` | a whole number, `Carried[]` | `quest: true` marks an item a live quest wants |
 | `patch.talk` | [TalkPatch](src/types.ts) | a new `speaker` starts a fresh panel; `replyChunk` appends a piece of the reply |
-| `patch.journal`, `patch.journalOpen` | `JournalQuest[]`, boolean | active quests with their steps and which are done |
-| `patch.controls` | [ControlHint](src/types.ts)`[]` | the game's own keys for the controls window: `{ keys, text, group? }`, replaces the whole list |
-| `patch.helpOpen` | boolean | opens or closes the controls window from the game side |
+| `patch.quests` | [QuestEntry](src/types.ts)`[]` | active quests with their steps and which are done, for the quests tab |
+| `patch.map` | [MapView](src/types.ts) | the city in grid cells: size, plot rects, and marks for the player and the places to head for |
+| `patch.controls` | [ControlHint](src/types.ts)`[]` | the game's own keys for the controls tab: `{ keys, text, group? }`, replaces the whole list |
+| `patch.window` | `'quests' \| 'map' \| 'items' \| 'controls' \| null` | opens that face of the window, or shuts it |
 | `hud.announce(notice)` | [Notice](src/types.ts) | one of the seven kinds; `ms` overrides how long it stays |
 
 ## Outputs
 
 | Param | Type | Postconditions |
 |---|---|---|
-| `handlers.onIntent` | [HudIntent](src/types.ts) | `say` with the trimmed line, `talk-closed`, `typing` on every change of it, `journal` and `help` with the state they moved to |
+| `handlers.onIntent` | [HudIntent](src/types.ts) | `say` with the trimmed line, `talk-closed`, `typing` on every change of it, `window` with the face it moved to, `track` with the quest the player chose to follow |
 | `hud.typing` | boolean | true while the player is writing, which is when the game must let its keys go |
 | `hud.destroy()` | void | the interface leaves the page, the key listener goes, every timer is cleared |
-| `HUD_KEYS` | `{ journal, help, close, send }` | the keys the interface claims, so the game can bind around them |
+| `HUD_KEYS` | `{ quests, map, items, controls, close, send }` | the keys the interface claims, so the game can bind around them |
 | `HUD_CSS` | string | the stylesheet, already installed in the document by the constructor; exported for apps that inline their css |
+
+## Surfaces
+
+Every surface is handed the whole state on every change and decides for itself what that means on screen. Nothing else is drawn.
+
+| Surface | Draws from | Emits |
+|---|---|---|
+| Objectives | `objectives`, `trackedQuestId` | nothing |
+| Purse | `money`, `carrying` | nothing |
+| Prompt | `prompt` | nothing |
+| Notices | `hud.announce` | nothing |
+| Bar | `window`, `hud.typing` | `window` |
+| Conversation | `talk` | `say`, `typing`, `talk-closed` |
+| Scrim | `window` | `window: null` |
+| Window | `window` | `window` |
+
+The window is one shell with four faces behind a tab strip. Each face is handed the same state.
+
+| Tab | Draws from | Emits |
+|---|---|---|
+| Quests | `quests`, `trackedQuestId` | `track` |
+| Map | `map`, `objectives`, `trackedQuestId` | nothing |
+| Items | `money`, `carrying` | nothing |
+| Controls | `controls` | nothing |
+
+The objectives panel shows the tracked quest and its open steps, a count as "2/5" where a step wants more than one, a tag on optional work, and one line for how many other quests are running. The purse shows the coin count and the first four things in hand, quest items first, and one line for the rest. The map draws the survey when the game has one and lists the places the tracked quest points at either way. Items lists everything in hand with quest items first. Controls lists the game's keys, then the interface's.
+
+## The look
+
+One palette, three type stacks, one spacing step and one motion curve, all declared as custom properties on `.gb-hud` in [src/style/tokens.ts](src/style/tokens.ts). Nothing downstream writes a colour or a duration of its own.
+
+| Token | For |
+|---|---|
+| `--gb-ink`, `--gb-dim`, `--gb-faint` | text at three weights of attention |
+| `--gb-panel`, `--gb-solid`, `--gb-lift`, `--gb-well` | a floating panel, the window, a raised control, a sunken field |
+| `--gb-edge`, `--gb-edge-lit` | hairlines, quiet and lit |
+| `--gb-accent`, `--gb-accent-deep`, `--gb-accent-ink` | brass: anything the player can act on, and the text that sits on it |
+| `--gb-warn` | a failure or coin going out |
+| `--gb-frame` | the shadow every panel wears: black hairline outside, pale hairline inside, then the drop |
+| `--gb-hatch` | the diagonal texture on a head or a major announcement |
+| `--gb-display`, `--gb-body`, `--gb-mono` | condensed for labels, system sans for prose, monospace for numbers |
+| `--gb-s1` to `--gb-s6` | 4, 8, 12, 16, 22, 32 px |
+| `--gb-t`, `--gb-ease` | 140 ms on the one curve |
+
+Type stacks only, no font file: the box ships as one string with no assets, so a face would have to be inlined into every consumer's bundle. Labels are condensed, upper case and tracked; numbers are monospace with tabular figures so a coin count does not jitter as it changes.
 
 ## Keys the interface owns
 
 One listener, on the window in the capture phase, so it runs before anything the game bound anywhere.
 
-- `Escape` closes the window in front of the player, one at a time: controls, then journal, then conversation. With nothing open it passes through to the game.
-- `J` opens and closes the journal. `?`, `/` and `F1` open and close the controls window.
+- `Escape` closes what is in front of the player, one at a time: the window, then the conversation. With nothing open it passes through to the game.
+- `J` quests, `M` map, `I` items, `?` `/` and `F1` controls. The key of the face already up puts the window away; any other switches face without closing anything.
 - `Enter` sends what is in the conversation box.
-- `Tab` cycles inside an open journal or controls window and nowhere else.
+- `Tab` cycles inside the open window and nowhere else. Left and right walk the tab strip while it has focus.
 - While the player is writing, every other key stops at the hud and the game hears nothing.
 - A key the interface does not use passes straight through, and so does every key while another text field on the page has focus.
 
@@ -68,25 +117,28 @@ Thrown as `HudError` with a `code`:
 ## Invariants
 
 - The only way in is `show` and `announce`; the only way out is `onIntent`. The hud never reads the world, the playthrough or the renderer.
+- One window, one face. Opening a face closes the one before it, so there is one scrim, one focus trap and one way out whatever the player is reading.
 - Every window closes two ways: a button the player can see and click, and a key. The key is printed on the button.
 - Opening and closing are transitions of 120 to 150 ms. A window is closed the moment it is asked to close: it stops taking clicks, leaves the accessible tree and lets the keyboard go, and only its pixels linger. The key that closes one window is free to open the next in the same breath.
 - Nothing takes the keyboard except the conversation box while the player is writing in it, and it reports `typing: false` before it reports `talk-closed`, so the game has its keys back before it hears the conversation ended. `typing` is reported on change only, never twice in a row.
 - Focus goes where the player is: a window that opens takes focus and hands it back to whatever had it when it closes. Nothing to hand back to means the page, which is where the game listens.
-- The player can read the controls without leaving what they are doing: the buttons carry their keys, the conversation carries its own two, and the controls window lists everything the game declared.
+- The player can read the controls without leaving what they are doing: the buttons carry their keys, the conversation carries its own two, and the controls tab lists everything the game declared.
 - A streamed reply appends into the node already on screen: text is written only where it changed, so nothing rebuilds mid-sentence.
-- A panel that has finished closing holds no text, so nothing reads a quest or a prompt the player cannot see.
-- The conversation, the journal, the controls window, the scrim behind them and the corner buttons take the pointer; the rest of the interface lets clicks through to the scene.
+- A face the player is not looking at holds no text, and neither does a window that has finished closing.
+- The corner panels never grow down the screen: each shows what is worth a glance, points at the window for the rest, and scrolls inside itself if what is left still does not fit.
+- The conversation, the window, the scrim behind it and the bar take the pointer; the rest of the interface lets clicks through to the scene.
 - Announcements come in two sizes. A quest starting, finishing or failing is `major`: large, on the accent, 5.2 seconds. Everything else is `minor`: small, quiet, 2.6 seconds. Four at once is the most on screen; older ones go first.
 - A money change of zero announces nothing, so a quest that pays in goods does not flash an empty line.
+- What just changed says so: the reticle opens and goes brass while something is in reach, a coin count flashes the way it moved, and a step count flashes when it climbs.
 - Everything a mouse can do, the keyboard can do.
 - Square corners: no `border-radius` in the stylesheet.
-- `Objective.markerLabel` is for markers in the world, which belong to the scene, so this box ignores it.
+- `Objective.markerLabel` names a place, so the map reads it; putting a marker in the world belongs to the scene, not here.
 
 ## Dependencies
 
-- `@gb/quest` contract (game/quest/CONTRACT.md): the `Objective` shape the objective list renders.
+- `@gb/quest` contract (game/quest/CONTRACT.md): the `Objective` shape the objectives panel and the map read.
 - The DOM. No renderer, no three.js, no game state.
 
 ## How to modify this blackbox safely
 
-A new panel is a new surface in `src/surfaces/` plus its field on `HudPatch` and `HudState`; nothing else changes, because every surface is handed the whole state. A window gets its chrome, its transition and its focus manners from `HudWindow`, so a new one is a title, a body and a close intent. A new announcement is a kind on `Notice`, its wording and size in `src/phrase.ts` and its name in the kind set. A new key is a `KeyAction` in `src/keys.ts` and a case in the hud, with its label in `src/controls.ts` so it appears on screen wherever it applies. Wording lives in `phrase.ts` and `controls.ts`, look lives in `style.ts`, so neither needs a surface opened. Run `pnpm --filter @gb/hud test` in the same change.
+A new panel is a new surface in `src/surfaces/` plus its field on `HudPatch` and `HudState`; nothing else changes, because every surface is handed the whole state. A new face of the window is an entry in `src/windows.ts` plus a `Tab` in `src/tabs/`, and it gets its chrome, its transition and its focus manners free. A new announcement is a kind on `Notice`, its wording and size in `src/phrase.ts` and its name in the kind set. A new key is a `KeyAction` in `src/keys.ts` and a case in the hud, with its label in `src/controls.ts` so it appears on screen wherever it applies. Wording lives in `phrase.ts` and `controls.ts`; the look lives in `src/style/`, one file per concern, joined into one stylesheet at load. Run `pnpm --filter @gb/hud test` in the same change.

@@ -14,7 +14,7 @@ const PLACEHOLDER = 'Say something'
  * button and the line under the box) and lets go the instant it does.
  */
 export class TalkSurface implements Surface {
-  readonly node = el('section', 'gb-talk')
+  readonly node = el('section', 'gb-talk gb-bracket')
   #speaker = el('h3')
   #reply = el('p', 'gb-reply')
   #acted = el('p', 'gb-acted')
@@ -76,8 +76,8 @@ export class TalkSurface implements Surface {
   }
 
   #end(): void {
+    // Handing focus back takes it off the box, which is what reports typing off.
     this.#reveal.set(false)
-    this.#input.blur()
     this.#focus.restore(this.node)
   }
 
