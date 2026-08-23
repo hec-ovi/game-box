@@ -1,10 +1,10 @@
 # @gb/crowd contract
 
-contractVersion: 0.3.0
+contractVersion: 0.4.0
 
 ## Purpose
 
-Keeps a city's streets populated: pedestrians who appear on the pavement near the player, walk somewhere real, cross the road at a crossing, face where they are going, step around each other and around the player, and are retired once the player has left them behind.
+Keeps a city's streets populated: pedestrians who appear on the pavement near the player, walk somewhere real, cross the road at a crossing, face where they are going, step around each other and around the player, stop and turn to whoever talks to them, and are retired once the player has left them behind.
 
 ## Inputs
 
@@ -18,6 +18,7 @@ Keeps a city's streets populated: pedestrians who appear on the pavement near th
 | `update(seconds, viewer)` | frame time in seconds, `viewer` a `Point` in metres | call once per frame with where the player is standing; walkers keep their distance from it |
 | `follow(who)` | `Companion`: `{ npc, at?, actor? }` in [src/ports.ts](src/ports.ts) | `npc` is a `@gb/world` `Npc`; `at` is where they set off from, defaulting to where the player was last seen; `actor` is a body the game already has, and with none the crowd asks its cast for one. Following twice is following once |
 | `stopFollowing(npcId)` | the `Npc` id | unknown ids are ignored |
+| `attend(npcId, x, y, z)` | the `Npc` id of anybody on the street or walking with the player, and the point they should face, in metres, Y up | the point is where somebody's eyes are: the body turns to it and the head looks at it. An id nobody answers to is not an error |
 | `SceneCast(cast, root)` | a `@gb/cast` `Cast` (`CastSpawner`), a `three` `Object3D` | the cast is loaded; `root` is in the scene |
 
 ## Outputs
@@ -30,14 +31,15 @@ Keeps a city's streets populated: pedestrians who appear on the pavement near th
 | `Crowd.person(id)` | `Npc` or undefined | who a walker or a companion is, by the id their view carries. Unknown ids answer nothing |
 | `Crowd.options` | `CrowdOptions` | the settled numbers, after defaults and clamping |
 | `Crowd.clear()` | | every body released, count back to zero |
+| `Crowd.attend(...)` | `Attention` in [src/attention.ts](src/attention.ts) | a hold: `face(x, y, z)` moves the point as the player moves, `release()` lets them carry on, `held` says whether the hold is still worth anything. A hold on somebody who has since gone home does nothing |
 | `SceneCast.spawn(npc)` | `CrowdActor` | a `@gb/cast` body parented to `root`, ready to be moved |
 | `SceneCast.parked` | number | bodies waiting to be reused |
 
-Positions, headings and clips reach the world through `CrowdActor`: `placeAt(x, y, z)`, `faceTo(heading)`, `play(clip)`, `release()`. Implement it (and `CrowdCast.spawn`) to drive something other than `@gb/cast`, or to test with no art at all.
+Positions, headings and clips reach the world through `CrowdActor`: `placeAt(x, y, z)`, `faceTo(heading)`, `play(clip)`, `release()`, and optionally `lookAt(x, y, z)` and `lookAway()` for a body that can turn its head. Implement it (and `CrowdCast.spawn`) to drive something other than `@gb/cast`, or to test with no art at all. A body with no head turn in it still stops and still faces whoever is talking to it.
 
 ## Errors (closed set)
 
-None. Nothing here throws and nothing returns a failure: a city with no pavement gets no walkers, a walker with nowhere reachable to go is retired, a companion with nowhere to stand stands still, and an unknown clip name is the cast's business to ignore.
+None. Nothing here throws and nothing returns a failure: a city with no pavement gets no walkers, a walker with nowhere reachable to go is retired, a companion with nowhere to stand stands still, a hold on somebody nobody knows holds nobody, and an unknown clip name is the cast's business to ignore.
 
 ## Dependencies
 
@@ -68,6 +70,8 @@ The ground and the traffic arrive through ports, so nothing here imports `@gb/la
 - **Every walker is somebody.** `walkers()` and `following()` report `Npc` ids, and `person(id)` hands the person back, so the game can name whoever the player is looking at and talk to them. Given a `CrowdPeople`, the people on the street are the game's own, `world.npc(walker.id)` resolves, and nobody is out twice at once, companions included. With none, the crowd mints strangers from `npc_900000` up: they are in no world, own nothing and know nothing, but they still have a name, a role and an id that answers.
 - A companion walks to a spot `followGap` behind the way the player is going, fanned out either side so two of them never want the same pair of shoes, and moved along the fan when that spot is inside a wall. **When no spot on the fan is open they stand still**: standing still is a companion waiting a moment, and standing on the player is a companion inside their head. They stand where they get to and set off again when the player does. They are `Walker`s underneath, so they take routes from `@gb/nav`, keep out of everybody the way pedestrians do, and wait at kerbs for traffic. They follow the player rather than the crossings, because where the player went is where they are going.
 - Keeping up has three gears: they walk inside `catchUp`, jog up to the player's running speed beyond it, which makes up ground round a corner, and are put back on their own spot past `lostRadius`, which is a last resort for somebody left the other side of the city rather than a way of following. That spot is always open ground, never wherever the player happens to be standing.
+- **Somebody being talked to stops and turns to face you.** Held, they stand where they are in an idle, whatever they were doing: a walker mid-route keeps the route and walks the rest of it afterwards, and a companion stops keeping up and catches up again once let go. The body eases round rather than snapping, quickly while it has a way to go and softly as it arrives, never faster than 4 radians a second, so the whole way round takes about a second. The head goes first and is never turned more than 1.25 radians off the shoulders it is on, so a person glances over their shoulder and the body brings the rest; once the body is round, the head is straight at you. Let go, they come round to the way they were walking before they set off, rather than sliding away sideways in the wrong direction.
+- A hold outlives whoever it is on. Somebody retired mid-conversation, by distance or by `clear()`, ends the hold: `held` goes false, and facing them or letting go of them after that does nothing. Nothing about being held draws on an `Rng` or a clock, so the same seed still gives the same crowd.
 - Companions are never retired by distance and outlive anything the pedestrians do, but `clear()` sends them home with everybody else. A game that tears its city down and rebuilds it reads `following()` first and calls `follow` again after, which is also how a companion survives the player going into a building and coming back out.
 - `SceneCast` recycles bodies, because `@gb/cast` keeps a mixer per body it spawns and offers no way to hand one back. A retired body leaves the scene graph and waits for the next walker of the same body kind, preferring one that wanted the same variant. So the faces on the street are drawn once and reused, rather than a fresh skeleton per passer-by.
 
@@ -77,6 +81,10 @@ The ground and the traffic arrive through ports, so nothing here imports `@gb/la
 const crowd = Crowd.create({ world, nav, cast, hazards: traffic, ground: land, people })
 crowd.update(delta, player.position)       // every frame
 const who = crowd.person(walker.id)        // whoever the player is looking at
+
+const held = crowd.attend(who.id, eye.x, eye.y, eye.z)  // they stop and turn to you
+held.face(eye.x, eye.y, eye.z)             // every frame, as the player moves
+held.release()                             // and they walk on
 ```
 
 `ground: land` is the whole line: a `@gb/land` `Land` already answers `heightAt` and `walkableAt` for the entire landscape. `people` is optional; give it one to put the city's own residents on the pavement:
@@ -90,8 +98,8 @@ Whoever it hands over walks until the player leaves them behind, and the crowd n
 
 ## How to modify this blackbox safely
 
-Companions live in `src/escort.ts` and `src/follower.ts`, and own nothing but where a walker is going: who is a companion is `@gb/play`'s business, adding and removing them is `@gb/quest`'s, and neither is imported here. Steering lives in `src/space.ts` and is a pass over the same routes, never a change to `@gb/nav`: the routes stay the city's business and the elbows stay this box's. Crossings are the same shape of thing: `src/sides.ts` labels the stretches of pavement, `src/crossings.ts` finds the gaps between them and answers which way round to walk, and `src/router.ts` is the one pass that mends a route onto them. Interior crowds need a second navigation source, so widen `CrowdNav` before widening `Crowd`. Anything to do with vehicles is `@gb/traffic`. Run `pnpm --filter @gb/crowd test`.
+Being talked to lives in `src/attention.ts`: the hold the game keeps, how far a head turns, and where a body at a given heading may look. Companions live in `src/escort.ts` and `src/follower.ts`, and own nothing but where a walker is going: who is a companion is `@gb/play`'s business, adding and removing them is `@gb/quest`'s, and neither is imported here. Steering lives in `src/space.ts` and is a pass over the same routes, never a change to `@gb/nav`: the routes stay the city's business and the elbows stay this box's. Crossings are the same shape of thing: `src/sides.ts` labels the stretches of pavement, `src/crossings.ts` finds the gaps between them and answers which way round to walk, and `src/router.ts` is the one pass that mends a route onto them. Interior crowds need a second navigation source, so widen `CrowdNav` before widening `Crowd`. Anything to do with vehicles is `@gb/traffic`. Run `pnpm --filter @gb/crowd test`.
 
 `node tools/walk-city.ts <bundle.json>` walks a real generated city rather than the hand-laid town the tests use: it reports the stretches of pavement and the crossings between them, sends one pedestrian from one edge of town to the other, counts how many of their crossings were at a crossing, and prices a full crowd on that city.
 
-Measured on a 48x48 cell city with bodies stubbed out: 36 us per update for 32 walkers, 60 us for 48, 101 us for 96, worst frame 0.35 ms including path searches. On generated cities the same crowd costs 15 us for 14 walkers and 37 us for 32, with half the frames under 0.04 ms and 99 of a hundred under 0.15 ms; the long frames are `@gb/nav` searches on a big grid, which is what a route costs there whether it is mended or not. Mending routes onto crossings adds about 2 us per update at 32 walkers, because it costs two more short searches on the frame a walker is given a route and nothing at all on any other. Finding every crossing in the city costs 0.5 ms once on a 48x48 grid and 2 ms on a 157x149 one, at `Crowd.create`. Reading the crowd is most of the rest: everybody is bucketed once a frame, each walker scans one three-by-three block of buckets once, and the answer is reused for every question it asks that frame, so the cost grows with the crowd rather than with the crowd squared. Looking before crossing adds about 1 us at 32 walkers with a dozen cars on the roads, because a walker already in the road stops asking after one lookup. A companion costs under a microsecond a frame, three of them with no crowd around 2.5 us. The cost that matters at a few dozen walkers is still the animation the cast does, not the walking.
+Measured on a 48x48 cell city with bodies stubbed out: 36 us per update for 32 walkers, 60 us for 48, 101 us for 96, worst frame 0.35 ms including path searches. On generated cities the same crowd costs 15 us for 14 walkers and 37 us for 32, with half the frames under 0.04 ms and 99 of a hundred under 0.15 ms; the long frames are `@gb/nav` searches on a big grid, which is what a route costs there whether it is mended or not. Mending routes onto crossings adds about 2 us per update at 32 walkers, because it costs two more short searches on the frame a walker is given a route and nothing at all on any other. Finding every crossing in the city costs 0.5 ms once on a 48x48 grid and 2 ms on a 157x149 one, at `Crowd.create`. Reading the crowd is most of the rest: everybody is bucketed once a frame, each walker scans one three-by-three block of buckets once, and the answer is reused for every question it asks that frame, so the cost grows with the crowd rather than with the crowd squared. Looking before crossing adds about 1 us at 32 walkers with a dozen cars on the roads, because a walker already in the road stops asking after one lookup. A companion costs under a microsecond a frame, three of them with no crowd around 2.5 us. Holding somebody costs nothing measurable and nothing that grows with the crowd: 32 walkers cost 38 us an update with nobody held and 34 to 36 us with somebody held, 96 walkers 148 us either way, because a held walker turns on the spot instead of walking a route. The cost that matters at a few dozen walkers is still the animation the cast does, not the walking.

@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { blocked, slide, step } from '../src/walk.ts'
 import { alsoBlockedBy } from '../src/bodies.ts'
 import { cityGround, citySolid, furnishedSolid } from '../src/solids.ts'
+import { Attending, type Post } from '../src/attending.ts'
 import { DAY, darkness, lookAt, NIGHT } from '../src/night.ts'
 import { Body, CROUCH_EYE, JUMP_SPEED } from '../src/stance.ts'
 import { CLOSE_FOV, WIDE_FOV, Zoom } from '../src/zoom.ts'
@@ -328,5 +329,122 @@ describe('the night grade', () => {
 
   it('holds daylight for an hour it cannot read, rather than grading the frame to nothing', () => {
     expect(lookAt(Number.NaN)).toEqual(DAY)
+  })
+})
+
+describe('turning to whoever is talking to you', () => {
+  const EYE = 1.7
+  const STEP = 1 / 60
+
+  /** The crowd, as this box sees it: a hold that records what was asked of it. */
+  function street(known: string) {
+    const faced: { x: number; y: number; z: number }[] = []
+    let live = true
+    const hold = {
+      face: (x: number, y: number, z: number) => void faced.push({ x, y, z }),
+      release: () => void (live = false),
+      get held() {
+        return live
+      },
+    }
+    return { faced, hold, attend: (npcId: string) => (npcId === known ? hold : undefined) }
+  }
+
+  /** Somebody at their post: a body facing north and a head that records where it was pointed. */
+  function post(at: { x: number; z: number }, home = 0) {
+    const body = new THREE.Object3D()
+    body.position.set(at.x, 0, at.z)
+    body.rotation.y = home
+    const looks: THREE.Vector3[] = []
+    let away = 0
+    const head = { lookAt: (point: THREE.Vector3) => void looks.push(point.clone()), lookAway: () => void away++ }
+    return {
+      post: { body, head } satisfies Post,
+      body,
+      looks,
+      get away() {
+        return away
+      },
+    }
+  }
+
+  /** How far a point is off the front of a body, in radians. */
+  function offTheFront(body: THREE.Object3D, at: THREE.Vector3): number {
+    const dx = at.x - body.position.x
+    const dz = at.z - body.position.z
+    const away = Math.hypot(dx, dz)
+    const dot = (dx / away) * -Math.sin(body.rotation.y) + (dz / away) * -Math.cos(body.rotation.y)
+    return Math.acos(Math.min(Math.max(dot, -1), 1))
+  }
+
+  it('holds a walker still for as long as the conversation, and lets them go when it ends', () => {
+    const crowd = street('npc_walker')
+    const eye = new THREE.Vector3(4, EYE, 2)
+    const attending = new Attending({ street: crowd, eye, post: () => undefined })
+
+    attending.hold('npc_walker')
+    attending.update(STEP)
+    eye.set(5, EYE, 2)
+    attending.update(STEP)
+
+    // the point moves with the player, so they are watched rather than left facing where they stood
+    expect(crowd.faced).toEqual([
+      { x: 4, y: EYE, z: 2 },
+      { x: 5, y: EYE, z: 2 },
+    ])
+    expect(crowd.hold.held).toBe(true)
+
+    attending.release()
+    expect(crowd.hold.held).toBe(false)
+    attending.update(STEP)
+    expect(crowd.faced.length).toBe(2)
+  })
+
+  it('turns somebody at their post only as far as their head cannot reach, and puts them back after', () => {
+    const crowd = street('nobody')
+    const eye = new THREE.Vector3()
+    const standing = post({ x: 0, z: 0 })
+    const attending = new Attending({ street: crowd, eye, post: () => standing.post })
+
+    // straight in front of them: their head is enough, and their shoulders stay square to the counter
+    eye.set(0, EYE, -3)
+    attending.hold('npc_clerk')
+    for (let frame = 0; frame < 120; frame++) attending.update(STEP)
+    expect(standing.body.rotation.y).toBeCloseTo(0, 6)
+
+    // off to one side: the body comes round exactly as far as leaves them able to look
+    eye.set(3, EYE, 0)
+    for (let frame = 0; frame < 120; frame++) attending.update(STEP)
+    const turned = standing.body.rotation.y
+    expect(turned).toBeLessThan(0)
+    expect(offTheFront(standing.body, eye)).toBeCloseTo(1.25, 3)
+
+    attending.release()
+    expect(standing.away).toBe(1)
+    // they do not stand there facing where the player was: they come back to their post
+    for (let frame = 0; frame < 120; frame++) attending.update(STEP)
+    expect(standing.body.rotation.y).toBe(0)
+    expect(turned).not.toBe(0)
+  })
+
+  it('never swivels a head further than a head turns, and turns rather than snapping', () => {
+    const crowd = street('nobody')
+    const eye = new THREE.Vector3(0, EYE, 3)
+    const standing = post({ x: 0, z: 0 })
+    const attending = new Attending({ street: crowd, eye, post: () => standing.post })
+
+    attending.hold('npc_clerk')
+    attending.update(STEP)
+    // one frame of a half turn is a turn started, not a turn finished
+    expect(Math.abs(standing.body.rotation.y)).toBeGreaterThan(0)
+    expect(Math.abs(standing.body.rotation.y)).toBeLessThan(0.1)
+
+    let widest = 0
+    for (let frame = 0; frame < 120; frame++) {
+      attending.update(STEP)
+      widest = Math.max(widest, offTheFront(standing.body, standing.looks[standing.looks.length - 1]!))
+    }
+    expect(widest).toBeLessThanOrEqual(1.25 + 1e-9)
+    expect(widest).toBeGreaterThan(1.25 - 1e-9)
   })
 })

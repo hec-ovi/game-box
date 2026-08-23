@@ -1,6 +1,7 @@
 import { CLIPS } from '@gb/cast'
 import type { Rng } from '@gb/kit'
-import { distance, headingOf, turnToward } from './geometry.ts'
+import { headAim, type Attender, type Spot, TURN_EASE, TURN_QUICKEST, TURNED } from './attention.ts'
+import { angleDelta, distance, easeToward, headingOf, turnToward } from './geometry.ts'
 import type { Ground } from './ground.ts'
 import type { Kerb } from './kerb.ts'
 import type { CrowdActor, Point, WalkerState, WalkerView } from './ports.ts'
@@ -44,8 +45,11 @@ const HELD = 0.3
  * beyond the next corner. The route came from `@gb/nav`, which already refused
  * to cross a building, and every step is checked against walkable ground, so
  * neither the route nor a shove around somebody puts a walker in a wall.
+ *
+ * Somebody can also be held: they stop where they are, turn to face whoever is
+ * talking to them, and pick their route back up when they are let go.
  */
-export class Walker {
+export class Walker implements Attender {
   readonly id: string
   readonly rng: Rng
   x: number
@@ -84,6 +88,13 @@ export class Walker {
   #wayX = 0
   #wayZ = 0
   #pace = 1
+  /** Where somebody we are being held by is standing. Undefined when nobody is talking to us. */
+  #attend: Spot | undefined
+  /** As far round as our head reaches towards them. Kept here so watching somebody allocates nothing. */
+  #head: Spot = { x: 0, y: 0, z: 0 }
+  /** Let go of, and coming round to the way we were walking before we set off again. */
+  #turningBack = false
+  #gone = false
 
   constructor(setup: WalkerSetup) {
     this.id = setup.id
@@ -107,9 +118,19 @@ export class Walker {
     return this.#state
   }
 
-  /** True when this walker is standing about with nowhere to go. */
+  /** True when this walker is standing about with nowhere to go. Somebody mid-conversation is not free to go anywhere. */
   get wantsRoute(): boolean {
-    return this.#state === 'idle' && this.#pause <= 0
+    return this.#state === 'idle' && this.#pause <= 0 && !this.#attend && !this.#turningBack
+  }
+
+  /** True while somebody is talking to us: we are standing still and turned to them. */
+  get attending(): boolean {
+    return this.#attend !== undefined
+  }
+
+  /** True once the body has been handed back. Whoever was holding us finds out this way. */
+  get gone(): boolean {
+    return this.#gone
   }
 
   /** Metres left to walk. Zero when idle. */
@@ -136,8 +157,40 @@ export class Walker {
     this.#aimAtLeg()
   }
 
+  /**
+   * Stop where we are and turn to face this point, until we are let go. The
+   * route is kept, so being talked to costs the trip nothing but the time.
+   */
+  attend(x: number, y: number, z: number): void {
+    if (this.#attend) {
+      this.#attend.x = x
+      this.#attend.y = y
+      this.#attend.z = z
+      return
+    }
+    this.#attend = { x, y, z }
+    this.#turningBack = false
+    this.#state = 'idle'
+    this.#setClip(CLIPS.idle)
+  }
+
+  /** Let go: look away, come round to the way we were going, and walk on. */
+  unattend(): void {
+    if (!this.#attend) return
+    this.#attend = undefined
+    this.#actor.lookAway?.()
+    this.#stalled = 0
+    this.#slowed = 0
+    const corner = this.#nextCorner()
+    if (!corner) return
+    this.#facing = headingOf(corner.x - this.x, corner.z - this.z)
+    this.#turningBack = true
+  }
+
   /** Walk for this long, then turn a little further towards where we are going. */
   advance(seconds: number): void {
+    if (this.#attend) return this.#watch(seconds, this.#attend)
+    if (this.#turningBack) return this.#comeRound(seconds)
     const fromX = this.x
     const fromZ = this.z
     if (this.#state === 'idle') this.#pauseFor(seconds)
@@ -170,7 +223,46 @@ export class Walker {
   }
 
   release(): void {
+    this.#gone = true
     this.#actor.release()
+  }
+
+  /** Finished with, but the body belongs to whoever handed it over. */
+  retire(): void {
+    this.#gone = true
+  }
+
+  /**
+   * Being talked to: stood still, the body coming round to face them, the head
+   * already there. The head leads as far as it turns and the body brings the
+   * rest, which is somebody noticing you rather than a turret tracking you.
+   */
+  #watch(seconds: number, at: Spot): void {
+    const dx = at.x - this.x
+    const dz = at.z - this.z
+    // somebody standing on top of us gives no direction to face: keep the one we have
+    if (Math.hypot(dx, dz) > 1e-3) this.#facing = headingOf(dx, dz)
+    this.#turn(seconds)
+    headAim(this.x, this.z, this.heading, at, this.#head)
+    this.#actor.lookAt?.(this.#head.x, this.#head.y, this.#head.z)
+    this.#report()
+  }
+
+  /** Let go of: come round to the way we were walking before setting off again. */
+  #comeRound(seconds: number): void {
+    this.#turn(seconds)
+    if (Math.abs(angleDelta(this.heading, this.#facing)) <= TURNED) {
+      this.#turningBack = false
+      this.#walkOn()
+    }
+    this.#report()
+  }
+
+  /** Stood on the spot, turning. Nobody is going anywhere, so nobody has to step around us. */
+  #turn(seconds: number): void {
+    this.vx = 0
+    this.vz = 0
+    this.heading = easeToward(this.heading, this.#facing, seconds, TURN_EASE, TURN_QUICKEST)
   }
 
   /** Standing about. Somebody walking into us is reason enough to move on early. */

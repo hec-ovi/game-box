@@ -1,6 +1,6 @@
 # Resolver: what you want to change -> the one folder to open
 
-The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI sidecar it talks to (Rust, workspace root). One box is one folder with one owner. To change something, open its folder; to use it, read its `CONTRACT.md`.
+The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI sidecar it talks to (`host/`). One box is one folder with one owner. To change something, open its folder; to use it, read its `CONTRACT.md`.
 
 ## Game
 
@@ -31,11 +31,11 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI
 
 | You want to change | Open |
 |---|---|
-| HTTP/WS endpoints, SSE shapes, OpenAI compatibility, tool calls, error bodies | `api/` |
-| Text generation, engine selection, llama.cpp/upstream wiring | `llm/` |
-| Speech recognition, audio envelopes, partial transcripts | `stt/` |
-| Speech synthesis, voices, streaming audio frames | `tts/` |
-| Model cache, integrity check, (future) downloads | `models/` |
+| HTTP/WS endpoints, SSE shapes, OpenAI compatibility, tool calls, error bodies | `host/src/api/` |
+| Text generation, engine selection, llama.cpp/upstream wiring | `host/src/llm/` |
+| Speech recognition, audio envelopes, partial transcripts | `host/src/stt/` |
+| Speech synthesis, voices, streaming audio frames | `host/src/tts/` |
+| Model cache, integrity check, downloads | `host/src/models/` |
 
 ## Elsewhere
 
@@ -61,7 +61,6 @@ game/scene <- game/cast
 game/cast, game/nav <- game/crowd
 game/quest <- game/hud
 everything  <- game/app
-gb-llm, gb-stt <- gb-api
 ```
 
 `game/quest` reads a world only through its own five-question `WorldView` port, so quests stay independent of how a world is built; `@gb/world` publishes `questView(world)` to fill that port. `game/hud` renders what it is given and never reaches into the game.
@@ -70,6 +69,6 @@ gb-llm, gb-stt <- gb-api
 
 Outsiders read a box's `CONTRACT.md` and `schema/` only, never its `src/`. Cross-box data is schema-validated at the boundary and fails closed. Every box change updates its contract and schemas in the same commit.
 
-Game boxes are enforced, not just documented: each package exposes one entry (`exports: { "." : ... }`), `pnpm run check:isolation` fails on a deep import or an undeclared dependency, and `pnpm run verify` runs generation, typecheck, the isolation check and every test in one pass. Rust boxes verify with `cargo test`.
+Game boxes are enforced, not just documented: each package exposes one entry (`exports: { "." : ... }`), `pnpm run check:isolation` fails on a deep import or an undeclared dependency, and `pnpm run verify` runs generation, typecheck, the isolation check and every test in one pass. The sidecar verifies with `pnpm -C host test`.
 
 Art has one more gate: `node tools/check-rig.mjs` fails if any skinned file drifts off the canonical 65-joint skeleton, because a clip written for one skeleton tears another apart.

@@ -1,5 +1,6 @@
 import { Rng } from '@gb/kit'
 import { METRICS, type Npc, type World } from '@gb/world'
+import { Hold, NOBODY, type Attention } from './attention.ts'
 import { Crossings } from './crossings.ts'
 import { Escort } from './escort.ts'
 import { distance } from './geometry.ts'
@@ -128,6 +129,26 @@ export class Crowd {
   /** They stop walking with the player. A body the crowd spawned goes back to the cast; one the game handed over does not. */
   stopFollowing(npcId: string): void {
     this.#escort.stop(npcId)
+  }
+
+  /**
+   * Hold somebody still and turn them to face a point: what being talked to
+   * looks like from the outside. Anybody on the street or walking with the
+   * player can be held, and letting go puts them back on the route they were
+   * walking. An id nobody here answers to gives a hold that does nothing.
+   */
+  attend(npcId: string, x: number, y: number, z: number): Attention {
+    const walker = this.#somebody(npcId)
+    if (!walker) return NOBODY
+    const hold = new Hold(walker)
+    hold.face(x, y, z)
+    return hold
+  }
+
+  /** The body behind an id: somebody out on the street, or somebody walking with the player. */
+  #somebody(npcId: string): Walker | undefined {
+    for (const walker of this.#walkers) if (walker.id === npcId) return walker
+    return this.#escort.walker(npcId)
   }
 
   /** One frame: retire, walk, re-route, top up. In that order, so a fresh walker is never retired unwalked. */

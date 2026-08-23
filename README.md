@@ -38,8 +38,8 @@ pnpm --filter @gb/cli run gb check city.json       # opens it the way the game d
 NPC dialogue and the world author both talk to a small sidecar on 127.0.0.1 that speaks the OpenAI shape. It runs a stand-in by default; point it at any OpenAI-compatible server for the real thing:
 
 ```
-cargo run -p gb-api                                          # stand-in
-GAME_BOX_LLM_UPSTREAM=http://127.0.0.1:8080 cargo run -p gb-api   # a real model
+node --experimental-strip-types host/src/main.ts              # stand-in
+GAME_BOX_LLM_UPSTREAM=http://127.0.0.1:8080 node --experimental-strip-types host/src/main.ts   # a real model
 ```
 
 Everything generated comes back as a **tool call whose parameters are the JSON Schema of the contract that will validate it**, so the thing that defines the shape and the thing that checks it are the same object. Nothing a model writes is trusted: a quest is refused unless every path ends, every person and thing it names exists, and every item is in the player's hands before they are asked for it.
@@ -60,7 +60,7 @@ The game, in TypeScript under `game/`:
 | `crowd`, `traffic` | people on the pavement, cars on the road |
 | `nav`, `talk`, `hud`, `app` | getting about, conversation, the interface, and the running game |
 
-The sidecar, in Rust at the root: `api`, `llm`, `stt`, `tts`, `models`.
+The sidecar, in `host/`: `api`, `llm`, `stt`, `tts`, `models`. Node with one dependency and no build step.
 
 ## The art
 
@@ -78,7 +78,7 @@ Every skinned file has to carry the same 65-joint skeleton or a clip written for
 
 ```
 pnpm run verify     # generate, typecheck, box isolation, every test
-cargo test          # the sidecar
+pnpm -C host test   # the sidecar
 ```
 
 Isolation is enforced, not just documented: each box exposes one entry, and the check fails on a deep import into another box or a dependency that is not declared.

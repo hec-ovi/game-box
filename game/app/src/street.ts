@@ -1,4 +1,4 @@
-import { Crowd, type CrowdCast } from '@gb/crowd'
+import { Crowd, type Attention, type CrowdCast } from '@gb/crowd'
 import { CityNav } from '@gb/nav'
 import { CarPack, Traffic } from '@gb/traffic'
 import { METRICS, type Npc, type World } from '@gb/world'
@@ -124,6 +124,14 @@ export class Street {
 
   stopFollowing(npcId: string): void {
     this.#crowd?.stopFollowing(npcId)
+  }
+
+  /**
+   * Hold somebody on the pavement still and turn them to face a point: what
+   * being talked to looks like. Nobody is held on a street with no crowd on it.
+   */
+  attend(npcId: string, x: number, y: number, z: number): Attention | undefined {
+    return this.#crowd?.attend(npcId, x, y, z)
   }
 
   get walkerCount(): number {

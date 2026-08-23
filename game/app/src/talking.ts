@@ -1,19 +1,12 @@
 import type { Hud } from '@gb/hud'
 import type { PlayerState } from '@gb/play'
 import type { QuestLog } from '@gb/quest'
-import type { Dressing } from '@gb/scene'
 import type { Sidecar } from '@gb/sidecar'
 import { Conversation } from '@gb/talk'
 import type { World } from '@gb/world'
-import type * as THREE from 'three'
+import type { Attending } from './attending.ts'
 import type { Player } from './player.ts'
 import type { Reporting } from './reporting.ts'
-
-/** Somebody the art pack can turn to face whoever is speaking. */
-interface Facing {
-  lookAt(point: THREE.Vector3): void
-  lookAway(): void
-}
 
 /**
  * Talking to somebody: open the conversation, stream the reply into the panel,
@@ -27,8 +20,7 @@ export class Talking {
   #sidecar: Sidecar
   #hud: Hud
   #body: Player
-  #dressing: Dressing
-  #camera: THREE.Camera
+  #attending: Attending
   #report: Reporting
   #open: Conversation | undefined
 
@@ -39,8 +31,7 @@ export class Talking {
     sidecar: Sidecar
     hud: Hud
     body: Player
-    dressing: Dressing
-    camera: THREE.Camera
+    attending: Attending
     report: Reporting
   }) {
     this.#world = input.world
@@ -49,8 +40,7 @@ export class Talking {
     this.#sidecar = input.sidecar
     this.#hud = input.hud
     this.#body = input.body
-    this.#dressing = input.dressing
-    this.#camera = input.camera
+    this.#attending = input.attending
     this.#report = input.report
   }
 
@@ -69,7 +59,7 @@ export class Talking {
     if (!opened.ok) return
 
     this.#open = opened.value.conversation
-    this.#face(npcId, true)
+    this.#attending.hold(npcId)
     this.#report.report({ ok: true, value: opened.value.changes })
     this.#hud.show({ talk: { speaker: this.#world.npc(npcId)?.name ?? 'Someone' } })
   }
@@ -93,18 +83,9 @@ export class Talking {
   }
 
   end(): void {
-    if (this.#open) this.#face(this.#open.npcId, false)
+    if (this.#open) this.#attending.release()
     this.#open = undefined
     this.#hud.show({ talk: null })
     this.#body.setTyping(false)
-  }
-
-  /** Somebody being spoken to turns their head to whoever is speaking. */
-  #face(npcId: string, towards: boolean): void {
-    const members = (this.#dressing as { members?: () => ReadonlyMap<string, Facing> }).members?.()
-    const member = members?.get(npcId)
-    if (!member) return
-    if (towards) member.lookAt(this.#camera.position)
-    else member.lookAway()
   }
 }

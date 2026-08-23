@@ -1,4 +1,5 @@
 import { err, ok, type Result, type SchemaViolation } from '@gb/kit'
+import { GameClock } from './clock.ts'
 import { playerContract, type PlayerStateDoc } from './schema.ts'
 
 export type PlayError =
@@ -10,15 +11,19 @@ export type PlayError =
 export const DEFAULT_FACTION = 'town'
 
 /**
- * Everything about the player that changes while they play: what they carry,
- * what they owe, what they have been told, who walks with them. The world file
- * stays untouched; this is the part that is saved per playthrough.
+ * Everything about the playthrough that changes while it is played: what the
+ * player carries, what they owe, what they have been told, who walks with them,
+ * and what time it is. The world file stays untouched; this is the part that is
+ * saved per playthrough.
  */
 export class PlayerState {
   #doc: PlayerStateDoc
+  #clock: GameClock
 
   private constructor(doc: PlayerStateDoc) {
-    this.#doc = doc
+    const { clock, ...rest } = doc
+    this.#doc = rest
+    this.#clock = GameClock.from(clock)
   }
 
   static create(worldId: string, startingMoney = 0): PlayerState {
@@ -47,6 +52,11 @@ export class PlayerState {
 
   get worldId(): string {
     return this.#doc.worldId
+  }
+
+  /** What time it is, which day it is, and the weather. Saved and restored with the rest. */
+  get clock(): GameClock {
+    return this.#clock
   }
 
   get money(): number {
@@ -125,6 +135,6 @@ export class PlayerState {
   }
 
   toJSON(): PlayerStateDoc {
-    return this.#doc
+    return { ...this.#doc, clock: this.#clock.toJSON() }
   }
 }

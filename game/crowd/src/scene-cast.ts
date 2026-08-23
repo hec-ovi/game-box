@@ -1,5 +1,6 @@
 import type { Cast, CastMember } from '@gb/cast'
 import type { Npc } from '@gb/world'
+import { Vector3 } from 'three'
 import type { Object3D } from 'three'
 import type { CrowdActor, CrowdCast } from './ports.ts'
 
@@ -66,6 +67,8 @@ class BodyActor implements CrowdActor {
   #root: Object3D
   #park: (body: Body) => void
   #live = true
+  /** Where this body is looking, its own so the cast may hold on to it. */
+  #eye = new Vector3()
 
   constructor(body: Body, root: Object3D, park: (body: Body) => void) {
     this.#body = body
@@ -85,9 +88,21 @@ class BodyActor implements CrowdActor {
     if (this.#live) this.#body.member.play(clip)
   }
 
+  lookAt(x: number, y: number, z: number): void {
+    if (!this.#live) return
+    this.#eye.set(x, y, z)
+    this.#body.member.lookAt(this.#eye)
+  }
+
+  lookAway(): void {
+    if (this.#live) this.#body.member.lookAway()
+  }
+
   release(): void {
     if (!this.#live) return
     this.#live = false
+    // a parked body is reused as somebody else: it must not come back still staring
+    this.#body.member.lookAway()
     this.#body.member.object.visible = false
     this.#root.remove(this.#body.member.object)
     this.#park(this.#body)

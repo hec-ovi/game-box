@@ -59,6 +59,11 @@ export class Escort {
     return this.#people.get(npcId)
   }
 
+  /** The body behind one of them, for anything that has to hold them still. */
+  walker(npcId: string): Walker | undefined {
+    return this.#followers.find((follower) => follower.npcId === npcId)?.walker
+  }
+
   /** Somebody comes along. Following twice is following once. */
   follow(who: Companion): void {
     this.stop(who.npc.id)

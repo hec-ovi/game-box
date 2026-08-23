@@ -65,19 +65,25 @@ export class Follower {
   /** Let go of the body, but only if we were the ones who asked for it. */
   release(): void {
     if (this.#owned) this.walker.release()
+    else this.walker.retire()
   }
 
   /** Nowhere to be sent this frame: stand where we are. */
   hold(seconds: number): void {
-    this.#stand()
+    if (!this.walker.attending) this.#stand()
     this.walker.advance(seconds)
   }
 
   /** One frame of keeping up with the spot the crowd has picked out for us. */
   advance(seconds: number, slot: Point): void {
-    const gap = distance(this.walker.x, this.walker.z, slot.x, slot.z)
     this.#since += seconds
+    // being talked to comes first: they stand and face whoever it is, and catch up after
+    if (this.walker.attending) {
+      this.walker.advance(seconds)
+      return
+    }
 
+    const gap = distance(this.walker.x, this.walker.z, slot.x, slot.z)
     if (gap > this.#options.lostRadius) {
       // left behind the other side of the city: appear beside them rather than jog for a minute
       this.walker.putAt(slot.x, slot.z)

@@ -1,4 +1,5 @@
 /** @gb/crowd: pedestrians who walk the city. See CONTRACT.md. */
+export { type Attention } from './attention.ts'
 export { Crowd, type CrowdDeps } from './crowd.ts'
 export { CROWD_DEFAULTS, type CrowdOptions } from './options.ts'
 export { STRANGERS } from './people.ts'

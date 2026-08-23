@@ -30,6 +30,18 @@ export function turnToward(current: number, target: number, maxStep: number): nu
   return current + Math.sign(delta) * maxStep
 }
 
+/**
+ * Swing an angle towards another the way a body turns rather than a turret:
+ * quickly while there is a way to go, softly as it arrives, and never faster
+ * than `quickest` radians a second.
+ */
+export function easeToward(current: number, target: number, seconds: number, ease: number, quickest: number): number {
+  const delta = angleDelta(current, target)
+  const room = Math.abs(delta)
+  const step = Math.min(room, Math.min(room * ease, quickest) * seconds)
+  return current + Math.sign(delta) * step
+}
+
 export function distance(ax: number, az: number, bx: number, bz: number): number {
   return Math.hypot(bx - ax, bz - az)
 }

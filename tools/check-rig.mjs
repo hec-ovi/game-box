@@ -60,7 +60,23 @@ function sameBones(doc) {
   }
   if (!animated.size) return 'no skin and no animation: nothing to bind'
   const stray = [...animated].filter((bone) => !known.has(bone))
-  return stray.length ? `animates ${stray.length} bone(s) the skeleton lacks: ${stray.slice(0, 5).join(', ')}` : undefined
+  if (stray.length) return `animates ${stray.length} bone(s) the skeleton lacks: ${stray.slice(0, 5).join(', ')}`
+  return twice(doc)
+}
+
+/**
+ * Two skeletons in one file read as one: the names look right here, but a
+ * loader renames the second copy (`Head` becomes `Head_1`), and every clip
+ * pointing at that copy drives nothing and leaves the NPC in the rest pose.
+ */
+function twice(doc) {
+  const names = doc.getRoot().listNodes().map((node) => node.getName())
+  const repeated = [...new Set(names.filter((name, index) => names.indexOf(name) !== index))]
+  return repeated.length
+    ? `${repeated.length} bone name(s) appear more than once, so this file carries more than one skeleton: ${repeated
+        .slice(0, 5)
+        .join(', ')}`
+    : undefined
 }
 
 async function jointsOf(file, loaded) {

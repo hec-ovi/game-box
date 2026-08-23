@@ -1,5 +1,17 @@
 import { contract } from '@gb/kit'
 import { z } from 'zod'
+import { MAX_RATE, SECONDS_PER_DAY } from './day.ts'
+import { WEATHERS } from './weather.ts'
+
+export const ClockSchema = z.object({
+  /** Day 1 is the day the playthrough opened on; it only counts up. */
+  day: z.number().int().min(1),
+  /** How far into the day it is, from 0 up to (not including) 86400. */
+  secondsOfDay: z.number().min(0).lt(SECONDS_PER_DAY),
+  /** Game seconds per real second. 0 is paused. */
+  rate: z.number().min(0).max(MAX_RATE),
+  weather: z.enum(WEATHERS),
+})
 
 export const PlayerStateSchema = z.object({
   format: z.literal('game-box.player'),
@@ -17,7 +29,10 @@ export const PlayerStateSchema = z.object({
   reputation: z.record(z.string(), z.number().int().min(-100).max(100)),
   /** NPCs currently following the player. */
   companions: z.array(z.string().min(1)),
+  /** Time of day, which day it is, and the weather. Absent in saves written before clocks. */
+  clock: ClockSchema.optional(),
 })
 
 export const playerContract = contract('player-state', PlayerStateSchema)
 export type PlayerStateDoc = z.infer<typeof PlayerStateSchema>
+export type ClockDoc = z.infer<typeof ClockSchema>

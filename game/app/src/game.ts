@@ -9,6 +9,7 @@ import { buildCity, type CityBuild, type Dressing } from '@gb/scene'
 import { Sidecar } from '@gb/sidecar'
 import type { World } from '@gb/world'
 import * as THREE from 'three'
+import { Attending, type Facing, type Post } from './attending.ts'
 import { Buildings } from './buildings.ts'
 import { Companions } from './companions.ts'
 import { CONTROLS } from './controls.ts'
@@ -52,6 +53,7 @@ export class Game {
   #street: Street
   #buildings: Buildings
   #companions: Companions
+  #attending: Attending
   #talking: Talking
   #report: Reporting
   #targeting: Targeting
@@ -133,6 +135,20 @@ export class Game {
       note: (text) => this.#report.note(text),
     })
 
+    // the crowd turns the people it is walking; the people at their posts in a
+    // room are this box's own bodies, so it turns those itself
+    const heads = (input.dressing as { members?: () => ReadonlyMap<string, Facing> }).members?.()
+    this.#attending = new Attending({
+      street: this.#street,
+      eye: this.#stage.camera.position,
+      post: (npcId): Post | undefined => {
+        const body = this.#buildings.inside?.people.get(npcId)
+        if (!body) return undefined
+        const head = heads?.get(npcId)
+        return head ? { body, head } : { body }
+      },
+    })
+
     this.#talking = new Talking({
       world: this.#world,
       log: this.#log,
@@ -140,8 +156,7 @@ export class Game {
       sidecar: input.sidecar,
       hud: this.#hud,
       body: this.#body,
-      dressing: input.dressing,
-      camera: this.#stage.camera,
+      attending: this.#attending,
       report: this.#report,
     })
 
@@ -221,9 +236,12 @@ export class Game {
     this.#street.setTime(clock)
 
     this.#body.update(seconds)
-    this.#cast?.update(seconds)
     // the street only carries on while the player is out in it
     if (this.#buildings.outdoors) this.#street.update(seconds, this.#body.position)
+    // whoever is being talked to keeps facing the player, indoors and out, and
+    // before the cast runs so the head turn lands on this frame's pose
+    this.#attending.update(seconds)
+    this.#cast?.update(seconds)
 
     this.#target = pick(this.#body.position, this.#body.heading, this.#targeting.list())
     const prompt = this.#talking.active || !this.#target ? null : { key: 'E', text: this.#target.label }

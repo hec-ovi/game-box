@@ -18,6 +18,14 @@ export interface CrowdActor {
   play(clip: string): void
   /** Take this body out of the world. */
   release(): void
+  /**
+   * Turn the head towards this point, in metres, the body left where it is.
+   * Optional: a body that cannot turn its head just does not, and everything
+   * else about being talked to still happens.
+   */
+  lookAt?(x: number, y: number, z: number): void
+  /** Head back to whatever the clip has them looking at. */
+  lookAway?(): void
 }
 
 /** Somebody who walks with the player until the game says otherwise. */
