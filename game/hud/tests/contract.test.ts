@@ -293,6 +293,20 @@ describe('the moves on the table', () => {
     getByText(screen, 'Take the job: The Ledger', { selector: '.gb-you' })
   })
 
+  it('keeps the keyboard when the move it just took goes quiet', async () => {
+    const user = userEvent.setup()
+    const { hud, screen, intents } = mount()
+    hud.show({ talk: { speaker: 'Mara Quill', moves: MOVES } })
+
+    await user.click(getByRole(screen, 'button', { name: 'Take the job: The Ledger' }))
+
+    // the button the player clicked is disabled now, and a disabled button that
+    // still held focus would hand the walk keys back mid-conversation
+    expect(document.activeElement).toBe(box(screen))
+    expect(hud.typing).toBe(true)
+    expect(intents).not.toContainEqual({ kind: 'typing', typing: false })
+  })
+
   it('drops a move the moment it stops being legal', () => {
     const { hud, screen } = mount()
     hud.show({ talk: { speaker: 'Mara Quill', moves: MOVES } })

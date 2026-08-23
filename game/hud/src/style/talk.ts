@@ -49,6 +49,10 @@ export const TALK = `
   line-height: 1.6;
   white-space: pre-wrap;
 }
+/* Held open while they are speaking so the panel does not resize under a
+   streamed line, and closed before they have said anything, because three
+   blank lines over the menu read as a panel that failed to load. */
+.gb-talk .gb-reply:empty { min-height: 0; margin-bottom: 0; }
 .gb-talk .gb-acted:not(:empty) {
   margin-bottom: var(--gb-s3);
   padding-left: var(--gb-s2);
@@ -71,7 +75,9 @@ export const TALK = `
   width: 100%;
   padding: 7px var(--gb-s3);
   border: 1px solid var(--gb-edge);
-  border-left: 2px solid var(--gb-accent-deep);
+  /* full brass down the edge: the one thing in the panel that acts on a click,
+     against the box below it, which only takes words */
+  border-left: 2px solid var(--gb-accent);
   background: var(--gb-lift);
   color: var(--gb-ink);
   font: inherit;
