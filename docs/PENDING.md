@@ -803,6 +803,41 @@ Boxes: `cast` for the pose change, `app` for driving it off the conversation
 opening and closing, `forge` only if an anchor needs to publish where a body
 stands when it steps away.
 
+### Commerce, and people living in the places (2026-08-23, his design)
+
+"remember they can follow, etc, and allow commerce/market, as well, buying things
+from coffee shops and restaurants, allow npcs to sit, and eat as well, etc"
+
+**Following is built** and should not be rebuilt: a companion walks a 203-cell
+route with a worst gap of 3.43 m and no teleports, rides in a car, and comes back
+beside the player on resume. What it lacks is reasons to use it, which the
+per-character context work above supplies.
+
+**Buying is not built at all.** Money exists as a quest reward and there is
+nothing to spend it on, which makes the reward abstract. What it needs:
+
+- A counter you can buy at, in the places that already have one. `serve` anchors,
+  a `register` prop and a `shopFloor` room all exist; nothing sells.
+- A price on a thing. `@gb/world`'s items have a name and an archetype and no
+  value.
+- What buying gets you. A coffee you carry and drink, a meal you sit down to, a
+  keycard or a tool that opens a quest path (which connects to the hacking and
+  access-card notes in his second wave).
+- Somewhere for the money to matter, or credits stay a score.
+
+**NPCs should sit and eat.** They sit already; `sit-drink` now raises a glass.
+Eating does not exist in the free clip packs, and `Consume` (hand to mouth) is
+paid-only, so this joins the purchase list as a sixth item. A restaurant full of
+people at tables doing nothing but a seated idle is the current state, and it is
+the room a player is most likely to walk into.
+
+Ordering, because these depend on each other: buying needs a price and a counter
+before it needs a UI, and eating needs a clip before it needs a menu. The cheap
+first move is a price and one thing to buy; the expensive one is a market.
+
+Boxes: `world` for value on an item, `forge` for who sells what, `app` and `hud`
+for the exchange, `play` for what the money does, `cast` for the eating clip.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
