@@ -2,6 +2,7 @@ import { err, IdMinter, ok, type Result, type SchemaViolation } from '@gb/kit'
 import { CELL, Grid, type Rect } from './grid.ts'
 import { checkIntegrity, type IntegrityProblem } from './integrity.ts'
 import { METRICS, cellCentre } from './metrics.ts'
+import { citySpecContract, type CitySpec } from './model/city-spec.ts'
 import { worldContract, type Interior, type Item, type Npc, type Placement, type Plot, type WorldDoc } from './model/schema.ts'
 import type { BuildingKind, Facing } from './model/vocabulary.ts'
 
@@ -10,16 +11,6 @@ export type WorldError =
   | { readonly code: 'inconsistent-world'; readonly problems: readonly IntegrityProblem[] }
   | { readonly code: 'no-space'; readonly message: string }
   | { readonly code: 'unknown-reference'; readonly message: string }
-
-export interface CitySpec {
-  readonly name: string
-  readonly theme: string
-  readonly seed: string
-  readonly width: number
-  readonly height: number
-  readonly cellSize?: number
-  readonly generator?: { readonly name: string; readonly version: string }
-}
 
 export interface PlotSpec {
   readonly kind: BuildingKind
@@ -45,32 +36,23 @@ export class World {
     this.#ids = new IdMinter(doc.idCounters)
   }
 
-  /** An empty city: all land, no streets yet. */
+  /**
+   * An empty city: all land, no streets yet. A spec outside the bounds the
+   * world document allows (grid 4-1024 cells a side, theme up to 60 characters)
+   * comes back as `invalid-document`, so a city is never built only to fail
+   * validation once it has been written to disk.
+   */
+  static found(spec: CitySpec): Result<World, WorldError> {
+    const checked = citySpecContract.parse(spec)
+    if (!checked.ok) return err({ code: 'invalid-document', violations: checked.error })
+    return ok(new World(blankCity(spec)))
+  }
+
+  /** Going: `found` hands the refusal back instead of throwing it. */
   static create(spec: CitySpec): World {
-    const ids = new IdMinter()
-    const doc: WorldDoc = {
-      format: 'game-box.world',
-      schemaVersion: 1,
-      id: ids.mint('world'),
-      name: spec.name,
-      theme: spec.theme,
-      seed: spec.seed,
-      generator: spec.generator ?? { name: 'unset', version: '0' },
-      cellSize: spec.cellSize ?? METRICS.cellSize,
-      grid: {
-        width: spec.width,
-        height: spec.height,
-        rows: new Grid(spec.width, spec.height).rows() as string[],
-      },
-      roads: { nodes: [], segments: [] },
-      plots: [],
-      interiors: [],
-      npcs: [],
-      items: [],
-      placements: [],
-      idCounters: ids.snapshot(),
-    }
-    return new World(doc)
+    const made = World.found(spec)
+    if (!made.ok) throw new Error(`city spec refused: ${JSON.stringify(made.error)}`)
+    return made.value
   }
 
   /** Parse and check an untrusted document, whoever produced it. */
@@ -260,5 +242,32 @@ export class World {
 
   #syncGrid(): void {
     this.#doc.grid = { width: this.#grid.width, height: this.#grid.height, rows: [...this.#grid.rows()] }
+  }
+}
+
+/** The document a founded city starts from: sized, named, seeded and empty. */
+function blankCity(spec: CitySpec): WorldDoc {
+  const ids = new IdMinter()
+  return {
+    format: 'game-box.world',
+    schemaVersion: 1,
+    id: ids.mint('world'),
+    name: spec.name,
+    theme: spec.theme,
+    seed: spec.seed,
+    generator: spec.generator ?? { name: 'unset', version: '0' },
+    cellSize: spec.cellSize ?? METRICS.cellSize,
+    grid: {
+      width: spec.width,
+      height: spec.height,
+      rows: new Grid(spec.width, spec.height).rows() as string[],
+    },
+    roads: { nodes: [], segments: [] },
+    plots: [],
+    interiors: [],
+    npcs: [],
+    items: [],
+    placements: [],
+    idCounters: ids.snapshot(),
   }
 }

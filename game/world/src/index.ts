@@ -1,5 +1,7 @@
 /** @gb/world: the city, its buildings, its people and their things. See CONTRACT.md. */
-export { World, type WorldError, type CitySpec, type PlotSpec } from './world.ts'
+export { World, type WorldError, type PlotSpec } from './world.ts'
+export { type CitySpec } from './model/city-spec.ts'
+export { questView, type QuestView } from './quest-view.ts'
 export { Grid, CELL, type CellKind, type Rect } from './grid.ts'
 export { METRICS, cellCentre, type Metrics } from './metrics.ts'
 export { checkIntegrity, type IntegrityProblem } from './integrity.ts'

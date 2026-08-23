@@ -63,7 +63,7 @@ everything  <- game/app
 gb-llm, gb-stt <- gb-api
 ```
 
-`game/quest` reads a world only through its own five-question `WorldView` port, so quests stay independent of how a world is built. `game/hud` renders what it is given and never reaches into the game.
+`game/quest` reads a world only through its own five-question `WorldView` port, so quests stay independent of how a world is built; `@gb/world` publishes `questView(world)` to fill that port. `game/hud` renders what it is given and never reaches into the game.
 
 ## Rules of engagement
 

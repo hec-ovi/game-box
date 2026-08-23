@@ -8,9 +8,10 @@ export const METRICS = {
   cellSize: 2,
 
   street: {
-    /** Cells across for a normal two-way street (one cell per lane plus edges). */
+    /** Cells across the roadway, kerb to kerb: 3 cells, 6 m, both directions. */
+    roadwayCells: 3,
+    /** Going: read `roadwayCells`. */
     laneCells: 2,
-    sidewalkCells: 1,
     curbHeight: 0.15,
   },
 
@@ -27,7 +28,6 @@ export const METRICS = {
     barCounterHeight: 1.1,
     tableHeight: 0.75,
     stoolHeight: 0.75,
-    chairSeatHeight: 0.45,
   },
 
   player: {
@@ -43,7 +43,6 @@ export const METRICS = {
   vehicle: {
     carLength: 4.5,
     carWidth: 1.8,
-    parkingLength: 5.5,
   },
 } as const
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { World, type Interior, type Item, type Npc, type Placement } from '../src/index.ts'
+import { questView, World, type Interior, type Item, type Npc, type Placement } from '../src/index.ts'
 
 /** A two-street hamlet with one bar, its interior, its bartender and a bottle. */
 function hamlet() {
@@ -160,5 +160,62 @@ describe('World', () => {
     } else {
       throw new Error('expected inconsistent-world')
     }
+  })
+})
+
+describe('questView', () => {
+  it('answers the five questions the quest layer asks, and only about things that exist', () => {
+    const { world, plot, interior, bartender, bottle } = hamlet()
+    const view = questView(world)
+
+    expect(view.hasPlot(plot.id)).toBe(true)
+    expect(view.hasPlot('plot_9999')).toBe(false)
+
+    expect(view.hasInterior(interior.id)).toBe(true)
+    expect(view.hasInterior('interior_9999')).toBe(false)
+
+    expect(view.hasNpc(bartender.id)).toBe(true)
+    expect(view.hasNpc('npc_9999')).toBe(false)
+
+    expect(view.hasItem(bottle.id)).toBe(true)
+    expect(view.hasItem('item_9999')).toBe(false)
+
+    const serve = interior.anchors[0]!.id
+    expect(view.hasAnchor(interior.id, serve)).toBe(true)
+    expect(view.hasAnchor(interior.id, 'anchor_9999')).toBe(false)
+    // an anchor that exists, but not in the interior asked about
+    expect(view.hasAnchor('interior_9999', serve)).toBe(false)
+  })
+})
+
+describe('founding a city', () => {
+  const spec = { name: 'Dry Gulch', theme: 'western', seed: 'test-1', width: 16, height: 16 }
+
+  it('hands back an empty city the loader accepts', () => {
+    const made = World.found(spec)
+    expect(made.ok).toBe(true)
+    if (!made.ok) return
+    expect(made.value.grid.width).toBe(16)
+    expect(World.load(JSON.parse(JSON.stringify(made.value.toJSON()))).ok).toBe(true)
+  })
+
+  it('refuses a grid too big to validate, instead of building one', () => {
+    const made = World.found({ ...spec, width: 1093 })
+    expect(made.ok).toBe(false)
+    if (made.ok || made.error.code !== 'invalid-document') throw new Error('expected invalid-document')
+    expect(made.error.violations.map((v) => v.path)).toContain('width')
+  })
+
+  it('refuses a theme longer than a world may carry', () => {
+    const made = World.found({ ...spec, theme: 'a'.repeat(200) })
+    expect(made.ok).toBe(false)
+    if (made.ok || made.error.code !== 'invalid-document') throw new Error('expected invalid-document')
+    expect(made.error.violations.map((v) => v.path)).toContain('theme')
+  })
+
+  it('refuses the same specs through the older create', () => {
+    expect(() => World.create({ ...spec, width: 1093 })).toThrow(/width/)
+    expect(() => World.create({ ...spec, theme: 'a'.repeat(200) })).toThrow(/theme/)
+    expect(World.create(spec).name).toBe('Dry Gulch')
   })
 })
