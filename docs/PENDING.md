@@ -91,3 +91,33 @@ Concretely, in order:
 
 [PLAN.md](PLAN.md) is the measured plan: what already works, why every seed
 gives the same city, and thirteen box-scoped tasks in dependency order.
+
+## A second wave he wrote down (2026-08-23)
+
+Found as his own notes in the repo, captured verbatim into
+`docs/REQUIREMENTS.md`. None of it is started. Grouped by the box that would
+own it, roughly in the order a player would meet it:
+
+- **Things you can use, not just carry** (`furnish` + `app`): real computers and
+  terminals, in types — tablet, monitor, desktop, laptop — that both the player
+  and NPCs can use. Security cameras.
+- **Locks and ways past them** (`forge` + `quest` + `app`): hacking a machine,
+  or typing a password the quest gave you. Doors with steel bars. Access cards
+  for a specific place, an NPC's home included. The inventory carries access
+  as well as objects.
+- **The first agent has to plan for it** (`forge`): an instance brief says
+  "a house with N people, an access door and a terminal", so the quest writer
+  downstream can build a line on it. Locks nobody planned cannot be written into
+  a quest.
+- **Money and rewards that persist** (`play` + `quest`): credits as a reward,
+  things to spend them on, and quests that unlock a car or an item you keep.
+- **Fast travel** (`scene` + `app` + `hud`): a subway entrance you walk up to
+  and click, the map opens, you pick a station and load in there.
+- **A place of your own** (`forge` + `play`): a house instance for the player,
+  things bought and put in it, and more houses to buy.
+
+Weight: this is a second game layer on top of the one being finished, and most
+of it needs the quest writer to know about locks and money before it can write
+a line that uses them. The cheapest first step is the `forge` instance brief,
+because everything else is unwritable until a generated place can contain a
+locked thing.

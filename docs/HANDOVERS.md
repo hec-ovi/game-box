@@ -46,7 +46,7 @@ is done and the check confirms it.
 | 30 | `KitDressing.building()`'s `door` empty has no consumer | scene | kitbash | dead surface |
 | 31 | `SceneCast` recycles bodies by kind, so street variety is capped by the pool | cast | crowd + app | 360 male and 180 female looks exist, far fewer show |
 | 32 | Stale lines in `PENDING.md` and `PLAN.md`, including `viewOf` citations for code now deleted | audit | docs | all landed or never true |
-| 33 | `talk/src/greet.ts:26` emits `talked` with no topic, so a topic'd step still cannot complete through a real conversation | scene-batch agent | talk | the objective now names the topic; talk must forward it |
+| 33 | `talk/src/credit.ts:26` emits `talked` with no topic, so a topic'd step still cannot complete through a real conversation | scene-batch agent | talk | the objective now names the topic; talk must forward it |
 | 34 | `game/app/src/spawn.ts` is now redundant: `city.spawn` does the same thing and lands square on the cell centre | scene | app | delete it and use `city.spawn` |
 | 35 | A car is placed on a sidewalk cell on the current forge layout | scene-batch agent | traffic | its own test catches it |
 | 36 | Root `package.json` carries `pnpm.onlyBuiltDependencies`, which pnpm no longer reads and warns about on every run | scene-batch agent | repo | |

@@ -149,7 +149,7 @@ Produces validated `QuestDoc[]` through `questDraftContract` -> `sealQuest` -> `
 
 **D. `arrived` fires from one call site**, `Buildings.enter()` (`game/app/src/buildings.ts:104-105`), and it returns early when the plot has no interior (`:79-80`). `PlaceSchema` is `{plotId} | {interiorId}` (`game/quest/src/schema.ts:31-34`). So there is no outdoor destination, and once "most buildings do not open" lands, a `goto` at a closed plot can never be credited.
 
-**E. `talk` topics are a dead letter.** `game/quest/src/matching.ts:21` requires `!step.topic || step.topic === event.topic`; `@gb/talk`'s `greet.ts:26` emits `{kind:'talked', npcId}` with no topic, and `Objective` publishes no topic. The offline writer routes around it by never emitting one. The model put topics on 2 of 5 talk steps in today's run, both in the main quest, which is therefore dead at step 2.
+**E. `talk` topics are a dead letter.** `game/quest/src/matching.ts:21` requires `!step.topic || step.topic === event.topic`; `@gb/talk`'s `credit.ts:26` emits `{kind:'talked', npcId}` with no topic, and `Objective` publishes no topic. The offline writer routes around it by never emitting one. The model put topics on 2 of 5 talk steps in today's run, both in the main quest, which is therefore dead at step 2.
 
 **F. Splits converge.** 82 of 82 `choice` quests across 9 cities have both branches pointing at the same next step. The branch delta is a `pay` of 21 to 70 coins and a `reputation` of -3, and the main line's `set-flag` hangs off the shared `complete` (`recipes/recipe.ts:85`), so the flag is raised identically either way. `-3` is inside one `@gb/talk` standing band, and 67% of quests already pay negative reputation for theft.
 
