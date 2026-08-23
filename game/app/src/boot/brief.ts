@@ -11,11 +11,12 @@ export interface CityBrief {
 export const DEFAULTS: CityBrief = { theme: 'quiet coastal town', seed: 'town', blocks: 2, model: false }
 
 /**
- * How much city the browser will take on. The generator refuses a grid over
- * 1024 cells a side, and a city this size already builds in a couple of
- * seconds, so asking for more only buys a longer wait.
+ * How much city the browser will take on. The generator will go further, up to
+ * whatever fits its 1024-cell grid, but this is about what a person can cross:
+ * twenty blocks is already 900 m corner to corner and an eleven minute walk.
+ * Past that a city needs transport more than it needs more blocks.
  */
-export const BLOCKS = { min: 1, max: 12 } as const
+export const BLOCKS = { min: 1, max: 24 } as const
 
 /** As long as `@gb/world` will hold, so a long theme is cut rather than refused. */
 const THEME_LIMIT = 60
