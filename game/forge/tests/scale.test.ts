@@ -82,8 +82,11 @@ describe('a town offers as much as it holds', () => {
     const band = (quests: typeof city.quests) => BANDS.indexOf(median(quests))
     expect(band(city.quests) - band(town.quests)).toBeGreaterThanOrEqual(0)
     expect(band(city.quests) - band(town.quests)).toBeLessThanOrEqual(1)
-    // and only a city is big enough to hold a job that crosses it
-    expect(hardest(city.quests)).toBeGreaterThan(hardest(town.quests))
+    // and only a city is big enough to hold a side job that crosses it. The main
+    // line is measured out differently: its two sides are the two ends of the
+    // town's own argument, so its longest link spans whatever town it is in
+    const sides = (built: typeof city) => built.quests.filter((quest) => quest.kind === 'side')
+    expect(hardest(sides(city))).toBeGreaterThan(hardest(sides(town)))
     expect(city.quests.filter((quest) => quest.difficulty === 'epic').length).toBeLessThan(city.quests.length * 0.2)
   })
 

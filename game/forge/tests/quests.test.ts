@@ -101,12 +101,19 @@ describe('generated quests', () => {
       for (const quest of quests) {
         for (const need of quest.requires ?? []) {
           expect(need.kind).toBe('flag')
-          if (need.kind === 'flag') expect(raised.has(need.flag), `${quest.title} waits on ${need.flag}`).toBe(true)
+          // waiting for something to have happened means the town can make it happen;
+          // waiting for something not to have happened needs nothing, because a mark
+          // the player never earns simply stays down
+          if (need.kind === 'flag' && need.value) expect(raised.has(need.flag), `${quest.title} waits on ${need.flag}`).toBe(true)
         }
       }
-      for (const [index, link] of main.slice(1).entries()) {
-        expect(link.requires?.length, link.title).toBe(1)
-        expect(main[index]!.steps.some((step) => step.effects.some((e) => e.kind === 'set-flag'))).toBe(true)
+      for (const link of main.slice(1)) {
+        const needs = link.requires ?? []
+        expect(needs.length, link.title).toBeGreaterThanOrEqual(1)
+        expect(needs.every((need) => need.kind === 'flag' && need.value), link.title).toBe(true)
+      }
+      for (const link of main) {
+        expect(link.steps.some((step) => step.effects.some((e) => e.kind === 'set-flag')), link.title).toBe(true)
       }
     }
   })

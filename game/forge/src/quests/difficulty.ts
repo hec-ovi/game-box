@@ -76,13 +76,15 @@ function difficultyOf(load: Load): Difficulty {
  * What a job pays: the band's going rate, moved up towards the band's ceiling
  * by how hard this particular job is inside its band, minus standing when the
  * work is a theft. Two standard jobs are not paid the same, and no job is ever
- * paid outside what `@gb/quest` allows for its difficulty.
+ * paid outside what `@gb/quest` allows for its difficulty. The standing goes to
+ * whoever the work was for, so working for one side of a town is not the same
+ * as being well thought of in general.
  */
-export function payFor(load: Load): Pay {
+export function payFor(load: Load, faction?: string): Pay {
   const effort = effortOf(load)
   const difficulty = difficultyOf(load)
   const band = REWARD_TABLE[difficulty]
-  const going = rewardFor(difficulty)
+  const going = rewardFor(difficulty, faction)
   const money = Math.round(going.money + within(difficulty, effort) * (band.money.max - going.money) * STRETCH)
   const reward: Reward = {
     ...going,

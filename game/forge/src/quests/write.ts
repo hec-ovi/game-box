@@ -3,26 +3,18 @@ import { questDraftContract, sealQuest } from '@gb/quest'
 import type { WorldSummary } from '../narrator.ts'
 import { flavourOf, type Flavour } from '../theme/flavour.ts'
 import { CityCast } from './cast.ts'
+import { MainLine, standing, type Link } from './line.ts'
 import { RECIPES, type Job, type Recipe } from './recipes/index.ts'
 import { questId, type Draft } from './shape.ts'
-
-/** The longest main line a generated town gets. */
-const MOST_MAIN = 4
-
-/** How many people a town needs before its main line grows another link. */
-const PER_LINK = 6
 
 /** Side jobs that are going before the player has done anything at all. */
 const FREE_SIDES = 2
 
-/** The flag a finished main-line quest raises. Side work waits on these. */
-const standing = (tier: number): string => `standing_${tier}`
-
 /**
- * Writes a town's quests: a short main line out of its busiest place, then side
- * work gated behind how far along that line the player is. Every quest is
- * written by a recipe over people and things the town actually holds, and
- * nothing is promised to two quests at once.
+ * Writes a town's quests: a main line out of its busiest place that forks into
+ * the town's own argument, then side work gated behind how far along that line
+ * the player is. Every quest is written by a recipe over people and things the
+ * town actually holds, and nothing is promised to two quests at once.
  */
 export class QuestWriter {
   #rng: Rng
@@ -35,22 +27,20 @@ export class QuestWriter {
     const flavour = flavourOf(summary.theme)
     const cast = new CityCast(summary)
     const plan = this.#rng.fork('plan')
-    const hub = cast.hub(plan)
+    const line = new MainLine(cast, plan)
     const drafts: Draft[] = []
 
     let tier = 0
-    const wanted = hub ? Math.min(MOST_MAIN, 1 + Math.floor(cast.peopled.length / PER_LINK) + plan.int(0, 2)) : 0
-    for (let i = 0; i < wanted; i++) {
-      const draft = this.#one(cast, this.#rng.fork(`main/${i}`), flavour, {
-        id: questId(drafts.length + 1),
-        kind: 'main',
-        requires: tier === 0 ? [] : [{ kind: 'flag', flag: standing(tier), value: true }],
-        grants: standing(tier + 1),
-        ...(hub ? { from: hub } : {}),
-      })
-      if (!draft) break
-      drafts.push(draft)
-      tier++
+    // one rung at a time, and a rung nobody can write is where the line stops: if
+    // one side of a fork cannot be written, neither side is, so a player on either
+    // branch always has the same ladder in front of them
+    for (const rung of rungs(line.links)) {
+      const written = rung.map(({ label, tier: _, ...link }, i) =>
+        this.#one(cast, this.#rng.fork(label), flavour, { ...link, id: questId(drafts.length + 1 + i) }),
+      )
+      if (written.some((draft) => draft === undefined)) break
+      for (const draft of written) drafts.push(draft!)
+      tier = rung[0]!.tier
     }
 
     for (let i = 0; i < sideQuests; i++) {
@@ -74,7 +64,7 @@ export class QuestWriter {
 
   /** Tries the recipes this town can serve, best odds first, until one writes. */
   #one(cast: CityCast, rng: Rng, flavour: Flavour, job: Job): Draft | undefined {
-    for (const recipe of order(cast, rng, flavour, job.kind === 'main')) {
+    for (const recipe of order(cast, rng, flavour, job)) {
       const draft = recipe.write(cast, rng.fork(recipe.name), job)
       if (draft) return draft
     }
@@ -83,8 +73,8 @@ export class QuestWriter {
 }
 
 /** The recipes a town can serve, shuffled by their odds in a town like this. */
-function order(cast: CityCast, rng: Rng, flavour: Flavour, leading: boolean): Recipe[] {
-  const left = RECIPES.filter((recipe) => !leading || recipe.leads)
+function order(cast: CityCast, rng: Rng, flavour: Flavour, job: Job): Recipe[] {
+  const left = RECIPES.filter((recipe) => (job.against ? recipe.takesSides : job.kind !== 'main' || recipe.leads))
     .map((recipe) => [recipe, recipe.weight(cast, flavour)] as const)
     .filter(([, weight]) => weight > 0)
 
@@ -98,6 +88,13 @@ function order(cast: CityCast, rng: Rng, flavour: Flavour, leading: boolean): Re
     )
   }
   return picked
+}
+
+/** The main line by rung: one link on the way up to the fork, one per side after it. */
+function rungs(links: readonly Link[]): Link[][] {
+  const byTier = new Map<number, Link[]>()
+  for (const link of links) byTier.set(link.tier, [...(byTier.get(link.tier) ?? []), link])
+  return [...byTier.keys()].sort((a, b) => a - b).map((tier) => byTier.get(tier)!)
 }
 
 /** How side work spreads over the main line: about a third up front, the rest behind it. */

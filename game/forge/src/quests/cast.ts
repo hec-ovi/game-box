@@ -29,6 +29,9 @@ const WALKER_ROLES: ReadonlySet<NpcRole> = new Set(['patron', 'wanderer', 'couri
 /** How many jobs one person may hand out before the town starts to look empty. */
 const JOBS_PER_GIVER = 2
 
+/** How many counters a town looks at before it settles on the far side of its own argument. */
+const RIVAL_LOOKS = 8
+
 /**
  * The city as a quest writer uses it: who can give work, who will walk with
  * you, what is lying about that no other quest has claimed, and how far apart
@@ -107,6 +110,28 @@ export class CityCast {
     const place = rng.pick(busiest)
     const npc = place.npcs.find((candidate) => GIVER_ROLES.has(candidate.role)) ?? place.npcs[0]!
     return { place, npc }
+  }
+
+  /**
+   * The other side of the town's argument: somebody with a post of their own,
+   * as far from the hub as the town can manage. Sampled rather than sorted, and
+   * the furthest of a handful of looks, so a big town puts the two sides in two
+   * parts of it and a small one still finds a second counter.
+   */
+  rival(rng: Rng, hub: CastPerson): CastPerson | undefined {
+    const spare = (person: CastPerson) => person.place.plotId !== hub.place.plotId && GIVER_ROLES.has(person.npc.role)
+    let best: CastPerson | undefined
+    let furthest = -1
+    for (let look = 0; look < RIVAL_LOOKS; look++) {
+      const candidate = pickNear(rng, this.#givers, placeOf, spare)
+      if (!candidate) break
+      const away = metresBetween(hub.place, candidate.place)
+      if (away > furthest) {
+        furthest = away
+        best = candidate
+      }
+    }
+    return best
   }
 
   /** Somebody who can hand out work, and has not handed out too much already. */
