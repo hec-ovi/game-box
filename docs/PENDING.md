@@ -1,5 +1,66 @@
 # Pending
 
+## The definitive list (2026-08-23, evening)
+
+Everything below is checked against the code, not against a report. Ordered by
+what a player notices.
+
+### Blockers: things that lose work or contradict the direction
+
+1. **A refresh with the model on wipes the playthrough.** Nothing pins the
+   sampler, so the city regenerates differently, the hash changes, resume
+   refuses and the save is cleared. The host takes a temperature; nothing sets
+   one. Boxes: `host`, `sidecar`, `bundle`.
+2. **Neon lights nothing.** There is no `PointLight`, `SpotLight` or
+   `RectAreaLight` anywhere in the game, so a wall beside a burning sign is lit
+   by moonlight. The whole art direction is "neon is the light source". Boxes:
+   `kitbash`, `scene`.
+3. **No loader.** `@gb/scribe` publishes a progress port, tested, and nothing
+   passes it, so minutes of model work sit behind one static line instead of
+   "generating the city, generating locations, generating the main quest". Box:
+   `app`.
+
+### Features asked for, no code
+
+4. **Packs.** The blocker is gone (a world file records what it was built from
+   and every plot is pinned), but nothing packages a pack or applies one.
+5. **Open place kinds.** A city should contain a jail or a university because
+   the premise called for one, with neither word in the engine. In design; the
+   evidence is `docs/PLACES-SURVEY.md`.
+6. **Minigames**, and a score that survives.
+7. **Lip sync.**
+8. **Real windows and balconies.** The pane is a 1.5 cm opaque emissive slab;
+   balconies are filtered out of the building pack.
+9. **Streaming or level of detail.** Everything loads at open.
+10. **The second wave** (his own notes, section below): usable terminals and
+    computers, security cameras, hacking and passwords, doors with steel bars,
+    access cards, credits and buying, quest-unlocked cars and items, subway
+    fast travel, an apartment of your own.
+
+### Small and known, with a measurement behind each
+
+11. **No clip sits a body on a raised seat**, so bar stools are 33 cm out (four
+    in a nine-plot city). `@gb/forge` anchors `sit-drink` on chairs meanwhile.
+    Box: `cast`.
+12. **The bed is 6 cm too short**: pad 1.837 m against a 1.92 m body with boots.
+    Boxes: `furnish`, then `forge` follows.
+13. **Worktops rise 10 cm** now that `worktopHeight` is measured at 1.0. What
+    needs a look: anything drawn under a worktop, and whether a shelf's ledges
+    still fit. Box: `furnish`.
+14. **Play the nod and the shake** on `@gb/talk`'s new `answered` event. One
+    case in the event loop. Box: `app`.
+15. **`Game`'s constructor still has no test** without a headless seam; it has
+    cost two shipped crashes. In flight.
+
+### Running right now
+
+`prefab` assigning twelve facade materials across eight looks and regenerating
+the entrance door; `scribe` writing the model-backed premise; `cast` putting the
+generated fabric on roughness; `forge` moving to world's `Premise` and
+correcting a false contract claim; `app` building the headless seam; and a
+twelve-agent design for open place kinds.
+
+
 Everything known to be unfinished, by box. Delete a line when it is done.
 
 ## What to weigh work against

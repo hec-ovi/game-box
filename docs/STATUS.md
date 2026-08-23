@@ -103,9 +103,7 @@ Three states, and the difference matters:
 
 ## Still open
 
-- `@gb/hud`'s `QuestStep` has one boolean where the engine has three states (with hud)
-- `HudIntent` has no `abandon`, though `@gb/quest` and `@gb/app` both support it (with hud)
-- A conversation opens with a blank panel until the player speaks first (with talk)
+Kept in one place now: `docs/PENDING.md`, top section.
 
 ## What this list is for
 
