@@ -433,6 +433,37 @@ The fix is to make the light continuous and keep the expensive part occasional:
 Boxes: `app` (the stage and the clock wiring), `land` (sun, moon, sky), possibly
 `scene` and `kitbash` for anything else keyed to the hour.
 
+### The doorway is wrong: columns, ads and frames (2026-08-23, his repeated report)
+
+Reported three times now, so it is the most visible fault in the game. From
+`light_colums_over_doors.png`, `displays_wrong_proportion_ugly_borders.png` and
+`Screenshot From 2026-08-23 20-14-56.png`.
+
+1. **The light columns flanking a door are wrong.** Two vertical strips run the
+   full height at near-white, wider and brighter than anything near them. They
+   read as geometry rather than as light and they dominate every doorway shot.
+2. **Adverts are placed over the door.** A banner sits directly beside and above
+   the entrance, competing with the sign and the doorway rather than sitting on
+   wall. Placement, not just appearance.
+3. **The panels have frames, and should have none.** His words: "the display ads
+   have an ugly frame, should not have frames at all." Today each panel gets a
+   12 cm housing measured off the surface derivatives plus a 3.5 cm rim light
+   inside it. That housing is the frame. Remove it: a screen should be the lit
+   image and nothing else.
+4. **The image does not fill the panel.** The bowl advert renders as an orange
+   band in the bottom fifth with empty grey above, and the 5 cm lamp grid reads
+   stronger than the picture under it. Check the uv span per panel first (a
+   panel is meant to cover exactly one picture) before touching grid strength,
+   because a wrong span would explain both the emptiness and the earlier
+   stretching.
+
+All `@gb/prefab`, except the columns which may be `@gb/kitbash`. Take them
+together: they are one doorway and they are being judged as one thing.
+
+Worth remembering while fixing: every one of these is a lit thing drawn too big
+or too strong, in a game with no point lights, where the emissive pass is
+carrying the entire look on its own.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
