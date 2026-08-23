@@ -146,6 +146,21 @@ needs. That means a field on the world document (so a shared city remembers what
 it was asked for), a parameter on `Forge`, and a place to type it. It is the
 same gap as the creation panel, and this is the sharper version of it.
 
+**And he wants more than a premise in it.** "if i want specific quests, styles,
+kind of game, etc". Four asks, and only two are reachable by prompt. Say so
+rather than building a box that quietly ignores half of what is typed:
+
+| ask | consumer | reachable |
+|---|---|---|
+| what the city is about | the premise writer | yes, today |
+| what the quests should be about | `write-quest.md`, which has no such hole; the premise does not even reach it yet | yes, prompt work |
+| the style or period | the art catalogue: 8 building looks, 12 facades, 12 outfits on one skeleton | **no.** A medieval brief gives a cyberpunk town with medieval names. Style is assets |
+| the kind of game | the loop is quests because that is what the code does | **no** |
+
+So a brief is separate fields for separate consumers, not one text box. And the
+two that cannot be honoured should say so in the interface rather than be
+silently dropped, which is the failure this project has spent a day removing.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
