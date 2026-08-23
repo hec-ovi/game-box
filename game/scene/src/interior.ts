@@ -4,13 +4,11 @@ import { blockersOf } from './blockers.ts'
 import { DOOR_GAP } from './doorway.ts'
 import type { Dressing } from './dressing.ts'
 import { PropFootprint } from './footprint.ts'
+import { Leaving } from './leaving.ts'
 import { Pickups } from './pickups.ts'
 import { PropSurface } from './surface.ts'
 
 const CEILING_HEIGHT = METRICS.building.groundFloorHeight
-
-/** A step to the side of whoever is standing there, so a thing is not left inside them. */
-const BESIDE = 0.45
 
 /**
  * A stored heading as a three.js yaw. The world writes compass degrees, 0
@@ -32,6 +30,13 @@ export interface InteriorBuild {
   readonly people: ReadonlyMap<string, THREE.Object3D>
   /** What is lying about in here, by item id. */
   readonly pickups: ReadonlyMap<string, THREE.Object3D>
+  /**
+   * Leaves a thing at one of this room's anchors, the same way the room was
+   * built: on the piece of furniture the anchor belongs to, at the height it is
+   * drawn to. Answers its handle, which is what takes it back out of the room.
+   * An anchor this room has not got answers nothing and draws nothing.
+   */
+  readonly leave: (itemId: string, anchorId: string) => THREE.Object3D | undefined
   /** The furniture the player cannot walk through, as rectangles on the floor in these same coordinates. */
   readonly blockers: readonly PropFootprint[]
   /** Where the player appears when they come in, and where they leave from. */
@@ -112,13 +117,10 @@ export function buildInterior(world: World, interior: Interior, dressing: Dressi
   }
 
   const pickups = new Pickups(root)
+  const leaving = new Leaving(world, dressing, pickups, anchors, hosts)
   for (const placement of world.placements()) {
     if (placement.at !== 'anchor' || placement.interiorId !== interior.id) continue
-    const spot = anchors.get(placement.anchorId)
-    const item = world.item(placement.itemId)
-    if (!spot || !item) continue
-    const object = dressing.pickup(item)
-    pickups.put(item.id, object, standing(spot, hosts.get(placement.anchorId), object))
+    leaving.leave(placement.itemId, placement.anchorId)
   }
 
   const door = interior.doors.find((d) => d.from === 'outside') ?? interior.doors[0]
@@ -133,30 +135,11 @@ export function buildInterior(world: World, interior: Interior, dressing: Dressi
     props,
     people,
     pickups: pickups.all,
+    leave: (itemId, anchorId) => leaving.leave(itemId, anchorId),
     blockers: blockersOf(interior, [...tops.values()].map((top) => top.footprint)),
     entrance,
     inward,
   }
-}
-
-/**
- * Where a thing left at an anchor stands: on the piece of furniture that anchor
- * belongs to, at the height that piece is drawn to, beside whoever is standing
- * there rather than inside them. An anchor with no furniture behind it leaves
- * the thing on the floor, which is the only surface there is.
- */
-function standing(spot: THREE.Object3D, host: PropSurface | undefined, object: THREE.Object3D): THREE.Vector3 {
-  const right = new THREE.Vector3(1, 0, 0).applyEuler(spot.rotation)
-  const beside = { x: spot.position.x + right.x * BESIDE, z: spot.position.z + right.z * BESIDE }
-  return host ? host.place(beside.x, beside.z, halfOf(object)) : new THREE.Vector3(beside.x, 0, beside.z)
-}
-
-/** How far the thing reaches either side of its own centre, so it can be kept on the surface. */
-function halfOf(object: THREE.Object3D): { x: number; z: number } {
-  const box = new THREE.Box3().setFromObject(object)
-  if (box.isEmpty()) return { x: 0, z: 0 }
-  const size = box.getSize(new THREE.Vector3())
-  return { x: size.x / 2, z: size.z / 2 }
 }
 
 /** Four walls around a room, split wherever a door sits on them. */

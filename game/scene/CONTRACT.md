@@ -1,6 +1,6 @@
 # @gb/scene contract
 
-contractVersion: 0.10.0
+contractVersion: 0.11.0
 
 ## Purpose
 
@@ -38,8 +38,9 @@ Turns a city into something you can stand in: ground, marked streets, buildings 
 | `CLUTTER`, `BAND`, `CLEARANCE`, `CLUTTER_MAX_HEIGHT` | metres | how big each kind of rubbish is, how the pavement is divided across its width, what has to stay clear, and the tallest thing a street carries |
 | `CLUTTER_DENSITY` | chances, 0 to 1 | how much rubbish a street carries, per pavement cell and per paved cell |
 | `SURFACE` | metres | the real-world size of every piece of street detail, from asphalt chippings to road repairs |
-| `buildInterior` | `{ root, anchors, props, people, pickups, blockers, entrance, inward }` | floor, walls with the doorways cut out, ceiling, furniture standing where the world puts it (on the floor, or on the top it was lifted onto), an empty object at every anchor carrying its kind |
+| `buildInterior` | `{ root, anchors, props, people, pickups, leave, blockers, entrance, inward }` | floor, walls with the doorways cut out, ceiling, furniture standing where the world puts it (on the floor, or on the top it was lifted onto), an empty object at every anchor carrying its kind |
 | `pickups` | `ReadonlyMap<string, THREE.Object3D>` | one handle per thing lying about, by item id: where it is, and what takes it out of the room. Remove the handle and the thing stops being drawn |
+| `leave(itemId, anchorId)` | the handle, or undefined | leaves that thing at that anchor once the room is standing, exactly where the room would have been built with it there. Undefined, and nothing drawn, for an anchor this room has not got or an item this world has not got |
 | pickup meshes | `root.children` named `pickups:<material>` | one `THREE.BatchedMesh` per material the things in that room are drawn with, one instance each |
 | `itemOf(hit)` | item id, or undefined | which thing a `THREE.Intersection` landed on. Things share buffers, so the object a ray hits is a batch and this is what turns the hit back into an item |
 | `blockers` | `PropFootprint[]` | one rectangle of floor per piece of furniture the player cannot walk through, measured off the object that was built |
@@ -73,9 +74,9 @@ None. Nothing here validates: a world that got this far already passed `@gb/worl
 - Every object a dressing returns has its origin at the centre of its base, so placing it on the floor cannot sink it.
 - A piece of furniture stands on the floor unless the world lifts it. `Furniture.lift` is the height of the top it stands on, so a till lands on the counter its base is placed at exactly, not near it. The lift is the object's transform and nothing else: the piece keeps the geometry and the material the dressing handed over, so it batches with every other copy of itself and costs no draw.
 - Interiors are built in their own coordinates, entered rather than carried: the city does not hold every room all the time.
-- **A thing you pick up stands on what it is left on.** An anchor names the piece of furniture it belongs to, and the thing left there is put down on that piece: on it, so no part of it overhangs the edge, and at the height the piece is drawn to under that point. The height is measured with a ray, never looked up, for the same reason the collision is: a chair holds a cup at its seat and not at the top of its backrest, a counter holds one at the shelf it is really over, and a kit that draws a taller counter gets a taller counter with no table to keep in step. A round seat in a square footprint has corners with nothing drawn in them, so the place is walked in from the edge until there is something under it. An anchor with no furniture behind it leaves the thing on the floor, which is the only surface there is.
+- **A thing you pick up stands on what it is left on, whether the generator left it there or the player did.** `leave` is the same rule the build runs, called again: the generator's own placements go through it while the room is being built, so a thing put down at an anchor afterwards lands where that thing would have been built. Nothing is re-derived off `blockers`, and nothing has to be, since the rule is one call. An anchor names the piece of furniture it belongs to, and the thing left there is put down on that piece: on it, so no part of it overhangs the edge, and at the height the piece is drawn to under that point. The height is measured with a ray, never looked up, for the same reason the collision is: a chair holds a cup at its seat and not at the top of its backrest, a counter holds one at the shelf it is really over, and a kit that draws a taller counter gets a taller counter with no table to keep in step. A round seat in a square footprint has corners with nothing drawn in them, so the place is walked in from the edge until there is something under it. An anchor with no furniture behind it leaves the thing on the floor, which is the only surface there is.
 - A thing is put down beside whoever is standing at that anchor rather than inside them: 45 cm to their own right, then brought onto the piece.
-- Everything lying about in a room is one `THREE.BatchedMesh` per material, the way the city holds its buildings, so twenty things on a shelf cost the draw one thing costs. A model two things share goes into the buffer once and is placed twice, which is what a kit drawing one buffer per archetype gets for free. Each thing keeps its own place and its own visibility: its handle carries where it is, taking that handle out of the room stops the batch drawing it, and `itemOf` turns a ray back into an item. An object a batch cannot draw the same way stands on its own in the room and is its own handle.
+- Everything lying about in a room is one `THREE.BatchedMesh` per material, the way the city holds its buildings, so twenty things on a shelf cost the draw one thing costs. A model two things share goes into the buffer once and is placed twice, which is what a kit drawing one buffer per archetype gets for free. Each thing keeps its own place and its own visibility: its handle carries where it is, taking that handle out of the room stops the batch drawing it, and `itemOf` turns a ray back into an item. Where a thing is drawn is its instance matrix in the batch, so moving a handle is writing that matrix: a thing taken and put down somewhere else is drawn where it was put, not where it was first left. A thing the room has held before keeps the handle and the buffer copy it had, so a player taking one thing and leaving it twenty times is one instance moved twenty times rather than twenty instances and a room that quietly grows. An object a batch cannot draw the same way stands on its own in the room and is its own handle.
 - Furniture collision is measured, never looked up. Each `blockers` rectangle is the bounding box of the object that was actually built, taken in the frame of the floor under it, so a kit that draws a wider table gets a wider footprint and what stops the player cannot drift from what they can see. A prop with nothing drawable in it gets no rectangle.
 - `blockers` is in the same frame as `entrance` and the anchors: metres, interior coordinates, `rot` the three.js yaw the object carries. The half extents run across the prop's front and through it, so a turned counter is a turned rectangle and `contains(x, z, margin)` with the player's radius is the whole test. The caller needs no conversion.
 - What blocks: anything standing more than `STEP_OVER_HEIGHT` (0.25 m) off the floor. Below that you walk over it rather than into it, which is a rug at 2 cm; a bar counter at 1.1 m stops you. Nothing else is exempt. Whether staff may pass behind a counter, or an NPC may stand in the chair their anchor sits in, is the caller's decision: this box only says where the furniture is.
@@ -169,6 +170,17 @@ Measured headless in Node on a generated town dressed by `@gb/furnish`, whole ro
 
 The same two numbers greyboxed and dressed, because what collapses them is that a kit's things are indexed and share a material, which both are.
 
+Leaving things after the build costs the room nothing to draw. The busiest room of a 5 block town (8 anchors, 14 pieces of furniture, 32 meshes) carries one pickup batch:
+
+| | meshes | pickup batches | instances |
+|---|---|---|---|
+| built | 32 | 1 | 2 |
+| its own two things moved to other anchors | 32 | 1 | 2 |
+| five more carried in and left | 32 | 1 | 7 |
+| those five taken and left again | 32 | 1 | 7 |
+
+A thing brought in from another room is one more instance in the batch that is already there; a thing the room has held before is the same instance moved.
+
 ## Standing it up
 
 ```ts
@@ -185,6 +197,14 @@ city.night = nightLook(hour).level // 0 by day to 1 after dark, the hour the win
 
 Without them the street is a dark, grimy, dry road that reflects the neon: right for the hours the game is mostly played in, wrong at noon.
 
+Taking a thing out of a room and leaving it somewhere in it:
+
+```ts
+const room = buildInterior(world, interior, dressing)
+room.pickups.get(itemId)?.removeFromParent()   // picked up: the batch stops drawing it
+room.leave(itemId, anchorId)                   // put down: on the surface that anchor belongs to
+```
+
 ## How to modify this blackbox safely
 
-A real art kit is a new `Dressing`, not a change here. A dressing that wants its buildings batched has only to return indexed meshes on shared materials; welding a building's own pieces per material first, the way `@gb/kitbash` does, keeps the batch's instance count down but is not required. A kit that wants worn road paint implements `marking(paint)`, and one that wants its own rubbish material implements `clutter()`; leave either out and the street gets a plain one. What the ground is made of is the dressing's (`ground(kind)`); what the street has been through is this box's, and the two compose, so a pale kit surface will read pale through the film however dark the film is. Anything that needs the renderer, the camera, input or a frame loop belongs in the app, not in this box: everything here builds objects and returns them, which is why it is tested in Node with no browser. Where a thing left in a room lands is `src/surface.ts` alone, and it reads the triangles rather than a table, so a kit that redraws a counter needs nothing here. How a room's things are drawn together is `src/pickups.ts` alone. Retuning how much rubbish a street carries is `CLUTTER_DENSITY` alone; retuning what a piece of rubbish looks like is `src/clutter/models.ts` alone, and how big it is `src/clutter/catalog.ts`, which the placement reads. How big a piece of surface detail is in the real world is `src/street/sizes.ts` alone. Run `pnpm --filter @gb/scene test`.
+A real art kit is a new `Dressing`, not a change here. A dressing that wants its buildings batched has only to return indexed meshes on shared materials; welding a building's own pieces per material first, the way `@gb/kitbash` does, keeps the batch's instance count down but is not required. A kit that wants worn road paint implements `marking(paint)`, and one that wants its own rubbish material implements `clutter()`; leave either out and the street gets a plain one. What the ground is made of is the dressing's (`ground(kind)`); what the street has been through is this box's, and the two compose, so a pale kit surface will read pale through the film however dark the film is. Anything that needs the renderer, the camera, input or a frame loop belongs in the app, not in this box: everything here builds objects and returns them, which is why it is tested in Node with no browser. Where a thing left in a room lands is `src/surface.ts` and `src/leaving.ts` alone: the first measures the top of a piece off its triangles rather than off a table, so a kit that redraws a counter needs nothing here, and the second is the one rule both the build and `leave` go through. How a room's things are drawn together is `src/pickups.ts` alone. Retuning how much rubbish a street carries is `CLUTTER_DENSITY` alone; retuning what a piece of rubbish looks like is `src/clutter/models.ts` alone, and how big it is `src/clutter/catalog.ts`, which the placement reads. How big a piece of surface detail is in the real world is `src/street/sizes.ts` alone. Run `pnpm --filter @gb/scene test`.
