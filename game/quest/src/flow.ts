@@ -1,4 +1,4 @@
-import { outEdges, type Flow } from './graph.ts'
+import { nextProblem, outEdges, type Flow } from './graph.ts'
 import type { Report } from './problem.ts'
 import { countOf, isHiddenStep, isOptional, itemPool, type QuestDoc, type Step } from './schema.ts'
 
@@ -15,15 +15,9 @@ export function checkEdges(quest: QuestDoc, flow: Flow, report: Report): void {
   }
 
   for (const step of flow.steps.values()) {
-    const out = outEdges(step)
-    if (step.kind === 'choice' && step.next.length) report(step.id, 'a choice routes through its options, not next')
-    if ((step.kind === 'complete' || step.kind === 'fail') && step.next.length) {
-      report(step.id, `a ${step.kind} step ends the quest and cannot have next`)
-    }
-    if (step.kind !== 'complete' && step.kind !== 'fail' && out.length === 0 && !isOptional(step)) {
-      report(step.id, 'dead end: no next step and not a complete/fail step')
-    }
-    for (const target of out) if (!flow.steps.has(target)) report(step.id, `points at unknown step ${target}`)
+    const problem = nextProblem(step)
+    if (problem) report(step.id, problem)
+    for (const target of outEdges(step)) if (!flow.steps.has(target)) report(step.id, `points at unknown step ${target}`)
 
     checkGate(step, flow, report)
     checkCount(step, report)

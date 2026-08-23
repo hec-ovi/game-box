@@ -5,11 +5,13 @@ import { gameEventContract, type GameEvent } from './events.ts'
 import { Flow } from './graph.ts'
 import { matchStep, triggersFailure } from './matching.ts'
 import { freshProgress, questProgressContract, restoreProgress, storeProgress, type Progress, type QuestProgressDoc, type QuestStatus } from './progress.ts'
-import { countOf, isHiddenStep, isOptional, itemPool, type Condition, type Place, type QuestDoc, type Reward, type Step } from './schema.ts'
+import { countOf, isHiddenStep, isOptional, itemPool, type Condition, type QuestDoc, type Reward, type Step } from './schema.ts'
+import { targetOf, type ObjectiveTarget } from './target.ts'
 
 export type RuntimeError =
   | { readonly code: 'unknown-quest'; readonly questId: string }
   | { readonly code: 'already-started'; readonly questId: string }
+  | { readonly code: 'not-active'; readonly questId: string; readonly status: QuestStatus }
   | { readonly code: 'requirements-not-met'; readonly questId: string; readonly unmet: readonly Condition[] }
   | { readonly code: 'invalid-event'; readonly violations: readonly SchemaViolation[] }
   | { readonly code: 'invalid-progress'; readonly violations: readonly SchemaViolation[] }
@@ -31,10 +33,12 @@ export type Change =
   | { readonly kind: 'step-progress'; readonly questId: string; readonly stepId: string; readonly done: number; readonly needed: number }
   | { readonly kind: 'step-done'; readonly questId: string; readonly stepId: string }
   | { readonly kind: 'step-abandoned'; readonly questId: string; readonly stepId: string }
+  | { readonly kind: 'quest-abandoned'; readonly questId: string }
   | { readonly kind: 'quest-complete'; readonly questId: string; readonly reward: Reward }
   | { readonly kind: 'quest-failed'; readonly questId: string; readonly reason: FailReason }
 
-export interface Objective {
+/** One line of what to do now, and everything a marker or a route needs to point at it. */
+export interface Objective extends ObjectiveTarget {
   readonly questId: string
   readonly questTitle: string
   readonly stepId: string
@@ -43,8 +47,6 @@ export interface Objective {
   readonly markerLabel?: string
   /** A nudge to show if the player stalls. */
   readonly hint?: string
-  readonly place?: Place
-  readonly npcId?: string
   /** Side work: the quest finishes without it. Absent means it is required. */
   readonly optional?: boolean
   /** How far along a step that wants several things is, for a "3/5" in the interface. */
@@ -139,6 +141,24 @@ export class QuestLog {
   }
 
   /**
+   * Give a quest up. Everything on the board for it goes, and the quest is
+   * unstarted again, so its giver offers it once more and a second run of it
+   * starts from nothing. What the player already collected or was paid stays
+   * with them and their standing does not move: effects are the only way a
+   * quest touches the player, and giving up runs none.
+   */
+  abandon(questId: string): Result<readonly Change[], RuntimeError> {
+    if (!this.#quests.has(questId)) return err({ code: 'unknown-quest', questId })
+    const progress = this.#progress.get(questId)!
+    if (progress.status !== 'active') return err({ code: 'not-active', questId, status: progress.status })
+
+    const changes: Change[] = [...progress.open].map((stepId) => ({ kind: 'step-abandoned', questId, stepId }) as const)
+    this.#progress.set(questId, freshProgress())
+    changes.push({ kind: 'quest-abandoned', questId })
+    return ok(changes)
+  }
+
+  /**
    * True while some live quest still needs this item. Being a quest item is a
    * binding from a quest, not a property of the thing, so the same ledger can
    * be untouchable in one playthrough and ordinary loot in another.
@@ -176,8 +196,7 @@ export class QuestLog {
           ...(isOptional(step) ? { optional: true } : {}),
           ...(step.markerLabel ? { markerLabel: step.markerLabel } : {}),
           ...(step.hint ? { hint: step.hint } : {}),
-          ...('place' in step ? { place: step.place } : {}),
-          ...('npcId' in step ? { npcId: step.npcId } : {}),
+          ...targetOf(step),
           ...this.#countProgress(progress, step),
         })
       }

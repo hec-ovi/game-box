@@ -6,6 +6,23 @@ export function outEdges(step: Step): readonly string[] {
 }
 
 /**
+ * What is wrong with where this step sends the player, if anything: a step in
+ * the middle of a flow has to lead somewhere, a choice leads through its
+ * options rather than `next`, a step that ends the quest leads nowhere, and
+ * side work is allowed to trail off. The flow check and the draft contract both
+ * ask this one question, so an author writing a quest is refused at the door
+ * for exactly what would have refused the finished quest later.
+ */
+export function nextProblem(step: Step): string | undefined {
+  if (step.kind === 'choice') return step.next.length ? 'a choice routes through its options, not next' : undefined
+  if (step.kind === 'complete' || step.kind === 'fail') {
+    return step.next.length ? `a ${step.kind} step ends the quest and cannot have next` : undefined
+  }
+  if (outEdges(step).length === 0 && !isOptional(step)) return 'dead end: no next step and not a complete/fail step'
+  return undefined
+}
+
+/**
  * The static shape of one quest: which step is which, who follows whom, who
  * comes before whom. Built from a quest document that may not be sound yet, so
  * edges pointing at nothing are simply absent rather than a throw.

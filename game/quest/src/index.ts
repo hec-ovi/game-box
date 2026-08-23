@@ -2,16 +2,15 @@
 export { validateQuest, checkFlow, type QuestError } from './validate.ts'
 export type { QuestProblem } from './problem.ts'
 export { QuestLog, type Change, type FailReason, type Objective, type RuntimeError } from './runtime.ts'
+export type { ObjectiveTarget } from './target.ts'
 export { questProgressContract, type QuestProgressDoc, type QuestStatus } from './progress.ts'
 export { gameEventContract, type GameEvent } from './events.ts'
 export { DIFFICULTIES, REWARD_TABLE, checkReward, rewardFor, type Difficulty, type RewardBand } from './balance.ts'
 export type { WorldView } from './world-view.ts'
+export { questDraftContract, sealQuest, type QuestDraft } from './draft.ts'
 export {
   questContract,
-  questDraftContract,
-  sealQuest,
   type QuestDoc,
-  type QuestDraft,
   type Step,
   type StepKind,
   type Condition,

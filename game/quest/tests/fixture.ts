@@ -20,14 +20,9 @@ export const world: WorldView = {
   hasAnchor: (interiorId, anchorId) => interiorId === 'interior_0001' && anchorId === 'anchor_0001',
 }
 
-/**
- * A quest as a generator would hand it over: untrusted JSON, no envelope
- * assumptions, so every test goes in through the same door the model does.
- */
-export function quest(steps: readonly object[], overrides: Record<string, unknown> = {}): unknown {
+/** A quest as an author writes it: the envelope is not theirs to fill in. */
+export function draft(steps: readonly object[], overrides: Record<string, unknown> = {}): unknown {
   return {
-    format: 'game-box.quest',
-    schemaVersion: 1,
     id: 'quest_0001',
     kind: 'side',
     title: 'The Missing Ledger',
@@ -38,6 +33,14 @@ export function quest(steps: readonly object[], overrides: Record<string, unknow
     reward: rewardFor('small'),
     ...overrides,
   }
+}
+
+/**
+ * A quest as a generator would hand it over: untrusted JSON, no envelope
+ * assumptions, so every test goes in through the same door the model does.
+ */
+export function quest(steps: readonly object[], overrides: Record<string, unknown> = {}): unknown {
+  return { format: 'game-box.quest', schemaVersion: 1, ...(draft(steps, overrides) as object) }
 }
 
 export function accept(candidate: unknown): QuestDoc {
