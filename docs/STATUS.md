@@ -39,14 +39,14 @@ Three states, and the difference matters:
 | Player can control time and weather | done | `T`, `K`, `P` in the controls tab |
 | Import and export a city | verified | Browser export reopens; `contentHash` matches headless |
 | Everyone replays the same world | verified | Same seed, byte-identical, model up or down |
-| **Add to a finished city later, as a pack** | **open** | `Forge.extend` exists and is tested. Nothing calls it, and nothing packages a pack. Not live growth: a finished city is added to between sessions, and the result is a world file others can open |
+| **Add to a finished city later, as a pack** | in progress | The blocker is gone: a world file now records the catalogues it was built against and pins every plot to the model it was given. Measured, growing the catalogue by one look: 53 of 123 plots move unpinned, **0** pinned, and the same through the real CLI (26 of 66 to 0) and the browser panel (15 of 39 to 0). Still to build: something that packages and applies a pack |
 | Big cities | verified | 20x20, 2,102 buildings, `gb check` 1.1 s |
 
 ## Generation
 
 | Requirement | State | Evidence or what is missing |
 |---|---|---|
-| Architect, interiors, NPCs, quest writer as separate passes | verified | Forge stages plus `@gb/scribe` |
+| A history first, then the architecture, then the quests | verified | Two premises on one seed change 68 of 180 buildings (38%), and the same premise is byte-identical. The main line carries the stake and the giver's side; the fork is two named factions |
 | All LLM driven, with an offline fallback | verified | One agent per place, in parallel: slot occupancy peaked 5 of 5 against a documented 1, and the facade pass went 376 s to 92 s |
 | Tool calls, not free text | verified | Forced tool calls end to end |
 | Buildings from `glb-buildings` | done | `@gb/prefab`: 217 triangles a building against the kit's 9,300, one batch, zero bytes added to the world file, with photographed rooms behind the glass |
