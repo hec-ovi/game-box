@@ -258,7 +258,7 @@ describe('interior plans', () => {
 
   it('faces every anchor at the thing it is there for', () => {
     // somebody working at a piece faces it; a lookout faces the room, not the altar behind them
-    const working = ['serve', 'cook', 'work-desk', 'browse']
+    const working = ['serve', 'cook', 'work-desk', 'work-bench', 'browse']
     for (const { kind, seed, made } of everyPlan()) {
       for (const anchor of made.anchors) {
         if (!anchor.propId || !working.includes(anchor.kind)) continue
@@ -360,7 +360,7 @@ describe('interior plans', () => {
       house: { props: ['bed', 'sofa'], anchors: ['sleep', 'sit'] },
       apartment: { props: ['bed', 'sofa'], anchors: ['sleep', 'sit'] },
       office: { props: ['desk', 'office-chair'], anchors: ['work-desk'] },
-      workshop: { props: ['counter'], anchors: ['work-desk', 'serve'] },
+      workshop: { props: ['counter'], anchors: ['work-bench', 'serve'] },
       warehouse: { props: ['crate-stack'], anchors: ['guard'] },
       clinic: { props: ['bed'], anchors: ['sleep', 'serve'] },
       hotel: { props: ['bed', 'counter'], anchors: ['sleep', 'serve'] },

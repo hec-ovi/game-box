@@ -17,6 +17,7 @@ export function roleFor(anchor: AnchorKind, building: BuildingKind): NpcRole | u
     case 'browse':
       return 'patron'
     case 'work-desk':
+    case 'work-bench':
       return building === 'workshop' ? 'mechanic' : 'worker'
     case 'cook':
       return 'cook'
@@ -37,6 +38,7 @@ export function occupancy(anchor: AnchorKind): number {
     case 'serve':
       return 1
     case 'work-desk':
+    case 'work-bench':
       return 0.7
     case 'cook':
       return 0.6

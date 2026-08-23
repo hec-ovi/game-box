@@ -8,11 +8,13 @@ import { seatSpecOf } from './props.ts'
  * Two different standing bodies want two different things and the planner used
  * to give them the same number:
  *
- * - A body **working** at a piece rests its hands on the surface. The standing
- *   working clips put the hands 0.02 to 0.13 m in front of the root, at about
- *   1.03 m off the floor, so the surface has to start where the body does. Any
- *   further back and the hands are over the floor at the right height, which is
- *   what leaves a bartender resting their arms on air.
+ * - A body **working** at a piece rests its hands on the surface: serving,
+ *   cooking, on its feet at a bench. The standing working clips put the hands
+ *   0.02 to 0.13 m in front of the root, at about 1.03 m off the floor, so the
+ *   surface has to start where the body does. Any further back and the hands are
+ *   over the floor at the right height, which is what leaves a bartender resting
+ *   their arms on air. A desk is not one of these: a body at a desk is sitting
+ *   in the chair drawn up to it.
  * - A body **attending** a piece does not touch it: it looks into a case, waits
  *   at a sink, stands in front of an altar. It wants to see the piece and to be
  *   walked past, so it stands a short step back.
@@ -40,7 +42,7 @@ export const IN_FRONT: Stance = { near: 0.2, at: 0.3, far: 0.45 }
 const STANCES: Partial<Record<AnchorKind, Stance>> = {
   serve: AT_HAND,
   cook: AT_HAND,
-  'work-desk': AT_HAND,
+  'work-bench': AT_HAND,
   browse: IN_FRONT,
   stand: IN_FRONT,
 }

@@ -35,7 +35,7 @@ export function workshopFloor(plan: RoomPlan): void {
   let benches = 0
   for (const side of plan.openSides()) {
     for (const bench of wallRow(plan, 'counter', side, 2, 1)) {
-      if (standAt(plan, bench, 'work-desk')) benches++
+      if (standAt(plan, bench, 'work-bench')) benches++
     }
     if (benches >= 3) break
   }
