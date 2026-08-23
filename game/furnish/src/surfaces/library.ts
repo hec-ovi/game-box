@@ -19,8 +19,8 @@ const JOINT = 0.006
 const JOINT_SOFT = 0.004
 
 /**
- * The floor, the walls and the ceiling, built out of the pack's two grain
- * images and the pattern each look is laid in, in both interior languages.
+ * The floor, the walls and the ceiling, built out of the pack's grain images
+ * and the pattern each look is laid in, in both interior languages.
  *
  * Every room in town shares them: a material is built once per look and kept,
  * and the pools are fixed length, so a town of any size costs the same handful.
@@ -73,7 +73,6 @@ export class SurfaceLibrary {
       metalness: 0,
       normalMap: maps?.normal ?? null,
     })
-    if (look.normalScale !== undefined) material.normalScale.setScalar(look.normalScale)
     new MetreTiling(SURFACE_TEXTURES[look.map].metres).apply(material)
     paint(material, look, maps?.map, SURFACE_TEXTURES[look.map].grain)
     // the room's own light, so a polished floor has something to give back:

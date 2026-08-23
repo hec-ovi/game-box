@@ -9,10 +9,12 @@
  * out into far more rooms than one long list of finished floors would.
  *
  * The pattern is arithmetic (`pattern.ts`), never an image, because a
- * structured texture jogs where it is cut to tile. The two images the pack
- * carries are stochastic only: concrete grain and moulded plastic grain. How
- * big they are laid is in metres (`tiling.ts`), so a 3 m wall and a 12 m wall
- * show the same grain.
+ * structured texture jogs where it is cut to tile. The four images the pack
+ * carries are stochastic only: board-formed concrete for a corpo wall, polished
+ * concrete for its floor, moulded plastic for a home, and the street concrete
+ * a home floor is laid in. How big they are laid is in metres (`tiling.ts`), so
+ * a 3 m wall and a 12 m wall show the same grain, and a floor image goes on a
+ * floor: a wall photograph laid flat runs its weathering sideways.
  *
  * No interior surface is metal: a dark colour at a low roughness catches the
  * room's own light, where a mirror indoors would come out a hole in the floor.
@@ -33,8 +35,8 @@ export type SurfacePart = 'floor' | 'wall' | 'ceiling'
 
 export const SURFACE_PARTS: readonly SurfacePart[] = ['floor', 'wall', 'ceiling']
 
-/** The tiling images the pack carries, one node each. Both are stochastic grain. */
-export type SurfaceTextureId = 'plaster' | 'panel'
+/** The tiling images the pack carries, one node each. All of them are stochastic grain. */
+export type SurfaceTextureId = 'plaster' | 'panel' | 'formwork' | 'screed'
 
 export interface SurfaceTexture {
   /** The node the pack hangs this surface's material on. */
@@ -55,12 +57,16 @@ export interface SurfaceTexture {
  * what stands next to it in `METRICS`: a 2.1 m door, a 4 m ground floor.
  */
 export const SURFACE_TEXTURES: Record<SurfaceTextureId, SurfaceTexture> = {
-  // concrete has no repeating unit to measure, so the size is its coarsest
-  // stain: about 0.6 m of wall, a third of a door
+  // the Downtown kit's street concrete, and the only image here with relief of
+  // its own: the bare slab a flat is floored in
   plaster: { node: 'Surface_Plaster', metres: 2, grain: 0.204 },
-  // ours, generated from tools/textures/prompts/wall-plastic-home.md: moulded
-  // plastic, drawn at a metre and a half of panel and cut to wrap
+  // ours: moulded plastic, drawn at a metre and a half of panel and cut to wrap
   panel: { node: 'Surface_Panel', metres: 1.5, grain: 0.345 },
+  // ours: board-formed concrete on an office wall, drawn at two metres
+  formwork: { node: 'Surface_Formwork', metres: 2, grain: 0.226 },
+  // ours: polished poured concrete underfoot, drawn at three metres, which is
+  // what a grinder swirl needs to come out the size a grinder makes it
+  screed: { node: 'Surface_Screed', metres: 3, grain: 0.231 },
 }
 
 export const SURFACE_TEXTURE_IDS = Object.keys(SURFACE_TEXTURES) as SurfaceTextureId[]
@@ -71,8 +77,6 @@ export interface SurfaceLook {
   readonly pattern: Pattern
   readonly colour: number
   readonly roughness: number
-  /** How deep the grain reads. Left out, the normal map is taken at full strength. */
-  readonly normalScale?: number
   /** How much darker and rougher a joint is than the tile. Zero for a printed pattern. */
   readonly joint: number
   /** How much one tile's colour differs from the next. */
@@ -92,7 +96,7 @@ export const SURFACE_LOOKS: Record<FurnishStyle, Record<SurfacePart, readonly Su
     floor: [
       {
         name: 'surface:corpo:floor:slab',
-        map: 'plaster',
+        map: 'screed',
         pattern: { kind: 'tile', unit: 0.6 },
         colour: 0x6e7175,
         roughness: 0.3,
@@ -101,7 +105,7 @@ export const SURFACE_LOOKS: Record<FurnishStyle, Record<SurfacePart, readonly Su
       },
       {
         name: 'surface:corpo:floor:hex',
-        map: 'plaster',
+        map: 'screed',
         pattern: { kind: 'hex', unit: 0.34 },
         colour: 0x3a3d42,
         roughness: 0.42,
@@ -119,7 +123,7 @@ export const SURFACE_LOOKS: Record<FurnishStyle, Record<SurfacePart, readonly Su
       },
       {
         name: 'surface:corpo:floor:black',
-        map: 'plaster',
+        map: 'screed',
         pattern: { kind: 'chequer', unit: 0.5 },
         colour: 0x15171b,
         roughness: 0.22,
@@ -130,32 +134,29 @@ export const SURFACE_LOOKS: Record<FurnishStyle, Record<SurfacePart, readonly Su
     wall: [
       {
         name: 'surface:corpo:wall:plain',
-        map: 'plaster',
+        map: 'formwork',
         pattern: { kind: 'plain', unit: 1 },
         colour: 0x53565a,
         roughness: 0.7,
-        normalScale: 0.7,
         joint: 0,
         variation: 0,
       },
       {
         name: 'surface:corpo:wall:printed',
-        map: 'plaster',
+        map: 'formwork',
         pattern: { kind: 'hex', unit: 0.5 },
         colour: 0x4a5257,
         roughness: 0.62,
-        normalScale: 0.6,
         joint: 0,
         variation: 0.05,
         sheen: 0.22,
       },
       {
         name: 'surface:corpo:wall:etched',
-        map: 'plaster',
+        map: 'formwork',
         pattern: { kind: 'triangle', unit: 0.7 },
         colour: 0x4e5155,
         roughness: 0.66,
-        normalScale: 0.6,
         joint: 0.18,
         variation: 0.04,
         sheen: 0.14,
@@ -164,11 +165,10 @@ export const SURFACE_LOOKS: Record<FurnishStyle, Record<SurfacePart, readonly Su
     ceiling: [
       {
         name: 'surface:corpo:ceiling',
-        map: 'plaster',
+        map: 'formwork',
         pattern: { kind: 'tile', unit: 1.2 },
         colour: 0x24262a,
         roughness: 0.9,
-        normalScale: 0.5,
         joint: 0.4,
         variation: 0.03,
       },

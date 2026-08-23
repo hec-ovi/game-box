@@ -1,4 +1,6 @@
+import { existsSync } from 'node:fs'
 import { METRICS } from '@gb/world'
+import sharp from 'sharp'
 import * as THREE from 'three'
 import type { NodeMaterial } from 'three/webgpu'
 import { describe, expect, it } from 'vitest'
@@ -6,6 +8,7 @@ import {
   FURNISH_STYLES,
   FurnishDressing,
   FurnishLibrary,
+  SURFACE_LOOKS,
   SURFACE_PARTS,
   SURFACE_TEXTURE_IDS,
   SURFACE_TEXTURES,
@@ -15,6 +18,7 @@ import {
   tilingOf,
   type SurfacePart,
 } from '../src/index.ts'
+import { SOURCE_IMAGES } from '../tools/pack.ts'
 
 /**
  * A pack's worth of surfaces without the pack. What is in the images makes no
@@ -209,3 +213,44 @@ describe("a room's own probe", () => {
     }
   })
 })
+
+/**
+ * The images the pack is built from, against the numbers the box holds about
+ * them.
+ *
+ * Both of these are cheap to get wrong by hand and neither shows up as an
+ * error: a grain figure that does not match its image paints every room in that
+ * surface at the wrong brightness while the probe, which is painted from the
+ * colour the look names, goes on assuming the right one; and an image no look
+ * reaches is bytes inside every copy of every world file for nothing.
+ */
+describe('the images behind the surfaces', () => {
+  it('divides each image by its own average, so a surface comes out the colour it names', async () => {
+    for (const id of SURFACE_TEXTURE_IDS) {
+      // the Downtown source is fetched, not committed, so a fresh clone has
+      // only the generated ones to hold against the table
+      if (!existsSync(SOURCE_IMAGES[id])) continue
+      expect(SURFACE_TEXTURES[id].grain, id).toBeCloseTo(await averageOf(SOURCE_IMAGES[id]), 2)
+    }
+  })
+
+  it('reaches every image it packs', () => {
+    const used = new Set(
+      FURNISH_STYLES.flatMap((style) => SURFACE_PARTS.flatMap((part) => SURFACE_LOOKS[style][part].map((l) => l.map))),
+    )
+    expect([...SURFACE_TEXTURE_IDS].sort()).toEqual([...used].sort())
+  })
+})
+
+/** An image's average brightness in linear light, the way the sampler sees it. */
+async function averageOf(file: string): Promise<number> {
+  const { data, info } = await sharp(file).removeAlpha().raw().toBuffer({ resolveWithObject: true })
+  let total = 0
+  for (let at = 0; at < data.length; at += info.channels) {
+    for (let channel = 0; channel < 3; channel++) {
+      const value = data[at + channel]! / 255
+      total += (value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4)) / 3
+    }
+  }
+  return total / (data.length / info.channels)
+}

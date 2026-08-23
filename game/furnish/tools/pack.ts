@@ -1,9 +1,9 @@
 /**
- * Assembles the interior pack: the two grain images a room is built out of, one
- * per node, under the name the loader looks for.
+ * Assembles the interior pack: the grain images a room is built out of, one per
+ * node, under the name the loader looks for.
  *
  * The furniture is not in here. It is generated from parameters at load time,
- * so the only art an interior needs is those two images.
+ * so the only art an interior needs is those images.
  *
  * Called by tools/build-kit.ts.
  */
@@ -22,16 +22,26 @@ const GENERATED = join(ROOT, 'assets/gen')
 
 /**
  * Which image each interior surface is made of, and where that image comes
- * from. Both are stochastic grain and nothing else: the pattern a floor or a
- * wall is laid in is arithmetic in the shader, so no image here carries
+ * from. Every one is stochastic grain and nothing else: the pattern a floor or
+ * a wall is laid in is arithmetic in the shader, so no image here carries
  * structure that would jog where the tile is cut.
+ *
+ * The three generated ones are colour only. A wall in this box is a run of bays
+ * standing 3 to 14 cm off it, so its relief is geometry, and a normal map
+ * derived from a colour map would put highlights where the picture has no
+ * feature. The Downtown concrete keeps the relief that was authored with it.
  */
 const SOURCES: Record<SurfaceTextureId, { colour: string; normal?: string; from?: string }> = {
-  // the Downtown kit's concrete, which is the corpo wall, floor and lid
+  // the Downtown kit's street concrete, which is the bare slab a flat is floored in
   plaster: { colour: 'T_Concrete_BaseColor', normal: 'T_Concrete_Normal' },
-  // ours: see tools/textures/README.md. Colour only, and it wants no relief at
-  // all, because a moulded panel is smooth and that is the whole point of it
+  // ours: see tools/textures/README.md. A moulded panel is smooth, which is the
+  // whole point of it
   panel: { colour: 'wall-plastic-home-tile', from: GENERATED },
+  // ours: the corpo wall and the lid over it
+  formwork: { colour: 'wall-concrete-corpo-tile', from: GENERATED },
+  // ours: the corpo floor, which is the biggest surface in view in a room and
+  // the one the reflection probe is painted against
+  screed: { colour: 'floor-concrete-corpo-tile', from: GENERATED },
 }
 
 /** Where each surface's colour image is on disk, for anything that wants to measure it. */
