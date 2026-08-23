@@ -42,4 +42,6 @@ it. Keep the `thingId` it came with:
 
 ## Names already spoken for in this city
 
+None of these may be used again, for this place or for anybody in it:
+
 {{usedNames}}
