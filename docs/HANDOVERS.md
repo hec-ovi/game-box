@@ -14,7 +14,6 @@ is done and the check confirms it.
 2. `app` never wired `dressing.room(interior)` and `room.decor`
 3. Prop footprints disagree: forge plans a table 1.6x0.9, furnish draws 1.0x1.0, so chairs sit 0.4 m off the edge
 4. `forge` serialises the narrator: peak concurrency 1, four of five llama slots idle, 85% of model wall clock
-5. The 15 cm gap you can see under where pavement meets the verge
 6. No way to give up a quest: three boxes did their half, the middle one was never asked
 7. The journal cannot tell an unreached step from an open one
 8. The boot panel clamps blocks to 24 where forge now accepts 77
@@ -27,19 +26,11 @@ is done and the check confirms it.
 | 2 | `dressing.room(interior)`, `built.root.add(room.decor)` | furnish | app | in flight |
 | 3 | One shared prop spec (cells, contact, `onSurface`) with no renderer dependency | furnish, forge | world + forge + furnish | forge cannot import furnish without putting `three` in the headless generator |
 | 4 | `Promise.all` over `namePlace` and `describeNpc`/`describeItem`, reassembled by index | scribe | forge | `forge.ts:161/225/250` await one at a time |
-| 5 | A `mountain` cell is 26 m tall for kerbs (`scene/src/ground.ts:34`) while `land` lays it flat | forge, scene | scene + land | ~172 cell-edges of 15 cm, and more on the road out |
 | 6 | `HudIntent` needs `{ kind: 'abandon'; questId }`, and a "Give up" beside Follow | app, quest | hud | `Game.abandon` is wired and casts for an intent that does not exist |
 | 7 | `QuestStep` carries one boolean where the engine has three states | app | hud | |
 | 8 | `BLOCKS.max` is 24; forge's derived bound is 77 | forge | app | |
 | 9 | Anchor the bartender against `staffContact` (1.00), not `contact` (1.10) | furnish | forge | `staffContact` is published and unreferenced |
-| 10 | `objectives()` drops `topic`, so a `talk` step with one can never be credited | forge | quest | invisible today only because forge emits none |
-| 11 | Any call over 300 s dies as `unreachable`: undici's `headersTimeout` and `askMs` are both 300 s | scribe | sidecar | raise the dispatcher's, or stream |
-| 12 | `Conversation.open` accepts no `signal` | sidecar, app | talk | the player cannot cut a turn short |
 | 13 | Interior surfaces should carry metre UVs like ground meshes do | furnish | scene | would remove furnish's shader projection entirely |
-| 14 | An `any-of` needs both branches reachable from the start and pointing back at it | forge | quest | say it in the contract and the error text |
-| 15 | `bundle.ts:121` hand-rolls `viewOf`; `questView(world)` is published | world | bundle | |
-| 16 | `Rng.int(min, max)` is half-open and unsaid | kitbash | kit | |
-| 17 | The spawn contract says "the first door in town"; seven in eight are closed | app, forge | scene | the app already overrides it |
 | 18 | The world contract's outputs table omits half of what it publishes | nav | world | |
 | 19 | `surroundings.md` has no line for `work-bench` | world | talk | |
 | 20 | `nav/tests/contract.test.ts:125` assumes a bar exists | forge | nav | |
@@ -54,7 +45,12 @@ is done and the check confirms it.
 | 29 | Overhead wires derived from lamp positions | assessment | kitbash | cheap "inhabited" trick, never done |
 | 30 | `KitDressing.building()`'s `door` empty has no consumer | scene | kitbash | dead surface |
 | 31 | `SceneCast` recycles bodies by kind, so street variety is capped by the pool | cast | crowd + app | 360 male and 180 female looks exist, far fewer show |
-| 32 | Five stale lines in `PENDING.md`, one wrong premise in `PLAN.md` task 14 | audit | docs | all landed or never true |
+| 32 | Stale lines in `PENDING.md` and `PLAN.md`, including `viewOf` citations for code now deleted | audit | docs | all landed or never true |
+| 33 | `talk/src/greet.ts:26` emits `talked` with no topic, so a topic'd step still cannot complete through a real conversation | scene-batch agent | talk | the objective now names the topic; talk must forward it |
+| 34 | `game/app/src/spawn.ts` is now redundant: `city.spawn` does the same thing and lands square on the cell centre | scene | app | delete it and use `city.spawn` |
+| 35 | A car is placed on a sidewalk cell on the current forge layout | scene-batch agent | traffic | its own test catches it |
+| 36 | Root `package.json` carries `pnpm.onlyBuiltDependencies`, which pnpm no longer reads and warns about on every run | scene-batch agent | repo | |
+| 37 | Never hand a userland `undici` dispatcher to the built-in fetch: Node 24.19 bundles undici 7.29, a userland 7 Agent works, an 8 Agent is rejected outright | sidecar | repo | pinning `^7` works today and breaks on the Node that bundles 8 |
 
 ## Checked and closed
 
