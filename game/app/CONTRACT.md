@@ -1,10 +1,10 @@
 # @gb/app contract
 
-contractVersion: 0.2.0
+contractVersion: 0.3.0
 
 ## Purpose
 
-The game you can play: the panel you make a city in, the renderer, the frame loop, the first-person body, and the wiring that turns every other box into a city you walk around.
+The game you can play: the panel you make a city in, the renderer, the frame loop, the first-person body, the grade that turns the hour into a look, and the wiring that turns every other box into a city you walk around.
 
 ## Inputs
 
@@ -55,8 +55,29 @@ None at the boundary. A city that will not build and a file that will not open a
 - The player is stopped by people and by cars, not only by walls. Both move every frame, so what is solid is asked fresh rather than baked, and a car is treated as the long thing it is rather than as a circle.
 - The landscape brings its own sky and light. Plain daylight only comes out if the landscape fails to build, so a scene is never unlit.
 - The sky lights the scene once. A prefiltered copy of the skydome in `scene.environment` is the sky doing that job, so `Land.skyLight` is taken down rather than counted alongside it: with both on, a cast shadow takes 1.4% of the light off what it falls on instead of 39%, which is no shadow at all.
+- The landscape is built for the hour the playthrough is at. The environment is prefiltered off its skydome before the first frame, so a city opened at midnight and built at the landscape's own default midday would stand under a black sky lit like noon until the hour turned.
+- Nothing reaches the screen unfiltered. The scene renders into a half float target and stays in linear light through the glow and the colour, and the tone map is the last thing that happens, so a halo rolls off instead of clipping to a flat disc.
+- The frame is developed for the hour, and night is the hour the city is built for. After dark the sun is gone and the environment with it, so emissive is the whole lighting budget: a sign that does not bleed into the air around it is a coloured rectangle. The exposure comes down to hold the dark, the glow comes on, and the shadows go cold so a saturated hue has something to be saturated against.
+- What makes neon read is the step from the sign to the dark beside it, not the size of the glow. The threshold is low so every sign is over it and the halo is tight so none of them swallows its own letters. A wide halo at a high strength reads as fog on the lens.
+- The glow is taken off the finished frame, not off an emissive-only pass. What is bright is what glows, so a sign glows, and so does the sign again where a wet road is mirroring it.
+- Indoors the hour stops driving the frame. A room is lit by its own ceiling at every hour of the day and is developed the same way whatever the sky outside is doing.
+- The grade is a function of the hour and nothing else: no `Rng`, no wall clock, so the same minute of the same playthrough is the same frame on any machine.
+- The interface is not in the chain. `@gb/hud` is DOM over the canvas, so the glow and the tint stop at the canvas edge and a panel is never bloomed.
 - Half a game never sits on the page. A city that will not draw takes its stage and its interface back off before the panel says so, and the city itself can still be exported.
 - The look belongs to `@gb/hud`. The panel is the one surface this box draws, because it has to be up before the hud exists; it is written from the hud's own tokens and holds no colour of its own.
+
+## What the chain costs
+
+Measured in Chrome on this machine's WebGL2 fallback (no WebGPU), at 1920 by 1080 with a device pixel ratio of 1, standing on the pavement at 22:00 in a three block neon town. The scene pass was timed straight to the screen and then through the chain, alternately, over four runs.
+
+| | render passes | draw calls | frame |
+|---|---|---|---|
+| scene straight to the screen | 2 | 92 | 2.7 to 3.4 ms |
+| scene through the chain | 14 | 104 | 3.0 to 3.9 ms |
+
+The chain is 0.25 to 0.6 ms, median 0.4. It buys twelve more passes: the luminance high pass, five mip levels blurred once across and once down, and the composite. All the blurring is at half resolution, none of it carries geometry, and the colour grade is a handful of instructions riding in the composite, so it costs nothing measurable of its own. Multisampling moved with it, off the frame buffer and onto the scene pass, and that move is inside the same number.
+
+It is a pixel bill, so it is the same at noon and at midnight whatever is on screen, and it is four times as much at a device pixel ratio of 2.
 
 ## The files
 
@@ -76,6 +97,9 @@ One responsibility each. `boot/` is everything before there is a game; the rest 
 | `controls.ts` | the keys the game binds, for the interface to print |
 | `session.ts` | the playthrough between visits |
 | `renderer.ts` | renderer, camera, lights, the frame loop |
+| `grade.ts` | the chain between the scene and the screen |
+| `night.ts` | what an hour of the day is developed at |
+| `tint.ts` | the night colour: cold shadows, saturated lights |
 | `player.ts`, `walk.ts`, `stance.ts`, `zoom.ts` | the first-person body |
 | `sky.ts` | the landscape and the hour it is lit for |
 | `street.ts` | the crowd, the traffic and what each has to look out for |
@@ -90,4 +114,4 @@ One responsibility each. `boot/` is everything before there is a game; the rest 
 
 ## How to modify this blackbox safely
 
-Anything with a rule in it belongs in another box. Keep `walk.ts` free of three.js so the movement maths stays testable. The panel's look comes from `@gb/hud`'s tokens: if the hud publishes a shell for it, use that instead of the markup in `index.html`. Run `pnpm --filter @gb/app test`, and `pnpm --filter @gb/app run dev` to look at it.
+Anything with a rule in it belongs in another box. Keep `walk.ts` free of three.js so the movement maths stays testable. The panel's look comes from `@gb/hud`'s tokens: if the hud publishes a shell for it, use that instead of the markup in `index.html`. Retuning how the city looks after dark is a change to the two records in `src/night.ts` alone; a new step in the chain goes in `src/grade.ts`, and the cost in this contract is remeasured with it. Run `pnpm --filter @gb/app test`, and `pnpm --filter @gb/app run dev` to look at it, which is the only way to judge a grade.

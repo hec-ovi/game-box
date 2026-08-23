@@ -16,7 +16,7 @@ export async function loadDressing(
   theme: string,
   base = '',
 ): Promise<{ dressing: Dressing; cast?: Cast; kit?: KitDressing }> {
-  const kit = await loadBuildings(base)
+  const kit = await loadBuildings(base, theme)
   const behind = await loadInteriors(base, kit ?? new Greybox())
   const cast = await loadPeople(base)
   if (!cast) return { dressing: guarded(behind), ...(kit ? { kit } : {}) }
@@ -51,10 +51,12 @@ async function loadInteriors(base: string, behind: Dressing): Promise<Dressing> 
   }
 }
 
-async function loadBuildings(base: string): Promise<KitDressing | undefined> {
+async function loadBuildings(base: string, theme: string): Promise<KitDressing | undefined> {
   try {
     const gltf = await read(`${base}/downtown-kit.glb`)
-    return new KitDressing(loadKit(gltf.scenes), new Greybox())
+    // the theme is what picks the tone the whole kit is painted in, so a town
+    // that is not a neon one has to say so here or it comes out as one
+    return new KitDressing(loadKit(gltf.scenes, theme), new Greybox())
   } catch (cause) {
     console.warn(`no building kit (${String(cause)}); the city will be blocks`)
     return undefined

@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { PMREMGenerator, WebGPURenderer } from 'three/webgpu'
+import { Grade } from './grade.ts'
 
 export interface Stage {
   readonly renderer: WebGPURenderer
@@ -19,6 +20,8 @@ export interface Stage {
    * black inside.
    */
   indoors(on: boolean): void
+  /** Develop the frame for this hour of the day: exposure, and how hard neon glows. */
+  grade(hours: number): void
   /** Swap what is being rendered: the city, or the inside of a building. */
   show(root: THREE.Object3D): void
   start(frame: (seconds: number) => void): void
@@ -31,7 +34,9 @@ const SKY = 0x9fb6c6
 
 /** Renderer, camera and daylight. WebGPU where it exists, WebGL2 where it does not. */
 export async function createStage(mount: HTMLElement): Promise<Stage> {
-  const renderer = new WebGPURenderer({ antialias: true })
+  // the chain multisamples the scene pass itself; the frame buffer under it
+  // only ever holds one full screen quad, which has nothing to antialias
+  const renderer = new WebGPURenderer()
   await renderer.init()
   renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio ?? 1, 2))
   renderer.setSize(mount.clientWidth || window.innerWidth, mount.clientHeight || window.innerHeight)
@@ -42,10 +47,13 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
   // every castShadow flag in the art boxes was doing nothing without this
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = THREE.PCFSoftShadowMap
+  // AgX rolls a saturated highlight off towards white without turning it a
+  // different colour on the way, which is exactly what a neon core does. The
+  // exposure is not fixed here: the grade sets it per hour.
   renderer.toneMapping = THREE.AgXToneMapping
-  renderer.toneMappingExposure = 1.15
 
   const camera = new THREE.PerspectiveCamera(75, aspect(mount), 0.1, 500)
+  const grade = new Grade(renderer, scene, camera)
 
   let current: THREE.Object3D | undefined
   let roomLight: THREE.Group | undefined
@@ -105,6 +113,10 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
       // whichever daylight is in play goes off, so a room is never lit by a sun
       // it cannot see
       if (daylight) daylight.visible = !on
+      grade.indoors = on
+    },
+    grade(hours) {
+      grade.setTime(hours)
     },
     show(root) {
       if (current) scene.remove(current)
@@ -116,17 +128,18 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
       // the node frame advances, which happens inside `setAnimationLoop`, so a
       // loop built out of this instead of `start` would freeze every shadow
       // where the player last stood.
-      renderer.render(scene, camera)
+      grade.render()
     },
     start(frame) {
       const timer = new THREE.Timer()
       renderer.setAnimationLoop(() => {
         timer.update()
         frame(Math.min(timer.getDelta(), 0.1))
-        renderer.render(scene, camera)
+        grade.render()
       })
     },
     dispose() {
+      grade.dispose()
       reflected?.dispose()
       horizon?.dispose()
       renderer.setAnimationLoop(null)

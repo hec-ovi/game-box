@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { blocked, slide, step } from '../src/walk.ts'
 import { alsoBlockedBy } from '../src/bodies.ts'
 import { cityGround, citySolid, furnishedSolid } from '../src/solids.ts'
+import { DAY, darkness, lookAt, NIGHT } from '../src/night.ts'
 import { Body, CROUCH_EYE, JUMP_SPEED } from '../src/stance.ts'
 import { CLOSE_FOV, WIDE_FOV, Zoom } from '../src/zoom.ts'
 
@@ -303,5 +304,29 @@ describe('furniture indoors', () => {
     expect(straight(5, 4.5)).toBe(false)
     expect(turned(5.5, 4)).toBe(false)
     expect(turned(5, 4.5)).toBe(true)
+  })
+})
+
+describe('the night grade', () => {
+  it('develops the middle of the day as day and the middle of the night as night', () => {
+    expect(lookAt(12)).toEqual(DAY)
+    expect(lookAt(0)).toEqual(NIGHT)
+    expect(lookAt(23)).toEqual(NIGHT)
+  })
+
+  it('crosses over through dusk instead of switching, and never goes past either end', () => {
+    let before = darkness(15)
+    expect(before).toBe(0)
+    for (let hour = 15.5; hour <= 21; hour += 0.5) {
+      const now = darkness(hour)
+      expect(now).toBeGreaterThanOrEqual(before)
+      expect(now).toBeLessThanOrEqual(1)
+      before = now
+    }
+    expect(before).toBe(1)
+  })
+
+  it('holds daylight for an hour it cannot read, rather than grading the frame to nothing', () => {
+    expect(lookAt(Number.NaN)).toEqual(DAY)
   })
 })

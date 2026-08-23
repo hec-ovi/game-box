@@ -24,7 +24,7 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI
 | Cars driving the roads | `game/traffic/` |
 | The interface: objectives, prompts, conversation, announcements, the quests, map, items and controls window, and how it all looks | `game/hud/` |
 | Determinism, ids, results, boundary validation | `game/kit/` |
-| The running game: the panel you make a city in, renderer, frame loop, first-person body, wiring | `game/app/` |
+| The running game: the panel you make a city in, renderer, frame loop, first-person body, wiring, and how the night is graded | `game/app/` |
 | The `gb` command: build, inspect, check a city | `game/cli/` |
 
 ## Sidecar

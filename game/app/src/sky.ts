@@ -24,7 +24,11 @@ export class Sky {
     this.#stage = stage
     this.#kit = options.kit
 
-    const built = buildLand(world)
+    // built for the hour the playthrough is at, because the environment is
+    // prefiltered off this sky before the first frame: built at its default
+    // midday, a city opened at midnight would stand under a black sky lit like
+    // noon until the hour turned
+    const built = buildLand(world, { time: options.hour })
     if (!built.ok) {
       console.warn(`no landscape (${built.error.code}); plain daylight instead`)
       stage.plainDaylight()
@@ -68,6 +72,9 @@ export class Sky {
   follow(seconds: number, clock: Reading, outdoors: boolean): void {
     const hours = clock.hour + clock.minute / 60
     this.#kit?.setTime(hours)
+    // the frame is developed for the hour whether or not the sky is in view:
+    // indoors the grade holds itself at the room's own light
+    this.#stage.grade(hours)
     if (!this.#land || !outdoors) return
 
     this.#land.setTime(hours)
