@@ -29,6 +29,14 @@ export interface Look {
   readonly id: string
   readonly family: Family
   readonly note: string
+  /**
+   * The wall picture above the street: a file in `finishes/`, without the
+   * extension. One per look, so a bar, a warehouse and a corporate slab are not
+   * the same wall, and it is authored here rather than picked at runtime
+   * because `design.model` already names the look and a runtime choice would be
+   * a second thing a world file does not record.
+   */
+  readonly facade: string
   /** Trades this look suits. The catalogue filters by it before it picks. */
   readonly kinds: readonly BuildingKind[]
   readonly door: { readonly wide: number; readonly tall: number }
@@ -70,6 +78,7 @@ function check(look: Look, file: string): Look {
     throw new Error(`${file}: ${why}`)
   }
   if (!FAMILIES.includes(look.family)) fail(`family must be one of ${FAMILIES.join(', ')}`)
+  if (!look.facade) fail('a look has to name the wall picture it wears, from finishes/')
   if (look.kinds.length === 0) fail('a look has to say which trades it suits')
   for (const kind of look.kinds) if (!BUILDING_KINDS.includes(kind)) fail(`${kind} is not a building kind`)
   if (look.crown && !NEONS.includes(look.crown)) fail(`${look.crown} is not one of ${NEONS.join(', ')}`)

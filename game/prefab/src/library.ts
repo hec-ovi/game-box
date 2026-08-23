@@ -6,9 +6,12 @@ import { LAYER_ATTRIBUTE } from './pack.ts'
 
 export class LibraryIncomplete extends Error {
   readonly code = 'library-incomplete'
-  constructor(readonly missing: readonly string[]) {
+  readonly missing: readonly string[]
+
+  constructor(missing: readonly string[]) {
     super(`the prefab pack is missing ${missing.length} of the models its manifest names: ${missing.slice(0, 6).join(', ')}`)
     this.name = 'LibraryIncomplete'
+    this.missing = missing
   }
 }
 

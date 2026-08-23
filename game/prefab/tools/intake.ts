@@ -5,8 +5,8 @@ import type { Bucket } from '../src/bucket.ts'
 import { heightOf } from '../src/bucket.ts'
 import { HEIGHT_TOLERANCE, PROUD } from '../src/fit.ts'
 import { DOOR_FINISH } from '../src/entrance.ts'
-import { layerFor, LAYER_OF } from './layers.ts'
-import { NEONS, type Family } from './look.ts'
+import type { Layers } from './layers.ts'
+import { NEONS, type Look } from './look.ts'
 
 export const io = new NodeIO()
   .registerExtensions([KHRMaterialsEmissiveStrength, KHRMeshQuantization, EXTMeshoptCompression])
@@ -50,7 +50,7 @@ export interface Baked {
  * footprint, on a door facing the street, and made of finishes the pack has a
  * layer for. Anything else is refused by name.
  */
-export async function intake(file: string, id: string, bucket: Bucket, family: Family): Promise<Baked> {
+export async function intake(file: string, id: string, bucket: Bucket, look: Look, layers: Layers): Promise<Baked> {
   const doc = await io.read(file)
   refuseUris(doc, id)
 
@@ -70,12 +70,12 @@ export async function intake(file: string, id: string, bucket: Bucket, family: F
         trimmed++
         continue
       }
-      parts.push({ prim, lift, layer: layerFor(prim.getMaterial()?.getName() ?? '', family) })
+      parts.push({ prim, lift, layer: layers.forMaterial(prim.getMaterial()?.getName() ?? '', look) })
     }
   }
 
   const baked = flatten(id, parts, trimmed)
-  measure(baked, id, bucket, height)
+  measure(baked, id, bucket, height, layers)
   return baked
 }
 
@@ -167,8 +167,8 @@ function flatten(id: string, parts: ReadonlyArray<{ prim: Primitive; lift: numbe
  * with the mesh. The lit trim is held to the relief budget instead, because a
  * parapet tube by definition stands on the parapet.
  */
-function measure(baked: Baked, id: string, bucket: Bucket, height: number): void {
-  const lit = new Set(NEONS.map((neon) => LAYER_OF.get(`neon:${neon}`)!))
+function measure(baked: Baked, id: string, bucket: Bucket, height: number, layers: Layers): void {
+  const lit = new Set(NEONS.map((neon) => layers.at(`neon:${neon}`)))
   let low = Infinity
   let walls = -Infinity
   let trim = -Infinity
@@ -193,7 +193,7 @@ function measure(baked: Baked, id: string, bucket: Bucket, height: number): void
       `reaches ${wide.toFixed(3)} by ${deep.toFixed(3)} by ${trim.toFixed(3)} m out of a ${bucket.front / 2} by ${bucket.depth / 2} by ${height} box`,
     )
   }
-  if (!doorFacesTheStreet(baked, bucket)) throw new Refused('faces-wrong-way', id, 'the door is not on the south wall')
+  if (!doorFacesTheStreet(baked, bucket, layers)) throw new Refused('faces-wrong-way', id, 'the door is not on the south wall')
 }
 
 /**
@@ -201,8 +201,8 @@ function measure(baked: Baked, id: string, bucket: Bucket, height: number): void
  * turns onto whichever street the plot's entrance is on. A model with its door
  * anywhere else would be turned to face a neighbour.
  */
-function doorFacesTheStreet(baked: Baked, bucket: Bucket): boolean {
-  const door = LAYER_OF.get(DOOR_FINISH)!
+function doorFacesTheStreet(baked: Baked, bucket: Bucket, layers: Layers): boolean {
+  const door = layers.at(DOOR_FINISH)
   let back = Infinity
   let seen = false
   for (let i = 0; i < baked.layer.length; i++) {

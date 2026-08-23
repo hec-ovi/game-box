@@ -9,13 +9,16 @@ import type { PrefabAtlas } from './material.ts'
 
 export class PackChanged extends Error {
   readonly code = 'pack-changed'
-  constructor(
-    readonly file: string,
-    readonly expected: string,
-    readonly found: string,
-  ) {
+  readonly file: string
+  readonly expected: string
+  readonly found: string
+
+  constructor(file: string, expected: string, found: string) {
     super(`the prefab ${file} is not the one its manifest describes (expected ${expected.slice(0, 12)}, found ${found.slice(0, 12)})`)
     this.name = 'PackChanged'
+    this.file = file
+    this.expected = expected
+    this.found = found
   }
 }
 

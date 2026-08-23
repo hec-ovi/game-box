@@ -71,9 +71,12 @@ export interface Uncovered {
 
 export class InvalidCatalogue extends Error {
   readonly code = 'invalid-catalogue'
-  constructor(readonly violations: readonly SchemaViolation[]) {
+  readonly violations: readonly SchemaViolation[]
+
+  constructor(violations: readonly SchemaViolation[]) {
     super(`prefab catalogue rejected: ${violations.map((v) => `${v.path} ${v.message}`).join('; ')}`)
     this.name = 'InvalidCatalogue'
+    this.violations = violations
   }
 }
 

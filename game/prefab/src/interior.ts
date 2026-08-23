@@ -154,9 +154,16 @@ export const SHOPFRONT: WindowKind = {
   shortest: 1.6,
 }
 
+/**
+ * A layer named `wall:<picture>` is one of the pack's tiling wall pictures, and
+ * the shader cuts bays out of it. The rest of the name is the committed file it
+ * came from, so a manifest says which picture a layer holds.
+ */
+export const WALL = 'wall:'
+
 /** Which kind of window a finish wears, if any: a roof, a door and a neon tube have none. */
 export function windowsOn(finish: string): WindowKind | undefined {
-  if (finish.endsWith(':facade')) return FACADE
+  if (finish.startsWith(WALL)) return FACADE
   if (finish === 'glass') return SHOPFRONT
   return undefined
 }

@@ -4,8 +4,8 @@ import sharp from 'sharp'
 import { DOOR_FINISH, OPEN_DOOR_FINISH } from '../src/entrance.ts'
 import { DISPLAY_FINISH } from '../src/screens.ts'
 import { io } from './intake.ts'
-import { COLOUR_SIZE, EMISSIVE_SIZE, GLOW_BAKE, LAYERS } from './layers.ts'
-import { FAMILIES, NEONS, type Family } from './look.ts'
+import { COLOUR_SIZE, EMISSIVE_SIZE, GLOW_BAKE, wallFinish, type Layers } from './layers.ts'
+import { NEONS, type Family, type Look } from './look.ts'
 import { decode, encode, PNG, type Tile } from './paint.ts'
 import { housingTile } from './screens.ts'
 import { doorTile } from './doors.ts'
@@ -23,9 +23,13 @@ export interface Atlas {
 }
 
 /**
- * The verbs that build one family's swatch: every finish the pack takes off the
+ * The verbs that build one look's swatch: every finish the pack takes off the
  * producer, on one model. The entrance and the screen housing are not among
  * them; both are drawn in this repo and laid straight into the strip.
+ *
+ * The project is named after the family, not the look, because it is what seeds
+ * the producer's own base wall: two looks in one family stand on the same base
+ * and get it from the same swatch name.
  */
 export function swatchVerbs(project: string): string[][] {
   return [
@@ -50,18 +54,29 @@ export function swatchVerbs(project: string): string[][] {
  * the shader is a plain texture fetch and the pack carries exactly what it
  * draws.
  *
- * Most finishes come off a swatch the producer built. Three are drawn in this
- * repo instead: the two entrances, which are the surfaces a player stands
- * closest to, and the housing a screen sits in, which is a dark field the
- * shader lays the picture and the lamp grid over.
+ * Every look has a swatch of its own, and its wall comes off that one; two
+ * looks wearing one picture land on one layer and the second swatch is only
+ * read for what it adds. The base is taken once per family and the glazing and
+ * the tubes once for the whole catalogue, because those are the same surface
+ * whichever look stands on them.
+ *
+ * Three finishes are drawn in this repo rather than taken off a swatch: the two
+ * entrances, which are the surfaces a player stands closest to, and the housing
+ * a screen sits in, which is a dark field the shader lays the picture and the
+ * lamp grid over.
  */
-export async function buildAtlas(swatches: ReadonlyMap<Family, string>): Promise<Atlas> {
+export async function buildAtlas(looks: readonly Look[], swatches: ReadonlyMap<string, string>, layers: Layers): Promise<Atlas> {
   const finishes = new Map<string, Layer>()
-  for (const family of FAMILIES) {
-    const materials = await materialsOf(swatches.get(family)!)
-    finishes.set(`${family}:facade`, await tileOf(materials.get('facade')))
-    finishes.set(`${family}:base`, await tileOf(materials.get('base')))
-    if (family === FAMILIES[0]) {
+  const families = new Set<Family>()
+  for (const look of looks) {
+    const materials = await materialsOf(swatches.get(look.id)!)
+    const wall = wallFinish(look.facade)
+    if (!finishes.has(wall)) finishes.set(wall, await tileOf(materials.get('facade')))
+    if (!families.has(look.family)) {
+      families.add(look.family)
+      finishes.set(`${look.family}:base`, await tileOf(materials.get('base')))
+    }
+    if (look === looks[0]) {
       finishes.set('glass', await tileOf(materials.get('glass-band')))
       for (const neon of NEONS) finishes.set(`neon:${neon}`, await tileOf(materials.get(`neon:${neon}`)))
     }
@@ -73,13 +88,13 @@ export async function buildAtlas(swatches: ReadonlyMap<Family, string>): Promise
   finishes.set(OPEN_DOOR_FINISH, await drawn(await doorTile('open')))
   finishes.set(DISPLAY_FINISH, await drawn(await housingTile(COLOUR_SIZE)))
 
-  const missing = LAYERS.filter((name) => !finishes.has(name))
+  const missing = layers.names.filter((name) => !finishes.has(name))
   if (missing.length) throw new Error(`the swatches carry no ${missing.join(', ')}`)
 
   return {
-    colour: await strip(LAYERS.map((name) => finishes.get(name)!.colour), COLOUR_SIZE),
-    emissive: await strip(LAYERS.map((name) => finishes.get(name)!.emissive), EMISSIVE_SIZE),
-    layers: LAYERS.length,
+    colour: await strip(layers.names.map((name) => finishes.get(name)!.colour), COLOUR_SIZE),
+    emissive: await strip(layers.names.map((name) => finishes.get(name)!.emissive), EMISSIVE_SIZE),
+    layers: layers.count,
   }
 }
 

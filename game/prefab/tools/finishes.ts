@@ -3,15 +3,17 @@ import { join, resolve } from 'node:path'
 import sharp from 'sharp'
 import { FACADE, SHOPFRONT } from '../src/interior.ts'
 import { PNG, png, type Tile } from './paint.ts'
-import type { Family } from './look.ts'
+import type { Look } from './look.ts'
 
 /**
  * The wall pictures, read off disk and handed to the producer.
  *
  * They are committed art in `finishes/`, ours, from our own prompts, so they
- * travel inside a world file. Each one tiles: a wall runs several pictures
- * across and any seam would repeat all the way up the building, so the
- * generation was asked for a tile and the pack test measures that it is one.
+ * travel inside a world file. A look names the one it wears, so which wall a
+ * building has is authored beside everything else about it. Each one tiles: a
+ * wall runs several pictures across and any seam would repeat all the way up
+ * the building, so the generation was asked for a tile and the pack test
+ * measures that it is one.
  *
  * The windows are not in them. A mullion is three centimetres across and a wall
  * picture is about twenty pixels to the metre, so a drawn one would be under a
@@ -29,16 +31,16 @@ export const GRID = { facade: FACADE.grid, shopfront: SHOPFRONT.grid } as const
 
 const FOLDER = resolve(import.meta.dirname, '../finishes')
 
-/** One family's wall above the street: what four bays by two floors are made of. */
-export async function facadePicture(family: Family): Promise<Tile> {
-  return await committed(`facade-${family}.png`)
+/** One look's wall above the street: what four bays by two floors are made of. */
+export async function facadePicture(look: Look): Promise<Tile> {
+  return await committed(`${look.facade}.png`)
 }
 
 /**
- * The street level, and it is one surround for all four families. A pavement
+ * The street level, and it is one surround for the whole catalogue. A pavement
  * level surround is a heavy dark frame whichever building it belongs to, and it
- * is seen from a metre away where a family tint reads as a mistake rather than
- * as variety.
+ * is seen from a metre away where a tint per look reads as a mistake rather
+ * than as variety.
  */
 export async function streetPicture(): Promise<Tile> {
   return await committed('street-surround.png')

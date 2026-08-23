@@ -57,8 +57,8 @@ describe('dressing a plot', () => {
 
   it('gives a plot you can walk into the entrance you can walk through, and leaves every other door plain', () => {
     const size = { width: 8, depth: 12, height: 7.2 }
-    expect(finishesOn(dressing.building(plotOf(), size))).toEqual(['a:facade', 'door'])
-    expect(finishesOn(dressing.building(plotOf({ interiorId: 'interior_0001' }), size))).toEqual(['a:facade', 'door:open'])
+    expect(finishesOn(dressing.building(plotOf(), size))).toEqual(['wall:facade-a', 'door'])
+    expect(finishesOn(dressing.building(plotOf({ interiorId: 'interior_0001' }), size))).toEqual(['wall:facade-a', 'door:open'])
   })
 
   it('hands a shape it has no model for to the dressing behind', () => {

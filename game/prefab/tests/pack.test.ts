@@ -12,7 +12,10 @@ import { DOOR_FINISH, OPEN_DOOR_FINISH } from '../src/entrance.ts'
 import { windowsOn } from '../src/interior.ts'
 import { ROOM_BANKS, ROOM_PICTURES, ROOM_SIZE } from '../src/rooms.ts'
 import { DISPLAY_FINISH, SCREEN_PICTURES, SCREEN_SIZE } from '../src/screens.ts'
+import { DOOR, doorTile } from '../tools/doors.ts'
 import { io } from '../tools/intake.ts'
+import { wallFinish } from '../tools/layers.ts'
+import { loadLooks } from '../tools/look.ts'
 import { verifyPack } from '../tools/verify.ts'
 
 const pack = new URL('../pack/', import.meta.url)
@@ -22,6 +25,7 @@ const mesh = new Uint8Array(readFileSync(new URL('buildings.glb', pack)))
 const strip = new Uint8Array(readFileSync(new URL('buildings-rooms.png', pack)))
 const screens = new Uint8Array(readFileSync(new URL('buildings-screens.png', pack)))
 const catalogue = Catalogue.parse(manifest)
+const looks = loadLooks(new URL('../looks/', import.meta.url).pathname)
 
 describe('the shipped pack', () => {
   it('is the file its manifest describes', () => {
@@ -43,7 +47,11 @@ describe('the shipped pack', () => {
 
   it('names what every layer paints, and which of them have windows in them', () => {
     expect(catalogue.atlas.finishes).toHaveLength(catalogue.atlas.colour.layers)
-    expect(catalogue.atlas.finishes.filter((finish) => windowsOn(finish))).toEqual(['a:facade', 'b:facade', 'c:facade', 'd:facade', 'glass'])
+    // one layer per committed wall picture, so a bar and a corporate slab are
+    // not the same surface and two looks wearing one picture pay for it once.
+    // Every one of them is a layer the shader cuts windows out of
+    const pictures = [...new Set(looks.map((look) => look.facade))]
+    expect(catalogue.atlas.finishes.filter((finish) => windowsOn(finish))).toEqual([...pictures.map(wallFinish), 'glass'])
     expect(catalogue.atlas.finishes).toContain(DISPLAY_FINISH)
     expect(windowsOn(DISPLAY_FINISH)).toBeUndefined()
     for (const finish of [DOOR_FINISH, OPEN_DOOR_FINISH]) {
@@ -100,6 +108,56 @@ describe('the shipped pack', () => {
     expect({ panels: panels > 0, out }).toEqual({ panels: true, out: 0 })
   })
 
+  it('is one entrance in two states, so only the lobby tells the two doors apart', async () => {
+    const [plain, open] = await Promise.all([doorTile('plain'), doorTile('open')])
+    // at the plate's own size, so a resample cannot blur a rectangle's edge
+    // into the frame and make a clean relight look like a second door
+    const read = async (image: Uint8Array) => await sharp(Buffer.from(image)).removeAlpha().raw().toBuffer({ resolveWithObject: true })
+    const [dark, lit] = await Promise.all([read(plain.colour), read(open.colour)])
+    const size = dark.info.width
+
+    // everything the relight is allowed to touch: the glass, the threshold and
+    // the reader's marks. A change anywhere else is two doors, not one door
+    // twice, and the city would read as if half its entrances were a different
+    // building
+    const relit = (x: number, y: number) =>
+      inside(x, y, DOOR.threshold, size) ||
+      inside(x, y, DOOR.call, size) ||
+      // the fanlight is one pane across the top; only the leaves under it are
+      // split by the meeting stile, which is not glass and is never relit
+      DOOR.glazing.some(
+        (band, index) => inside(x, y, { ...DOOR.pane, ...band }, size) && !(index > 0 && inside(x, y, { ...DOOR.stile, ...band }, size)),
+      )
+
+    let outside = 0
+    let changed = 0
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const at = (y * size + x) * 3
+        const same = dark.data[at] === lit.data[at] && dark.data[at + 1] === lit.data[at + 1] && dark.data[at + 2] === lit.data[at + 2]
+        if (same) continue
+        if (relit(x, y)) changed++
+        else outside++
+      }
+    }
+    expect({ outside, lobbyChanged: changed > 20000 }).toEqual({ outside: 0, lobbyChanged: true })
+  })
+
+  it('carries an entrance that is the same both ways round, because half the city draws its model mirrored', async () => {
+    const { data, info } = await sharp(new URL('../finishes/door.png', import.meta.url).pathname).removeAlpha().raw().toBuffer({ resolveWithObject: true })
+    let worst = 0
+    for (let y = 0; y < info.height; y++) {
+      for (let x = 0; x < info.width / 2; x++) {
+        for (let c = 0; c < info.channels; c++) {
+          const left = data[(y * info.width + x) * info.channels + c]!
+          const right = data[(y * info.width + info.width - 1 - x) * info.channels + c]!
+          worst = Math.max(worst, Math.abs(left - right))
+        }
+      }
+    }
+    expect(worst).toBe(0)
+  })
+
   it('holds every model the manifest names, at the triangle count it claims', async () => {
     const doc = await io.readBinary(mesh)
     const built = new Map(
@@ -112,7 +170,7 @@ describe('the shipped pack', () => {
   })
 
   it('stands every model exactly as tall as its plot, inside its footprint', async () => {
-    await verifyPack(mesh, new Map(catalogue.models.map((model) => [model.id, model])))
+    await verifyPack(mesh, new Map(catalogue.models.map((model) => [model.id, model])), catalogue.atlas.finishes)
   })
 
   it('has a building for every shape the city can cut', () => {
@@ -150,7 +208,7 @@ describe('the shipped pack', () => {
 
   it('carries wall pictures that tile, because a seam repeats all the way up a building', async () => {
     const worst: Record<string, number> = {}
-    for (const name of ['facade-a', 'facade-b', 'facade-c', 'facade-d', 'street-surround']) {
+    for (const name of [...new Set(looks.map((look) => look.facade)), 'street-surround']) {
       const { data, info } = await sharp(new URL(`../finishes/${name}.png`, import.meta.url).pathname)
         .removeAlpha()
         .raw()
@@ -177,3 +235,9 @@ describe('the shipped pack', () => {
     for (const model of catalogue.models) expect(storeyHeight(model.storeys)).toBe(4 + (model.storeys - 1) * 3.2)
   })
 })
+
+/** A pixel inside a rectangle given in shares, rounded the way the painter rounds it. */
+function inside(x: number, y: number, box: { x0: number; y0: number; x1: number; y1: number }, size: number): boolean {
+  const at = (share: number) => Math.round(share * size)
+  return x >= at(box.x0) && x < at(box.x1) && y >= at(box.y0) && y < at(box.y1)
+}

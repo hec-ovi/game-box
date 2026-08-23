@@ -1,9 +1,19 @@
 {
   "id": "lodge-d",
   "family": "d",
+  "facade": "facade-d",
   "note": "a small quiet front: a narrow door, chamfered edges and a teal parapet well back from the street",
-  "kinds": ["house", "chapel", "cafe", "clinic", "warehouse"],
-  "door": { "wide": 1.4, "tall": 2.4 },
+  "kinds": [
+    "house",
+    "chapel",
+    "cafe",
+    "clinic",
+    "warehouse"
+  ],
+  "door": {
+    "wide": 1.4,
+    "tall": 2.4
+  },
   "crown": "teal",
   "chamfer": 0.25,
   "setback": 1.0

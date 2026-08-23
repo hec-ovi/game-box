@@ -2,7 +2,6 @@ import { MeshoptDecoder } from 'meshoptimizer'
 import { heightOf, type Bucket } from '../src/bucket.ts'
 import { PROUD } from '../src/fit.ts'
 import { io } from './intake.ts'
-import { LAYER_OF } from './layers.ts'
 import { NEONS } from './look.ts'
 
 /** How far a model may sit off its own measurements once the pack has been quantized. */
@@ -15,11 +14,14 @@ const DRIFT = 0.001
  * ships, after welding, quantization and compression. It is the check that
  * keeps "a building is exactly as tall as its plot" a promise about the file in
  * the repository rather than about an intermediate nobody has.
+ *
+ * Only the walls are held to the plot's exact height, so it needs the pack's own
+ * list of finishes to know which layers are lit trim.
  */
-export async function verifyPack(mesh: Uint8Array, shapes: ReadonlyMap<string, Bucket>): Promise<void> {
+export async function verifyPack(mesh: Uint8Array, shapes: ReadonlyMap<string, Bucket>, finishes: readonly string[]): Promise<void> {
   await MeshoptDecoder.ready
   const doc = await io.readBinary(mesh)
-  const lit = new Set(NEONS.map((neon) => LAYER_OF.get(`neon:${neon}`)!))
+  const lit = new Set(NEONS.map((neon) => finishes.indexOf(`neon:${neon}`)))
   const wrong: string[] = []
 
   for (const node of doc.getRoot().listNodes()) {

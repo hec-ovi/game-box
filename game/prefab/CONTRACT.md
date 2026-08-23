@@ -1,6 +1,6 @@
 # @gb/prefab contract
 
-contractVersion: 0.4.0
+contractVersion: 0.5.0
 
 ## Purpose
 
@@ -19,10 +19,10 @@ Dresses a plot with the whole building its world file names, out of one committe
 | `windowsOn(finish)`, `glassShareOf(kind)` | a finish name, a `WindowKind` | |
 | `Catalogue.parse(value)` | [pack/buildings.json](pack/buildings.json) | any untrusted JSON |
 | `Catalogue.read(manifest)` | the same file's own bytes | any untrusted bytes. The hash it takes of them is the pack's identity |
-| `catalogue.design(plot, size)` | as `building` | |
-| `designFor(catalogue, plot, size)` | a `Catalogue` and as `building` | |
+| `catalogue.design(plot, size)` | as `building`, though only `width` and `depth` are read | |
+| `designFor(catalogue, plot, size)` | a `Catalogue`, and as `design` | |
 | `catalogue.covers(demand)` | any list of `Bucket`s | |
-| `bucketOf(plot, size)` | as `building` | |
+| `bucketOf(plot, size)` | as `design` | |
 | `orient(geometry, turns, mirror, rooms?)` | a pack geometry, 0 to 3 quarter turns, whole pictures to slide the rooms along | |
 
 ## Outputs
@@ -46,6 +46,7 @@ Dresses a plot with the whole building its world file names, out of one committe
 | `orient(geometry, turns, mirror, rooms?)` | `THREE.BufferGeometry` | the model turned onto its plot, wound to face out, its uv slid a whole number of pictures along |
 | `turnsFor(facing)` | 0 to 3 | quarter turns that put a south door on that wall |
 | `prefabMaterial(atlas, night)` | `THREE.Material` | the material, for anyone building a library by hand |
+| `WALL` | a string | the prefix a wall layer's name starts with; the rest of the name is the committed picture it holds |
 | `SCREEN`, `SCREEN_PICTURES`, `SCREEN_SIZE`, `DISPLAY_FINISH` | how a screen is built, the pictures it draws from, their size, and the finish a panel wears | |
 | `DOOR_FINISH`, `OPEN_DOOR_FINISH` | two finish names | the entrance of a building nobody can walk into, and of one you can |
 | `PACK_MANIFEST` | a URL | the committed manifest, for a headless caller that needs the pack's identity without a renderer |
@@ -73,7 +74,7 @@ A plot the catalogue has no shape for is not an error: `building` hands it to th
 Six committed files, and they are the whole art supply.
 
 - `pack/buildings.glb`, 3.1 MB: 512 models, one mesh each, all on one material, welded, quantized and meshopt-packed.
-- `pack/buildings-colour.png` and `pack/buildings-emissive.png`, 498 kB and 11 kB: sixteen 256 px layers stacked into a strip each, the surface a face is painted and the part of it that glows.
+- `pack/buildings-colour.png` and `pack/buildings-emissive.png`, 816 kB and 17 kB: nineteen 256 px layers stacked into a strip each, the surface a face is painted and the part of it that glows.
 - `pack/buildings-rooms.png`, 896 kB: fourteen 256 px rooms in the same shape, the pictures every window in the city looks into.
 - `pack/buildings-screens.png`, 574 kB: six 256 px pictures in the same shape, what the lit panels on the walls carry.
 - `pack/buildings.json`, 159 kB: the manifest. Pack id, version, the producer commit, the sha256 of all five binaries, what each atlas layer paints, and one entry per model: its shape, the trades it suits, its triangle count and where its door is. Its own sha256, taken over these bytes, is the pack's identity, and it covers the other five through the hashes it lists.
@@ -120,7 +121,26 @@ Two tiers, and the split is the whole reason a building is a couple of hundred t
 
 **The street level is specific.** One wide pane in a heavy surround with a shop behind it, an entrance, a fascia band over it and tubes across the frontage. It is the only part anybody stands in front of, and on the one building in eight that opens it is where the way in is.
 
-The wall pictures are **committed art**, in [finishes/](finishes/), read by `tools/finishes.ts`: four families, one picture each, and a look belongs to one of them, plus the one surround every family wears at street level. What a picture carries is the surface around the window, which is the part a photograph is better at than arithmetic: panel courses, casting marks, staining, wear. A wall picture covers four bays by two floors at 256 pixels, which is about 21 pixels a metre, and a mullion is three centimetres, so a drawn one would be a fifth of a texel; the opening, the bars and the room are all cut out of it in the shader instead.
+The wall pictures are **committed art**, in [finishes/](finishes/), read by `tools/finishes.ts`, plus the one surround every look wears at street level. What a picture carries is the surface around the window, which is the part a photograph is better at than arithmetic: panel courses, casting marks, staining, wear. A wall picture covers four bays by two floors at 256 pixels, which is about 21 pixels a metre, and a mullion is three centimetres, so a drawn one would be a fifth of a texel; the opening, the bars and the room are all cut out of it in the shader instead.
+
+**A look names the picture it wears, and a layer is a picture.** `looks/<id>.json` carries a `facade` field naming a file in `finishes/`; the pack stacks one layer per distinct picture, called `wall:<picture>`, and `windowsOn` reads that prefix. Two looks naming one picture land on one layer and pay for it once, which is what `tower-a` does: glazing and plain base cover all but 1.8% of its street face, so a picture of its own would be 0.70 MB nobody sees.
+
+Which picture suits which look was decided with eyes on the running city, at night on a wet street and again in daylight, not from the file names:
+
+| look | picture | why |
+|---|---|---|
+| `corpo-a` | `facade-a-3` | the flattest, cleanest blue-grey panel. A corporate slab is machine-made and has no wear story, and it carries a lit board that wants a quiet wall behind it |
+| `tower-a` | `facade-a-3` | shared: glazing and base cover all but 1.8% of its street face |
+| `bar-b` | `facade-b` | the most saturated oxide. The bar is the amber look, and warm steel under an amber tube is one temperature all the way up |
+| `shop-b` | `facade-b-3` | the calmest steel, on the one of the two that shows the most wall, so a magenta shopfront has something quiet to sit on |
+| `block-c` | `facade-c-2` | the even mid-dark concrete. A block of flats is 52% wall on its street face, the most of any look, and reads as one quiet mass |
+| `yard-c` | `facade-c` | the lightest, with the heaviest board marks. The working shed is the plainest thing on the street and its amber parapet needs something to sit against |
+| `lodge-d` | `facade-d` | the tighter, greener glazed tile, on a small quiet front |
+| `stack-d` | `facade-d-2` | the larger, bluer tile, which pairs with its cyan seams |
+
+The glazed tile is the only regular grid in the set, and it went to the two looks that carry no lit screen, because a tile grid and a lit board are two grids fighting. The four looks that do carry one are all on the composite or the steel.
+
+`facade-a`, `facade-a-2`, `facade-b-2`, `facade-c-3` and `facade-c-4` are committed and not in the pack: each sits within a point or two of a picture already in it, and a layer is 0.70 MB.
 
 Each one tiles. A wall runs several pictures across and several up, so a seam would repeat over the whole building; the pack test measures the join against what one step inside the picture costs and refuses anything worse.
 
@@ -143,13 +163,13 @@ The room pictures are generated, not drawn: a prompt each in [rooms/prompts/](ro
 
 ## The entrance
 
-A door is the surface a player stands closest to, and since only about one building in eight opens, most of them are a door nobody will ever use and still the nearest thing on the street. It is drawn in `tools/doors.ts` rather than photographed: rectangles in shares of the leaf, which the producer stretches over whatever door the look asked for, so one plate fits every door in the city at the size it really is.
+A door is the surface a player stands closest to, and since only about one building in eight opens, most of them are a door nobody will ever use and still the nearest thing on the street. It is a photograph, `finishes/door.png`, ours from our own prompt: at 256 pixels stretched over a 2.2 m door that is about a hundred pixels to the metre, five times the wall's, and the frame, the push bar, the kick plate and the reveals are detail arithmetic cannot invent.
 
-- **A pair of glazed leaves in a frame**, with a lit fanlight over them, a meeting stile down the middle, a pull either side of it, a lock rail and a kick plate under the glass, a lit threshold at the pavement and an entry panel with three lit marks on the frame.
-- **It is symmetric on purpose.** Half the plots in a city draw their model mirrored, and a single leaf with its handle on one side would swap hands with the building. A pair reads the same both ways round. It also covers the range the looks ask for, 1.4 m to 2.6 m wide, where one leaf at the top of that range is a cupboard door.
-- **The lobby is what you see.** The glazing ramps from dark at the head to lit at the sill, so the light reads as coming from inside rather than painted on. Everything else on the leaf is dark against it: a pull is a bar in silhouette, which is what a pull is at night.
-- **The reveals wear the frame.** The producer wraps the leftmost twenty-fifth of the picture round the four edges of the plate, so the frame is drawn wider than that and an edge comes out frame-coloured rather than carrying a slice of glass.
-- **The door you can use has its lights on.** The pack carries the entrance twice, on two layers: the same frame, the same leaves, the same pulls, with the lobby a lit warm surface rather than dark glass, the fanlight and the threshold burning about three times as hard, and the reader's three marks green instead of cool white. Most of the city does not open, so what has to carry from across the street is light on the pavement, and it has to carry by day as well, when nothing in the city glows, which is why the lit lobby is a lighter surface and not only a stronger glow.
+- **A pair of shut glazed leaves in a dark metal frame**, with a fanlight over them, a meeting stile down the middle, a pull either side of it, a push bar across both leaves, a kick plate at the foot, a threshold plate at the pavement and an entry panel with three lit marks on the wall beside the frame.
+- **It reads shut.** Most of the city does not open, so a door that looked like a way in would undo the one feature that says which buildings do.
+- **It is symmetric on purpose,** and it is stored that way: the committed picture is its own mirror, to the byte. Half the plots in a city draw their model mirrored, and hardware that swapped hands with the building would read as two different doors. A pair also covers the range the looks ask for, 1.4 m to 2.6 m wide, where one leaf at the top of that range is a cupboard door.
+- **The reveals wear the wall.** The producer wraps the leftmost twenty-fifth of the picture round the four edges of the plate, and the picture carries a plain dark wall margin wider than that, so an edge comes out wall-coloured rather than carrying a slice of glass.
+- **The door you can use has its lights on, and it is the same photograph.** The pack carries the entrance twice, on two layers. `tools/doors.ts` lifts the glass towards a warm lobby, dark at the head and lit at the sill so the light reads as coming from inside, burns the fanlight and the threshold about three times as hard, and turns the reader's marks green. Nothing outside the glass, the threshold and the reader is touched, so the frame, the bar, the pulls and the kick plate are the same pixels in both, and the pack test holds them to that. It has to carry by day as well, when nothing in the city glows, which is why the lit lobby is a lighter surface and not only a stronger glow.
 - **Which one a building wears comes from `@gb/world` and nowhere else.** `plot.interiorId` is exactly the set of doors that open, checked in both directions by that box, so there is no second field to disagree with. The dressing moves the plot's door faces onto the lit layer on the copy of the geometry `orient` has already made for it: no geometry, no draw, no second material, and a plot without an interior is untouched. Nothing is ever baked onto the lit layer, so growing the pack cannot put a lobby light on a building that has no way in.
 
 ## The screens on the walls
@@ -167,6 +187,7 @@ A screen is a flat panel the producer stands on the wall, twelve triangles, on t
 - **Most of the way to square.** A square picture on a panel that is not gets stretched the rest of the way rather than letterboxed: 60% of the crop a strict fit would take, so a board shows most of its composition at a stretch nobody reads as one.
 - **Five are committed pictures, one is drawn.** The pictures live in [screens/](screens/), ours from our own prompts, so they travel inside a world file; the sixth is a composition in `tools/screens.ts`, a ground with the bright mass the eye lands on and one hard graphic against it. Both go through the same exposure, normalised to what a picture's brightest half a percent reaches, so a row of adverts where one is twice as bright as the next cannot happen. The drawn one also gets a broad key light and its ground pushed well under the highlight, which a photograph already has. Nothing on them spells anything: text out of an image model garbles, and the words in this city are `@gb/kitbash`'s, which draws every letter over every door from a stroke font.
 - **No hologram.** Additive, semi-transparent, nothing behind it: that is a second material and a sorted transparent pass, which is a second draw for every prefab building in the city, and one material for the whole town is the design this box is built on. The bright board plus the app's bloom carries the reference, which is itself a lit panel with a halo the renderer made.
+- **These screens and `@gb/furnish`'s televisions are deliberately separate.** One is a panel on an exterior wall on the city's single building material, the other is a prop inside a room on the furniture's; they share a look, not a code path, and merging them would put an interior box's pictures on the outside of every building in the town. If they should ever change picture together, the answer is one clock both of them read, published by whoever owns the clock, not one box reaching into the other.
 
 ## How a catalogue is made
 
@@ -204,6 +225,8 @@ Run it with `node tools/build-buildings.ts`. It needs `glb-buildings` beside the
 - Turning a model onto its plot is a swap and a sign flip, never a sine, so the same model lands on the same coordinates on every machine. Mirroring happens in the model's own frame before the turn, so the door stays put and only the facade swaps hands, and every triangle is wound back so it still faces out.
 - One material for every prefab building in the city. Which picture a face wears rides on its vertices as a layer index into an array texture, so `@gb/scene` puts the whole town into one buffer and draws it once. An array rather than an atlas because the producer's wall pictures tile across a wall, and only a layer of its own lets the sampler wrap one without bleeding into the picture next door.
 - Which layers have windows in them, and which one is a screen, come from the manifest's own list of finishes, so the runtime reads what the pack says rather than assuming it. A layer that is neither costs two comparisons and no texture fetch, and no layer is ever both.
+- **A wall layer is a committed picture, and a look names one.** Two looks naming one picture share a layer, and a picture nothing names is not in the pack, so the strips never carry a wall nobody wears.
+- **The entrance is one picture in two states.** Both layers come from `finishes/door.png`; only the glass, the threshold and the reader are relit, so the frame, the push bar, the pulls and the kick plate are the same pixels in the door that opens and the door that does not. The picture is its own mirror to the byte, because half the plots draw their model mirrored.
 - Everything the room raymarch and the screen use is an offset, a direction or a size in the surface's own frame, so `@gb/scene` batching a building into a shared buffer moves the vertices and leaves the room and the picture where they were.
 - Nothing glows in daylight. The rooms, the screens and the neon are the night level times what is behind the glass, which is the same `CityNight` the kit's windows and lamps read, so one `setTime` moves the whole street.
 - A panel's own uv spans exactly one wall picture, which is what makes the whole number the runtime reads back the plot's shift and nothing else. The pack test holds every vertex on the screen layer to that range, because a uv outside it would tear a second screen across one board.
@@ -246,7 +269,7 @@ Measured back to back on the same fallback, standing across the street from a th
 
 **A screen costs 12 triangles where it hangs and 0.35 MB where its picture is stored.** The finish itself is one more layer in each of the two facade strips, 0.70 MB paid once for the whole city; each picture is 0.35 MB with its mips. Six of them plus the housing is 2.8 MB, and the panels are 6.8 triangles on an average building, which is what takes it from 217 to 223.
 
-That is where the budget now stands. A layer is 0.35 MB with its mips; the wall finishes are 32 of them (11.2 MB) and the pictures are 18 (6.3 MB), so the buildings still pay more for their surfaces than for what is behind and on them. Six screens is where it stopped: twelve would draw level with the walls, and a seventh screen buys less than a seventh room did, because a screen is cropped differently by every panel it lands on and a room is not.
+A layer is 0.35 MB with its mips, and the buildings pay more for their surfaces than for what is behind and on them. Six screens is where it stopped: twelve would draw level with the walls, and a seventh screen buys less than a seventh room did, because a screen is cropped differently by every panel it lands on and a room is not.
 
 ### What the door you can walk through costs
 
@@ -254,7 +277,24 @@ That is where the budget now stands. A layer is 0.35 MB with its mips; the wall 
 
 The pack's own bytes went from 3.83 MB to 4.34 MB in the same change, and the extra half megabyte is storing every picture losslessly rather than at 256 colours, not the door.
 
-Two more rooms landed beside it, so the pack is now 52 layers and 18.2 MB resident, and the scene 70.5 MB over 33 textures. On disk it is 5.07 MB, of which the mesh is 3.09 MB and the rest is the four strips: the photographic rooms and screens are most of the growth, and neither costs the GPU anything a drawn one did not.
+Two more rooms landed beside it, so the pack was 52 layers and 18.2 MB resident, and the scene 70.5 MB over 33 textures.
+
+### What a wall per look costs
+
+**+2.1 MB resident and +0.32 MB of download, and nothing else.** The wall went from four pictures to seven, which is three more layers in each of the two facade strips:
+
+| | before | after |
+|---|---|---|
+| finishes in the pack | 16 | 19 |
+| layers over all four strips | 52 | 58 |
+| the pack resident, at 0.35 MB a layer | 18.2 MB | 20.3 MB |
+| the scene's resident texture | 70.5 MB | 72.6 MB |
+| the pack on disk | 5.10 MB | 5.42 MB |
+| triangles, draw calls, materials | unchanged | unchanged |
+
+Eight pictures, one per look, would have been four more layers and 2.8 MB; seven is what the looks actually name, because `tower-a` is glazing over a plain base and shares `corpo-a`'s. Of the 0.32 MB of download, 0.31 MB is the colour strip and most of that is the photographed door, which compresses less than the drawn one it replaced; the door's own committed picture is 0.28 MB smaller than the one it replaced, so `finishes/` came down.
+
+Against a 200 to 300 MB ceiling the scene is at 72.6 MB, and the buildings are 20.3 MB of it. The next wall layer costs 0.70 MB, so the ceiling is not what stops this: a picture that sits within a point or two of one already in the pack is what stops it.
 
 ## Standing it up
 
@@ -276,24 +316,27 @@ the city has recorded:
 const catalogue = prefab.catalogue // headless: await Catalogue.read(await readFile(PACK_MANIFEST))
 world.recordCatalogues([catalogue.identity])
 for (const plot of world.plots()) {
-  const size = { width: plot.rect.w * world.cellSize, depth: plot.rect.h * world.cellSize }
+  const size = { width: plot.rect.w * world.cellSize, depth: plot.rect.h * world.cellSize, height: heightOf(plot.storeys) }
   const design = catalogue.design(plot, size)
   if (design) world.recordDesign(plot.id, { pack: catalogue.pack, ...design })
 }
 ```
 
 The size is the one `@gb/scene` hands `building`, and it has to be, or the pin
-names a model of a different shape than the plot it stands on. `@gb/bundle`
-takes the same `catalogue.identity` as its `requires`.
+names a model of a different shape than the plot it stands on. `design` reads
+`width` and `depth` and never `height`, because the storey count already comes
+off the plot, so a headless caller with only the footprint gets the same answer;
+the recipe carries `height` anyway so it is the same object `building` takes.
+`@gb/bundle` takes the same `catalogue.identity` as its `requires`.
 
 ## How to modify this blackbox safely
 
-Adding a look is a new file in `looks/` and a rebuild; it grows every shape at once and changes what some plots already draw, so bump the pack version with it. Changing what a look wears is that one file, and what the wall around a window is made of is a picture in `finishes/`, read by `tools/finishes.ts` alone. Changing which shapes the catalogue covers is `src/bucket.ts` and a rebuild, and the coverage test will tell you what the forge is actually cutting. How far trim may stand off a plot is `src/fit.ts` alone, how hard a lit face burns is `GLOW` in `src/pack.ts`, and which producer material lands on which layer is `tools/layers.ts`.
+Adding a look is a new file in `looks/` and a rebuild; it grows every shape at once and changes what some plots already draw, so bump the pack version with it. Changing what a look wears is that one file: its `facade` field names a picture in `finishes/`, and naming one another look already wears costs nothing while naming a new one adds a layer. A picture nothing names is not in the pack. Changing which shapes the catalogue covers is `src/bucket.ts` and a rebuild, and the coverage test will tell you what the forge is actually cutting. How far trim may stand off a plot is `src/fit.ts` alone, how hard a lit face burns is `GLOW` in `src/pack.ts`, and which producer material lands on which layer is `tools/layers.ts`.
 
 How a window is laid out and how deep the room behind it runs are the two `WindowKind`s at the top of `src/interior.ts`, and `tools/finishes.ts` reads the same two into the grid the producer is told, so a change to a grid moves the picture with it and a rebuild is needed. How bright a room burns, how dark its side walls are and what colours it is lit in are the constants beside them, and none of those needs a rebuild. Adding or replacing a room is a new prompt in `rooms/prompts/`, one image through the Grok route in `tools/textures/README.md`, an entry in `ROOM_PICTURES` in `src/rooms.ts` inside the run its bank covers, `node tools/draw-rooms.ts <folder of raw images>` to crop and size whatever raw images are in that folder, and a rebuild. A bank is a run of the strip, so a room added to the upper bank moves the street bank's `first` with it.
 
-What an entrance looks like is `DOOR`, `DOOR_TONES` and `ENTRANCES` in `tools/doors.ts`, and a rebuild; `ENTRANCES` is what tells the two doors apart, and adding a third would be a name in `LAYERS` and a picture beside them. Both the doors and the screen housing are painted rectangle by rectangle with `Picture` in `tools/paint.ts`, which also holds the one conversion between what a glow map stores and what the runtime multiplies it back by. A screen is three places and they do not overlap: what a panel is made of and how the lamp grid behaves are `SCREEN` and the constants beside it in `src/display.ts`, which needs no rebuild; what the pictures show is the compositions in `tools/screens.ts`, which does; and where a screen goes is `BOARD`, `BANNER` and `displays()` in `tools/stack.ts` plus the `displays` list in a look, which does. A name in `SCREEN_PICTURES` is drawn if `POSTERS` in `tools/screens.ts` has a composition for it and read from `screens/<name>.png` if it does not, so replacing a drawn one with a picture is deleting its composition and dropping the file in.
+What an entrance looks like is `finishes/door.png` and, over it, `DOOR` and `ENTRANCES` in `tools/doors.ts`, and a rebuild. `DOOR` is where the glass, the threshold and the reader sit in that picture, so replacing the picture means re-reading those rectangles off its own row and column profiles; `ENTRANCES` is the only thing that tells the two doors apart, and adding a third would be a name in `Layers.of` and an entry beside them. A replacement picture has to be its own mirror and has to read shut, and the pack test holds it to the first. The screen housing is painted rectangle by rectangle with `Picture` in `tools/paint.ts`, which also relights a photograph through `lift` and holds the one conversion between what a glow map stores and what the runtime multiplies it back by. A screen is three places and they do not overlap: what a panel is made of and how the lamp grid behaves are `SCREEN` and the constants beside it in `src/display.ts`, which needs no rebuild; what the pictures show is the compositions in `tools/screens.ts`, which does; and where a screen goes is `BOARD`, `BANNER` and `displays()` in `tools/stack.ts` plus the `displays` list in a look, which does. A name in `SCREEN_PICTURES` is drawn if `POSTERS` in `tools/screens.ts` has a composition for it and read from `screens/<name>.png` if it does not, so replacing a drawn one with a picture is deleting its composition and dropping the file in.
 
-A new finish goes at the **end** of `LAYERS` in `tools/layers.ts`. The layer index rides on the vertices of every model in the pack, so a finish inserted anywhere else renumbers the whole mesh; appended, the mesh comes out of a rebuild byte for byte identical and only the two strips and the manifest change. How every picture is written is `PNG` in `tools/paint.ts`, and it is lossless on purpose: turn palette quantisation back on and one new finish moves the pixels of every other one.
+A new finish goes at the **end** of `Layers.of` in `tools/layers.ts`. The layer index rides on the vertices of every model in the pack, so a finish inserted anywhere else renumbers the whole mesh; appended, the mesh comes out of a rebuild byte for byte identical and only the two strips and the manifest change. The wall layers are first and come from the looks, so giving a look a picture no other look wears renumbers everything after it, which is a rebuild and a version bump rather than a hazard. How every picture is written is `PNG` in `tools/paint.ts`, and it is lossless on purpose: turn palette quantisation back on and one new finish moves the pixels of every other one.
 
 The pack's six files are committed art: never hand-edit them, because the manifest's hash is what the loader checks. Rebuild with `node tools/build-buildings.ts`, which is byte for byte reproducible on one machine, and bump `VERSION` in it whenever the bytes change. Run `pnpm --filter @gb/prefab test`.

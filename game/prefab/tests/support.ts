@@ -12,7 +12,7 @@ import { LAYER_ATTRIBUTE } from '../src/pack.ts'
  * plate the test buildings carry is layer 1, and the entrance you can walk
  * through is last, exactly as the shipped pack stacks them.
  */
-export const FINISHES: readonly string[] = ['a:facade', DOOR_FINISH, 'glass', OPEN_DOOR_FINISH]
+export const FINISHES: readonly string[] = ['wall:facade-a', DOOR_FINISH, 'glass', OPEN_DOOR_FINISH]
 
 /** A catalogue with two looks on one shape, so a pick has something to choose between. */
 export function catalogueOf(over: Partial<CatalogueDoc> = {}): Catalogue {

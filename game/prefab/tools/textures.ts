@@ -1,28 +1,28 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { GRID, facadePicture, streetPicture } from './finishes.ts'
-import { FAMILIES, type Family } from './look.ts'
+import type { Look } from './look.ts'
 import type { Producer } from './producer.ts'
 
 /**
- * One wall picture per family, read out of `finishes/` and handed to the
- * producer the way its skill says to hand one over: through `add-texture`,
- * which names the file, pairs the glow map and records the grid the picture
- * holds. Doing that by hand is what goes wrong.
+ * One wall picture per look, read out of `finishes/` and handed to the producer
+ * the way its skill says to hand one over: through `add-texture`, which names
+ * the file, pairs the glow map and records the grid the picture holds. Doing
+ * that by hand is what goes wrong.
  *
- * What comes back is a texture pack folder per family. The build copies the
- * right one into each model's home before it builds, so which family a look
- * belongs to is the only thing that decides what its walls wear.
+ * What comes back is a texture pack folder per look. The build copies the right
+ * one into each model's home before it builds, so the look is the only thing
+ * that decides what its walls wear.
  */
-export async function drawTextures(producer: Producer, scratch: string): Promise<Map<Family, string>> {
-  const packs = new Map<Family, string>()
-  for (const family of FAMILIES) {
-    const files = join(scratch, `tile-${family}`)
+export async function drawTextures(producer: Producer, scratch: string, looks: readonly Look[]): Promise<Map<string, string>> {
+  const packs = new Map<string, string>()
+  for (const look of looks) {
+    const files = join(scratch, `tile-${look.id}`)
     await mkdir(files, { recursive: true })
-    const home = join(scratch, `textures-${family}`)
+    const home = join(scratch, `textures-${look.id}`)
 
     for (const [finish, tile, grid] of [
-      ['facade', await facadePicture(family), GRID.facade],
+      ['facade', await facadePicture(look), GRID.facade],
       ['glass-band', await streetPicture(), GRID.shopfront],
     ] as const) {
       await writeFile(join(files, `${finish}.png`), tile.colour)
@@ -41,7 +41,7 @@ export async function drawTextures(producer: Producer, scratch: string): Promise
         'cyber',
       ])
     }
-    packs.set(family, join(home, 'textures'))
+    packs.set(look.id, join(home, 'textures'))
   }
   return packs
 }

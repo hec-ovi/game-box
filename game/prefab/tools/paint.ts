@@ -33,6 +33,17 @@ export interface Tile {
   readonly emissive: Buffer
 }
 
+/** How far a rectangle of a photograph is taken towards a colour, and what it burns after dark. */
+export interface Lift {
+  /** The colour the surface is raised towards. */
+  readonly towards: Rgb
+  /** How far, at the top of the rectangle and at the bottom. */
+  readonly by: number
+  readonly byTo?: number
+  readonly glow?: number
+  readonly glowTo?: number
+}
+
 /** A rectangle of a picture, in shares of it. y runs from the top, which is the top of the wall. */
 export interface Box {
   readonly x0: number
@@ -90,15 +101,25 @@ export class Picture {
   readonly #glow: Uint8ClampedArray
   readonly #rng: Rng
 
-  constructor(size: number, seed: string) {
+  constructor(size: number, seed: string, surface?: Uint8ClampedArray) {
     this.size = size
-    this.#colour = new Uint8ClampedArray(size * size * 4)
+    this.#colour = surface ?? new Uint8ClampedArray(size * size * 4)
     this.#glow = new Uint8ClampedArray(size * size * 4)
     for (let at = 3; at < this.#colour.length; at += 4) {
       this.#colour[at] = 255
       this.#glow[at] = 255
     }
     this.#rng = new Rng(seed)
+  }
+
+  /**
+   * A picture that starts as a committed photograph rather than as an empty
+   * surface, so what is painted on afterwards lands on top of it. Nothing burns
+   * until something says it does: the glow map still starts black.
+   */
+  static async of(image: Uint8Array | Buffer, size: number, seed: string): Promise<Picture> {
+    const pixels = await sharp(Buffer.from(image)).resize(size, size, { fit: 'fill', kernel: 'lanczos3' }).ensureAlpha().raw().toBuffer()
+    return new Picture(size, seed, new Uint8ClampedArray(pixels))
   }
 
   paint(box: Box, paint: Paint): this {
@@ -122,6 +143,37 @@ export class Picture {
         const grain = paint.grain ? this.#rng.range(-paint.grain, paint.grain) : 0
         this.#set(this.#colour, x, y, [colour[0] + grain, colour[1] + grain, colour[2] + grain])
         this.#set(this.#glow, x, y, [(tint[0] / peak) * byte, (tint[1] / peak) * byte, (tint[2] / peak) * byte])
+      }
+    }
+    return this
+  }
+
+  /**
+   * Raises what is already painted here towards a colour, keeping the surface's
+   * own texture underneath. It is how one photographed door becomes two: the
+   * frame, the pulls and the kick plate stay the picture, and the glass behind
+   * them goes from a dark pane to a lit lobby.
+   */
+  lift(box: Box, lift: Lift): this {
+    const left = Math.round(box.x0 * this.size)
+    const right = Math.round(box.x1 * this.size)
+    const top = Math.round(box.y0 * this.size)
+    const bottom = Math.round(box.y1 * this.size)
+    const span = Math.max(1, bottom - top - 1)
+    const peak = Math.max(lift.towards[0], lift.towards[1], lift.towards[2]) || 1
+
+    for (let y = top; y < bottom; y++) {
+      const down = (y - top) / span
+      const by = lift.by + ((lift.byTo ?? lift.by) - lift.by) * down
+      const glow = (lift.glow ?? 0) + ((lift.glowTo ?? lift.glow ?? 0) - (lift.glow ?? 0)) * down
+      const byte = glowByte(glow)
+      for (let x = left; x < right; x++) {
+        const at = (y * this.size + x) * 4
+        for (let channel = 0; channel < 3; channel++) {
+          const was = this.#colour[at + channel]! / 255
+          this.#colour[at + channel] = 255 * (was + (1 - was) * by * (lift.towards[channel]! / 255))
+        }
+        this.#set(this.#glow, x, y, [(lift.towards[0] / peak) * byte, (lift.towards[1] / peak) * byte, (lift.towards[2] / peak) * byte])
       }
     }
     return this

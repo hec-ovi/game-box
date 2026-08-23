@@ -1,6 +1,7 @@
 {
   "id": "corpo-a",
   "family": "a",
+  "facade": "facade-a-3",
   "note": "a dark corporate slab: a deep entrance bay, a lit board over the parapet, a banner beside the door, two cyan seams up the front and a lit parapet stepped back off the street",
   "kinds": [
     "office",

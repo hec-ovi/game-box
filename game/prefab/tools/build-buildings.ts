@@ -19,8 +19,8 @@ import { buildAtlas, swatchVerbs } from './atlas.ts'
 import { intake, type Baked } from './intake.ts'
 import { ROOM_SIZE } from '../src/rooms.ts'
 import { SCREEN_SIZE } from '../src/screens.ts'
-import { COLOUR_SIZE, EMISSIVE_SIZE, LAYERS } from './layers.ts'
-import { FAMILIES, loadLooks, type Family, type Look } from './look.ts'
+import { COLOUR_SIZE, EMISSIVE_SIZE, Layers } from './layers.ts'
+import { loadLooks, type Look } from './look.ts'
 import { Producer } from './producer.ts'
 import { buildRooms } from './rooms.ts'
 import { buildScreens } from './screens.ts'
@@ -30,7 +30,7 @@ import { verifyPack } from './verify.ts'
 import { writePack } from './write.ts'
 
 const PACK = 'gb-buildings'
-const VERSION = '1.4.0'
+const VERSION = '1.5.0'
 
 const args = process.argv.slice(2)
 const jobs = Math.max(1, Number(flag('--jobs') ?? 8))
@@ -42,17 +42,18 @@ await mkdir(homes, { recursive: true })
 
 try {
   const looks = loadLooks(looksFolder)
+  const layers = Layers.of(looks)
   const producer = Producer.at(homes)
   const buckets = everyBucket()
   console.log(`${looks.length} looks x ${buckets.length} shapes = ${looks.length * buckets.length} models, ${jobs} at a time`)
 
-  const textures = await drawTextures(producer, homes)
-  const swatches = new Map<Family, string>()
-  for (const family of FAMILIES) {
-    const built = await producer.build(`swatch-${family}`, swatchVerbs(`gb-family-${family}`), `gb-family-${family}`, textures.get(family))
-    swatches.set(family, built.file)
+  const textures = await drawTextures(producer, homes, looks)
+  const swatches = new Map<string, string>()
+  for (const look of looks) {
+    const built = await producer.build(`swatch-${look.id}`, swatchVerbs(`gb-family-${look.family}`), `gb-family-${look.family}`, textures.get(look.id))
+    swatches.set(look.id, built.file)
   }
-  const atlas = await buildAtlas(swatches)
+  const atlas = await buildAtlas(looks, swatches, layers)
   const rooms = await buildRooms()
   const screens = await buildScreens()
   console.log(
@@ -62,7 +63,7 @@ try {
 
   const started = Date.now()
   const jobsList = looks.flatMap((look) => buckets.map((bucket) => ({ look, bucket })))
-  const baked = await pool(jobsList, jobs, async ({ look, bucket }) => bake(producer, look, bucket, textures.get(look.family)!))
+  const baked = await pool(jobsList, jobs, async ({ look, bucket }) => bake(producer, look, bucket, textures.get(look.id)!, layers))
   const seconds = (Date.now() - started) / 1000
 
   const models: ModelSpec[] = baked.map(({ look, bucket, model }) => ({
@@ -77,18 +78,18 @@ try {
   }))
 
   const mesh = await writePack(baked.map((one) => one.model))
-  await verifyPack(mesh, new Map(baked.map(({ bucket, model }) => [model.id, bucket])))
+  await verifyPack(mesh, new Map(baked.map(({ bucket, model }) => [model.id, bucket])), layers.names)
   const manifest: CatalogueDoc = {
     pack: PACK,
     version: VERSION,
     sha256: createHash('sha256').update(mesh).digest('hex'),
     producer: await producer.version(),
     atlas: {
-      colour: { size: COLOUR_SIZE, layers: LAYERS.length, sha256: createHash('sha256').update(atlas.colour).digest('hex') },
-      emissive: { size: EMISSIVE_SIZE, layers: LAYERS.length, sha256: createHash('sha256').update(atlas.emissive).digest('hex') },
+      colour: { size: COLOUR_SIZE, layers: layers.count, sha256: createHash('sha256').update(atlas.colour).digest('hex') },
+      emissive: { size: EMISSIVE_SIZE, layers: layers.count, sha256: createHash('sha256').update(atlas.emissive).digest('hex') },
       rooms: { size: ROOM_SIZE, layers: rooms.layers, sha256: createHash('sha256').update(rooms.strip).digest('hex') },
       screens: { size: SCREEN_SIZE, layers: screens.layers, sha256: createHash('sha256').update(screens.strip).digest('hex') },
-      finishes: [...LAYERS],
+      finishes: [...layers.names],
     },
     models,
   }
@@ -116,11 +117,11 @@ try {
   await rm(homes, { recursive: true, force: true })
 }
 
-async function bake(producer: Producer, look: Look, bucket: Bucket, textures: string): Promise<{ look: Look; bucket: Bucket; model: Baked }> {
+async function bake(producer: Producer, look: Look, bucket: Bucket, textures: string, layers: Layers): Promise<{ look: Look; bucket: Bucket; model: Baked }> {
   const id = `${look.id}-${bucket.front}x${bucket.depth}x${bucket.storeys}`
   const built = await producer.build(id, verbsFor(look, bucket, 'gb'), 'gb', textures)
   try {
-    return { look, bucket, model: await intake(built.file, id, bucket, look.family) }
+    return { look, bucket, model: await intake(built.file, id, bucket, look, layers) }
   } finally {
     await built.sweep()
   }
