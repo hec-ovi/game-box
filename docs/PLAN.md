@@ -43,7 +43,7 @@ Two more numbers that make every city read the same at street level. At the defa
 | 5 | `hud` | done, `d38fa8f` |
 | 6, 7, 18 | `app` | running |
 | 11 | `nav` | done, 56 s to 13 ms |
-| 15 | `scribe` | running |
+| 15 | `scribe` | done, `c4187bb` |
 | 16 | `sidecar` | done, `f82e6a6` |
 | 17 | `talk` | done, `0822ed7` |
 | shadows | `land` | done, sun casts at 9.77 cm per texel |
@@ -53,7 +53,7 @@ Two more numbers that make every city read the same at street level. At the defa
 | 10 | `crowd` | running, plus a crossing regression forge uncovered |
 | 12 | `cli` | done, `08a3066` |
 | 13 | `forge` | folded into 3 |
-| 14 | `scene`, `kitbash` | running |
+| 14 | `scene`, `kitbash` | done, 1,069 draws to 46 |
 | 19 | repo | not started |
 | clothing | `cast` | running |
 | props and prop heights | `furnish` | running |
@@ -90,7 +90,7 @@ Each task is one box and one agent. Sizes assume that agent reads the contract, 
 11. **`@gb/nav`.** Reuse the search scratch space its contract already promises (`new MinHeap(width*height)` per call is a 167 KB `Float64Array` on a 146x146 city; 200 paths grew the heap 8.8 MB), and publish a one-pass `reachableFrom(start)` flood fill. 0.5 d. No deps.
 12. **`@gb/cli`.** Use the flood fill (`gb check` is O(plots x cells) today: 0.31 s at 12 plots, 9.20 s at 705, 142.96 s at 2851, predicted before it was run), expose `--exits`, and reopen what it wrote so it stops exiting 0 on an unopenable bundle. 0.5 d. Depends on 11.
 13. **`@gb/world` and the forge brief.** Fail closed on the grid bound: `blocks 24x1 --cells 40` builds a 1093-cell grid, seals it, writes 4.9 MB and exits 0, then `gb check` says `world.grid.width: Too big`. Same class: `brief.theme` allows 200 chars, `world.theme` allows 60. Either the brief refuses the combination or `World.create` enforces its own documented precondition. Clamp `?blocks=` in the app while in there. 0.5 d. No deps.
-14. **`@gb/scene` and `@gb/kitbash`.** Batch the city. Measured at 7x7: 962 meshes, 2.78 M triangles, 116 MB of attributes, 658 meshes in the frustum at spawn, over exactly **20 materials** and 962 unique geometries. A `BatchedMesh` per material, or one merge pass, collapses roughly 950 draws to under 20. Culling gives back only 32% of meshes at street level, so losing per-building culling costs nothing. Add a headless mesh and triangle ceiling test; every number above was measured in Node with no browser. Also give the streetlamp instanced mesh per-district chunks (1028 triangles each, one bounding volume, 28% of the frame's triangles at 144 blocks). 2 d. No deps.
+14. **`@gb/scene` and `@gb/kitbash`.** Batch the city. Measured at 7x7: 962 meshes, 2.78 M triangles, 116 MB of attributes, 658 meshes in the frustum at spawn, over exactly **20 materials** and 962 unique geometries. A `BatchedMesh` per material, or one merge pass, collapses roughly 950 draws to under 20. Culling gives back 35% of the geometry at street level and it is charged twice, in the main pass and in the shadow pass, which is why `BatchedMesh` beat a merge: a merge submits everything, always. (Measured after the fact; the 32% figure here was wrong.) Add a headless mesh and triangle ceiling test; every number above was measured in Node with no browser. Also give the streetlamp instanced mesh per-district chunks (1028 triangles each, one bounding volume, 28% of the frame's triangles at 144 blocks). 2 d. No deps.
 15. **`@gb/scribe`.** Run the descriptive calls against the five llama slots instead of one at a time (the 1x1 city took 2131.8 s over 37 serial calls while four slots sat idle), keep a name registry (13 people produced 4 Vidals, 3 Carmens, 2 Martas), drop the 12-quest cap that disagrees with the offline narrator, move the three inline prompt fragments at `scribe.ts:105-107`, `:121` and `:128-130` into `.md` files, fix the "Write 1 quests" / "This is quest 2 of 3" contradiction, and rewrite `write-quests.md` to name the step kinds, the difficulty bands, escort, optional, hidden, counts and failure rules. Shrink the 41,994-char tool schema. Widen `Narrator` so `describeNpc` and `namePlace` get the city name and the names already used. 2 d. Depends on 2.
 16. **`@gb/sidecar`.** An `AbortSignal` and a timeout on every call. There is not one `AbortController` in `sidecar`, `talk`, `scribe` or `app`, so a stalled model hangs a conversation turn or a whole build forever. 0.5 d. No deps.
 17. **`@gb/talk`.** Fire `talked` when the conversation credits it, not inside `open()` at `conversation.ts:54`. Replace the six-word offline keyword decider (`script.ts:9-16`, where "give me the job" matches `hand_over` and nothing happens) with something that reads the menu. Stop speaking raw knowledge strings and HUD objective text as dialogue. Put theme, clock reading and player standing into the NPC brief, and fix the "the list above" referent in `npc.md:14` that now points at the interpolated situation block. 1 d. Depends on 2.
