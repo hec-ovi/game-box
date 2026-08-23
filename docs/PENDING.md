@@ -256,6 +256,30 @@ between the panel and the hud, or the notices column running under the objective
 box. Needs a shot or a reproduction before anyone changes a style. Box: `hud`,
 possibly `app` for the panel layering.
 
+### People walk through cars (2026-08-23, found by him)
+
+Cars brake for people as of today, but nothing stops a walker entering a car.
+`@gb/crowd` reads `cars()` through its `Hazards` port to decide **when it is
+safe to cross**, and never as a solid to steer around, so a stopped or passing
+car is empty space to a pedestrian.
+
+It shows worst in the case today's changes created: a car now stops for somebody
+in the road, and that person then walks straight through the stopped car.
+
+The two halves are already published, which is why this is cheap: `@gb/traffic`
+exposes car positions and `@gb/crowd` already has a solid-avoidance path for
+walls and for other people. What it needs is a car counted as a moving obstacle
+in the steering, not only in the crossing decision, and a rule for the case where
+a walker is already inside one (the player's version of this was fixed by pushing
+out rather than blocking, and the same answer probably applies).
+
+Watch the cost: the crowd steers every walker every frame, and traffic's own
+lesson today was that a naive per-walker scan over every car is the wrong shape.
+Traffic solved its side by indexing people to lanes once at load, 2 to 3.5x
+cheaper than the scan it replaced. The same trick is available here.
+
+Box: `crowd`, reading `@gb/traffic`'s published positions.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
