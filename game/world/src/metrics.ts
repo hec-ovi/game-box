@@ -24,10 +24,22 @@ export const METRICS = {
     wallThickness: 0.2,
   },
 
+  /**
+   * Where a body meets a piece of furniture: the surface it sits, sleeps or
+   * works on. The art is built to these heights and the clips reach for them,
+   * so a seat is one number rather than one per box.
+   */
   furniture: {
     barCounterHeight: 1.1,
+    /** A counter you are served over. */
+    serviceCounterHeight: 1.0,
+    /** A kitchen or workshop run you stand at. */
+    worktopHeight: 0.9,
     tableHeight: 0.75,
     stoolHeight: 0.75,
+    /** Where a sitting body's hips land. */
+    seatHeight: 0.45,
+    mattressHeight: 0.5,
   },
 
   player: {
