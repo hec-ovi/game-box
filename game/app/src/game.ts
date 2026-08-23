@@ -32,6 +32,9 @@ export interface GameOptions {
   save?: SaveStore
 }
 
+/** Real seconds between keeping the playthrough, so the clock survives a reload. */
+const KEEP_EVERY = 20
+
 /**
  * The game itself: a city you walk around, buildings you go into, people you
  * talk to, things you carry from one to another. Everything it knows how to do
@@ -56,6 +59,7 @@ export class Game {
   #cast: Cast | undefined
   #session: Session | undefined
   #target: Target | undefined
+  #sinceKept = 0
 
   private constructor(input: {
     bundle: OpenedBundle
@@ -212,6 +216,7 @@ export class Game {
     const clock = this.#player.clock
     clock.advance(seconds)
     this.#log.handle({ kind: 'clock', seconds: clock.totalSeconds })
+    this.#keepTheClock(seconds)
     this.#sky.follow(seconds, clock, this.#buildings.outdoors, this.#city)
     this.#street.setTime(clock)
 
@@ -264,6 +269,18 @@ export class Game {
   }
 
   /** Write the playthrough down now, whatever it is doing. */
+  /**
+   * The clock runs whether or not anything happens, so a playthrough saved only
+   * when the player does something comes back at the hour they arrived. Kept on
+   * a timer as well, rarely enough that writing it costs nothing.
+   */
+  #keepTheClock(seconds: number): void {
+    this.#sinceKept += seconds
+    if (this.#sinceKept < KEEP_EVERY) return
+    this.#sinceKept = 0
+    this.keep()
+  }
+
   keep(): void {
     this.#session?.keep(this.#player, this.#log)
   }
