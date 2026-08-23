@@ -11,8 +11,13 @@ const STARS = 1200
  */
 const STAR_ORDER = -999
 
-/** Points on a sphere, in whites and cold blues, one draw for the whole sky. */
-export function buildStars(centre: THREE.Vector3, reach: number, rng: Rng): THREE.Points {
+/**
+ * Points on a sphere, in whites and cold blues, one draw for the whole sky.
+ *
+ * The sphere is built around its own origin: whoever hangs it puts that origin
+ * on the eye, so the observer is always at the centre of it.
+ */
+export function buildStars(reach: number, rng: Rng): THREE.Points {
   const positions = new Float32Array(STARS * 3)
   const colours = new Float32Array(STARS * 3)
   const shade = new THREE.Color()
@@ -55,7 +60,6 @@ export function buildStars(centre: THREE.Vector3, reach: number, rng: Rng): THRE
     }),
   )
   stars.name = 'land:stars'
-  stars.position.copy(centre)
   stars.renderOrder = STAR_ORDER
   stars.frustumCulled = false
   return stars

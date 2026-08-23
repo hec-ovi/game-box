@@ -19,6 +19,22 @@ const PASS = 120
 const DROPS = 3000
 /** Rise over run past which a slope is not something you can walk up. */
 const MAX_WALK_SLOPE = 0.7
+/** What is left of a surface at the far plane: a hundredth, which is under one step of colour. */
+const HAZE_CUTOFF = 0.01
+
+/**
+ * How far the sky stands off the eye, which is also how far the camera has to
+ * see.
+ *
+ * The haze decides it. `FogExp2` leaves `exp(-(density * metres)^2)` of a
+ * surface, so this inverts that for a hundredth left: past it the land is a
+ * hundredth of its own contrast, well under one step of colour, and there is
+ * nothing out there worth a depth buffer. The stars and the moon hang just
+ * inside it, which puts them behind every hill you can still make out.
+ */
+function skyReach(theme: LandTheme): number {
+  return Math.sqrt(Math.log(1 / HAZE_CUTOFF)) / theme.light.density
+}
 
 /**
  * How fine the ground is, and how far each step of it reaches past the map.
@@ -78,7 +94,7 @@ export class Land {
   readonly trees: readonly THREE.InstancedMesh[]
   readonly theme: LandTheme
   readonly horizon: number
-  /** The smallest camera far plane that sees the whole sky. */
+  /** The camera far plane to use: it holds the whole sky and everything the haze still shows. */
   readonly cameraFar: number
   /** Metres of the box of rain that travels with the viewer. */
   readonly rainVolume = RAIN_VOLUME.clone()
@@ -176,8 +192,13 @@ export class Land {
     this.#rain.setFall(WEATHER[weather].fall)
   }
 
-  /** Move the weather on by this many seconds, around a viewer who may have walked. */
+  /**
+   * Carry the sky and the weather to where the viewer is now, and move the rain
+   * on by this many seconds. The sky rides with the camera in all three axes,
+   * so call this every frame the player is outside, walking or not.
+   */
   update(seconds: number, viewer: THREE.Vector3): void {
+    this.#air.follow(viewer)
     this.#rain.update(seconds, viewer)
   }
 
@@ -243,15 +264,14 @@ export function buildLand(world: World, options: LandOptions = {}): Result<Land,
   const water = buildWater(ground, basins, theme)
   const trees = buildTrees(world, ground, height, water.basins, theme, scatter, rng.fork('trees'), Math.round(theme.trees.max * (low ? 0.4 : 1)))
 
-  const townRadius = Math.hypot(world.grid.width * world.cellSize, world.grid.height * world.cellSize) / 2
-  const skyRadius = ground.reach + townRadius + 200
+  const skyRadius = skyReach(theme)
   const air = new Atmosphere(theme, centre, skyRadius, rng.fork('stars'))
   const rain = new Rainfall(Math.round(DROPS * (low ? 0.45 : 1)), rng.fork('rain'))
 
   const land = new Land({
     theme,
     horizon: ground.reach,
-    cameraFar: skyRadius * 1.2,
+    cameraFar: skyRadius,
     ground,
     height,
     basins: water.basins,

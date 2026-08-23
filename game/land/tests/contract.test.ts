@@ -389,8 +389,6 @@ describe('the sky', () => {
     expect(land.sun.position.y).toBeGreaterThan(0)
     expect(land.fog.color.getHex()).toBe(land.theme.light.haze)
     expect(land.fog.density).toBeGreaterThan(0)
-    // far enough back that the whole dome is inside a camera set up from it
-    expect(land.cameraFar).toBeGreaterThan(land.horizon)
   })
 
   it('hangs the stars and the moon in the depth buffer, not over the frame', async () => {
@@ -438,6 +436,125 @@ describe('the sky', () => {
     // and the same world hangs the same moon, every time
     const again = landOf(world, { time: 1 }).root.getObjectByName('land:moon-disc') as THREE.Sprite
     expect((again.material.map as THREE.DataTexture).image.data).toEqual(face)
+  })
+})
+
+describe('the sky rides with the camera', () => {
+  /** An eye standing on the ground at a point, so the walk is a walk over the real land. */
+  function standing(land: Land, x: number, z: number): THREE.Vector3 {
+    return new THREE.Vector3(x, land.heightAt(x, z) + 1.7, z)
+  }
+
+  /** The eight corners of the dome, in world metres. */
+  function domeCorners(land: Land): THREE.Vector3[] {
+    land.root.updateMatrixWorld(true)
+    const box = new THREE.Box3().setFromObject(land.sky)
+    const out: THREE.Vector3[] = []
+    for (const x of [box.min.x, box.max.x]) {
+      for (const y of [box.min.y, box.max.y]) {
+        for (const z of [box.min.z, box.max.z]) out.push(new THREE.Vector3(x, y, z))
+      }
+    }
+    return out
+  }
+
+  /** Which way a handful of stars and the moon lie, seen from here. */
+  function bearings(land: Land, eye: THREE.Vector3): THREE.Vector3[] {
+    const position = land.stars.geometry.getAttribute('position')
+    const out: THREE.Vector3[] = []
+    for (let star = 0; star < position.count; star += 97) {
+      out.push(new THREE.Vector3().fromBufferAttribute(position, star).add(land.stars.position).sub(eye).normalize())
+    }
+    out.push(land.root.getObjectByName('land:moon-disc')!.position.clone().sub(eye).normalize())
+    return out
+  }
+
+  /** What the haze leaves of a surface this far off, in the thinnest air the theme ever has. */
+  function throughHaze(land: Land, metres: number): number {
+    return Math.exp(-((land.theme.light.density * metres) ** 2))
+  }
+
+  it('keeps the whole dome, the stars and the moon inside the far plane, in town and kilometres out', async () => {
+    const world = await town()
+    const land = landOf(world, { time: 1 })
+    const middle = middleOf(world)
+    const moon = land.root.getObjectByName('land:moon-disc')!
+
+    for (const eye of [
+      new THREE.Vector3(middle.x, 1.7, middle.z),
+      standing(land, middle.x + 3000, middle.z - 1500),
+      standing(land, middle.x - land.horizon * 0.9, middle.z),
+    ]) {
+      land.update(1 / 60, eye)
+
+      // the player is inside the sky, not looking at it from outside
+      land.root.updateMatrixWorld(true)
+      expect(new THREE.Box3().setFromObject(land.sky).containsPoint(eye)).toBe(true)
+      // and every corner of it is in front of the far plane, which is the whole
+      // point: a corner of a box stands 1.73 times further out than its faces
+      for (const corner of domeCorners(land)) expect(eye.distanceTo(corner)).toBeLessThan(land.cameraFar)
+
+      const stars = land.stars.geometry.getAttribute('position')
+      const star = new THREE.Vector3()
+      for (let index = 0; index < stars.count; index++) {
+        star.fromBufferAttribute(stars, index).add(land.stars.position)
+        expect(eye.distanceTo(star)).toBeLessThan(land.cameraFar)
+      }
+      expect(eye.distanceTo(moon.position)).toBeLessThan(land.cameraFar)
+    }
+  })
+
+  it('leaves the constellations and the moon exactly where they were when the player walks and climbs', async () => {
+    const world = await town()
+    const land = landOf(world, { time: 1 })
+    const middle = middleOf(world)
+    const moon = land.root.getObjectByName('land:moon-disc')!
+
+    const home = new THREE.Vector3(middle.x, 1.7, middle.z)
+    land.update(0, home)
+    const before = bearings(land, home)
+    const moonWas = home.distanceTo(moon.position)
+
+    // a kilometre and a half out and up onto the rising ground
+    const away = standing(land, middle.x + 1600, middle.z + 1600)
+    expect(away.y).toBeGreaterThan(home.y + 5)
+    land.update(0, away)
+
+    const after = bearings(land, away)
+    for (let index = 0; index < before.length; index++) {
+      expect(before[index]!.angleTo(after[index]!)).toBeLessThan(1e-6)
+    }
+    // the same distance too, so the moon is the same size in the frame
+    expect(away.distanceTo(moon.position)).toBeCloseTo(moonWas, 6)
+  })
+
+  it('still shows every hill the haze has not taken', async () => {
+    const world = await town()
+    const land = landOf(world)
+    const middle = middleOf(world)
+
+    // the ring of hills, crest and all, is never cut
+    const position = land.terrain.geometry.getAttribute('position')
+    const vertex = new THREE.Vector3()
+    const crest = new THREE.Vector3()
+    for (let index = 0; index < position.count; index++) {
+      vertex.fromBufferAttribute(position, index)
+      if (vertex.y > crest.y) crest.copy(vertex)
+    }
+    expect(crest.y).toBeGreaterThan(land.theme.relief.peak * 0.8)
+    expect(new THREE.Vector3(middle.x, 0, middle.z).distanceTo(crest)).toBeLessThan(land.cameraFar)
+
+    // and anything the far plane does cut is a hundredth of itself by then,
+    // which is less than one step of colour once the haze has been over it
+    for (const eye of [
+      new THREE.Vector3(middle.x, 1.7, middle.z),
+      standing(land, middle.x + land.horizon * 0.9, middle.z),
+    ]) {
+      for (let index = 0; index < position.count; index++) {
+        const away = eye.distanceTo(vertex.fromBufferAttribute(position, index))
+        if (away > land.cameraFar) expect(throughHaze(land, away)).toBeLessThanOrEqual(0.01)
+      }
+    }
   })
 })
 

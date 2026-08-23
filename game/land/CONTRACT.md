@@ -1,6 +1,6 @@
 # @gb/land contract
 
-contractVersion: 0.3.1
+contractVersion: 0.3.2
 
 ## Purpose
 
@@ -19,7 +19,7 @@ Builds the world the city stands in and the sky over it: kilometres of open, rol
 | `options.weather` | `'clear'`, `'overcast'` or `'rain'` | default clear |
 | `land.setTime(hours)` | hours, wrapping | cheap enough for every frame |
 | `land.setWeather(weather)` | one of `WEATHERS` | |
-| `land.update(seconds, viewer)` | seconds since the last frame, the camera's position in metres | call every frame the player is outside |
+| `land.update(seconds, viewer)` | seconds since the last frame, the camera's position in metres | call every frame the player is outside, walking or not: the sky rides on this |
 | `landTheme(id)` / `matchTheme(text)` | string | `matchTheme` always answers: no match falls to `DEFAULT_THEME` |
 
 ## Outputs
@@ -32,8 +32,8 @@ Builds the world the city stands in and the sky over it: kilometres of open, rol
 | `Land.terrain` | one `THREE.Mesh` named `land:terrain` | indexed, welded, vertex-coloured, every face looking up |
 | `Land.water` | one `THREE.Mesh` named `land:water`, or undefined | every pond, each drawn out to its own shoreline |
 | `Land.trees` | one `THREE.InstancedMesh` per species, `land:trees:<species>` | each tree standing on the ground at its position |
-| `Land.sky` | the skydome, named `land:sky` | Preetham daylight with clouds, drawn first and never into the depth buffer |
-| `Land.stars` | `THREE.Points` named `land:stars` | 1,200 stars, a handful bright and most of them faint, faded out before the sun reaches the horizon; the moon beside them is the sprite `land:moon-disc` |
+| `Land.sky` | the skydome, named `land:sky` | Preetham daylight with clouds, centred on the camera, drawn first and never into the depth buffer |
+| `Land.stars` | `THREE.Points` named `land:stars` | 1,200 stars on a sphere around the camera, a handful bright and most of them faint, faded out before the sun reaches the horizon; the moon beside them is the sprite `land:moon-disc` |
 | `Land.sun`, `Land.moon`, `Land.skyLight` | two directional lights and a hemisphere light | the sun and the moon on opposite ends of the same arc, and the sky filling in behind them |
 | `Land.rain` | `THREE.LineSegments` named `land:rain` | streaks inside `Land.rainVolume`, centred on the last viewer it was given |
 | `Land.fog` | `THREE.FogExp2` | assign to `scene.fog` once: the same object is edited as the time and weather change |
@@ -43,7 +43,7 @@ Builds the world the city stands in and the sky over it: kilometres of open, rol
 | `Land.waterAt(x, z)` | metres or undefined | the water level standing at a point, undefined on dry ground |
 | `Land.time`, `Land.weather` | hours and the weather it was last told | this box remembers what it was told, it does not run a clock |
 | `Land.wetness` | 0 dry to 1 soaked | what another box should read to decide how wet to make a surface |
-| `Land.horizon`, `Land.cameraFar` | metres | how far the land goes, and the smallest camera far plane that sees the whole sky |
+| `Land.horizon`, `Land.cameraFar` | metres | how far the land goes, and the far plane to give the camera: it holds the whole sky and everything the haze still shows of the land |
 | `Land.cost` | `triangles`, `vertices`, `trees`, `ponds`, `drops`, `draws` | what this landscape costs to draw |
 
 ## Errors (closed set)
@@ -69,6 +69,8 @@ Builds the world the city stands in and the sky over it: kilometres of open, rol
 - Time and weather move light, never geometry. `setTime` and `setWeather` write the sun and moon positions, the sky's uniforms and the colours and strengths of the lights and the fog, all in place. No vertex is touched again after the build.
 - The sun and the moon are the two ends of one arc: sunrise at 06:00, noon overhead at the theme's `noonElevation`, sunset at 18:00, the moon opposite it all the way round. Twilight runs from seven degrees below the horizon to eleven above.
 - The night sky is depth-correct. The stars and the moon are geometry at a real distance and they read the depth buffer like anything else, so a wall, a tree or someone standing in front of them hides them, and the moon comes up from behind the hills rather than over them. The skydome is the one object that ignores depth, and it may: it is a background, it draws before everything and it writes nothing back.
+- The sky rides with the camera. The dome, the stars and the moon are centred on the last viewer `update` was given, in all three axes, because a sky is at infinity and the observer stands in the middle of it. Constellations hold their bearings across a six kilometre walk and the horizon stays at eye level up a hill, and the sky costs the far plane the same thing wherever the player is. The dome is scaled by its own diagonal, so its eight corners land on the reach rather than 1.73 times past it; the stars sit at 0.96 of the reach and the moon at 0.92. The two lights stay on the town, because a directional light is a direction and its position says nothing.
+- The far plane is set by the air, not by the size of the map. `FogExp2` leaves `exp(-(density * metres)^2)` of a surface, and `cameraFar` is the distance where that is a hundredth: less than one step of colour, so nothing it cuts can be seen. 6.7 km on the temperate theme, 9.8 km in the clear desert air of the arid one, 3.9 km in maritime haze. The sky is hung just inside it, which is what puts the moon behind the last ridge you can still make out.
 - The moon is generated, never downloaded: maria, a limb that darkens towards the edge, a faint halo and a phase, painted once from the seed into a 128 px texture carried on two triangles that face the camera. The phase belongs to the world, not to the hour, because this box is handed a time of day and no date.
 - Night is dim, not black. Moonlight plus a lifted blue ambient leaves it about five times darker than noon (5.3 light units at noon against 1.1 at midnight, on the temperate theme). Cloud takes less off the moon than off the sun, so a wet night stays walkable.
 - Rain is a box of streaks that travels with the viewer. Drops keep world positions and wrap when they leave the box, so walking moves you through the rain instead of dragging it along, and no drop is ever drawn outside the volume.
@@ -96,7 +98,7 @@ Per query and per frame:
 - `heightAt`: 0.04 us. Two binary searches along a lattice and four numbers.
 - `walkableAt`: 0.09 to 0.16 us, the difference being one pass over the ponds. Both are safe several times a frame in a collision loop.
 - `setTime` / `setWeather`: 0.0005 ms. Two vectors, a few colour blends and eight uniform writes.
-- `update` while raining: 0.08 ms for 3,000 streaks and 72 KB of positions uploaded. Dry, it returns immediately.
+- `update`: 0.08 ms while raining, for 3,000 streaks and 72 KB of positions uploaded. Dry, it is the four vector writes that put the sky back on the eye.
 
 ## Standing it up
 
@@ -114,7 +116,7 @@ Every frame the player is outside:
 
 ```ts
 land.setTime(clock.hours)                  // whoever owns the clock decides the rate
-land.update(delta, camera.position)
+land.update(delta, camera.position)        // the sky and the rain ride on this
 ```
 
 For the player's feet, anywhere in the world:

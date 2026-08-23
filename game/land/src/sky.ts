@@ -13,6 +13,10 @@ import { WEATHER, type Weather } from './weather.ts'
  * not a thing at a distance.
  */
 const SKY_ORDER = -1000
+/** A cube's corners stand this much further out than its faces. */
+const DIAGONAL = Math.sqrt(3)
+/** Share of the reach the dome's corners take, leaving headroom under the far plane. */
+const DOME = 0.98
 /** The grey a storm pulls the haze and the light towards. */
 const STORM = new THREE.Color(0x8b96a0)
 const COLD = new THREE.Color(0xb9c7d4)
@@ -26,6 +30,11 @@ const COLD = new THREE.Color(0xb9c7d4)
  * what the WebGPU renderer needs and what its WebGL2 backend compiles for
  * itself; the stars, the moon and the lights are ordinary three.js objects that
  * work the same on both.
+ *
+ * The dome, the stars and the moon are hung on the eye rather than on the town,
+ * because that is where a sky is: at infinity, centred on whoever is looking.
+ * `follow` moves them; the lights stay on the town, since a directional light
+ * is a direction and its position says nothing.
  */
 export class Atmosphere {
   readonly sky: SkyMesh
@@ -40,6 +49,8 @@ export class Atmosphere {
 
   readonly #theme: LandTheme
   readonly #centre: THREE.Vector3
+  /** Where the sky is centred: the last viewer it was given, the town until then. */
+  readonly #eye: THREE.Vector3
   readonly #sunward = new THREE.Vector3()
   readonly #moonward = new THREE.Vector3()
   readonly #moonReach: number
@@ -52,6 +63,7 @@ export class Atmosphere {
   constructor(theme: LandTheme, centre: { x: number; z: number }, radius: number, rng: Rng) {
     this.#theme = theme
     this.#centre = new THREE.Vector3(centre.x, 0, centre.z)
+    this.#eye = this.#centre.clone()
 
     const light = theme.light
     this.#warm = new THREE.Color(light.lowSun)
@@ -69,8 +81,10 @@ export class Atmosphere {
 
     this.sky = new SkyMesh()
     this.sky.name = 'land:sky'
-    this.sky.scale.setScalar(radius * 2)
-    this.sky.position.copy(this.#centre)
+    // scaled by its own diagonal, so the eight corners land on the reach instead
+    // of 1.73 times past it: the whole dome fits inside the far plane
+    this.sky.scale.setScalar((radius * DOME * 2) / DIAGONAL)
+    this.sky.position.copy(this.#eye)
     this.sky.renderOrder = SKY_ORDER
     this.sky.material.fog = false
     this.sky.material.depthTest = false
@@ -81,7 +95,8 @@ export class Atmosphere {
     this.sky.cloudScale.value = theme.sky.cloudScale
     this.sky.cloudElevation.value = theme.sky.cloudElevation
 
-    this.stars = buildStars(this.#centre, radius * 0.96, rng)
+    this.stars = buildStars(radius * 0.96, rng)
+    this.stars.position.copy(this.#eye)
     this.#moonReach = radius * 0.92
     // forked after the stars are hung, so retuning the moon cannot move them
     this.moonDisc = buildMoon(radius * 0.018, rng.fork('moon'))
@@ -135,6 +150,24 @@ export class Atmosphere {
     this.apply()
   }
 
+  /**
+   * Centre the sky on the eye, in all three axes.
+   *
+   * A sky is at infinity, so the observer stands at the middle of it: the dome,
+   * the star sphere and the moon all move with the camera, which is what keeps
+   * the constellations still while the player walks and keeps the horizon at
+   * eye level while they climb. It also fixes what the sky costs the far plane:
+   * the furthest corner of the dome is always the same distance away, whether
+   * the player is in the square or kilometres out on the plateau.
+   */
+  follow(viewer: THREE.Vector3): void {
+    if (viewer.equals(this.#eye)) return
+    this.#eye.copy(viewer)
+    this.sky.position.copy(viewer)
+    this.stars.position.copy(viewer)
+    this.moonDisc.position.copy(this.#moonward).multiplyScalar(this.#moonReach).add(viewer)
+  }
+
   /** Write the time and the weather into the sky, the lights and the fog. */
   apply(): void {
     const theme = this.#theme
@@ -173,7 +206,7 @@ export class Atmosphere {
     const showNight = (1 - smoothstep01((this.#sunward.y + 0.22) / 0.24)) * (1 - cloud * 0.85)
     this.stars.rotation.y = (this.#time / 24) * Math.PI * 2
     setFade(this.stars.material as THREE.PointsMaterial, showNight, this.stars)
-    this.moonDisc.position.copy(this.#moonward).multiplyScalar(this.#moonReach).add(this.#centre)
+    this.moonDisc.position.copy(this.#moonward).multiplyScalar(this.#moonReach).add(this.#eye)
     setFade(this.moonDisc.material, showNight, this.moonDisc)
   }
 }
