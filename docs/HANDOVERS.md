@@ -73,6 +73,13 @@ pinned and routed from indoors and out, and `?sidecar=` surviving a refresh.
 | 50 | "Nothing yet. Find someone to talk to." reads as if the player had never had a job | hud | `src/surfaces/objectives.ts`; true after finishing one and being offered two more |
 | 51 | **A room can be cut in half by its own furniture, and a chair can sit on the doorstep** | forge | measured over 121 interiors in 15 generated cities: 5 put a prop on the spot 1.2 m inside the street door, and 8 of 365 stationed people plus 7 of 242 items end up in a pocket of floor the player cannot walk to. `g/Golden Wheel Coffee` seats tables at x=1.60 and x=4.00 with chairs at 0.45, 2.85 and 5.15, leaving aisles of 0.40 to 0.50 m against a 0.70 m body, so a row of tables seals the room. Identical with `@gb/scene`'s `Greybox` and with `@gb/furnish`, so it is the layout and not the drawing: the plan has to reserve an aisle a body fits down and keep the doorstep clear |
 
+## From the wider roads
+
+| # | Defect | Found by | Box | Detail |
+|---|---|---|---|---|
+| 52 | One flat car cap for a whole city | scene+traffic+crowd agent | app | `game/app/src/street.ts:118` passes `maxCars: 12` for the entire town. A four-lane avenue holds twice the cars a street does, so the number that made a street look right leaves an avenue empty. It wants to scale with the lane network, not with the city |
+| 53 | `@gb/hud`'s `QuestStep` widening breaks `game/app/tests/contract.test.ts` under `tsc -p game/app` | scene agent, then confirmed live | app | `done` becomes optional, and the app fixture types it as required. This is the migration the hud agent owes; it lands with hud's report, not separately |
+
 ## Checked and closed
 
 About fifty handovers landed and were verified in the code rather than taken on
