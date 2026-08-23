@@ -81,6 +81,8 @@ export class Escort {
       rng: this.#deps.rng.fork(`companion/${who.npc.id}`),
       pauseMin: 0,
       pauseMax: 0,
+      // they follow the player rather than the crossings, so talking to one stops them where they stand
+      finishesCrossings: false,
     })
     this.#followers.push(new Follower(who.npc.id, walker, { ...this.#deps, owned: !who.actor }))
     this.#bodies.push(walker)

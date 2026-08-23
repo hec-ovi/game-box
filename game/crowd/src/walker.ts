@@ -20,6 +20,12 @@ export interface WalkerSetup {
   readonly rng: Rng
   readonly pauseMin: number
   readonly pauseMax: number
+  /**
+   * True for somebody walking the city on their own errand: talked to out in a
+   * roadway, they finish the crossing and turn at the far kerb. A companion is
+   * with the player wherever the player is, so they stop where they stand.
+   */
+  readonly finishesCrossings: boolean
 }
 
 /**
@@ -71,6 +77,7 @@ export class Walker implements Attender {
   #stuckSeconds: number
   #pauseMin: number
   #pauseMax: number
+  #finishesCrossings: boolean
   #route: Point[] = []
   /** Metres from each corner to the end of the route, so `remaining` is a sum and not a walk of the route. */
   #after: number[] = []
@@ -90,6 +97,8 @@ export class Walker implements Attender {
   #pace = 1
   /** Where somebody we are being held by is standing. Undefined when nobody is talking to us. */
   #attend: Spot | undefined
+  /** Held while out in a roadway: walking to the far kerb, and turning to them once we are on it. */
+  #crossingFirst = false
   /** As far round as our head reaches towards them. Kept here so watching somebody allocates nothing. */
   #head: Spot = { x: 0, y: 0, z: 0 }
   /** Let go of, and coming round to the way we were walking before we set off again. */
@@ -108,6 +117,7 @@ export class Walker implements Attender {
     this.#stuckSeconds = setup.stuckSeconds
     this.#pauseMin = setup.pauseMin
     this.#pauseMax = setup.pauseMax
+    this.#finishesCrossings = setup.finishesCrossings
     this.x = setup.at.x
     this.z = setup.at.z
     this.#actor.play(this.#clip)
@@ -160,6 +170,11 @@ export class Walker implements Attender {
   /**
    * Stop where we are and turn to face this point, until we are let go. The
    * route is kept, so being talked to costs the trip nothing but the time.
+   *
+   * Caught out in a roadway, the stopping waits: we walk the rest of the way
+   * over and turn on the far kerb, because nobody stands in the road for a
+   * conversation while the traffic comes. The hold itself is taken now, so the
+   * game hears yes the moment it asks.
    */
   attend(x: number, y: number, z: number): void {
     if (this.#attend) {
@@ -170,6 +185,19 @@ export class Walker implements Attender {
     }
     this.#attend = { x, y, z }
     this.#turningBack = false
+    if (this.#midCrossing()) this.#crossingFirst = true
+    else this.#standToFace()
+  }
+
+  /** Part way over a crossing with somewhere to be: it is ours to finish before we turn. */
+  #midCrossing(): boolean {
+    if (!this.#finishesCrossings || this.#state === 'idle') return false
+    return this.#kerb.crossing(this.x, this.z, this.#wayX, this.#wayZ)
+  }
+
+  /** Stand still, facing whoever is talking to us. The route is kept for afterwards. */
+  #standToFace(): void {
+    this.#crossingFirst = false
     this.#state = 'idle'
     this.#setClip(CLIPS.idle)
   }
@@ -178,6 +206,11 @@ export class Walker implements Attender {
   unattend(): void {
     if (!this.#attend) return
     this.#attend = undefined
+    // let go of before we were over: we never stopped and never looked, so there is nothing to undo
+    if (this.#crossingFirst) {
+      this.#crossingFirst = false
+      return
+    }
     this.#actor.lookAway?.()
     this.#stalled = 0
     this.#slowed = 0
@@ -189,7 +222,7 @@ export class Walker implements Attender {
 
   /** Walk for this long, then turn a little further towards where we are going. */
   advance(seconds: number): void {
-    if (this.#attend) return this.#watch(seconds, this.#attend)
+    if (this.#attend && !this.#crossingFirst) return this.#watch(seconds, this.#attend)
     if (this.#turningBack) return this.#comeRound(seconds)
     const fromX = this.x
     const fromZ = this.z
@@ -199,6 +232,8 @@ export class Walker implements Attender {
     this.vx = seconds > 0 ? (this.x - fromX) / seconds : 0
     this.vz = seconds > 0 ? (this.z - fromZ) / seconds : 0
     this.heading = turnToward(this.heading, this.#facing, this.#turnRate * seconds)
+    // across, or gone as far as we are going to get: now we turn to them
+    if (this.#crossingFirst && (this.#ground.pavement(this.x, this.z) || this.#state === 'idle')) this.#standToFace()
     this.#report()
   }
 

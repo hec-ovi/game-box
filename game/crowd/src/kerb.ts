@@ -48,6 +48,17 @@ export class Kerb {
   }
 
   /**
+   * True when a body here, stepping this way, is part way over a crossing:
+   * roadway underfoot and the far side of it within a crossing's width. Walking
+   * along a roadway is not being part way over one, however much road is
+   * underfoot, so whoever asks can tell a crossing from a stroll down the road.
+   */
+  crossing(x: number, z: number, wayX: number, wayZ: number): boolean {
+    if (this.#ground.pavement(x, z)) return false
+    return this.#across(x, z, { x: wayX, z: wayZ }) < this.#reach
+  }
+
+  /**
    * True when a body standing at (x, z) walking at `speed` may step to
    * (toX, toZ) without stepping in front of anything.
    */

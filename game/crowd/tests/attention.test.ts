@@ -1,12 +1,12 @@
 import { CLIPS } from '@gb/cast'
 import { CityNav } from '@gb/nav'
-import type { Npc, World } from '@gb/world'
+import { WIDEST_ROADWAY_CELLS, type Npc, type World } from '@gb/world'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { HEAD_TURN } from '../src/attention.ts'
 import { Crowd, type Cell, type Point, type WalkerView } from '../src/index.ts'
 import { FakeActor, FakeCast } from './support/fake-cast.ts'
 import { StraightNav } from './support/fake-nav.ts'
-import { testTown } from './support/town.ts'
+import { testTown, wideRoad } from './support/town.ts'
 
 const STEP = 1 / 60
 const EAST: Cell = { x: 1, y: 0 }
@@ -46,6 +46,33 @@ function oneWalker(seed = 'attention') {
 /** Where the player stands to talk to somebody: two metres off, at eye height. */
 function facing(walker: { x: number; z: number }, away: { x: number; z: number }) {
   return { x: walker.x + away.x * 2, y: 1.7, z: walker.z + away.z * 2 }
+}
+
+/** True where this point is out in a roadway, read off the town rather than off anything the crowd built. */
+function inTheRoad(at: { x: number; z: number }, town: World = world): boolean {
+  return town.grid.at(Math.floor(at.x / town.cellSize), Math.floor(at.z / town.cellSize)) === 'street'
+}
+
+/**
+ * True where somebody walking east is part way over a crossing: roadway under
+ * their feet and the far kerb a couple of cells ahead. Worked out from the town
+ * rather than from the crowd, so a test using it is not asking the crowd to
+ * mark its own homework.
+ */
+function partWayOver(at: { x: number; z: number }): boolean {
+  return inTheRoad(at) && !inTheRoad({ x: at.x + 2 * world.cellSize, z: at.z })
+}
+
+/** One walker taken out into a roadway, part way over it, walking to the far kerb. */
+function outInTheRoad(seed = 'crossing') {
+  const one = oneWalker(seed)
+  let walker = one.walker
+  for (let frame = 0; frame < 1800 && !partWayOver(walker); frame++) {
+    one.crowd.update(STEP, middle)
+    walker = one.crowd.walkers()[0]!
+  }
+  if (!partWayOver(walker)) throw new Error('nobody was caught part way over a crossing')
+  return { ...one, walker }
 }
 
 /** How far the point somebody is looking at is off their own front, in radians. */
@@ -141,6 +168,95 @@ describe('somebody being talked to', () => {
     expect(walking.remaining).toBeLessThan(stood.remaining)
     // the route they had is the route they are on: nobody had to ask the city for another
     expect(asked.length).toBe(routes)
+  })
+
+  it('finishes the crossing it is out in the middle of, and turns on the far kerb', () => {
+    const { crowd, actor, walker } = outInTheRoad()
+    const player = facing(walker, { x: 0, z: -1 })
+
+    // the hold is taken the moment it is asked for: what waits is the turning
+    const hold = crowd.attend(walker.id, player.x, player.y, player.z)
+    expect(hold.held).toBe(true)
+
+    let stopped: WalkerView | undefined
+    for (let frame = 0; frame < 300 && !stopped; frame++) {
+      hold.face(player.x, player.y, player.z)
+      crowd.update(STEP, middle)
+      const now = crowd.walkers()[0]!
+      // out in the road they are still walking it, not standing in front of the traffic
+      if (now.state === 'idle') stopped = now
+      else expect(actor.clip).toBe(CLIPS.walk)
+    }
+
+    expect(stopped).toBeDefined()
+    expect(inTheRoad(stopped!)).toBe(false)
+    expect(Math.hypot(stopped!.x - walker.x, stopped!.z - walker.z)).toBeGreaterThan(0.5)
+
+    // and on the kerb they come round to the player the way anybody standing still does
+    for (let frame = 0; frame < 120; frame++) {
+      hold.face(player.x, player.y, player.z)
+      crowd.update(STEP, middle)
+    }
+    const held = crowd.walkers()[0]!
+    const toPlayer = Math.atan2(-(player.x - held.x), -(player.z - held.z))
+    expect(Math.abs(held.heading - toPlayer)).toBeLessThan(0.05)
+    expect(actor.clip).toBe(CLIPS.idle)
+  })
+
+  it('is left walking, not turning to nobody at the kerb, when they are let go before they are over', () => {
+    const { crowd, actor, asked, walker } = outInTheRoad('let-go-crossing')
+    const player = facing(walker, { x: 0, z: -1 })
+    const hold = crowd.attend(walker.id, player.x, player.y, player.z)
+    const routes = asked.length
+
+    // the player walks off while they are still out in the road
+    crowd.update(STEP, middle)
+    hold.release()
+    expect(hold.held).toBe(false)
+
+    let over = -1
+    for (let frame = 0; frame < 240; frame++) {
+      crowd.update(STEP, middle)
+      const now = crowd.walkers()[0]!
+      if (over === -1 && !inTheRoad(now)) {
+        over = frame
+        // they walked onto the kerb and kept going, rather than stopping to face nobody
+        expect(now.state).toBe('walking')
+      }
+    }
+
+    expect(over).toBeGreaterThanOrEqual(0)
+    // they never stood, so they never looked at anybody and never had to be sent anywhere new
+    expect(actor.looksAway).toBe(0)
+    expect(asked.length).toBe(routes)
+  })
+
+  it('stops where it stands when it is walking along a road rather than over one', () => {
+    const town = wideRoad()
+    const cell = town.cellSize
+    const nav = new StraightNav(cell, 30, EAST)
+    const viewer: Point = { x: cell * 0.5, z: cell * 1.5 }
+    const crowd = Crowd.create(
+      { world: town, nav, cast: new FakeCast(), seed: 'down-the-road' },
+      { population: 1, retireRadius: 500, pauseMax: 0, spawnNear: 2, spawnFar: 8 },
+    )
+
+    let walker: WalkerView | undefined
+    for (let frame = 0; frame < 1800; frame++) {
+      crowd.update(STEP, viewer)
+      walker = crowd.walkers()[0]
+      if (walker && inTheRoad(walker, town)) break
+    }
+    if (!walker || !inTheRoad(walker, town)) throw new Error('nobody walked out into the road')
+    // the road runs on past anything a crossing can be, so there is no far kerb to wait for
+    expect(inTheRoad({ x: walker.x + WIDEST_ROADWAY_CELLS * cell, z: walker.z }, town)).toBe(true)
+
+    crowd.attend(walker.id, walker.x, 1.7, walker.z - 2)
+    crowd.update(STEP, viewer)
+
+    const held = crowd.walkers()[0]!
+    expect(held.state).toBe('idle')
+    expect(Math.hypot(held.x - walker.x, held.z - walker.z)).toBeLessThan(0.05)
   })
 
   it('holds nobody when nobody by that id is out here', () => {

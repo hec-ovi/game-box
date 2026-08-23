@@ -1,4 +1,4 @@
-import { METRICS, World, type CellKind } from '@gb/world'
+import { METRICS, WIDEST_ROADWAY_CELLS, World, type CellKind } from '@gb/world'
 
 /** Cells from one street to the next. Three of roadway, a pavement each side, block between. */
 const PITCH = 12
@@ -152,4 +152,19 @@ export function classTown(seed = 'crowd-classes'): { world: World; atCrossing: (
 function spanOf(at: number, spans: readonly Span[]): number | undefined {
   const band = spans.find(([from, to]) => at >= from && at < to)
   return band ? band[1] - band[0] : undefined
+}
+
+/**
+ * Pavement, a roadway wider than any crossing in the city, then pavement again.
+ * A route over it is one the crossing mender cannot fix, so somebody walking it
+ * is walking the length of a road with no far kerb anywhere within reach.
+ */
+export function wideRoad(seed = 'crowd-wide-road'): World {
+  const road = WIDEST_ROADWAY_CELLS + 3
+  const pave = 8
+  const world = World.create({ name: 'Wide', theme: 'test', seed, width: pave * 2 + road, height: 4 })
+  world.paint({ x: 0, y: 1, w: pave, h: 1 }, 'sidewalk')
+  world.paint({ x: pave, y: 1, w: road, h: 1 }, 'street')
+  world.paint({ x: pave + road, y: 1, w: pave, h: 1 }, 'sidewalk')
+  return world
 }

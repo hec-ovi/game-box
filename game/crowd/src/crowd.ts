@@ -267,6 +267,7 @@ export class Crowd {
       rng,
       pauseMin: this.options.pauseMin,
       pauseMax: this.options.pauseMax,
+      finishesCrossings: true,
     })
     this.#walkers.push(walker)
     this.#street.set(npc.id, npc)
