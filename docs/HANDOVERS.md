@@ -158,6 +158,23 @@ the first open topic on every `talked` event) fails both of its tests.
 
 | 73 | An openable door looks the same as a door that never opens | world + forge, then prefab | Prefab can carry a second door layer (0.7 MB) and pick between them inside `orient`, which already rewrites the geometry per plot, so the choice costs nothing beyond the layer. It needs one flag: `plot.opens` on `@gb/world`'s `Plot`, set in the same forge pass that decides which plots get interiors. With most buildings shut, a door you can actually use should read as one from the pavement |
 
+## From the pavement
+
+`@gb/crowd` published `SceneCast.members()`, the same shape and key as
+`CastDressing.members()`, so one lookup reaches a person at a post indoors and a
+passer-by on the street. It also fixed two live bugs found on the way: a body
+parked mid-gesture came back still talking with its hands and wore that down the
+street on the next walker, and somebody who joined the player got two bodies
+because `follow` spawned a companion without retiring the street walker.
+
+| # | Work | Box | Detail |
+|---|---|---|---|
+| 74 | Gesture calls for a person stopped in the street | app | `bodies.members().get(npcId)?.gesture(...)` on the turn, `stopGesture()` when it ends. **Look it up every frame; never cache the `CastMember`** — bodies are recycled, and a cached member is a stranger's arms. `Street.populate` types its parameter as the port, which has no `members()`, so keep the concrete `SceneCast` on the field you call from |
+| 75 | Pass `at: { x, z }` from `walkers()` when a passer-by becomes a companion | app | Otherwise they teleport to the player instead of stepping off the pavement where they stood |
+| 76 | Treat `held === false` and `members().get(id) === undefined` as the conversation ending | app | A held walker is still retired past `retireRadius`, deliberately: an app-leaked hold would otherwise pin a walker forever. Walking 70 m away with a panel open ends the person, not just the hold |
+| 77 | `GESTURES` holds only the standing and seated talk clips | cast | A held street walker always plays `Idle_Loop` underneath, so only the standing one ever applies outdoors. Both animation packs are on disk with 85 clips between them and 16 shipped |
+| 78 | Whether cars brake for somebody standing in the road | traffic | Decides how bad a kerbside conversation looks. The crowd reads hazards and cannot slow one |
+
 ## Checked and closed
 
 About fifty handovers landed and were verified in the code rather than taken on
