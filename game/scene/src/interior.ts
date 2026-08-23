@@ -3,9 +3,14 @@ import * as THREE from 'three'
 import { blockersOf } from './blockers.ts'
 import { DOOR_GAP } from './doorway.ts'
 import type { Dressing } from './dressing.ts'
-import type { PropFootprint } from './footprint.ts'
+import { PropFootprint } from './footprint.ts'
+import { Pickups } from './pickups.ts'
+import { PropSurface } from './surface.ts'
 
 const CEILING_HEIGHT = METRICS.building.groundFloorHeight
+
+/** A step to the side of whoever is standing there, so a thing is not left inside them. */
+const BESIDE = 0.45
 
 /**
  * A stored heading as a three.js yaw. The world writes compass degrees, 0
@@ -62,6 +67,7 @@ export function buildInterior(world: World, interior: Interior, dressing: Dressi
   }
 
   const props = new Map<string, THREE.Object3D>()
+  const tops = new Map<string, PropSurface>()
   for (const piece of interior.furniture) {
     const object = dressing.prop(piece.prop)
     // a till stands on the counter it was placed on: the world carries that
@@ -73,9 +79,12 @@ export function buildInterior(world: World, interior: Interior, dressing: Dressi
     object.name = piece.id
     root.add(object)
     props.set(piece.id, object)
+
+    tops.set(piece.id, new PropSurface(new PropFootprint(piece.id, piece.prop, object), object))
   }
 
   const anchors = new Map<string, THREE.Object3D>()
+  const hosts = new Map<string, PropSurface>()
   for (const anchor of interior.anchors) {
     const spot = new THREE.Object3D()
     spot.position.set(anchor.pos.x, 0, anchor.pos.y)
@@ -84,6 +93,10 @@ export function buildInterior(world: World, interior: Interior, dressing: Dressi
     spot.userData.kind = anchor.kind
     root.add(spot)
     anchors.set(anchor.id, spot)
+
+    // what a thing left at this anchor is left on
+    const top = anchor.propId ? tops.get(anchor.propId) : undefined
+    if (top) hosts.set(anchor.id, top)
   }
 
   const people = new Map<string, THREE.Object3D>()
@@ -98,18 +111,14 @@ export function buildInterior(world: World, interior: Interior, dressing: Dressi
     people.set(npc.id, body)
   }
 
-  const pickups = new Map<string, THREE.Object3D>()
+  const pickups = new Pickups(root)
   for (const placement of world.placements()) {
     if (placement.at !== 'anchor' || placement.interiorId !== interior.id) continue
     const spot = anchors.get(placement.anchorId)
     const item = world.item(placement.itemId)
     if (!spot || !item) continue
     const object = dressing.pickup(item)
-    // beside whoever is standing there, not inside them
-    object.position.set(spot.position.x + 0.45, 0.9, spot.position.z)
-    object.userData.itemId = item.id
-    root.add(object)
-    pickups.set(item.id, object)
+    pickups.put(item.id, object, standing(spot, hosts.get(placement.anchorId), object))
   }
 
   const door = interior.doors.find((d) => d.from === 'outside') ?? interior.doors[0]
@@ -118,7 +127,36 @@ export function buildInterior(world: World, interior: Interior, dressing: Dressi
   inward.y = 0
   inward.normalize()
 
-  return { root, anchors, props, people, pickups, blockers: blockersOf(interior, props), entrance, inward }
+  return {
+    root,
+    anchors,
+    props,
+    people,
+    pickups: pickups.all,
+    blockers: blockersOf(interior, [...tops.values()].map((top) => top.footprint)),
+    entrance,
+    inward,
+  }
+}
+
+/**
+ * Where a thing left at an anchor stands: on the piece of furniture that anchor
+ * belongs to, at the height that piece is drawn to, beside whoever is standing
+ * there rather than inside them. An anchor with no furniture behind it leaves
+ * the thing on the floor, which is the only surface there is.
+ */
+function standing(spot: THREE.Object3D, host: PropSurface | undefined, object: THREE.Object3D): THREE.Vector3 {
+  const right = new THREE.Vector3(1, 0, 0).applyEuler(spot.rotation)
+  const beside = { x: spot.position.x + right.x * BESIDE, z: spot.position.z + right.z * BESIDE }
+  return host ? host.place(beside.x, beside.z, halfOf(object)) : new THREE.Vector3(beside.x, 0, beside.z)
+}
+
+/** How far the thing reaches either side of its own centre, so it can be kept on the surface. */
+function halfOf(object: THREE.Object3D): { x: number; z: number } {
+  const box = new THREE.Box3().setFromObject(object)
+  if (box.isEmpty()) return { x: 0, z: 0 }
+  const size = box.getSize(new THREE.Vector3())
+  return { x: size.x / 2, z: size.z / 2 }
 }
 
 /** Four walls around a room, split wherever a door sits on them. */

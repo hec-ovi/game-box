@@ -15,7 +15,7 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI
 | Talking to the local model: one checked answer, or a streamed reply | `game/sidecar/` |
 | Asking the local model to name the city, write a whole place and the people in it, write the quests, and say how far the build has got | `game/scribe/` |
 | Conversations with NPCs: the first thing they say when you walk up, and what they are allowed to do | `game/talk/` |
-| Turning a world into three.js objects, the wet street and the rubbish on it, and where art plugs in | `game/scene/` |
+| Turning a world into three.js objects, the wet street and the rubbish on it, what the things in a room stand on, and where art plugs in | `game/scene/` |
 | The people: bodies, clothes, clips, who is doing what | `game/cast/` |
 | Buildings that look like buildings, their lit windows, their neon signs, the street lamps drawn from code and the ground they all stand on, from the city kit | `game/kitbash/` |
 | Whole buildings out of the committed pack the model authored offline, which one a plot gets, and the rooms you see through their windows | `game/prefab/` |

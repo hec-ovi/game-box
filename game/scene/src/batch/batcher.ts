@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { MaterialBatch, shapeOf } from './batch.ts'
+import { batchFor, keyOf, MaterialBatch } from './batch.ts'
 import { CityBuilding } from './building.ts'
 import { partsOf, type Part } from './parts.ts'
 
@@ -134,13 +134,7 @@ export class CityBatcher {
     const key = keyOf(part)
     let batch = this.#batches.get(key)
     if (!batch) {
-      batch = new MaterialBatch(`city:${part.material.name || this.#batches.size}`, part.material, {
-        instances: 8,
-        vertices: part.geometry.getAttribute('position').count * 8,
-        indices: (part.geometry.getIndex()?.count ?? 0) * 8,
-      })
-      batch.mesh.castShadow = part.castShadow
-      batch.mesh.receiveShadow = part.receiveShadow
+      batch = batchFor(`city:${part.material.name || this.#batches.size}`, part, 8)
       batch.mesh.userData['plots'] = []
       this.#batches.set(key, batch)
       this.#root.add(batch.mesh)
@@ -173,8 +167,4 @@ export class CityBatcher {
 export function plotOf(hit: THREE.Intersection): string | undefined {
   const plots = hit.object.userData['plots'] as string[] | undefined
   return plots && hit.batchId !== undefined ? plots[hit.batchId] : undefined
-}
-
-function keyOf(part: Part): string {
-  return `${part.material.uuid}|${shapeOf(part.geometry)}`
 }

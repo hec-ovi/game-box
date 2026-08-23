@@ -58,31 +58,40 @@ export class PropFootprint {
 
   /** Is this point on the floor inside the rectangle, for a walker `margin` wide? */
   contains(x: number, z: number, margin = 0): boolean {
-    const local = this.#project(x - this.x, z - this.z)
-    return local.along <= this.halfWidth + margin && local.through <= this.halfDepth + margin
+    const local = this.local(x, z)
+    return Math.abs(local.along) <= this.halfWidth + margin && Math.abs(local.through) <= this.halfDepth + margin
+  }
+
+  /** That point in the prop's own frame: signed, across its front and through it. */
+  local(x: number, z: number): { along: number; through: number } {
+    const cos = Math.cos(this.rot)
+    const sin = Math.sin(this.rot)
+    const dx = x - this.x
+    const dz = z - this.z
+    return { along: dx * cos - dz * sin, through: dx * sin + dz * cos }
+  }
+
+  /** A point in the prop's own frame, back in interior metres. */
+  world(along: number, through: number): { x: number; z: number } {
+    const cos = Math.cos(this.rot)
+    const sin = Math.sin(this.rot)
+    return { x: this.x + along * cos + through * sin, z: this.z - along * sin + through * cos }
   }
 
   /** Does the rectangle reach into that square of floor? Separating axes, so a turned rectangle answers honestly. */
   reaches(x: number, z: number, half: number): boolean {
     const dx = x - this.x
     const dz = z - this.z
-    const local = this.#project(dx, dz)
+    const local = this.local(x, z)
     const cos = Math.abs(Math.cos(this.rot))
     const sin = Math.abs(Math.sin(this.rot))
     // the square measured along the rectangle's axes, then the rectangle along the world's
     return (
-      local.along <= this.halfWidth + half * (cos + sin) &&
-      local.through <= this.halfDepth + half * (cos + sin) &&
+      Math.abs(local.along) <= this.halfWidth + half * (cos + sin) &&
+      Math.abs(local.through) <= this.halfDepth + half * (cos + sin) &&
       Math.abs(dx) <= half + this.halfWidth * cos + this.halfDepth * sin &&
       Math.abs(dz) <= half + this.halfWidth * sin + this.halfDepth * cos
     )
-  }
-
-  /** How far off the centre that offset lies, across the prop's front and through it. */
-  #project(dx: number, dz: number): { along: number; through: number } {
-    const cos = Math.cos(this.rot)
-    const sin = Math.sin(this.rot)
-    return { along: Math.abs(dx * cos - dz * sin), through: Math.abs(dx * sin + dz * cos) }
   }
 }
 

@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import type { Part } from './parts.ts'
 
 /** How much room a batch leaves when it has to grow, so growing is not once per building. */
 const GROWTH = 1.5
@@ -80,4 +81,24 @@ export function shapeOf(geometry: THREE.BufferGeometry): string {
   const attributes = Object.keys(geometry.attributes).sort()
     .map((name) => `${name}:${geometry.getAttribute(name).itemSize}`)
   return `${attributes.join(',')}|${geometry.getIndex() ? 'indexed' : 'none'}`
+}
+
+/**
+ * A batch sized to hold that many copies of one part, named for what it draws.
+ * It grows past the estimate on its own, so the number only decides how often.
+ */
+export function batchFor(name: string, part: Part, copies: number): MaterialBatch {
+  const batch = new MaterialBatch(name, part.material, {
+    instances: copies,
+    vertices: part.geometry.getAttribute('position').count * copies,
+    indices: (part.geometry.getIndex()?.count ?? 0) * copies,
+  })
+  batch.mesh.castShadow = part.castShadow
+  batch.mesh.receiveShadow = part.receiveShadow
+  return batch
+}
+
+/** Which batch a part belongs in: its material, and the attributes it agrees on. */
+export function keyOf(part: Part): string {
+  return `${part.material.uuid}|${shapeOf(part.geometry)}`
 }
