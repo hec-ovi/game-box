@@ -1,0 +1,236 @@
+{
+  "brief": {
+    "theme": "dusty western mining town",
+    "seed": "town",
+    "blocksX": 2,
+    "blocksY": 2,
+    "blockCells": 14
+  },
+  "grid": [
+    "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM",
+    "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM",
+    "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM",
+    "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM",
+    "MMMMWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMMM",
+    "MMMMSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSMMMM",
+    "MMMMSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSMMMM",
+    "MMMMSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSMMMM",
+    "MMMMWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBBBWSSSW...BBBBBBBBBB.WSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBBBWSSSW...BBBBBBBBBB.WSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBBBWSSSW...BBBBBBBBBB.WSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBBBWSSSW...BBBBBBBBBB.WSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBBBWSSSW...BBBBBBBBBB.WSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBBBWSSSW...BBBBBBBBBB.WSSSWMMMM",
+    "MMMMWSSSW..............WSSSW..............WSSSWMMMM",
+    "MMMMWSSSW..............WSSSW..............WSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBB.WSSSWBBBBBB........WSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBB.WSSSWBBBBBB........WSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBB.WSSSWBBBBBB........WSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBB.WSSSWBBBBBB........WSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBB.WSSSWBBBBBB........WSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBB.WSSSWBBBBBB........WSSSWMMMM",
+    "MMMMWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMMM",
+    "MMMMSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSMMMM",
+    "MMMMSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSMMMM",
+    "MMMMSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSMMMM",
+    "MMMMWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBBBWSSSWBBBBBBBBBBBB..WSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBBBWSSSWBBBBBBBBBBBB..WSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBBBWSSSWBBBBBBBBBBBB..WSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBBBWSSSWBBBBBBBBBBBB..WSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBBBWSSSWBBBBBBBBBBBB..WSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBBBWSSSWBBBBBBBBBBBB..WSSSWMMMM",
+    "MMMMWSSSW..............WSSSW..............WSSSWMMMM",
+    "MMMMWSSSW..............WSSSW..............WSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBB.WSSSWBBBBBB.....BBBWSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBB.WSSSWBBBBBB.....BBBWSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBB.WSSSWBBBBBB.....BBBWSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBB.WSSSWBBBBBB.....BBBWSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBB.WSSSWBBBBBB.....BBBWSSSWMMMM",
+    "MMMMWSSSWBBBBBBBBBBBBB.WSSSWBBBBBB.....BBBWSSSWMMMM",
+    "MMMMWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMMM",
+    "MMMMSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSMMMM",
+    "MMMMSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSMMMM",
+    "MMMMSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSMMMM",
+    "MMMMWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMMM",
+    "MMMMMMMMMMMMMMMMMMMMMMMMSSSMMMMMMMMMMMMMMMMMMMMMMMM",
+    "MMMMMMMMMMMMMMMMMMMMMMMMSSSMMMMMMMMMMMMMMMMMMMMMMMM",
+    "MMMMMMMMMMMMMMMMMMMMMMMMSSSMMMMMMMMMMMMMMMMMMMMMMMM",
+    "MMMMMMMMMMMMMMMMMMMMMMMMSSSMMMMMMMMMMMMMMMMMMMMMMMM"
+  ],
+  "roads": {
+    "nodes": [
+      {
+        "id": "node_0001",
+        "cell": {
+          "x": 6,
+          "y": 6
+        }
+      },
+      {
+        "id": "node_0002",
+        "cell": {
+          "x": 6,
+          "y": 25
+        }
+      },
+      {
+        "id": "node_0003",
+        "cell": {
+          "x": 6,
+          "y": 44
+        }
+      },
+      {
+        "id": "node_0004",
+        "cell": {
+          "x": 25,
+          "y": 6
+        }
+      },
+      {
+        "id": "node_0005",
+        "cell": {
+          "x": 25,
+          "y": 25
+        }
+      },
+      {
+        "id": "node_0006",
+        "cell": {
+          "x": 25,
+          "y": 44
+        }
+      },
+      {
+        "id": "node_0007",
+        "cell": {
+          "x": 44,
+          "y": 6
+        }
+      },
+      {
+        "id": "node_0008",
+        "cell": {
+          "x": 44,
+          "y": 25
+        }
+      },
+      {
+        "id": "node_0009",
+        "cell": {
+          "x": 44,
+          "y": 44
+        }
+      }
+    ],
+    "segments": [
+      {
+        "id": "road_0001",
+        "from": "node_0001",
+        "to": "node_0002",
+        "kind": "street",
+        "lanes": 2
+      },
+      {
+        "id": "road_0002",
+        "from": "node_0001",
+        "to": "node_0004",
+        "kind": "street",
+        "lanes": 2
+      },
+      {
+        "id": "road_0003",
+        "from": "node_0002",
+        "to": "node_0003",
+        "kind": "street",
+        "lanes": 2
+      },
+      {
+        "id": "road_0004",
+        "from": "node_0002",
+        "to": "node_0005",
+        "kind": "street",
+        "lanes": 2
+      },
+      {
+        "id": "road_0005",
+        "from": "node_0003",
+        "to": "node_0006",
+        "kind": "street",
+        "lanes": 2
+      },
+      {
+        "id": "road_0006",
+        "from": "node_0004",
+        "to": "node_0005",
+        "kind": "street",
+        "lanes": 2
+      },
+      {
+        "id": "road_0007",
+        "from": "node_0004",
+        "to": "node_0007",
+        "kind": "street",
+        "lanes": 2
+      },
+      {
+        "id": "road_0008",
+        "from": "node_0005",
+        "to": "node_0006",
+        "kind": "street",
+        "lanes": 2
+      },
+      {
+        "id": "road_0009",
+        "from": "node_0005",
+        "to": "node_0008",
+        "kind": "street",
+        "lanes": 2
+      },
+      {
+        "id": "road_0010",
+        "from": "node_0006",
+        "to": "node_0009",
+        "kind": "street",
+        "lanes": 2
+      },
+      {
+        "id": "road_0011",
+        "from": "node_0007",
+        "to": "node_0008",
+        "kind": "street",
+        "lanes": 2
+      },
+      {
+        "id": "road_0012",
+        "from": "node_0008",
+        "to": "node_0009",
+        "kind": "street",
+        "lanes": 2
+      }
+    ]
+  },
+  "digests": {
+    "plots": "330b2e6f6ecae5be0c874903a2e9973b",
+    "interiors": "0dfcfe67da6ca66fc6f2cc5464812629",
+    "npcs": "6ef6e363256191cf977cb6afdae134af",
+    "items": "08ccb56a35015b21fa51ceb3913655ff",
+    "placements": "2c951dff3675e27f5cbbac551bf4a9bf",
+    "quests": "660b0f35f2042a699a49e75e171e26f3"
+  },
+  "idCounters": {
+    "world": 1,
+    "node": 9,
+    "road": 12,
+    "plot": 20,
+    "room": 60,
+    "door": 60,
+    "prop": 355,
+    "anchor": 119,
+    "interior": 20,
+    "npc": 52,
+    "item": 42
+  }
+}

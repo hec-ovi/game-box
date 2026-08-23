@@ -15,8 +15,10 @@ import {
 } from '@gb/world'
 import { briefContract, type Brief } from './brief.ts'
 import { planInterior } from './interior/plan.ts'
+import { gridSize } from './layout/bands.ts'
 import { sitesInBlock, storeysFor, type PlotSite } from './layout/plots.ts'
-import { gridSize, layStreets } from './layout/streets.ts'
+import { layRoads } from './layout/roads.ts'
+import { layStreets } from './layout/streets.ts'
 import type { Narrator, WorldSummary } from './narrator.ts'
 import { bulkOf, itemsFor, occupancy, roleFor, surfacesOf } from './populate.ts'
 
@@ -85,7 +87,7 @@ export class Forge {
     })
     const streets = layStreets(world, brief)
 
-    this.#layRoads(world, streets.crossings)
+    layRoads(world, streets.crossings, streets.exits)
     await this.#raise(world, brief, streets.blocks, rng)
     await this.#populate(world, brief, rng)
 
@@ -113,28 +115,6 @@ export class Forge {
     const problems = world.check()
     if (problems.length) return err({ code: 'unsound-world', problems })
     return ok(added)
-  }
-
-  #layRoads(world: World, crossings: ReadonlyArray<{ x: number; y: number }>): void {
-    const nodes = crossings.map((cell) => ({ id: world.mintId('node'), cell }))
-    const segments: Parameters<World['addRoad']>[1] = []
-    for (const from of nodes) {
-      for (const to of nodes) {
-        const sameRow = from.cell.y === to.cell.y && to.cell.x > from.cell.x
-        const sameColumn = from.cell.x === to.cell.x && to.cell.y > from.cell.y
-        if (!sameRow && !sameColumn) continue
-        const between = nodes.some(
-          (other) =>
-            other !== from &&
-            other !== to &&
-            ((sameRow && other.cell.y === from.cell.y && other.cell.x > from.cell.x && other.cell.x < to.cell.x) ||
-              (sameColumn && other.cell.x === from.cell.x && other.cell.y > from.cell.y && other.cell.y < to.cell.y)),
-        )
-        if (between) continue
-        segments.push({ id: world.mintId('road'), from: from.id, to: to.id, kind: 'street', lanes: 2 })
-      }
-    }
-    world.addRoad(nodes, segments)
   }
 
   /** Puts buildings on the blocks, leaving gaps for the city to grow into later. */

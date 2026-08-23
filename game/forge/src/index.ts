@@ -3,4 +3,4 @@ export { Forge, summarise, viewOf, type ForgeError, type ForgeResult } from './f
 export { briefContract, type Brief } from './brief.ts'
 export { OfflineNarrator } from './offline-narrator.ts'
 export type { Narrator, NpcProfile, ItemProfile, WorldSummary } from './narrator.ts'
-export { gridSize, STREET_CELLS, SIDEWALK_CELLS, MOUNTAIN_CELLS } from './layout/streets.ts'
+export { gridSize, STREET_CELLS, SIDEWALK_CELLS, MOUNTAIN_CELLS } from './layout/bands.ts'
