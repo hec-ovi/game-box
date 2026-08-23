@@ -144,11 +144,21 @@ export function isHiddenStep(step: Step): boolean {
   return step.hidden === true
 }
 
+/**
+ * A step that needs nobody: it resolves the moment it opens. These four are the
+ * flow's own plumbing, never work the player does, so they run through without
+ * ever being an objective and never take a line on a journal page.
+ */
+export function resolvesItself(step: Step): boolean {
+  return step.kind === 'join' || step.kind === 'any-of' || step.kind === 'complete' || step.kind === 'fail'
+}
+
 export type Condition = z.infer<typeof ConditionSchema>
 export type Effect = z.infer<typeof EffectSchema>
 export type FailRule = z.infer<typeof FailRuleSchema>
 export type Place = z.infer<typeof PlaceSchema>
 export type Step = z.infer<typeof StepSchema>
 export type StepKind = Step['kind']
+export type QuestKind = QuestDoc['kind']
 export type Reward = z.infer<typeof RewardSchema>
 export type QuestDoc = z.infer<typeof QuestSchema>

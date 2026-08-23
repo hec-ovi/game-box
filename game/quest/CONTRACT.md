@@ -1,6 +1,6 @@
 # @gb/quest contract
 
-contractVersion: 0.6.0
+contractVersion: 0.7.0
 
 ## Purpose
 
@@ -29,7 +29,7 @@ Quests as flows: a checked graph of steps ("talk to her, go there, take three of
 | `rewardFor` | a `Reward` | inside the band for that difficulty |
 | `QuestLog.handle` / `start` / `abandon` | `Change[]` | `quest-started`, `step-opened`, `step-revealed`, `step-progress`, `step-done`, `step-abandoned`, `quest-abandoned`, `quest-complete`, `quest-failed`; empty when nothing moved |
 | `QuestLog.objectives()` | `Objective[]` | one line per open step the player can see: `questId`, `questTitle` and the step line below |
-| `QuestLog.journal()` | `JournalEntry[]` | one page per quest the player has taken: `questId`, `questTitle`, `status` and its steps in the order the quest was written, each a step line plus its `state` |
+| `QuestLog.journal()` | `JournalEntry[]` | one page per quest the player has taken: `questId`, `questTitle`, `kind` (`main` or `side`), `status` and the steps they do, in the order the quest was written, each a step line plus its `state` |
 | `QuestLog.offeredBy(npcId)` | `QuestDoc[]` | unstarted quests from that giver whose `requires` the player already meets |
 | `QuestLog.isQuestItem(itemId)` | boolean | true while a live quest still needs that item |
 | `QuestLog.toJSON()` | [schema/quest-progress.json](schema/quest-progress.json) | resumes to exactly the same open steps, counts, secrets and dropped branches |
@@ -40,7 +40,9 @@ One shape for a step wherever the interface shows it, so the objectives panel an
 
 ## The journal
 
-`journal()` is the quests tab. One page per quest the player has taken, and none for a quest nobody has been offered yet, so the list never gives away work that has not come up. The steps on a page are in the order the quest was written, never the order the player got through them, so a journal reads top to bottom the way the quest was authored.
+`journal()` is the quests tab. One page per quest the player has taken, and none for a quest nobody has been offered yet, so the list never gives away work that has not come up. The steps on a page are in the order the quest was written, never the order the player got through them, so a journal reads top to bottom the way the quest was authored. `kind` says whether the page is the story (`main`) or an errand (`side`), so the tab can keep the story where the player can find it.
+
+A page lists the work and nothing else. `join`, `any-of`, `complete` and `fail` resolve the moment they open, so the player never does one and none of them is a line: "Get paid" on a page is a promise nobody keeps, since the reward arrives on its own with `quest-complete`. The page says how a quest ended in `status`; it does not spend a row on it. Everything the page does carry is a line the player can act on, so a caller draws it as it comes and never has to sort work from wiring.
 
 | `state` | Where the step stands |
 |---|---|
@@ -141,8 +143,8 @@ Effects: `give-item`, `take-item`, `pay`, `charge`, `reputation`, `set-flag`, `c
 - A flow runs forward only: cycles are rejected, so a quest cannot trap the player.
 - Optional work never gates the quest: a `complete` step is always reachable without entering an optional step, and no join or any-of waits on one.
 - A hidden step is always revealed by something; when it is required, by something that must run before it.
-- Steps that need no player action (`join`, `any-of`, `complete`, `fail`) resolve the moment they open.
-- A journal page lists a quest's steps in document order, whatever order the player did them in.
+- Steps that need no player action (`join`, `any-of`, `complete`, `fail`) resolve the moment they open, so they are never an objective and never a journal line.
+- A journal page lists the steps the player does, in document order, whatever order they did them in.
 - A secret is published nowhere: while a hidden step waits to be revealed it is off the objectives and off the journal page, question and roads included, so nothing on screen gives away that it exists.
 - A step is `dropped` exactly when the flow can no longer walk into it from an open step. Because a flow runs forward only, nothing dropped ever comes back.
 - The runtime reads the world only through `WorldView`, and touches the player only through `@gb/play`, so it runs headless with no renderer.
@@ -151,4 +153,4 @@ Effects: `give-item`, `take-item`, `pay`, `charge`, `reputation`, `set-flag`, `c
 
 ## How to modify this blackbox safely
 
-New step kinds, conditions, effects and failure rules are additive: extend the union, teach `checkEdges`/`checkShape` what they promise, teach `checkSolvability` what they guarantee, teach `targetOf` what the new kind points at (the switch there is exhaustive, so it will not compile until you do), teach the runtime what completes them, bump the minor contractVersion. New fields go on as optional, because exported worlds contain quests written without them. Never change what an existing kind means. Regenerate `schema/` (`pnpm --filter @gb/quest run generate`) and run `pnpm --filter @gb/quest test` in the same change.
+New step kinds, conditions, effects and failure rules are additive: extend the union, teach `checkEdges`/`checkShape` what they promise, teach `checkSolvability` what they guarantee, teach `targetOf` what the new kind points at (the switch there is exhaustive, so it will not compile until you do), teach the runtime what completes them, add it to `resolvesItself` if it needs no player, bump the minor contractVersion. New fields go on as optional, because exported worlds contain quests written without them. Never change what an existing kind means. Regenerate `schema/` (`pnpm --filter @gb/quest run generate`) and run `pnpm --filter @gb/quest test` in the same change.

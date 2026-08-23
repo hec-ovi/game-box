@@ -16,6 +16,7 @@ export {
   type QuestDoc,
   type Step,
   type StepKind,
+  type QuestKind,
   type Condition,
   type Effect,
   type FailRule,

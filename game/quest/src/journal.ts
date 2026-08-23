@@ -1,6 +1,6 @@
 import type { Flow } from './graph.ts'
 import { isSecret, type Progress, type QuestStatus } from './progress.ts'
-import type { QuestDoc, Step } from './schema.ts'
+import { resolvesItself, type QuestDoc, type QuestKind, type Step } from './schema.ts'
 import { stepLine, type StepLine } from './step-line.ts'
 
 /**
@@ -18,17 +18,20 @@ export interface JournalStep extends StepLine {
 export interface JournalEntry {
   readonly questId: string
   readonly questTitle: string
+  /** The story line or an errand, so the page can say which this is. */
+  readonly kind: QuestKind
   readonly status: QuestStatus
   readonly steps: readonly JournalStep[]
 }
 
 /**
- * Reads one quest the way a journal page does: every step the player knows
- * about, in document order, each saying where it stands. A step the flow can
- * still walk into is `upcoming`; one it cannot is `dropped`, which is what the
- * far side of a choice becomes once the player went the other way, and what a
+ * Reads one quest the way a journal page does: every step the player does,
+ * in document order, each saying where it stands. A step the flow can still
+ * walk into is `upcoming`; one it cannot is `dropped`, which is what the far
+ * side of a choice becomes once the player went the other way, and what a
  * rival branch becomes once an any-of has a winner. Secrets stay off the page
- * until something reveals them.
+ * until something reveals them, and the steps that resolve themselves are
+ * never on it at all.
  */
 export class QuestJournal {
   readonly #quest: QuestDoc
@@ -45,10 +48,11 @@ export class QuestJournal {
     const ahead = this.#stillAhead()
     const steps: JournalStep[] = []
     for (const step of this.#quest.steps) {
-      if (isSecret(step, this.#progress)) continue
+      if (resolvesItself(step) || isSecret(step, this.#progress)) continue
       steps.push({ ...stepLine(step, this.#progress), state: this.#stateOf(step, ahead) })
     }
-    return { questId: this.#quest.id, questTitle: this.#quest.title, status: this.#progress.status, steps }
+    const { id, title, kind } = this.#quest
+    return { questId: id, questTitle: title, kind, status: this.#progress.status, steps }
   }
 
   #stateOf(step: Step, ahead: ReadonlySet<string>): StepState {

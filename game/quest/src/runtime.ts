@@ -6,7 +6,7 @@ import { Flow } from './graph.ts'
 import { QuestJournal, type JournalEntry } from './journal.ts'
 import { matchStep, triggersFailure } from './matching.ts'
 import { freshProgress, isSecret, questProgressContract, restoreProgress, storeProgress, type Progress, type QuestProgressDoc, type QuestStatus } from './progress.ts'
-import { countOf, itemPool, type Condition, type QuestDoc, type Reward, type Step } from './schema.ts'
+import { countOf, itemPool, resolvesItself, type Condition, type QuestDoc, type Reward, type Step } from './schema.ts'
 import { stepLine, type StepLine } from './step-line.ts'
 
 export type RuntimeError =
@@ -287,7 +287,7 @@ export class QuestLog {
         hidden: isSecret(step, progress),
       })
 
-      if (step.kind === 'join' || step.kind === 'any-of' || step.kind === 'complete' || step.kind === 'fail') {
+      if (resolvesItself(step)) {
         this.#finishStep(quest, progress, step, undefined, changes)
         if (progress.status !== 'active') return
       }
