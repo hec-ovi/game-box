@@ -15,14 +15,15 @@ describe('windows', () => {
     const plot = office()
     const building = dressing.building(plot, sizeOf(plot, 14))
     const glass = glassOf(building)
-    const centre = glass.geometry.getAttribute(ROOM_ATTRIBUTES.centre)
+    const position = glass.geometry.getAttribute('position')
+    const offset = glass.geometry.getAttribute(ROOM_ATTRIBUTES.offset)
     const size = glass.geometry.getAttribute(ROOM_ATTRIBUTES.size)
     const look = glass.geometry.getAttribute(ROOM_ATTRIBUTES.look)
 
     // every vertex of the glass mesh carries its room, and the mesh is still one draw
-    expect(centre.count).toBe(glass.geometry.getAttribute('position').count)
-    expect(size.count).toBe(centre.count)
-    expect(look.count).toBe(centre.count)
+    expect(offset.count).toBe(position.count)
+    expect(size.count).toBe(offset.count)
+    expect(look.count).toBe(offset.count)
     expect(meshesOf(building).filter((mesh) => (mesh.material as THREE.Material).name === GLASS)).toHaveLength(1)
 
     for (let at = 0; at < size.count; at++) {
@@ -30,9 +31,11 @@ describe('windows', () => {
       expect(size.getY(at), 'a room is tall enough to stand in').toBeGreaterThan(1.5)
       expect(look.getX(at), 'the key it lights up at is a share, 0 to 1').toBeGreaterThanOrEqual(0)
       expect(look.getX(at)).toBeLessThan(1)
-      // the room hangs off the wall it is behind, inside the storeys of the building
-      expect(centre.getY(at)).toBeGreaterThan(0)
-      expect(centre.getY(at)).toBeLessThan(14)
+      // the pane carries where it sits in its room, so the wall it is behind
+      // comes back from the vertex: inside the storeys of the building
+      const roomY = position.getY(at) - offset.getY(at)
+      expect(roomY).toBeGreaterThan(0)
+      expect(roomY).toBeLessThan(14)
     }
   })
 

@@ -24,14 +24,27 @@ export interface Room {
 }
 
 /** The attributes a pane carries, and what the glass material reads them as. */
-export const ROOM_ATTRIBUTES = { centre: 'roomCentre', size: 'roomSize', look: 'roomLook' } as const
+export const ROOM_ATTRIBUTES = { offset: 'roomOffset', size: 'roomSize', look: 'roomLook' } as const
 
-/** Writes a room onto every vertex of one pane. */
+/**
+ * Writes a room onto every vertex of one pane.
+ *
+ * The pane carries where it sits inside its own room rather than where the room
+ * is, so the numbers stay true wherever the building ends up. A vertex position
+ * moves when the city batches its buildings into shared buffers; the distance
+ * from a pane to the middle of its own window wall does not.
+ */
 export function bakeRoom(pane: THREE.BufferGeometry, room: Room): void {
-  const count = pane.getAttribute('position').count
-  pane.setAttribute(ROOM_ATTRIBUTES.centre, filled(count, room.centre))
-  pane.setAttribute(ROOM_ATTRIBUTES.size, filled(count, room.size))
-  pane.setAttribute(ROOM_ATTRIBUTES.look, filled(count, [room.key, room.look[0], room.look[1]]))
+  const position = pane.getAttribute('position')
+  const offset = new Float32Array(position.count * 3)
+  for (let at = 0; at < position.count; at++) {
+    offset[at * 3] = position.getX(at) - room.centre[0]
+    offset[at * 3 + 1] = position.getY(at) - room.centre[1]
+    offset[at * 3 + 2] = position.getZ(at) - room.centre[2]
+  }
+  pane.setAttribute(ROOM_ATTRIBUTES.offset, new THREE.BufferAttribute(offset, 3))
+  pane.setAttribute(ROOM_ATTRIBUTES.size, filled(position.count, room.size))
+  pane.setAttribute(ROOM_ATTRIBUTES.look, filled(position.count, [room.key, room.look[0], room.look[1]]))
 }
 
 function filled(count: number, value: readonly number[]): THREE.BufferAttribute {

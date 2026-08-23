@@ -1,6 +1,7 @@
 import { cellCentre, METRICS, World } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
+import { DISTRICT } from '../src/street/districts.ts'
 import { KitDressing, KitLibrary, lampSpots, LAMP_SPACING, PIECES, PIECE_IDS, placeholderKit, type KitPart, type PieceId } from '../src/index.ts'
 
 /** A block of buildings with a pavement round it and a road round that. */
@@ -22,15 +23,33 @@ describe('street lamps', () => {
   const world = town()
   const dressing = new KitDressing(placeholderKit())
 
-  it('draws every lamp in the city twice, whatever the town is', () => {
+  it('draws the posts a district at a time and every halo in one buffer', () => {
     const drawn = lamps(world, dressing)
     const spots = lampSpots(world)
+    const posts = drawn.filter((mesh) => mesh.name.startsWith('kit:streetlights:posts:')) as THREE.InstancedMesh[]
+    const haloes = drawn.filter((mesh) => mesh.name === 'kit:streetlights:halo')
 
     expect(spots.length).toBeGreaterThan(8)
-    // one instanced draw for the posts, one buffer for the haloes
-    expect(drawn).toHaveLength(2)
-    expect((drawn[0] as THREE.InstancedMesh).count).toBe(spots.length)
-    expect((drawn[1]!.geometry as THREE.InstancedBufferGeometry).instanceCount).toBe(spots.length)
+    expect(haloes).toHaveLength(1)
+    expect(posts.length + 1).toBe(drawn.length)
+    // every lamp stands in exactly one district, and every one has its glow
+    expect(posts.reduce((total, mesh) => total + mesh.count, 0)).toBe(spots.length)
+    expect((haloes[0]!.geometry as THREE.InstancedBufferGeometry).instanceCount).toBe(spots.length)
+    // and one material for the lot, whatever the town is
+    expect(new Set(drawn.map((mesh) => mesh.material as THREE.Material)).size).toBe(2)
+  })
+
+  it('gives each district a volume the frustum can throw away', () => {
+    const drawn = lamps(world, dressing)
+    const posts = drawn.filter((mesh) => mesh.name.startsWith('kit:streetlights:posts:')) as THREE.InstancedMesh[]
+    const across = new THREE.Box3().setFromObject(dressing.streetlights(world)).getSize(new THREE.Vector3()).length()
+
+    expect(posts.length, 'a town this size is more than one district').toBeGreaterThan(1)
+    expect(across, 'and it is wider than a district').toBeGreaterThan(DISTRICT * 2)
+    for (const mesh of posts) {
+      // a district's lamps reach across that district, never across the town
+      expect(mesh.boundingSphere!.radius, mesh.name).toBeLessThan(DISTRICT)
+    }
   })
 
   it('stands them on the pavement at the kerb, one run of street at a time', () => {
@@ -54,12 +73,12 @@ describe('street lamps', () => {
     expect(lampSpots(world, LAMP_SPACING * 3).length).toBeLessThan(spots.length)
   })
 
-  it('puts the same lamps in the same places every run', () => {
-    const read = (mesh: THREE.InstancedMesh): number[] => [...mesh.instanceMatrix.array].map((v) => Math.round(v * 1e6))
-    const first = lamps(world, dressing)[0] as THREE.InstancedMesh
-    const again = lamps(world, new KitDressing(placeholderKit()))[0] as THREE.InstancedMesh
+  it('puts the same lamps in the same districts every run', () => {
+    const read = (dressed: KitDressing): string[] => lamps(world, dressed)
+      .filter((mesh) => mesh.name.startsWith('kit:streetlights:posts:'))
+      .map((mesh) => `${mesh.name} ${[...(mesh as THREE.InstancedMesh).instanceMatrix.array].map((v) => Math.round(v * 1e6)).join(',')}`)
 
-    expect(read(again)).toEqual(read(first))
+    expect(read(new KitDressing(placeholderKit()))).toEqual(read(dressing))
   })
 
   it('draws none at all from a kit with no lamp in it', () => {

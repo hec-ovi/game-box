@@ -8,6 +8,12 @@
  * what stops a facade reading as a decal: you see a floor, a back wall and
  * depth through the glass.
  *
+ * Everything here is an offset or a direction, never a place: where the pane
+ * sits in its room rides on the vertex, and the ray is the difference of two
+ * points in whichever frame the pane is being drawn in. That is what lets the
+ * city put a thousand buildings in one buffer and still draw the right room
+ * behind each window.
+ *
  * The technique, and most of the shape of this file, is three's own
  * examples/jsm/generators/city/SkyscraperGenerator.js (MIT).
  */
@@ -38,7 +44,7 @@ const DEPTH = 1.55
  * flickers.
  */
 export function roomBehindGlass(litShare: FloatNode): RoomShading {
-  const centre = attribute<'vec3'>(ROOM_ATTRIBUTES.centre, 'vec3')
+  const offset = attribute<'vec3'>(ROOM_ATTRIBUTES.offset, 'vec3')
   const size = attribute<'vec2'>(ROOM_ATTRIBUTES.size, 'vec2')
   const look = attribute<'vec3'>(ROOM_ATTRIBUTES.look, 'vec3')
   const [key, paint, dressing] = [look.x, look.y, look.z]
@@ -47,7 +53,6 @@ export function roomBehindGlass(litShare: FloatNode): RoomShading {
   // up, z into the building
   const out = normalLocal
   const across = cross(vec3(0, 1, 0), out).normalize()
-  const offset = positionLocal.sub(centre)
   const eye = modelWorldMatrixInverse.mul(vec4(cameraPosition, 1)).xyz
   const ray = positionLocal.sub(eye).normalize()
   const origin = vec3(dot(offset, across), offset.y, 0)

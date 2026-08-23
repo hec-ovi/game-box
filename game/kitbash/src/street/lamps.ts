@@ -7,6 +7,7 @@ import { LAMP, LAMP_LENS, LAMP_POST } from '../catalog/furniture.ts'
 import type { KitLibrary } from '../kit/library.ts'
 import type { CityNight } from '../night/night.ts'
 import type { Vec3Node } from '../night/nodes.ts'
+import { districtsOf } from './districts.ts'
 import { lampSpots, type LampSpot } from './layout.ts'
 
 /** Which part of the lamp a vertex is on, baked so one material shades both. */
@@ -20,10 +21,16 @@ const LENS_GLOW = 5
 const HALO = { colour: 0xffc47a, radius: 3 }
 
 /**
- * Every street lamp in the city, in two draws: one instanced mesh for the kit
- * posts and one additive quad buffer for their haloes. Both read the same
- * `CityNight`, so they come on together and cost nothing to move through the
- * evening.
+ * Every street lamp in the city: the posts one instanced draw to a district,
+ * and every halo in one additive quad buffer. Both read the same `CityNight`,
+ * so they come on together and cost nothing to move through the evening.
+ *
+ * The posts are cut into districts because a kit lamp is a thousand triangles
+ * and one bounding volume over the whole town can never be culled: standing on
+ * one street you would pay for the lamps on every other, in the shadow pass as
+ * well as the frame. A district's worth is one volume the frustum can throw
+ * away. The haloes stay in one buffer, because two triangles a lamp is not
+ * worth a draw of its own to cull.
  *
  * A pack with no lamp in it gives an empty group rather than a stand-in, and
  * the street simply stays dark.
@@ -37,7 +44,9 @@ export function buildStreetLamps(world: World, kit: KitLibrary, spacing?: number
   if (spots.length === 0) return group
 
   const geometry = lampGeometry(kit)
-  group.add(posts(geometry, kit, spots))
+  // one material for the whole city: a district is a bounding volume, not a look
+  const post = lampMaterial(kit)
+  for (const [at, district] of districtsOf(spots).entries()) group.add(posts(geometry, post, district.of, at))
   group.add(haloes(spots, lanternHeight(geometry), kit.night))
   return group
 }
@@ -71,10 +80,10 @@ function lanternHeight(geometry: THREE.BufferGeometry): number {
   return Number.isFinite(low) ? (low + high) / 2 : 0
 }
 
-/** The posts: one instanced draw for the whole city. */
-function posts(geometry: THREE.BufferGeometry, kit: KitLibrary, spots: readonly LampSpot[]): THREE.InstancedMesh {
-  const mesh = new THREE.InstancedMesh(geometry, lampMaterial(kit), spots.length)
-  mesh.name = 'kit:streetlights:posts'
+/** The posts of one district: one instanced draw, one bounding volume. */
+function posts(geometry: THREE.BufferGeometry, material: THREE.Material, spots: readonly LampSpot[], district: number): THREE.InstancedMesh {
+  const mesh = new THREE.InstancedMesh(geometry, material, spots.length)
+  mesh.name = `kit:streetlights:posts:${district}`
   mesh.castShadow = true
   mesh.receiveShadow = true
 
@@ -107,9 +116,8 @@ function lampMaterial(kit: KitLibrary): THREE.Material {
 }
 
 /**
- * The haloes: every lamp in the city in one additive quad buffer, billboarded
- * in the vertex shader. One draw, whatever the town is, and it goes out with
- * the daylight.
+ * Every halo in the city in one additive quad buffer, billboarded in the vertex
+ * shader. One draw whatever the town is, and it goes out with the daylight.
  */
 function haloes(spots: readonly LampSpot[], height: number, night: CityNight): THREE.Mesh {
   const geometry = new THREE.InstancedBufferGeometry()
@@ -128,6 +136,15 @@ function haloes(spots: readonly LampSpot[], height: number, night: CityNight): T
   geometry.boundingSphere = bounds.getBoundingSphere(new THREE.Sphere())
   geometry.boundingSphere.radius += HALO.radius
 
+  const mesh = new THREE.Mesh(geometry, haloMaterial(night))
+  mesh.name = 'kit:streetlights:halo'
+  mesh.renderOrder = 1
+  mesh.raycast = () => {}
+  return mesh
+}
+
+/** The glow itself. */
+function haloMaterial(night: CityNight): THREE.Material {
   // the soft edge of the glow, and the daylight switch: both a single number
   const falloff = smoothstep(0.5, 0, uv().sub(vec2(0.5, 0.5)).length())
 
@@ -140,12 +157,7 @@ function haloes(spots: readonly LampSpot[], height: number, night: CityNight): T
   material.blending = THREE.AdditiveBlending
   material.depthWrite = false
   material.transparent = true
-
-  const mesh = new THREE.Mesh(geometry, material)
-  mesh.name = 'kit:streetlights:halo'
-  mesh.renderOrder = 1
-  mesh.raycast = () => {}
-  return mesh
+  return material
 }
 
 /** The colour the pack painted a part, or a sane one if the pack has no opinion. */
