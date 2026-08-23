@@ -106,7 +106,6 @@ Three states, and the difference matters:
 - `@gb/hud`'s `QuestStep` has one boolean where the engine has three states (with hud)
 - `HudIntent` has no `abandon`, though `@gb/quest` and `@gb/app` both support it (with hud)
 - A conversation opens with a blank panel until the player speaks first (with talk)
-- `@gb/scene`'s spawn contract says "the first door in town" and should say "the first door that opens"
 
 ## What this list is for
 

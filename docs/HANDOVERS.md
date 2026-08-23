@@ -99,7 +99,13 @@ each, one shared material, no draw added.
 
 | # | Defect | Found by | Box | Detail |
 |---|---|---|---|---|
-| 58 | Every pickup is placed at a constant y = 0.9 whatever it stands on | furnish | scene | `buildInterior`. In a generated bar an item on a `serve` anchor at a `bar-counter` (customer rail 1.10) lands 20 cm **inside** the counter; one on a `sit-drink` anchor at a stool (0.75) floats 15 cm. Every item's lowest triangle is now at zero and `FurnishLibrary.contact(prop)` publishes each piece's drawn top, so the height is there to be read |
+Row 58 is closed. Scene did not read furnish's published `contact(prop)` and
+gave a measured reason: scene cannot import furnish (furnish depends on scene),
+and one number per prop kind fixes 20 of 42 cases and cannot fix the rest, since
+it cannot say which of a bar counter's two tops a thing is over. A ray at the
+point the thing is going gets 42 of 42 with nothing published at all. Over 88
+placements in 8 towns: resting on nothing 87 to **0**, not even over its own
+piece 60 to **0**.
 
 ## From the journal and the greeting
 
@@ -121,6 +127,10 @@ Rows 51 and 47 are closed in forge; rows 59 and 60 are closed in hud.
 |---|---|---|---|
 | 63 | `Scribe.namePlaces` has no caller | scribe | A facade no longer costs a model call, so the plural naming method is dead. Also `InstanceRequest`, `InstancePost` and `InstanceStock` now carry an `index` (the caller's own numbering, so an offline narrator can reproduce its draws); scribe still compiles without it |
 | 64 | Forge plans a 1.6x0.9 table, furnish draws 1.0x1.0 | forge + furnish | Still open, deliberately. Forge over-reserves, which is the safe direction. It needs the two boxes to agree one number, not a change in either alone |
+
+| # | Work | Box | Detail |
+|---|---|---|---|
+| 65 | `game/app/tests/contract.test.ts:634` asserts the glass at `x = 10.1`; it is now **9.2** | app | "Beside them" follows the anchor's own facing (45 cm to their right) instead of world +x. Same 0.45 m, one constant. Caused by scene's fix and the only break outside its folder |
 
 ## Checked and closed
 
