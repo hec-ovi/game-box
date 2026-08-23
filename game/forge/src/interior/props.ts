@@ -50,6 +50,37 @@ export const PROP_SPECS: Record<FurnitureProp, PropSpec> = {
   jukebox: floor(0.8, 0.5, true),
 }
 
+/**
+ * The part of a seat a body has to agree with: where its back stands, and how
+ * far the surface you sit on runs from front to back. Both are metres from the
+ * piece's own centre along its depth, positive towards its back, and both were
+ * measured off the triangles `@gb/furnish` draws in both interior languages: a
+ * back is the geometry that rises at least 0.2 m above the seat over the width
+ * a torso covers, a pad is the level plate at the contact height.
+ */
+export interface SeatSpec {
+  /** Front face of the back rest. A stool leaves it out: there is nothing to lean on. */
+  readonly back?: number
+  /** Front and back edge of the surface a body sits on. */
+  readonly pad: readonly [number, number]
+}
+
+/** Every piece a body sits or lies on, and nothing else. */
+export const SEAT_SPECS = {
+  chair: { back: 0.194, pad: [-0.22, 0.22] },
+  'office-chair': { back: 0.235, pad: [-0.232, 0.232] },
+  'bar-stool': { pad: [-0.162, 0.162] },
+  sofa: { back: 0.37, pad: [-0.402, 0.242] },
+  bed: { back: 0.95, pad: [-0.97, 0.867] },
+} as const satisfies Partial<Record<FurnitureProp, SeatSpec>>
+
+export type SeatProp = keyof typeof SEAT_SPECS
+
+/** What sitting on this piece means, or nothing for a piece nobody sits on. */
+export function seatSpecOf(prop: FurnitureProp): SeatSpec | undefined {
+  return (SEAT_SPECS as Partial<Record<FurnitureProp, SeatSpec>>)[prop]
+}
+
 type Placement = Pick<Furniture, 'prop' | 'pos' | 'rot'>
 
 /** The floor a placed piece covers. */

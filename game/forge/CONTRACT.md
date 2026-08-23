@@ -1,6 +1,6 @@
 # @gb/forge contract
 
-contractVersion: 0.7.0
+contractVersion: 0.8.0
 
 ## Purpose
 
@@ -41,9 +41,21 @@ A narrator writing an unusable quest is not an error: those quests are dropped a
 - An interior is planned in that order: rooms, then doors, then furniture, then the places people stand. The entry room touches the wall the street door is in; every other room hangs off it rather than off another room, so nobody walks through a bedroom to reach the kitchen.
 - One door from the street, one door between rooms, and every room reachable from the street door.
 - Furniture never lands in a doorway (1.2 m across the opening, a metre either side of the wall), never overlaps another piece, and never seals off a door or a place somebody stands. Every piece is tested against the free floor before it lands, so a building that is too small simply holds less.
-- Every anchor is somewhere a person can get to, and close enough to do the job. Anyone sitting or sleeping is inside their own seat or bed; nobody stands in a doorway, inside somebody else's furniture, or on floor cut off from the doors. Anyone working faces what they work at: staff behind their counter, a cook at the stove, a browser at the case, a seat drawn up to its table.
+- Every anchor is somewhere a person can get to, and close enough to do the job. Anyone sitting or sleeping is on their own seat or bed; nobody stands in a doorway, inside somebody else's furniture, or on floor cut off from the doors. Anyone working faces what they work at: staff behind their counter, a cook at the stove, a browser at the case, a seat drawn up to its table.
 - How close a body stands is the reach of what it is doing, not the width of a walking body. Hands on a surface (serving, cooking, working a bench) means 0.15 m of floor between the body and the face of the piece, because the standing clips put the hands 0.02 to 0.13 m in front of the body at about 1.03 m up: further back and the forearms rest on air. Facing a piece without touching it (a browser at a case, somebody at a sink or an altar) means 0.3 m. The bands live in `src/interior/stance.ts` and nowhere else, and every anchor is measured against them in the tests, in metres, off the piece's own footprint.
 - Standing that close is standing inside the skirt the walk grid keeps clear round anything solid. A body may be inside the skirt of the one piece it is working at, never another's, and still has to have walkable floor within a step of its back, so the place it stands is a place it could have walked to.
+- A body on a seat is not at the seat's centre. The sitting clip holds the body well behind its own root: the pelvis 0.33 m back and the back of the widest coat in the wardrobe 0.50 m back, measured off `Sitting_Idle_Loop` in `assets/dist/anims.glb` skinned onto all twelve dressed characters. So a root at the centre of a chair puts the back rest through the torso. The anchor goes forward of the seat instead, along the way the seat faces, far enough that the body's back is against the front face of the back rest with 2 cm to spare; a seat with nothing to lean on centres the pelvis on the pad. That is a different number for every seat, because the backs are at different depths:
+
+  | seat | back rest face | pad | anchor, forward of the centre |
+  |---|---|---|---|
+  | chair | 0.194 | -0.220 to 0.220 | 0.326 |
+  | office-chair | 0.235 | -0.232 to 0.232 | 0.285 |
+  | bar-stool | none | -0.162 to 0.162 | 0.330 |
+  | sofa | 0.370 | -0.402 to 0.242 | 0.150 |
+  | bed | 0.950 | -0.970 to 0.867 | -0.430 |
+
+  Metres from the piece's own centre, positive towards its back. The two seat numbers are measured off the triangles `@gb/furnish` draws in both interior languages and live in `src/interior/props.ts` beside the footprints; the body numbers and the rule live in `src/interior/stance.ts`. A bed comes out negative because a headboard is 0.95 m back, so a body sits up against it rather than out in the middle of the mattress. The pelvis has to land on the pad whatever the rule says, and every seat is held to that in the tests.
+- Whether a seat is a place somebody can sit is a question about the seat, so nothing about which anchors are accepted turns on that offset: reachability, doorways and other people's furniture are all judged at the seat, exactly as they were when the body sat on its centre. Moving a body onto its seat properly cannot cost a town a single anchor.
 - A piece that belongs on a counter top is not put on the floor. Furniture carries a floor position and nothing else, so a till or a coffee machine would stand on the floor beside the counter; `PROP_SPECS` marks those and the planner leaves them out until furniture can say what it stands on.
 - The interior varies with the seed and stays identical for the same one: an entrance hall or none, service rooms across the back or down one side, counters on either hand, furniture swept along the walls until it fits.
 - Each kind of building is recognisable from the inside: a bar has a counter you can walk behind with stools along it, a shop a counter you queue at and cases to browse, a house a sofa facing a screen and a bed against a wall.
@@ -131,7 +143,7 @@ The `streets` stream is forked off the root and drawn from only in `plan.ts`. Dr
 
 `tests/fixtures/sealed-city.json` is a city this box built and sealed before the streets were seeded, quests included. It proves an already-exported city still loads and still validates. It is never regenerated: regenerating it is deleting the only proof that old files still open.
 
-Interiors live in `src/interior/`: `recipes.ts` says what rooms a building has, `rooms.ts` cuts them out of the shell, `doors.ts` hangs the doors, `room-plan.ts` is the only way furniture and anchors get placed (it holds the clearance and reachability tests), `stance.ts` says how close a body stands to what it is working at, and `furnish/` has one dresser per family of building. A new building kind needs a programme in `recipes.ts`, a dresser in `furnish/`, and a role mapping in `populate.ts`, or it generates an empty shell. Prop sizes live in `src/interior/props.ts` and are what the planner keeps apart, so they have to match what the renderer draws; a dresser never passes its own clearance, it names the kind of anchor and `stance.ts` answers.
+Interiors live in `src/interior/`: `recipes.ts` says what rooms a building has, `rooms.ts` cuts them out of the shell, `doors.ts` hangs the doors, `room-plan.ts` is the only way furniture and anchors get placed (it holds the clearance and reachability tests), `stance.ts` says where a body's root goes relative to its piece, standing at it or sitting on it, and `furnish/` has one dresser per family of building. A new building kind needs a programme in `recipes.ts`, a dresser in `furnish/`, and a role mapping in `populate.ts`, or it generates an empty shell. Prop sizes live in `src/interior/props.ts` and are what the planner keeps apart, so they have to match what the renderer draws; the same file carries `SEAT_SPECS`, the back rest and the pad of every piece a body sits on. A dresser never passes its own clearance or its own seat offset: it names the kind of anchor and the piece, and `stance.ts` answers.
 
 Every generated quest is played to the end in the tests by `tests/drive.ts`, which reads nothing but `objectives()` and does what each one says, so a recipe that writes a job nobody can finish fails the suite whatever shape it is.
 

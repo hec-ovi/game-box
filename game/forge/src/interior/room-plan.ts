@@ -14,13 +14,15 @@ import {
   opposite,
   round,
   sideOf,
+  step,
   wallOf,
   SIDES,
   type Box,
   type Side,
   type Vec,
 } from './geometry.ts'
-import { footprintOf, gapTo, specOf } from './props.ts'
+import { footprintOf, gapTo, seatSpecOf, specOf } from './props.ts'
+import { seatRoot } from './stance.ts'
 
 /** Half an interior wall: how far off a room's line anything has to stay. */
 export const WALL_CLEAR = 0.1
@@ -211,6 +213,11 @@ export class RoomPlan {
    * rather than over the floor in front of it. So a body working at a piece is
    * allowed inside the skirt of that one piece, and no other, and still has to
    * have real floor within a step of its back.
+   *
+   * A body on a seat is judged at the seat, and recorded where the sitting clip
+   * actually puts it: `pos` is the seat, the anchor is `seatRoot` forward of it.
+   * Whether the seat is a place somebody can sit is a question about the seat,
+   * so nothing about which anchors are accepted turns on that offset.
    */
   anchor(kind: AnchorKind, pos: Vec, rot: number, propId?: string): boolean {
     if (!inBox(this.floor.bounds, pos)) return false
@@ -232,7 +239,8 @@ export class RoomPlan {
     const footing = this.floor.footing(pos, reach, this.#waypoints)
     if (!footing) return false
 
-    this.#anchors.push({ id: this.#mint('anchor'), kind, roomId: this.room.id, pos: { x: round(pos.x), y: round(pos.y) }, rot: round(rot), ...(propId ? { propId } : {}) })
+    const body = own && seat && seatSpecOf(own.prop) ? step(pos, rot, seatRoot(own.prop)) : pos
+    this.#anchors.push({ id: this.#mint('anchor'), kind, roomId: this.room.id, pos: { x: round(body.x), y: round(body.y) }, rot: round(rot), ...(propId ? { propId } : {}) })
     this.#waypoints = [...this.#waypoints, footing]
     if (crowd) this.#crowd++
     return true

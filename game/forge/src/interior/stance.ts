@@ -1,11 +1,12 @@
-import type { AnchorKind } from '@gb/world'
+import type { AnchorKind, FurnitureProp } from '@gb/world'
+import { seatSpecOf } from './props.ts'
 
 /**
- * How close a body stands to the piece it is there for, measured from the
- * body's own point on the floor to the near face of the piece.
+ * Where a body's own point on the floor goes relative to the piece it is there
+ * for: standing at it, or sitting on it.
  *
- * Two different bodies want two different things and the planner used to give
- * them the same number:
+ * Two different standing bodies want two different things and the planner used
+ * to give them the same number:
  *
  * - A body **working** at a piece rests its hands on the surface. The standing
  *   working clips put the hands 0.02 to 0.13 m in front of the root, at about
@@ -16,8 +17,10 @@ import type { AnchorKind } from '@gb/world'
  *   at a sink, stands in front of an altar. It wants to see the piece and to be
  *   walked past, so it stands a short step back.
  *
- * A body sitting on a piece is neither: its anchor is inside its own seat, and
- * these bands do not apply to it.
+ * A body **sitting** is neither, and it is not at the centre of its seat: the
+ * sitting clip holds it well behind its own root, so a root on the seat's
+ * centre puts the back rest through the torso. `seatRoot` answers where the
+ * root goes instead.
  */
 export interface Stance {
   /** Closest the body may be to the face: it stands at the piece, never in it. */
@@ -50,4 +53,34 @@ export function stanceOf(kind: AnchorKind): Stance | undefined {
 /** Floor to leave between a body of this kind and the face of the piece it is at. */
 export function standoff(kind: AnchorKind): number {
   return (STANCES[kind] ?? IN_FRONT).at
+}
+
+/**
+ * The seated body, measured off `Sitting_Idle_Loop` in `assets/dist/anims.glb`
+ * skinned onto every one of the twelve dressed characters. Both are metres
+ * behind the root the game puts on the anchor: the back is the furthest back of
+ * the twelve, so the widest coat in the wardrobe still clears.
+ */
+const SEATED_BACK = 0.5
+const SEATED_PELVIS = 0.33
+
+/** Air between a body's back and the back rest it is against. */
+const SEAT_CLEARANCE = 0.02
+
+/**
+ * How far forward of a seat's centre a body's root goes, along the way the seat
+ * faces. Zero for a piece nobody sits on.
+ *
+ * A seat with a back puts the body's back against it: that is what a chair is
+ * for, and it is the only placement where a torso and a back rest do not share
+ * the same air. A seat without one centres the pelvis on the pad instead, which
+ * is what perching on a stool looks like. Either way the pelvis has to land on
+ * the pad, and the tests hold every seat to that.
+ */
+export function seatRoot(prop: FurnitureProp): number {
+  const seat = seatSpecOf(prop)
+  if (!seat) return 0
+  if (seat.back !== undefined) return SEATED_BACK + SEAT_CLEARANCE - seat.back
+  const [front, back] = seat.pad
+  return SEATED_PELVIS - (front + back) / 2
 }

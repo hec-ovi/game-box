@@ -3,7 +3,7 @@ import { BUILDING_KINDS, type Anchor, type BuildingKind, type Furniture, type In
 import { describe, expect, it } from 'vitest'
 import { boxAt, dirOf, holds, inBox, overlaps, type Box, type Side, type Vec } from '../src/interior/geometry.ts'
 import { planInterior, type InteriorPlan } from '../src/interior/plan.ts'
-import { footprintOf, PROP_SPECS } from '../src/interior/props.ts'
+import { footprintOf, PROP_SPECS, SEAT_SPECS, seatSpecOf } from '../src/interior/props.ts'
 import { IN_FRONT, stanceOf, type Stance } from '../src/interior/stance.ts'
 import { buildTown } from './support.ts'
 
@@ -143,18 +143,44 @@ function faceGap(point: Vec, piece: Furniture): number {
 }
 
 /** Every anchor standing at a piece, with how far it stands off that piece's face. */
+/**
+ * The seated body, measured off `Sitting_Idle_Loop` in `assets/dist/anims.glb`
+ * skinned onto all twelve dressed characters: metres behind the root the game
+ * puts on the anchor. The back is the deepest of the twelve.
+ */
+const SEATED_BACK = 0.5
+const SEATED_PELVIS = 0.33
+
+/** Metres a point sits forward of a piece, along the way that piece faces. */
+function forwardOf(piece: Furniture, point: Vec): number {
+  const face = dirOf(piece.rot)
+  return (point.x - piece.pos.x) * face.x + (point.y - piece.pos.y) * face.y
+}
+
+/** The seat an anchor is sitting on, if it is sitting on one. */
+function seatUnder(made: InteriorPlan, anchor: Anchor): Furniture | undefined {
+  const own = made.furniture.find((piece) => piece.id === anchor.propId)
+  return own && seatSpecOf(own.prop) ? own : undefined
+}
+
 function standoffs(made: InteriorPlan): Array<{ anchor: Anchor; piece: Furniture; stance: Stance; gap: number }> {
   const found = []
   for (const anchor of made.anchors) {
     if (!anchor.propId) continue
     const piece = made.furniture.find((item) => item.id === anchor.propId)
     if (!piece) continue
+    // a body on a seat is sitting on it, not standing at it, wherever the clip puts its root
+    if (seatSpecOf(piece.prop)) continue
     const gap = faceGap(anchor.pos, piece)
-    // a body sitting or sleeping is inside its own piece on purpose
     if (gap === 0) continue
     found.push({ anchor, piece, stance: stanceOf(anchor.kind) ?? IN_FRONT, gap })
   }
   return found
+}
+
+/** Where a body's weight rests: on its seat, or on the floor under its own feet. */
+function standsOn(made: InteriorPlan, anchor: Anchor): Vec {
+  return seatUnder(made, anchor)?.pos ?? anchor.pos
 }
 
 /** How far from open floor an anchor is allowed to be: on its own seat, or on the floor. */
@@ -162,7 +188,7 @@ function reachOf(made: InteriorPlan, anchor: Anchor): number {
   const own = made.furniture.find((piece) => piece.id === anchor.propId)
   if (!own) return 0.35
   const box = footprintOf(own)
-  return inBox(box, anchor.pos) ? 0.8 + Math.hypot(box.w, box.h) / 2 : 0.35
+  return inBox(box, standsOn(made, anchor)) ? 0.8 + Math.hypot(box.w, box.h) / 2 : 0.35
 }
 
 describe('interior plans', () => {
@@ -225,7 +251,7 @@ describe('interior plans', () => {
     for (const { kind, seed, size, made } of everyPlan()) {
       const walk = new Walk(made, size)
       for (const anchor of made.anchors) {
-        expect(walk.reaches(anchor.pos, reachOf(made, anchor)), `${kind}/${seed} cannot reach ${anchor.kind}`).toBe(true)
+        expect(walk.reaches(standsOn(made, anchor), reachOf(made, anchor)), `${kind}/${seed} cannot reach ${anchor.kind}`).toBe(true)
       }
     }
   })
@@ -266,6 +292,40 @@ describe('interior plans', () => {
         checked++
       }
     }
+    expect(checked).toBeGreaterThan(100)
+  })
+
+  it('sits a body in front of the back rest rather than through it', () => {
+    // where the seat's own back rest and the surface it sits on are, measured off
+    // the triangles @gb/furnish draws
+    let checked = 0
+    const seen = new Set<string>()
+    for (const { kind, seed, made } of everyPlan()) {
+      for (const anchor of made.anchors) {
+        const seat = seatUnder(made, anchor)
+        if (!seat) continue
+        const spec = SEAT_SPECS[seat.prop as keyof typeof SEAT_SPECS]
+        const where = `${kind}/${seed} ${anchor.kind} on a ${seat.prop}`
+        expect(anchor.rot, `${where} faces a different way from its seat`).toBe(seat.rot)
+
+        const forward = forwardOf(seat, anchor.pos)
+        const back = SEATED_BACK - forward
+        const pelvis = SEATED_PELVIS - forward
+        if ('back' in spec) {
+          expect(back, `${where}: the back rest is ${(back - spec.back).toFixed(3)} m into the body`).toBeLessThanOrEqual(spec.back - 0.01)
+        }
+        expect(pelvis, `${where}: sitting off the front of the pad`).toBeGreaterThanOrEqual(spec.pad[0] + 0.05)
+        expect(pelvis, `${where}: sitting off the back of the pad`).toBeLessThanOrEqual(spec.pad[1] - 0.05)
+        if (!('back' in spec)) {
+          // nothing to lean on, so the weight goes over the middle of the pad
+          const middle = (spec.pad[0] + spec.pad[1]) / 2
+          expect(Math.abs(pelvis - middle), `${where}: perched off the middle of the pad`).toBeLessThanOrEqual(0.02)
+        }
+        seen.add(seat.prop)
+        checked++
+      }
+    }
+    expect([...seen].sort()).toEqual(Object.keys(SEAT_SPECS).sort())
     expect(checked).toBeGreaterThan(100)
   })
 
@@ -333,7 +393,7 @@ describe('interior plans', () => {
       }
       const walk = new Walk(made, interior.size)
       for (const anchor of made.anchors) {
-        expect(walk.reaches(anchor.pos, reachOf(made, anchor)), `${interior.kind} cannot reach ${anchor.kind}`).toBe(true)
+        expect(walk.reaches(standsOn(made, anchor), reachOf(made, anchor)), `${interior.kind} cannot reach ${anchor.kind}`).toBe(true)
       }
       for (const { anchor, piece, stance, gap } of standoffs(made)) {
         const where = `${interior.kind} ${anchor.kind} at a ${piece.prop}: ${gap.toFixed(2)} m off its face`
