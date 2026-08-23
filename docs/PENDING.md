@@ -31,6 +31,10 @@ Concretely, in order:
 
 ## Small, found by agents, nobody assigned
 
+- `work-desk` is one anchor kind covering two stances: seated at an office chair, and standing at a workshop bench. `CLIP_FOR_ANCHOR` maps one clip per kind, so one of the two is playing the wrong animation today. Splitting it is an `ANCHOR_KINDS` value in `@gb/world` plus a clip in `@gb/cast`, and it breaks cast's exhaustive map, so it needs both boxes.
+- A till and a coffee machine cannot stand on a counter: `Furniture` carries only a position and a rotation, so the planner could only put them on the floor, and it now omits them. Needs a lift field in `@gb/world` and `@gb/scene` drawing at the host prop's contact height.
+- The bar counter is 1.100 while the rail clip's hands are at 1.02 to 1.04, so forearms pass through its front face. The 1.0 service counter is correct. Either the bar counter drops to 1.0 or it needs its own lean clip.
+
 - `@gb/quest`: a `talk` step with a `topic` is only credited by a `talked` event carrying the same topic, but `objectives()` does not publish `topic`, so no caller can ever complete one. Publish it or drop the match. `forge` works around it by emitting no topics.
 - `@gb/quest`: an `any-of` needs both branches reachable through `next` from the start AND pointing back at the any-of step. Neither the contract nor its two error messages say so; it cost an agent three attempts to find the shape.
 - `@gb/nav`: `tests/contract.test.ts:125` does `plotsOfKind('bar')[0]!` on a generated town, so it assumes a building kind exists. Seeded staples nearly broke it; forge now keeps a bar in every town as a documented invariant, but the test should not lean on that.
