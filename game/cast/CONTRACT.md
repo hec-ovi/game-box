@@ -141,10 +141,10 @@ The bed `@gb/forge` places is 1.84 m of pad and a body with boots on is 1.90 m e
 
 | Stance | Where the hands are | What it is drawn against |
 |---|---|---|
-| `serve`, `work-bench`, `cook` | 1.02 to 1.04 m up, 0.02 to 0.13 m in front of the root | `serviceCounterHeight`, 1.0 |
-| `work-desk` | 0.78 m up, 0.20 to 0.24 m in front of the root | `tableHeight`, 0.75 |
+| `serve`, `work-bench`, `cook` | wrists 1.02 to 1.04 m up, palms 0.97, and 0.02 to 0.13 m in front of the root | `serviceCounterHeight` and `worktopHeight`, both 1.0 |
+| `work-desk` | wrists 0.78 m up, 0.20 to 0.24 m in front of the root | `tableHeight`, 0.75 |
 
-A cook is the odd one out: `worktopHeight` is 0.9, and the standing clips reach 1.02, so a cook's hands ride about 0.12 m above the hob. Nothing free reaches lower without the shoulders swinging the hands back under the body, so either the worktop comes up to the counter height or the stance needs a clip that does not exist yet.
+`barCounterHeight` 1.1 carries no stance: it is the rail a customer stands at, and staff work the 1.0 shelf behind it.
 
 ## Invariants
 
