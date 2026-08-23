@@ -229,6 +229,26 @@ drawn too big, too bright or in the wrong place. That is the same family as the
 missing point lights, and it suggests the emissive pass is doing too much work
 because nothing else lights anything.
 
+### The periodic freeze: found and fixed (2026-08-23, 20:00)
+
+**Cause.** `Stage.reflect` prefiltered the sky into a **new** render target every
+time the hour turned and assigned `scene.environment` the new texture. The
+environment is part of every render object's shader cache key in three, so a new
+texture object rebuilds the shader of every object in the scene. Measured on
+this machine's WebGL2 fallback: **a 200 ms stall, four times a real minute** at
+the default clock rate. Filtering the dome itself costs 1.4 ms, so 99% of the
+cost was the rebuild, not the work.
+
+**Fix.** Filter into the same render target every time, so `scene.environment`
+is the same texture object it was an hour ago. `game/app/src/renderer.ts`, nine
+lines. 140 app tests green, `tsc -p game/app` clean.
+
+**Not verified on screen.** The agent was killed mid-pass while clearing stray
+processes, after it had confirmed the mechanism in three's source and written
+the fix. The before and after frame distribution was never captured, and there
+is no test guarding it. Next session: run it, confirm the hitch is gone, and
+decide whether a frame-time regression test is worth having.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
