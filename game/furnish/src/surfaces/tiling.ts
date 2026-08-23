@@ -1,48 +1,76 @@
-import type * as THREE from 'three'
+import * as THREE from 'three'
+import { normalWorldGeometry, positionWorld, replaceDefaultUV, vec2 } from 'three/tsl'
+import type { NodeMaterial } from 'three/webgpu'
 
 /**
- * Lays a material's texture out by where the surface is in the world, in
- * metres, instead of by the mesh's own UVs.
+ * How big a texture is on an interior surface: one tile of the image every
+ * `metres` metres of real floor, wall or ceiling.
  *
- * @gb/scene builds a room out of a plane for the floor and a box per wall, and
- * both of those carry UVs that run 0..1 across the whole thing. A shared
- * material cannot tile off that: one texture would stretch over a whole room,
- * and a small room and a large one would show flagstones of different sizes.
- * Reading the world position in the vertex shader instead gives every surface
- * in the building the same real-world scale, and no seam where one wall meets
- * the next.
+ * The image is laid out by where the surface is in the world rather than by the
+ * mesh's own UVs, per axis. That is what keeps the stones the same size in a
+ * small room and a large one, keeps a 6 m by 3 m wall from stretching the
+ * pattern 2:1, and leaves no seam where one wall meets the next.
  *
- * The projection is picked per face from the world normal: floors and ceilings
- * take x and z, walls take height for v and whichever horizontal axis they run
- * along for u. `mapTransform` still applies, so `texture.repeat = 1 / metres`
- * sets the tile size the way it does anywhere else.
+ * The rule is written twice: `apply` hangs it on a material for the renderer to
+ * run, and `uv` is the same arithmetic in TypeScript, which is how a test can
+ * measure what a wall was given. Change one and change the other.
  */
-const PROJECT = /* glsl */ `
-#include <uv_vertex>
-	vec3 gbWorld = ( modelMatrix * vec4( position, 1.0 ) ).xyz;
-	vec3 gbFace = abs( normalize( mat3( modelMatrix ) * normal ) );
-	vec2 gbPlanar = gbFace.y > max( gbFace.x, gbFace.z )
-		? gbWorld.xz
-		: ( gbFace.x > gbFace.z ? vec2( gbWorld.z, gbWorld.y ) : vec2( gbWorld.x, gbWorld.y ) );
-	#ifdef USE_MAP
-		vMapUv = ( mapTransform * vec3( gbPlanar, 1 ) ).xy;
-	#endif
-	#ifdef USE_NORMALMAP
-		vNormalMapUv = ( normalMapTransform * vec3( gbPlanar, 1 ) ).xy;
-	#endif
-`
+export class MetreTiling {
+  /** Metres of surface one tile of the image covers. */
+  readonly metres: number
 
-/** Shared, so every surface in the town compiles one program between them. */
-function project(shader: { vertexShader: string }): void {
-  shader.vertexShader = shader.vertexShader.replace('#include <uv_vertex>', PROJECT)
+  constructor(metres: number) {
+    this.metres = metres
+  }
+
+  /** Tiles per metre: the density itself, the same on both axes of any surface. */
+  get perMetre(): number {
+    return 1 / this.metres
+  }
+
+  /**
+   * Where a point on a surface lands on the image, in tiles. The plane comes
+   * from the face: a floor or a ceiling takes x and z, a wall takes height and
+   * whichever horizontal axis it runs along.
+   */
+  uv(point: THREE.Vector3, normal: THREE.Vector3): THREE.Vector2 {
+    const face = new THREE.Vector3(Math.abs(normal.x), Math.abs(normal.y), Math.abs(normal.z))
+    const planar = face.y > Math.max(face.x, face.z)
+      ? new THREE.Vector2(point.x, point.z)
+      : face.x > face.z
+        ? new THREE.Vector2(point.z, point.y)
+        : new THREE.Vector2(point.x, point.y)
+    return planar.multiplyScalar(this.perMetre)
+  }
+
+  /**
+   * Puts the rule on a material and remembers it. Every texture the material
+   * samples reads these coordinates instead of the mesh's UVs, which is a
+   * context the node renderer honours; a shader patch would not survive the
+   * WebGPU pipeline the game draws with.
+   */
+  apply<T extends NodeMaterial>(material: T): T {
+    material.contextNode = replaceDefaultUV(this.#node())
+    TILINGS.set(material, this)
+    return material
+  }
+
+  /** The same arithmetic as `uv`, for the GPU. */
+  #node() {
+    const face = normalWorldGeometry.abs()
+    const flat = face.y.greaterThan(face.x.max(face.z))
+    const alongX = face.x.greaterThan(face.z)
+    const planar = flat.select(
+      positionWorld.xz,
+      alongX.select(vec2(positionWorld.z, positionWorld.y), vec2(positionWorld.x, positionWorld.y)),
+    )
+    return planar.mul(this.perMetre)
+  }
 }
 
-export function worldTiled<T extends THREE.Material>(material: T): T {
-  material.onBeforeCompile = project
-  return material
-}
+const TILINGS = new WeakMap<THREE.Material, MetreTiling>()
 
-/** Whether a material has the projection on it. What the tests ask, and what a renderer never needs to. */
-export function isWorldTiled(material: THREE.Material): boolean {
-  return material.onBeforeCompile === project
+/** How a material tiles, or nothing if it was not built to tile in metres. */
+export function tilingOf(material: THREE.Material): MetreTiling | undefined {
+  return TILINGS.get(material)
 }

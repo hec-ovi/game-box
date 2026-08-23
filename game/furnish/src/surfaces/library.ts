@@ -1,6 +1,7 @@
 import * as THREE from 'three'
+import { MeshStandardNodeMaterial } from 'three/webgpu'
 import { SURFACE_LOOKS, SURFACE_TEXTURES, type SurfaceLook, type SurfacePart, type SurfaceTextureId } from './surfaces.ts'
-import { worldTiled } from './tiling.ts'
+import { MetreTiling } from './tiling.ts'
 
 /** The maps of one tiling surface, as the pack carries them. */
 export interface SurfaceMaps {
@@ -10,15 +11,21 @@ export interface SurfaceMaps {
 
 /**
  * The floor, the walls and the ceiling, built once out of the pack's tiling
- * textures. Every room in town shares them: an interior is three materials, not
- * three per building.
+ * images. Every room in town shares them: an interior is three materials, not
+ * three per building. Each one carries the density its image is drawn at, so
+ * the size of the room it lands in makes no difference to the size of the
+ * stones in it.
  */
 export class SurfaceLibrary {
   readonly #maps: ReadonlyMap<SurfaceTextureId, SurfaceMaps>
   readonly #materials = new Map<SurfaceLook, THREE.Material>()
 
   constructor(maps: ReadonlyMap<SurfaceTextureId, SurfaceMaps>) {
-    this.#maps = new Map([...maps].map(([id, surface]) => [id, tiled(surface, SURFACE_TEXTURES[id].tile)]))
+    for (const surface of maps.values()) {
+      repeating(surface.map)
+      repeating(surface.normal)
+    }
+    this.#maps = maps
   }
 
   material(part: SurfacePart): THREE.Material {
@@ -41,7 +48,7 @@ export class SurfaceLibrary {
 
   #build(look: SurfaceLook): THREE.Material {
     const maps = this.#maps.get(look.map)
-    const material = new THREE.MeshStandardMaterial({
+    const material = new MeshStandardNodeMaterial({
       name: look.name,
       color: look.colour,
       roughness: look.roughness,
@@ -50,28 +57,16 @@ export class SurfaceLibrary {
       normalMap: maps?.normal ?? null,
     })
     if (look.normalScale !== undefined) material.normalScale.setScalar(look.normalScale)
-    return worldTiled(material)
+    return new MetreTiling(SURFACE_TEXTURES[look.map].metres).apply(material)
   }
 }
 
-/** A surface set to repeat every `metres`, given the world-space UVs `tiling.ts` lays down. */
-function tiled(surface: SurfaceMaps, metres: number): SurfaceMaps {
-  return { map: repeating(surface.map, metres)!, normal: repeating(surface.normal, metres) }
-}
-
-/**
- * The pack's texture, tiled. It is cloned because the same image may be hanging
- * on more than one surface at different tile sizes; the clone shares the image,
- * so it costs no download and no second decode.
- */
-function repeating(source: THREE.Texture | undefined, metres: number): THREE.Texture | undefined {
-  if (!source) return undefined
-  const texture = source.clone()
+/** A tile that cannot repeat is one tile and a smear, whatever the pack's own sampler says. */
+function repeating(texture: THREE.Texture | undefined): void {
+  if (!texture) return
   texture.wrapS = THREE.RepeatWrapping
   texture.wrapT = THREE.RepeatWrapping
-  texture.repeat.set(1 / metres, 1 / metres)
   // a floor is seen at a grazing angle more than anything else in a room
   texture.anisotropy = 8
   texture.needsUpdate = true
-  return texture
 }

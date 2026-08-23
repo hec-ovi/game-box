@@ -8,7 +8,7 @@ export { loadFurnish } from './kit/load.ts'
 export { placeholderFurnish } from './kit/placeholder.ts'
 export { type Part } from './kit/build.ts'
 export { SurfaceLibrary, type SurfaceMaps } from './surfaces/library.ts'
-export { isWorldTiled } from './surfaces/tiling.ts'
+export { MetreTiling, tilingOf } from './surfaces/tiling.ts'
 export {
   SURFACE_LOOKS,
   SURFACE_PARTS,

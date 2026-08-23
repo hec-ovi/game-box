@@ -3,7 +3,7 @@ import { buildInterior } from '@gb/scene'
 import { FURNITURE_PROPS } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { FurnishDressing, isWorldTiled, PROP_ART, SURFACE_LOOKS, SURFACE_TEXTURES } from '../src/index.ts'
+import { FurnishDressing, PROP_ART, SURFACE_LOOKS, SURFACE_TEXTURES, tilingOf } from '../src/index.ts'
 import { KIT_FILE, loadPackedFurnish } from './pack.ts'
 import { backwardsMass, boundsOf, busiest, meshesOf, sizeOf, town, trianglesOf } from './support.ts'
 
@@ -56,19 +56,17 @@ describe.skipIf(!packed)('the shipped pack', () => {
     expect(second.material).toBe(first.material)
   })
 
-  it('carries a floor and walls that tile at real-world size', () => {
+  it('carries a floor and walls that tile at the size the table says', () => {
     for (const part of ['floor', 'wall', 'ceiling'] as const) {
       const material = dressing!.surface(part) as THREE.MeshStandardMaterial
-      const tile = SURFACE_TEXTURES[SURFACE_LOOKS[part].map].tile
+      const metres = SURFACE_TEXTURES[SURFACE_LOOKS[part].map].metres
 
       expect(material.map, part).toBeInstanceOf(THREE.Texture)
       expect(material.normalMap, part).toBeInstanceOf(THREE.Texture)
       // colour is authored in sRGB and relief is not: swapped slots wash a surface out
       expect(material.map!.colorSpace, part).toBe(THREE.SRGBColorSpace)
       expect(material.normalMap!.colorSpace, part).toBe(THREE.NoColorSpace)
-      expect(material.map!.repeat.x, `${part} tiles every ${tile} m`).toBeCloseTo(1 / tile, 4)
-      // the UVs @gb/scene puts on a floor plane run 0..1 across the room, so the material lays its own
-      expect(isWorldTiled(material), part).toBe(true)
+      expect(tilingOf(material)?.metres, `${part} tiles every ${metres} m`).toBe(metres)
     }
 
     // the wall and the ceiling are the same plaster: one image, one upload
@@ -76,15 +74,6 @@ describe.skipIf(!packed)('the shipped pack', () => {
     const ceiling = dressing!.surface('ceiling') as THREE.MeshStandardMaterial
     expect(ceiling.map).toBe(wall.map)
     expect(ceiling).not.toBe(wall)
-  })
-
-  it('patches the shader three actually ships, not one it used to', () => {
-    const shader = { vertexShader: THREE.ShaderLib['standard']!.vertexShader }
-    dressing!.surface('floor').onBeforeCompile(shader as never, null as never)
-
-    // the anchor is a chunk name; a three upgrade that renames it would leave the shader untouched
-    expect(shader.vertexShader).toContain('gbPlanar')
-    expect(shader.vertexShader).toContain('vMapUv = ( mapTransform * vec3( gbPlanar, 1 ) ).xy;')
   })
 
   it('furnishes a room for one draw per piece and shares every buffer in it', async () => {
