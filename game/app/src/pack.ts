@@ -12,13 +12,17 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
  * link that will not load drops out, so a missing download is a duller city
  * rather than a blank screen.
  */
-export async function loadDressing(theme: string, base = ''): Promise<{ dressing: Dressing; cast?: Cast }> {
-  const behind = await loadInteriors(base, (await loadBuildings(base)) ?? new Greybox())
+export async function loadDressing(
+  theme: string,
+  base = '',
+): Promise<{ dressing: Dressing; cast?: Cast; kit?: KitDressing }> {
+  const kit = await loadBuildings(base)
+  const behind = await loadInteriors(base, kit ?? new Greybox())
   const cast = await loadPeople(base)
-  if (!cast) return { dressing: guarded(behind) }
+  if (!cast) return { dressing: guarded(behind), ...(kit ? { kit } : {}) }
 
   cast.theme = theme
-  return { dressing: guarded(new CastDressing(cast, behind)), cast }
+  return { dressing: guarded(new CastDressing(cast, behind)), cast, ...(kit ? { kit } : {}) }
 }
 
 async function loadPeople(base: string): Promise<Cast | undefined> {
@@ -47,7 +51,7 @@ async function loadInteriors(base: string, behind: Dressing): Promise<Dressing> 
   }
 }
 
-async function loadBuildings(base: string): Promise<Dressing | undefined> {
+async function loadBuildings(base: string): Promise<KitDressing | undefined> {
   try {
     const gltf = await read(`${base}/downtown-kit.glb`)
     return new KitDressing(loadKit(gltf.scenes), new Greybox())

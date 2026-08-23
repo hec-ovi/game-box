@@ -16,7 +16,7 @@ const sidecar = new Sidecar(sidecarBase ? { base: sidecarBase } : {})
 
 const bundle = await load()
 const [art, cars] = await Promise.all([loadDressing(bundle.world.theme), loadCars()])
-const game = await Game.start(mount, bundle, { sidecar, dressing: art.dressing, ...(art.cast ? { cast: art.cast } : {}), ...(cars ? { cars } : {}) })
+const game = await Game.start(mount, bundle, { sidecar, dressing: art.dressing, ...(art.cast ? { cast: art.cast } : {}), ...(art.kit ? { kit: art.kit } : {}), ...(cars ? { cars } : {}) })
 
 if (import.meta.env.DEV) {
   // so the dev console can ask the running game where it thinks it is

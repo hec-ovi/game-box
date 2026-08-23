@@ -2,6 +2,7 @@ import type { OpenedBundle } from '@gb/bundle'
 import type { Cast } from '@gb/cast'
 import { Crowd, SceneCast } from '@gb/crowd'
 import { Hud, type Carried, type HudIntent, type JournalQuest } from '@gb/hud'
+import type { KitDressing } from '@gb/kitbash'
 import { buildLand, type Land } from '@gb/land'
 import { CityNav } from '@gb/nav'
 import { PlayerState } from '@gb/play'
@@ -57,6 +58,7 @@ export class Game {
   #land: Land | undefined
   #weather: string | undefined
   #cars: CarPack | undefined
+  #kit: KitDressing | undefined
 
   private constructor(input: {
     bundle: OpenedBundle
@@ -67,6 +69,7 @@ export class Game {
     sidecar: Sidecar
     dressing: Dressing
     cast?: Cast
+    kit?: KitDressing
   }) {
     this.#world = input.bundle.world
     this.#log = input.log
@@ -76,8 +79,11 @@ export class Game {
     this.#hud = input.hud
     this.#dressing = input.dressing
     this.#cast = input.cast
+    this.#kit = input.kit
 
     this.#city = buildCity(this.#world, this.#dressing)
+    // lamps are two draws for the whole city, and without them night is unreadable
+    if (this.#kit) this.#city.root.add(this.#kit.streetlights(this.#world))
     this.#stage.show(this.#city.root)
     this.#openTheHorizon()
     spikeGlb(this.#city.root, this.#city.spawn, new URLSearchParams(location.search).get('glb'))
@@ -90,12 +96,17 @@ export class Game {
       const walkers = new THREE.Group()
       walkers.name = 'crowd'
       this.#city.root.add(walkers)
-      this.#crowd = Crowd.create({
-        world: this.#world,
-        nav: CityNav.from(this.#world),
-        cast: new SceneCast(this.#cast, walkers),
-        hazards: this.#trafficOnTheRoad(),
-      })
+      this.#crowd = Crowd.create(
+        {
+          world: this.#world,
+          nav: CityNav.from(this.#world),
+          cast: new SceneCast(this.#cast, walkers),
+          hazards: this.#trafficOnTheRoad(),
+        },
+        // a street with a few people on it reads as a place; a street packed
+        // with them reads as a crowd scene, and nobody stands out to talk to
+        { population: 14 },
+      )
     }
 
     document.addEventListener('keydown', this.#key)
@@ -208,7 +219,7 @@ export class Game {
 
     try {
       const bodies = await CarPack.parse(cars, parked)
-      const made = Traffic.fromWorld(this.#world, { bodies, obstacles: this.#peopleOnTheRoad() })
+      const made = Traffic.fromWorld(this.#world, { bodies, obstacles: this.#peopleOnTheRoad(), maxCars: 12 })
       if (!made.ok) {
         console.warn(`no traffic (${made.error.code}); the roads stay empty`)
         return
@@ -224,7 +235,7 @@ export class Game {
   static async start(
     mount: HTMLElement,
     bundle: OpenedBundle,
-    options: { sidecar?: Sidecar; dressing: Dressing; cast?: Cast; cars?: ArrayBuffer },
+    options: { sidecar?: Sidecar; dressing: Dressing; cast?: Cast; kit?: KitDressing; cars?: ArrayBuffer },
   ): Promise<Game> {
     const stage = await createStage(mount)
     const player = PlayerState.create(bundle.world.id, 5)
@@ -241,6 +252,7 @@ export class Game {
       sidecar: options.sidecar ?? new Sidecar(),
       dressing: options.dressing,
       ...(options.cast ? { cast: options.cast } : {}),
+      ...(options.kit ? { kit: options.kit } : {}),
     })
 
     if (options.cars) await game.openRoads(options.cars)
@@ -303,8 +315,10 @@ export class Game {
     clock.advance(seconds)
     this.#log.handle({ kind: 'clock', seconds: clock.totalSeconds })
 
+    const hours = clock.hour + clock.minute / 60
+    this.#kit?.setTime(hours)
     if (!this.#land || this.#place.kind !== 'city') return
-    this.#land.setTime(clock.hour + clock.minute / 60)
+    this.#land.setTime(hours)
     if (clock.weather !== this.#weather) {
       this.#weather = clock.weather
       this.#land.setWeather(clock.weather)
@@ -324,11 +338,18 @@ export class Game {
   /** What the player can act on where they are standing. */
   #targets(): Target[] {
     if (this.#place.kind === 'city') {
-      return this.#world.plots().flatMap((plot) => {
+      const doors = this.#world.plots().flatMap((plot) => {
         const doorstep = this.#city.doorsteps.get(plot.id)
         if (!doorstep || !plot.interiorId) return []
         return [{ kind: 'enter' as const, id: plot.id, label: `Go into ${plot.name}`, at: { x: doorstep.x, z: doorstep.z } }]
       })
+      // somebody walking past is as talkable as somebody behind a counter
+      const passers = (this.#crowd?.walkers() ?? []).flatMap((walker) => {
+        const npc = this.#world.npc(walker.id)
+        if (!npc) return []
+        return [{ kind: 'talk' as const, id: walker.id, label: `Talk to ${npc.name}`, at: { x: walker.x, z: walker.z } }]
+      })
+      return [...doors, ...passers]
     }
 
     const built = this.#interiors.get(this.#place.interior.id)!

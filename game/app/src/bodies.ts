@@ -15,8 +15,12 @@ export interface Rolling {
   readonly heading: number
 }
 
-/** How close you can get to somebody before you are standing in them. */
-export const PERSON_CLEAR = 0.55
+/**
+ * How close you can get to somebody before you are standing in them. Tight on
+ * purpose: with the player's own radius on top this is still most of a metre,
+ * and any more turns a passer-by into a bollard you cannot get round.
+ */
+export const PERSON_CLEAR = 0.34
 
 /**
  * The walls, plus whoever is in the way. People and cars move every frame, so
