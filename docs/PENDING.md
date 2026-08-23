@@ -161,31 +161,29 @@ So a brief is separate fields for separate consumers, not one text box. And the
 two that cannot be honoured should say so in the interface rather than be
 silently dropped, which is the failure this project has spent a day removing.
 
-### No way out of a game, and no way to see the others (2026-08-23, found by him)
+### The way out exists and nobody can find it (2026-08-23, found by him)
 
-> "it redirects me and i can not exit a game, there is not even a button to quit
-> a game or see other game instances"
+> "i can not exit, how is possible after 2 days we did not added an exit?"
 
-Three holes, one shape: the boot panel is a **front door with no way back to it**.
+**`N` toggles the boot panel**, `boot.ts:207`, and `Boot.showPanel()` hands the
+keys over and shows it correctly. It is documented **nowhere**: not in the
+controls tab, not on the bottom bar beside QUESTS / MAP / ITEMS / CONTROLS, not
+in the README. He played for two days without an exit that was already built.
 
-1. **No quit.** Once a city is running there is no control that returns to the
-   panel. Escape leaves a conversation, and nothing leaves the game.
-2. **No library.** A player has no list of the cities they have made or been
-   sent, no way to switch between them, and no way to delete one. Saves are
-   keyed per world (`game-box.save.world_0001`), so the data to list them exists
-   and nothing reads it as a list.
-3. **The URL is rewritten after generating**, which is what he means by
-   redirected: the brief is written into the address bar so a refresh replays
-   the same city. Right behaviour, wrong feel, because it also means the address
-   he typed is gone and there is no visible way back.
+So the defect is discoverability, and it is worth taking seriously as a class:
+a control nobody can find is the same as a missing control, and this project has
+now shipped one of each (the route guide also worked for a day with no button).
 
-This is the other half of the creation panel already on this list. A player
-needs: quit to the panel, a list of worlds with the one they were last in marked,
-open, and remove. It belongs to `@gb/app` (boot and session) plus `@gb/hud` for
-the control that starts it.
+What it needs:
+1. `N` in the controls tab and on the bottom bar, named so it reads as leaving.
+2. A **library** in the panel: the worlds this player has made or been sent, the
+   one they were last in marked, open and remove. Saves are keyed per world
+   (`game-box.save.world_0001`), so the data exists and nothing reads it as a
+   list.
+3. An audit of every other binding for the same fault. `G`, `T`, `K` and `P` are
+   bound in `interaction.ts`; check each appears where a player would look.
 
-Worth doing before any more generation features: a city you cannot leave is a
-city you can only see once per tab.
+Boxes: `hud` for the bar and the tab, `app` for the library.
 
 ### A rate limit is reported as an upstream failure (2026-08-23, seen live)
 
@@ -248,6 +246,15 @@ processes, after it had confirmed the mechanism in three's source and written
 the fix. The before and after frame distribution was never captured, and there
 is no test guarding it. Next session: run it, confirm the hitch is gone, and
 decide whether a frame-time regression test is worth having.
+
+### Things overlap on screen (2026-08-23, reported, not diagnosed)
+
+His words: "and things are overlapping, etc". No screenshot yet. Given the
+panel, the hud window, the objectives corner, the notices and the conversation
+all draw over the same canvas, the likely candidates are a missing z-order
+between the panel and the hud, or the notices column running under the objectives
+box. Needs a shot or a reproduction before anyone changes a style. Box: `hud`,
+possibly `app` for the panel layering.
 
 ### Running right now
 
