@@ -868,6 +868,32 @@ more than finding it out on a hospital.
 Boxes: `world` for the `dance` anchor kind, `cast` for the shelf, `forge` and
 `furnish` for the charter's room and dressing.
 
+### Follow did nothing (2026-08-23, found by him)
+
+"i clicked follow and they are not follow, it was in a quest, did not worked."
+
+Two candidates, both real, and they need separating before either is fixed.
+
+1. **The word means two things.** The quests tab's `Follow` button means *track
+   this quest* and sets the marker. Making a person walk with you is a different
+   feature with the same name. If he pressed the quest button expecting an NPC to
+   follow, the bug is the word, and it is worth fixing on its own: rename the
+   quest control to `Track`, which is what it does.
+2. **`addCompanion` from quest effects has no listener.** Already logged earlier
+   as half-wired: the quest effect flips a boolean and only the direct click path
+   actually moves a body, so **an escort step can credit while nobody walks with
+   you**. If it was an escort quest, this is it.
+
+Reproduce by asking which button: the one in the quests tab, or a choice in a
+conversation. They are different code paths and fixing the wrong one leaves the
+fault.
+
+Worth noting the companion machinery itself is sound and tested (203-cell route,
+worst gap 3.43 m, no teleports, rides in a car, resumes beside the player), so
+this is wiring or naming, not the follow behaviour.
+
+Boxes: `hud` for the name, `app` and `quest` for the effect with no listener.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
