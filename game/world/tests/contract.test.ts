@@ -119,6 +119,25 @@ describe('World', () => {
     if (!clash.ok) expect(clash.error.code).toBe('no-space')
   })
 
+  it('keeps the two working stances apart and refuses a third nobody can animate', () => {
+    const { world, interior } = hamlet()
+    const roomId = interior.rooms[0]!.id
+    const doc = JSON.parse(JSON.stringify(world.toJSON()))
+    const anchors = doc.interiors[0].anchors as Array<Record<string, unknown>>
+    anchors.push({ id: 'anchor_9001', kind: 'work-desk', roomId, pos: { x: 1, y: 1 }, rot: 0 })
+    anchors.push({ id: 'anchor_9002', kind: 'work-bench', roomId, pos: { x: 2, y: 1 }, rot: 0 })
+    expect(World.load(JSON.parse(JSON.stringify(doc))).ok).toBe(true)
+
+    anchors.push({ id: 'anchor_9003', kind: 'work-standing', roomId, pos: { x: 3, y: 1 }, rot: 0 })
+    const refused = World.load(doc)
+    expect(refused.ok).toBe(false)
+    if (!refused.ok && refused.error.code === 'invalid-document') {
+      expect(refused.error.violations.some((v) => v.path.endsWith('anchors.4.kind'))).toBe(true)
+    } else {
+      throw new Error('expected invalid-document')
+    }
+  })
+
   it('rejects a document that breaks the schema', () => {
     const { world } = hamlet()
     const doc = JSON.parse(JSON.stringify(world.toJSON()))

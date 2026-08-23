@@ -44,7 +44,10 @@ export const ANCHOR_KINDS = [
   'sit-drink',
   'serve',
   'cook',
+  /** Sat at a desk, in the chair drawn up to it. */
   'work-desk',
+  /** On their feet at a bench, hands on the top. */
+  'work-bench',
   'sleep',
   'browse',
   'lean',
