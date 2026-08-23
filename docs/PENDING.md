@@ -377,6 +377,30 @@ of the three above look identical from the player's seat.
 Box: `talk`, possibly `app` if the fault is that nothing tells talk the player
 moved.
 
+### The interface, from playing it (2026-08-23, his list)
+
+Four, all `@gb/hud`. The first two are one job with the conversation history
+above, because a panel that jumps as text arrives cannot hold a scrollback
+either.
+
+1. **The conversation window resizes as the NPC speaks.** It should be a **side
+   panel of fixed width**, toggled when you interact and dismissed when you
+   leave, so the text fills a stable frame instead of the frame growing to the
+   text. This is what makes history, the does/says split and a long reply all
+   possible; done separately they will each fight the layout.
+2. **Coins belong in the inventory**, not floating in the corner. Money is a
+   thing you carry.
+3. **The tab is called Items and should be called Inventory.** His word, and it
+   is the better one: an inventory is what a player expects to press `I` for.
+4. **The map shows no quest locations.** It draws the city, the plots and the
+   player. It should mark where the open steps send you, and **the main line
+   needs a different marker from a side job** — the journal already sorts main
+   above side and tags it, so the fact is published and the map ignores it.
+
+On 4, the parts exist: `@gb/quest`'s journal carries `kind` per quest and each
+step's target, and `@gb/app` already resolves a step to a doorstep for the guide
+and the arrow. So the map is reading less than the game already knows.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
