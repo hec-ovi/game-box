@@ -1,6 +1,6 @@
 # @gb/hud contract
 
-contractVersion: 0.7.0
+contractVersion: 0.8.0
 
 ## Purpose
 
@@ -35,7 +35,7 @@ hud.announce({ kind: 'quest-complete', title: quest.title, reward: { money: 40 }
 | `patch.money`, `patch.carrying` | a whole number, `Carried[]` | `quest: true` marks an item a live quest wants |
 | `patch.talk` | [TalkPatch](src/types.ts) | a new `speaker` starts a fresh panel; `replyChunk` appends a piece of the reply; `acted` is the line for this turn and `null` takes it off |
 | `patch.talk.moves` | [TalkMove](src/types.ts)`[]` | what the player can do this turn, as `{ key, label }` in plain words. Replaces the menu; an empty list draws none |
-| `patch.quests` | [QuestEntry](src/types.ts)`[]` | one page per quest for the quests tab: `@gb/quest`'s `JournalEntry[]` goes in as it comes |
+| `patch.quests` | [QuestEntry](src/types.ts)`[]` | one page per quest for the quests tab: `@gb/quest`'s `JournalEntry[]` goes in as it comes, `kind` and all |
 | `patch.map` | [MapView](src/types.ts) | the city in grid cells: size, plot rects, and marks for the player and the places to head for |
 | `patch.controls` | [ControlHint](src/types.ts)`[]` | the game's own keys for the controls tab: `{ keys, text, group? }`, replaces the whole list |
 | `patch.window` | `'quests' \| 'map' \| 'items' \| 'controls' \| null` | opens that face of the window, or shuts it |
@@ -88,6 +88,8 @@ The objectives panel shows the tracked quest and its open steps, a count as "2/5
 ## The journal
 
 A page is `@gb/quest`'s journal page as it stands: `hud.show({ quests: log.journal() })` with nothing in between. The title is read as `questTitle`, and as `title` for the shorter form the tab has always taken.
+
+The story is listed first and wears a `Main` tag; errands follow in the order the game sent them. The corner panel wears the same tag while the player is following the story, and while they are following an errand with the story still open, its last line says so: "2 more quests, one is the main line". A page with no `kind` reads as an errand.
 
 A step reads four ways, the same four the engine keeps.
 
@@ -173,6 +175,7 @@ Thrown as `HudError` with a `code`:
 - A money change of zero announces nothing, so a quest that pays in goods does not flash an empty line.
 - What the speaker did is one line about the turn in front of the player: sending it again replaces it and `null` takes it away, so it never piles up inside one conversation.
 - Nothing the player cannot undo happens on one click. Giving up a quest asks a second time, and leaving the button answers no.
+- The story is never buried: the main line sits at the top of the journal, marked, and the corner panel says which of the two the player is on.
 - A quest page shows every step the engine kept, dropped branches included, in the order the quest was written. The journal never edits the story down to the part that happened.
 - A question is drawn only where it can be answered: on the step whose `state` is `open`, and nowhere else. What is not answerable is not on screen, rather than on screen and inert.
 - No option says where it leads. The hud draws the words the quest published and nothing it worked out about the far side.
@@ -183,7 +186,7 @@ Thrown as `HudError` with a `code`:
 
 ## Dependencies
 
-- `@gb/quest` contract (game/quest/CONTRACT.md): the `Objective` shape the objectives panel and the map read, the `JournalEntry` page the quests tab draws, and the `Choice` on a step that asks a question.
+- `@gb/quest` contract (game/quest/CONTRACT.md): the `Objective` shape the objectives panel and the map read, the `JournalEntry` page the quests tab draws with its `QuestKind`, and the `Choice` on a step that asks a question.
 - The DOM. No renderer, no three.js, no game state.
 
 ## How to modify this blackbox safely

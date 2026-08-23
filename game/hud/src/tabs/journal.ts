@@ -9,6 +9,18 @@ export function titleOf(quest: QuestEntry): string {
   return quest.questTitle ?? quest.title ?? ''
 }
 
+/**
+ * The story first, then the errands, each group in the order the game sent it.
+ * A player with nine errands running should not have to hunt for the main line.
+ */
+export function storyFirst(quests: readonly QuestEntry[]): readonly QuestEntry[] {
+  return [...quests].sort((a, b) => rank(a) - rank(b))
+}
+
+function rank(quest: QuestEntry): number {
+  return quest.kind === 'main' ? 0 : 1
+}
+
 /** What a step is: `state` when the game says so, `done` on its own otherwise. */
 export function stateOf(step: QuestStep): QuestStepState {
   return step.state ?? (step.done ? 'done' : 'open')

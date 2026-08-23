@@ -134,6 +134,31 @@ describe('objectives', () => {
     expect(queryByRole(screen, 'button', { name: 'Keep your word to Mara' })).toBeNull()
   })
 
+  it('says whether the player is on the story or an errand', () => {
+    const { hud, screen } = mount()
+    const quests = [
+      { questId: 'q1', title: 'The Copper Wheel', kind: 'main' as const, steps: [] },
+      { questId: 'q2', title: 'Salt and Lamp Oil', kind: 'side' as const, steps: [] },
+    ]
+    const objectives = [
+      objective({ text: 'Carry the crate to the docks' }),
+      objective({ questId: 'q2', questTitle: 'Salt and Lamp Oil', text: 'Buy lamp oil' }),
+    ]
+
+    hud.show({ quests, objectives, trackedQuestId: 'q1' })
+    const panel = screen.querySelector('.gb-objectives') as HTMLElement
+    const main = panel.querySelector('.gb-main') as HTMLElement
+    expect(main.hidden).toBe(false)
+    expect(main.textContent).toBe('Main')
+    within(panel).getByText('1 more quest')
+
+    // Following an errand while the story waits, with nothing saying so, is how
+    // a player loses the main line among the jobs they picked up on the way.
+    hud.show({ trackedQuestId: 'q2' })
+    expect(main.hidden).toBe(true)
+    within(panel).getByText('1 more quest, the main line')
+  })
+
   it('scrolls inside its corner rather than running off the screen', () => {
     const { screen } = mount()
     for (const selector of ['.gb-objectives', '.gb-purse']) {
@@ -622,6 +647,7 @@ describe('the quests tab', () => {
       {
         questId: 'q1',
         questTitle: 'The Copper Wheel',
+        kind: 'main',
         status: 'active',
         steps: [{ stepId: 's1', text: 'Talk to Mara', state: 'open' }],
       },
@@ -644,6 +670,7 @@ describe('the quests tab', () => {
       {
         questId: 'q1',
         questTitle: 'The Copper Wheel',
+        kind: 'main',
         status: 'active',
         steps: [
           { stepId: 's1', text: 'Take the ledger', state: 'done' },
@@ -696,6 +723,27 @@ describe('the quests tab', () => {
     const panel = getByRole(screen, 'dialog', { name: 'Quests' })
     expect(queryByRole(panel, 'button', { name: 'Sell it to Hollis' })).toBeNull()
     expect(queryByText(panel, 'Hollis is offering more than Mara did. Whose is it?')).toBeNull()
+  })
+
+  it('keeps the story where the player can find it', () => {
+    const { hud, screen } = mount()
+    // Nine errands running and the main line somewhere down the list is the
+    // player scrolling the journal to find out what the game is about.
+    hud.show({
+      window: 'quests',
+      quests: [
+        { questId: 'q2', title: 'Salt and Lamp Oil', kind: 'side', steps: [] },
+        { questId: 'q3', title: 'Lamps for the Alley', kind: 'side', steps: [] },
+        { questId: 'q1', title: 'The Copper Wheel', kind: 'main', steps: [] },
+      ],
+    })
+
+    const panel = getByRole(screen, 'dialog', { name: 'Quests' })
+    const titles = [...panel.querySelectorAll('.gb-quest-entry h3')].map((node) => node.textContent)
+    expect(titles).toEqual(['The Copper Wheel', 'Salt and Lamp Oil', 'Lamps for the Alley'])
+
+    const marked = [...panel.querySelectorAll('.gb-quest-entry')].map((entry) => entry.querySelector('.gb-main') !== null)
+    expect(marked).toEqual([true, false, false])
   })
 
   it('asks a second time before it gives a quest up', async () => {

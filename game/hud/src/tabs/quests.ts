@@ -3,7 +3,7 @@ import { noQuests } from '../phrase.ts'
 import { trackedQuest } from '../tracked.ts'
 import type { HudIntent, HudState, HudWindowName, QuestEntry, QuestStep } from '../types.ts'
 import { QuestEntryView } from './quest-entry.ts'
-import { stateOf, titleOf } from './journal.ts'
+import { stateOf, storyFirst, titleOf } from './journal.ts'
 import type { Tab } from './tab.ts'
 
 /**
@@ -22,12 +22,13 @@ export class QuestsTab implements Tab {
 
   render(state: HudState): void {
     const tracked = trackedQuest(state)
-    const key = `${tracked ?? ''}#${state.hadQuest}#${state.quests.map(signature).join('|')}`
+    const pages = storyFirst(state.quests)
+    const key = `${tracked ?? ''}#${state.hadQuest}#${pages.map(signature).join('|')}`
     if (key === this.#key) return
     this.#key = key
     this.node.replaceChildren(
-      ...(state.quests.length
-        ? state.quests.map((quest) => new QuestEntryView(quest, quest.questId === tracked, this.#emit).node)
+      ...(pages.length
+        ? pages.map((quest) => new QuestEntryView(quest, quest.questId === tracked, this.#emit).node)
         : [el('p', 'gb-empty', noQuests(state.hadQuest))]),
     )
   }
@@ -39,7 +40,7 @@ export class QuestsTab implements Tab {
 }
 
 function signature(quest: QuestEntry): string {
-  return `${quest.questId}/${titleOf(quest)}/${quest.steps.map(step).join(',')}`
+  return `${quest.questId}/${titleOf(quest)}/${quest.kind ?? ''}/${quest.steps.map(step).join(',')}`
 }
 
 function step(s: QuestStep): string {

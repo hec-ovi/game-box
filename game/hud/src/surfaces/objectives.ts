@@ -1,8 +1,8 @@
 import type { Objective } from '@gb/quest'
 import { HUD_KEYS } from '../controls.ts'
 import { el, kbd } from '../dom.ts'
-import { DECIDE_TAG, noObjectives } from '../phrase.ts'
-import { otherQuests, stepsOf, trackedQuest } from '../tracked.ts'
+import { DECIDE_TAG, MAIN_TAG, moreQuests, noObjectives } from '../phrase.ts'
+import { kindOf, mainWaiting, otherQuests, stepsOf, trackedQuest } from '../tracked.ts'
 import type { HudState } from '../types.ts'
 import { MoreLine } from './more.ts'
 import type { Surface } from './surface.ts'
@@ -15,6 +15,7 @@ import type { Surface } from './surface.ts'
 export class ObjectivesSurface implements Surface {
   readonly node = el('section', 'gb-objectives')
   #quest = el('span', 'gb-quest')
+  #main = el('span', 'gb-tag gb-main', MAIN_TAG)
   #list = el('ul')
   #more = new MoreLine(HUD_KEYS.quests)
   #key: string | null = null
@@ -24,7 +25,8 @@ export class ObjectivesSurface implements Surface {
   constructor() {
     this.node.setAttribute('aria-label', 'Objectives')
     const head = el('header', 'gb-objectives-head')
-    head.append(el('h2', undefined, 'Objectives'), this.#quest)
+    this.#main.hidden = true
+    head.append(el('h2', undefined, 'Objectives'), this.#quest, this.#main)
     this.node.append(head, this.#list, this.#more.node)
   }
 
@@ -32,15 +34,19 @@ export class ObjectivesSurface implements Surface {
     const tracked = trackedQuest(state)
     const steps = stepsOf(state, tracked)
     const rest = otherQuests(state, tracked)
-    const key = `${rest}#${state.hadQuest}#${steps.map(signature).join('|')}`
+    const waiting = mainWaiting(state, tracked)
+    const main = kindOf(state, tracked) === 'main'
+    const key = `${rest}#${state.hadQuest}#${main}#${waiting}#${steps.map(signature).join('|')}`
     if (key === this.#key) return
     this.#key = key
 
     this.#quest.textContent = steps[0]?.questTitle ?? ''
+    // Following the story says so; following an errand says the story is there.
+    this.#main.hidden = !main
     this.#list.replaceChildren(
       ...(steps.length ? steps.map((step) => this.#line(step)) : [el('li', 'gb-empty', noObjectives(state.hadQuest))]),
     )
-    this.#more.set(rest > 0 ? `${rest} more quest${rest === 1 ? '' : 's'}` : null)
+    this.#more.set(moreQuests(rest, waiting))
     this.#done = new Map(steps.flatMap((step) => (step.count ? [[id(step), step.count.done] as const] : [])))
   }
 

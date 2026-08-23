@@ -1,4 +1,4 @@
-import type { Objective } from '@gb/quest'
+import type { Objective, QuestKind } from '@gb/quest'
 import type { HudState } from './types.ts'
 
 /**
@@ -17,6 +17,16 @@ export function trackedQuest(state: HudState): string | undefined {
 /** The open steps of one quest, in the order the game sent them. */
 export function stepsOf(state: HudState, questId: string | undefined): readonly Objective[] {
   return questId === undefined ? [] : state.objectives.filter((step) => step.questId === questId)
+}
+
+/** Story or errand, as far as the pages the game pushed say. */
+export function kindOf(state: HudState, questId: string | undefined): QuestKind | undefined {
+  return state.quests.find((quest) => quest.questId === questId)?.kind
+}
+
+/** True while the story has work open and the player is following something else. */
+export function mainWaiting(state: HudState, questId: string | undefined): boolean {
+  return state.objectives.some((step) => step.questId !== questId && kindOf(state, step.questId) === 'main')
 }
 
 /** How many other quests have open steps: the "3 more" line. */

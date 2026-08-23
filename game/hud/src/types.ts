@@ -1,4 +1,4 @@
-import type { Choice, Objective } from '@gb/quest'
+import type { Choice, Objective, QuestKind } from '@gb/quest'
 
 /** What the player would do if they pressed the key, and which key that is. */
 export interface Prompt {
@@ -53,6 +53,8 @@ export interface QuestEntry {
   readonly questId: string
   readonly questTitle?: string
   readonly title?: string
+  /** The story or an errand, as the quest document wrote it. */
+  readonly kind?: QuestKind
   readonly steps: readonly QuestStep[]
 }
 

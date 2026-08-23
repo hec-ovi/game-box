@@ -12,11 +12,25 @@ const DWELL: Record<NoticeTone, number> = { major: 5200, minor: 2600 }
 /** Finishing a quest is not the same event as picking up a bottle. */
 const MAJOR = new Set<Notice['kind']>(['quest-started', 'quest-complete', 'quest-failed'])
 
+/** On the quest that carries the story rather than an errand. */
+export const MAIN_TAG = 'Main'
+
 /** On a step the quest went past: the road nobody took. */
 export const DROPPED_TAG = 'Not taken'
 
 /** On an open decision in the corner panel: the answer is in the journal. */
 export const DECIDE_TAG = 'Decide'
+
+/**
+ * The foot of the corner panel: what else is running, and whether the story is
+ * waiting in it while the player follows an errand.
+ */
+export function moreQuests(rest: number, mainWaiting: boolean): string | null {
+  if (rest === 0) return null
+  const many = `${rest} more quest${rest === 1 ? '' : 's'}`
+  if (!mainWaiting) return many
+  return rest === 1 ? `${many}, the main line` : `${many}, one is the main line`
+}
 
 /** Turns an event into the line the player reads. All wording lives here. */
 export function phrase(notice: Notice): Phrased {

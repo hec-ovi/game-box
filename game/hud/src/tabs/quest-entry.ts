@@ -1,5 +1,5 @@
 import { el } from '../dom.ts'
-import { DROPPED_TAG } from '../phrase.ts'
+import { DROPPED_TAG, MAIN_TAG } from '../phrase.ts'
 import type { HudIntent, QuestEntry } from '../types.ts'
 import { ChoiceView } from './choice.ts'
 import { STEP_MARK, stateOf, titleOf } from './journal.ts'
@@ -28,8 +28,12 @@ export class QuestEntryView {
 
     const acts = el('div', 'gb-quest-acts')
     acts.append(this.#follow(tracked), this.#giveUp)
+    const name = el('div', 'gb-quest-name')
+    name.append(el('h3', undefined, this.#title))
+    // The story says so on the page; an errand is everything that does not.
+    if (quest.kind === 'main') name.append(el('span', 'gb-tag gb-main', MAIN_TAG))
     const head = el('header', 'gb-quest-head')
-    head.append(el('h3', undefined, this.#title), acts)
+    head.append(name, acts)
 
     this.#draw()
     this.#giveUp.addEventListener('click', () => this.#ask())

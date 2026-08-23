@@ -8,6 +8,7 @@ export const TABS = `
 .gb-quest-entry { padding-bottom: var(--gb-s3); margin-bottom: var(--gb-s3); border-bottom: 1px solid var(--gb-edge); }
 .gb-quest-entry:last-child { border-bottom: none; margin-bottom: 0; }
 .gb-quest-entry[data-tracked='true'] { padding-left: var(--gb-s3); border-left: 3px solid var(--gb-accent); }
+.gb-quest-name { display: flex; align-items: baseline; gap: var(--gb-s2); min-width: 0; }
 .gb-quest-head {
   display: flex;
   align-items: center;

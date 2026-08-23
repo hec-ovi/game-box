@@ -39,6 +39,9 @@ export const BASE = `
   letter-spacing: 0.14em;
 }
 
+/* The story, marked wherever it is listed, in the colour of things that matter. */
+.gb-hud .gb-main { flex: none; border-color: var(--gb-accent-deep); color: var(--gb-accent); }
+
 .gb-hud kbd {
   display: inline-block;
   min-width: 20px;
