@@ -45,26 +45,24 @@ Node 22 or newer, one dependency (zod), no build step. The port comes from `GAME
 ## Getting the same answer twice
 
 Send `temperature: 0` and a `seed`. Temperature 0 makes the engine take its most
-likely token every time, so the seed only decides ties; the seed is there
-because without one the engine draws a fresh seed per request. Send both and the
-same question is asking for the same answer.
+likely token every time; the seed pins the draw it still has to make, because
+without one the engine picks a fresh seed per request.
 
 `seed` is a 32-bit integer, 0 to 4294967294. The top value, 4294967295, is what
 llama.cpp reads as "pick one at random", so a request carrying it is refused
-rather than quietly unpinned.
+rather than quietly left unpinned.
 
-The service never invents either value: a request that pins nothing gets
-whatever the engine's own defaults produce, which is a different answer each
-time.
+The service invents neither value. A request that pins nothing gets whatever the
+engine's defaults produce, which is a different answer each time.
 
-Repeating is then the engine's job, and this service cannot promise it. Two
-things outside the request decide it. Prompt-cache reuse and continuous batching
-both change the batch shape a token is computed in, and llama.cpp does not
-guarantee bit-identical logits across batch shapes, so an answer computed beside
-four other requests can differ from the same answer computed alone. `--parallel
-1` removes that; the cost is that requests queue instead of fanning out. Run
-`tools/repeatable.ts` against the engine as it is actually started to find out
-which side of that line it falls on.
+Repeating is then the engine's job, and this service cannot promise it on the
+engine's behalf. Prompt-cache reuse and continuous batching both change the
+batch shape a token is computed in, and llama.cpp does not guarantee
+bit-identical logits across batch shapes, so an answer computed beside four
+other requests can differ from the same answer computed alone. Starting the
+engine with `--parallel 1` removes that, at the cost of requests queueing
+instead of fanning out. Run `tools/repeatable.ts` against the engine as it is
+actually started to find out which side of the line it falls on.
 
 ## Events
 
