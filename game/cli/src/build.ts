@@ -16,7 +16,9 @@ export async function build(args: BuildArgs, io: Io): Promise<number> {
     seed: args.seed,
     blocksX: across,
     blocksY: down,
-    blockCells: Number.parseInt(args.cells, 10),
+    // left out unless asked for: the seed picks the block size, and supplying a
+    // default here would build a different city from the same brief
+    ...(args.cells ? { blockCells: Number.parseInt(args.cells, 10) } : {}),
     density: Number.parseFloat(args.density),
     maxStoreys: Number.parseInt(args.storeys, 10),
     exits: Number.parseInt(args.exits, 10),

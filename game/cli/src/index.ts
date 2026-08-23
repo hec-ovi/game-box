@@ -15,7 +15,7 @@ const USAGE = `gb - build and inspect game-box cities
     --theme <text>          what kind of city (default: "quiet coastal town")
     --seed <text>           same seed, same city (default: "town")
     --blocks <n>x<n>        city blocks across and down (default: 3x3)
-    --cells <n>             cells per block side, 2m each (default: 14)
+    --cells <n>             cells per block side, 2m each (default: the seed picks)
     --density <0..1>        how much of each block gets built on (default: 0.8)
     --storeys <n>           tallest building allowed (default: 3)
     --exits <1..4>          how many roads lead out of town (default: 1)
@@ -52,7 +52,7 @@ export interface BuildArgs {
   theme: string
   seed: string
   blocks: string
-  cells: string
+  cells?: string
   density: string
   storeys: string
   exits: string
@@ -67,7 +67,7 @@ function parse(argv: readonly string[]): BuildArgs {
       theme: { type: 'string', default: 'quiet coastal town' },
       seed: { type: 'string', default: 'town' },
       blocks: { type: 'string', default: '3x3' },
-      cells: { type: 'string', default: '14' },
+      cells: { type: 'string' },
       density: { type: 'string', default: '0.8' },
       storeys: { type: 'string', default: '3' },
       exits: { type: 'string', default: '1' },
