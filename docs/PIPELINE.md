@@ -273,3 +273,63 @@ Parallel and unblocked at any point: journal ticks, `kind` on `QuestEntry`, the 
 - `docs/PLAN.md` task 18 (save and resume) is done: `game/app/src/session.ts` calls `Bundle.save` and `Bundle.resume`.
 - `docs/PENDING.md` attributes the per kind dresser to `@gb/furnish`. The dressers are in `game/forge/src/interior/furnish/`; `@gb/furnish` only builds prop geometry.
 - `game/forge/CONTRACT.md` lists three files to touch for a new building kind. The real count is 9 compulsory plus 10 more that decide whether the building reads correctly.
+
+---
+
+## The agentic shape the owner wants
+
+> "everything is a tool for the agent... we definitely, hundred percent, for
+> sure, do not want everything to live inside a single context. So one agent
+> based on an idea first creates the city architecture, then this architecture
+> provides different locations for the instances, then he spins up the instance
+> agent to create each place like a hospital or police station or a night club
+> or a bar or a corporate office. And each one is a different context... This
+> can be in parallel anyway because they are instances. And this returns the
+> possible NPCs, with their names, they must be unique names. After that it
+> falls to the quest agent, and the quest agent does not know anything about
+> the city or the 3D model or anything. It just creates the script having the
+> whole possible NPCs... What we can do is provide a context like the name of
+> the instance, the name of the NPCs on those instances, and the distance
+> between one location and the other. What we want to avoid is bloat in the
+> context and overhead."
+
+Four stages, one context each, nothing shared:
+
+1. **City** from an idea, marking where instances go.
+2. **Instance**, one agent per place, in parallel, each blind to the others,
+   returning that place and the people in it with unique names.
+3. **Quest**, blind to geometry and to the city, given only place names, the
+   people in them, and the distances between them.
+
+### Where the repo already agrees
+
+Context is already isolated per call: five separate tools, five prompt files,
+one model call each, and no conversation carried between them. `WorldSummary`
+already carries place names, kinds, door positions in metres, NPC names and
+roles, and items, so the roster and the distances the quest agent needs exist
+and are already the only thing it is shown. It is already blind to geometry.
+Scribe keeps a name registry, so names are unique.
+
+### Where it does not
+
+**There is no instance agent.** Interiors are procedural and the model writes
+only names and one-line descriptions, one call per NPC. Nothing ever creates a
+hospital as a hospital, in one context, deciding its rooms, its staff and its
+character together.
+
+**The calls are serial.** Peak concurrency 1 across a whole build, four of five
+llama slots idle, and the descriptive calls are 85% of the model wall clock.
+Instances are the natural unit of parallelism and nothing exploits it.
+
+**The quest slice is random.** `PLACES_PER_QUEST = 8`, a seeded shuffle. The
+size is right and is deliberately anti-bloat, which is the owner's own
+instruction; what is wrong is that eight unrelated places cannot produce a
+quest that links two places with something between them. The slice should be
+coherent (a neighbourhood, a faction, places that share a person) rather than
+larger.
+
+### The tension worth naming
+
+"The whole possible NPCs" and "avoid bloat in the context" pull against each
+other. In a 2,493-building city the whole roster is precisely the bloat. The
+resolution is not a bigger slice but a meaningful one.
