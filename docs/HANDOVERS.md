@@ -139,6 +139,8 @@ Rows 51 and 47 are closed in forge; rows 59 and 60 are closed in hud.
 | 66 | Never announce or render a `step-opened` change whose `hidden` is true | app | `objectives()` and `journal()` filter hidden steps; the change stream cannot, because the app has to know the step is on the board. The flag is there so the caller stays quiet. Switching to `journal()` alone does not close the spoiler if app announces changes |
 | 67 | `drive.ts` emits `chose` from the quest document rather than from a published objective | forge | The objective now publishes the option keys, so the harness can answer with the same list a player is shown |
 
+| 68 | Route the panel's `decide` intent into the engine's `chose` event | app | `{ kind: 'decide', questId, stepId, optionId }` maps field for field onto `log.handle({ kind: 'chose', ... })`. Then push the new `journal()` and `objectives()`; the hud marks nothing itself. The last leg of the choice blocker |
+
 ## Checked and closed
 
 About fifty handovers landed and were verified in the code rather than taken on
