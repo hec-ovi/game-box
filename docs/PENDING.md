@@ -838,6 +838,36 @@ first move is a price and one thing to buy; the expensive one is a market.
 Boxes: `world` for value on an item, `forge` for who sells what, `app` and `hud`
 for the exchange, `play` for what the money does, `cast` for the eating clip.
 
+### A disco, as the first test of the charter design (2026-08-23, his idea)
+
+"there are dancing animations, so you can put a nightclub where people go to
+dance, or a disco whatever, a disco is more appropriate, and they can be dancing"
+
+`Dance_Loop` is in the free Quaternius packs and unused, so the animation costs
+nothing. `Celebration` is paid-only if more variety is wanted later.
+
+**Build it through `docs/PLACES.md`, not as a building kind.** A disco named in
+the enum is precisely the overfitting he rejected; a disco written as a charter
+when the premise calls for one is the design working. So this is the best first
+test case the charter system could have, because it exercises nearly every axis
+at once:
+
+- a `dance` stance, which is a **new anchor kind** and therefore a real question:
+  anchor kinds are physical (a clip exists or it does not), so this one legitimately
+  belongs in the closed vocabulary, unlike the place itself
+- `finish` and lighting that are not corpo or home
+- `access` that is `open` but with a room behind it that is not
+- `holding` drink, `service` counter, `work` watch for a doorman
+- a room use the current list does not have, so it tests how a new `ROOM_USE` is
+  added
+
+If the charter system cannot produce a disco with people dancing in it, the
+design is wrong, and finding that out on something cheap and visible is worth
+more than finding it out on a hospital.
+
+Boxes: `world` for the `dance` anchor kind, `cast` for the shelf, `forge` and
+`furnish` for the charter's room and dressing.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
