@@ -519,6 +519,38 @@ fills the whole frame edge to edge").
 
 Box: `prefab`.
 
+### Interior ceilings are pure black (2026-08-23, `roof_black.png`)
+
+Walls, floor and furniture read well; the ceiling is flat black. That is
+diagnostic, not random: **nothing lights a downward-facing surface.**
+
+The light strips along the wall and ceiling junction are emissive geometry, so
+they light nothing. `@gb/furnish`'s interior probe is direction-only and its
+lower hemisphere is near-black, so a ceiling normal pointing straight down
+samples black while walls and floor sample the lit upper half. Furnish measured
+this from the other side today: a lit television is about a fiftieth of a room's
+light, because two square metres of ceiling cove at 3.2 against half a square
+metre of glass is fifty to one. The cove is doing the work, and it cannot light
+the thing it is mounted to.
+
+Three ways out, cheapest first:
+
+1. **Give the probe a lower hemisphere.** It is painted from the language's own
+   floor, wall and ceiling colours; a ceiling looking down at a lit floor should
+   not sample black. This may be the whole fix and costs nothing at runtime.
+2. **A ceiling fill**, a small constant on downward normals, which is the cheap
+   fake and reads fine in a room this size.
+3. **Real lights.** The strips become actual lights, which fixes this, the
+   invisible garment sheen, the oversized emissive doorway and the aggressive
+   night in one move. It is the standing blocker.
+
+Note the same physics applies outdoors: any surface facing down (a soffit, the
+underside of a balcony, a parapet return) will be black for the same reason.
+Worth checking before deciding this is an interior bug.
+
+Boxes: `furnish` for the probe, `app` and `scene` for the fill, `kitbash` if it
+becomes real lights.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
