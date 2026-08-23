@@ -16,7 +16,21 @@ export { FurnishLibrary } from './kit/library.ts'
 export { DEFAULT_SEED, furnishKit, loadFurnish } from './kit/load.ts'
 export { type Built } from './kit/build.ts'
 export { FURNISH_STYLES, PALETTES, type FurnishStyle, type Palette } from './style/palette.ts'
-export { SOLID_MATERIAL } from './style/material.ts'
+export { SCREEN_ATTRIBUTE, SOLID_MATERIAL } from './style/material.ts'
+export {
+  CYCLE,
+  PROGRAMMES,
+  SPOT,
+  SPOTS,
+  STATIONS,
+  SWITCH,
+  programmeAt,
+  spotAt,
+  type Spot,
+} from './screens/schedule.ts'
+export { SCREEN_SLOTS, screenSlot, screeningOf, type Screening } from './screens/screening.ts'
+export { SCREEN_LIGHT, pictureAt, type Rgb } from './screens/picture.ts'
+export { screenAverage } from './screens/light.ts'
 export { type Variant, variantOf } from './style/variant.ts'
 export {
   BAY_SPECS,

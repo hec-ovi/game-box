@@ -3,6 +3,7 @@ import type { AnchorKind, CellKind, FurnitureProp, Interior, Item, Npc, Plot } f
 import * as THREE from 'three'
 import type { FurnishLibrary } from './kit/library.ts'
 import { FurnishRoom } from './room.ts'
+import { screenSlot } from './screens/screening.ts'
 import type { FurnishStyle } from './style/palette.ts'
 import { FIRST_CHOICES, surfaceChoices, type SurfaceChoices } from './surfaces/choose.ts'
 import type { SurfacePart } from './surfaces/surfaces.ts'
@@ -20,12 +21,14 @@ import type { SurfacePart } from './surfaces/surfaces.ts'
  * the same library, so an app that knows which building it is entering pays
  * nothing for the second language: one library, one material, two dressings.
  * `room` hands back a sibling bound to one interior, whose floor, walls and
- * ceiling are that interior's own, plus the bays its walls are made of.
+ * ceiling are that interior's own, plus the bays its walls are made of, and
+ * whose screens are on that interior's own channel.
  */
 export class FurnishDressing implements Dressing {
   readonly #kit: FurnishLibrary
   readonly #rest: Dressing
   readonly #choices: SurfaceChoices
+  readonly #slot: number
   readonly style: FurnishStyle
 
   constructor(
@@ -33,31 +36,36 @@ export class FurnishDressing implements Dressing {
     rest: Dressing = new Greybox(),
     style: FurnishStyle = 'corpo',
     choices: SurfaceChoices = FIRST_CHOICES,
+    slot = 0,
   ) {
     this.#kit = kit
     this.#rest = rest
     this.#choices = choices
+    this.#slot = slot
     this.style = style
   }
 
   /** The same furniture in the other language. */
   as(style: FurnishStyle): FurnishDressing {
-    return style === this.style ? this : new FurnishDressing(this.#kit, this.#rest, style, this.#choices)
+    return style === this.style
+      ? this
+      : new FurnishDressing(this.#kit, this.#rest, style, this.#choices, this.#slot)
   }
 
-  /** This interior's own room: its surfaces, and the bays its walls are made of. */
+  /** This interior's own room: its surfaces, its bays, and what its screens are showing. */
   room(interior: Interior): FurnishRoom {
     const bound = new FurnishDressing(
       this.#kit,
       this.#rest,
       this.style,
       surfaceChoices(this.#kit.seed, this.style, interior.id),
+      screenSlot(this.#kit.seed, interior.id),
     )
     return new FurnishRoom(this.#kit, bound, this.style, interior)
   }
 
   prop(prop: FurnitureProp): THREE.Object3D {
-    const mesh = new THREE.Mesh(this.#kit.geometry(prop, this.style), this.#kit.material)
+    const mesh = new THREE.Mesh(this.#kit.geometry(prop, this.style, this.#slot), this.#kit.material)
     mesh.name = prop
     mesh.castShadow = true
     mesh.receiveShadow = true

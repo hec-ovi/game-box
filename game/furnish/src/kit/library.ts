@@ -33,11 +33,15 @@ export class FurnishLibrary {
     this.seed = seed
   }
 
-  /** One prop's geometry in one language. Shared: two chairs are one buffer. */
-  geometry(prop: FurnitureProp, style: FurnishStyle): THREE.BufferGeometry {
+  /**
+   * One prop's geometry in one language, tuned to one of the town's screenings.
+   * Shared: two chairs are one buffer, and two televisions on the same
+   * screening are one buffer as well.
+   */
+  geometry(prop: FurnitureProp, style: FurnishStyle, slot = 0): THREE.BufferGeometry {
     const built = this.#props.get(keyOf(style, prop))
     if (!built) throw new Error(`furnish: no builder for ${style}/${prop}`)
-    return built.geometry
+    return built.screens[slot % built.screens.length]!
   }
 
   /** One thing a player can pick up, in the cast its id draws. Shared per cast. */
@@ -77,6 +81,11 @@ export class FurnishLibrary {
     return this.#props.get(keyOf('corpo', prop))?.contact
   }
 
+  /** How many screenings a piece can be tuned to: more than one only if it carries a screen. */
+  screenings(prop: FurnitureProp, style: FurnishStyle): number {
+    return this.#props.get(keyOf(style, prop))?.screens.length ?? 0
+  }
+
   /** The second working surface, for a piece worked from both sides. */
   staffContact(prop: FurnitureProp): number | undefined {
     return PROP_SPECS[prop].staffContact
@@ -89,7 +98,7 @@ export class FurnishLibrary {
    * front of one.
    */
   heightOf(prop: FurnitureProp, style: FurnishStyle): number {
-    const geometry = this.#props.get(keyOf(style, prop))?.geometry
+    const geometry = this.#props.get(keyOf(style, prop))?.screens[0]
     if (!geometry) return 0
     geometry.computeBoundingBox()
     return geometry.boundingBox?.max.y ?? 0
@@ -101,7 +110,7 @@ export class FurnishLibrary {
   }
 
   dispose(): void {
-    for (const built of this.#props.values()) built.geometry.dispose()
+    for (const built of this.#props.values()) for (const geometry of built.screens) geometry.dispose()
     for (const built of this.#items.values()) built.geometry.dispose()
     this.#material.dispose()
     this.surfaces?.dispose()

@@ -1,16 +1,16 @@
 # @gb/furnish contract
 
-contractVersion: 0.6.0
+contractVersion: 0.7.0
 
 ## Purpose
 
-Dresses the inside of a building: every piece of furniture the generator can place and every thing a player can pick up off it, built from parameters to the cells of floor the room planner claims and to the height a body meets it at, and walls that are a run of bays rather than one flat surface, in one of two interior languages, on floors and walls laid in a pattern and a finish that tile at real-world size.
+Dresses the inside of a building: every piece of furniture the generator can place and every thing a player can pick up off it, built from parameters to the cells of floor the room planner claims and to the height a body meets it at, walls that are a run of bays rather than one flat surface, and a television playing a schedule computed from the clock, in one of two interior languages, on floors and walls laid in a pattern and a finish that tile at real-world size.
 
 ## Inputs
 
 | Param | Schema | Preconditions |
 |---|---|---|
-| `new FurnishDressing(kit, rest?, style?, choices?)` | a `FurnishLibrary`, the `Dressing` behind it (defaults to `@gb/scene`'s `Greybox`), `'corpo'` or `'home'` (defaults to `'corpo'`), and which entry of each surface pool to paint with (defaults to the first) | |
+| `new FurnishDressing(kit, rest?, style?, choices?, slot?)` | a `FurnishLibrary`, the `Dressing` behind it (defaults to `@gb/scene`'s `Greybox`), `'corpo'` or `'home'` (defaults to `'corpo'`), which entry of each surface pool to paint with (defaults to the first), and which of the town's screenings its televisions are on (defaults to the first) | |
 | `FurnishDressing.as(style)` | `'corpo'` or `'home'` | |
 | `FurnishDressing.room(interior)` | a `@gb/world` `Interior` | its rooms tile the interior and every door sits on a room edge, which is what `@gb/forge` builds |
 | `FurnishDressing.prop(prop)` | a `@gb/world` `FurnitureProp` | |
@@ -34,7 +34,7 @@ Dresses the inside of a building: every piece of furniture the generator can pla
 | `pickup(item)` | `THREE.Mesh` | the thing itself at the size it really is: one indexed mesh on the same shared material, origin at the centre of its base, front looking north, inside the box its archetype publishes. Geometry is shared with every other item of that archetype in that cast |
 | `surface(part)` | `THREE.Material` | the floor, walls or ceiling of a room in this dressing's language, pattern and finish, tiling at the real-world size of its image whatever size the room is, carrying the room's own probe so a polished one reflects something. The same look is always the same instance. A pack with no surfaces in it hands the question to `rest` |
 | `as(style)` | `FurnishDressing` | the same library and the same material in the other language |
-| `loadFurnish` / `furnishKit` | `FurnishLibrary` | `geometry(prop, style)` gives the built mesh's buffer, `contact(prop)` how high off the floor a body meets it, `heightOf(prop, style)` how tall it stands measured off the triangles, `item(item)` and `itemGeometry(archetype, cast)` the buffer for a thing you pick up, `castOf(item)` which cast it drew, `material` the one shared instance, `seed` the town's, and `surfaces` the tiling floor and walls when the pack carries them |
+| `loadFurnish` / `furnishKit` | `FurnishLibrary` | `geometry(prop, style, slot?)` gives the built mesh's buffer on one of the town's screenings, `screenings(prop, style)` how many a piece has, `contact(prop)` how high off the floor a body meets it, `heightOf(prop, style)` how tall it stands measured off the triangles, `item(item)` and `itemGeometry(archetype, cast)` the buffer for a thing you pick up, `castOf(item)` which cast it drew, `material` the one shared instance, `seed` the town's, and `surfaces` the tiling floor and walls when the pack carries them |
 | `ITEM_SPECS` | `Record<ItemArchetype, ItemSpec>` | **what a thing you pick up is**: `width`, `depth` and `height` in metres, and the matter its casts are made of. Covers all 25 of `@gb/world`'s `ITEM_ARCHETYPES` |
 | `ITEM_CASTS` | `number` | how many ways one archetype is drawn: 3 |
 | `castIndex(seed, itemId)` | `number` | which cast that item drew |
@@ -51,7 +51,16 @@ Dresses the inside of a building: every piece of furniture the generator can pla
 | `variantOf(style, prop, seed)` | `Variant` | the shape one prop kind takes from that seed: edge profile, corner radius, what holds it up, whether a strip is lit. `'wall'` is a kind like any other |
 | `SOLID_MATERIAL` | the name of the one material every prop and every bay draws with | |
 | `SURFACE_LOOKS`, `lookOf(style, part, choice)` | the pool each part draws from per language, and one entry of it | four floors, three walls and one ceiling per language, so a town of any size is at most eight materials a language |
-| `SurfaceLibrary.probe(style)` | `THREE.DataTexture` | what a room in that language has to reflect: its own surfaces and the colour its strips emit, as one 64 by 32 equirectangular picture. Already hung on every surface material; published so a caller can look at it |
+| `SCREEN_SLOTS` | `number` | how many different things a town has on: 6 |
+| `screenSlot(seed, interiorId)` | `number` | which of them the screens in that interior are showing |
+| `screeningOf(seed, slot)` | `Screening` | one of them: a `station` (1 to `STATIONS`) and a `phase`, how far into that station's schedule the set is |
+| `STATIONS`, `PROGRAMMES`, `SPOT`, `SPOTS`, `CYCLE`, `SWITCH` | the schedule: four stations, four kinds of programme, ten second spots, twenty-four of them before a station comes round, and four tenths of a second of static at every change |
+| `spotAt(seconds, phase)`, `programmeAt(station, spot)` | `Spot`, `number` | which spot a set is in at a given second, and which programme kind that station runs in it |
+| `pictureAt(u, v, station, phase, seconds)` | `Rgb` | what one point of one screen is emitting, in the renderer's working space. The twin of what the material runs |
+| `SCREEN_LIGHT` | `number` | how hard the brightest part of a screen emits: 1.5, over 1 so the app's bloom finds it |
+| `screenAverage()` | `Rgb` | what a screen averages over the glass and a whole schedule, measured off `pictureAt` |
+| `SCREEN_ATTRIBUTE` | the name of the fifth vertex attribute: where on the glass a vertex is, and what is on it |
+| `SurfaceLibrary.probe(style)` | `THREE.DataTexture` | what a room in that language has to reflect: its own surfaces, the colour its strips emit and what its screens average, as one 64 by 32 equirectangular picture. Already hung on every surface material; published so a caller can look at it |
 | `SURFACE_TEXTURES` | the two grain images, the metres one tile of each covers, and each one's own average brightness | |
 | `Pattern` | the rhythm a surface is laid in: plain, rectangular tiles, chequer, hexagons, triangles or planks, and how big one unit of it is | |
 | `surfaceChoices(seed, style, interiorId)` | which entry of each pool that interior draws | |
@@ -118,6 +127,18 @@ built.root.add(room.decor)
 - Over the field of bays runs a rail with a lit channel under it, over every stretch of wall with nothing standing that high in front of it. That is the room's own light: emissive faces above 1, so the app's bloom finds them. There is no light object anywhere in this box.
 - Same seed, same walls, vertex for vertex, and two seeds give two different rooms. Every draw comes from an `Rng` forked per language, per interior, per room and per wall, then per bay, so retuning the taste cannot move the furniture and retuning what stands in a niche cannot change which bay is a niche.
 
+### The screens
+
+- **A television plays something, and it is arithmetic, not a file.** A world file is handed to other players, so a video in it would be bytes in every copy for ever and a licence nobody can answer for. What is on the glass is computed from where the point is on it and what second it is: a news desk, a market board, an advert cutting on a beat, a camera on a yard, and a burst of static at every change of spot. No image, no audio, no download.
+- **It is a schedule, not a loop.** Ten second spots, twenty-four of them before a station comes round, and which programme kind a station runs in a given spot comes from a hash of the station and the spot number. Four stations times twenty-four spots is ninety-six different ten second pieces, and inside a spot the picture moves on its own: a ticker crawls, columns rise and fall, an advert cuts every one and a quarter seconds, somebody walks across a camera feed.
+- **What a set is showing is seeded, and it is not the technique.** A screening is a station and a phase; `screening.ts` draws `SCREEN_SLOTS` of them from the town's seed and gives each interior one from its id, so the bar and the flat above it are on different channels at different moments, and the same bar is on the same one on the second visit. Retuning who watches what is that file alone and cannot reach what a screen looks like.
+- **A screen costs no draw and no triangle.** The glass was already a face of the television. What is new is a fifth vertex attribute, four normalized bytes: where on the picture the vertex is, which station, and the phase. Everything that is not a screen carries zeroes and takes the flat emission its look asked for, and the picture runs inside a branch, so a room full of furniture pays only the four bytes.
+- Every buffer in the box carries that attribute, props, carried things and wall bays alike, because a `BatchedMesh` takes geometries only while they agree attribute for attribute: one buffer without it would quietly cost a room its draws.
+- **A second screening is one attribute rewritten, not a second television.** A piece with a screen is built once and tuned `SCREEN_SLOTS` times; the tuned copies share every position, normal, colour and index with the piece they came from. Six screenings of the set cost 14 KB. A piece with no screen in it is built once, because there is nothing to tune.
+- **The picture is written twice**, the way the surface tiling is: `picture.ts` in TypeScript, where the tests read it and the room's light is measured off it, and `glass.ts` as nodes, where the renderer runs it. Both run the same hash, three's own PCG word hash written out in integers so the two agree bit for bit, and both read one table of colours. Change one and change the other.
+- Both sides bound the clock before they use it. `time` runs for as long as the game is open and a float32 second past a few thousand has no frames left in it, so everything works in seconds within one cycle.
+- **A screen is a small light and the probe says so.** The room's probe carries what the screens really average over a whole schedule, at the radiance they really emit, over the solid angle a metre of glass really covers from two metres away. That comes to about a fiftieth of the room's light, because two square metres of cove at 3.2 against half a square metre of glass at a quarter is fifty to one, and it lifts a floor by about a hundredth. What it does buy is the reflection: a patch of whatever is on, in a floor polished enough to give it back. A pool of light on the floor in front of the set would need a light object, and there is none in this box.
+
 ### What everything is made of
 
 - **One primitive.** Every piece and every bay is an extrusion of a rectangle with a radius on each corner, between two heights, with an edge treatment at each end. A full corner radius makes it a cylinder and an inset at one end makes it a taper, so a worktop, a leg, a plinth, a cushion, a light strip, a wall panel, a shelf ledge and a cup all come out of the same call. There is no second primitive and no model file.
@@ -144,17 +165,19 @@ built.root.add(room.decor)
 
 ## What it costs
 
-Fixed, whatever size the town is. Both languages of the furniture catalog, 48 shapes, are 22,282 triangles and 1.70 MB of buffers; all 25 archetypes in all 3 casts are 20,624 triangles and 1.70 MB. Both are built together in about 35 ms in Node. The two probes are 16 KB each, prefiltered once per renderer and never again. A second bar and a thousand more items add objects, not buffers. A room's walls are that room's own geometry, built when it is entered and thrown away with it.
+Fixed, whatever size the town is. Both languages of the furniture catalog, 48 shapes in every screening they can carry, are 22,282 triangles and 1.81 MB of buffers; all 25 archetypes in all 3 casts are 20,624 triangles and 1.80 MB. Both are built together in about 35 ms in Node. The two probes are 16 KB each, prefiltered once per renderer and never again. A second bar and a thousand more items add objects, not buffers. A room's walls are that room's own geometry, built when it is entered and thrown away with it.
 
-Measured headless in Node on a generated town, whole rooms, shell and pickups included:
+Screens cost bytes and nothing else. Against the same catalog without them: 22,282 triangles both ways, no draw anywhere moved, and the buffers went 1.70 MB to 1.81 MB and 1.70 MB to 1.80 MB, +220 KB in all, +6.5%. That is the four byte attribute on every vertex in the box (206 KB) plus the six screenings of the television (14 KB).
+
+Measured headless in Node on a generated town of nine blocks, whole rooms, shell and pickups included:
 
 | room | pieces | items | bays | corpo | corpo + walls | home + walls | greybox |
 |---|---|---|---|---|---|---|---|
-| bar | 24 | 3 | 73 | 42 draws, 11,344 tris, 6 mats | 43 draws, 16,192 tris | 43 draws, 26,596 tris | 42 draws, 688 tris, 7 mats |
-| cafe | 17 | 1 | 72 | 35 draws, 7,270 tris, 7 mats | 36 draws, 12,734 tris | 36 draws, 21,850 tris | 35 draws, 808 tris, 8 mats |
-| workshop | 13 | 3 | 53 | 43 draws, 6,270 tris, 8 mats | 44 draws, 9,558 tris | 44 draws, 18,898 tris | 43 draws, 1,312 tris, 9 mats |
-| apartment | 11 | 2 | 86 | 36 draws, 5,028 tris, 7 mats | 37 draws, 10,644 tris | 37 draws, 22,572 tris | 36 draws, 820 tris, 8 mats |
-| restaurant | 9 | 3 | 64 | 33 draws, 3,892 tris, 6 mats | 34 draws, 7,932 tris | 34 draws, 19,524 tris | 33 draws, 580 tris, 7 mats |
+| restaurant | 17 | 1 | 112 | 41 draws, 9,000 tris, 7 mats | 42 draws, 18,288 tris | 42 draws, 30,440 tris | 41 draws, 964 tris, 8 mats |
+| workshop | 13 | 1 | 53 | 41 draws, 7,482 tris, 7 mats | 42 draws, 11,218 tris | 42 draws, 19,110 tris | 41 draws, 1,372 tris, 8 mats |
+| restaurant | 13 | 3 | 76 | 37 draws, 6,916 tris, 6 mats | 38 draws, 12,780 tris | 38 draws, 19,584 tris | 37 draws, 916 tris, 7 mats |
+| house | 11 | 2 | 64 | 41 draws, 6,114 tris, 7 mats | 42 draws, 11,050 tris | 42 draws, 19,966 tris | 41 draws, 964 tris, 8 mats |
+| bar | 8 | 3 | 51 | 30 draws, 5,562 tris, 8 mats | 31 draws, 8,690 tris | 31 draws, 16,828 tris | 30 draws, 1,240 tris, 9 mats |
 
 `node game/furnish/tools/print-cost.ts` prints the table. **One draw for the walls, whatever the bay count**: 53 bays and 86 bays both cost the same one mesh, and a finer rhythm or a bigger vocabulary buys triangles, never draws. Home is about twice corpo because every corner of every bay is moulded.
 
@@ -178,7 +201,7 @@ Every item geometry is indexed, on the one shared material and agreeing attribut
 
 ## How to modify this blackbox safely
 
-A prop's footprint or its contact height is `src/catalog/specs.ts` alone, and both are read by `@gb/forge`, so a change there is a change to what the planner claims. What a prop looks like is one file per family under `src/props/`, one exported builder per prop kind, all of them drawing through `Solid.block` in `src/build/solid.ts`, or through `src/build/bar.ts`, which is the same block laid on its side; nothing else may make geometry.
+A prop's footprint or its contact height is `src/catalog/specs.ts` alone, and both are read by `@gb/forge`, so a change there is a change to what the planner claims. **`footprintOf(prop)` is the whole answer to how much floor a piece needs**: 18 of the 24 fill their declared rectangle to the millimetre and none of them exceeds it, the widest shortfall being a lamp at 0.36 m in the 0.40 m it claimed, so a planner sizes a slot from the table and never from the triangles. What a prop looks like is one file per family under `src/props/`, one exported builder per prop kind, all of them drawing through `Solid.block` in `src/build/solid.ts`, or through `src/build/bar.ts`, which is the same block laid on its side; nothing else may make geometry.
 
 A carried thing is the same shape of code one folder over. How big it is and what it is made of is `src/items/specs.ts` plus `src/items/matter.ts`; how much a cast may swing is `src/items/cast.ts`; what one looks like is one file per family under `src/items/` (`paper.ts`, `vessel.ts`, `pack.ts`, `tool.ts`), one exported builder per archetype.
 
@@ -186,6 +209,8 @@ Look at the result before believing it. `npx vite --port 5311`, then `/game/furn
 
 A wall is four files and they do not overlap: `src/walls/bays.ts` is the vocabulary and the heights, `src/walls/runs.ts` reads a room out of the world document as four walls with their doorways and their furniture, `src/walls/plan.ts` decides which bay goes where, and `src/walls/draw.ts` draws one. `src/walls/things.ts` is what stands in a niche. Retuning how often a wall carries a shelf is the taste table in `bays.ts` alone; changing what a shelf looks like is `draw.ts` alone.
 
-What the two languages are made of is `src/style/palette.ts`, and how much a variant may swing is the taste table in `src/style/variant.ts`. What a floor or a wall is laid in is `src/surfaces/surfaces.ts` plus the sources named in `tools/pack.ts`; the pattern itself is `src/surfaces/pattern.ts`, and the tiling rule is written twice in `src/surfaces/tiling.ts`, once for the GPU and once for the CPU the tests measure, so both change together. What a polished floor reflects is `src/surfaces/probe.ts` alone, and its numbers are a calibration: raise them and the probe stops being a reflection and starts being a light that floods the room. A new generated surface follows `tools/textures/README.md`, lands in `assets/gen/`, and needs its average brightness in `SURFACE_TEXTURES` (`node game/furnish/tools/print-grain.ts`).
+What the two languages are made of is `src/style/palette.ts`, and how much a variant may swing is the taste table in `src/style/variant.ts`. What a floor or a wall is laid in is `src/surfaces/surfaces.ts` plus the sources named in `tools/pack.ts`; the pattern itself is `src/surfaces/pattern.ts`, and the tiling rule is written twice in `src/surfaces/tiling.ts`, once for the GPU and once for the CPU the tests measure, so both change together. What a polished floor reflects is `src/surfaces/probe.ts` alone, and its numbers are a calibration: raise them and the probe stops being a reflection and starts being a light that floods the room. The screen's entry there is not a dial, though: it is the radiance `screenAverage()` measured, so retuning the picture moves the light on its own. A new generated surface follows `tools/textures/README.md`, lands in `assets/gen/`, and needs its average brightness in `SURFACE_TEXTURES` (`node game/furnish/tools/print-grain.ts`).
+
+A screen is four files under `src/screens/` and they do not overlap: `schedule.ts` is what is on and when, `screening.ts` is which set is on which station, `picture.ts` is what the glass shows and `glass.ts` is the same picture as nodes. `light.ts` measures the first for the probe. Retuning the schedule is `schedule.ts` alone and retuning who watches what is `screening.ts` alone; changing what a programme looks like means changing `picture.ts` and `glass.ts` together, and `node game/furnish/tools/print-screen.ts <path>` writes a contact sheet of every station across a whole cycle off the TypeScript side, so a programme can be worked on without a GPU. `?show=screens` in the preview stands three sets on three screenings in a dark room, which is the only way to see whether the glass reads as something playing.
 
 Run `pnpm --filter @gb/furnish test`.

@@ -3,13 +3,19 @@ import type * as THREE from 'three'
 import { PROP_SPECS, footprintOf } from '../catalog/specs.ts'
 import { Solid } from '../build/solid.ts'
 import { BUILDERS } from '../props/index.ts'
+import { SCREEN_SLOTS, screeningOf } from '../screens/screening.ts'
+import { tunedTo } from '../screens/tune.ts'
 import { FURNISH_STYLES, type FurnishStyle } from '../style/palette.ts'
 import { variantOf } from '../style/variant.ts'
 import { contactHeight } from './contact.ts'
 
 /** One prop in one language, ready to draw. */
 export interface Built {
-  readonly geometry: THREE.BufferGeometry
+  /**
+   * The piece, one entry per screening it can be tuned to. A piece with no
+   * screen in it has exactly one, because there is nothing to tune.
+   */
+  readonly screens: readonly THREE.BufferGeometry[]
   /** Metres off the floor of the surface a body meets, measured off what was built. */
   readonly contact: number | undefined
   readonly triangles: number
@@ -53,8 +59,14 @@ function buildProp(style: FurnishStyle, prop: FurnitureProp, seed: string): Buil
 
   const geometry = solid.geometry()
   geometry.name = keyOf(style, prop)
+  const screens = solid.lit
+    ? Array.from({ length: SCREEN_SLOTS }, (_, slot) =>
+        tunedTo(geometry, screeningOf(seed, slot), `${geometry.name}/${slot}`),
+      )
+    : [geometry]
+
   return {
-    geometry,
+    screens,
     contact: spec.contact && contactHeight([geometry], spec.contact.kind),
     triangles: solid.triangles,
   }

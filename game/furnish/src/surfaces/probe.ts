@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { screenAverage } from '../screens/light.ts'
 import { PALETTES, type FurnishStyle } from '../style/palette.ts'
 import { lookOf } from './surfaces.ts'
 
@@ -16,6 +17,13 @@ import { lookOf } from './surfaces.ts'
  * nobody can tell. A floor only ever reflects rays above the horizon, so the
  * band that matters is the lit channel at the top of the wall, and that is what
  * is drawn brightest.
+ *
+ * A screen is in the picture too. A television is on a wall at eye height, not
+ * up in the cove, so it lands as one low lobe just over the horizon, in the
+ * colour the screens really average over a whole schedule. It lifts a floor a
+ * little and lays a soft patch across it, which is what a lit screen does to a
+ * dark room; it is nowhere near the channel, because a screen is a fraction of
+ * a metre of wall and the cove is all of it.
  *
  * One per interior language, 64 by 32, painted from that language's own
  * surfaces and the colour its strips emit. Two pictures for a town of any size,
@@ -37,6 +45,21 @@ const GROUND = -15
 const STRIPS = 4
 /** How wide one of them reads, in degrees of azimuth. */
 const STRIP_WIDE = 16
+/**
+ * Where a screen lands in the picture, in degrees off the horizon.
+ *
+ * Not where the set hangs: where a floor two to four metres away sees it, which
+ * is the only part of it a polished floor can give back. A screen at chest
+ * height is 30 degrees up from a metre away and 10 from four, so the band is
+ * the one that reaches the floor and the part of it below the horizon is left
+ * out, because no upward facing surface reflects that.
+ */
+const SCREEN = { from: 6, to: 22 }
+/**
+ * How wide one screen reads, in degrees of azimuth: a metre of glass seen from
+ * two metres away. One wall carries it, not four.
+ */
+const SCREEN_WIDE = 26
 
 /** How much of each surface's own colour comes back. A room is not a mirror box. */
 const BOUNCE = { floor: 0.08, wall: 0.12, ceiling: 0.05 }
@@ -51,6 +74,21 @@ const BOUNCE = { floor: 0.08, wall: 0.12, ceiling: 0.05 }
  */
 const CHANNEL_LIGHT = 0.32
 const STRIP_LIGHT = 0.18
+/**
+ * The third is not a dial at all. The screen goes into the picture at the
+ * radiance it really emits, over the solid angle it really covers, so there is
+ * nothing here to tune: raise it and the room is lit by a television brighter
+ * than televisions are.
+ *
+ * What that comes to is small, and it is meant to be. Two square metres of cove
+ * at 3.2 against half a square metre of glass at a quarter is fifty to one, so
+ * a screen is about a fiftieth of a room's light and lifts a floor by about a
+ * hundredth of a stop. What it does show is the reflection: a patch of the
+ * colour that is on at that moment, in a floor polished enough to give it back.
+ * A pool of light on the floor in front of the set would need a light object,
+ * and there is none in this box.
+ */
+const SCREEN_LIGHT = 1
 
 type Rgb = [number, number, number]
 
@@ -65,6 +103,8 @@ export function roomProbe(style: FurnishStyle): THREE.DataTexture {
   const wall = linear(lookOf(style, 'wall', 0).colour)
   const ceiling = linear(lookOf(style, 'ceiling', 0).colour)
   const glow = scale(linear(palette.glow.glow ?? 0xffffff), palette.glow.glowStrength ?? 1)
+  const average = screenAverage()
+  const screen: Rgb = [average[0], average[1], average[2]]
 
   const data = new Uint16Array(WIDE * TALL * 4)
   for (let row = 0; row < TALL; row++) {
@@ -72,7 +112,7 @@ export function roomProbe(style: FurnishStyle): THREE.DataTexture {
     const elevation = ((row + 0.5) / TALL - 0.5) * 180
     for (let column = 0; column < WIDE; column++) {
       const azimuth = ((column + 0.5) / WIDE) * 360
-      const rgb = paint(elevation, azimuth, { floor, wall, ceiling, glow })
+      const rgb = paint(elevation, azimuth, { floor, wall, ceiling, glow, screen })
       const at = (row * WIDE + column) * 4
       data[at] = THREE.DataUtils.toHalfFloat(rgb[0])
       data[at + 1] = THREE.DataUtils.toHalfFloat(rgb[1])
@@ -97,9 +137,17 @@ interface Room {
   readonly wall: Rgb
   readonly ceiling: Rgb
   readonly glow: Rgb
+  /** What the screens in the room average over a whole schedule. */
+  readonly screen: Rgb
 }
 
 function paint(elevation: number, azimuth: number, room: Room): Rgb {
+  const screen = scale(room.screen, SCREEN_LIGHT * lobe(elevation, azimuth))
+  return add(surfaces(elevation, azimuth, room), screen)
+}
+
+/** The room without its screen: the floor under, the ceiling over, the wall and its channel. */
+function surfaces(elevation: number, azimuth: number, room: Room): Rgb {
   if (elevation < GROUND) return scale(room.floor, BOUNCE.floor)
   if (elevation > CHANNEL.to) return scale(room.ceiling, BOUNCE.ceiling)
 
@@ -116,6 +164,18 @@ function paint(elevation: number, azimuth: number, room: Room): Rgb {
   const nearest = Math.abs((((azimuth % period) + period) % period) - period / 2)
   const strip = Math.max(0, 1 - nearest / (STRIP_WIDE / 2))
   return add(scale(room.wall, BOUNCE.wall), scale(room.glow, STRIP_LIGHT * strip * strip))
+}
+
+/**
+ * How hard a screen reads at a point of the picture: a soft patch of wall on
+ * one side of the room, falling off at both edges the way the channel does.
+ */
+function lobe(elevation: number, azimuth: number): number {
+  if (elevation < SCREEN.from || elevation > SCREEN.to) return 0
+  const off = Math.abs(azimuth - 180)
+  if (off > SCREEN_WIDE / 2) return 0
+  const up = Math.sin((Math.PI * (elevation - SCREEN.from)) / (SCREEN.to - SCREEN.from))
+  return up * Math.cos((Math.PI * off) / SCREEN_WIDE)
 }
 
 function linear(hex: number): Rgb {

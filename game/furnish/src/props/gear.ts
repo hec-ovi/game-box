@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { everyCorner } from '../build/outline.ts'
 import { strip } from '../build/parts.ts'
+import { SCREEN_MARK } from '../screens/screening.ts'
 import { cornersOf, edgeOf } from '../style/variant.ts'
 import type { PropBuilder } from './builder.ts'
 
@@ -156,7 +157,8 @@ export const tv: PropBuilder = (build) => {
     top: edgeOf(variant, 0.01),
     look: variant.palette.shell,
   })
-  // the picture: the whole face, so it is the light in the room and not a decal
+  // the picture: the whole face, so it is the light in the room and not a decal,
+  // and marked as glass so what is playing runs across it rather than one colour
   solid.block({
     z: depth / 2 - panel - 0.005,
     width: width - 0.03,
@@ -166,6 +168,7 @@ export const tv: PropBuilder = (build) => {
     corner: everyCorner(0.008),
     arc: 2,
     look: variant.palette.screen,
+    screen: SCREEN_MARK,
   })
 }
 

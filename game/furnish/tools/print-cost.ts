@@ -17,13 +17,21 @@ const started = performance.now()
 const kit = furnishKit()
 const build = performance.now() - started
 
+// every screening of every prop, counting a buffer they share only once: a
+// second screening is one attribute rewritten, not a second copy of the piece
+const counted = new Set<unknown>()
 let bytes = 0
 let triangles = 0
 for (const style of FURNISH_STYLES) {
   for (const prop of FURNITURE_PROPS) {
-    const geometry = kit.geometry(prop, style)
-    for (const attribute of Object.values(geometry.attributes)) bytes += attribute.array.byteLength
-    bytes += geometry.getIndex()!.array.byteLength
+    for (let slot = 0; slot < kit.screenings(prop, style); slot++) {
+      const geometry = kit.geometry(prop, style, slot)
+      for (const attribute of [...Object.values(geometry.attributes), geometry.getIndex()!]) {
+        if (counted.has(attribute)) continue
+        counted.add(attribute)
+        bytes += attribute.array.byteLength
+      }
+    }
     triangles += kit.triangles(prop, style)
   }
 }
@@ -52,8 +60,8 @@ console.log(`both built in ${build.toFixed(0)} ms\n`)
 const built = await new Forge(new OfflineNarrator('furnish')).build({
   theme: 'old harbour town',
   seed: 'furnish',
-  blocksX: 1,
-  blocksY: 1,
+  blocksX: 3,
+  blocksY: 3,
   blockCells: 14,
 })
 if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 400))

@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import type { Screening } from '../screens/screening.ts'
 import { shade, type Look } from './look.ts'
 import { everyCorner, outline, type Corners, type Rim } from './outline.ts'
 import { section, SHARP, type Edge, type Ring } from './profile.ts'
@@ -39,6 +40,22 @@ export interface Block {
   /** Leave the cap off a face nothing can see, so an open case is not lidded. */
   readonly openTop?: boolean
   readonly openBottom?: boolean
+  /**
+   * Makes this block a screen: its faces carry a picture instead of the flat
+   * emission the look asks for. The block's own rectangle is the glass, so u
+   * runs across it as the room sees it and v up it, and the screening says
+   * which station is on and how far into its schedule this one is.
+   */
+  readonly screen?: Screening
+}
+
+/** The rectangle of a block that is a screen, in the block's own coordinates. */
+interface Glass {
+  readonly screening: Screening
+  readonly x: number
+  readonly width: number
+  readonly y0: number
+  readonly y1: number
 }
 
 /** Which way a band of the wall faces, in the plane of the plan normal and up. */
@@ -60,9 +77,11 @@ export class Solid {
   readonly #glow: number[] = []
   readonly #rough: number[] = []
   readonly #metal: number[] = []
+  readonly #screen: number[] = []
   readonly #index: number[] = []
   readonly #stack: (THREE.Matrix4 | undefined)[] = []
   #frame: THREE.Matrix4 | undefined
+  #glass: Glass | undefined
 
   /** Everything the body adds is placed by this transform. Nests. */
   in(matrix: THREE.Matrix4, body: () => void): void {
@@ -90,10 +109,12 @@ export class Solid {
     const edges = walk(rim)
     const x = block.x ?? 0
     const z = block.z ?? 0
+    this.#glass = block.screen && { screening: block.screen, x, width: block.width, y0: block.y0, y1: block.y1 }
 
     this.#wall(rim, edges, rings, x, z, block.look)
     if (!block.openTop) this.#cap(rim, edges, rings[rings.length - 1]!, x, z, block.look, 1)
     if (!block.openBottom) this.#cap(rim, edges, rings[0]!, x, z, block.look, -1)
+    this.#glass = undefined
   }
 
   geometry(): THREE.BufferGeometry {
@@ -104,6 +125,7 @@ export class Solid {
     geometry.setAttribute('glow', new THREE.BufferAttribute(new Float32Array(this.#glow), 3))
     geometry.setAttribute('rough', new THREE.BufferAttribute(new Float32Array(this.#rough), 1))
     geometry.setAttribute('metal', new THREE.BufferAttribute(new Float32Array(this.#metal), 1))
+    geometry.setAttribute('screen', new THREE.Uint8BufferAttribute(this.#screen, 4, true))
     geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(this.#index), 1))
     geometry.computeBoundingBox()
     return geometry
@@ -111,6 +133,11 @@ export class Solid {
 
   get triangles(): number {
     return this.#index.length / 3
+  }
+
+  /** Whether anything in this piece is a screen, so a caller knows to draw it per screening. */
+  get lit(): boolean {
+    return this.#screen.some((byte, at) => at % 4 === 2 && byte > 0)
   }
 
   /**
@@ -188,7 +215,27 @@ export class Solid {
     this.#glow.push(painted.glow[0], painted.glow[1], painted.glow[2])
     this.#rough.push(painted.roughness)
     this.#metal.push(painted.metalness)
+    this.#paint(x, y)
     return at
+  }
+
+  /**
+   * Where this vertex is on the glass, if it is on a screen at all.
+   *
+   * Taken before the frame is applied, so a screen inside a turned assembly
+   * still reads the right way up. u is flipped because the front of a prop
+   * looks north and the room stands on the other side of it, so the room's
+   * left is the piece's +x.
+   */
+  #paint(x: number, y: number): void {
+    const glass = this.#glass
+    if (!glass) {
+      this.#screen.push(0, 0, 0, 0)
+      return
+    }
+    const u = 0.5 - (x - glass.x) / glass.width
+    const v = (y - glass.y0) / (glass.y1 - glass.y0)
+    this.#screen.push(byte(u), byte(v), glass.screening.station, byte(glass.screening.phase))
   }
 
   #quad(a: number, b: number, c: number, d: number): void {
@@ -214,6 +261,11 @@ function walk(rim: readonly Rim[]): number[] {
     if (Math.abs(here.x - next.x) > 1e-9 || Math.abs(here.z - next.z) > 1e-9) edges.push(at)
   }
   return edges
+}
+
+/** A 0 to 1 number as the byte a normalized attribute carries it in. */
+function byte(at: number): number {
+  return Math.max(0, Math.min(255, Math.round(at * 255)))
 }
 
 function slopeOf(lower: Ring, upper: Ring): Slope {

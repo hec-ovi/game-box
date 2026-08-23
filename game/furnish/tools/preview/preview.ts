@@ -1,21 +1,23 @@
 /**
  * This box, in a browser, on the renderer the game uses.
  *
- * Two things to look at, because a table of numbers proves neither. `counter`
- * stands one of every kind of thing a player can pick up on the counter this
- * box builds: a table of millimetres cannot say whether an envelope reads as an
- * envelope at arm's length. `room` puts the surfaces on a plain room with the
- * lit channel running round it: it answers whether a polished floor gives back
- * the room's own light or a hole.
+ * Three things to look at, because a table of numbers proves none of them.
+ * `counter` stands one of every kind of thing a player can pick up on the
+ * counter this box builds: a table of millimetres cannot say whether an
+ * envelope reads as an envelope at arm's length. `room` puts the surfaces on a
+ * plain room with the lit channel running round it: it answers whether a
+ * polished floor gives back the room's own light or a hole. `screens` stands
+ * three televisions on three different screenings in that same dark room.
  *
  *   npx vite --port 5311     then open /game/furnish/tools/preview/index.html
  *
- * `?show=counter|room`, `?style=corpo|home`, `?view=hand|near|far` (1, 2 and 3
- * switch live, `?x=` slides along the counter). On the counter: `?cast=0|1|2`
- * picks which cast of every archetype is shown, `?some=a,b,c` lines up just
- * those, `?batch=1` puts every item into one `BatchedMesh` so the draw count
- * can be read with and without, `?labels=1` names them. In the room:
- * `?probe=0` takes the room's own probe back off the surfaces.
+ * `?show=counter|room|screens`, `?style=corpo|home`, `?view=hand|near|far` (1,
+ * 2 and 3 switch live, `?x=` slides along the counter). On the counter:
+ * `?cast=0|1|2` picks which cast of every archetype is shown, `?some=a,b,c`
+ * lines up just those, `?batch=1` puts every item into one `BatchedMesh` so the
+ * draw count can be read with and without, `?labels=1` names them. In the room
+ * and on the screens: `?probe=0` takes the room's own probe back off the
+ * surfaces.
  */
 import type { ItemArchetype } from '@gb/world'
 import * as THREE from 'three'
@@ -24,9 +26,11 @@ import { WebGPURenderer } from 'three/webgpu'
 import { FurnishDressing, ITEM_SPECS, furnishKit, loadFurnish, type FurnishStyle } from '../../src/index.ts'
 import { buildCounter, COUNTER_TOP } from './counter.ts'
 import { buildRoom } from './room.ts'
+import { buildScreens } from './screens.ts'
 
 const options = new URLSearchParams(location.search)
-const show = options.get('show') === 'room' ? 'room' : 'counter'
+const asked = options.get('show')
+const show = asked === 'room' || asked === 'screens' ? asked : 'counter'
 const style: FurnishStyle = options.get('style') === 'home' ? 'home' : 'corpo'
 const labelled = options.get('labels') === '1'
 
@@ -37,10 +41,13 @@ const dressing = new FurnishDressing(kit, undefined, style)
 const scene = new THREE.Scene()
 scene.background = new THREE.Color(0x05070a)
 
+const probed = options.get('probe') !== '0'
 const stage =
   show === 'room'
-    ? { root: buildRoom(dressing, style, options.get('probe') !== '0'), items: [], span: 5.6 }
-    : buildCounter(kit, dressing, {
+    ? { root: buildRoom(dressing, style, probed), items: [], span: 5.6 }
+    : show === 'screens'
+      ? { root: buildScreens(kit, style, probed), items: [], span: 6.6 }
+      : buildCounter(kit, dressing, {
         cast: Number(options.get('cast') ?? 0),
         batched: options.get('batch') === '1',
         some: (options.get('some')?.split(',').filter(Boolean) ?? []) as ItemArchetype[],
@@ -64,8 +71,10 @@ if (show === 'counter') {
   scene.add(back)
 }
 
-scene.add(new THREE.HemisphereLight(0x5d8296, 0x101418, show === 'room' ? 0.5 : 1.5))
-const key = new THREE.DirectionalLight(0xdff2ff, show === 'room' ? 0.9 : 2.6)
+/** How much light is in the stage that is not the room's own: none, on the screens. */
+const AMBIENT = { counter: 1, room: 0.34, screens: 0.06 }[show]
+scene.add(new THREE.HemisphereLight(0x5d8296, 0x101418, 1.5 * AMBIENT))
+const key = new THREE.DirectionalLight(0xdff2ff, 2.6 * AMBIENT)
 key.position.set(2.4, 4.2, -2.8)
 key.castShadow = true
 key.shadow.mapSize.set(2048, 2048)
@@ -77,7 +86,7 @@ for (const side of ['left', 'right', 'top', 'bottom'] as const) {
   key.shadow.camera[side] = side === 'left' || side === 'bottom' ? -4 : 4
 }
 scene.add(key)
-const fill = new THREE.PointLight(0xff9a6e, show === 'room' ? 3 : 8, 12)
+const fill = new THREE.PointLight(0xff9a6e, 8 * AMBIENT, 12)
 fill.position.set(-2.6, 2.2, -1.6)
 scene.add(fill)
 
@@ -92,6 +101,11 @@ const pan = Number(options.get('x') ?? 0)
 function aim(): void {
   const fits = (stage.span * 1.12) / 2 / (Math.tan((camera.fov * Math.PI) / 360) * camera.aspect)
   const back = view === 'near' ? fits : VIEWS[view]
+  if (show === 'screens') {
+    camera.position.set(pan, 1.5, view === 'hand' ? -0.9 : 1.4)
+    camera.lookAt(pan, 1.1, -2.4)
+    return
+  }
   if (show === 'room') {
     camera.position.set(pan, 1.62, 2.4)
     camera.lookAt(pan, view === 'hand' ? 0.2 : view === 'far' ? 1.9 : 0.7, -2.4)
