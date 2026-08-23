@@ -17,7 +17,7 @@ Three states, and the difference matters:
 | Quests are the point, not shooting | verified | 300 quests driven to completion, 0 rejected |
 | Main quest and side quests | verified | Main line gates side work by standing; 3 to 16 offered at start, not all 101 |
 | Quests as reusable flows | verified | 8 step shapes, escort, choice, counts, hidden, timers |
-| Talk to NPCs | reported | Before/after dialogue measured by the talk agent against the live model |
+| Talk to NPCs | verified | Played in a browser: a job offered, taken, delivered and paid, twice, once with the model and once with the sidecar dead |
 | Inventory, carry a thing from A to B | verified | Rewards land in `@gb/play`, items removed on delivery |
 | Pre-made animations, never procedural walking | verified | Clip library on a canonical 65-joint skeleton |
 | Barista behind a bar, people sitting | verified | Anchors with per-anchor clips |
@@ -47,9 +47,9 @@ Three states, and the difference matters:
 | Requirement | State | Evidence or what is missing |
 |---|---|---|
 | Architect, interiors, NPCs, quest writer as separate passes | verified | Forge stages plus `@gb/scribe` |
-| All LLM driven, with an offline fallback | reported | Scribe landed concurrency and prompt work today |
+| All LLM driven, with an offline fallback | verified | One agent per place, in parallel: slot occupancy peaked 5 of 5 against a documented 1, and the facade pass went 376 s to 92 s |
 | Tool calls, not free text | verified | Forced tool calls end to end |
-| **Buildings from `glb-buildings`** | **open** | Costed in `docs/PLAN-buildings.md`. Not built. |
+| Buildings from `glb-buildings` | done | `@gb/prefab`: 217 triangles a building against the kit's 9,300, one batch, zero bytes added to the world file, with photographed rooms behind the glass |
 
 ## Interface
 
@@ -67,8 +67,8 @@ Three states, and the difference matters:
 
 | Requirement | State | Evidence or what is missing |
 |---|---|---|
-| Clothes not medieval | in flight | No CC0 modern wardrobe exists on our rig; recutting what we own |
-| Hair and hair colour variety | in flight | Same agent |
+| Clothes not medieval | done | Twelve outfits recut from four, near-black coated garments with one lit accent each; the boots were a fused mesh and had to be cut by triangle height |
+| Hair and hair colour variety | done | Five cuts, twenty colours, half of them dyed |
 | Face turns to you when talked to | done | The body stops, turns, and the head leads it |
 | **Lip sync, gestures, drinking** | **open** | Gestures exist in the box; nothing drives them from conversation |
 
@@ -76,8 +76,8 @@ Three states, and the difference matters:
 
 | Requirement | State | Evidence or what is missing |
 |---|---|---|
-| Not cartoonish | in flight | Sky lighting and shadows landed; bloom, signage, wet roads, dark palette in flight |
-| Cyberpunk night, neon, wet streets | in flight | Direction settled in `docs/LOOK.md` |
+| Not cartoonish | verified | Sky lighting, shadows, bloom, a cold night grade, neon signage, wet reflective roads, a painted galaxy, and rooms you can see into from the pavement |
+| Cyberpunk night, neon, wet streets | verified | Direction in `docs/LOOK.md`, landed across seven boxes |
 | Performance must not suffer | verified | 1,069 draws to 46; 18.14 ms to 2.49 ms with shadows |
 
 ## Bugs he reported
