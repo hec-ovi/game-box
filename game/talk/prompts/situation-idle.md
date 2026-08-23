@@ -1,1 +1,1 @@
-Right now you have nothing you need from this person.
+There is nothing you want from this person. They came to you.

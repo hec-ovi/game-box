@@ -15,3 +15,22 @@ export function keyed(source: string): Record<string, string> {
   }
   return out
 }
+
+/** Reads a `key: one | two | three` list out of a prompt file. */
+export function listed(source: string): Record<string, readonly string[]> {
+  const out: Record<string, readonly string[]> = {}
+  for (const [key, value] of Object.entries(keyed(source))) {
+    out[key] = value
+      .split('|')
+      .map((part) => part.trim())
+      .filter(Boolean)
+  }
+  return out
+}
+
+/** A fragment of stored text, punctuated so it can sit in a spoken line. */
+export function sentence(text: string): string {
+  const trimmed = text.trim()
+  if (!trimmed) return ''
+  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`
+}

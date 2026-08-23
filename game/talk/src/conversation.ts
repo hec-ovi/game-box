@@ -6,6 +6,7 @@ import type { World } from '@gb/world'
 import { Brief } from './brief.ts'
 import { Decider } from './decide.ts'
 import type { TalkError, TalkEvent, Turn } from './events.ts'
+import { Greeting } from './greet.ts'
 import { legalMoves, type ActionName, type Move, type Situation } from './moves.ts'
 import { Performer } from './perform.ts'
 import { Script } from './script.ts'
@@ -23,6 +24,7 @@ import { Voice } from './voice.ts'
 export class Conversation {
   #situation: Situation
   #brief: Brief
+  #greeting: Greeting
   #voice: Voice
   #decider: Decider
   #script: Script
@@ -33,6 +35,7 @@ export class Conversation {
   private constructor(input: { world: World; log: QuestLog; player: PlayerState; sidecar: Sidecar; npcId: string }) {
     this.#situation = { world: input.world, log: input.log, player: input.player, npcId: input.npcId }
     this.#brief = new Brief(this.#situation)
+    this.#greeting = new Greeting(this.#situation)
     this.#voice = new Voice(input.sidecar)
     this.#decider = new Decider(input.sidecar)
     this.#script = new Script(this.#situation)
@@ -40,8 +43,8 @@ export class Conversation {
   }
 
   /**
-   * Walking up to someone is itself an event: a quest step that asked the
-   * player to talk to them completes here.
+   * Walking up to someone is itself an event: a quest step that already asked
+   * the player to talk to them completes here.
    */
   static open(input: {
     world: World
@@ -51,11 +54,8 @@ export class Conversation {
     npcId: string
   }): Result<{ conversation: Conversation; changes: readonly Change[] }, TalkError> {
     if (!input.world.hasNpc(input.npcId)) return err({ code: 'unknown-npc', npcId: input.npcId })
-    const greeted = input.log.handle({ kind: 'talked', npcId: input.npcId })
-    return ok({
-      conversation: new Conversation(input),
-      changes: greeted.ok ? greeted.value : [],
-    })
+    const conversation = new Conversation(input)
+    return ok({ conversation, changes: conversation.#greeting.credit() })
   }
 
   get npcId(): string {
@@ -91,6 +91,11 @@ export class Conversation {
       line += piece
       yield { kind: 'said', text: piece }
     }
+    // A reply that broke off before a word of it arrived is no reply at all.
+    if (!line.trim()) {
+      yield* this.#unattended(playerText, moves)
+      return
+    }
     this.#history.push({ role: 'assistant', content: line })
 
     const chosen = await this.#decider.choose({
@@ -99,10 +104,11 @@ export class Conversation {
       moves,
       transcript: this.#brief.transcript(this.#history),
     })
-    yield* this.#act(chosen.ok ? chosen.value : this.#script.decide(playerText, moves))
+    const answered = chosen.ok && chosen.value.answered
+    yield* this.#act(answered ? chosen.value.move : this.#script.decide(playerText, moves))
   }
 
-  /** No sidecar: the quest data speaks and decides, and the conversation goes on. */
+  /** No sidecar: the quest data speaks and the player's own words decide. */
   *#unattended(playerText: string, moves: readonly Move[]): Generator<TalkEvent> {
     const scripted = this.#script.turn(playerText, moves)
     this.#history.push({ role: 'assistant', content: scripted.line })
@@ -116,6 +122,9 @@ export class Conversation {
         if (event.kind === 'did' && event.action === 'end_talk') this.#open = false
         yield event
       }
+      // Handing the job over is what opens "go and hear them out": credit it here,
+      // while the player is still stood in front of the person who said it.
+      for (const change of this.#greeting.credit()) yield { kind: 'changed', change }
     }
     if (!this.#open) yield { kind: 'over' }
   }

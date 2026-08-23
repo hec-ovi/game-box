@@ -7,6 +7,12 @@ import { fill, keyed } from './text.ts'
 /** Rules that only make sense while a particular move is on the menu. */
 const RULES = keyed(PROMPTS.rules)
 
+/** What came back from the action track. An unanswered turn is not a decision to do nothing. */
+export interface Decision {
+  readonly answered: boolean
+  readonly move?: Move
+}
+
 /**
  * The action track: one choice from the moves that were legal when the turn
  * began, plus doing nothing, which is the first line of the menu and the answer
@@ -25,7 +31,7 @@ export class Decider {
     city: string
     moves: readonly Move[]
     transcript: string
-  }): Promise<Result<Move | undefined, SidecarError>> {
+  }): Promise<Result<Decision, SidecarError>> {
     const stream = await this.#sidecar.converse({
       system: fill(PROMPTS.decide, {
         name: input.npcName,
@@ -42,7 +48,10 @@ export class Decider {
     for await (const event of stream.value) {
       if (event.kind === 'text') answer += event.text
     }
-    return ok(picked(input.moves, number(answer)))
+    if (!answer.trim()) return ok({ answered: false })
+
+    const move = picked(input.moves, number(answer))
+    return ok(move ? { answered: true, move } : { answered: true })
   }
 }
 

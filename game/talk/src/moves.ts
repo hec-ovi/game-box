@@ -20,6 +20,8 @@ export interface Move {
   readonly action: ActionName
   /** The quest or item it names, fixed when the turn began. Never shown to the model. */
   readonly id?: string
+  /** What it is about, named the way a person would name it: a job title, a thing on the counter. */
+  readonly subject?: string
   readonly line: string
 }
 
@@ -39,16 +41,19 @@ export function legalMoves(situation: Situation): readonly Move[] {
     moves.push({
       action: 'give_quest',
       id: quest.id,
+      subject: quest.title,
       line: fill(WORDING.give_quest!, { title: quest.title, summary: quest.summary }),
     })
   }
 
-  for (const itemId of deliveriesTo(log, npcId).filter((id) => player.has(id))) {
-    moves.push({ action: 'take_delivery', id: itemId, line: fill(WORDING.take_delivery!, { item: itemName(world, itemId) }) })
+  for (const itemId of owedTo(log, npcId).filter((id) => player.has(id))) {
+    const item = itemName(world, itemId)
+    moves.push({ action: 'take_delivery', id: itemId, subject: item, line: fill(WORDING.take_delivery!, { item }) })
   }
 
   for (const itemId of carriedBy(world, npcId)) {
-    moves.push({ action: 'hand_over', id: itemId, line: fill(WORDING.hand_over!, { item: itemName(world, itemId) }) })
+    const item = itemName(world, itemId)
+    moves.push({ action: 'hand_over', id: itemId, subject: item, line: fill(WORDING.hand_over!, { item }) })
   }
 
   if (escortsNeeded(log, npcId) && !player.isCompanion(npcId)) {
@@ -72,13 +77,17 @@ export function picked(moves: readonly Move[], number: number): Move | undefined
   return moves[number - 2]
 }
 
-/** Items an open step of an active quest wants delivered to this NPC. */
-function deliveriesTo(log: QuestLog, npcId: string): string[] {
+/**
+ * Items an open step wants delivered to this NPC: the one it names and anything
+ * the quest lets stand in for it. A delivery objective carries the person it is
+ * delivered to, so this is a read of the objective and nothing more.
+ */
+function owedTo(log: QuestLog, npcId: string): string[] {
   const wanted = new Set<string>()
   for (const objective of log.objectives()) {
-    const quest = log.quests().find((q) => q.id === objective.questId)
-    const step = quest?.steps.find((s) => s.id === objective.stepId)
-    if (step?.kind === 'deliver' && step.toNpcId === npcId) wanted.add(step.itemId)
+    if (objective.npcId !== npcId || !objective.itemId) continue
+    wanted.add(objective.itemId)
+    for (const alternate of objective.alternates ?? []) wanted.add(alternate)
   }
   return [...wanted]
 }

@@ -6,8 +6,8 @@ import { describe, expect, it } from 'vitest'
 import { Conversation, type TalkEvent } from '../src/index.ts'
 
 /** A bar, its bartender Mara, a courier Hollis across the room, and a ledger. */
-function bar() {
-  const world = World.create({ name: 'Cold Harbour', theme: 'port', seed: 'talk', width: 16, height: 16 })
+function bar(options: { carries?: boolean } = {}) {
+  const world = World.create({ name: 'Cold Harbour', theme: 'a fogbound port town that lives off the tide', seed: 'talk', width: 16, height: 16 })
   world.paint({ x: 0, y: 6, w: 16, h: 1 }, 'sidewalk')
   const plot = world.addPlot({
     kind: 'bar',
@@ -69,11 +69,43 @@ function bar() {
   const placement: Placement = { at: 'anchor', itemId: ledger.id, interiorId: interior.id, anchorId: stool }
   world.addItem(ledger, placement)
 
-  return { world, mara, hollis, ledger, plot: plot.value }
+  const copy: Item = {
+    id: world.mintId('item'),
+    name: 'Duplicate ledger',
+    description: 'The same book, a year older.',
+    archetype: 'ledger',
+    value: 8,
+    bulk: 'pocket',
+  }
+  world.addItem(copy, { at: 'anchor', itemId: copy.id, interiorId: interior.id, anchorId: stool })
+
+  const key: Item = {
+    id: world.mintId('item'),
+    name: 'Brass cellar key',
+    description: 'Worn smooth.',
+    archetype: 'key',
+    value: 2,
+    bulk: 'pocket',
+  }
+  if (options.carries) world.addItem(key, { at: 'npc', itemId: key.id, npcId: mara.id })
+
+  return { world, mara, hollis, ledger, copy, key, plot: plot.value }
 }
 
-/** Mara wants the ledger brought to her. */
-function ledgerQuest(mara: string, ledger: string): QuestDoc {
+/** Mara's job opens by asking the player to hear Mara out: what a generated quest does. */
+function heardOutQuest(mara: string, ledger: string, copy?: string): QuestDoc {
+  return {
+    ...ledgerQuest(mara, ledger, copy),
+    startStepId: 'step_0000',
+    steps: [
+      { id: 'step_0000', kind: 'talk', npcId: mara, objective: 'Hear Mara Cole out at The Anchor', next: ['step_0001'], requires: [], effects: [] },
+      ...ledgerQuest(mara, ledger, copy).steps,
+    ],
+  } as QuestDoc
+}
+
+/** Mara wants the ledger brought to her, or the copy of it that reads the same. */
+function ledgerQuest(mara: string, ledger: string, copy = 'item_9999'): QuestDoc {
   return {
     format: 'game-box.quest',
     schemaVersion: 1,
@@ -84,8 +116,8 @@ function ledgerQuest(mara: string, ledger: string): QuestDoc {
     giverNpcId: mara,
     startStepId: 'step_0001',
     steps: [
-      { id: 'step_0001', kind: 'collect', itemId: ledger, allowSteal: true, objective: 'Take the ledger', next: ['step_0002'], requires: [], effects: [] },
-      { id: 'step_0002', kind: 'deliver', itemId: ledger, toNpcId: mara, objective: 'Give the ledger to Mara', next: ['step_0003'], requires: [], effects: [] },
+      { id: 'step_0001', kind: 'collect', itemId: ledger, alternates: [copy], allowSteal: true, objective: 'Take the ledger', next: ['step_0002'], requires: [], effects: [] },
+      { id: 'step_0002', kind: 'deliver', itemId: ledger, alternates: [copy], toNpcId: mara, objective: 'Give the ledger to Mara', next: ['step_0003'], requires: [], effects: [] },
       { id: 'step_0003', kind: 'complete', objective: 'Done', next: [], requires: [], effects: [] },
     ],
     reward: { money: 30, reputation: 2, faction: 'town', items: [] },
@@ -150,9 +182,10 @@ function said(events: readonly TalkEvent[]): string {
     .join('')
 }
 
-function setup(script: Script) {
-  const fixture = bar()
-  const quest = ledgerQuest(fixture.mara.id, fixture.ledger.id)
+function setup(script: Script, options: { carries?: boolean; heardOut?: boolean } = {}) {
+  const fixture = bar(options)
+  const write = options.heardOut ? heardOutQuest : ledgerQuest
+  const quest = write(fixture.mara.id, fixture.ledger.id, fixture.copy.id)
   const validated = validateQuest(quest, {
     hasNpc: (id) => fixture.world.hasNpc(id),
     hasPlot: (id) => fixture.world.hasPlot(id),
@@ -356,7 +389,7 @@ describe('Conversation', () => {
 
     const greeting = await collect(conversation.say('hello'))
     expect(said(greeting)).toContain('The Ledger')
-    expect(said(greeting)).toContain('Take the ledger. Say the word.')
+    expect(said(greeting)).toContain('30 coin')
     expect(greeting.some((e) => e.kind === 'over')).toBe(false)
 
     const accepted = await collect(conversation.say('yes'))
@@ -378,7 +411,8 @@ describe('Conversation', () => {
     if (!chat.ok) throw new Error('did not open')
 
     const first = await collect(chat.value.conversation.say('what do you know?'))
-    expect(said(first)).toBe(hollis.knowledge[0])
+    expect(said(first)).toContain(hollis.knowledge[0])
+    expect(said(first)).not.toBe(hollis.knowledge[0])
     expect(said(first)).not.toMatch(/_\d/)
     expect(chat.value.conversation.isOpen).toBe(true)
 
@@ -388,5 +422,158 @@ describe('Conversation', () => {
 
     // conversation is unused beyond opening the fixture
     expect(conversation.isOpen).toBe(true)
+  })
+  it('credits the talk step with the turn that hands the job over, not the turn before it', async () => {
+    const { conversation, log } = setup({ text: 'Fetch me the ledger.', pick: 2 }, { heardOut: true })
+    expect(log.objectives()).toEqual([])
+
+    const events = await collect(conversation.say('anything going?'))
+    expect(events).toContainEqual({ kind: 'did', action: 'give_quest', detail: 'quest_0001' })
+    expect(events.some((e) => e.kind === 'changed' && e.change.kind === 'step-done' && e.change.stepId === 'step_0000')).toBe(true)
+    expect(log.objectives().map((o) => o.text)).toEqual(['Take the ledger'])
+  })
+
+  it('offers the delivery to the person it is owed to, and to nobody else', async () => {
+    const { conversation, log, player, ledger, copy, world, hollis, model } = setup({ text: 'Aye.' })
+    log.start('quest_0001')
+    player.take(ledger.id)
+    log.handle({ kind: 'acquired', itemId: ledger.id, stolen: true })
+
+    expect(conversation.available()).toContain('take_delivery')
+    const elsewhere = Conversation.open({ world, log, player, sidecar: speaker({}).sidecar, npcId: hollis.id })
+    if (!elsewhere.ok) throw new Error('did not open')
+    expect(elsewhere.value.conversation.available()).not.toContain('take_delivery')
+
+    await collect(conversation.say('evening'))
+    expect(model.voice[0]!.system).toContain('they are carrying the salt-stained ledger you are owed')
+
+    // anything the quest lets stand in for it counts as the delivery too
+    player.drop(ledger.id)
+    player.take(copy.id)
+    expect(conversation.available()).toContain('take_delivery')
+  })
+
+  it('tells the character where they are, when it is, and what the player is worth here', async () => {
+    const { conversation, model, player } = setup({ text: 'Aye.' })
+    player.clock.setTime(21, 30)
+    player.clock.setWeather('rain')
+    player.adjustReputation(50)
+
+    await collect(conversation.say('evening'))
+    const brief = model.voice[0]!.system
+    expect(brief).toContain('The kind of place Cold Harbour is: a fogbound port town')
+    expect(brief).toContain('behind the counter')
+    expect(brief).toContain('late evening')
+    expect(brief).toContain('raining')
+    expect(brief).toContain('Hollis Vance the courier')
+    expect(brief).toContain('Their name is good in this town')
+    expect(brief).not.toMatch(/[a-z]+_\d{4}/)
+  })
+
+  it('leaves the decision to the player when the action call comes back with nothing', async () => {
+    const { conversation, log } = setup({ text: 'Aye, could be.', pick: '' })
+
+    const events = await collect(conversation.say('yes, I will do it'))
+    expect(events).toContainEqual({ kind: 'did', action: 'give_quest', detail: 'quest_0001' })
+    expect(log.status('quest_0001')).toBe('active')
+  })
+
+  it('takes plain English for an answer with no model running', async () => {
+    const yeses = [
+      'yes',
+      'aye, I will do it',
+      "sure, I'll take the job",
+      'give me the job',
+      'I want the job',
+      'alright, count me in',
+      "sounds good, I'm in",
+      'consider it done',
+      'I can do that',
+      'deal',
+      'okay, what do you need?',
+      'yeah go on then',
+      'why not',
+      "I'll help",
+      'hand it to me then',
+    ]
+    for (const phrase of yeses) {
+      const { conversation, log } = setup({ fail: true })
+      await collect(conversation.say('evening'))
+      const events = await collect(conversation.say(phrase))
+      expect(events, phrase).toContainEqual({ kind: 'did', action: 'give_quest', detail: 'quest_0001' })
+      expect(log.status('quest_0001'), phrase).toBe('active')
+    }
+  })
+
+  it('tells the job from the thing on the counter, and does nothing it was not asked for', async () => {
+    const job = setup({ fail: true }, { carries: true })
+    await collect(job.conversation.say('evening'))
+    expect(await collect(job.conversation.say('give me the job'))).toContainEqual({
+      kind: 'did',
+      action: 'give_quest',
+      detail: 'quest_0001',
+    })
+
+    const thing = setup({ fail: true }, { carries: true })
+    await collect(thing.conversation.say('evening'))
+    expect(await collect(thing.conversation.say('give me the key'))).toContainEqual({
+      kind: 'did',
+      action: 'hand_over',
+      detail: thing.key.id,
+    })
+    expect(thing.log.status('quest_0001')).toBe('unstarted')
+
+    // asked for something she has not got, she hands over nothing at all
+    const drink = setup({ fail: true }, { carries: true })
+    await collect(drink.conversation.say('evening'))
+    const refused = await collect(drink.conversation.say('give me a drink'))
+    expect(refused.some((e) => e.kind === 'did')).toBe(false)
+    expect(said(refused)).toBe("You've lost me. Say it plain.")
+
+    // and nothing she is able to do answers this either
+    const lost = setup({ fail: true })
+    const shrug = await collect(lost.conversation.say('follow me'))
+    expect(shrug.some((e) => e.kind === 'did')).toBe(false)
+    expect(said(shrug)).toBe("You've lost me. Say it plain.")
+  })
+
+  it('takes a refusal without walking off', async () => {
+    const { conversation, log } = setup({ fail: true })
+    await collect(conversation.say('evening'))
+
+    const events = await collect(conversation.say('maybe later'))
+    expect(events.some((e) => e.kind === 'did')).toBe(false)
+    expect(conversation.isOpen).toBe(true)
+    expect(log.status('quest_0001')).toBe('unstarted')
+    expect(said(events)).toBe('Suit yourself. The offer stands.')
+  })
+
+  it('says the job in its own words instead of reading the screen text out', async () => {
+    const { conversation, mara } = setup({ fail: true }, { heardOut: true })
+
+    const offer = said(await collect(conversation.say('evening')))
+    const taken = said(await collect(conversation.say('yes')))
+    expect(offer).not.toContain('Hear Mara Cole out')
+    expect(taken).not.toContain('Hear Mara Cole out')
+    expect(taken).toContain('Take the ledger')
+
+    const chat = said(await collect(conversation.say('quiet night')))
+    expect(chat).toContain(mara.knowledge[0])
+    expect(chat).not.toBe(mara.knowledge[0])
+  })
+  it('with no model, the same words give the same conversation every time', async () => {
+    const play = async () => {
+      const { conversation } = setup({ fail: true })
+      const lines: string[] = []
+      for (const turn of ['evening', 'anything going?', 'yes', 'what do you know?', 'and?', 'see you']) {
+        lines.push(said(await collect(conversation.say(turn))))
+      }
+      return lines
+    }
+
+    const first = await play()
+    expect(first).toEqual(await play())
+    // the two facts she has are not passed on the same way twice
+    expect(new Set(first.slice(3, 5)).size).toBe(2)
   })
 })
