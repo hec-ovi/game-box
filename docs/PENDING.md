@@ -875,6 +875,13 @@ offered "ask them to stay here", so **the state flipped and no body moved.** Tha
 rules out the naming confusion and confirms the known half-wired path:
 `addCompanion` sets a flag and only the direct click path actually moves a body.
 
+**The NPC also answered "Lead on."**, which narrows it further: the talk action
+genuinely executed. It picked the move, spoke the line, flipped the menu, and by
+today's rule that a carried-out move is a yes it also published an assent. So
+everything up to and including the `did` event works. The break is strictly after
+it: something receives `follow_player` and never puts a body on the road. Start
+the search at the consumer of that event, not in `@gb/talk`.
+
 **The sharper hypothesis, and the first thing to check:** the person was
 stationed inside a building. Companions are handed over from `@gb/crowd`'s
 walkers, and today's crowd pass made `follow` take the walker off the pavement
