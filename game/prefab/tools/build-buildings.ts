@@ -30,7 +30,7 @@ import { verifyPack } from './verify.ts'
 import { writePack } from './write.ts'
 
 const PACK = 'gb-buildings'
-const VERSION = '1.3.0'
+const VERSION = '1.4.0'
 
 const args = process.argv.slice(2)
 const jobs = Math.max(1, Number(flag('--jobs') ?? 8))

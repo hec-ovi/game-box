@@ -14,6 +14,7 @@
  * column is both dark and flat, which is what a blank border is and what a room
  * never is.
  */
+import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import sharp from 'sharp'
@@ -26,7 +27,12 @@ const BORDER = { bright: 0.16, spread: 0.055, most: 0.3 }
 const from = resolve(process.argv[2] ?? '.')
 const to = resolve(import.meta.dirname, '../rooms')
 
-for (const name of ROOM_PICTURES) {
+// whatever is in the folder, not all of them: a new room arrives on its own and
+// the eleven already committed are not redrawn to take it
+const waiting = ROOM_PICTURES.filter((name) => existsSync(join(from, `${name}.jpg`)))
+if (waiting.length === 0) throw new Error(`no room pictures in ${from}; expected one of ${ROOM_PICTURES.join(', ')} as .jpg`)
+
+for (const name of waiting) {
   const raw = await readFile(join(from, `${name}.jpg`))
   const { data, info } = await sharp(raw).removeAlpha().raw().toBuffer({ resolveWithObject: true })
   const box = roomIn(data, info.width, info.height)

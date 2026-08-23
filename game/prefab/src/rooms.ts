@@ -1,5 +1,5 @@
 /**
- * The rooms a window looks into: twelve pictures, committed as art, stacked
+ * The rooms a window looks into: fourteen pictures, committed as art, stacked
  * into one array texture beside the pack's two others.
  *
  * A room is seen small, through glass, at an angle, after dark, and never twice
@@ -16,8 +16,10 @@ export const ROOM_SIZE = 256
 export const ROOM_PICTURES: readonly string[] = [
   'office-desks',
   'office-partition',
+  'server-racks',
   'flat-living',
   'flat-kitchen',
+  'flat-bedroom',
   'corridor',
   'store-room',
   'bar-bottles',
@@ -35,8 +37,8 @@ export interface Bank {
 }
 
 export const ROOM_BANKS = {
-  /** Above the street: offices, flats, a corridor, a store room. */
-  upper: { first: 0, count: 6 },
+  /** Above the street: offices, a server room, flats, a corridor, a store room. */
+  upper: { first: 0, count: 8 },
   /** On the pavement: a bar, a noodle counter, a shop, a clinic, a workshop, a lobby. */
-  street: { first: 6, count: 6 },
+  street: { first: 8, count: 6 },
 } as const satisfies Record<string, Bank>

@@ -1,13 +1,13 @@
 {
   "pack": "gb-buildings",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "sha256": "4b3c283c7d00e3206b8180593e37fda7dee26c02f13f8e9010a422b1f21ac010",
   "producer": "glb-buildings@6e05c32",
   "atlas": {
     "colour": {
       "size": 256,
       "layers": 16,
-      "sha256": "1f33cd25285027d19afc4a5f42b058b51af26257c164815a28962f3295e87f5d"
+      "sha256": "5c5af752b2bb4ae98e49654501fd7f277f8d686e656397e3bea8451bea1a6504"
     },
     "emissive": {
       "size": 256,
@@ -16,13 +16,13 @@
     },
     "rooms": {
       "size": 256,
-      "layers": 12,
-      "sha256": "012b032d930e0dc20f6a3b00b7956ab9b81346cd6e52e2a257ef70a0dccb30fa"
+      "layers": 14,
+      "sha256": "3983516760dcab0494ddf04d30d49c0d1e70d9465797a8df5ed16773a0fce4cc"
     },
     "screens": {
       "size": 256,
       "layers": 6,
-      "sha256": "67b5e22cc5ffe6ba686725a0889d5585670e41d885dbd20195c98d9ce8cda5f6"
+      "sha256": "fa684ad52e36ac14ecc746ddb7cd2197290b7a194bb8b3f1ad5099612aeeacc1"
     },
     "finishes": [
       "a:facade",

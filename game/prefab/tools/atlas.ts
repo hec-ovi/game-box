@@ -8,7 +8,7 @@ import { COLOUR_SIZE, EMISSIVE_SIZE, GLOW_BAKE, LAYERS } from './layers.ts'
 import { FAMILIES, NEONS, type Family } from './look.ts'
 import { decode, encode, PNG, type Tile } from './paint.ts'
 import { housingTile } from './screens.ts'
-import { doorTile } from './walls.ts'
+import { doorTile } from './doors.ts'
 
 /** One finish's two layers, as the raw pixels a strip is stacked out of. */
 interface Layer {

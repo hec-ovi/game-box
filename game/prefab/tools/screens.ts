@@ -1,19 +1,24 @@
 import { Rng } from '@gb/kit'
+import { readFile } from 'node:fs/promises'
+import { join, resolve } from 'node:path'
 import sharp from 'sharp'
 import { SCREEN_PICTURES, SCREEN_SIZE } from '../src/screens.ts'
-import { encode, Picture, PNG, type Rgb, type Tile } from './paint.ts'
+import { decode, encode, Picture, PNG, type Rgb, type Tile } from './paint.ts'
 
 /**
  * What the screens on the walls show, and the housing they sit in.
  *
- * The pictures are drawn here rather than generated, so the pack keeps its
- * byte-for-byte promise and there is no third party licence anywhere near a
- * world file. A poster is a poster because of its structure, not its subject: a
- * saturated ground, one bright mass where the eye lands, and a hard graphic
- * against it. At this size, behind a lamp grid, in the corner of a street, that
- * is what an advertisement is.
+ * Most of them are committed pictures in `screens/`, ours, from our own
+ * prompts, so they travel inside a world file with no third party licence near
+ * it. One is still drawn here, because a poster is a poster because of its
+ * structure rather than its subject: a saturated ground, one bright mass where
+ * the eye lands, and a hard graphic against it. At this size, behind a lamp
+ * grid, in the corner of a street, that is what an advertisement is.
  *
- * Nothing here spells anything. Text out of an image model garbles, and the
+ * Every screen goes through the same exposure whichever way it arrived, so a
+ * row of ads where one is twice as bright as the next cannot happen.
+ *
+ * Nothing on them spells anything. Text out of an image model garbles, and the
  * words in this city are `@gb/kitbash`'s business: it draws every letter over
  * every door from a stroke font. A screen that tried to compete with the sign
  * under it would be two typefaces on one building.
@@ -24,15 +29,8 @@ type Colour = readonly [number, number, number]
 
 const INK = {
   black: [0.015, 0.015, 0.02],
-  magenta: [0.62, 0.06, 0.36],
-  crimson: [0.42, 0.05, 0.12],
   amber: [0.85, 0.5, 0.1],
-  teal: [0.03, 0.28, 0.29],
   cyan: [0.28, 0.85, 0.98],
-  violet: [0.24, 0.1, 0.5],
-  lime: [0.5, 0.9, 0.3],
-  moss: [0.03, 0.1, 0.08],
-  skin: [1.0, 0.86, 0.72],
   white: [1.0, 0.99, 0.96],
   ice: [0.8, 0.95, 1.0],
 } as const satisfies Record<string, Colour>
@@ -58,44 +56,14 @@ const CONTRAST = 1.7
  * How each screen is composed. A ground, the mass the eye lands on, and one
  * hard edge against it, which is the whole grammar.
  */
+/**
+ * The screens drawn here rather than committed. A name that is not in this list
+ * is a picture in `screens/`, read straight off disk.
+ *
+ * The grammar is a ground, the mass the eye lands on, and one hard edge against
+ * it. It is what a poster is when nobody has photographed one.
+ */
 const POSTERS: Record<string, (poster: Poster) => void> = {
-  portrait: (it) => {
-    it.ground(INK.magenta, INK.crimson)
-    it.mass(0.44, 0.34, 0.3, 0.36, INK.skin, 2.4)
-    it.mass(0.42, 0.26, 0.16, 0.17, INK.white, 3)
-    it.mass(0.5, 0.86, 0.44, 0.3, INK.black, 1.6)
-    it.band(0.79, 0.05, 1.0, 0.95, INK.cyan)
-  },
-  bottle: (it) => {
-    it.ground(INK.teal, INK.black)
-    it.mass(0.5, 0.46, 0.11, 0.34, INK.ice, 3.5)
-    it.mass(0.5, 0.3, 0.06, 0.14, INK.white, 4)
-    it.band(0.06, 0.8, 0.94, 0.865, INK.amber)
-    it.band(0.28, 0.1, 0.3, 0.72, INK.white)
-    it.band(0.7, 0.1, 0.72, 0.72, INK.white)
-  },
-  figure: (it) => {
-    it.ground(INK.amber, INK.crimson)
-    it.mass(0.6, 0.5, 0.2, 0.46, INK.ice, 2.2)
-    it.mass(0.6, 0.5, 0.15, 0.42, INK.black, 2.4)
-    it.mass(0.6, 0.22, 0.085, 0.1, INK.skin, 3)
-    it.band(0.0, 0.7, 1.0, 1.0, INK.black)
-    it.band(0.0, 0.05, 1.0, 0.085, INK.lime)
-  },
-  bowl: (it) => {
-    it.ground(INK.moss, INK.black)
-    it.mass(0.5, 0.72, 0.36, 0.19, INK.amber, 2.6)
-    it.mass(0.5, 0.68, 0.22, 0.09, INK.white, 3)
-    for (const [x, tall] of [[0.36, 0.3], [0.5, 0.22], [0.64, 0.34]] as const) it.mass(x, tall, 0.045, 0.22, INK.ice, 1.4)
-    it.band(0.04, 0.06, 0.075, 0.94, INK.magenta)
-  },
-  bloom: (it) => {
-    it.ground(INK.violet, INK.black)
-    it.mass(0.5, 0.46, 0.36, 0.36, INK.cyan, 2)
-    it.mass(0.5, 0.46, 0.2, 0.2, INK.violet, 2)
-    it.mass(0.5, 0.46, 0.07, 0.07, INK.white, 3)
-    it.sweep(0.62, 0.075, INK.white)
-  },
   skyline: (it) => {
     it.ground(INK.ice, INK.cyan)
     for (const [x, wide, top] of [
@@ -119,21 +87,56 @@ export interface Screens {
   readonly layers: number
 }
 
-/** Every screen picture, drawn and stacked into one strip. */
-export async function buildScreens(): Promise<Screens> {
+/** Every screen picture, read or drawn, and stacked into one strip. */
+export async function buildScreens(folder = resolve(import.meta.dirname, '../screens')): Promise<Screens> {
   const tiles: Buffer[] = []
   for (const name of SCREEN_PICTURES) {
     const compose = POSTERS[name]
-    if (!compose) throw new Error(`no composition for the screen "${name}"`)
-    const poster = new Poster(SCREEN_SIZE, name)
-    compose(poster)
-    tiles.push(poster.pixels())
+    if (compose) {
+      const poster = new Poster(SCREEN_SIZE, name)
+      compose(poster)
+      tiles.push(poster.pixels())
+    } else {
+      tiles.push(await photograph(join(folder, `${name}.png`)))
+    }
   }
 
   const strip = await sharp(Buffer.concat(tiles), { raw: { width: SCREEN_SIZE, height: SCREEN_SIZE * tiles.length, channels: 4 } })
     .png(PNG)
     .toBuffer()
   return { strip, layers: tiles.length }
+}
+
+/**
+ * A committed picture, taken to the exposure every screen in the city shares.
+ *
+ * It gets the normalisation the drawn posters get and nothing else: no key
+ * light, because a photograph already has one, no grain, because it has its
+ * own, and none of the contrast push, which exists to stop a flat drawn ground
+ * arriving as one rectangle of light and would only crush a picture that has
+ * depth in it already.
+ */
+async function photograph(file: string): Promise<Buffer> {
+  const pixels = await sharp(await readFile(file)).resize(SCREEN_SIZE, SCREEN_SIZE, { fit: 'fill', kernel: 'lanczos3' }).removeAlpha().raw().toBuffer()
+  const light = new Float32Array(SCREEN_SIZE * SCREEN_SIZE * 3)
+  for (let at = 0; at < light.length; at++) light[at] = decode(pixels[at]!)
+  return exposed(light, SCREEN_SIZE, 1)
+}
+
+/**
+ * The exposure every screen shares: normalised to what its brightest half a
+ * percent reaches, so one advertisement is never twice as bright as the next.
+ */
+function exposed(light: Float32Array, size: number, contrast: number, grain?: Rng): Buffer {
+  const sorted = Float32Array.from({ length: size * size }, (_, i) => Math.max(light[i * 3]!, light[i * 3 + 1]!, light[i * 3 + 2]!)).sort()
+  const peak = Math.max(1e-3, sorted[Math.floor(sorted.length * 0.995)]!)
+
+  const out = Buffer.alloc(size * size * 4, 255)
+  for (let at = 0; at < size * size; at++) {
+    const speckle = grain ? 1 + grain.range(-0.02, 0.02) : 1
+    for (let c = 0; c < 3; c++) out[at * 4 + c] = encode(Math.max(0, light[at * 3 + c]! / peak) ** contrast * speckle)
+  }
+  return out
 }
 
 /** The housing a screen is set into: what the fragments outside the lit face wear. */
@@ -201,20 +204,6 @@ class Poster {
     }
   }
 
-  /** A hard diagonal across the whole picture. */
-  sweep(at: number, width: number, colour: Colour): void {
-    const ink = linear(colour)
-    for (let y = 0; y < this.#size; y++) {
-      const down = y / (this.#size - 1)
-      for (let x = 0; x < this.#size; x++) {
-        const along = x / (this.#size - 1)
-        if (Math.abs((along + down) / 2 - at) > width / 2) continue
-        const to = (y * this.#size + x) * 3
-        for (let c = 0; c < 3; c++) this.#light[to + c] = ink[c]!
-      }
-    }
-  }
-
   /**
    * The picture as the strip stores it: lit across, normalised, grained and
    * back in sRGB.
@@ -234,18 +223,7 @@ class Poster {
         for (let c = 0; c < 3; c++) this.#light[at + c] = this.#light[at + c]! * lit
       }
     }
-
-    const sorted = Float32Array.from({ length: this.#size * this.#size }, (_, i) =>
-      Math.max(this.#light[i * 3]!, this.#light[i * 3 + 1]!, this.#light[i * 3 + 2]!),
-    ).sort()
-    const peak = Math.max(1e-3, sorted[Math.floor(sorted.length * 0.995)]!)
-
-    const out = Buffer.alloc(this.#size * this.#size * 4, 255)
-    for (let at = 0; at < this.#size * this.#size; at++) {
-      const grain = 1 + this.#rng.range(-0.02, 0.02)
-      for (let c = 0; c < 3; c++) out[at * 4 + c] = encode(Math.max(0, this.#light[at * 3 + c]! / peak) ** CONTRAST * grain)
-    }
-    return out
+    return exposed(this.#light, this.#size, CONTRAST, this.#rng)
   }
 }
 

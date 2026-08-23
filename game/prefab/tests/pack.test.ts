@@ -3,6 +3,7 @@ import { storeyHeight } from '@gb/scene'
 import { BUILDING_KINDS } from '@gb/world'
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
+import sharp from 'sharp'
 import { describe, expect, it } from 'vitest'
 import { bucketKey, bucketOf, everyBucket } from '../src/bucket.ts'
 import { Catalogue } from '../src/catalogue.ts'
@@ -145,6 +146,31 @@ describe('the shipped pack', () => {
       const looks = new Set(catalogue.bucket(bucket).map((model) => model.look))
       expect(looks.size, bucketKey(bucket)).toBeGreaterThanOrEqual(8)
     }
+  })
+
+  it('carries wall pictures that tile, because a seam repeats all the way up a building', async () => {
+    const worst: Record<string, number> = {}
+    for (const name of ['facade-a', 'facade-b', 'facade-c', 'facade-d', 'street-surround']) {
+      const { data, info } = await sharp(new URL(`../finishes/${name}.png`, import.meta.url).pathname)
+        .removeAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true })
+      const at = (x: number, y: number, c: number) => data[(y * info.width + x) * info.channels + c]!
+      const gap = (a: (i: number) => [number, number], b: (i: number) => [number, number], length: number) => {
+        let sum = 0
+        for (let i = 0; i < length; i++) {
+          for (let c = 0; c < info.channels; c++) sum += Math.abs(at(...a(i), c) - at(...b(i), c))
+        }
+        return sum / (length * info.channels)
+      }
+      // the far edge against the near edge, measured against what one step
+      // inside costs: a tile that wraps is no worse across the join than it is
+      // anywhere else in the picture
+      const across = gap((y) => [0, y], (y) => [info.width - 1, y], info.height) / Math.max(0.5, gap((y) => [0, y], (y) => [1, y], info.height))
+      const down = gap((x) => [x, 0], (x) => [x, info.height - 1], info.width) / Math.max(0.5, gap((x) => [x, 0], (x) => [x, 1], info.width))
+      worst[name] = +Math.max(across, down).toFixed(2)
+    }
+    for (const [name, ratio] of Object.entries(worst)) expect(ratio, `${name}: ${JSON.stringify(worst)}`).toBeLessThan(2)
   })
 
   it('is drawn at the heights the city places plots at', () => {
