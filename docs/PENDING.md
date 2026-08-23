@@ -942,6 +942,36 @@ the interior now disagree, that change is the first place to look.
 
 Boxes: `quest` and `app` for the crediting, `forge` and `kitbash` for the names.
 
+### The prompts need one pass end to end (2026-08-23, his read)
+
+"there is a lot of prompt engineering it needs the whole gameplay end to end."
+
+**Structural, and he is right.** Every prompt here was written by an agent scoped
+to one box and judged against that box's own tests: the premise writer, the place
+writer, the NPC brief, the greeting, the hook, the quest writer, the sign
+vocabulary. Each is defensible alone. **Nobody has ever read the whole
+player-facing output as one continuous experience.**
+
+That is exactly what he did tonight, and it is why the seams are all he saw: the
+weather in a third of greetings, narration mixed into speech, characters with no
+reason to be anywhere, a quest hint written as if he were in the room, a
+`complete` step carrying the payoff sentence nobody can read.
+
+So this is not "improve the prompts", it is **one pass that reads the whole flow
+in order** and fixes the joins: premise, city name, place names and signs, the
+people in them and what they know, the greeting, a conversation, a quest as it
+is offered, tracked, guided and paid. Judged by playing it, not by unit tests,
+and by one person holding the whole thing rather than eight agents holding a
+piece each.
+
+Worth doing after the per-character context work, not before: half the flatness
+he is reading as prompt quality is a character with no situation to talk about,
+and rewriting wording around missing context would be tuning the wrong thing.
+
+Also from the same message: **the map needs the quest icons** (main distinct from
+side) and generally more information. Already in the interface entry above; he
+has now asked twice, so it should not slip again.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
