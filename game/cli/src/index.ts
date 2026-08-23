@@ -18,6 +18,7 @@ const USAGE = `gb - build and inspect game-box cities
     --cells <n>             cells per block side, 2m each (default: 14)
     --density <0..1>        how much of each block gets built on (default: 0.8)
     --storeys <n>           tallest building allowed (default: 3)
+    --exits <1..4>          how many roads lead out of town (default: 1)
     --model                 use the local model for names and quests, not the offline narrator
     --out <file>            where to write it (default: city.json)
 
@@ -54,6 +55,7 @@ export interface BuildArgs {
   cells: string
   density: string
   storeys: string
+  exits: string
   model: boolean
   out: string
 }
@@ -68,6 +70,7 @@ function parse(argv: readonly string[]): BuildArgs {
       cells: { type: 'string', default: '14' },
       density: { type: 'string', default: '0.8' },
       storeys: { type: 'string', default: '3' },
+      exits: { type: 'string', default: '1' },
       model: { type: 'boolean', default: false },
       out: { type: 'string', default: 'city.json' },
     },

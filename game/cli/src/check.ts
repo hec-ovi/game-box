@@ -17,16 +17,17 @@ export async function check(file: string | undefined, io: Io): Promise<number> {
   }
 
   const { world, quests } = opened.value
-  const nav = CityNav.from(world)
-  const doorsteps = world.plots().map((p) => ({ plot: p, cell: p.entrance.cell }))
-  const start = doorsteps[0]
-  const stranded = start ? doorsteps.filter((d) => !nav.reachable(start.cell, d.cell)) : []
+  // one walk of the whole city answers for every building at once: asking per
+  // building was minutes of work on a large map
+  const start = world.plots()[0]?.entrance.cell
+  const stranded = start ? CityNav.from(world).reachableFrom(start).unreachablePlots(world) : []
 
   io.out(`${world.name}: sound`)
   io.out(`  ${world.plots().length} buildings, ${world.npcs().length} people, ${quests.length} quests`)
   io.out(`  content ${opened.value.contentHash.slice(0, 12)}`)
   if (stranded.length) {
-    io.err(`  ${stranded.length} buildings cannot be walked to: ${stranded.slice(0, 5).map((d) => d.plot.name).join(', ')}`)
+    const named = stranded.slice(0, 5).map((id) => world.plot(id)?.name ?? id)
+    io.err(`  ${stranded.length} buildings cannot be walked to: ${named.join(', ')}`)
     return 1
   }
   io.out('  every building can be walked to')

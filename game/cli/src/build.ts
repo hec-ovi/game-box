@@ -19,6 +19,7 @@ export async function build(args: BuildArgs, io: Io): Promise<number> {
     blockCells: Number.parseInt(args.cells, 10),
     density: Number.parseFloat(args.density),
     maxStoreys: Number.parseInt(args.storeys, 10),
+    exits: Number.parseInt(args.exits, 10),
   })
   if (!built.ok) {
     io.err(`cannot build: ${built.error.code}`)
@@ -28,6 +29,15 @@ export async function build(args: BuildArgs, io: Io): Promise<number> {
 
   const { world, quests, rejected } = built.value
   const bundle = await Bundle.pack(world, quests, { generator: 'gb build' })
+
+  // read it back the way the game will: writing a file nobody can open is a
+  // worse failure than not writing one, and it used to be reported as success
+  const reopened = await Bundle.open(JSON.parse(JSON.stringify(bundle)))
+  if (!reopened.ok) {
+    io.err(`built a bundle that will not open: ${reopened.error.code}`)
+    for (const problem of problemsOf(reopened.error)) io.err(`  ${problem}`)
+    return 1
+  }
   writeFileSync(args.out, `${JSON.stringify(bundle, null, 2)}\n`)
 
   const seconds = ((Date.now() - started) / 1000).toFixed(1)

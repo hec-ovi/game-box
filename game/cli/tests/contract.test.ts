@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -40,6 +40,38 @@ describe('gb', () => {
 
     expect(await run(['check', file], io.io)).toBe(0)
     expect(io.out.join('\n')).toContain('every building can be walked to')
+  })
+
+  it('does not write a bundle it cannot open again', async () => {
+    // the read-back is the promise: a file nobody can load is a worse outcome
+    // than no file, and it used to be reported as success
+    const { file, code } = await buildTown('readable.json')
+    expect(code).toBe(0)
+
+    const io = capture()
+    expect(await run(['check', file], io.io)).toBe(0)
+  })
+
+  it('refuses a city too big for a world to hold', async () => {
+    const io = capture()
+    const code = await run(['build', '--blocks', '24x1', '--cells', '40', '--out', join(dir, 'huge.json'), ...[]], io.io)
+
+    expect(code).toBe(1)
+    expect(io.err.join('\n')).not.toBe('')
+    expect(existsSync(join(dir, 'huge.json'))).toBe(false)
+  })
+
+  it('takes how many roads lead out of town', async () => {
+    const one = await buildTown('one-way.json', ['--exits', '1'])
+    const four = await buildTown('four-ways.json', ['--exits', '4'])
+
+    expect(one.code).toBe(0)
+    expect(four.code).toBe(0)
+    const roadsOut = (file: string) =>
+      JSON.parse(readFileSync(file, 'utf8')).world.roads.segments.filter((r: { kind: string }) => r.kind === 'exit')
+        .length
+    expect(roadsOut(one.file)).toBe(1)
+    expect(roadsOut(four.file)).toBe(4)
   })
 
   it('prints the grid, the places and the quests', async () => {
