@@ -381,8 +381,8 @@ describe('interior plans', () => {
   })
 
   it('holds all of that up in a city the forge actually built', async () => {
-    const { world } = await buildTown('interiors', { theme: 'harbour town' })
-    expect(world.interiors().length).toBeGreaterThan(8)
+    const { world } = await buildTown('interiors', { theme: 'harbour town', blocksX: 6, blocksY: 6 })
+    expect(world.interiors().length).toBeGreaterThan(20)
 
     for (const interior of world.interiors()) {
       const made: InteriorPlan = {

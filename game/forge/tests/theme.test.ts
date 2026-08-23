@@ -58,7 +58,8 @@ describe('a town reads as the kind of town it was asked for', () => {
   })
 
   it('gives the people their own names and their own things to say', async () => {
-    const towns = await Promise.all([buildTown('talk-1'), buildTown('talk-2'), buildTown('talk-3', { theme: 'quiet coastal town' })])
+    const size = { blocksX: 3, blocksY: 3 }
+    const towns = await Promise.all([buildTown('talk-1', size), buildTown('talk-2', size), buildTown('talk-3', { ...size, theme: 'quiet coastal town' })])
     const npcs = towns.flatMap((town) => town.world.npcs())
     const names = new Set(npcs.map((npc) => npc.name))
     const first = new Set(npcs.map((npc) => npc.name.split(' ')[0]))

@@ -12,8 +12,8 @@ const towns = await Promise.all([
   buildTown('recipes-2'),
   buildTown('recipes-3', { theme: 'dense neon port city' }),
   buildTown('recipes-4', { theme: 'quiet coastal town' }),
-  buildTown('recipes-5', { theme: 'farming village on the plains', blocksX: 3, blocksY: 2 }),
-  buildTown('recipes-6', { theme: 'cold industrial rail town', blocksX: 1, blocksY: 1 }),
+  buildTown('recipes-5', { theme: 'farming village on the plains', blocksX: 4, blocksY: 3 }),
+  buildTown('recipes-6', { theme: 'cold industrial rail town', blocksX: 2, blocksY: 2 }),
 ])
 const everyQuest: QuestDoc[] = towns.flatMap((town) => [...town.quests])
 const everyStep = everyQuest.flatMap((quest) => quest.steps)

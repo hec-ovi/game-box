@@ -17,6 +17,7 @@ import {
   type WorldError,
 } from '@gb/world'
 import { briefContract, type Brief } from './brief.ts'
+import { openDoors, type Frontage } from './interior/open.ts'
 import { planInterior } from './interior/plan.ts'
 import { planStreets } from './layout/plan.ts'
 import { sitesInBlock, storeysFor, type PlotSite } from './layout/plots.ts'
@@ -40,6 +41,15 @@ export interface ForgeResult {
 }
 
 const GENERATOR_VERSION = '0.1.0'
+
+/** A building that is up, before anybody has decided whether its door opens. */
+interface Raised {
+  readonly plotId: string
+  readonly kind: BuildingKind
+  readonly site: PlotSite
+  /** Its own stream, so the inside is planned off the same seed the outside was. */
+  readonly rng: Rng
+}
 
 /**
  * Builds a city from a brief: streets and plots by arithmetic, names and people
@@ -90,14 +100,16 @@ export class Forge {
    * without touching anything already there.
    */
   async extend(world: World, count: number, rng = new Rng(`${world.seed}/extend`)): Promise<Result<readonly string[], ForgeError>> {
-    const added: string[] = []
+    const raised: Raised[] = []
     for (let i = 0; i < count; i++) {
       const site = this.#freeSite(world, rng)
       if (!site) break
       const kind = rng.weighted(kindWeights(flavourOf(world.theme), rng.fork(`extend/mix/${i}`)))
-      const plot = await this.#raiseOne(world, site, kind, world.theme, 2, rng.fork(`extend/${i}`))
-      if (plot) added.push(plot)
+      const up = await this.#raiseOne(world, site, kind, world.theme, 2, rng.fork(`extend/${i}`))
+      if (up) raised.push(up)
     }
+    this.#openDoors(world, raised, rng.fork('extend/doors'))
+    const added = raised.map((one) => one.plotId)
     await this.#populate(world, { density: 0.8 } as Brief, rng.fork('extend/people'), added)
     const problems = world.check()
     if (problems.length) return err({ code: 'unsound-world', problems })
@@ -119,6 +131,7 @@ export class Forge {
     const spots = mix.shuffle(sites.map((_, index) => index)).slice(0, wanted.length)
     const staples = new Map(spots.map((site, order) => [site, wanted[order]!]))
 
+    const raised: Raised[] = []
     for (const [index, site] of sites.entries()) {
       const siteRng = rng.fork(`site/${index}`)
       // both draws happen either way, so whether a site is a staple cannot shift the rest
@@ -126,8 +139,10 @@ export class Forge {
       const rolled = siteRng.weighted(weights)
       const kind = staples.get(index) ?? (built ? rolled : undefined)
       if (!kind) continue
-      await this.#raiseOne(world, site, kind, brief.theme, brief.maxStoreys, siteRng)
+      const up = await this.#raiseOne(world, site, kind, brief.theme, brief.maxStoreys, siteRng)
+      if (up) raised.push(up)
     }
+    this.#openDoors(world, raised, rng.fork('doors'))
   }
 
   async #raiseOne(
@@ -137,7 +152,7 @@ export class Forge {
     theme: string,
     maxStoreys: number,
     rng: Rng,
-  ): Promise<string | undefined> {
+  ): Promise<Raised | undefined> {
     const name = await this.#narrator.namePlace({ kind, theme, index: world.plots().length })
     const plot = world.addPlot({
       kind,
@@ -148,10 +163,29 @@ export class Forge {
       style: `${theme.split(/\s+/)[0]?.toLowerCase() ?? 'plain'}-${kind}`,
     })
     if (!plot.ok) return undefined
+    return { plotId: plot.value.id, kind, site, rng }
+  }
 
-    const interior = this.#planInterior(world, plot.value.id, kind, site, rng)
-    const added = world.addInterior(interior)
-    return added.ok ? plot.value.id : undefined
+  /**
+   * Opens the few doors that are worth opening and leaves the rest of the town
+   * as frontage. Everything downstream reads a building's inside off its
+   * interior, so a plot without one has nobody in it, nothing lying about and
+   * nothing a quest can reach: a closed door is closed all the way through.
+   */
+  #openDoors(world: World, raised: readonly Raised[], rng: Rng): void {
+    const middle = { x: world.grid.width / 2, y: world.grid.height / 2 }
+    const furthest = Math.hypot(middle.x, middle.y) || 1
+    const frontages: Frontage[] = raised.map((one) => ({
+      plotId: one.plotId,
+      kind: one.kind,
+      nearness: 1 - Math.hypot(one.site.entrance.x - middle.x, one.site.entrance.y - middle.y) / furthest,
+    }))
+
+    const open = openDoors(frontages, rng)
+    for (const one of raised) {
+      if (!open.has(one.plotId)) continue
+      world.addInterior(this.#planInterior(world, one.plotId, one.kind, one.site, one.rng.fork('inside')))
+    }
   }
 
   #planInterior(world: World, plotId: string, kind: BuildingKind, site: PlotSite, rng: Rng): Interior {

@@ -9,7 +9,7 @@ const sizes = (process.argv[3] ?? '2,5,10,20').split(',').map(Number)
 const theme = process.argv[4] ?? 'dusty western mining town'
 
 const row = (cells: string[]) => cells.map((cell, i) => (i ? cell.padStart(11) : cell.padEnd(8))).join('')
-console.log(row(['blocks', 'grid', 'metres', 'walk min', 'buildings', 'people', 'quests', 'build s', 'file MB']))
+console.log(row(['blocks', 'grid', 'metres', 'walk min', 'buildings', 'open', 'people', 'quests', 'build s', 'file MB']))
 
 for (const blocks of sizes) {
   const started = performance.now()
@@ -28,10 +28,11 @@ for (const blocks of sizes) {
       String(Math.round(across)),
       (across / 1.4 / 60).toFixed(1),
       String(world.plots().length),
+      String(world.interiors().length),
       String(world.npcs().length),
       String(quests.length),
-      ((performance.now() - started) / 1000).toFixed(1),
-      (JSON.stringify(world.toJSON()).length / 1e6).toFixed(1),
+      ((performance.now() - started) / 1000).toFixed(2),
+      (JSON.stringify(world.toJSON()).length / 1e6).toFixed(2),
     ]),
   )
 }

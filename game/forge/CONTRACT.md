@@ -1,6 +1,6 @@
 # @gb/forge contract
 
-contractVersion: 0.8.0
+contractVersion: 0.9.0
 
 ## Purpose
 
@@ -18,7 +18,7 @@ Builds a whole city from one brief: streets, plots, interiors, the people standi
 
 | Param | Schema | Postconditions |
 |---|---|---|
-| `build` | `{ world, quests, rejected }` | `world.check()` is empty; every quest passed `@gb/quest` validation; `rejected` lists the ones that did not, with why. The world carries the street grid, the plots and the road graph, roads out included |
+| `build` | `{ world, quests, rejected }` | `world.check()` is empty; every quest passed `@gb/quest` validation; `rejected` lists the ones that did not, with why. The world carries the street grid, the plots and the road graph, roads out included. Most plots carry no interior: a city is mostly frontage, and only the doors worth opening open |
 | `extend` | plot ids added | nothing already in the world changed |
 | `summarise(world)` | `WorldSummary` | the abstract world a quest writer reads: places, who is in them, what is there, where each street door stands in metres, and a surface inside each place something can be left on |
 
@@ -56,6 +56,9 @@ A narrator writing an unusable quest is not an error: those quests are dropped a
 
   Metres from the piece's own centre, positive towards its back. The two seat numbers are measured off the triangles `@gb/furnish` draws in both interior languages and live in `src/interior/props.ts` beside the footprints; the body numbers and the rule live in `src/interior/stance.ts`. A bed comes out negative because a headboard is 0.95 m back, so a body sits up against it rather than out in the middle of the mattress. The pelvis has to land on the pad whatever the rule says, and every seat is held to that in the tests.
 - Whether a seat is a place somebody can sit is a question about the seat, so nothing about which anchors are accepted turns on that offset: reachability, doorways and other people's furniture are all judged at the seat, exactly as they were when the body sat on its centre. Moving a body onto its seat properly cannot cost a town a single anchor.
+- A city is mostly frontage. Every plot is a building with a door, a sign and a name; about one in eight also has an interior, and the rest cannot be walked into. A plot without an interior is closed all the way through: nobody is stationed in it, nothing is lying about in it, and no quest step points into it, so a closed door offers the player nothing rather than teasing them with something they cannot reach.
+- Which doors open is never a list of building kinds. Each kind is weighed by what its own dresser turns out to make: a counter that is always staffed counts most, then anybody else who works there, then loose stock, then whether the place reads as somewhere people are. A kind added to `@gb/world` next week is weighed the same way without anybody coming back here. On top of that a plot near the middle of town scores higher, because that is the door a player tries, and a seeded nudge wide enough to let a chapel on the square in ahead of a shop at the ring road, so a town is not a list of its businesses.
+- A town opens somewhere to sit down, somewhere to buy something, somewhere to sleep and somewhere to work, however small it is and wherever the ranking falls, because those four go in first. Each is a question about what a place holds, not about what it is called: a nightclub answers the first and a hospital the third without anything being added here.
 - A piece that belongs on a counter top is not put on the floor. Furniture carries a floor position and nothing else, so a till or a coffee machine would stand on the floor beside the counter; `PROP_SPECS` marks those and the planner leaves them out until furniture can say what it stands on.
 - The interior varies with the seed and stays identical for the same one: an entrance hall or none, service rooms across the back or down one side, counters on either hand, furniture swept along the walls until it fits.
 - Each kind of building is recognisable from the inside: a bar has a counter you can walk behind with stools along it, a shop a counter you queue at and cases to browse, a house a sofa facing a screen and a bed against a wall.
@@ -78,9 +81,9 @@ The theme is read as one of seven kinds of town (frontier, coastal, industrial, 
 
 A town's work is written by recipes over the people and things it actually holds, never one template. What the seed and the theme decide:
 
-- **How much work there is.** A density rather than a number: about two side jobs for every five places with somebody standing in them, moved by how busy a town of this kind is and swung up to a third either way by the seed. A street in a city has about as much going on as a street in a village, and a city has more streets, so 25 buildings come with about 13 jobs and 2,500 with about 950. Two towns of the same size do not get the same number. The only ceiling is what the town can actually book: a couple of jobs per person who gives work, and one unclaimed thing per job. Both of those grow with the town, so no city is ever told it has as little to do as a hamlet.
+- **How much work there is.** A density rather than a number: about two side jobs for every five places with somebody standing in them, moved by how busy a town of this kind is and swung up to a third either way by the seed. It is measured against the places that open, because those are the only places a job can be about, so 29 buildings come with about 4 jobs and 2,300 with about 78. Two towns of the same size do not get the same number. The only ceiling is what the town can actually book: a couple of jobs per person who gives work, and one unclaimed thing per job. Both of those grow with the town, so no city is ever told it has as little to do as a hamlet.
 - **How far a job sends you.** A job reaches into the part of town it starts in: the next street over, a few streets away, or about one in twenty, the far side of town. Those are metres, not a share of the map, so the middling job in a city is the same size of job as the middling job in a village, and only a city is big enough to hold one that crosses it. It is what makes a big city read as many neighbourhoods instead of one village with half-hour errands.
-- **How much of it is open.** About a third of a town's work is offered before the player has done anything, whatever the size, and nobody hands out more than two jobs. In a 2,500-building city that is 292 jobs standing open behind 292 different counters: one for every eight or nine buildings, and still only two in front of the player at a time.
+- **How much of it is offered.** About a third of a town's work is offered before the player has done anything, whatever the size, and nobody hands out more than two jobs, so a big city puts more jobs on the board without putting more than two in front of any one person.
 - **A main line, and what it is for.** A generated town has no story, but it has a social order, and the main line is the way into it. One to four jobs come from the town's busiest staffed place, from the same person each time, and each one finished raises a standing flag. Side work waits on those flags, so the first morning offers a fraction of the town and the rest of it opens as they earn their place.
 - **The recipes.** Fetch one thing from somewhere else; gather several of a kind and count them out; carry a parcel two people want and choose who gets it; walk somebody home; do a job with something else worth picking up on the way; hear about what else is in a building from the right person; lift something and beat the clock with it; put something somewhere it will not be found; two halves of one job in either order. Each one says whether the town can serve it and how likely it is here, so a town without anything worth stealing never writes a theft.
 - **What it pays.** `rewardFor(difficulty)` from `@gb/quest`, with the difficulty read off the work: metres walked door to door, steps, whether it is a theft, whether it is timed, whether somebody has to be kept safe, and how much has to be carried. Inside its band a job is paid for where it sits, so a fetch across a hundred blocks is not paid the same as one next door, and a step that pays on top of the reward is kept inside what the band allows.
@@ -93,15 +96,15 @@ Nothing here holds the number of blocks down. `@gb/world` will not hold a grid o
 
 What the sizes cost, on one seed with the offline narrator. Another seed moves the building count and the quest count by up to a third, because the plan and the appetite are both drawn:
 
-| blocks | grid | buildings | quests | build | world file |
-|---|---|---|---|---|---|
-| 2x2 | 59x57 | 25 | 13 | 0.1 s | 0.1 MB |
-| 5x5 | 127x123 | 157 | 63 | 0.4 s | 0.7 MB |
-| 10x10 | 237x233 | 625 | 244 | 1.6 s | 3.0 MB |
-| 20x20 | 457x461 | 2,493 | 956 | 8 s | 12 MB |
-| 37x37 | 849x837 | 8,055 | 3,201 | 39 s | 37 MB |
+| blocks | grid | buildings | open | people | quests | build | world file |
+|---|---|---|---|---|---|---|---|
+| 2x2 | 53x57 | 29 | 6 | 16 | 4 | 0.05 s | 0.04 MB |
+| 5x5 | 119x119 | 169 | 18 | 56 | 9 | 0.04 s | 0.14 MB |
+| 10x10 | 221x211 | 598 | 65 | 212 | 23 | 0.09 s | 0.51 MB |
+| 20x20 | 427x417 | 2,344 | 256 | 750 | 78 | 0.35 s | 1.96 MB |
+| 37x37 | 769x775 | 9,656 | 1,054 | 3,318 | 308 | 1.7 s | 8.03 MB |
 
-About 5 ms and 4.5 KB a building, flat, all the way up. Nothing in the generator degrades before the grid wall; what runs out first is the player. A 20x20 city is 914 m corner to corner, an eleven-minute walk at 1.4 m/s; 37x37 is 1.7 km, twenty minutes; the widest grid there is, 1024 cells, would be 2 km and twenty-four. Somewhere past twenty blocks a side, a city stops being a place you cross on foot and starts being a place you live in one part of.
+About 0.2 ms and 0.8 KB a building, flat, all the way up: a building that does not open is a footprint, an entrance and a name, and an interior is nearly everything a city costs to build and to carry. The same 20x20 town with every door open takes 11 s and 12.7 MB. Nothing in the generator degrades before the grid wall; what runs out first is the player. A 20x20 city is 854 m corner to corner, a ten-minute walk at 1.4 m/s; 37x37 is 1.5 km, eighteen minutes; the widest grid there is, 1024 cells, would be 2 km and twenty-four. Somewhere past twenty blocks a side, a city stops being a place you cross on foot and starts being a place you live in one part of.
 
 ### The town plan
 
@@ -143,7 +146,7 @@ The `streets` stream is forked off the root and drawn from only in `plan.ts`. Dr
 
 `tests/fixtures/sealed-city.json` is a city this box built and sealed before the streets were seeded, quests included. It proves an already-exported city still loads and still validates. It is never regenerated: regenerating it is deleting the only proof that old files still open.
 
-Interiors live in `src/interior/`: `recipes.ts` says what rooms a building has, `rooms.ts` cuts them out of the shell, `doors.ts` hangs the doors, `room-plan.ts` is the only way furniture and anchors get placed (it holds the clearance and reachability tests), `stance.ts` says where a body's root goes relative to its piece, standing at it or sitting on it, and `furnish/` has one dresser per family of building. A new building kind needs a programme in `recipes.ts`, a dresser in `furnish/`, and a role mapping in `populate.ts`, or it generates an empty shell. Prop sizes live in `src/interior/props.ts` and are what the planner keeps apart, so they have to match what the renderer draws; the same file carries `SEAT_SPECS`, the back rest and the pad of every piece a body sits on. A dresser never passes its own clearance or its own seat offset: it names the kind of anchor and the piece, and `stance.ts` answers.
+Interiors live in `src/interior/`: `open.ts` decides which buildings get one at all (and is where the share, the ranking and the four things a town needs live), `recipes.ts` says what rooms a building has, `rooms.ts` cuts them out of the shell, `doors.ts` hangs the doors, `room-plan.ts` is the only way furniture and anchors get placed (it holds the clearance and reachability tests), `stance.ts` says where a body's root goes relative to its piece, standing at it or sitting on it, and `furnish/` has one dresser per family of building. A new building kind needs a programme in `recipes.ts`, a dresser in `furnish/`, and a role mapping in `populate.ts`, or it generates an empty shell. Prop sizes live in `src/interior/props.ts` and are what the planner keeps apart, so they have to match what the renderer draws; the same file carries `SEAT_SPECS`, the back rest and the pad of every piece a body sits on. A dresser never passes its own clearance or its own seat offset: it names the kind of anchor and the piece, and `stance.ts` answers.
 
 Every generated quest is played to the end in the tests by `tests/drive.ts`, which reads nothing but `objectives()` and does what each one says, so a recipe that writes a job nobody can finish fails the suite whatever shape it is.
 

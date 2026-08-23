@@ -58,25 +58,32 @@ export function surfacesOf(anchors: readonly Anchor[]): readonly Anchor[] {
   return surfaces.length ? surfaces : anchors
 }
 
-/** What is lying around in this kind of building, and whether it belongs to someone. */
+/** What a kind of building keeps lying about. */
+const STOCK: Partial<Record<BuildingKind, readonly ItemArchetype[]>> = {
+  bar: ['bottle', 'glass', 'ledger', 'cash'],
+  cafe: ['cup', 'plate', 'ledger'],
+  restaurant: ['plate', 'bottle', 'ledger'],
+  shop: ['box', 'parcel', 'cash', 'key'],
+  market: ['crate', 'parcel', 'cash'],
+  house: ['book', 'phone', 'painting', 'key'],
+  apartment: ['book', 'radio', 'key'],
+  office: ['ledger', 'envelope', 'briefcase', 'keycard'],
+  workshop: ['toolbox', 'wrench', 'fuelcan'],
+  warehouse: ['crate', 'box', 'parcel'],
+  clinic: ['medkit', 'ledger'],
+  hotel: ['key', 'bag', 'envelope'],
+  station: ['bag', 'parcel'],
+  chapel: ['book', 'statue'],
+}
+
+/** Everything this kind of building could have lying about. */
+export function stockOf(building: BuildingKind): readonly ItemArchetype[] {
+  return STOCK[building] ?? ['box']
+}
+
+/** What is lying around in one of them, and whether it belongs to someone. */
 export function itemsFor(building: BuildingKind, rng: Rng): ItemArchetype[] {
-  const table: Partial<Record<BuildingKind, readonly ItemArchetype[]>> = {
-    bar: ['bottle', 'glass', 'ledger', 'cash'],
-    cafe: ['cup', 'plate', 'ledger'],
-    restaurant: ['plate', 'bottle', 'ledger'],
-    shop: ['box', 'parcel', 'cash', 'key'],
-    market: ['crate', 'parcel', 'cash'],
-    house: ['book', 'phone', 'painting', 'key'],
-    apartment: ['book', 'radio', 'key'],
-    office: ['ledger', 'envelope', 'briefcase', 'keycard'],
-    workshop: ['toolbox', 'wrench', 'fuelcan'],
-    warehouse: ['crate', 'box', 'parcel'],
-    clinic: ['medkit', 'ledger'],
-    hotel: ['key', 'bag', 'envelope'],
-    station: ['bag', 'parcel'],
-    chapel: ['book', 'statue'],
-  }
-  const pool = table[building] ?? ['box']
+  const pool = stockOf(building)
   const count = rng.int(1, Math.min(4, pool.length + 1))
   return rng.shuffle(pool).slice(0, count)
 }

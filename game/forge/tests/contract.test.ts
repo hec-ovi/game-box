@@ -25,17 +25,18 @@ describe('Forge', () => {
     expect(world.plots().length).toBeGreaterThan(8)
     expect(world.npcs().length).toBeGreaterThan(5)
     expect(world.items().length).toBeGreaterThan(5)
-    expect(world.interiors().length).toBe(world.plots().length)
+    expect(world.interiors().length).toBeLessThan(world.plots().length)
 
     // every town has its bar, whatever the theme says
     expect(world.plotsOfKind('bar').length).toBeGreaterThanOrEqual(1)
 
-    // every bar has somebody behind the counter, and every shop somebody at the counter
+    // every bar that opens has somebody behind the counter, and every shop somebody at the counter
+    const opens = (plotId: string) => world.interiors().some((interior) => interior.plotId === plotId)
     for (const bar of world.plotsOfKind('bar')) {
-      expect(world.npcsIn(bar.id).some((n) => n.role === 'bartender')).toBe(true)
+      if (opens(bar.id)) expect(world.npcsIn(bar.id).some((n) => n.role === 'bartender')).toBe(true)
     }
     for (const shop of world.plotsOfKind('shop')) {
-      expect(world.npcsIn(shop.id).some((n) => n.role === 'clerk')).toBe(true)
+      if (opens(shop.id)) expect(world.npcsIn(shop.id).some((n) => n.role === 'clerk')).toBe(true)
     }
 
     // nobody shares a name
