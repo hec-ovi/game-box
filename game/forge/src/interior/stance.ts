@@ -21,8 +21,10 @@ import { seatSpecOf } from './props.ts'
  *
  * A body **sitting** is neither, and it is not at the centre of its seat: the
  * sitting clip holds it well behind its own root, so a root on the seat's
- * centre puts the back rest through the torso. `seatRoot` answers where the
- * root goes instead.
+ * centre puts the back rest through the torso. A body **lying down** is the
+ * simplest of the four: the lying clip is centred on its own root, so the root
+ * goes on the middle of the mattress. `seatRoot` answers where the root goes in
+ * either case.
  */
 export interface Stance {
   /** Closest the body may be to the face: it stands at the piece, never in it. */
@@ -75,6 +77,13 @@ export function standoff(kind: AnchorKind): number {
 }
 
 /**
+ * Anchor kinds where the body lies down rather than sits up. A lying clip has
+ * no back to press against anything and no pelvis behind its root: it is
+ * centred, and `@gb/cast` measures it reaching 0.96 m either way.
+ */
+const LYING: readonly AnchorKind[] = ['sleep']
+
+/**
  * The seated body, measured off `Sitting_Idle_Loop` in `assets/dist/anims.glb`
  * skinned onto every one of the twelve dressed characters. Both are metres
  * behind the root the game puts on the anchor: the back is the furthest back of
@@ -90,16 +99,20 @@ const SEAT_CLEARANCE = 0.02
  * How far forward of a seat's centre a body's root goes, along the way the seat
  * faces. Zero for a piece nobody sits on.
  *
- * A seat with a back puts the body's back against it: that is what a chair is
- * for, and it is the only placement where a torso and a back rest do not share
- * the same air. A seat without one centres the pelvis on the pad instead, which
- * is what perching on a stool looks like. Either way the pelvis has to land on
- * the pad, and the tests hold every seat to that.
+ * A body lying down is centred on its own root, so the root goes on the middle
+ * of the pad and nothing else about the piece matters: a headboard is behind
+ * the head, not against the back. A seat with a back puts the body's back
+ * against it: that is what a chair is for, and it is the only placement where a
+ * torso and a back rest do not share the same air. A seat without one centres
+ * the pelvis on the pad instead, which is what perching on a stool looks like.
+ * The tests hold every seat to landing its body on its own pad.
  */
-export function seatRoot(prop: FurnitureProp): number {
+export function seatRoot(prop: FurnitureProp, kind: AnchorKind): number {
   const seat = seatSpecOf(prop)
   if (!seat) return 0
-  if (seat.back !== undefined) return SEATED_BACK + SEAT_CLEARANCE - seat.back
   const [front, back] = seat.pad
-  return SEATED_PELVIS - (front + back) / 2
+  const middle = (front + back) / 2
+  if (LYING.includes(kind)) return -middle
+  if (seat.back !== undefined) return SEATED_BACK + SEAT_CLEARANCE - seat.back
+  return SEATED_PELVIS - middle
 }

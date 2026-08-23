@@ -1,6 +1,6 @@
 # @gb/forge contract
 
-contractVersion: 0.18.0
+contractVersion: 0.19.0
 
 ## Purpose
 
@@ -57,9 +57,11 @@ A narrator writing an unusable quest is not an error: those quests are dropped a
   | office-chair | 0.235 | -0.232 to 0.232 | 0.285 |
   | bar-stool | none | -0.162 to 0.162 | 0.330 |
   | sofa | 0.370 | -0.402 to 0.242 | 0.150 |
-  | bed | 0.950 | -0.970 to 0.867 | -0.430 |
+  | bed | 0.950 | -0.970 to 0.867 | 0.052 |
 
-  Metres from the piece's own centre, positive towards its back. The two seat numbers are measured off the triangles `@gb/furnish` draws in both interior languages and live in `src/interior/props.ts` beside the footprints; the body numbers and the rule live in `src/interior/stance.ts`. A bed comes out negative because a headboard is 0.95 m back, so a body sits up against it rather than out in the middle of the mattress. The pelvis has to land on the pad whatever the rule says, and every seat is held to that in the tests.
+  Metres from the piece's own centre, positive towards its back. The two seat numbers are measured off the triangles `@gb/furnish` draws in both interior languages and live in `src/interior/props.ts` beside the footprints; the body numbers and the rule live in `src/interior/stance.ts`. A bed is the one piece nobody sits on: **a body lying down is centred on its own root**, so its root goes on the middle of the mattress and the headboard is behind its head rather than against its back. The pelvis has to land on the pad whatever the rule says, and every seat is held to that in the tests.
+- A body **lying down** is centred on its own root: the lying clip reaches 0.96 m either way from it, so nothing about a headboard or a back rest applies and the root goes on the middle of the pad. The mattress `@gb/furnish` draws is 1.837 m of pad, so a 1.92 m body overhangs it by 4.2 cm at the head and the same at the foot. Centring is what makes that even; the length is the mattress's.
+- **A body seated at a desk reaches for it too.** The seated desk pose puts the wrists 0.20 to 0.24 m in front of the root at 0.78 m off the floor, against a 0.75 m desk top, so the near edge of the desk belongs inside that band and outside the body: the chair is drawn up until the root stands 0.115 m off the desk's face, hands on the top and knees under it. `@gb/cast` measures the pose; every desk in every plan is held to it in the tests.
 - A body **propped against a wall** is not at the wall either. The lean clips hold it 0.414 m behind its own root, measured off all three `Idle_Wall*` clips skinned onto all twelve dressed characters, so a root on the wall is a body through it. The anchor goes 0.44 m out from the inside face instead, facing the room, which leaves 2.6 cm. Nothing stands under a propped body, so it claims its own floor rather than a piece's: 0.79 m out from the wall by 0.76 m along it, out of the doorway band, clear of anything already against that wall, and kept for it so a chair drawn up afterwards does not land on its feet. The number lives in `src/interior/stance.ts` beside the seat offsets, and `@gb/cast` measures the same one from the clips.
 - Whether a seat is a place somebody can sit is a question about the seat, so nothing about which anchors are accepted turns on that offset: reachability, doorways and other people's furniture are all judged at the seat, exactly as they were when the body sat on its centre. Moving a body onto its seat properly cannot cost a town a single anchor.
 - A city is mostly frontage. Every plot is a building with a door, a sign and a name; about one in eight also has an interior (swung up to 30% either way on the seed), and the rest cannot be walked into. A plot without an interior is closed all the way through: nobody is stationed in it, nothing is lying about in it, and no quest step points into it, so a closed door offers the player nothing rather than teasing them with something they cannot reach.

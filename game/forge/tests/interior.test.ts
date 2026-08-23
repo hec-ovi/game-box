@@ -304,7 +304,28 @@ describe('interior plans', () => {
     expect(checked).toBeGreaterThan(100)
   })
 
-  it('sits a body in front of the back rest rather than through it', () => {
+  it('draws a desk worker up to their desk, close enough to put their hands on it', () => {
+    // `@gb/cast` measured the seated desk pose: the wrists land 0.20 to 0.24 m
+    // in front of the root at 0.78 m off the floor, and a desk top is 0.75 m.
+    // Any further off and the forearms rest on air; any closer and the knees
+    // are through the pedestal
+    const REACH = 0.24
+    let checked = 0
+    for (const { kind, seed, made } of everyPlan()) {
+      const desks = made.furniture.filter((piece) => piece.prop === 'desk')
+      for (const anchor of made.anchors) {
+        if (anchor.kind !== 'work-desk') continue
+        const nearest = desks.map((desk) => faceGap(anchor.pos, desk)).sort((a, b) => a - b)[0]
+        expect(nearest, `${kind}/${seed}: somebody at a desk with no desk in the room`).toBeDefined()
+        expect(nearest!, `${kind}/${seed}: the desk is ${nearest!.toFixed(2)} m off, hands over air`).toBeLessThanOrEqual(REACH)
+        expect(nearest!, `${kind}/${seed}: sitting inside the desk`).toBeGreaterThan(0)
+        checked++
+      }
+    }
+    expect(checked).toBeGreaterThan(5)
+  })
+
+  it('sits a body in front of the back rest rather than through it, and lays one down the middle of the bed', () => {
     // where the seat's own back rest and the surface it sits on are, measured off
     // the triangles @gb/furnish draws
     let checked = 0
@@ -318,6 +339,16 @@ describe('interior plans', () => {
         expect(anchor.rot, `${where} faces a different way from its seat`).toBe(seat.rot)
 
         const forward = forwardOf(seat, anchor.pos)
+        const middle = (spec.pad[0] + spec.pad[1]) / 2
+        if (anchor.kind === 'sleep') {
+          // a lying clip is centred on its own root, so the root goes on the
+          // middle of the mattress: nothing presses against the headboard, and
+          // whatever a short mattress costs the body it costs evenly at both ends
+          expect(-forward - middle, `${where}: lying off the middle of the mattress`).toBeCloseTo(0, 2)
+          seen.add(seat.prop)
+          checked++
+          continue
+        }
         const back = SEATED_BACK - forward
         const pelvis = SEATED_PELVIS - forward
         if ('back' in spec) {
@@ -327,7 +358,6 @@ describe('interior plans', () => {
         expect(pelvis, `${where}: sitting off the back of the pad`).toBeLessThanOrEqual(spec.pad[1] - 0.05)
         if (!('back' in spec)) {
           // nothing to lean on, so the weight goes over the middle of the pad
-          const middle = (spec.pad[0] + spec.pad[1]) / 2
           expect(Math.abs(pelvis - middle), `${where}: perched off the middle of the pad`).toBeLessThanOrEqual(0.02)
         }
         seen.add(seat.prop)

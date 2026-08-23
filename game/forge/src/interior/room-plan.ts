@@ -214,8 +214,9 @@ export class RoomPlan {
    * allowed inside the skirt of that one piece, and no other, and still has to
    * have real floor within a step of its back.
    *
-   * A body on a seat is judged at the seat, and recorded where the sitting clip
-   * actually puts it: `pos` is the seat, the anchor is `seatRoot` forward of it.
+   * A body on a seat is judged at the seat, and recorded where its own clip
+   * actually puts it: `pos` is the seat, the anchor is `seatRoot` forward of it,
+   * which is a different number for somebody sitting up and somebody lying down.
    * Whether the seat is a place somebody can sit is a question about the seat,
    * so nothing about which anchors are accepted turns on that offset.
    */
@@ -239,7 +240,7 @@ export class RoomPlan {
     const footing = this.floor.footing(pos, reach, this.#waypoints)
     if (!footing) return false
 
-    const body = own && seat && seatSpecOf(own.prop) ? step(pos, rot, seatRoot(own.prop)) : pos
+    const body = own && seat && seatSpecOf(own.prop) ? step(pos, rot, seatRoot(own.prop, kind)) : pos
     this.#anchors.push({ id: this.#mint('anchor'), kind, roomId: this.room.id, pos: { x: round(body.x), y: round(body.y) }, rot: round(rot), ...(propId ? { propId } : {}) })
     this.#waypoints = [...this.#waypoints, footing]
     if (crowd) this.#crowd++
