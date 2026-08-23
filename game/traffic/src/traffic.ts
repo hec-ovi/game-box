@@ -59,12 +59,8 @@ export class Traffic {
   }
 
   static fromWorld(world: World, options: TrafficOptions = {}): Result<Traffic, TrafficError> {
-    const settings = withDefaults(options, world.seed, world.cellSize)
-    const graph = LaneGraph.build(world.toJSON().roads, {
-      cellSize: world.cellSize,
-      roadway: settings.roadway,
-      carLength: CAR_LENGTH,
-    })
+    const settings = withDefaults(options, world.seed)
+    const graph = LaneGraph.build(world.toJSON().roads, { cellSize: world.cellSize, carLength: CAR_LENGTH })
     if (!graph.ok) return err(graph.error)
     return ok(new Traffic(graph.value, settings))
   }

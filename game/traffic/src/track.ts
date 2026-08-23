@@ -1,6 +1,7 @@
 import type { RoadSegment } from '@gb/world'
 import type { Car } from './car.ts'
 import type { Path, Point } from './geometry.ts'
+import type { RoadClass } from './road-class.ts'
 
 export type Turn = 'straight' | 'left' | 'right'
 
@@ -32,11 +33,15 @@ export abstract class Track {
   }
 }
 
-/** The stretch of one road segment between two junctions, in one direction. */
+/** One lane of one road segment between two junctions, in one direction. */
 export class Lane extends Track {
   readonly segmentId: string
   /** What kind of road this is a lane of, which is how the way out of town is known. */
   readonly kind: RoadSegment['kind']
+  /** Where this lane sits, counted from the centreline out: 0 is the overtaking side. */
+  readonly lane: number
+  /** How many lanes run this way, so `lanes - 1` is the one against the kerb. */
+  readonly lanes: number
   readonly fromNode: string
   readonly toNode: string
   readonly direction: Point
@@ -44,16 +49,18 @@ export class Lane extends Track {
   constructor(
     id: string,
     path: Path,
-    speedLimit: number,
+    road: RoadClass,
+    lane: number,
     segmentId: string,
-    kind: RoadSegment['kind'],
     fromNode: string,
     toNode: string,
     direction: Point,
   ) {
-    super(id, path, speedLimit)
+    super(id, path, road.speedLimit)
     this.segmentId = segmentId
-    this.kind = kind
+    this.kind = road.kind
+    this.lane = lane
+    this.lanes = road.perWay
     this.fromNode = fromNode
     this.toNode = toNode
     this.direction = direction

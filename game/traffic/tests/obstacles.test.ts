@@ -89,8 +89,9 @@ describe('somebody in the road', () => {
     const { traffic, people, car, lane, from } = street()
     const on = lane.path.pointAt(from + 45)
     const side = { x: -Math.cos(car.heading), z: Math.sin(car.heading) }
-    // the oncoming lane centre: half a roadway to our left
-    people.spots = [{ x: on.x - side.x * 3, z: on.z - side.z * 3 }]
+    // the oncoming lane centre: a whole lane to our left, on a street's two lanes
+    const oncoming = (METRICS.road.street.roadwayCells * 2) / METRICS.road.street.lanes
+    people.spots = [{ x: on.x - side.x * oncoming, z: on.z - side.z * oncoming }]
 
     const start = { x: car.x, z: car.z }
     let slowest = Number.POSITIVE_INFINITY

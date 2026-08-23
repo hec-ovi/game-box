@@ -1,4 +1,4 @@
-import { METRICS, World } from '@gb/world'
+import { METRICS, ROAD_KINDS, World } from '@gb/world'
 import { Object3D } from 'three'
 import { describe, expect, it } from 'vitest'
 import { Traffic, type CarBodies, type CarBody, type CarSpawn, type CarView } from '../src/index.ts'
@@ -68,8 +68,8 @@ describe('Traffic', () => {
     if (!broken.ok) expect(broken.error.code).toBe('broken-graph')
   })
 
-  it('keeps every car on the roadway and out of the buildings', () => {
-    const world = lattice({ across: 4, down: 4, span: 13 })
+  it.each(ROAD_KINDS)('keeps every car on a %s and out of the buildings', (kind) => {
+    const world = lattice({ across: 4, down: 4, span: 13, kind })
     const traffic = open(world, { maxCars: 24 })
     const focus = { x: 40, z: 40 }
     traffic.populate(focus)

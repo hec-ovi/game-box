@@ -1,4 +1,4 @@
-import { METRICS, type RoadSegment } from '@gb/world'
+import type { RoadSegment } from '@gb/world'
 import type { CarBodies } from './bodies.ts'
 import type { Obstacles } from './obstacles.ts'
 
@@ -53,8 +53,6 @@ export interface TrafficOptions {
   readonly farStride?: number
   /** Longest step a car integrates in one go, seconds. */
   readonly maxStep?: number
-  /** Roadway width in metres. Defaults to `METRICS.street.roadwayCells`, 6 m on a 2 m grid. */
-  readonly roadway?: number
   /** Height the model sits at, metres. */
   readonly rideHeight?: number
   /** Where three.js objects come from. Left out, the traffic runs without a scene. */
@@ -72,13 +70,12 @@ export interface Settings {
   readonly nearRadius: number
   readonly farStride: number
   readonly maxStep: number
-  readonly roadway: number
   readonly rideHeight: number
   readonly bodies: CarBodies | undefined
   readonly obstacles: Obstacles | undefined
 }
 
-export function withDefaults(options: TrafficOptions, seed: string, cellSize: number): Settings {
+export function withDefaults(options: TrafficOptions, seed: string): Settings {
   const spawnRadius = options.spawnRadius ?? 140
   return {
     seed: options.seed ?? seed,
@@ -89,7 +86,6 @@ export function withDefaults(options: TrafficOptions, seed: string, cellSize: nu
     nearRadius: options.nearRadius ?? 60,
     farStride: Math.max(1, Math.round(options.farStride ?? 3)),
     maxStep: options.maxStep ?? 0.1,
-    roadway: options.roadway ?? cellSize * METRICS.street.roadwayCells,
     rideHeight: options.rideHeight ?? 0,
     bodies: options.bodies,
     obstacles: options.obstacles,

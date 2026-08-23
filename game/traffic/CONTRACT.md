@@ -1,6 +1,6 @@
 # @gb/traffic contract
 
-contractVersion: 0.4.0
+contractVersion: 0.5.0
 
 ## Purpose
 
@@ -14,7 +14,7 @@ Drives cars around a generated city: reads its road graph, puts cars on lanes, f
 | `Traffic.populate(focus)` | `Point` in metres, `{ x, z }` | fills the streets in one go, for the moment a city opens |
 | `Traffic.update(dt, focus)` | seconds since the last call, the player's position | `dt` outside `(0, maxStep]` is clamped, `NaN` is ignored |
 | `Traffic.handOver(carId)` | the `id` off a `CarView` | takes that car off the road for good, for somebody else to drive. An id nobody answers to is not an error |
-| `LaneGraph.build(roads, shape)` | `Roads` from `world.toJSON().roads`, `GraphShape` | the same graph `fromWorld` builds, if you want it on its own |
+| `LaneGraph.build(roads, shape)` | `Roads` from `world.toJSON().roads`, `GraphShape`: `cellSize` and `carLength` | the same graph `fromWorld` builds, if you want it on its own. How wide each road is comes from its own class, not from here |
 | `CarPack.load(url, root)` | where the app serves `cars.glb`, a `three` `Object3D` | the pack is built; cars are added to and removed from `root` |
 | `CarPack.parse(bytes, root)` | the pack's bytes, a `three` `Object3D` | the same, for bytes the app already fetched |
 | `CarPack.update()` | | once a frame, after `Traffic.update`, to roll the wheels |
@@ -32,7 +32,6 @@ Drives cars around a generated city: reads its road graph, puts cars on lanes, f
 | `nearRadius` | 60 m | inside it every car moves every frame |
 | `farStride` | 3 | outside it, one car in three per frame, over the time it missed |
 | `maxStep` | 0.1 s | longest step a car integrates in one go |
-| `roadway` | `METRICS.street.roadwayCells`, 6 m on a 2 m grid | width of the roadway the lanes are laid in |
 | `rideHeight` | 0 | the y a model sits at |
 | `bodies` | none | where scene objects come from, see below |
 | `obstacles` | none | who is standing in the road, see below |
@@ -60,7 +59,7 @@ Without `setTime` the pack stays at midday and the lamps never light.
 | `Traffic.cars()` | `readonly CarView[]` | live objects: `id`, `model`, `x`, `z`, `heading`, `speed`, `trackId`. Read only, and the same array every frame |
 | `Traffic.count` | number | cars alive now |
 | `Traffic.handOver` | `CarHandover` or undefined | a snapshot, not the live car: `id`, `model`, `x`, `z`, `heading`, `speed`. Undefined when no car has that id |
-| `Traffic.graph` | `LaneGraph` | `lanes`, `junctions`, `linksFrom(lane)`. A junction has `centre`, `half` and `contains(point)` |
+| `Traffic.graph` | `LaneGraph` | `lanes`, `junctions`, `linksFrom(lane)`. A `Lane` carries its `kind`, its `lane` (counted from the centreline out) and how many `lanes` run its way. A junction has `centre`, `half` and `contains(point)` |
 | bodies | written in place | `position.x/y/z` and `rotation.y` of every car that moved this frame |
 | `CarPack` | a `CarBodies` | pass it as `bodies`. `root` is where the cars hang, `parked` is how many bodies wait for reuse, `paint` is the one material every car wears and `paint.lamps` is how lit the lamps are, 0 by day and 1 in the dark |
 
@@ -88,18 +87,29 @@ Catch it and leave `bodies` out. The traffic still runs; it is just not drawn.
 
 ## Invariants
 
-- Right hand traffic, one lane each way, each lane centred on its half of the roadway, so a 1.8 m car in a 6 m roadway never leaves it. Turns through a junction are curves that stay inside the square the two roadways share.
-- Following is Treiber's Intelligent Driver Model, so a car closes on the one in front and settles at a gap it could stop in. Cars on one lane keep their order: no overtaking, no driving through.
+- **A road is as wide as its class, and carries the lanes its class carries.** Right hand traffic, the roadway split evenly, each lane centred on its own share of it, so a 1.8 m car never leaves the roadway it is driving:
+
+  | kind | roadway | lanes | lane centres from the centreline | speed limit |
+  |---|---|---|---|---|
+  | `street` | 10 m | 2 | 2.5 m | 8.5 m/s |
+  | `avenue` | 14 m | 4 | 1.75 and 5.25 m | 13.9 m/s |
+  | `exit` | 18 m | 4 | 2.25 and 6.75 m | 16.7 m/s |
+
+  An even split rather than lanes and shoulders: one rule reads every class, and a 4.5 m lane on the road out is a lane a car sits in the middle of rather than a lane plus a strip nothing uses. Widths come from `@gb/world`'s `METRICS.road`, the count from the segment's own `lanes`, and the metres are `roadwayCells` times the world's `cellSize`, so a class that widens widens here with nothing to change.
+- Following is Treiber's Intelligent Driver Model, so a car closes on the one in front and settles at a gap it could stop in. Cars on one lane keep their order: no overtaking, no driving through. **A car keeps the lane it is in until the next junction**, so a slow car on a four lane road is followed rather than passed; which lane it leaves the junction in is the turn it takes, below.
 - Somebody in the road is the car in front that never moves off: they go into the same following model at zero speed, so a car eases down and stops about two metres short of them, and pulls away again when they step clear. It brakes, it never swerves and it never drives through. A person counts as being in the way when they are within half a car's width of the lane the car is driving, so the far side of the road is somebody else's problem.
 - A car sees one stretch of road ahead of the one it is on, the same lookahead it uses for the car in front, and does not take a junction whose road out has somebody standing in its mouth, because a car that stops inside a junction holds it against every other arm. New cars never appear on top of somebody, nor so close behind them that they could not stop.
 - Nobody is nudged out of the way and nobody is waited on forever: a car stopped for twelve seconds is taken off the road once the player is far enough away not to see it go, which also gives back any junction it was holding. Inside `nearRadius` it keeps waiting, because a car that vanishes, swerves into oncoming traffic or drives over somebody all look worse than a car waiting for a person standing in the street.
+- **A junction is as wide as its widest arm**, so where an avenue crosses a street the square kept clear is the avenue's, which is how the city paints it. A node with one road on it is not a junction but the end of a road: nothing is kept clear there and the lane runs right up to it, which is what lets the short stub of the road out of the valley be driven at all.
+- **A turn stays in its lane.** Straight on keeps the lane it is in, a right turn leaves the kerb lane and joins the kerb lane, a left turn leaves the lane against the centreline and joins the same, so nothing crosses a lane inside a junction and a left turn on a four lane road is one curve rather than a diagonal. A lane the rule strands, which a bend in a four lane road does, takes the way out nearest its own place: every lane that arrives at a junction with a road out of it can leave. Turns through a junction are curves that stay inside the square the roadways share.
 - One car is inside a junction at a time. It takes the junction on approach, only from the head of its queue and only when the road out has room, keeps it while it is crossing and gives it back on the far side. Cars arriving together give way to the right, and an all-round standoff goes to the earliest claim.
 - A car that runs out of road is never taken away in front of the player. It stops where the road stops and waits, and goes the same way a jammed car goes: twelve seconds standing still, and only once the player is further off than `nearRadius`. Past `despawnRadius` it goes whatever it is doing.
 - The road out of town carries on past the last junction. An `exit` lane with no junction to turn into runs off the edge of the map for 120 m, which is how far `@gb/land` grades the ground under a road out, so a car leaving town drives away into the distance instead of stopping ten metres past the last building. No other dead end does this: driving off the end of a street in the middle of the city would put a car through a building, so a car there stops at the kerb and is taken away out of sight.
 - Everything random comes from `@gb/kit`'s `Rng`, forked per car: the same seed, city and sequence of updates gives the same traffic, position for position.
 - Cars are never created in front of a car already driving: a new one joins at the back of its lane.
 - **A car handed over stops existing here entirely.** Its place in the queue and any junction it was holding are given back the same way a retired car gives them back, and its body goes to the pool, so nothing is left queued behind a ghost and no junction is held by a car nobody is driving any more. What comes back is a snapshot rather than the live car, because from that moment it is somebody else's. `@gb/drive` is what asks: the car the player gets into is a car that was already on the road.
-- A segment's `lanes` count is not read. The graph carries no direction and no width, so the rule above is fixed here instead. The width comes from `@gb/world`'s `METRICS.street.roadwayCells`, not from a number written down here.
+- Nothing is measured off the grid. The graph carries the class and the lane count of every segment and `METRICS.road` carries the widths, so the lanes are arithmetic on those two and a road the grid paints wider than its class says is still driven at its class's width.
+- **Lane changing is not modelled.** A car cannot pull out to pass, and a car in the kerb lane of an avenue cannot turn left because it will not move over for it: it goes straight on or turns right. Half a manoeuvre looks worse than none, and a lane change is a gap check against two queues plus a lateral slide, which is a change to `lane-graph.ts` and `traffic.ts` together rather than a number here.
 - One material paints the whole pack, a `MeshPhysicalNodeMaterial` keyed off the surface each vertex carries: paint is metal under a clear coat, glass is a near-black mirror, rims are brightwork, tyres are matte, and the lamps carry their own light. There is a sky to reflect, so what a car looks like is mostly what is above it. Every car shares the instance, so an hour of the day is one uniform write and a car stays four draws.
 - Cars cast shadows and receive them. Whether anything is drawn into a shadow map is the app's business; the pack marks its meshes either way.
 - This box holds no clock. `CarPack.setTime` remembers the hour and lights the lamps for it; cars put their lights on before the streetlights do and keep them on a little past dawn.
@@ -133,7 +143,7 @@ A car is one node named for its model, with four children: `<Model>_Body`, `<Mod
 
 ## What it costs
 
-The simulation, on a 6 by 6 junction lattice with the default 40 cars, bodies stubbed out: 7.6 us per update with no `obstacles` port, the same with a port that has nobody near, 24 us with twenty people in the neighbourhood, 36 us with forty, 58 us with eighty. The people are only ever measured against the roads cars are actually driving, so the cost follows the cars near the player, not the size of the city.
+The simulation, on a 6 by 6 junction lattice with the default 40 cars, bodies stubbed out: 7.9 us per update on streets with no `obstacles` port, 26 us with twenty people scattered on the lanes, 42 us with forty, 74 us with eighty. The same lattice built of avenues, which is twice the lanes, costs 6.8 us empty and 25, 43 and 84 us with the same people, so the cost follows the cars near the player and the people beside them, not the lanes in the city.
 
 The art, per car: **4 draw calls and 3,170 triangles**, one body and three wheels, every one of them on the same material. Forty cars is 160 draws.
 
@@ -148,7 +158,7 @@ Cars never cover more than a fifth of a city frame, so the clear coat, the glass
 
 ## How to modify this blackbox safely
 
-The behaviour lives in four places and they stay separate: `idm.ts` is the car following model, `junctions.ts` is right of way, `hazards.ts` turns the people into distances a driver can brake against, and `lane-graph.ts` is the geometry lanes are cut from. Multi-lane roads, one way streets and traffic lights are all changes to `lane-graph.ts` plus one of the other two, not new boxes.
+The behaviour lives in five places and they stay separate: `idm.ts` is the car following model, `junctions.ts` is right of way, `hazards.ts` turns the people into distances a driver can brake against, `road-class.ts` is how wide a class of road is and where its lanes sit in it, and `lane-graph.ts` cuts the lanes and joins them across junctions. One way streets, traffic lights and pulling out to pass are all changes to `lane-graph.ts` plus one of the other two, not new boxes.
 
 Where a car leaves the world is `src/runoff.ts`, and nothing else knows about it. Taking a car off the road, whether it was retired or handed to a driver, is `#takeOff` in `src/traffic.ts` and is one path, so the two cannot drift apart.
 
