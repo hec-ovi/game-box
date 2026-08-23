@@ -232,7 +232,6 @@ moves, or reach a *place*: anything that must reach is a measured pose.
 | 86 | The bed is 6 cm too short | forge + furnish | Pad 1.84 m, a body with boots is 1.90 m end to end |
 | 87 | `work-desk` has no reach band | forge | Staff at a counter have one (0.15 m); a seated desk worker has none. The wrists sit at 0.78 m, 0.20 to 0.24 m in front of the root, so the desk edge belongs under them |
 | 88 | `METRICS.worktopHeight` is 0.9 and every standing clip on this rig reaches 1.02 | world | A cook's hands ride 12 cm over the hob. Either the worktop rises to counter height or that stance needs a clip nobody sells. Same family as the bar-counter fault |
-| 89 | The nod and the head shake are available | app + crowd | `GESTURES` has four entries now, not two |
 
 ### Decided: the fabric tile goes on roughness, not colour
 
@@ -250,6 +249,23 @@ specular property. So: **roughness (or normal), not base colour**, masked per
 fabric region so the face and hands on the shared sheet are not quilted. The
 sheets already exist in the same UV layout and `tools/wardrobe/fabrics.mjs`
 already names each region, so it is the same one-step multiply.
+
+## From the answer
+
+Row 89 is closed at the talk end. `@gb/talk` publishes
+`{ kind: 'answered', answer: 'yes' | 'no' }`, only on turns that have an answer,
+so "neither" is the absence of the event and nothing defaults to agreement. The
+rule that keeps the three tracks from drifting: **carrying a move out is a yes**,
+decided in the one place the model track, the offline reader and a clicked move
+all converge. A reported refusal that still picks a move counts as a yes,
+because what happened is the ground truth.
+
+| # | Work | Box | Detail |
+|---|---|---|---|
+| 90 | Play the nod and the shake on `answered` | app | One case in the `TalkEvent` loop. `@gb/cast` needs nothing |
+| 91 | The nod may land visibly late with the model up | talk | `answered` arrives at turn settle, because the voice call and the action call run in sequence and one call decides both. Overlapping them is a restructure of the two-track flow inside talk. Only worth doing if it reads late on screen; app must not compensate for it |
+| 92 | No clip sits a body on a raised seat | cast | Every `sit-drink` anchor on a bar stool is 33 cm out, four of them in a nine-plot city. The only seated clip has soles on the floor, body underside 0.423, against a 0.75 pad. Lowering the stool is worse (a 0.42 m seat at a 1.1 m bar). `@gb/forge` anchors `sit-drink` on chairs meanwhile |
+| 93 | Worktops, hobs, sinks and the lowest shelf ledge rise 10 cm | furnish | `METRICS.worktopHeight` went 0.9 to 1.0, measured: standing palms land at 0.972. Furnish reads `METRICS` directly and its tests measure drawn triangles against it, so they follow; what needs a look is anything drawn **under** a worktop (a cabinet run) and whether a shelf's ledges still fit |
 
 ## Checked and closed
 
