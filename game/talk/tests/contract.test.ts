@@ -150,6 +150,8 @@ interface Script {
   readonly text?: string | readonly string[]
   /** The line off the menu the action track calls the tool with. 1 is nothing but talk. */
   readonly pick?: number
+  /** How the action track reports the reply. Left out is a call that did not say. */
+  readonly says?: 'yes' | 'no' | 'neither'
   /** The action track answers with words instead of making the call it was told to make. */
   readonly prose?: string
   /** No sidecar at all. */
@@ -179,7 +181,7 @@ function speaker(script: Script) {
     if (body.tool_choice) {
       const tool = body.tools![0]!.function
       decisions.push({ system, user: last, forced: body.tool_choice.function.name, tool })
-      return script.prose === undefined ? called(tool.name, script.pick ?? 1) : spoke(script.prose)
+      return script.prose === undefined ? called(tool.name, script.pick ?? 1, script.says) : spoke(script.prose)
     }
     voice.push({ system, messages: body.messages })
     const said = script.text === undefined ? [] : typeof script.text === 'string' ? [script.text] : [...script.text]
@@ -189,8 +191,9 @@ function speaker(script: Script) {
   return { voice, decisions, fetch, sidecar: new Sidecar({ base: 'http://127.0.0.1:8976', fetch }) }
 
   /** The forced call, made: the answer arrives as arguments, never as text. */
-  function called(name: string, option: number): Response {
-    const call = { id: 'call_0', type: 'function', function: { name, arguments: JSON.stringify({ option }) } }
+  function called(name: string, option: number, says?: string): Response {
+    const args = says === undefined ? { option } : { option, answer: says }
+    const call = { id: 'call_0', type: 'function', function: { name, arguments: JSON.stringify(args) } }
     return answer({ role: 'assistant', content: null, tool_calls: [call] }, 'tool_calls')
   }
 
@@ -604,8 +607,12 @@ describe('Conversation', () => {
     // nothing but talk, the job, and the goodbye: an answer off that list cannot come back
     expect(asked.tool.parameters).toMatchObject({
       type: 'object',
+      // the reply is the one field the call may leave out: an action is what a quest turns on
       required: ['option'],
-      properties: { option: { type: 'integer', minimum: 1, maximum: 3 } },
+      properties: {
+        option: { type: 'integer', minimum: 1, maximum: 3 },
+        answer: { enum: ['yes', 'no', 'neither'] },
+      },
     })
   })
 
@@ -781,6 +788,74 @@ describe('the first words', () => {
     if (!idle.ok) throw new Error('did not open')
     expect(idle.value.opening.line).not.toBe('')
     expect(idle.value.opening.moves.map((move) => move.action)).toEqual(['end_talk'])
+  })
+})
+
+describe('answering yes or no', () => {
+  it('publishes a yes on a turn they went along with, however the turn was decided', async () => {
+    // the model picks the move off the menu
+    const model = setup({ text: "Aye, it's yours.", pick: 2 })
+    const decided = await collect(model.conversation.say('give me the job'))
+    expect(decided).toContainEqual({ kind: 'answered', answer: 'yes' })
+    // the nod belongs to the moment they agree, so it lands before what they did
+    expect(decided.findIndex((e) => e.kind === 'answered')).toBeLessThan(decided.findIndex((e) => e.kind === 'did'))
+
+    // the same words with nothing running at all
+    const offline = setup({ fail: true })
+    const heard = await collect(offline.conversation.say('give me the job'))
+    expect(heard).toContainEqual({ kind: 'answered', answer: 'yes' })
+    expect(heard).toContainEqual({ kind: 'did', action: 'give_quest', detail: 'quest_0001' })
+
+    // and the same move clicked, which asks nothing of a model either
+    const clicked = setup({})
+    expect(await collect(clicked.conversation.choose('give_quest#quest_0001'))).toContainEqual({
+      kind: 'answered',
+      answer: 'yes',
+    })
+  })
+
+  it('publishes a no when they will not go along with it', async () => {
+    // the model reports the refusal on a turn where nothing was carried out
+    const model = setup({ text: 'Not tonight.', pick: 1, says: 'no' })
+    const refused = await collect(model.conversation.say('walk me to the dock'))
+    expect(refused).toContainEqual({ kind: 'answered', answer: 'no' })
+    expect(refused.some((e) => e.kind === 'did')).toBe(false)
+
+    // with nothing running, being asked for what they have not got is the no
+    const offline = setup({ fail: true }, { carries: true })
+    const lost = await collect(offline.conversation.say('give me a drink'))
+    expect(lost).toContainEqual({ kind: 'answered', answer: 'no' })
+    expect(said(lost)).toBe("You've lost me. Say it plain.")
+    expect(lost.some((e) => e.kind === 'did')).toBe(false)
+  })
+
+  it("publishes nothing on an ordinary turn, and never reads the player's refusal as theirs", async () => {
+    // most of what anybody says is neither way
+    const chat = setup({ text: 'Weather does what it likes here.', pick: 1, says: 'neither' })
+    expect(await collect(chat.conversation.say('nice weather'))).not.toContainEqual(
+      expect.objectContaining({ kind: 'answered' }),
+    )
+
+    // a call that left the answer out has not reported one either
+    const quiet = setup({ text: 'Aye.', pick: 1 })
+    expect(await collect(quiet.conversation.say('nice weather'))).not.toContainEqual(
+      expect.objectContaining({ kind: 'answered' }),
+    )
+
+    // the player turning the work down is the player's answer, and hers is neither
+    const offline = setup({ fail: true })
+    const declined = await collect(offline.conversation.say('maybe later'))
+    expect(said(declined)).toBe('Suit yourself. The offer stands.')
+    expect(declined).not.toContainEqual(expect.objectContaining({ kind: 'answered' }))
+  })
+
+  it('publishes a yes that carries no action, because a yes is often only words', async () => {
+    const { conversation, log } = setup({ text: "Aye, I'll keep an eye out.", pick: 1, says: 'yes' })
+    const events = await collect(conversation.say('keep an eye out for me?'))
+
+    expect(events).toContainEqual({ kind: 'answered', answer: 'yes' })
+    expect(events.some((e) => e.kind === 'did')).toBe(false)
+    expect(log.status('quest_0001')).toBe('unstarted')
   })
 })
 

@@ -1,6 +1,6 @@
 # @gb/talk contract
 
-contractVersion: 0.7.0
+contractVersion: 0.8.0
 
 ## Purpose
 
@@ -20,10 +20,10 @@ Conversations with the people in the city: they speak first off the game's own d
 |---|---|---|
 | `open` | `{ conversation, changes, opening }` | walking up to someone is a `talked` event, so a step that already asked for it completes here; a step that names a subject waits to be asked |
 | `opening` | `{ line, moves }` | what they say before the player has said anything, and the moves that were legal when they said it. Always a line, never a model call |
-| `say` | a stream of `TalkEvent` | `said` pieces as they are spoken, `did` for the action taken, `changed` for every quest change it caused, `over` when it ends |
+| `say` | a stream of `TalkEvent` | `said` pieces as they are spoken, `answered` when the reply was a yes or a no, `did` for the action taken, `changed` for every quest change it caused, `over` when it ends |
 | `available()` | the action names legal right now | what the UI can promise before a word is said |
 | `moves()` | every legal move as `{ key, action, label }` | `label` is what the player clicks, in their own words and with no id in it; `action` is its `ActionName`, so a caller can filter or group without reading the key; `key` names the move and what it is about, never its place in the list |
-| `choose` | a stream of `TalkEvent` | the same shape `say` gives: the spoken line, `did`, `changed`, `over` |
+| `choose` | a stream of `TalkEvent` | the same shape `say` gives: the spoken line, `answered`, `did`, `changed`, `over` |
 
 ## Talking to someone counts when it counts
 
@@ -38,6 +38,18 @@ Opening a conversation hands back the opening turn, so the panel has something i
 The draw is seeded from the world's own seed and this person's id, so a world file shared between two machines greets the same way on both. The hour is in the seed as well, so somebody spoken to at dawn and again at dusk does not open with the same line twice.
 
 The line goes into the transcript as their turn, so the model answers on top of what the player has already read. The moves that come with it are the ones `moves()` gives: the greeting nudges at the one worth mentioning ("that's my ledger you're carrying") and the button under it carries it out with no model call either. No greeting names a quest by its title, because the pitch keeps for the turn the player asks for it.
+
+## Yes, no, or neither
+
+A turn publishes one thing beyond what the NPC did: whether their reply was a yes or a no. It comes as an `answered` event carrying `yes` or `no`, and on most turns it does not come at all, because most of what anybody says is neither. There is no third value to read and no default to misread: nothing published is nothing to show.
+
+It is the character's answer and never the player's. A player who turns the work down and hears "suit yourself, the offer stands" has refused something; the character has not, so that turn publishes nothing.
+
+One rule settles it on both tracks: **carrying something out is a yes**, whatever was said around it. A job handed over, a delivery taken, a thing passed across the counter, a subject answered, getting to their feet to walk with somebody, a goodbye returned: each is the NPC going along with what was put to them, so each publishes a yes, whether the action track picked the move, the player's own words did, or the player clicked it.
+
+What is left is a reply that is only words, and each track reads that its own way. The forced action call reports it as one more parameter beside the line number, so the same call that decides what they did says how their reply came down. That parameter is the one the call may leave out, because an action is what a quest turns on and a missing answer must never cost one; left out, it reads as neither. With no model, the offline reader publishes a no for the one case it can be sure of: asked for something that is not on the menu, the character says so out loud ("you've lost me"), which is a refusal in anybody's words. Everything else it hears is neither.
+
+The event arrives with the action rather than with the first words, because one call decides both: it lands after the reply has been spoken and immediately before the `did` it belongs to.
 
 ## One turn, two tracks
 
@@ -80,7 +92,7 @@ The spoken side is terse but never reads stored text out as it is stored: a fact
 ## Errors (closed set)
 
 - `unknown-npc`: nobody by that id lives here. No conversation is opened. The only error handed back to a caller.
-- `action-unanswered`: the forced action call came back with no line off the menu: nothing running, a refusal, a timeout, prose instead of the call, or a number the menu has not got. The box settles it instead of returning it: the words already spoken stand, and the player's own words decide the action exactly as they do with no sidecar. Never a silent "they did nothing", and never the first line of the menu by default.
+- `action-unanswered`: the forced action call came back with no line off the menu: nothing running, a refusal, a timeout, prose instead of the call, or a number the menu has not got. The box settles it instead of returning it: the words already spoken stand, and the player's own words decide the action and the answer exactly as they do with no sidecar. Never a silent "they did nothing", and never the first line of the menu by default.
 
 ## Dependencies
 
@@ -94,6 +106,8 @@ The spoken side is terse but never reads stored text out as it is stored: a fact
 - Every action goes through the box that owns the state: quests through `@gb/quest`, inventory, money and companions through `@gb/play`. This box changes nothing itself.
 - Every action an NPC takes off a spoken turn is a call the model was forced to make against a schema built from this turn's menu. No action is ever read out of prose, and a call that fails is a failure, not a quiet no.
 - A step that names a subject is credited by the move that raises it and by nothing else.
+- A turn that carried something out publishes a yes, on every track. A turn that published nothing is a turn that was neither, never a turn nobody looked at.
+- What is published is the character's answer. Nothing the player says is ever republished as theirs.
 - What an NPC knows of the world is what the world file says they know, plus what they could see from where they are standing and what the clock reads. The prompt says so and lists it; nothing else about the city is in their context.
 - What the NPC is told about the situation is read off the same moves they may pick, so the two cannot drift apart.
 - Clicking and typing are one conversation: a picked move goes into the transcript as the player's turn, so a typed turn after it answers with the click in mind.
@@ -105,4 +119,4 @@ The spoken side is terse but never reads stored text out as it is stored: a fact
 
 ## How to modify this blackbox safely
 
-The forced call's name, wording and parameter live in `prompts/decide-tool.md`; its schema is built from the menu in `decide.ts`. A new action is a name in `ACTIONS`, a rule in `legalMoves` for when it is offered and which ids it may carry, its wording in `prompts/moves.md` and `prompts/picks.md`, how the player would ask for it in `prompts/hearing.md`, how it is weighed in `listen.ts`, what it says in `prompts/offline.md`, how it is nudged at in `prompts/hook.md`, and a branch in `Performer`. A move that the decider keeps misreading can take a line in `prompts/rules.md`, which is added to the menu prompt only while that move is on it. The opening line is drawn pool by pool from `prompts/greeting.md`: the hour, the standing band, the spot they keep, the sky, the room. The rest of the wording lives in `prompts/npc.md`, `situation*.md`, `surroundings.md` and `standing.md`, and every prompt is bundled by `pnpm --filter @gb/talk run generate`. Run `pnpm --filter @gb/talk test`.
+The forced call's name, wording and parameter live in `prompts/decide-tool.md`; its schema is built from the menu in `decide.ts`. A new action is a name in `ACTIONS`, a rule in `legalMoves` for when it is offered and which ids it may carry, its wording in `prompts/moves.md` and `prompts/picks.md`, how the player would ask for it in `prompts/hearing.md`, how it is weighed in `listen.ts`, what it says in `prompts/offline.md`, how it is nudged at in `prompts/hook.md`, and a branch in `Performer`. A move that the decider keeps misreading can take a line in `prompts/rules.md`, which is added to the menu prompt only while that move is on it. What counts as a yes or a no is worded twice, in `prompts/decide.md` for the model and in `settle` in `script.ts` for the reader that stands in for it, and the rule they share (a move carried out is a yes) lives in `Conversation`, where both come out. The opening line is drawn pool by pool from `prompts/greeting.md`: the hour, the standing band, the spot they keep, the sky, the room. The rest of the wording lives in `prompts/npc.md`, `situation*.md`, `surroundings.md` and `standing.md`, and every prompt is bundled by `pnpm --filter @gb/talk run generate`. Run `pnpm --filter @gb/talk test`.

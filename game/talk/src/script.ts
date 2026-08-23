@@ -1,4 +1,5 @@
 import type { QuestDoc } from '@gb/quest'
+import type { Decision } from './events.ts'
 import { firstAsk } from './job.ts'
 import { Listener, type Reading } from './listen.ts'
 import type { Move, Situation } from './moves.ts'
@@ -28,16 +29,15 @@ export class Script {
     this.#situation = situation
   }
 
-  /** A line and a move, both from the data. */
-  turn(playerText: string, moves: readonly Move[]): { readonly line: string; readonly move: Move | undefined } {
+  /** A line and how the turn came out, both from the data. */
+  turn(playerText: string, moves: readonly Move[]): Decision & { readonly line: string } {
     const reading = this.#listener.read(playerText, moves)
-    return { line: this.#line(reading, moves), move: reading.sense === 'move' ? reading.move : undefined }
+    return { ...settle(reading), line: this.#line(reading, moves) }
   }
 
   /** What they do about what was just said. Nothing, unless it was plainly asked for. */
-  decide(playerText: string, moves: readonly Move[]): Move | undefined {
-    const reading = this.#listener.read(playerText, moves)
-    return reading.sense === 'move' ? reading.move : undefined
+  decide(playerText: string, moves: readonly Move[]): Decision {
+    return settle(this.#listener.read(playerText, moves))
   }
 
   /** What they say as they do it, straight from the data. */
@@ -119,4 +119,16 @@ export class Script {
   #quest(questId: string | undefined): QuestDoc | undefined {
     return this.#situation.log.quests().find((quest) => quest.id === questId)
   }
+}
+
+/**
+ * How the turn came out, in the character's terms rather than the player's. What
+ * they were plainly asked for they do, and doing it is the yes. Asked for
+ * something they cannot give, they say so, and that is the no. Everything else,
+ * a refusal the player made included, leaves them neither way: they are hearing
+ * the other person out, and nothing about that reads as an answer.
+ */
+function settle(reading: Reading): Decision {
+  if (reading.sense === 'move') return { move: reading.move }
+  return reading.sense === 'unclear' ? { answer: 'no' } : {}
 }

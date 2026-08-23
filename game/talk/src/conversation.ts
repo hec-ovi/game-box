@@ -6,7 +6,7 @@ import type { World } from '@gb/world'
 import { Brief } from './brief.ts'
 import { Credit } from './credit.ts'
 import { Decider } from './decide.ts'
-import type { Opening, TalkError, TalkEvent, Turn } from './events.ts'
+import type { Decision, Opening, TalkError, TalkEvent, Turn } from './events.ts'
 import { Greeting } from './greeting.ts'
 import { legalMoves, topicOf, type ActionName, type Move, type Situation } from './moves.ts'
 import { Performer } from './perform.ts'
@@ -126,7 +126,7 @@ export class Conversation {
     this.#history.push({ role: 'user', content: pickLabel(move) })
     this.#history.push({ role: 'assistant', content: line })
     yield { kind: 'said', text: line }
-    yield* this.#act(move)
+    yield* this.#act({ move })
   }
 
   /** Say something to them. Their reply arrives in pieces, their actions as they take them. */
@@ -183,20 +183,30 @@ export class Conversation {
     const scripted = this.#script.turn(playerText, moves)
     this.#history.push({ role: 'assistant', content: scripted.line })
     yield { kind: 'said', text: scripted.line }
-    yield* this.#act(scripted.move)
+    yield* this.#act(scripted)
   }
 
-  *#act(move: Move | undefined): Generator<TalkEvent> {
-    if (move) {
-      for (const event of this.#performer.run(move)) {
-        if (event.kind === 'did' && event.action === 'end_talk') this.#open = false
-        yield event
-      }
+  /**
+   * The one place both tracks come out, so a turn settles the same way whether a
+   * model decided it or the player's own words did. Carrying something out is
+   * itself a yes, whatever was said around it; a yes with nothing to carry out,
+   * and every no, is the reply as the turn reported it.
+   */
+  *#act(decision: Decision): Generator<TalkEvent> {
+    const done = decision.move ? this.#performer.run(decision.move) : []
+    const answer = done.some((event) => event.kind === 'did') ? 'yes' : decision.answer
+    if (answer) yield { kind: 'answered', answer }
+
+    for (const event of done) {
+      if (event.kind === 'did' && event.action === 'end_talk') this.#open = false
+      yield event
+    }
+    if (decision.move) {
       // Handing the job over is what opens "go and hear them out": credit it here,
       // while the player is still stood in front of the person who said it. A
       // move that put them to a subject carries it, and credits the steps that
       // were waiting on that subject and no others.
-      for (const change of this.#credit.earned(topicOf(move))) yield { kind: 'changed', change }
+      for (const change of this.#credit.earned(topicOf(decision.move))) yield { kind: 'changed', change }
     }
     if (!this.#open) yield { kind: 'over' }
   }
