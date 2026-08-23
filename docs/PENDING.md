@@ -911,6 +911,37 @@ getting a body into it, not the walking.
 Boxes: `app` and `quest` for the effect, `crowd` for a companion who was never a
 walker, `hud` for the name.
 
+### A quest finished but nothing happened, and places are misnamed (2026-08-23)
+
+Two from the same session.
+
+**1. The quest completed and the mechanics did not reflect it.** This is very
+likely the follow bug above, seen from the other end: `addCompanion` sets a flag,
+the quest sees the flag and credits the step, and no body ever walked. An escort
+completes while nobody escorted anything. It was predicted in an earlier
+handover ("escort quests credit while nobody walks with you") and he has now hit
+it.
+
+That makes it a class, not one bug: **a step must credit on the thing happening,
+not on the intent being recorded.** Worth auditing every step kind for the same
+shape, because the harness cannot catch it — it drives the same events, so a
+step credited off a flag looks identical to one credited off an act.
+
+**2. Places are wrongly named.** Not yet reproduced or measured. Candidates, and
+they need a screenshot to separate:
+
+- the sign on the building says one thing and the interior is another kind of
+  place
+- the name a person uses in conversation is not the name over the door
+- a name is generated for a plot and drawn on a different one
+
+The third would be an id mismatch and the most serious. Note that facades stopped
+going to the narrator today (a shut building's sign is composed locally from the
+theme's vocabulary, which took 5,558 model calls down to 444), so if the sign and
+the interior now disagree, that change is the first place to look.
+
+Boxes: `quest` and `app` for the crediting, `forge` and `kitbash` for the names.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
