@@ -9,6 +9,7 @@ import { GROUND_KINDS, groundMesh, mountainMesh } from './ground.ts'
 import { markingMeshes } from './marking-mesh.ts'
 import { planMarkings, type Marking } from './markings.ts'
 import { RoadNetwork } from './roads.ts'
+import { spawnAt, type Standing } from './spawn.ts'
 import { StreetSkin } from './street/skin.ts'
 
 /** What a city may be built differently. Left out, it comes out of the world itself. */
@@ -31,8 +32,8 @@ export interface CityBuild {
   readonly doorsteps: ReadonlyMap<string, THREE.Vector3>
   /** Builds one more plot into the city that is already standing, without rebuilding it. */
   add(plot: Plot): CityBuilding
-  /** Where the player starts: on the pavement, facing the first door in town. */
-  readonly spawn: { x: number; z: number; heading: number }
+  /** Where the player starts: on the pavement, facing the first door in town that opens. */
+  readonly spawn: Standing
   /** Every rectangle of paint on the streets, in metres. */
   readonly markings: readonly Marking[]
   /** Everything lying on the streets, in metres. */
@@ -136,29 +137,6 @@ function litterOf(
 function density(over: Partial<ClutterDensity> | undefined): ClutterDensity | undefined {
   if (!over) return undefined
   return { ...CLUTTER_DENSITY, ...over }
-}
-
-/** A step back from the first doorstep, looking at it. */
-function spawnAt(world: World, doorsteps: ReadonlyMap<string, THREE.Vector3>): { x: number; z: number; heading: number } {
-  const plot = world.plots().find((p) => p.interiorId) ?? world.plots()[0]
-  const doorstep = plot ? doorsteps.get(plot.id) : undefined
-  if (!plot || !doorstep) return { x: 0, z: 0, heading: 0 }
-
-  const away = {
-    north: { x: 0, z: -1 },
-    south: { x: 0, z: 1 },
-    west: { x: -1, z: 0 },
-    east: { x: 1, z: 0 },
-  }[plot.entrance.facing]
-
-  // far enough back to see the front of the building, not its render
-  const back = world.cellSize * 3
-  return {
-    x: doorstep.x + away.x * back,
-    z: doorstep.z + away.z * back,
-    // look back the way we stepped: three.js cameras look down -z at heading 0
-    heading: Math.atan2(away.x, away.z),
-  }
 }
 
 /** Ground floor is taller than the rest, the way a real street front is. */

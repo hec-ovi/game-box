@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import type { Dressing } from './dressing.ts'
 import { QuadMesh, type Corner } from './quads.ts'
 
-/** The surfaces the city floor is made of. Mountains are blocks, not ground, and get their own mesh. */
+/** The surfaces the city floor is made of. The verge is `@gb/land`'s, and gets no mesh here. */
 export const GROUND_KINDS: readonly CellKind[] = ['street', 'sidewalk', 'park', 'building', 'empty', 'water']
 
 /** The surfaces rain lands on and rubbish gathers on: the street and the pavement beside it. */
@@ -12,9 +12,11 @@ export const PAVED_KINDS: readonly CellKind[] = ['street', 'sidewalk']
 /** Pavement and parks stand a kerb above the roadway; roads, land and water are at zero. */
 const RAISED = new Set<CellKind>(['sidewalk', 'park'])
 
-/** How deep the ground is buried where the world ends, and where the mountains start. */
+/** How deep the ground is buried where the world ends. */
 const GROUND_BASE = -2
-const MOUNTAIN_HEIGHT = 26
+
+/** How tall the stand-in ring is, for a city standing on its own with no landscape around it. */
+const STANDIN_HEIGHT = 26
 
 interface Side {
   readonly x: number
@@ -28,10 +30,14 @@ const SIDES: readonly Side[] = [
   { x: 1, z: 0 },
 ]
 
-/** Top of the ground in a cell, in metres. Past the edge of the grid the ground has already ended. */
+/**
+ * Top of the ground in a cell, in metres. Past the edge of the grid the ground
+ * has already ended. A `mountain` cell is the verge, and `@gb/land` lays it
+ * flat at zero, so the pavement beside it is kerbed against zero like any other
+ * drop rather than being left open against a wall that is not there.
+ */
 export function groundTop(kind: CellKind | undefined): number {
   if (kind === undefined) return GROUND_BASE
-  if (kind === 'mountain') return GROUND_BASE + MOUNTAIN_HEIGHT
   return RAISED.has(kind) ? METRICS.street.curbHeight : 0
 }
 
@@ -56,7 +62,11 @@ export function surfaceGeometry(world: World, kind: CellKind): THREE.BufferGeome
   return new Surface(world, kind).geometry()
 }
 
-/** The ring that closes the valley, as one instanced block per mountain cell. */
+/**
+ * The stand-in ring that closes the view, as one instanced block per verge
+ * cell. `@gb/land` draws the real hills a kilometre out and covers the verge
+ * itself, so a game with a landscape hides this one.
+ */
 export function mountainMesh(world: World, dressing: Dressing): THREE.InstancedMesh | undefined {
   const cells: Array<{ x: number; y: number }> = []
   for (let y = 0; y < world.grid.height; y++) {
@@ -68,7 +78,7 @@ export function mountainMesh(world: World, dressing: Dressing): THREE.InstancedM
 
   const size = world.cellSize
   const mesh = new THREE.InstancedMesh(
-    new THREE.BoxGeometry(size, MOUNTAIN_HEIGHT, size),
+    new THREE.BoxGeometry(size, STANDIN_HEIGHT, size),
     dressing.ground('mountain'),
     cells.length,
   )
@@ -76,7 +86,7 @@ export function mountainMesh(world: World, dressing: Dressing): THREE.InstancedM
   const matrix = new THREE.Matrix4()
   cells.forEach((cell, index) => {
     const centre = cellCentre(cell.x, cell.y, size)
-    matrix.makeTranslation(centre.x, GROUND_BASE + MOUNTAIN_HEIGHT / 2, centre.z)
+    matrix.makeTranslation(centre.x, GROUND_BASE + STANDIN_HEIGHT / 2, centre.z)
     mesh.setMatrixAt(index, matrix)
   })
   mesh.instanceMatrix.needsUpdate = true

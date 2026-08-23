@@ -71,17 +71,22 @@ describe('what a city costs', () => {
 
   it('keeps the triangles under the budget they were measured at', async () => {
     const world = await bigTown()
-    const { triangles } = cost(buildCity(world, new Greybox()).root)
+    const root = buildCity(world, new Greybox()).root
+    const { triangles } = cost(root)
+    // the stand-in ring is a block per verge cell, so it is charged to the
+    // perimeter of the map and not to the buildings, and a game with @gb/land
+    // in it hides the ring altogether
+    const town = cost(root, (name) => name !== 'mountains')
 
-    // measured: 48,668 for 141 buildings, ground, kerbs, paint, the mountain
-    // ring, the wet street surface and 2,318 pieces of rubbish. It was 26,914
-    // before the street carried anything: the rubbish is 20,936 of the rise and
-    // it scales with paved area rather than with plots, which is why the budget
-    // moved rather than the rubbish being thinned to fit a per-plot number. A
-    // greybox building is a box and a door slab, so this is the floor a real
-    // kit is measured against, not a target
+    // measured: 56,926 for 141 buildings, ground, kerbs, paint, the stand-in
+    // ring, the wet street surface and its rubbish, of which 24,192 is the
+    // ring. It was 26,914 before the street carried anything: the rubbish is
+    // 20,936 of the rise and it scales with paved area rather than with plots,
+    // which is why the budget moved rather than the rubbish being thinned to
+    // fit a per-plot number. A greybox building is a box and a door slab, so
+    // this is the floor a real kit is measured against, not a target
     expect(triangles).toBeLessThan(60_000)
-    expect(triangles / world.plots().length).toBeLessThan(400)
+    expect(town.triangles / world.plots().length).toBeLessThan(400)
   })
 
   it('takes another building without rebuilding the city', () => {

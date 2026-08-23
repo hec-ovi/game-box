@@ -1,6 +1,6 @@
 # @gb/scene contract
 
-contractVersion: 0.7.0
+contractVersion: 0.8.0
 
 ## Purpose
 
@@ -21,7 +21,8 @@ Turns a city into something you can stand in: ground, marked streets, buildings 
 
 | Param | Schema | Postconditions |
 |---|---|---|
-| `buildCity` | `{ root, buildings, doorsteps, add, spawn, markings, clutter, wetness, night }` | every plot standing at its footprint and height, its doorstep in metres on the pavement in front of it, a spawn on the pavement facing the first door in town |
+| `buildCity` | `{ root, buildings, doorsteps, add, spawn, markings, clutter, wetness, night }` | every plot standing at its footprint and height, and its doorstep in metres on the pavement in front of it |
+| `spawn` | `Standing`: `x`, `z`, `heading` | a step off the first door in town that opens, standing on pavement and looking back at the door. `heading` is a three.js yaw in radians |
 | `buildings` | `ReadonlyMap<string, CityBuilding>` | one per plot, by plot id |
 | `CityBuilding` | `plotId`, `bounds`, `visible` | the box it occupies in city metres, and a switch that takes it out of the city or puts it back with no rebuild |
 | `add(plot)` | `CityBuilding` | one more plot built into the city that is already standing. Its ground is not repainted: the grid changed after the ground was laid, and the building covers it |
@@ -55,14 +56,15 @@ None. Nothing here validates: a world that got this far already passed `@gb/worl
 ## Invariants
 
 - One world unit is one metre, and everything is sized from `METRICS`: 2 m cells, 2.1 m doors, a 4 m ground floor, kerbs 15 cm above the road.
-- Pavement and parks stand `METRICS.street.curbHeight` above the roadway; roads, land, water and building footprints are at zero.
+- Pavement and parks stand `METRICS.street.curbHeight` above the roadway; roads, land, water and building footprints are at zero. So is a `mountain` cell: it is the verge `@gb/land` lays flat outside the town, so the pavement that meets it is kerbed against zero and you cannot see under the edge of the city.
 - The ground is solid. Every drop from one cell to the next is closed by a kerb face wound to be seen from the low side, the edge of the grid included, so there is nowhere to look under the city and no gap where one surface stops and the next starts. Tops look up.
-- Ground is one mesh per surface and mountains are one instanced block per cell, and runs of cells merge into as few quads as the grid allows, so a city of thousands of cells is a handful of draws and a road is a few triangles.
+- Ground is one mesh per surface, and runs of cells merge into as few quads as the grid allows, so a city of thousands of cells is a handful of draws and a road is a few triangles. The verge gets no ground here: `@gb/land` covers it. What stands on it is `mountains`, one instanced block per verge cell, a stand-in ring so a city built with no landscape around it still closes its view; a game with `@gb/land` in it hides that object.
 - The buildings are drawn out of one `THREE.BatchedMesh` per material, not one object each, so the city costs a draw per material however many buildings it has. Every building keeps its own transform, its own bounds and its own visibility inside the batch, so three still culls them one at a time and submits only what the frustum reaches, in the shadow pass as well as the frame. That is the whole reason it is a batch and not a merge: a merge costs the same one draw and hands the entire town to the rasteriser every time.
 - A batch holds indexed, single-material meshes. Anything a dressing returns that a batch cannot draw the same way (an instanced mesh, a sprite, a light, a mesh cut into material groups) makes that whole building stand on its own in the city rather than being half taken. Empties and other markers hung on the object are not carried into the city: whatever a dressing wants the city to know goes through the `Dressing` seam, not through an object it hangs on a building.
 - Two geometries share a batch only when they agree attribute for attribute, so a pane carrying the room behind it never lands in the same buffer as a blank wall on the same material.
 - Batching does not depend on iteration order for what gets drawn: buildings go in in the order the world lists its plots, and a batch is named after its material, so the same city batches the same way every run.
 - Ground UVs are in metres: on a top face `u` and `v` are where the corner is on the ground, up a kerb `u` runs along the face and `v` climbs it. A texture with `repeat` 1 tiles every metre, so a road surface lands at real-world size without knowing the cell size.
+- Most of a city is shut, so the spawn goes to the first plot with an interior rather than the first plot: standing at a door nobody can go through means opening your eyes on a blank wall with nothing to press. The step off the doorstep is 2 m, inside arm's reach of the door, and it is taken onto pavement, so a one cell pavement is stepped along rather than backed off into the road. A city with no pavement at all still gets the plain step back.
 - Two headings meet here and they are not the same number. The world stores compass degrees, 0 north and 90 east, running clockwise seen from above; a three.js turn about +Y runs the other way, so furniture and anchors are placed at `-rot` radians. `spawn.heading` is already a three.js yaw in radians, the way the app turns its camera. Getting the sign wrong leaves north and south right and swaps east and west, which is why it is tested at all four points of the compass.
 - A dressing decides what things look like and nothing else. Where they go, how big they are and which way they face are decided here, so a building kit can replace the greybox without touching the builder.
 - Every object a dressing returns has its origin at the centre of its base, so placing it on the floor cannot sink it.

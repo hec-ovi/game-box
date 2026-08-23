@@ -19,12 +19,15 @@ const SURFACE_HEIGHT: Partial<Record<CellKind, number>> = {
   water: 0,
   sidewalk: KERB,
   park: KERB,
+  // the verge @gb/land lays flat outside the city, which the pavement has to be kerbed against
+  mountain: 0,
 }
 
 /**
  * A hand-laid street, so every case the ground has to close is on it: roadway
  * with pavement beside it, a park, a building footprint the pavement runs into,
- * and pavement that runs off the edge of the grid on three sides.
+ * the verge outside town along one pavement, and pavement that runs off the
+ * edge of the grid on three sides.
  */
 function street(size = 12): World {
   const world = World.create({ name: 'Kerb Street', theme: 'test', seed: 'kerb', width: size, height: size })
@@ -33,6 +36,7 @@ function street(size = 12): World {
   world.paint({ x: 0, y: size - 1, w: size, h: 1 }, 'sidewalk')
   world.paint({ x: 1, y: 4, w: 3, h: 3 }, 'park')
   world.paint({ x: 5, y: 3, w: 5, h: 1 }, 'sidewalk')
+  world.paint({ x: 0, y: size - 2, w: size, h: 1 }, 'mountain')
 
   const built = world.addPlot({
     kind: 'house',
@@ -113,7 +117,13 @@ describe('the ground', () => {
     }
     expect(open).toEqual([])
     // and the street this was asked of really does put those cases next to each other
-    expect([...drops].sort()).toEqual(['park -> empty', 'sidewalk -> building', 'sidewalk -> empty', 'sidewalk -> street'])
+    expect([...drops].sort()).toEqual([
+      'park -> empty',
+      'sidewalk -> building',
+      'sidewalk -> empty',
+      'sidewalk -> mountain',
+      'sidewalk -> street',
+    ])
   })
 
   it('closes the ground where the grid runs out, so the world has no open edge', () => {

@@ -1,4 +1,4 @@
-import { METRICS } from '@gb/world'
+import { METRICS, World } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { buildCity, buildInterior, Greybox, plotOf, storeyHeight } from '../src/index.ts'
@@ -134,24 +134,52 @@ describe('buildInterior', () => {
 })
 
 describe('spawn', () => {
-  it('starts the player on the pavement looking at the first door in town', async () => {
+  it('starts the player on the pavement at the first door that opens, looking at it', async () => {
     const world = await town()
     const city = buildCity(world, new Greybox())
-    const plot = world.plots().find((p) => p.interiorId)!
+    // most of a city is shut: the first door on the street is usually not one you can go through
+    const shut = world.plots().filter((plot) => !plot.interiorId).length
+    expect(shut).toBeGreaterThan(0)
+
+    const plot = world.plots().find((one) => one.interiorId)!
     const doorstep = city.doorsteps.get(plot.id)!
-
     const spawn = city.spawn
+
+    // standing on ground a player may stand on, not in the road and not in a building
+    const at = world.grid.at(Math.floor(spawn.x / world.cellSize), Math.floor(spawn.z / world.cellSize))
+    expect(at === 'sidewalk' || at === 'park').toBe(true)
+
+    // and within reach of that door, looking at it, so the way in is offered from the first frame
     const distance = Math.hypot(spawn.x - doorstep.x, spawn.z - doorstep.z)
-    // back far enough to see the front of the building, not its render
-    expect(distance).toBeGreaterThan(world.cellSize * 2)
-
-    // standing somewhere you can stand, not inside the building
-    expect(world.grid.at(Math.floor(spawn.x / world.cellSize), Math.floor(spawn.z / world.cellSize))).not.toBe('building')
-
-    // and looking at the door
+    expect(distance).toBeGreaterThan(0)
+    expect(distance).toBeLessThanOrEqual(world.cellSize)
     const look = { x: -Math.sin(spawn.heading), z: -Math.cos(spawn.heading) }
     const toDoor = { x: (doorstep.x - spawn.x) / distance, z: (doorstep.z - spawn.z) / distance }
     expect(look.x * toDoor.x + look.z * toDoor.z).toBeCloseTo(1, 5)
+  })
+
+  it('steps along a one cell pavement rather than back off it into the road', () => {
+    const world = World.create({ name: 'Narrow', theme: 'test', seed: 'narrow', width: 12, height: 12 })
+    world.paint({ x: 0, y: 0, w: 12, h: 3 }, 'street')
+    world.paint({ x: 0, y: 3, w: 12, h: 1 }, 'sidewalk')
+    const plot = world.addPlot({
+      kind: 'shop',
+      name: 'Shop',
+      rect: { x: 4, y: 4, w: 3, h: 3 },
+      entrance: { cell: { x: 5, y: 3 }, facing: 'north' },
+      storeys: 1,
+      style: 'plain',
+    })
+    if (!plot.ok) throw new Error(plot.error.code)
+
+    const city = buildCity(world, new Greybox())
+    const doorstep = city.doorsteps.get(plot.value.id)!
+    const spawn = city.spawn
+
+    // straight back off this doorstep is the roadway, so the step is taken along the pavement
+    expect(world.grid.at(Math.floor(doorstep.x / world.cellSize), 2)).toBe('street')
+    expect(world.grid.at(Math.floor(spawn.x / world.cellSize), Math.floor(spawn.z / world.cellSize))).toBe('sidewalk')
+    expect(spawn.z).toBeCloseTo(doorstep.z, 5)
   })
 })
 

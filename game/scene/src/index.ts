@@ -1,5 +1,6 @@
 /** @gb/scene: turning a world into something you can stand in. See CONTRACT.md. */
 export { buildCity, storeyHeight, type CityBuild, type CityOptions } from './city.ts'
+export { type Standing } from './spawn.ts'
 export { CityBuilding } from './batch/building.ts'
 export { plotOf } from './batch/batcher.ts'
 export { buildInterior, type InteriorBuild } from './interior.ts'
