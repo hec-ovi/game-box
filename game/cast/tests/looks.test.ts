@@ -78,16 +78,16 @@ describe('how much a street varies', () => {
       const cuts = street(80, base).map((one) => one.hair)
       const styles = new Set(cuts)
       const bald = cuts.filter((cut) => cut === 'bald').length
-      expect(styles.size, `${base}: only ${styles.size} hair choices on a street of 80`).toBeGreaterThanOrEqual(5)
+      expect(styles.size, `${base}: only ${styles.size} hair choices on a street of 80`).toBeGreaterThanOrEqual(6)
       expect(bald, `${base}: nobody is bald, so bald is not a choice`).toBeGreaterThan(0)
-      expect(bald, `${base}: ${bald} of 80 are bald, which is everybody`).toBeLessThan(40)
+      expect(bald, `${base}: ${bald} of 80 are bald, which is a barracks`).toBeLessThan(25)
     }
   })
 
   it('spreads the hair colours across the palette', () => {
     for (const base of BODY_KINDS) {
       const colours = new Set(street(80, base).map((one) => one.colour))
-      expect(colours.size, `${base}: a street of 80 has only ${colours.size} hair colours`).toBeGreaterThanOrEqual(8)
+      expect(colours.size, `${base}: a street of 80 has only ${colours.size} hair colours`).toBeGreaterThanOrEqual(12)
     }
   })
 
@@ -100,7 +100,7 @@ describe('how much a street varies', () => {
     const few = worn(100)
     const many = worn(500)
     expect(many, `the palette grew with the crowd: ${few} materials for 200 people, ${many} for 1000`).toBe(few)
-    expect(many, `${many} hair materials is more than the palette can account for`).toBeLessThan(80)
+    expect(many, `${many} hair materials is more than the palette can account for`).toBeLessThan(48)
   })
 
   it('rarely puts two people with the same body, clothes, hair and colour on one street', () => {

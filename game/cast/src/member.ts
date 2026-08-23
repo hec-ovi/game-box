@@ -1,5 +1,6 @@
 import type { Npc } from '@gb/world'
 import * as THREE from 'three'
+import { GESTURES } from './clips.ts'
 import { upperBodyOf } from './gesture.ts'
 import { hash01 } from './hash.ts'
 import { HeadLook } from './headlook.ts'
@@ -13,7 +14,7 @@ export interface CastMember {
   /** Cross-fade the whole body to a clip. Unknown names are ignored, never thrown. */
   play(clip: string, fadeSeconds?: number): void
   readonly playing: string | undefined
-  /** Layer an upper-body clip over whatever is playing. Unknown names are ignored. */
+  /** Layer one of the `GESTURES` over whatever is playing. Any other name is ignored. */
   gesture(clip: string, fadeSeconds?: number): void
   stopGesture(fadeSeconds?: number): void
   readonly gesturing: string | undefined
@@ -36,9 +37,15 @@ export class Person implements CastMember {
   #overlay: THREE.AnimationAction | undefined
   #gesturing: string | undefined
 
+  /**
+   * `object` is what the game moves and turns; `body` is the art inside it,
+   * held at the turn that makes the character face the way the game expects.
+   * Everything that reads the rig reads the body, so the turn cancels out.
+   */
   constructor(
     npc: Npc,
     object: THREE.Object3D,
+    body: THREE.Object3D,
     outfit: string,
     clips: ReadonlyMap<string, THREE.AnimationClip>,
     additive: Map<string, THREE.AnimationClip>,
@@ -48,8 +55,8 @@ export class Person implements CastMember {
     this.outfit = outfit
     this.#clips = clips
     this.#additive = additive
-    this.#mixer = new THREE.AnimationMixer(object)
-    this.#look = new HeadLook(object)
+    this.#mixer = new THREE.AnimationMixer(body)
+    this.#look = new HeadLook(body)
   }
 
   get playing(): string | undefined {
@@ -77,7 +84,7 @@ export class Person implements CastMember {
   }
 
   gesture(name: string, fadeSeconds = 0.3): void {
-    if (name === this.#gesturing) return
+    if (name === this.#gesturing || !GESTURES.includes(name)) return
     const clip = this.#masked(name)
     if (!clip) return
     this.stopGesture(fadeSeconds)

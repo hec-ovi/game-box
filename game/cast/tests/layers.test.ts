@@ -23,7 +23,8 @@ function facing(object: THREE.Object3D, bone: THREE.Bone, rest: THREE.Vector3): 
 /** The direction the face points in the bone's own frame, taken before anything animates. */
 function restForward(object: THREE.Object3D, bone: THREE.Bone): THREE.Vector3 {
   object.updateMatrixWorld(true)
-  return new THREE.Vector3(0, 0, 1).applyQuaternion(bone.getWorldQuaternion(new THREE.Quaternion()).invert())
+  // a spawned body faces -Z at rotation.y = 0
+  return new THREE.Vector3(0, 0, -1).applyQuaternion(bone.getWorldQuaternion(new THREE.Quaternion()).invert())
 }
 
 function run(seconds: number): void {

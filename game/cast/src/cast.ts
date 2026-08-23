@@ -5,8 +5,18 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js'
 import { CLIP_FOR_ANCHOR, CLIPS } from './clips.ts'
 import { CastError } from './error.ts'
+import { Hairdresser } from './hairdresser.ts'
+import { chooseLook } from './look.ts'
 import { Person, type CastMember } from './member.ts'
 import { chooseCharacter, parseWardrobe, type Wardrobe } from './wardrobe.ts'
+
+/**
+ * A body at `rotation.y = 0` faces -Z, the way a three.js camera looks at
+ * heading 0. The Quaternius art faces the other way in its own files, so a
+ * spawned person is the art held at half a turn inside the object the game
+ * moves; the game turns the object and the person faces where they are going.
+ */
+const HALF_TURN = Math.PI
 
 export interface CastSource {
   /** The shared clip library, `anims.glb`. */
@@ -32,6 +42,7 @@ export class Cast {
   #characters = new Map<string, THREE.Object3D>()
   #wardrobe: Wardrobe = { characters: [] }
   #people: Person[] = []
+  #hair = new Hairdresser()
 
   private constructor() {}
 
@@ -43,6 +54,8 @@ export class Cast {
 
     const anims = await parse(loader, source.anims, 'the clip library')
     for (const clip of anims.animations) cast.#clips.set(clip.name, clip)
+    // a library with nothing in it would leave everybody in the rest pose
+    if (!cast.#clips.size) throw new CastError('unreadable-asset', 'the clip library', 'no clips in it')
 
     cast.#wardrobe = parseWardrobe(source.wardrobe)
     for (const entry of cast.#wardrobe.characters) {
@@ -67,26 +80,39 @@ export class Cast {
     return this.#clips.has(clip)
   }
 
-  /** A person, dressed for their role, standing at the origin facing north, already doing something. */
+  /** A person, dressed and barbered for their role, at the origin facing -Z, already doing something. */
   spawn(npc: Npc, doing: string = CLIPS.idle): CastMember {
     const entry = chooseCharacter(this.#wardrobe, npc, this.theme)
     const source = this.#characters.get(entry.id)
     if (!source) throw new CastError('missing-character', entry.id, 'nothing loaded under that name')
 
-    const object = cloneSkinned(source)
+    const body = cloneSkinned(source)
+    body.rotation.y = HALF_TURN
+    this.#hair.dress(body, entry, chooseLook(entry, npc.id))
+
+    const object = new THREE.Group()
     object.name = npc.id
     object.userData.npcId = npc.id
     object.userData.outfit = entry.id
+    object.add(body)
 
-    const person = new Person(npc, object, entry.id, this.#clips, this.#additive)
+    const person = new Person(npc, object, body, entry.id, this.#clips, this.#additive)
     this.#people.push(person)
-    person.play(doing, 0)
+    // never the rest pose: a clip the library has not got would leave them T-posing
+    person.play(this.#standing(doing), 0)
     return person
+  }
+
+  /** What somebody asked for, or the idle, or whatever the library does have. */
+  #standing(doing: string): string {
+    if (this.#clips.has(doing)) return doing
+    if (this.#clips.has(CLIPS.idle)) return CLIPS.idle
+    return this.#clips.keys().next().value!
   }
 
   /** What somebody stationed on this kind of anchor is doing. */
   static doingAt(anchorKind: AnchorKind): string {
-    return CLIP_FOR_ANCHOR[anchorKind]
+    return CLIP_FOR_ANCHOR[anchorKind] ?? CLIPS.idle
   }
 
   update(seconds: number): void {

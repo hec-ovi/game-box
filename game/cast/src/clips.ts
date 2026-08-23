@@ -31,6 +31,15 @@ export const CLIPS = {
   drive: 'Driving_Loop',
 } as const
 
+/**
+ * The clips that may be layered over another one. A gesture is added to the
+ * pose the base clip holds, so only a clip that stays near its own starting
+ * pose can be one: a whole-body action such as a reach or a pick-up adds its
+ * full travel on top of whatever the arms are already doing, which folds an
+ * elbow through the head. Those are played on the whole body instead.
+ */
+export const GESTURES: readonly string[] = [CLIPS.talk, CLIPS.talkSeated]
+
 /** Every clip name the game will ever ask for. */
 export function clipsUsed(): string[] {
   return [...new Set([...Object.values(CLIP_FOR_ANCHOR), ...Object.values(CLIPS)])].sort()

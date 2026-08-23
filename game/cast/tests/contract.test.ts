@@ -3,39 +3,9 @@ import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { Cast, CastDressing, CastError, CLIP_FOR_ANCHOR, clipsUsed } from '../src/index.ts'
 import { animsBytes, loadCast, person, wardrobe } from './pack.ts'
+import { posedBounds } from './posing.ts'
 
 const cast = await loadCast()
-
-/** Where a skinned mesh's vertices actually land once the pose is applied. */
-function posedBounds(object: THREE.Object3D): THREE.Box3 {
-  object.updateMatrixWorld(true)
-  const box = new THREE.Box3()
-  const rest = new THREE.Vector3()
-  const point = new THREE.Vector3()
-  const posed = new THREE.Vector3()
-  const bone = new THREE.Matrix4()
-
-  object.traverse((child) => {
-    const mesh = child as THREE.SkinnedMesh
-    if (!mesh.isSkinnedMesh) return
-    const position = mesh.geometry.getAttribute('position')
-    const index = mesh.geometry.getAttribute('skinIndex')
-    const weight = mesh.geometry.getAttribute('skinWeight')
-    for (let vertex = 0; vertex < position.count; vertex++) {
-      rest.fromBufferAttribute(position, vertex).applyMatrix4(mesh.bindMatrix)
-      posed.set(0, 0, 0)
-      for (let slot = 0; slot < 4; slot++) {
-        const share = weight.getComponent(vertex, slot)
-        if (!share) continue
-        const joint = index.getComponent(vertex, slot)
-        bone.multiplyMatrices(mesh.skeleton.bones[joint]!.matrixWorld, mesh.skeleton.boneInverses[joint]!)
-        posed.add(point.copy(rest).applyMatrix4(bone).multiplyScalar(share))
-      }
-      box.expandByPoint(posed.applyMatrix4(mesh.bindMatrixInverse))
-    }
-  })
-  return box
-}
 
 describe('Cast', () => {
   it('ships every clip the game asks for by name', () => {

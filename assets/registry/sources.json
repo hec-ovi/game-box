@@ -61,11 +61,11 @@
       "name": "Modular Character Outfits",
       "author": "Quaternius",
       "page": "https://quaternius.itch.io/modular-character-outfits-fantasy",
-      "file": null,
+      "file": "Modular Character Outfits - Fantasy[Standard].zip",
       "license": "CC0-1.0",
       "attribution": null,
       "redistributable": true,
-      "take": "Clothing parts on the same rig as the base bodies, so NPCs are dressed."
+      "take": "Clothing parts on the same rig as the base bodies. The free tier is four fantasy outfits; tools/build-wardrobe.mjs recuts them for a night city: the belts, bracers and pauldrons are dropped, the knee boots cut back to the shoe, and both texture sheets repainted per outfit."
     },
     {
       "id": "quaternius-cars",

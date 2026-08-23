@@ -12,6 +12,12 @@ export interface WardrobeEntry {
   readonly roles: readonly string[]
   /** Words that, in a world's theme, make this outfit a better fit. */
   readonly themes: readonly string[]
+  /** The hairstyle nodes this character file carries; one is shown per NPC. */
+  readonly styles: readonly string[]
+  /** The eyebrow nodes; one is shown per NPC. */
+  readonly brows: readonly string[]
+  /** The beard node, if the file carries one. */
+  readonly beard?: string
 }
 
 /** Everything the pack can dress somebody in. Built by `tools/build-wardrobe.mjs`. */
@@ -29,7 +35,10 @@ export function parseWardrobe(value: unknown): Wardrobe {
     const wrong = problemWith(entry)
     if (wrong) throw new CastError('bad-wardrobe', `wardrobe.json: ${String(entry?.id)}`, wrong)
   }
-  return { characters }
+  // a character built before hairstyles existed simply has none
+  return {
+    characters: characters.map((entry) => ({ ...entry, styles: entry.styles ?? [], brows: entry.brows ?? [] })),
+  }
 }
 
 function problemWith(entry: WardrobeEntry): string | undefined {
@@ -37,6 +46,8 @@ function problemWith(entry: WardrobeEntry): string | undefined {
   if (!(BODY_KINDS as readonly string[]).includes(entry.body)) return `${entry.body} is not a body kind`
   if (typeof entry.file !== 'string' || !entry.file) return 'no file'
   if (!Array.isArray(entry.roles) || !Array.isArray(entry.themes)) return 'roles and themes must be lists'
+  if (entry.styles !== undefined && !Array.isArray(entry.styles)) return 'styles must be a list'
+  if (entry.brows !== undefined && !Array.isArray(entry.brows)) return 'brows must be a list'
   return undefined
 }
 

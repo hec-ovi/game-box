@@ -86,13 +86,50 @@ export function posedBounds(object: THREE.Object3D): THREE.Box3 {
   return box
 }
 
-/** The ball the head fills, in world space. */
-export function headSphere(head: ReadonlyArray<{ skin: Skin; vertex: number }>): THREE.Sphere {
-  const centre = new THREE.Vector3()
+/** The middle of a set of posed vertices, in world space. */
+export function centroid(parts: ReadonlyArray<{ skin: Skin; vertex: number }>): THREE.Vector3 {
+  const sum = new THREE.Vector3()
   const point = new THREE.Vector3()
-  for (const one of head) centre.add(posed(one.skin, one.vertex, point))
-  centre.divideScalar(head.length)
-  let radius = 0
-  for (const one of head) radius = Math.max(radius, posed(one.skin, one.vertex, point).distanceTo(centre))
-  return new THREE.Sphere(centre, radius)
+  for (const one of parts) sum.add(posed(one.skin, one.vertex, point))
+  return sum.divideScalar(parts.length)
+}
+
+/** The space a head takes up, and whether something else is in it. */
+export interface Skull {
+  /** Half the head's width, height and depth, in its own axes. Metres. */
+  readonly half: THREE.Vector3
+  inside(point: THREE.Vector3): boolean
+}
+
+/**
+ * The head as an ellipsoid in the head bone's own axes, which is close to the
+ * shape of a head and is what "inside the head" has to mean.
+ *
+ * A ball around the same vertices does not work: it takes its radius from the
+ * crown, so it reaches three or four centimetres past the cheeks, and folded
+ * arms resting on the chest land inside it while sitting nowhere near the face.
+ */
+export function skullOf(head: ReadonlyArray<{ skin: Skin; vertex: number }>, bone: THREE.Bone): Skull {
+  const intoHead = new THREE.Matrix4().copy(bone.matrixWorld).invert()
+  const point = new THREE.Vector3()
+  const box = new THREE.Box3()
+  for (const one of head) box.expandByPoint(posed(one.skin, one.vertex, point).applyMatrix4(intoHead))
+
+  const half = box.getSize(new THREE.Vector3()).multiplyScalar(0.5)
+  const middle = box.getCenter(new THREE.Vector3())
+  const local = new THREE.Vector3()
+  return {
+    half,
+    inside(world: THREE.Vector3): boolean {
+      local.copy(world).applyMatrix4(intoHead).sub(middle).divide(half)
+      return local.lengthSq() < 1
+    },
+  }
+}
+
+/** The head bone of a posed character. */
+export function headBone(skins: readonly Skin[]): THREE.Bone {
+  const bone = skins[0]?.mesh.skeleton.bones.find((one) => one.name === 'Head')
+  if (!bone) throw new Error('this character has no Head bone')
+  return bone
 }

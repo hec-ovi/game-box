@@ -3,38 +3,333 @@
     "male": "quaternius-ubc/extracted/Universal Base Characters[Standard]/Base Characters/Godot - UE/Superhero_Male_FullBody.gltf",
     "female": "quaternius-ubc/extracted/Universal Base Characters[Standard]/Base Characters/Godot - UE/Superhero_Female_FullBody.gltf"
   },
+  "hair": {
+    "dir": "quaternius-ubc/extracted/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)",
+    "male": {
+      "styles": ["Hair_Buzzed", "Hair_SimpleParted", "Hair_Long", "Hair_Buns", "Hair_BuzzedFemale"],
+      "brows": "Eyebrows_Female",
+      "beard": "Hair_Beard"
+    },
+    "female": {
+      "styles": ["Hair_BuzzedFemale", "Hair_Buns", "Hair_Long", "Hair_SimpleParted", "Hair_Buzzed"],
+      "brows": "Eyebrows_Regular"
+    }
+  },
+  "partsDir": "quaternius-outfits/extracted/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Modular Parts",
+  "fabrics": {
+    "ink": "#15171c",
+    "graphite": "#2a2e36",
+    "slate": "#3c434e",
+    "steel": "#535b67",
+    "cyan": "#1ed0e6",
+    "teal": "#12a597",
+    "violet": "#7b45d4",
+    "magenta": "#d62d97",
+    "crimson": "#d63447",
+    "amber": "#e8971c",
+    "lime": "#8fd226",
+    "boot": "#191b20"
+  },
   "outfits": [
     {
-      "id": "male-peasant",
+      "id": "male-office",
       "body": "male",
-      "dir": "quaternius-outfits/extracted/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Modular Parts",
-      "parts": ["Male_Peasant_Body", "Male_Peasant_Arms", "Male_Peasant_Legs", "Male_Peasant_Feet"],
-      "roles": ["bartender", "patron", "clerk", "resident", "cook", "vendor", "receptionist"],
-      "themes": ["village", "harbour", "market", "medieval", "fantasy", "rural"]
+      "parts": [
+        {
+          "name": "Male_Peasant_Body",
+          "paint": { "linen": "graphite", "leather": { "colour": "cyan", "glow": 0.62 } }
+        },
+        {
+          "name": "Male_Ranger_Arms",
+          "paint": { "cloth": "graphite", "leather": "ink", "stud": { "colour": "cyan", "glow": 0.62 } }
+        },
+        {
+          "name": "Male_Peasant_Legs",
+          "hem": 0.17,
+          "paint": { "linen": { "colour": "ink", "flatten": 0.55 }, "leather": { "colour": "ink", "flatten": 0.55 } }
+        },
+        { "name": "Male_Peasant_Feet", "cut": 0.21, "paint": { "linen": "boot", "leather": "boot" } }
+      ],
+      "roles": ["clerk", "receptionist", "resident"],
+      "themes": ["office", "downtown", "business", "finance", "tower"]
     },
     {
-      "id": "female-peasant",
-      "body": "female",
-      "dir": "quaternius-outfits/extracted/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Modular Parts",
-      "parts": ["Female_Peasant_Body", "Female_Peasant_Arms", "Female_Peasant_Legs", "Female_Peasant_Feet"],
-      "roles": ["bartender", "patron", "clerk", "resident", "cook", "vendor", "receptionist"],
-      "themes": ["village", "harbour", "market", "medieval", "fantasy", "rural"]
-    },
-    {
-      "id": "male-ranger",
+      "id": "male-service",
       "body": "male",
-      "dir": "quaternius-outfits/extracted/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Modular Parts",
-      "parts": ["Male_Ranger_Body", "Male_Ranger_Arms", "Male_Ranger_Legs", "Male_Ranger_Feet_Boots"],
-      "roles": ["guard", "courier", "wanderer", "mechanic", "worker"],
-      "themes": ["forest", "frontier", "wilderness", "mountain", "road", "expedition"]
+      "parts": [
+        { "name": "Male_Peasant_Body", "paint": { "linen": "ink", "leather": { "colour": "violet", "glow": 0.62 } } },
+        {
+          "name": "Male_Ranger_Arms",
+          "paint": { "cloth": "ink", "leather": "ink", "stud": { "colour": "violet", "glow": 0.62 } }
+        },
+        {
+          "name": "Male_Ranger_Legs",
+          "hem": 0.17,
+          "paint": {
+            "cloth": { "colour": "ink", "flatten": 0.55 },
+            "leather": { "colour": "ink", "flatten": 0.55 },
+            "stud": { "colour": "ink", "flatten": 0.55 }
+          }
+        },
+        { "name": "Male_Peasant_Feet", "cut": 0.21, "paint": { "linen": "boot", "leather": "boot" } }
+      ],
+      "roles": ["bartender", "cook", "patron"],
+      "themes": ["bar", "cafe", "restaurant", "hotel", "nightlife"]
     },
     {
-      "id": "female-ranger",
+      "id": "male-casual",
+      "body": "male",
+      "parts": [
+        { "name": "Male_Peasant_Body", "paint": { "linen": "slate", "leather": { "colour": "lime", "glow": 0.62 } } },
+        { "name": "Male_Peasant_Arms", "paint": { "linen": "slate", "leather": { "colour": "lime", "glow": 0.62 } } },
+        {
+          "name": "Male_Peasant_Legs",
+          "hem": 0.19,
+          "paint": { "linen": { "colour": "graphite", "flatten": 0.55 }, "leather": { "colour": "graphite", "flatten": 0.55 } }
+        },
+        { "name": "Male_Peasant_Feet", "cut": 0.23, "paint": { "linen": "boot", "leather": "boot" } }
+      ],
+      "roles": ["patron", "resident", "wanderer"],
+      "themes": ["city", "neighbourhood", "residential", "suburb", "quiet"]
+    },
+    {
+      "id": "male-works",
+      "body": "male",
+      "parts": [
+        {
+          "name": "Male_Ranger_Body",
+          "drop": ["Male_Ranger_Body_Belt_1", "Male_Ranger_Body_Belt_2"],
+          "paint": { "cloth": "graphite", "leather": "ink", "stud": { "colour": "amber", "glow": 0.62 } }
+        },
+        {
+          "name": "Male_Ranger_Arms",
+          "paint": { "cloth": "graphite", "leather": "ink", "stud": { "colour": "amber", "glow": 0.62 } }
+        },
+        {
+          "name": "Male_Ranger_Legs",
+          "hem": 0.23,
+          "paint": {
+            "cloth": { "colour": "slate", "flatten": 0.55 },
+            "leather": { "colour": "slate", "flatten": 0.55 },
+            "stud": { "colour": "slate", "flatten": 0.55 }
+          }
+        },
+        {
+          "name": "Male_Ranger_Feet_Boots",
+          "cut": 0.27,
+          "paint": { "cloth": "boot", "leather": "boot", "stud": "boot" }
+        }
+      ],
+      "roles": ["worker", "mechanic", "resident"],
+      "themes": ["industrial", "docks", "works", "depot", "yard", "construction"]
+    },
+    {
+      "id": "male-courier",
+      "body": "male",
+      "parts": [
+        {
+          "name": "Male_Ranger_Body",
+          "drop": ["Male_Ranger_Body_Belt_1", "Male_Ranger_Body_Belt_2"],
+          "paint": { "cloth": "ink", "leather": "ink", "stud": { "colour": "magenta", "glow": 0.62 } }
+        },
+        {
+          "name": "Male_Ranger_Arms",
+          "paint": { "cloth": "ink", "leather": "ink", "stud": { "colour": "magenta", "glow": 0.62 } }
+        },
+        {
+          "name": "Male_Peasant_Legs",
+          "hem": 0.2,
+          "paint": { "linen": { "colour": "graphite", "flatten": 0.55 }, "leather": { "colour": "graphite", "flatten": 0.55 } }
+        },
+        { "name": "Male_Peasant_Feet", "cut": 0.24, "paint": { "linen": "boot", "leather": "boot" } }
+      ],
+      "roles": ["courier", "wanderer", "patron"],
+      "themes": ["downtown", "traffic", "delivery", "market", "rush"]
+    },
+    {
+      "id": "male-guard",
+      "body": "male",
+      "parts": [
+        {
+          "name": "Male_Ranger_Body",
+          "drop": ["Male_Ranger_Body_Belt_1", "Male_Ranger_Body_Belt_2"],
+          "paint": { "cloth": "ink", "leather": "ink", "stud": { "colour": "crimson", "glow": 0.62 } }
+        },
+        {
+          "name": "Male_Ranger_Arms",
+          "paint": { "cloth": "ink", "leather": "ink", "stud": { "colour": "crimson", "glow": 0.62 } }
+        },
+        {
+          "name": "Male_Ranger_Legs",
+          "hem": 0.25,
+          "paint": {
+            "cloth": { "colour": "ink", "flatten": 0.55 },
+            "leather": { "colour": "ink", "flatten": 0.55 },
+            "stud": { "colour": "ink", "flatten": 0.55 }
+          }
+        },
+        {
+          "name": "Male_Ranger_Feet_Boots",
+          "cut": 0.29,
+          "paint": { "cloth": "boot", "leather": "boot", "stud": "boot" }
+        }
+      ],
+      "roles": ["guard", "vendor", "resident"],
+      "themes": ["security", "precinct", "station", "port", "night"]
+    },
+    {
+      "id": "female-office",
       "body": "female",
-      "dir": "quaternius-outfits/extracted/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Modular Parts",
-      "parts": ["Female_Ranger_Body", "Female_Ranger_Arms", "Female_Ranger_Legs", "Female_Ranger_Feet"],
-      "roles": ["guard", "courier", "wanderer", "mechanic", "worker"],
-      "themes": ["forest", "frontier", "wilderness", "mountain", "road", "expedition"]
+      "parts": [
+        {
+          "name": "Female_Peasant_Body",
+          "paint": { "linen": { "colour": "violet", "glow": 0.62 }, "leather": "graphite" }
+        },
+        {
+          "name": "Female_Ranger_Arms",
+          "drop": ["Female_Ranger_Arms_Bracer"],
+          "paint": { "cloth": "graphite", "leather": "ink", "stud": { "colour": "violet", "glow": 0.62 } }
+        },
+        {
+          "name": "Female_Peasant_Legs",
+          "hem": 0.17,
+          "paint": { "linen": { "colour": "ink", "flatten": 0.55 }, "leather": { "colour": "ink", "flatten": 0.55 } }
+        },
+        { "name": "Female_Peasant_Feet", "cut": 0.21, "paint": { "linen": "boot", "leather": "boot" } }
+      ],
+      "roles": ["clerk", "receptionist", "resident"],
+      "themes": ["office", "downtown", "business", "finance", "tower"]
+    },
+    {
+      "id": "female-service",
+      "body": "female",
+      "parts": [
+        {
+          "name": "Female_Peasant_Body",
+          "paint": { "linen": { "colour": "magenta", "glow": 0.62 }, "leather": "ink" }
+        },
+        {
+          "name": "Female_Ranger_Arms",
+          "drop": ["Female_Ranger_Arms_Bracer"],
+          "paint": { "cloth": "ink", "leather": "ink", "stud": { "colour": "magenta", "glow": 0.62 } }
+        },
+        {
+          "name": "Female_Ranger_Legs",
+          "hem": 0.17,
+          "paint": {
+            "cloth": { "colour": "ink", "flatten": 0.55 },
+            "leather": { "colour": "ink", "flatten": 0.55 },
+            "stud": { "colour": "ink", "flatten": 0.55 }
+          }
+        },
+        { "name": "Female_Peasant_Feet", "cut": 0.21, "paint": { "linen": "boot", "leather": "boot" } }
+      ],
+      "roles": ["bartender", "cook", "patron"],
+      "themes": ["bar", "cafe", "restaurant", "hotel", "nightlife"]
+    },
+    {
+      "id": "female-casual",
+      "body": "female",
+      "parts": [
+        {
+          "name": "Female_Peasant_Body",
+          "paint": { "linen": { "colour": "teal", "glow": 0.62 }, "leather": "slate" }
+        },
+        {
+          "name": "Female_Ranger_Arms",
+          "drop": ["Female_Ranger_Arms_Bracer"],
+          "paint": { "cloth": "slate", "leather": "ink", "stud": { "colour": "teal", "glow": 0.62 } }
+        },
+        {
+          "name": "Female_Peasant_Legs",
+          "hem": 0.19,
+          "paint": { "linen": { "colour": "graphite", "flatten": 0.55 }, "leather": { "colour": "graphite", "flatten": 0.55 } }
+        },
+        { "name": "Female_Peasant_Feet", "cut": 0.23, "paint": { "linen": "boot", "leather": "boot" } }
+      ],
+      "roles": ["patron", "resident", "wanderer"],
+      "themes": ["city", "neighbourhood", "residential", "suburb", "quiet"]
+    },
+    {
+      "id": "female-works",
+      "body": "female",
+      "parts": [
+        {
+          "name": "Female_Ranger_Body",
+          "drop": ["Female_Ranger_Body_Belt_1", "Female_Ranger_Body_Belt_2"],
+          "paint": { "cloth": "graphite", "leather": "ink", "stud": { "colour": "amber", "glow": 0.62 } }
+        },
+        {
+          "name": "Female_Ranger_Arms",
+          "drop": ["Female_Ranger_Arms_Bracer"],
+          "paint": { "cloth": "graphite", "leather": "ink", "stud": { "colour": "amber", "glow": 0.62 } }
+        },
+        {
+          "name": "Female_Ranger_Legs",
+          "hem": 0.23,
+          "paint": {
+            "cloth": { "colour": "slate", "flatten": 0.55 },
+            "leather": { "colour": "slate", "flatten": 0.55 },
+            "stud": { "colour": "slate", "flatten": 0.55 }
+          }
+        },
+        { "name": "Female_Ranger_Feet", "cut": 0.27, "paint": { "cloth": "boot", "leather": "boot", "stud": "boot" } }
+      ],
+      "roles": ["worker", "mechanic", "resident"],
+      "themes": ["industrial", "docks", "works", "depot", "yard", "construction"]
+    },
+    {
+      "id": "female-courier",
+      "body": "female",
+      "parts": [
+        {
+          "name": "Female_Ranger_Body",
+          "drop": ["Female_Ranger_Body_Belt_1", "Female_Ranger_Body_Belt_2"],
+          "paint": { "cloth": "ink", "leather": "ink", "stud": { "colour": "cyan", "glow": 0.62 } }
+        },
+        {
+          "name": "Female_Ranger_Arms",
+          "drop": ["Female_Ranger_Arms_Bracer"],
+          "paint": { "cloth": "ink", "leather": "ink", "stud": { "colour": "cyan", "glow": 0.62 } }
+        },
+        {
+          "name": "Female_Peasant_Legs",
+          "hem": 0.2,
+          "paint": { "linen": { "colour": "graphite", "flatten": 0.55 }, "leather": { "colour": "graphite", "flatten": 0.55 } }
+        },
+        { "name": "Female_Peasant_Feet", "cut": 0.24, "paint": { "linen": "boot", "leather": "boot" } }
+      ],
+      "roles": ["courier", "wanderer", "patron"],
+      "themes": ["downtown", "traffic", "delivery", "market", "rush"]
+    },
+    {
+      "id": "female-guard",
+      "body": "female",
+      "parts": [
+        {
+          "name": "Female_Ranger_Body",
+          "drop": ["Female_Ranger_Body_Belt_1", "Female_Ranger_Body_Belt_2"],
+          "paint": { "cloth": "ink", "leather": "ink", "stud": { "colour": "crimson", "glow": 0.62 } }
+        },
+        {
+          "name": "Female_Ranger_Arms",
+          "drop": ["Female_Ranger_Arms_Bracer"],
+          "paint": { "cloth": "ink", "leather": "ink", "stud": { "colour": "crimson", "glow": 0.62 } }
+        },
+        {
+          "name": "Female_Ranger_Legs",
+          "hem": 0.25,
+          "paint": {
+            "cloth": { "colour": "ink", "flatten": 0.55 },
+            "leather": { "colour": "ink", "flatten": 0.55 },
+            "stud": { "colour": "ink", "flatten": 0.55 }
+          }
+        },
+        { "name": "Female_Ranger_Feet", "cut": 0.29, "paint": { "cloth": "boot", "leather": "boot", "stud": "boot" } }
+      ],
+      "roles": ["guard", "vendor", "resident"],
+      "themes": ["security", "precinct", "station", "port", "night"]
     }
-  ]
+  ],
+  "finish": { "roughness": 0.34, "metalness": 0.16 }
 }

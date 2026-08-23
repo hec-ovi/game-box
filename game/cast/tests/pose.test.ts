@@ -3,15 +3,15 @@ import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { Cast, CLIPS, clipsUsed, GESTURES } from '../src/index.ts'
 import { loadCast, person } from './pack.ts'
-import { headSphere, partsOf, posed, skinsOf, type Skin } from './posing.ts'
+import { centroid, headBone, partsOf, posed, skinsOf, skullOf, type Skin } from './posing.ts'
 
 const cast = await loadCast()
 
 /**
  * The parts that must never end up inside a head. Forearms, hands and legs
- * only: an upper arm hangs off the shoulder, which is inside the head's own
- * bounding ball on any rig, and a hand may brush a cheek without it being a
- * fault. A forearm through the skull is the fault.
+ * only: an upper arm hangs off the shoulder, which is close enough to the head
+ * on any rig, and a hand may brush a cheek without it being a fault. A forearm
+ * through the skull is the fault.
  */
 const LIMB = /^(lowerarm_|thigh_|calf_|foot_|ball_)/
 
@@ -91,6 +91,7 @@ describe('what a spawned person is doing', () => {
         const skins = bodySkins(member.object)
         const head = partsOf(skins, /^Head$/)
         const limbs = partsOf(skins, LIMB)
+        const bone = headBone(skins)
         expect(head.length, 'no head to test against').toBeGreaterThan(100)
         expect(limbs.length, 'no limbs to test').toBeGreaterThan(100)
 
@@ -103,14 +104,14 @@ describe('what a spawned person is doing', () => {
           for (let step = 0; step <= 24; step++) {
             cast.update(step === 0 ? 0.001 : 0.1)
             member.object.updateMatrixWorld(true)
-            const skull = headSphere(head)
+            const skull = skullOf(head, bone)
+            // a head that has collapsed or swallowed the body would make this
+            // test pass by measuring nothing
+            expect(Math.min(...skull.half.toArray()), `${base}: the head measures ${skull.half.toArray()} m`).toBeGreaterThan(0.04)
+            expect(Math.max(...skull.half.toArray()), `${base}: the head measures ${skull.half.toArray()} m`).toBeLessThan(0.15)
             for (const limb of limbs) {
-              const away = posed(limb.skin, limb.vertex, point).distanceTo(skull.center)
-              if (away >= skull.radius) continue
-              expect.fail(
-                `${base}: ${limb.bone} is ${((skull.radius - away) * 100).toFixed(1)} cm inside the head` +
-                  ` during ${clip}${gesture ? ` + ${gesture}` : ''}`,
-              )
+              if (!skull.inside(posed(limb.skin, limb.vertex, point))) continue
+              expect.fail(`${base}: ${limb.bone} is inside the head during ${clip}${gesture ? ` + ${gesture}` : ''}`)
             }
           }
         }
@@ -149,12 +150,5 @@ function landmarks(object: THREE.Object3D): { face: THREE.Vector3; head: THREE.V
   const eyes = skins.find((skin) => skin.mesh.name === 'Eyes')
   expect(eyes, 'no eyes on this character').toBeDefined()
   const all = Array.from({ length: eyes!.position.count }, (_, vertex) => ({ skin: eyes!, vertex }))
-  return { face: centroid(all), head: headSphere(partsOf(skins, /^Head$/)).center }
-}
-
-function centroid(parts: ReadonlyArray<{ skin: Skin; vertex: number }>): THREE.Vector3 {
-  const sum = new THREE.Vector3()
-  const point = new THREE.Vector3()
-  for (const one of parts) sum.add(posed(one.skin, one.vertex, point))
-  return sum.divideScalar(parts.length)
+  return { face: centroid(all), head: centroid(partsOf(skins, /^Head$/)) }
 }

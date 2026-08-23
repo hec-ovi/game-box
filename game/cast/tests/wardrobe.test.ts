@@ -1,12 +1,13 @@
+import { BODY_KINDS, NPC_ROLES } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { chooseCharacter, parseWardrobe, type Wardrobe } from '../src/index.ts'
 import { person, wardrobe } from './pack.ts'
 
 const seaside: Wardrobe = {
   characters: [
-    { id: 'male-diver', body: 'male', file: 'a.glb', roles: ['worker'], themes: ['harbour'] },
-    { id: 'male-suit', body: 'male', file: 'b.glb', roles: ['clerk'], themes: ['office'] },
-    { id: 'female-suit', body: 'female', file: 'c.glb', roles: ['clerk'], themes: ['office'] },
+    { id: 'male-diver', body: 'male', file: 'a.glb', roles: ['worker'], themes: ['harbour'], styles: [], brows: [] },
+    { id: 'male-suit', body: 'male', file: 'b.glb', roles: ['clerk'], themes: ['office'], styles: [], brows: [] },
+    { id: 'female-suit', body: 'female', file: 'c.glb', roles: ['clerk'], themes: ['office'], styles: [], brows: [] },
   ],
 }
 
@@ -26,8 +27,8 @@ describe('the wardrobe', () => {
   it('lets the theme break a tie between outfits that suit the role equally', () => {
     const both: Wardrobe = {
       characters: [
-        { id: 'male-oilskin', body: 'male', file: 'a.glb', roles: ['patron'], themes: ['harbour'] },
-        { id: 'male-linen', body: 'male', file: 'b.glb', roles: ['patron'], themes: ['desert'] },
+        { id: 'male-oilskin', body: 'male', file: 'a.glb', roles: ['patron'], themes: ['harbour'], styles: [], brows: [] },
+        { id: 'male-linen', body: 'male', file: 'b.glb', roles: ['patron'], themes: ['desert'], styles: [], brows: [] },
       ],
     }
     const npc = person({ id: 'npc_3', role: 'patron', appearance: { base: 'male', variant: 0 } })
@@ -42,9 +43,19 @@ describe('the wardrobe', () => {
     expect(again.id).toBe(once.id)
   })
 
+  it('has something cut for every role the world can station, on either body', () => {
+    for (const role of NPC_ROLES) {
+      for (const base of BODY_KINDS) {
+        const worn = chooseCharacter(wardrobe, person({ id: `npc_${role}_${base}`, role, appearance: { base, variant: 0 } }), '')
+        expect(worn.body, `a ${base} ${role} is wearing ${worn.id}, which is cut for a ${worn.body}`).toBe(base)
+        expect(worn.roles, `nothing in the wardrobe is made for a ${role}: they fell back to ${worn.id}`).toContain(role)
+      }
+    }
+  })
+
   it('refuses a wardrobe the build did not write', () => {
     expect(() => parseWardrobe({ characters: [] })).toThrowError(/no characters/)
-    expect(() => parseWardrobe({ characters: [{ id: 'x', body: 'lizard', file: 'x.glb', roles: [], themes: [] }] })).toThrowError(
+    expect(() => parseWardrobe({ characters: [{ id: 'x', body: 'lizard', file: 'x.glb', roles: [], themes: [], styles: [], brows: [] }] })).toThrowError(
       /not a body kind/,
     )
   })
