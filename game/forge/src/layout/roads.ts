@@ -1,5 +1,5 @@
-import { METRICS, type RoadKind, type World } from '@gb/world'
-import type { Cell } from './bands.ts'
+import type { RoadKind, World } from '@gb/world'
+import { BANDS, type Cell } from './bands.ts'
 import type { ExitRoad } from './exits.ts'
 import type { Junction } from './plan.ts'
 
@@ -61,5 +61,5 @@ function between(junctions: readonly Node[], a: Cell, b: Cell, sameRow: boolean)
 
 /** One segment, carrying the lanes its class of road holds. */
 function joining(world: World, from: string, to: string, kind: RoadKind): Segment {
-  return { id: world.mintId('road'), from, to, kind, lanes: METRICS.road[kind].lanes }
+  return { id: world.mintId('road'), from, to, kind, lanes: BANDS[kind].lanes }
 }
