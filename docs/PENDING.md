@@ -316,6 +316,28 @@ follow the action rather than the reverse.
 Boxes: `talk` for the tool and the event, `hud` for drawing them apart, `app`
 for handing `does` to the gesture layer.
 
+### A conversation shows one line at a time (2026-08-23, found by him)
+
+"CHATS do not have history, they should." The panel draws the latest reply over
+the last one, so a conversation has no scrollback: you cannot see what you asked,
+what they answered two turns ago, or what you have already been told.
+
+**The data is already there.** `@gb/talk` keeps the full transcript, which is how
+the model has context across a turn, and today's greeting work explicitly puts
+the opening line into it as the NPC's own turn. Nothing needs generating; the
+panel needs to render a list where it renders a line.
+
+Worth settling while doing it, because they interact:
+
+- **Whose turn is whose.** The player's words and the NPC's need to read apart.
+- **`acted` and the coming `does`.** `acted` is already the line for the turn in
+  front of the player, and the does/says split above adds a second thing per
+  turn. A history that shows only speech throws both away; one that shows
+  everything is a wall of text. Decide what a past turn keeps.
+- **Where it ends.** A conversation can run long. Scroll, or a cap, or both.
+
+Box: `hud`, with whatever `@gb/app` must push from the transcript.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
