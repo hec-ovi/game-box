@@ -1,6 +1,6 @@
 # @gb/sidecar contract
 
-contractVersion: 0.2.0
+contractVersion: 0.2.1
 
 ## Purpose
 
@@ -27,6 +27,10 @@ Every call takes the caller's own `AbortSignal` and runs against a clock. Each n
 | `idleMs` | 30 s | `converse`, the longest gap between two pieces of a reply that is already flowing. Tokens arrive tens of milliseconds apart. |
 
 A streamed reply is never judged on its total length: the gap clock restarts when bytes land and again when the consumer comes back for more, so a long answer runs as long as it keeps moving.
+
+Node's fetch keeps clocks of its own: undici gives up 300 s after the request and 300 s between two pieces of the body, and calls either one a broken connection. So on Node every call carries a dispatcher of its own with both of those set to twice the deadline that call runs against. The box's own clock is then always the first to fire, whatever `askMs` is set to, and a call that outlives it comes back as `timeout`, which is worth retrying, never as `unreachable`, which is not.
+
+The dispatcher is built from the class the running Node already uses and is handed to fetch per request. The host application's fetch keeps every setting it had, and a dispatcher it installed itself (a proxy, a mock) is left to do its job. A browser has none of this: no dispatcher is made, and nothing in the box imports `undici` or a `node:` module, so a browser build has nothing to pull in.
 
 ## Outputs
 
@@ -56,7 +60,7 @@ A streamed reply is never judged on its total length: the gap clock restarts whe
 - `ask` offers exactly one tool and names it in `tool_choice`, so the answer is a typed value or an error, never text to parse.
 - `converse` offers tools with `tool_choice: "auto"`: the speaker decides whether to act, and can only call what the caller passed in for this turn.
 - A streamed call whose arguments do not parse is dropped, not guessed at.
-- `timeout`, `aborted` and `unreachable` are three different answers. A rejected request is never reported as the wrong one.
+- `timeout`, `aborted` and `unreachable` are three different answers. A rejected request is never reported as the wrong one, and the clock that decides is always this box's, never the transport's.
 - A caller signal that is already aborted stops the call before a request goes out.
 - A call that ends leaves nothing behind: the timer is cleared, the listener comes off the caller's signal, and the response body reader is cancelled. That holds when the stream finishes, when it breaks off, and when the caller walks away from it mid-reply.
 - Nothing here knows what a quest, an NPC or a city is. It moves calls and text.

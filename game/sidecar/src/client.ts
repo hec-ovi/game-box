@@ -1,5 +1,6 @@
 import { err, ok, type Contract, type Result } from '@gb/kit'
 import { Deadline } from './deadline.ts'
+import { FetchDispatcher } from './dispatcher.ts'
 import type { SidecarError } from './errors.ts'
 import type { AskOptions, ConverseEvent, ConverseOptions } from './options.ts'
 import { converseEvents } from './stream.ts'
@@ -31,6 +32,7 @@ export class Sidecar {
   #model: string
   #fetch: typeof fetch
   #timeouts: Timeouts
+  #dispatcher = new FetchDispatcher()
 
   constructor(options: SidecarOptions = {}) {
     this.#base = (options.base ?? readEnv('GAME_BOX_URL') ?? DEFAULT_BASE).replace(/\/$/, '')
@@ -44,13 +46,10 @@ export class Sidecar {
   }
 
   async ask<T>(contract: Contract<T>, options: AskOptions): Promise<Result<T, SidecarError>> {
-    const deadline = new Deadline({
-      signal: options.signal,
-      phase: 'response',
-      ms: options.timeoutMs ?? this.#timeouts.askMs,
-    })
+    const ms = options.timeoutMs ?? this.#timeouts.askMs
+    const deadline = new Deadline({ signal: options.signal, phase: 'response', ms })
     try {
-      const response = await this.#post(askBody(this.#model, options, contract.jsonSchema()), deadline)
+      const response = await this.#post(askBody(this.#model, options, contract.jsonSchema()), deadline, ms)
       if (!response.ok) return response
 
       const payload = await response.value.json().then((value) => value as ChatResponse, () => null)
@@ -82,12 +81,10 @@ export class Sidecar {
 
   /** A streamed reply. Text arrives in pieces; actions arrive as calls. */
   async converse(options: ConverseOptions): Promise<Result<AsyncIterable<ConverseEvent>, SidecarError>> {
-    const deadline = new Deadline({
-      signal: options.signal,
-      phase: 'first-token',
-      ms: options.firstTokenMs ?? this.#timeouts.firstTokenMs,
-    })
-    const response = await this.#post(converseBody(this.#model, options), deadline)
+    const firstTokenMs = options.firstTokenMs ?? this.#timeouts.firstTokenMs
+    const idleMs = options.idleMs ?? this.#timeouts.idleMs
+    const deadline = new Deadline({ signal: options.signal, phase: 'first-token', ms: firstTokenMs })
+    const response = await this.#post(converseBody(this.#model, options), deadline, Math.max(firstTokenMs, idleMs))
     if (!response.ok) {
       deadline.release()
       return response
@@ -98,10 +95,11 @@ export class Sidecar {
       return err({ code: 'refused', status: response.value.status, message: 'the reply had no body' })
     }
     // From here the stream owns the deadline and releases it however it ends.
-    return ok(converseEvents(body, deadline, options.idleMs ?? this.#timeouts.idleMs))
+    return ok(converseEvents(body, deadline, idleMs))
   }
 
-  async #post(body: unknown, deadline: Deadline): Promise<Result<Response, SidecarError>> {
+  /** `ms` is the longest this call may run: the transport's clocks are set past it. */
+  async #post(body: unknown, deadline: Deadline, ms: number): Promise<Result<Response, SidecarError>> {
     const before = deadline.failure()
     if (before) return err(before)
 
@@ -112,7 +110,8 @@ export class Sidecar {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(body),
         signal: deadline.signal,
-      })
+        ...(await this.#dispatcher.forCall(ms)),
+      } as RequestInit)
     } catch (cause) {
       return err(deadline.failure() ?? { code: 'unreachable', message: `${this.#base}: ${String(cause)}` })
     }
