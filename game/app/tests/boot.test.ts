@@ -313,6 +313,33 @@ describe('the front door end to end', () => {
     expect(started).toEqual([first])
   }, 40_000)
 
+  it('opens a city out of a file when the address bar names one', async () => {
+    const made = await new CityMaker(new Sidecar()).build({ ...DEFAULTS, blocks: 1, seed: 'fromfile' }, QUIET)
+    if (!made.ok) throw new Error(made.message)
+    const real = window.fetch
+    window.fetch = (async () => new Response(JSON.stringify(made.value.document))) as typeof fetch
+
+    const { boot, panel } = open()
+    await boot.start(new URLSearchParams('?bundle=/city.json'))
+    window.fetch = real
+
+    expect(started).toEqual([made.value.bundle.world.name])
+    expect(panel.open).toBe(false)
+  }, 30_000)
+
+  it('says why a file will not open, rather than throwing at the player', async () => {
+    const real = window.fetch
+    window.fetch = (async () => new Response('{"format":"not-a-bundle"}')) as typeof fetch
+
+    const { boot, panel } = open()
+    await boot.start(new URLSearchParams('?bundle=/rubbish.json'))
+    window.fetch = real
+
+    expect(started).toEqual([])
+    expect(panel.open).toBe(true)
+    expect(screen.getByRole('status').textContent).toMatch(/will not open/i)
+  })
+
   it('says so when the city is sound but will not draw, instead of sitting on a step', async () => {
     fail = true
     const { boot, panel } = open()
