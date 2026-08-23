@@ -24,12 +24,13 @@ import { Interaction } from './interaction.ts'
 import type { RoomArt } from './pack.ts'
 import { marked } from './places.ts'
 import { Player } from './player.ts'
-import { createStage, type Stage } from './renderer.ts'
+import { createStage } from './renderer.ts'
 import { Playthrough } from './playthrough.ts'
 import { Reporting } from './reporting.ts'
 import { Session, type SaveStore } from './session.ts'
 import { atAnOpenDoor } from './spawn.ts'
 import { Sky } from './sky.ts'
+import type { MakeStage, Stage } from './stage.ts'
 import { Stashing } from './stashing.ts'
 import { Street } from './street.ts'
 import { Talking } from './talking.ts'
@@ -45,6 +46,11 @@ export interface GameOptions {
   sidecar?: Sidecar
   /** Where the playthrough is kept, so a refresh picks it up where it left off. */
   save?: SaveStore
+  /**
+   * Where the frames are drawn. `createStage` unless the caller has no GPU to
+   * give it: everything else the game is made of runs without one.
+   */
+  stage?: MakeStage
 }
 
 /** Real seconds between keeping the playthrough, so the clock survives a reload. */
@@ -124,7 +130,7 @@ export class Game {
       playerOutdoors: () => (this.#buildings.outdoors ? this.#body.position : undefined),
     })
 
-    this.#body = new Player(this.#stage.camera, this.#stage.renderer.domElement, this.#street.solid())
+    this.#body = new Player(this.#stage.camera, this.#stage.canvas, this.#street.solid())
     this.#body.setGround(this.#street.floor())
     const start = atAnOpenDoor(this.#world, this.#city)
     this.#body.placeAt(start.x, start.z, start.heading)
@@ -265,7 +271,7 @@ export class Game {
     })
 
     this.#interaction = new Interaction({
-      element: this.#stage.renderer.domElement,
+      element: this.#stage.canvas,
       world: this.#world,
       player: this.#player,
       log: this.#log,
@@ -291,7 +297,7 @@ export class Game {
   }
 
   static async start(mount: HTMLElement, bundle: OpenedBundle, options: GameOptions): Promise<Game> {
-    const stage = await createStage(mount)
+    const stage = await (options.stage ?? createStage)(mount)
     const session = options.save ? new Session(bundle, options.save) : undefined
     const restored = session?.restore()
     const player = restored?.player ?? PlayerState.create(bundle.world.id, 5)

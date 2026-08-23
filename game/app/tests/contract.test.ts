@@ -33,7 +33,7 @@ import type { Player } from '../src/player.ts'
 import { Street } from '../src/street.ts'
 import { Talking } from '../src/talking.ts'
 import { pick, Targeting } from '../src/targets.ts'
-import type { Stage } from '../src/renderer.ts'
+import type { Stage } from '../src/stage.ts'
 import type { Sky } from '../src/sky.ts'
 import type { Vec2 } from '../src/walk.ts'
 import { CLOSE_FOV, WIDE_FOV, Zoom } from '../src/zoom.ts'
@@ -1598,20 +1598,35 @@ describe('a conversation you can click through', () => {
   })
 
   it('moves their hands while they are speaking and puts them down after', async () => {
-    const { npcId, talking, menu, moved } = chatting()
+    const { npcId, talking, moved } = chatting()
     await talking.start(npcId)
 
     // the opening line is a string, not a stream: nothing is being said out
     // loud yet, so there is nothing for their arms to be doing
     expect(moved).toEqual([])
 
-    await talking.choose(menu()[0]!.key)
+    // a turn their reply is neither a yes nor a no to: only the talking hands
+    await talking.say('and what do I get for it?')
     expect(moved).toEqual([CLIPS.talk, 'stop'])
     expect(GESTURES).toContain(moved[0])
 
     // and once for the turn, however many pieces the line arrives in
     await talking.say('and what do I get for it?')
     expect(moved).toEqual([CLIPS.talk, 'stop', CLIPS.talk, 'stop'])
+  })
+
+  it('nods when they go along with what was put to them, and shakes its head when they will not', async () => {
+    const { npcId, talking, menu, moved } = chatting()
+    await talking.start(npcId)
+
+    // carrying a move out is a yes, so handing the job over is them agreeing
+    await talking.choose(menu()[0]!.key)
+    expect(moved).toEqual([CLIPS.talk, 'Idle_Yes_Loop', 'stop'])
+
+    // and asked for something she has not got, she says so and means it
+    await talking.say('what have you got for me?')
+    expect(moved.slice(3)).toEqual([CLIPS.talk, 'Idle_No_Loop', 'stop'])
+    expect(GESTURES).toEqual(expect.arrayContaining(['Idle_Yes_Loop', 'Idle_No_Loop']))
   })
 
   it('finds a passer-by on the pavement before anybody standing in a room, and asks again every time', async () => {

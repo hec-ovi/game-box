@@ -1,6 +1,6 @@
 # @gb/app contract
 
-contractVersion: 0.10.0
+contractVersion: 0.11.0
 
 ## Purpose
 
@@ -15,7 +15,7 @@ The game you can play: the panel you make a city in, the renderer, the frame loo
 | URL query | `?bundle=` a world file, or `?seed=`, `?theme=`, `?blocks=`, `?model`, `?sidecar=` | with none of them the panel waits rather than building anything. Everything the brief does not own is written back untouched, so a refresh keeps the sidecar and the file it was pointed at |
 | `Boot.start(query)` | a `URLSearchParams` | the page holds `#game` and `#boot` |
 | `Game.start(mount, bundle, options)` | an opened `@gb/bundle`, `GameOptions` | the bundle opened, so its world and quests are sound |
-| `GameOptions` | `{ dressing, room?, cast?, kit?, cars?, sidecar?, save? }` | `save` is where the playthrough is kept between visits; `room` dresses one interior at a time, so a shop is not the flat above it |
+| `GameOptions` | `{ dressing, room?, cast?, kit?, cars?, sidecar?, save?, stage? }` | `save` is where the playthrough is kept between visits; `room` dresses one interior at a time, so a shop is not the flat above it; `stage` is where the frames are drawn, `createStage` unless the caller has no GPU to give it |
 
 ## Outputs
 
@@ -69,7 +69,9 @@ None at the boundary. A city that will not build and a file that will not open a
 - A companion who followed the player into a building is waiting by the door when they come out, rather than where they were standing when the door closed.
 - **A thing is put down where a job asked for it, and it is standing there afterwards.** A `stash` step names the room and the surface, and the room was built with a spot standing at that surface, so leaving something is walking up to it and pressing the same key that picks things up. `@gb/scene` draws it on that surface with the rule it built the room's own things with, so it can be seen where it was left and picked back up. The spot is only offered while the job is asking and the thing is in the player's hands, and it is worked out again at the moment the key goes down, so a prompt that has gone stale does nothing rather than something else.
 - **A room is dressed as this playthrough left it, not as the city file wrote it.** The file says where everything started and `@gb/scene` builds every room from it, so a thing in the player's pocket would be drawn on its shelf as well and a thing they left on a strongbox would be back where it came from. Both are one thing twice, and either copy could be picked up. What the player is carrying is taken off the shelf, and what they moved is drawn where they moved it, once, when the room is built.
+- **The graphics are one port, and the rest of the game runs without them.** `Stage` is a camera, a scene, a canvas and a frame loop; the renderer behind it is named in one file and reaches nothing else, so `Game.start` handed a stage of its own builds the whole city, the crowd, the traffic, the interface and the input with no GPU anywhere. That is what makes the constructor testable, and the constructor is where the ordering lives: the playthrough is built before the first push to the interface, because that push writes a save.
 - **Whoever is speaking talks with their hands, on the pavement as well as behind a counter.** While a reply is arriving `@gb/cast` lays a talk gesture over the upper body of whoever is saying it, seated or standing to match the pose they are already holding, and takes it off when the line ends. It is a layer, not a clip: somebody leaning on their counter is still leaning on it. `@gb/crowd` and `@gb/cast` answer the same question in the same shape, so there is one lookup: the street first, because somebody out walking is not also standing behind their own counter. It is asked again every time and never kept, because a retired walker's body is handed to the next person out and a member held from one turn to the next is a stranger's arms.
+- **A yes and a no are on the body, and neither is nothing.** `@gb/talk` publishes how a reply came down only on the turns that have an answer, so a nod goes over the speaker for a yes and a slow shake of the head for a no, and a turn that is only talk gets neither. Both clips are layers, like the talk itself, so somebody leaning on their counter answers without leaving the counter.
 - **Somebody who walks out of range ends the conversation.** A hold does not pin a walker on the pavement forever: `@gb/crowd` retires one the player has left far behind, hold and all, so walking away with the panel still open ends the person and not only the hold. The panel closes rather than staying open on nobody.
 - **Somebody asked along sets off from where they are standing.** Their own spot on the pavement, read off the crowd, not the player's: handed the player's, whoever they called to across the street appears beside them instead of walking over.
 - **The player can drive.** Any car on the road can be taken: `E` on a car within reach gets in, and `E` behind the wheel gets out. The companions ride, and are back on the pavement beside the car when the player gets out. While driving, the first person body is ridden rather than walked: the eye is put where the seat is every frame and the view turns with the car, so the mouse still looks around inside one that is cornering.
@@ -140,7 +142,8 @@ One responsibility each. `boot/` is everything before there is a game; the rest 
 | `spawn.ts` | where the player opens their eyes |
 | `session.ts` | the playthrough between visits |
 | `playthrough.ts` | what a save says that the city file cannot: the player's place, who is with them, the job they follow |
-| `renderer.ts` | renderer, camera, lights, the frame loop |
+| `stage.ts` | the graphics port: what the game asks of a screen, and nothing of how |
+| `renderer.ts` | the one thing behind that port: WebGPU, camera, lights, the frame loop |
 | `grade.ts` | the chain between the scene and the screen |
 | `night.ts` | what an hour of the day is developed at |
 | `tint.ts` | the night colour: cold shadows, saturated lights |
@@ -154,7 +157,7 @@ One responsibility each. `boot/` is everything before there is a game; the rest 
 | `intents.ts` | what the player did in the interface, carried to whoever owns it |
 | `talking.ts` | a conversation on screen: the reply, and the moves the player can click |
 | `attending.ts` | whoever is being talked to, turned to face the player |
-| `gestures.ts` | their hands, while they are the one speaking |
+| `gestures.ts` | their hands, while they are the one speaking, and their answer at the end of it |
 | `companions.ts` | who is walking with the player |
 | `reporting.ts` | everything the hud is told |
 | `solids.ts`, `bodies.ts` | what stops you: walls, floors, people, cars |
@@ -162,4 +165,4 @@ One responsibility each. `boot/` is everything before there is a game; the rest 
 
 ## How to modify this blackbox safely
 
-Anything with a rule in it belongs in another box. Keep `walk.ts` free of three.js so the movement maths stays testable. The panel's look comes from `@gb/hud`'s tokens: if the hud publishes a shell for it, use that instead of the markup in `index.html`. Retuning how the city looks after dark is a change to the two records in `src/night.ts` alone; a new step in the chain goes in `src/grade.ts`, and the cost in this contract is remeasured with it. Run `pnpm --filter @gb/app test`, and `pnpm --filter @gb/app run dev` to look at it, which is the only way to judge a grade.
+Anything with a rule in it belongs in another box. Keep `walk.ts` free of three.js so the movement maths stays testable. The panel's look comes from `@gb/hud`'s tokens: if the hud publishes a shell for it, use that instead of the markup in `index.html`. Retuning how the city looks after dark is a change to the two records in `src/night.ts` alone; a new step in the chain goes in `src/grade.ts`, and the cost in this contract is remeasured with it. Wiring belongs in the constructor and the constructor is testable: `tests/starting.test.ts` builds a real game against a stage with no GPU in it, walks the player up to somebody with the keys the game binds, and talks to them. Add to it rather than working around it. Run `pnpm --filter @gb/app test`, and `pnpm --filter @gb/app run dev` to look at it, which is the only way to judge a grade.

@@ -3,7 +3,7 @@ import { buildInterior, type Dressing, type CityBuild, type InteriorBuild } from
 import type { Interior, World } from '@gb/world'
 import { alsoBlockedBy } from './bodies.ts'
 import type { Player } from './player.ts'
-import type { Stage } from './renderer.ts'
+import type { Stage } from './stage.ts'
 import type { Sky } from './sky.ts'
 import type { RoomArt } from './pack.ts'
 import { furnishedSolid } from './solids.ts'

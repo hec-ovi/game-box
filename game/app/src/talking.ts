@@ -135,6 +135,9 @@ export class Talking {
         // their hands go while the words are arriving, and stop with them
         this.#gestures?.start(this.#speakerId)
       }
+      // how their reply came down, on most turns not at all. It arrives with
+      // the action, so it lands over the talking hands rather than under them
+      if (event.kind === 'answered') this.#gestures?.answer(this.#speakerId, event.answer)
       if (event.kind === 'did') this.#hud.show({ talk: { acted: `${this.#speaker} ${DONE[event.action]}` } })
       if (event.kind === 'changed') this.#report.announce(event.change)
       if (event.kind === 'over') this.end()

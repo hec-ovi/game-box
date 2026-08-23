@@ -1,34 +1,7 @@
 import * as THREE from 'three'
 import { PMREMGenerator, WebGPURenderer } from 'three/webgpu'
 import { Grade } from './grade.ts'
-
-export interface Stage {
-  readonly renderer: WebGPURenderer
-  readonly camera: THREE.PerspectiveCamera
-  readonly scene: THREE.Scene
-  /** Sky, sun and colour for when the landscape is not there to provide them. */
-  plainDaylight(): void
-  /**
-   * Light every surface with the sky itself. Without this the world is lit by
-   * three lamps and nothing else, which is most of why it reads as a cartoon:
-   * a metal or glass surface has no surroundings to reflect.
-   */
-  reflect(sky: THREE.Object3D): void
-  /**
-   * Light a room, and stop lighting it on the way out. Outdoor light belongs to
-   * the landscape and goes dark with it, so without this a building is pitch
-   * black inside.
-   */
-  indoors(on: boolean): void
-  /** Develop the frame for this hour of the day: exposure, and how hard neon glows. */
-  grade(hours: number): void
-  /** Swap what is being rendered: the city, or the inside of a building. */
-  show(root: THREE.Object3D): void
-  start(frame: (seconds: number) => void): void
-  /** Draw one frame now, whatever the browser is doing with its frame loop. */
-  draw(): void
-  dispose(): void
-}
+import type { Stage } from './stage.ts'
 
 const SKY = 0x9fb6c6
 
@@ -61,7 +34,7 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
   let horizon: PMREMGenerator | undefined
   let reflected: ReturnType<PMREMGenerator['fromScene']> | undefined
   const stage: Stage = {
-    renderer,
+    canvas: renderer.domElement,
     camera,
     scene,
     plainDaylight() {

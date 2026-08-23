@@ -4,7 +4,7 @@ import type { PlayerState } from '@gb/play'
 import type { CityBuild } from '@gb/scene'
 import type { World } from '@gb/world'
 import { darkness } from './night.ts'
-import type { Stage } from './renderer.ts'
+import type { Stage } from './stage.ts'
 import type { Ground } from './solids.ts'
 
 /** The playthrough's own clock: the reading the sky and the lit windows follow. */

@@ -1,4 +1,5 @@
 import { Cast, CLIPS, type CastMember } from '@gb/cast'
+import type { Answer } from '@gb/talk'
 
 /** A set of bodies by NPC id, as `@gb/crowd` and `@gb/cast` both publish it. */
 export type Bodies = () => ReadonlyMap<string, CastMember> | undefined
@@ -32,6 +33,17 @@ export class Gestures {
     this.#going = npcId
   }
 
+  /**
+   * They answered: a nod for a yes, a slow shake of the head for a no. It goes
+   * over the talking hands, because it is the last thing they do with the turn.
+   */
+  answer(npcId: string, answer: Answer): void {
+    const member = this.#member(npcId)
+    if (!member) return
+    member.gesture(ANSWERS[answer])
+    this.#going = npcId
+  }
+
   /** They have finished. Their hands come back to whatever they were doing. */
   stop(): void {
     if (this.#going === undefined) return
@@ -52,6 +64,12 @@ export class Gestures {
     return undefined
   }
 }
+
+/**
+ * How a reply reads on the body. Both are in `@gb/cast`'s `GESTURES`, so they
+ * lay over whatever stance the person is already holding.
+ */
+const ANSWERS: Record<Answer, string> = { yes: 'Idle_Yes_Loop', no: 'Idle_No_Loop' }
 
 /**
  * The talk that suits the pose they are holding. A gesture is added to the
