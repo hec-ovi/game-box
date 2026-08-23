@@ -119,7 +119,8 @@ export const NEEDS: ReadonlyArray<readonly [string, (draw: Draw) => boolean]> = 
 
 /** A building that has gone up, before anybody has decided whether it opens. */
 export interface Frontage {
-  readonly plotId: string
+  /** The caller's handle for it; it is what comes back in the set. */
+  readonly id: string
   readonly kind: BuildingKind
   /** How near the middle of town it stands, 1 at the centre and 0 at the edge. */
   readonly nearness: number
@@ -141,20 +142,22 @@ export function openDoors(frontages: readonly Frontage[], rng: Rng): ReadonlySet
   if (!frontages.length) return new Set()
   const wanted = Math.min(frontages.length, Math.max(FEWEST, Math.round(frontages.length * SHARE * rng.range(1 - SWING, 1 + SWING))))
 
-  const scored = frontages.map((frontage) => ({
+  const scored = frontages.map((frontage, at) => ({
     frontage,
+    at,
     score: pullOf(frontage.kind) + frontage.nearness * 2 + (frontage.onAvenue ? SPINE : 0) + rng.range(0, NUDGE),
   }))
-  scored.sort((a, b) => b.score - a.score || (a.frontage.plotId < b.frontage.plotId ? -1 : 1))
+  // two doors worth exactly the same open in the order they were put up
+  scored.sort((a, b) => b.score - a.score || a.at - b.at)
 
   const open = new Set<string>()
   for (const [, met] of NEEDS) {
-    const best = scored.find((candidate) => !open.has(candidate.frontage.plotId) && met(drawOf(candidate.frontage.kind)))
-    if (best) open.add(best.frontage.plotId)
+    const best = scored.find((candidate) => !open.has(candidate.frontage.id) && met(drawOf(candidate.frontage.kind)))
+    if (best) open.add(best.frontage.id)
   }
   for (const candidate of scored) {
     if (open.size >= wanted) break
-    open.add(candidate.frontage.plotId)
+    open.add(candidate.frontage.id)
   }
   return open
 }

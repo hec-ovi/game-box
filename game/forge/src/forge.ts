@@ -1,31 +1,27 @@
 import { err, ok, Rng, type Result, type SchemaViolation } from '@gb/kit'
 import { validateQuest, type QuestDoc, type QuestProblem } from '@gb/quest'
 import {
-  BODY_KINDS,
   cellCentre,
-  METRICS,
   questView,
   World,
-  type Anchor,
-  type BuildingKind,
-  type Interior,
   type IntegrityProblem,
   type Item,
-  type Npc,
-  type Placement,
-  type Room,
+  type Rect,
   type WorldError,
 } from '@gb/world'
 import { briefContract, type Brief } from './brief.ts'
-import { openDoors, type Frontage } from './interior/open.ts'
-import { planInterior } from './interior/plan.ts'
+import type { Narrator, WorldSummary } from './narrator.ts'
+import { writeEachPlace } from './narrator/one-at-a-time.ts'
+import { Signs } from './narrator/signs.ts'
+import { surfacesOf } from './populate.ts'
 import { Avenues } from './layout/avenues.ts'
 import { planStreets, type StreetPlan } from './layout/plan.ts'
 import { sitesInBlock, storeysFor, type PlotSite } from './layout/plots.ts'
 import { layRoads } from './layout/roads.ts'
 import { paintStreets } from './layout/streets.ts'
-import type { Narrator, WorldSummary } from './narrator.ts'
-import { bulkOf, itemsFor, occupancy, roleFor, surfacesOf } from './populate.ts'
+import { instanceRequests, planRaise, type RaiseSetup } from './raise/plan.ts'
+import { assemble } from './raise/assemble.ts'
+import type { Chosen } from './raise/planned.ts'
 import { questDemand } from './quests/demand.ts'
 import { flavourOf } from './theme/flavour.ts'
 import { kindWeights, stapleKinds } from './theme/plot-mix.ts'
@@ -43,16 +39,11 @@ export interface ForgeResult {
 
 const GENERATOR_VERSION = '0.1.0'
 
-/** A building that is up, before anybody has decided whether its door opens. */
-interface Raised {
-  readonly plotId: string
-  readonly kind: BuildingKind
-  readonly site: PlotSite
-  /** Whether its door is on one of the town's avenues. */
-  readonly onAvenue: boolean
-  /** Its own stream, so the inside is planned off the same seed the outside was. */
-  readonly rng: Rng
-}
+/** How tall `extend` builds into a gap. */
+const EXTEND_STOREYS = 2
+
+/** How full `extend` makes the buildings it drops in. */
+const EXTEND_DENSITY = 0.8
 
 /**
  * Builds a city from a brief: streets and plots by arithmetic, names and people
@@ -88,8 +79,13 @@ export class Forge {
     paintStreets(world, streets)
 
     layRoads(world, streets.crossings, streets.exits)
-    await this.#raise(world, brief, streets, rng)
-    await this.#populate(world, brief, rng)
+    await this.#raise(world, this.#townSites(brief, streets, rng), {
+      theme: brief.theme,
+      density: brief.density,
+      signs: new Signs(brief.seed),
+      doors: rng.fork('doors'),
+      people: rng,
+    })
 
     const problems = world.check()
     if (problems.length) return err({ code: 'unsound-world', problems })
@@ -103,29 +99,39 @@ export class Forge {
    * without touching anything already there.
    */
   async extend(world: World, count: number, rng = new Rng(`${world.seed}/extend`)): Promise<Result<readonly string[], ForgeError>> {
-    const raised: Raised[] = []
-    for (let i = 0; i < count; i++) {
-      const site = this.#freeSite(world, rng)
-      if (!site) break
-      const kind = rng.weighted(kindWeights(flavourOf(world.theme), rng.fork(`extend/mix/${i}`)))
-      const up = await this.#raiseOne(world, site, kind, world.theme, 2, rng.fork(`extend/${i}`))
-      if (up) raised.push(up)
-    }
-    this.#openDoors(world, raised, rng.fork('extend/doors'))
-    const added = raised.map((one) => one.plotId)
-    await this.#populate(world, { density: 0.8 } as Brief, rng.fork('extend/people'), added)
+    const added = await this.#raise(world, this.#gapSites(world, count, rng), {
+      theme: world.theme,
+      density: EXTEND_DENSITY,
+      signs: new Signs(world.seed),
+      doors: rng.fork('extend/doors'),
+      people: rng.fork('extend/people'),
+    })
     const problems = world.check()
     if (problems.length) return err({ code: 'unsound-world', problems })
     return ok(added)
   }
 
   /**
-   * Puts buildings on the blocks, leaving gaps for the city to grow into later.
-   * What kind of town it is decides the mix, the seed moves it around, and the
-   * few places the town is known for are dropped on seeded sites before the
-   * rest is rolled.
+   * Puts buildings up: plan the whole town with no awaits, ask about every place
+   * that opens in one call, then write it all in the order it was planned.
+   *
+   * The three steps are apart because the middle one is the only slow one, and
+   * because a town that is planned before anything is asked can ask about all of
+   * it at once. Nothing downstream depends on which answer landed first.
    */
-  async #raise(world: World, brief: Brief, streets: StreetPlan, rng: Rng): Promise<void> {
+  async #raise(world: World, chosen: readonly Chosen[], setup: RaiseSetup): Promise<string[]> {
+    const planned = planRaise(world, chosen, setup)
+    const requests = instanceRequests(planned, setup.theme)
+    const written = await (this.#narrator.writeInstances?.(requests) ?? writeEachPlace(this.#narrator, requests))
+    return assemble(world, planned, written)
+  }
+
+  /**
+   * What a whole town is built out of. What kind of town it is decides the mix,
+   * the seed moves it around, and the few places the town is known for are
+   * dropped on seeded sites before the rest is rolled.
+   */
+  #townSites(brief: Brief, streets: StreetPlan, rng: Rng): Chosen[] {
     const sites = streets.blocks.flatMap((block, index) => sitesInBlock(block, rng.fork(`block/${index}`)))
     const avenues = Avenues.from(streets.columns, streets.rows)
     const mix = rng.fork('plots')
@@ -135,7 +141,7 @@ export class Forge {
     const spots = mix.shuffle(sites.map((_, index) => index)).slice(0, wanted.length)
     const staples = new Map(spots.map((site, order) => [site, wanted[order]!]))
 
-    const raised: Raised[] = []
+    const chosen: Chosen[] = []
     for (const [index, site] of sites.entries()) {
       const siteRng = rng.fork(`site/${index}`)
       // both draws happen either way, so whether a site is a staple cannot shift the rest
@@ -143,124 +149,25 @@ export class Forge {
       const rolled = siteRng.weighted(weights)
       const kind = staples.get(index) ?? (built ? rolled : undefined)
       if (!kind) continue
-      const up = await this.#raiseOne(world, site, kind, brief.theme, brief.maxStoreys, siteRng, avenues)
-      if (up) raised.push(up)
+      const onAvenue = avenues.has(site.entrance)
+      chosen.push({ site, kind, onAvenue, storeys: storeysFor(kind, brief.maxStoreys, siteRng, onAvenue), rng: siteRng })
     }
-    this.#openDoors(world, raised, rng.fork('doors'))
+    return chosen
   }
 
-  async #raiseOne(
-    world: World,
-    site: PlotSite,
-    kind: BuildingKind,
-    theme: string,
-    maxStoreys: number,
-    rng: Rng,
-    avenues?: Avenues,
-  ): Promise<Raised | undefined> {
-    const name = await this.#narrator.namePlace({ kind, theme, index: world.plots().length })
-    const onAvenue = avenues?.has(site.entrance) ?? false
-    const plot = world.addPlot({
-      kind,
-      name,
-      rect: site.rect,
-      entrance: { cell: site.entrance, facing: site.facing },
-      storeys: storeysFor(kind, maxStoreys, rng, onAvenue),
-      style: `${theme.split(/\s+/)[0]?.toLowerCase() ?? 'plain'}-${kind}`,
-    })
-    if (!plot.ok) return undefined
-    return { plotId: plot.value.id, kind, site, onAvenue, rng }
-  }
-
-  /**
-   * Opens the few doors that are worth opening and leaves the rest of the town
-   * as frontage. Everything downstream reads a building's inside off its
-   * interior, so a plot without one has nobody in it, nothing lying about and
-   * nothing a quest can reach: a closed door is closed all the way through.
-   */
-  #openDoors(world: World, raised: readonly Raised[], rng: Rng): void {
-    const middle = { x: world.grid.width / 2, y: world.grid.height / 2 }
-    const furthest = Math.hypot(middle.x, middle.y) || 1
-    const frontages: Frontage[] = raised.map((one) => ({
-      plotId: one.plotId,
-      kind: one.kind,
-      nearness: 1 - Math.hypot(one.site.entrance.x - middle.x, one.site.entrance.y - middle.y) / furthest,
-      onAvenue: one.onAvenue,
-    }))
-
-    const open = openDoors(frontages, rng)
-    for (const one of raised) {
-      if (!open.has(one.plotId)) continue
-      world.addInterior(this.#planInterior(world, one.plotId, one.kind, one.site, one.rng.fork('inside')))
+  /** What `extend` drops into the gaps: one building at a time, into land nothing has claimed. */
+  #gapSites(world: World, count: number, rng: Rng): Chosen[] {
+    const chosen: Chosen[] = []
+    const taken: Rect[] = []
+    for (let i = 0; i < count; i++) {
+      const site = this.#freeSite(world, rng, taken)
+      if (!site) break
+      taken.push(site.rect)
+      const kind = rng.weighted(kindWeights(flavourOf(world.theme), rng.fork(`extend/mix/${i}`)))
+      const siteRng = rng.fork(`extend/${i}`)
+      chosen.push({ site, kind, onAvenue: false, storeys: storeysFor(kind, EXTEND_STOREYS, siteRng, false), rng: siteRng })
     }
-  }
-
-  #planInterior(world: World, plotId: string, kind: BuildingKind, site: PlotSite, rng: Rng): Interior {
-    const wall = METRICS.building.wallThickness
-    const size = {
-      w: site.rect.w * world.cellSize - wall * 2,
-      h: site.rect.h * world.cellSize - wall * 2,
-    }
-    const plan = planInterior({ kind, size, entrance: site.facing, mint: (idKind) => world.mintId(idKind), rng })
-    return { id: world.mintId('interior'), plotId, kind, size, ...plan }
-  }
-
-  /** Puts people on anchors and things on surfaces. */
-  async #populate(world: World, brief: Brief, rng: Rng, onlyPlots?: readonly string[]): Promise<void> {
-    for (const interior of world.interiors()) {
-      if (onlyPlots && !onlyPlots.includes(interior.plotId)) continue
-      const plot = world.plot(interior.plotId)
-      if (!plot) continue
-      const interiorRng = rng.fork(`people/${interior.id}`)
-
-      let staff: string | undefined
-      for (const anchor of interior.anchors) {
-        const role = roleFor(anchor.kind, interior.kind)
-        if (!role) continue
-        // a staff post is always filled: a bar without a bartender is not a bar
-        const chance = occupancy(anchor.kind)
-        if (chance < 1 && !interiorRng.chance(chance * (brief.density ?? 0.8))) continue
-
-        const index = world.npcs().length
-        const profile = await this.#narrator.describeNpc({
-          role,
-          placeKind: interior.kind,
-          placeName: plot.name,
-          theme: world.theme,
-          index,
-        })
-        const npc: Npc = {
-          id: world.mintId('npc'),
-          name: profile.name,
-          role,
-          appearance: { base: interiorRng.pick(BODY_KINDS), variant: interiorRng.int(0, 8) },
-          station: { interiorId: interior.id, anchorId: anchor.id },
-          workPlotId: plot.id,
-          personality: profile.personality,
-          knowledge: [...profile.knowledge],
-        }
-        if (world.addNpc(npc).ok && anchor.kind === 'serve') staff ??= npc.id
-      }
-
-      const surfaces = surfacesOf(interior.anchors)
-      for (const [i, archetype] of itemsFor(interior.kind, interiorRng).entries()) {
-        const anchor = surfaces[i % Math.max(1, surfaces.length)]
-        if (!anchor) break
-        const index = world.items().length
-        const profile = await this.#narrator.describeItem({ archetype, theme: world.theme, index })
-        const item: Item = {
-          id: world.mintId('item'),
-          name: profile.name,
-          description: profile.description,
-          archetype,
-          value: interiorRng.int(1, 60),
-          bulk: bulkOf(archetype),
-          ...(staff ? { ownerNpcId: staff } : {}),
-        }
-        const placement: Placement = { at: 'anchor', itemId: item.id, interiorId: interior.id, anchorId: anchor.id }
-        world.addItem(item, placement)
-      }
-    }
+    return chosen
   }
 
   async #writeQuests(world: World, rng: Rng): Promise<{ quests: QuestDoc[]; rejected: ForgeResult['rejected'] }> {
@@ -286,13 +193,14 @@ export class Forge {
     return { quests, rejected }
   }
 
-  #freeSite(world: World, rng: Rng): PlotSite | undefined {
+  #freeSite(world: World, rng: Rng, taken: readonly Rect[]): PlotSite | undefined {
     for (const size of [
       { w: 4, h: 4 },
       { w: 3, h: 4 },
       { w: 3, h: 3 },
     ]) {
-      const sites = world.buildSites(size.w, size.h)
+      // nothing is on the ground yet, so a site already spoken for is skipped here
+      const sites = world.buildSites(size.w, size.h).filter((rect) => !taken.some((claim) => overlaps(rect, claim)))
       if (!sites.length) continue
       const rect = rng.pick(sites)
       const facings = [
@@ -307,6 +215,8 @@ export class Forge {
     return undefined
   }
 }
+
+const overlaps = (a: Rect, b: Rect): boolean => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
 
 /** The world refusing a spec means the brief asked for a city that cannot exist. */
 function violationsOf(error: WorldError): readonly SchemaViolation[] {

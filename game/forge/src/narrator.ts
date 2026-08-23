@@ -1,4 +1,4 @@
-import type { BuildingKind, ItemArchetype, NpcRole } from '@gb/world'
+import type { BuildingKind, ItemArchetype, NpcRole, RoomKind } from '@gb/world'
 
 export interface NpcProfile {
   readonly name: string
@@ -9,6 +9,55 @@ export interface NpcProfile {
 export interface ItemProfile {
   readonly name: string
   readonly description: string
+}
+
+/** A post inside a building, waiting for somebody to be written into it. */
+export interface InstancePost {
+  /** The caller's handle. It comes back on the answer and is how the person is matched to the post. */
+  readonly postId: string
+  readonly role: NpcRole
+  /** Where this person falls in the town's own count of people, so a narrator with no model can draw from the seed. */
+  readonly index: number
+}
+
+/** Something lying about inside a building, waiting to be named. */
+export interface InstanceStock {
+  /** The caller's handle. It comes back on the answer and is how the name is matched to the thing. */
+  readonly thingId: string
+  readonly archetype: ItemArchetype
+  /** Where this thing falls in the town's own count of things. */
+  readonly index: number
+}
+
+/** One building's own shell: everything a narrator is shown to write the place whole. */
+export interface InstanceRequest {
+  readonly kind: BuildingKind
+  readonly theme: string
+  readonly rooms: readonly RoomKind[]
+  readonly posts: readonly InstancePost[]
+  readonly things: readonly InstanceStock[]
+  /** What the city is about, when it has been decided. */
+  readonly premise?: string
+  /** Where this building falls in the town's own count of plots. */
+  readonly index: number
+}
+
+export interface InstancePerson extends NpcProfile {
+  readonly postId: string
+  readonly role: NpcRole
+}
+
+export interface InstanceThing extends ItemProfile {
+  readonly thingId: string
+}
+
+/** A place written whole: what it is called, what it is, who is in it and what is lying about. */
+export interface Instance {
+  readonly name: string
+  /** What the place is and what has been going on there. Empty when nobody wrote any. */
+  readonly character: string
+  readonly people: readonly InstancePerson[]
+  readonly things: readonly InstanceThing[]
 }
 
 /** The abstract world a quest writer sees: who is where, and what is lying about. */
@@ -38,6 +87,12 @@ export interface WorldSummary {
  * Everything about a world that is invention rather than geometry: names,
  * personalities, what people know, and the quests that string them together.
  * The generator never asks a narrator for coordinates.
+ *
+ * `writeInstances` is the one call the generator makes about the places that
+ * open: every one of them goes out together, and the answers come back one per
+ * request in request order. `namePlace`, `describeNpc` and `describeItem` are
+ * the single-place shapes it is the plural of; a narrator that offers no plural
+ * is asked those three, one place at a time, for the same city.
  */
 export interface Narrator {
   nameCity(input: { theme: string; seed: string }): Promise<string>
@@ -50,6 +105,13 @@ export interface Narrator {
     index: number
   }): Promise<NpcProfile>
   describeItem(input: { archetype: ItemArchetype; theme: string; index: number }): Promise<ItemProfile>
+  /**
+   * Every place that opens, asked for at once. One answer per request, in
+   * request order; inside an answer, people carry the `postId` and things the
+   * `thingId` they were asked about, so the caller matches by id and never by
+   * position.
+   */
+  writeInstances?(requests: readonly InstanceRequest[]): Promise<readonly Instance[]>
   /** Raw quest documents. The generator validates them and drops the ones that do not hold up. */
   writeQuests(input: { summary: WorldSummary; sideQuests: number }): Promise<unknown[]>
 }

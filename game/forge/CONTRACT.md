@@ -1,6 +1,6 @@
 # @gb/forge contract
 
-contractVersion: 0.13.0
+contractVersion: 0.14.0
 
 ## Purpose
 
@@ -11,7 +11,7 @@ Builds a whole city from one brief: streets, plots, interiors, the people standi
 | Param | Schema | Preconditions |
 |---|---|---|
 | `Forge.build(brief)` | [schema/brief.json](schema/brief.json) | theme (60 characters) and seed are yours; blocks across and down, density and max storeys have defaults; cells per block and roads out (1 to 4) are picked from the seed if you leave them out. Blocks go as high as the grid holds, below |
-| `new Forge(narrator)` | a `Narrator` | answers `nameCity`, `namePlace`, `describeNpc`, `describeItem`, `writeQuests` |
+| `new Forge(narrator)` | a `Narrator` | answers `nameCity`, `writeQuests`, and `writeInstances` for every place that opens at once. A narrator with no plural answers the three single-place questions (`namePlace`, `describeNpc`, `describeItem`) instead and gets the same city, one round trip at a time |
 | `Forge.extend(world, count)` | a `@gb/world` `World` | the world has empty land touching a sidewalk |
 
 ## Outputs
@@ -38,6 +38,9 @@ A narrator writing an unusable quest is not an error: those quests are dropped a
 ## Invariants
 
 - Geometry is arithmetic, never invention: streets, sidewalks, plot footprints, entrances, rooms, furniture and anchors are computed. A narrator supplies names, personalities and quest logic only.
+- **A whole town is planned before a narrator is asked anything.** Every site's kind, height and openness, every open building's rooms, furniture and anchors, who is standing where and what is lying about are all decided with nothing awaited. Then one call asks about every place that opens at once, and the answers are written into the world in planned order. A town of 580 buildings costs 66 descriptive calls instead of 927, and they can all be in the air together.
+- **Reassembled by index, never by arrival.** `writeInstances` hands back one answer per request in request order, so the nth open building takes the nth answer; inside an answer a person is matched to a post by `postId` and a name to a thing by `thingId`, never by position. Ids are minted in the assembly loop and nowhere else, so plots, interiors, people and things are numbered in the same order whatever the narrator's concurrency was. A person written for a post that is not there is dropped, and a post nobody wrote is left empty.
+- **A sign over a door nobody opens is written here.** Four buildings in five are frontage, and asking a language model to name each of them is four calls in five of a build spent on a string the player reads off the street. `src/narrator/signs.ts` writes those from the theme's own vocabulary, the same words the offline narrator uses; the narrator names only the places it writes whole. Two facades can end up under the same sign, as two pubs in one town can.
 - An interior is planned in that order: rooms, then doors, then furniture, then the places people stand. The entry room touches the wall the street door is in; every other room hangs off it rather than off another room, so nobody walks through a bedroom to reach the kitchen.
 - One door from the street, one door between rooms, and every room reachable from the street door.
 - Furniture never lands in a doorway (1.2 m across the opening, a metre either side of the wall), never overlaps another piece, and never seals off a door or a place somebody stands. Every piece is tested against the free floor before it lands, so a building that is too small simply holds less.
@@ -64,7 +67,7 @@ A narrator writing an unusable quest is not an error: those quests are dropped a
 - The interior varies with the seed and stays identical for the same one: an entrance hall or none, service rooms across the back or down one side, counters on either hand, furniture swept along the walls until it fits.
 - Each kind of building is recognisable from the inside: a bar has a counter you can walk behind with stools along it, a shop a counter you queue at and cases to browse, a house a sofa facing a screen and a bed against a wall.
 - A room people drink in is not a room of chairs. A bar and a cafe put one or two bodies propped against their free walls before the tables go in, on two different walls rather than side by side, and a propped body is filled as often as a seated one. Where everybody sits down and nobody stands, a room reads as a waiting room.
-- Same seed, same city, down to the byte. Sub-streams are forked by label off a root the generator never draws from: `streets` for the town plan, `avenues` off that for where the spines run, `plots` for the mix of buildings, `quests` for how much work the town has in it, then one per block, per site and per interior. A new stream is a new label, never a draw from an existing one, so adding one cannot shift what another already decided.
+- Same seed, same city, down to the byte, whatever order a narrator's answers land in and however many of them are in the air at once. Sub-streams are forked by label off a root the generator never draws from: `streets` for the town plan, `avenues` off that for where the spines run, `plots` for the mix of buildings, `quests` for how much work the town has in it, then one per block, per site and per interior. A new stream is a new label, never a draw from an existing one, so adding one cannot shift what another already decided.
 - Nothing a narrator writes is trusted: quests are validated against the world and dropped if they do not hold up.
 - Every service post is staffed: a bar has a bartender, a shop has a clerk, whatever the density.
 - Nobody in a town shares a name, a personality or a script: names, habits and what a person knows come from a vocabulary the theme picks, not from one template.
@@ -144,7 +147,9 @@ The city sits in a valley ringed with mountains, and `brief.exits` says how many
 
 ## How to modify this blackbox safely
 
-The `Narrator` interface is the seam for a language model: implement it elsewhere and pass it in; `OfflineNarrator` stays as the offline default and the reference shape.
+The `Narrator` interface is the seam for a language model: implement it elsewhere and pass it in; `OfflineNarrator` stays as the offline default and the reference shape. `src/narrator/one-at-a-time.ts` writes a place whole out of the three single-place calls, and is both what `OfflineNarrator` does and what a narrator with no `writeInstances` gets asked.
+
+Putting buildings up is three steps under `src/raise/`: `planned.ts` is the shapes, `plan.ts` decides everything arithmetic about the town with no awaits, and `assemble.ts` writes the answers into the world in planned order and is the only place an id is minted. Keeping them apart is what lets the whole town be asked about in one call: add an await to `plan.ts` and the fan-out is a loop again.
 
 What a theme means lives in `src/theme/`: `flavour.ts` reads the theme text, `plot-mix.ts` turns it into building weights and staples, `words.ts` holds the vocabulary a town names itself from. `src/narrator/` is what the offline narrator says: `places.ts` for signs, `knowledge.ts` for people.
 

@@ -132,19 +132,19 @@ describe('a town of frontage with a few doors that open', () => {
     // fifty shops on the avenue and three flats out at the edge: the ranking
     // would take the shops and leave the town with nowhere to sleep
     const frontages: Frontage[] = [
-      ...Array.from({ length: 50 }, (_, i) => ({ plotId: `shop_${i}`, kind: 'shop' as const, nearness: 1, onAvenue: true })),
-      ...Array.from({ length: 3 }, (_, i) => ({ plotId: `flat_${i}`, kind: 'apartment' as const, nearness: 0, onAvenue: false })),
+      ...Array.from({ length: 50 }, (_, i) => ({ id: `shop_${i}`, kind: 'shop' as const, nearness: 1, onAvenue: true })),
+      ...Array.from({ length: 3 }, (_, i) => ({ id: `flat_${i}`, kind: 'apartment' as const, nearness: 0, onAvenue: false })),
     ]
     for (const seed of ['a', 'b', 'c', 'd', 'e']) {
       const open = openDoors(frontages, new Rng(seed))
-      const beds = [...open].filter((plotId) => plotId.startsWith('flat_'))
+      const beds = [...open].filter((id) => id.startsWith('flat_'))
       expect(beds.length, `${seed} left the town with nowhere to sleep`).toBeGreaterThan(0)
     }
   })
 
   it('opens the doors it is told to and no more', () => {
     const frontages: Frontage[] = Array.from({ length: 200 }, (_, i) => ({
-      plotId: `plot_${i}`,
+      id: `plot_${i}`,
       kind: BUILDING_KINDS[i % BUILDING_KINDS.length]!,
       nearness: 1 - i / 200,
       onAvenue: i % 3 === 0,

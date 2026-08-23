@@ -1,8 +1,10 @@
 import { Rng } from '@gb/kit'
 import type { BuildingKind, ItemArchetype, NpcRole } from '@gb/world'
 import { knowledgeOf, personalityOf } from './narrator/knowledge.ts'
-import { cityName, placeName } from './narrator/places.ts'
-import type { ItemProfile, Narrator, NpcProfile, WorldSummary } from './narrator.ts'
+import { cityName } from './narrator/places.ts'
+import { writeEachPlace } from './narrator/one-at-a-time.ts'
+import { Signs } from './narrator/signs.ts'
+import type { Instance, InstanceRequest, ItemProfile, Narrator, NpcProfile, WorldSummary } from './narrator.ts'
 import { QuestWriter } from './quests/write.ts'
 import { flavourOf } from './theme/flavour.ts'
 import { wordsFor } from './theme/words.ts'
@@ -29,10 +31,12 @@ const ITEM_ASIDES: readonly string[] = [
  */
 export class OfflineNarrator implements Narrator {
   #rng: Rng
+  #signs: Signs
   #usedNames = new Set<string>()
 
   constructor(seed: string) {
     this.#rng = new Rng(`narrator/${seed}`)
+    this.#signs = new Signs(seed)
   }
 
   /** Nobody in a town shares a name with anybody else in it. */
@@ -55,8 +59,12 @@ export class OfflineNarrator implements Narrator {
   }
 
   async namePlace(input: { kind: BuildingKind; theme: string; index: number }): Promise<string> {
-    const rng = this.#rng.fork(`place/${input.kind}/${input.index}`)
-    return placeName(input.kind, wordsFor(flavourOf(input.theme)), rng)
+    return this.#signs.over(input.kind, input.theme, input.index)
+  }
+
+  /** The plural, one place at a time: nothing here is slow, so nothing here fans out. */
+  async writeInstances(requests: readonly InstanceRequest[]): Promise<readonly Instance[]> {
+    return writeEachPlace(this, requests)
   }
 
   async describeNpc(input: {
