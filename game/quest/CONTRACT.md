@@ -1,6 +1,6 @@
 # @gb/quest contract
 
-contractVersion: 0.3.0
+contractVersion: 0.4.0
 
 ## Purpose
 
@@ -39,7 +39,7 @@ A step names its target in whatever field its kind uses, and the objective carri
 
 | Step kind | The objective carries |
 |---|---|
-| `talk` | `npcId` |
+| `talk` | `npcId`, and `topic` when the step names one |
 | `goto` | `place` |
 | `collect` | `itemId`, `alternates` |
 | `deliver` | `npcId` (who it goes to), `itemId`, `alternates` |
@@ -60,8 +60,9 @@ A step names its target in whatever field its kind uses, and the objective carri
 `talk`, `goto`, `collect`, `deliver`, `stash`, `escort`, `choice`, `join`, `any-of`, `complete`, `fail`. A generator may use no others.
 
 - `collect`, `deliver` and `stash` take `count` (default 1) over a pool of interchangeable items: the one in `itemId` plus `alternates`. That is how "three of the five crates" is written, and each item counts once.
+- A `talk` may name a `topic`. Then only a `talked` event carrying that same topic completes it, and the objective publishes the topic so the caller knows which one to send.
 - Any step may be `optional` (side work: the quest finishes without it, and it may be a dead end) or `hidden` (off the board until a `reveal` effect shows it).
-- `join` waits for every branch in `waitFor`. `any-of` takes the first branch in `oneOf` to finish and drops the rest.
+- `join` waits for every branch in `waitFor`. `any-of` takes the first branch in `oneOf` to finish and drops the rest. Both name steps the flow already runs through: every branch has to be reachable from the first step, and has to have the `join` or `any-of` in its own `next`. Listing a step in `waitFor` or `oneOf` does not wire it into the flow, so a branch that only appears there is refused as unreachable.
 
 ## Conditions and effects (closed sets)
 

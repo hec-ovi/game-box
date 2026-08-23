@@ -49,6 +49,27 @@ describe('what an objective points at', () => {
     expect(handOver.itemId).toBe(first)
   })
 
+  it('names the topic a talk is about, so only that conversation counts', () => {
+    const { log } = play(
+      quest([
+        { id: 'step_0001', kind: 'talk', npcId: HOLLIS, topic: 'price', objective: 'Ask Hollis his price', next: ['step_0002'] },
+        { id: 'step_0002', kind: 'complete', objective: 'Done' },
+      ]),
+    )
+    log.start('quest_0001')
+
+    const ask = open(log.objectives(), 'step_0001')
+    expect(ask.npcId).toBe(HOLLIS)
+    expect(ask.topic).toBe('price')
+
+    log.handle({ kind: 'talked', npcId: HOLLIS, topic: 'the weather' })
+    expect(log.status('quest_0001')).toBe('active')
+
+    // the caller can only send the right event because the objective named the topic
+    log.handle({ kind: 'talked', npcId: HOLLIS, topic: ask.topic })
+    expect(log.status('quest_0001')).toBe('complete')
+  })
+
   it('points a stash at the interior and the spot inside it', () => {
     const { log } = play(
       quest([

@@ -78,6 +78,8 @@ describe('any-of', () => {
       { id: 'step_0004', kind: 'any-of', oneOf: ['step_0002', 'step_0003'], objective: 'Either way', next: ['step_0005'] },
       { id: 'step_0005', kind: 'complete', objective: 'Done' },
     ])
-    expect(refusal(stray).messages).toContain('offers step_0003, but step_0003 does not lead to it')
+    expect(refusal(stray).messages).toContain(
+      'offers step_0003, but step_0003 does not lead to it: every branch needs this step in its next, and needs to be reachable from the first step',
+    )
   })
 })

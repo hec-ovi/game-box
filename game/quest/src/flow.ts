@@ -25,7 +25,12 @@ export function checkEdges(quest: QuestDoc, flow: Flow, report: Report): void {
   }
 }
 
-/** A join waits for all its branches, an any-of takes the first one home. Both need real branches. */
+/**
+ * A join waits for all its branches, an any-of takes the first one home. A
+ * branch has to be a step the flow already runs through: reachable from the
+ * first step, and leading back into the join or the any-of through its `next`.
+ * Naming a step in `waitFor` or `oneOf` does not wire it into the flow.
+ */
 function checkGate(step: Step, flow: Flow, report: Report): void {
   if (step.kind !== 'join' && step.kind !== 'any-of') return
   if (isOptional(step)) report(step.id, `an optional ${step.kind} would never resolve`)
@@ -38,7 +43,12 @@ function checkGate(step: Step, flow: Flow, report: Report): void {
       report(step.id, `${verb} unknown step ${branchId}`)
       continue
     }
-    if (!outEdges(branch).includes(step.id)) report(step.id, `${verb} ${branchId}, but ${branchId} does not lead to it`)
+    if (!outEdges(branch).includes(step.id)) {
+      report(
+        step.id,
+        `${verb} ${branchId}, but ${branchId} does not lead to it: every branch needs this step in its next, and needs to be reachable from the first step`,
+      )
+    }
     if (isOptional(branch)) report(step.id, `${verb} ${branchId}, which is optional and may never be done`)
   }
 }
@@ -70,7 +80,11 @@ export function checkShape(
   report: Report,
 ): { readonly reachable: ReadonlySet<string>; readonly order: readonly string[] } | undefined {
   const reachable = flow.reachable(quest.startStepId)
-  for (const step of quest.steps) if (!reachable.has(step.id)) report(step.id, 'unreachable from the first step')
+  for (const step of quest.steps) {
+    if (!reachable.has(step.id)) {
+      report(step.id, "unreachable from the first step: no step's next leads here, and listing it in a oneOf or a waitFor does not connect it")
+    }
+  }
 
   const withoutSideWork = flow.reachable(quest.startStepId, true)
   if (![...withoutSideWork].some((id) => flow.step(id)?.kind === 'complete')) {

@@ -10,6 +10,8 @@ import type { Place, Step } from './schema.ts'
 export interface ObjectiveTarget {
   /** Who to reach: the person to talk to, to hand something to, or to walk somewhere. */
   readonly npcId?: string
+  /** What to talk about, when the step only counts a conversation on that subject. */
+  readonly topic?: string
   /** Where to reach: where to go, where to take an escort, where a stash goes. */
   readonly place?: Place
   /** What the step is about: the thing to pick up, hand over or put away. */
@@ -26,7 +28,7 @@ type CountedStep = Extract<Step, { kind: 'collect' | 'deliver' | 'stash' }>
 export function targetOf(step: Step): ObjectiveTarget {
   switch (step.kind) {
     case 'talk':
-      return { npcId: step.npcId }
+      return { npcId: step.npcId, ...(step.topic ? { topic: step.topic } : {}) }
     case 'goto':
       return { place: step.place }
     case 'collect':
