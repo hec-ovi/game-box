@@ -13,7 +13,7 @@
     "measure": "node --experimental-strip-types tools/measure.ts",
     "reach": "node --experimental-strip-types tools/reach.ts",
     "playable": "node --experimental-strip-types tools/playable.ts",
-    "generate": "node --experimental-strip-types tools/emit-schema.ts"
+    "generate": "node --experimental-strip-types tools/bundle-wording.ts && node --experimental-strip-types tools/emit-schema.ts"
   },
   "dependencies": {
     "@gb/kit": "workspace:*",

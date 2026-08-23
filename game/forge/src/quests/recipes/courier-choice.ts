@@ -1,11 +1,15 @@
 import type { Rng } from '@gb/kit'
 import type { CastPerson, CityCast } from '../cast.ts'
 import { allied, crossed, owed, partyOf, sided, TOWN } from '../marks.ts'
-import { stepId, type Draft, type Effect } from '../shape.ts'
+import type { PremiseSide } from '../../premise/shape.ts'
+import { clip, stepId, type Draft, type Effect } from '../shape.ts'
 import { RecipeBase, type Job } from './recipe.ts'
 
 /** What the buyer's offer costs the player in standing with the town at large. */
 const BAD_NAME = 3
+
+/** What `@gb/quest` will take on the words of a button. */
+const LABEL = 120
 
 /** What coming down on one side is worth to that side, and costs the other. */
 const A_SIDE = 5
@@ -59,8 +63,8 @@ export class CourierChoice extends RecipeBase {
           prompt: `Who ends up with the ${thing}?`,
           objective: 'Decide who gets it',
           options: [
-            { id: 'client', label: `${giver.npc.name}, who asked for it`, next: stepId(3) },
-            { id: 'buyer', label: `${buyer.npc.name}, who is paying more`, next: stepId(4) },
+            { id: 'client', label: clip(sideOf(giver, job.stake?.side, 'who asked for it'), LABEL), next: stepId(3) },
+            { id: 'buyer', label: clip(sideOf(buyer, job.stake?.other, 'who is paying more'), LABEL), next: stepId(4) },
           ],
         },
         {
@@ -92,6 +96,16 @@ export class CourierChoice extends RecipeBase {
       ],
     })
   }
+}
+
+/**
+ * What the option on the button says. Where the town has an argument, taking a
+ * road is taking a side in it and the button names the side; where it has none,
+ * it says the plain reason this person wants the thing. What each side actually
+ * wants is in the quest's own summary, because a button is a button.
+ */
+function sideOf(person: CastPerson, side: PremiseSide | undefined, plain: string): string {
+  return side ? `${person.npc.name}, for ${side.name}` : `${person.npc.name}, ${plain}`
 }
 
 /**

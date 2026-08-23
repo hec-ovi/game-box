@@ -28,6 +28,10 @@ const FREE_SIDES = 2
  * the town's own argument, then side work gated behind how far along that line
  * the player is. Every quest is written by a recipe over people and things the
  * town actually holds, and nothing is promised to two quests at once.
+ *
+ * Where the town has a premise, the main line is about what the premise put at
+ * stake and the two sides it named; side work is the town's own errands either
+ * way.
  */
 export class QuestWriter {
   #rng: Rng
@@ -40,7 +44,7 @@ export class QuestWriter {
     const flavour = flavourOf(summary.theme)
     const cast = new CityCast(summary)
     const plan = this.#rng.fork('plan')
-    const line = new MainLine(cast, plan)
+    const line = new MainLine(cast, plan, summary.premise)
     const drafts: Draft[] = []
 
     let tier = 0

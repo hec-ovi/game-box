@@ -109,6 +109,27 @@ export function wallRow(plan: RoomPlan, prop: FurnitureProp, side: Side, count: 
   return placed
 }
 
+/**
+ * How often a room the public stands in has a screen on the wall. Not every
+ * one: a set in every room reads as a rule rather than as a place, and a room
+ * without one is what makes the lit ones register.
+ */
+const SCREEN = 0.6
+
+/**
+ * A screen on the wall of a room people wait in. It goes up before the floor
+ * fills, so it takes the middle of a wall somebody sitting down can see, and it
+ * claims a quarter of a metre of floor and nothing else.
+ */
+export function wallScreen(plan: RoomPlan): Placed | undefined {
+  if (!plan.rng.chance(SCREEN)) return undefined
+  for (const side of plan.openSides()) {
+    const screen = plan.againstWall('tv', side, { prefer: 'centre', approach: 0.5 })
+    if (screen) return screen
+  }
+  return undefined
+}
+
 /** Something small in a corner: a plant, a lamp, whatever the room wants. */
 export function cornerPiece(plan: RoomPlan, prop: FurnitureProp): Placed | undefined {
   for (const side of plan.openSides().reverse()) {

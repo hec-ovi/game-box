@@ -1,9 +1,24 @@
 import type { Rng } from '@gb/kit'
+import type { PremiseSide } from '../../premise/shape.ts'
 import type { Flavour } from '../../theme/flavour.ts'
 import type { CastItem, CastPerson, CityCast } from '../cast.ts'
 import { payFor, type Load } from '../difficulty.ts'
 import { crossed, partyOf } from '../marks.ts'
 import { clip, type Condition, type Draft, type FailWhen, type Step } from '../shape.ts'
+
+/**
+ * What the town's argument is, as the recipe writing a link of the main line
+ * sees it. It comes from the premise, so the line is about the thing the town
+ * has actually been written to be arguing over rather than about a parcel.
+ */
+export interface Stake {
+  /** What is at stake in the town, in the premise's own words. */
+  readonly what: string
+  /** The side the person handing this out is on. */
+  readonly side: PremiseSide
+  /** The other side of it. */
+  readonly other: PremiseSide
+}
 
 /** One quest the writer has asked for, before a recipe fills it in. */
 export interface Job {
@@ -21,6 +36,8 @@ export interface Job {
    * somebody at random, so the town's own quarrel is what the choice is about.
    */
   readonly against?: CastPerson
+  /** What the main line is about, when the town has a premise. Side work has none. */
+  readonly stake?: Stake
 }
 
 /** A way of writing one quest out of whatever the town happens to hold. */
@@ -72,6 +89,7 @@ export abstract class RecipeBase implements Recipe {
   protected finish(cast: CityCast, job: Job, written: Written): Draft {
     // the standing goes to the place the work was for, not to the town at large
     const { difficulty, reward } = payFor(written.load, partyOf(written.giver.place))
+    const summary = job.stake ? `${written.summary} Behind it: ${job.stake.what}, and ${job.stake.side.name} want ${job.stake.side.wants}.` : written.summary
     const steps = written.steps.map((step) => (step.kind === 'complete' ? this.#granting(step, job) : step))
     cast.book(written.items, [written.giver.npc.npcId])
     const requires = [...job.requires, ...this.#stillTalking(job, written)]
@@ -80,7 +98,7 @@ export abstract class RecipeBase implements Recipe {
       id: job.id,
       kind: job.kind,
       title: clip(written.title, 80),
-      summary: clip(written.summary, 600),
+      summary: clip(summary, 600),
       giverNpcId: written.giver.npc.npcId,
       difficulty,
       startStepId: steps[0]!.id,

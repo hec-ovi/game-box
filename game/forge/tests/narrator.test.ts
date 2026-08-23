@@ -2,6 +2,7 @@ import { Rng } from '@gb/kit'
 import { describe, expect, it } from 'vitest'
 import { Forge, OfflineNarrator } from '../src/index.ts'
 import type { Instance, InstanceRequest, Narrator, NpcProfile, WorldSummary } from '../src/narrator.ts'
+import type { Premise } from '../src/premise/shape.ts'
 import { digest } from './support.ts'
 
 const BRIEF = { theme: 'rain-soaked port city under a permanent drizzle', seed: 'fanned', blocksX: 3, blocksY: 3 }
@@ -28,7 +29,11 @@ class Fanned implements Narrator {
     this.#rng = new Rng(`fan/${width}`)
   }
 
-  nameCity(input: { theme: string; seed: string }): Promise<string> {
+  writePremise(input: { theme: string; seed: string }): Promise<Premise> {
+    return this.#offline.writePremise(input)
+  }
+
+  nameCity(input: Parameters<Narrator['nameCity']>[0]): Promise<string> {
     return this.#offline.nameCity(input)
   }
 
@@ -71,7 +76,8 @@ class Fanned implements Narrator {
 /** A narrator with no plural of its own: the shape every narrator had before the fan-out. */
 class Singular implements Narrator {
   #offline = new OfflineNarrator('fanned')
-  nameCity = (input: { theme: string; seed: string }) => this.#offline.nameCity(input)
+  writePremise = (input: { theme: string; seed: string }) => this.#offline.writePremise(input)
+  nameCity = (input: Parameters<Narrator['nameCity']>[0]) => this.#offline.nameCity(input)
   namePlace = (input: Parameters<Narrator['namePlace']>[0]) => this.#offline.namePlace(input)
   describeNpc = (input: Parameters<Narrator['describeNpc']>[0]) => this.#offline.describeNpc(input)
   describeItem = (input: Parameters<Narrator['describeItem']>[0]) => this.#offline.describeItem(input)

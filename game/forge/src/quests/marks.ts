@@ -32,9 +32,10 @@ export const owed = (person: CastPerson): string => mark('owed', person.npc.npcI
 export const allied = (place: CastPlace): string => mark('allied', place.plotId)
 
 /**
- * Standing with one place rather than with the town at large. A generated town
- * has no factions written down, so its factions are its places: doing a job for
- * one of them is standing with them, and crossing them costs it.
+ * Standing with one place rather than with the town at large. The premise names
+ * the sides of a town's argument, but a side is an argument rather than an
+ * address, so what standing is paid to is a place: doing a job for one of them
+ * is standing with them, and crossing them costs it.
  */
 export const partyOf = (place: CastPlace): string => place.plotId
 

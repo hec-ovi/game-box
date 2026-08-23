@@ -2,12 +2,14 @@ import { headingTo, inward, norm, shrinkFrom, step, type Side } from '../geometr
 import { specOf } from '../props.ts'
 import type { RoomPlan } from '../room-plan.ts'
 import { standoff } from '../stance.ts'
-import { cornerPiece, servePost, standAt, tableField, wallRow } from './pieces.ts'
+import { cornerPiece, servePost, standAt, tableField, wallRow, wallScreen } from './pieces.ts'
 
 /** A room you wait in: a desk to report to, chairs along the wall. */
 export function waitingRoom(plan: RoomPlan): void {
   plan.crowdLimit = 3
-  benchRow(plan, 3, servePost(plan))
+  const desk = servePost(plan)
+  wallScreen(plan)
+  benchRow(plan, 3, desk)
   cornerPiece(plan, 'plant')
 }
 
@@ -33,6 +35,7 @@ export function treatmentRoom(plan: RoomPlan): void {
 export function lobby(plan: RoomPlan): void {
   plan.crowdLimit = 3
   const desk = servePost(plan)
+  wallScreen(plan)
   const side = plan.openSides().find((open) => open !== desk)
   if (side) {
     const sofa = plan.againstWall('sofa', side, { prefer: 'centre', approach: 0.9 })
@@ -45,7 +48,9 @@ export function lobby(plan: RoomPlan): void {
 /** A concourse: a ticket desk, rows of benches, somebody keeping an eye on it. */
 export function concourse(plan: RoomPlan): void {
   plan.crowdLimit = 4
-  benchRow(plan, 4, servePost(plan))
+  const desk = servePost(plan)
+  wallScreen(plan)
+  benchRow(plan, 4, desk)
   const door = plan.doors[0]
   if (door) {
     const across = headingTo(door.pos, plan.centre)

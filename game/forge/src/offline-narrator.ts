@@ -5,6 +5,8 @@ import { cityName } from './narrator/places.ts'
 import { writeEachPlace } from './narrator/one-at-a-time.ts'
 import { Signs } from './narrator/signs.ts'
 import type { Instance, InstanceRequest, ItemProfile, Narrator, NpcProfile, WorldSummary } from './narrator.ts'
+import type { Premise } from './premise/shape.ts'
+import { composePremise, type Written } from './premise/write.ts'
 import { QuestWriter } from './quests/write.ts'
 import { flavourOf } from './theme/flavour.ts'
 import { wordsFor } from './theme/words.ts'
@@ -33,6 +35,8 @@ export class OfflineNarrator implements Narrator {
   #rng: Rng
   #signs: Signs
   #usedNames = new Set<string>()
+  /** The town's history, once it has been asked for: what the rest of it is written against. */
+  #written: Written | undefined
 
   constructor(seed: string) {
     this.#rng = new Rng(`narrator/${seed}`)
@@ -54,8 +58,16 @@ export class OfflineNarrator implements Narrator {
     return fallback
   }
 
-  async nameCity(input: { theme: string; seed: string }): Promise<string> {
-    return cityName(wordsFor(flavourOf(input.theme)), this.#rng.fork(`city/${input.seed}`))
+  /** What the town lives on and what happened to it, drawn from the seed. */
+  async writePremise(input: { theme: string; seed: string }): Promise<Premise> {
+    this.#written = composePremise(input.theme, this.#rng.fork(`premise/${input.seed}`))
+    return this.#written.premise
+  }
+
+  /** A town with a history is often named after what it lives on. */
+  async nameCity(input: { theme: string; seed: string; premise?: Premise }): Promise<string> {
+    const livesOn = input.premise ? this.#written?.word : undefined
+    return cityName(wordsFor(flavourOf(input.theme)), this.#rng.fork(`city/${input.seed}`), livesOn)
   }
 
   async namePlace(input: { kind: BuildingKind; theme: string; index: number }): Promise<string> {
@@ -78,7 +90,7 @@ export class OfflineNarrator implements Narrator {
     return {
       name: this.#uniqueName(rng, input.theme),
       personality: personalityOf(input.role, input.placeName, rng),
-      knowledge: knowledgeOf(input.role, input.placeKind, input.placeName, rng),
+      knowledge: knowledgeOf(input.role, input.placeKind, input.placeName, rng, this.#written?.premise.common ?? []),
     }
   }
 

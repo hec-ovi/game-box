@@ -2,6 +2,8 @@
 export { Forge, summarise, type ForgeError, type ForgeResult } from './forge.ts'
 export { briefContract, type Brief } from './brief.ts'
 export { OfflineNarrator } from './offline-narrator.ts'
+export { premiseLines } from './premise/render.ts'
+export { premiseContract, type Premise, type PremiseBuild, type PremiseSide } from './premise/shape.ts'
 export type {
   Instance,
   InstancePerson,

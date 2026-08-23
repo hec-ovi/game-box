@@ -26,7 +26,7 @@ const onCounter = (w: number, d: number): PropSpec => ({ w, d, blocks: false, st
 export const PROP_SPECS: Record<FurnitureProp, PropSpec> = {
   'bar-counter': floor(1.5, 0.6, true),
   'bar-stool': floor(0.45, 0.45, true),
-  table: floor(1.6, 0.9, true),
+  table: floor(1, 1, true),
   chair: floor(0.5, 0.5, true),
   sofa: floor(2, 0.85, true),
   bed: floor(1.2, 2, true),

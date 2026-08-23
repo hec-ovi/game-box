@@ -1,11 +1,12 @@
 import { shrinkFrom } from '../geometry.ts'
 import type { RoomPlan } from '../room-plan.ts'
-import { cornerPiece, servePost, standAt, wallRow } from './pieces.ts'
+import { cornerPiece, servePost, standAt, wallRow, wallScreen } from './pieces.ts'
 
 /** A shop: a counter you queue at, cases along the walls to look through. */
 export function shopFloor(plan: RoomPlan): void {
   plan.crowdLimit = 3
   servePost(plan, { onTop: 'register' })
+  wallScreen(plan)
   for (const side of plan.openSides()) {
     for (const piece of wallRow(plan, 'display-case', side, 2, 0.9)) standAt(plan, piece, 'browse')
   }

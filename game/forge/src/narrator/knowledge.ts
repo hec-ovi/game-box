@@ -93,13 +93,28 @@ export function personalityOf(role: NpcRole, placeName: string, rng: Rng): strin
 /**
  * What one person can tell you: their post, something their trade taught them,
  * something the building knows, and now and then what the street is saying.
+ *
+ * In a town with a history, what the street is saying is that history: the
+ * generic talk is what a town falls back on when nobody has written it one.
  */
-export function knowledgeOf(role: NpcRole, placeKind: BuildingKind, placeName: string, rng: Rng): string[] {
+export function knowledgeOf(
+  role: NpcRole,
+  placeKind: BuildingKind,
+  placeName: string,
+  rng: Rng,
+  common: readonly string[] = [],
+): string[] {
   const lines = [
     `Works at ${placeName} as the ${role}.`,
     rng.pick(ROLE_KNOWLEDGE[role]),
     rng.pick(PLACE_KNOWLEDGE[placeKind]),
   ]
-  if (rng.chance(0.5)) lines.push(rng.pick(STREET_KNOWLEDGE))
+  if (rng.chance(0.5)) lines.push(sentence(rng.pick(common.length ? common : STREET_KNOWLEDGE)))
   return lines
+}
+
+/** A fact written as a fragment, said as a sentence. */
+const sentence = (text: string): string => {
+  const said = `${text[0]!.toUpperCase()}${text.slice(1)}`
+  return /[.!?]$/.test(said) ? said : `${said}.`
 }

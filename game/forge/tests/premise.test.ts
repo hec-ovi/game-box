@@ -1,0 +1,217 @@
+import { Rng } from '@gb/kit'
+import type { BuildingKind } from '@gb/world'
+import { describe, expect, it } from 'vitest'
+import { Forge, OfflineNarrator, premiseLines } from '../src/index.ts'
+import type { Instance, InstanceRequest, Narrator } from '../src/narrator.ts'
+import type { Premise } from '../src/premise/shape.ts'
+import { FLAVOURS } from '../src/theme/flavour.ts'
+import { tradesFor, turnsFor } from '../src/premise/wording.ts'
+import { composePremise } from '../src/premise/write.ts'
+import { TRADES } from '../src/premise/wording.generated.ts'
+import { digest } from './support.ts'
+
+/** A town whose trade went, in the owner's own example. */
+const SHIPPING: Premise = {
+  livesOn: 'the wharves, and the freight that used to come over them',
+  happened: 'the shipping line moved to a deeper port two years ago and took the work with it',
+  stake: 'who ends up holding the empty sheds',
+  sides: [
+    { name: 'the freight families', wants: 'the sheds kept shut until the boats come back' },
+    { name: 'the receivers', wants: 'the whole waterfront sold on before it rots' },
+  ],
+  common: ['half the sheds on the water belong to somebody who has never been here'],
+  build: { moreOf: ['warehouse', 'bar', 'market'], fewerOf: ['office', 'hotel', 'cafe'], mustHave: ['warehouse'] },
+}
+
+/** The other one: a town built round a research campus. */
+const CAMPUS: Premise = {
+  livesOn: 'the research campus on the hill, and everything that grew up to feed it',
+  happened: 'the campus doubled in four years and the town has been catching up ever since',
+  stake: 'whether this is a town with a campus in it or a campus with houses attached',
+  sides: [
+    { name: 'the faculty', wants: 'the campus given the room it was promised' },
+    { name: 'the streets that were here first', wants: 'rents somebody who works here can pay' },
+  ],
+  common: ['every third flat is let to somebody who will be gone within the year'],
+  build: { moreOf: ['office', 'cafe', 'apartment', 'clinic'], fewerOf: ['warehouse', 'workshop', 'market'], mustHave: ['office'] },
+}
+
+/**
+ * A narrator told what the town is about, offline in every other respect. It is
+ * the shape `@gb/scribe` has: a premise from somewhere else, and the same city
+ * built around it.
+ */
+class Told implements Narrator {
+  readonly seen: InstanceRequest[] = []
+  #offline: OfflineNarrator
+  #premise: unknown
+
+  constructor(seed: string, premise: unknown) {
+    this.#offline = new OfflineNarrator(seed)
+    this.#premise = premise
+  }
+
+  async writePremise(): Promise<Premise> {
+    return this.#premise as Premise
+  }
+
+  nameCity = (input: Parameters<Narrator['nameCity']>[0]) => this.#offline.nameCity(input)
+  namePlace = (input: Parameters<Narrator['namePlace']>[0]) => this.#offline.namePlace(input)
+  describeNpc = (input: Parameters<Narrator['describeNpc']>[0]) => this.#offline.describeNpc(input)
+  describeItem = (input: Parameters<Narrator['describeItem']>[0]) => this.#offline.describeItem(input)
+  writeQuests = (input: Parameters<Narrator['writeQuests']>[0]) => this.#offline.writeQuests(input)
+
+  async writeInstances(requests: readonly InstanceRequest[]): Promise<readonly Instance[]> {
+    this.seen.push(...requests)
+    return this.#offline.writeInstances(requests)
+  }
+}
+
+/** A narrator from before there was a history stage: no `writePremise` at all. */
+class Storyless implements Narrator {
+  readonly seen: InstanceRequest[] = []
+  #offline = new OfflineNarrator('storyless')
+  nameCity = (input: Parameters<Narrator['nameCity']>[0]) => this.#offline.nameCity(input)
+  namePlace = (input: Parameters<Narrator['namePlace']>[0]) => this.#offline.namePlace(input)
+  describeNpc = (input: Parameters<Narrator['describeNpc']>[0]) => this.#offline.describeNpc(input)
+  describeItem = (input: Parameters<Narrator['describeItem']>[0]) => this.#offline.describeItem(input)
+  writeQuests = (input: Parameters<Narrator['writeQuests']>[0]) => this.#offline.writeQuests(input)
+  async writeInstances(requests: readonly InstanceRequest[]): Promise<readonly Instance[]> {
+    this.seen.push(...requests)
+    return this.#offline.writeInstances(requests)
+  }
+}
+
+const SEED = 'one-history'
+const SIZE = { blocksX: 5, blocksY: 5 }
+
+async function build(narrator: Narrator, overrides: Record<string, unknown> = {}) {
+  const built = await new Forge(narrator).build({ theme: 'quiet coastal town', seed: SEED, ...SIZE, ...overrides })
+  if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 400))
+  return built.value
+}
+
+const counts = (kinds: readonly BuildingKind[]): Map<BuildingKind, number> => {
+  const held = new Map<BuildingKind, number>()
+  for (const kind of kinds) held.set(kind, (held.get(kind) ?? 0) + 1)
+  return held
+}
+
+describe('a city written against a history', () => {
+  it('builds two different towns out of one seed and two histories, and the same town twice out of one', async () => {
+    // the whole point of the stage: a premise nothing can measure costs a call
+    // and buys a feeling
+    const [shipping, campus, again] = await Promise.all([
+      build(new Told(SEED, SHIPPING)),
+      build(new Told(SEED, CAMPUS)),
+      build(new Told(SEED, SHIPPING)),
+    ])
+
+    expect(digest(again.world.toJSON()), 'one history built two towns').toBe(digest(shipping.world.toJSON()))
+    expect(digest(again.quests)).toBe(digest(shipping.quests))
+    expect(digest(campus.world.toJSON()), 'two histories built one town').not.toBe(digest(shipping.world.toJSON()))
+
+    const port = counts(shipping.world.plots().map((plot) => plot.kind))
+    const college = counts(campus.world.plots().map((plot) => plot.kind))
+    expect(port.get('warehouse')!, 'the port has no more sheds than the campus town').toBeGreaterThan(college.get('warehouse')! * 2)
+    expect(port.get('market')!, 'the port has no more of a market than the campus town').toBeGreaterThan(college.get('market')! * 2)
+    expect(college.get('cafe')!, 'the campus town has no more cafes than the port').toBeGreaterThan(port.get('cafe')! * 2)
+  })
+
+  it('puts up what the history demands, and opens one of them', async () => {
+    // "a hospital, because of the flood" has to be a building, not a sentence
+    for (const [premise, demanded] of [
+      [SHIPPING, 'warehouse'],
+      [CAMPUS, 'office'],
+    ] as const) {
+      const towns = await Promise.all(
+        ['demand-1', 'demand-2', 'demand-3'].map((seed) => build(new Told(seed, premise), { seed, blocksX: 3, blocksY: 3 })),
+      )
+      for (const { world } of towns) {
+        expect(world.plotsOfKind(demanded).length, `${world.name} has no ${demanded} at all`).toBeGreaterThan(0)
+      }
+      const opened = towns.filter(({ world }) =>
+        world.interiors().some((interior) => interior.kind === demanded),
+      )
+      expect(opened.length, `no town opened the ${demanded} its history is about`).toBeGreaterThan(1)
+    }
+  })
+
+  it('shows every place that opens the town it stands in', async () => {
+    const told = new Told(SEED, SHIPPING)
+    await build(told)
+    expect(told.seen.length).toBeGreaterThan(4)
+    for (const request of told.seen) {
+      expect(request.premise, `${request.kind} was written knowing nothing about the town`).toBe(premiseLines(SHIPPING))
+    }
+
+    // and a narrator that writes no history still gets a town, with nothing said about it
+    const storyless = new Storyless()
+    const { world } = await build(storyless)
+    expect(world.check()).toEqual([])
+    expect(storyless.seen.every((request) => request.premise === undefined)).toBe(true)
+  })
+
+  it('writes the main line about what the history put at stake, and the fork about who wants what', async () => {
+    const { quests } = await build(new Told(SEED, SHIPPING))
+    const main = quests.filter((quest) => quest.kind === 'main')
+    expect(main.length).toBeGreaterThan(2)
+    for (const quest of main) {
+      expect(quest.summary, `${quest.title} is about nothing in particular`).toContain(SHIPPING.stake)
+    }
+
+    const options = main.flatMap((quest) => quest.steps.filter((step) => step.kind === 'choice').flatMap((step) => step.options.map((option) => option.label)))
+    expect(options.length, 'the line never makes the player pick a side').toBeGreaterThan(1)
+    for (const side of SHIPPING.sides) {
+      expect(options.some((label) => label.includes(side.name)), `nothing on the fork is about ${side.name}`).toBe(true)
+    }
+  })
+
+  it('drops a history that does not hold up and builds the town anyway', async () => {
+    // nothing a narrator writes is trusted: a model that answers with the wrong
+    // shape must not take the city down with it
+    for (const junk of [
+      { livesOn: 'somewhere' },
+      { ...SHIPPING, sides: [{ name: 'only one side', wants: 'everything' }] },
+      { ...SHIPPING, build: { moreOf: ['hospital'], fewerOf: [], mustHave: [] } },
+      'a paragraph of prose',
+      null,
+    ]) {
+      const told = new Told(SEED, junk)
+      const { world, rejected } = await build(told)
+      expect(world.check(), `${JSON.stringify(junk).slice(0, 40)} built a broken city`).toEqual([])
+      expect(rejected).toEqual([])
+      expect(told.seen.every((request) => request.premise === undefined)).toBe(true)
+    }
+  })
+
+  it('has a history to draw on for every kind of town it can read a theme as', () => {
+    // a flavour with no wording is a town that cannot be built at all: the
+    // composer picks from an empty list and throws halfway through a city
+    for (const flavour of FLAVOURS) {
+      expect(tradesFor(flavour).length, `${flavour} lives on nothing`).toBeGreaterThan(0)
+      expect(turnsFor(flavour).length, `nothing has ever happened to a ${flavour} town`).toBeGreaterThan(1)
+    }
+    const written = composePremise('dense neon port city', new Rng('offline'))
+    expect(written.premise.sides.length).toBe(2)
+    expect(written.premise.build.mustHave.length).toBeGreaterThan(0)
+    // and what the trade wants more of is never also what it wants less of
+    for (const kind of written.premise.build.fewerOf) {
+      expect(written.premise.build.moreOf, `${kind} is both wanted and not`).not.toContain(kind)
+      expect(written.premise.build.mustHave).not.toContain(kind)
+    }
+  })
+
+  it('names a town after what it lives on', async () => {
+    const words = new Set(TRADES.map((trade) => trade.word))
+    const names = await Promise.all(
+      ['named-1', 'named-2', 'named-3', 'named-4', 'named-5', 'named-6', 'named-7', 'named-8'].map(async (seed) => {
+        const built = await new Forge(new OfflineNarrator(seed)).build({ theme: 'quiet coastal town', seed, blocksX: 2, blocksY: 2 })
+        if (!built.ok) throw new Error('the town would not build')
+        return built.value.world.name
+      }),
+    )
+    const named = names.filter((name) => words.has(name.split(' ').at(-1)!))
+    expect(named.length, `none of ${names.join(', ')} is named after what its town lives on`).toBeGreaterThan(2)
+  })
+})

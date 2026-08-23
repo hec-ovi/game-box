@@ -1,8 +1,10 @@
 import type { Rng } from '@gb/kit'
-import { BODY_KINDS, METRICS, type World } from '@gb/world'
+import { BODY_KINDS, METRICS, type BuildingKind, type World } from '@gb/world'
 import { openDoors, type Frontage } from '../interior/open.ts'
 import { planInterior } from '../interior/plan.ts'
 import type { InstanceRequest } from '../narrator.ts'
+import { premiseLines } from '../premise/render.ts'
+import type { Premise } from '../premise/shape.ts'
 import type { Signs } from '../narrator/signs.ts'
 import { itemsFor, occupancy, roleFor, surfacesOf } from '../populate.ts'
 import type { Chosen, PlannedInside, PlannedPost, PlannedSite, PlannedThing } from './planned.ts'
@@ -10,6 +12,8 @@ import type { Chosen, PlannedInside, PlannedPost, PlannedSite, PlannedThing } fr
 /** What the whole town needs before a single site can be planned. */
 export interface RaiseSetup {
   readonly theme: string
+  /** What the city is about, when a narrator wrote one. */
+  readonly premise?: Premise
   readonly density: number
   readonly signs: Signs
   /** Which doors open, decided over the whole town at once. */
@@ -27,7 +31,8 @@ export interface RaiseSetup {
  */
 export function planRaise(world: World, chosen: readonly Chosen[], setup: RaiseSetup): PlannedSite[] {
   const first = world.plots().length
-  const open = openDoors(frontagesOf(world, chosen), setup.doors, {
+  const demanded = new Set(setup.premise?.build.mustHave ?? [])
+  const open = openDoors(frontagesOf(world, chosen, demanded), setup.doors, {
     built: first,
     open: world.interiors().map((interior) => interior.kind),
   })
@@ -43,13 +48,18 @@ export function planRaise(world: World, chosen: readonly Chosen[], setup: RaiseS
   }))
 }
 
-/** Every place that opens, asked for in one go. Closed doors already have their sign. */
-export function instanceRequests(planned: readonly PlannedSite[], theme: string): InstanceRequest[] {
+/**
+ * Every place that opens, asked for in one go, each one shown the town it
+ * stands in. Closed doors already have their sign.
+ */
+export function instanceRequests(planned: readonly PlannedSite[], setup: RaiseSetup): InstanceRequest[] {
+  const premise = setup.premise ? premiseLines(setup.premise) : undefined
   return planned
     .filter((one): one is PlannedSite & { inside: PlannedInside } => one.inside !== undefined)
     .map((one) => ({
       kind: one.kind,
-      theme,
+      theme: setup.theme,
+      ...(premise ? { premise } : {}),
       index: one.index,
       rooms: one.inside.plan.rooms.map((room) => room.kind),
       posts: one.inside.posts.map((post) => ({ postId: post.anchor.id, role: post.role, index: post.index })),
@@ -63,7 +73,7 @@ export function instanceRequests(planned: readonly PlannedSite[], theme: string)
  * order is the order they were chosen in, which is the order they are minted
  * in, so the ranking breaks its ties exactly where it always did.
  */
-function frontagesOf(world: World, chosen: readonly Chosen[]): Frontage[] {
+function frontagesOf(world: World, chosen: readonly Chosen[], demanded: ReadonlySet<BuildingKind>): Frontage[] {
   const middle = { x: world.grid.width / 2, y: world.grid.height / 2 }
   const furthest = Math.hypot(middle.x, middle.y) || 1
   return chosen.map((one, at) => ({
@@ -71,6 +81,7 @@ function frontagesOf(world: World, chosen: readonly Chosen[]): Frontage[] {
     kind: one.kind,
     nearness: 1 - Math.hypot(one.site.entrance.x - middle.x, one.site.entrance.y - middle.y) / furthest,
     onAvenue: one.onAvenue,
+    storied: demanded.has(one.kind),
   }))
 }
 

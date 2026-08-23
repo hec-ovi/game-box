@@ -1,4 +1,5 @@
 import type { BuildingKind, ItemArchetype, NpcRole, RoomKind } from '@gb/world'
+import type { Premise } from './premise/shape.ts'
 
 export interface NpcProfile {
   readonly name: string
@@ -36,7 +37,7 @@ export interface InstanceRequest {
   readonly rooms: readonly RoomKind[]
   readonly posts: readonly InstancePost[]
   readonly things: readonly InstanceStock[]
-  /** What the city is about, when it has been decided. */
+  /** What the city is about, in the few lines `premiseLines` renders it as. Absent when nobody wrote one. */
   readonly premise?: string
   /** Where this building falls in the town's own count of plots. */
   readonly index: number
@@ -64,6 +65,8 @@ export interface Instance {
 export interface WorldSummary {
   readonly cityName: string
   readonly theme: string
+  /** What the city is about: what the main line is for and who the two sides of it are. */
+  readonly premise?: Premise
   readonly places: ReadonlyArray<{
     readonly plotId: string
     readonly interiorId?: string
@@ -84,9 +87,14 @@ export interface WorldSummary {
 }
 
 /**
- * Everything about a world that is invention rather than geometry: names,
- * personalities, what people know, and the quests that string them together.
- * The generator never asks a narrator for coordinates.
+ * Everything about a world that is invention rather than geometry: the city's
+ * history, names, personalities, what people know, and the quests that string
+ * them together. The generator never asks a narrator for coordinates.
+ *
+ * `writePremise` is the first call and the one everything else is written
+ * against: it comes back before a plot is placed, so the town's history is what
+ * decides the mix of buildings, which doors open, what each place is written
+ * as, and what the main line is about.
  *
  * `writeInstances` is the one call the generator makes about the places that
  * open: every one of them goes out together, and the answers come back one per
@@ -95,7 +103,13 @@ export interface WorldSummary {
  * is asked those three, one place at a time, for the same city.
  */
 export interface Narrator {
-  nameCity(input: { theme: string; seed: string }): Promise<string>
+  /**
+   * The city's history, written before a street is laid: why the town is here,
+   * what happened to it, who is arguing about it, and what it therefore holds.
+   * A narrator without one gets a town with no story, exactly as before.
+   */
+  writePremise?(input: { theme: string; seed: string }): Promise<Premise>
+  nameCity(input: { theme: string; seed: string; premise?: Premise }): Promise<string>
   namePlace(input: { kind: BuildingKind; theme: string; index: number }): Promise<string>
   describeNpc(input: {
     role: NpcRole

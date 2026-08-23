@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "livesOn": {
+      "type": "string",
+      "minLength": 1
+    },
+    "happened": {
+      "type": "string",
+      "minLength": 1
+    },
+    "stake": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sides": {
+      "minItems": 2,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "wants": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "name",
+          "wants"
+        ]
+      }
+    },
+    "common": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "build": {
+      "type": "object",
+      "properties": {
+        "moreOf": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "house",
+              "apartment",
+              "bar",
+              "cafe",
+              "restaurant",
+              "shop",
+              "market",
+              "office",
+              "workshop",
+              "warehouse",
+              "clinic",
+              "hotel",
+              "station",
+              "chapel"
+            ]
+          }
+        },
+        "fewerOf": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "house",
+              "apartment",
+              "bar",
+              "cafe",
+              "restaurant",
+              "shop",
+              "market",
+              "office",
+              "workshop",
+              "warehouse",
+              "clinic",
+              "hotel",
+              "station",
+              "chapel"
+            ]
+          }
+        },
+        "mustHave": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "house",
+              "apartment",
+              "bar",
+              "cafe",
+              "restaurant",
+              "shop",
+              "market",
+              "office",
+              "workshop",
+              "warehouse",
+              "clinic",
+              "hotel",
+              "station",
+              "chapel"
+            ]
+          }
+        }
+      },
+      "required": [
+        "moreOf",
+        "fewerOf",
+        "mustHave"
+      ]
+    }
+  },
+  "required": [
+    "livesOn",
+    "happened",
+    "stake",
+    "sides",
+    "common",
+    "build"
+  ]
+}

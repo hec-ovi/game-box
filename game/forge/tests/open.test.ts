@@ -160,8 +160,8 @@ describe('a town of frontage with a few doors that open', () => {
     // fifty shops on the avenue and three flats out at the edge: the ranking
     // would take the shops and leave the town with nowhere to sleep
     const frontages: Frontage[] = [
-      ...Array.from({ length: 50 }, (_, i) => ({ id: `shop_${i}`, kind: 'shop' as const, nearness: 1, onAvenue: true })),
-      ...Array.from({ length: 3 }, (_, i) => ({ id: `flat_${i}`, kind: 'apartment' as const, nearness: 0, onAvenue: false })),
+      ...Array.from({ length: 50 }, (_, i) => ({ id: `shop_${i}`, kind: 'shop' as const, nearness: 1, onAvenue: true, storied: false })),
+      ...Array.from({ length: 3 }, (_, i) => ({ id: `flat_${i}`, kind: 'apartment' as const, nearness: 0, onAvenue: false, storied: false })),
     ]
     for (const seed of ['a', 'b', 'c', 'd', 'e']) {
       const open = openDoors(frontages, new Rng(seed), FRESH)
@@ -190,6 +190,7 @@ const many = (count: number): Frontage[] =>
     kind: BUILDING_KINDS[i % BUILDING_KINDS.length]!,
     nearness: 1 - i / count,
     onAvenue: i % 3 === 0,
+    storied: false,
   }))
 
 describe('how many doors a town of any size opens', () => {

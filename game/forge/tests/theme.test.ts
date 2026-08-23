@@ -20,7 +20,10 @@ describe('a town reads as the kind of town it was asked for', () => {
 
   it('builds a different town out of the same seed under a different theme', async () => {
     const themes = ['quiet coastal town', 'dusty western mining town', 'dense neon port city']
-    const seeds = ['one-seed', 'two-seed', 'three-seed']
+    // enough towns that the theme is what is being measured: one town's own
+    // history moves its mix as hard as the theme does, so three of them is a
+    // sample of premises, not of themes
+    const seeds = ['one-seed', 'two-seed', 'three-seed', 'four-seed', 'five-seed', 'six-seed']
     const built = await Promise.all(themes.flatMap((theme) => seeds.map((seed) => buildTown(seed, { theme }))))
     const mixes = built.map((town) => mixOf(town.world.plots().map((plot) => plot.kind)))
     expect(new Set(mixes).size).toBe(built.length)

@@ -18,6 +18,7 @@ import { paintStreets } from './layout/streets.ts'
 import type { Narrator, WorldSummary } from './narrator.ts'
 import { writeEachPlace } from './narrator/one-at-a-time.ts'
 import { Signs } from './narrator/signs.ts'
+import { premiseOf, type Premise } from './premise/shape.ts'
 import { surfacesOf } from './populate.ts'
 import { questDemand } from './quests/demand.ts'
 import { assemble } from './raise/assemble.ts'
@@ -65,7 +66,10 @@ export class Forge {
     const rng = new Rng(brief.seed)
 
     const streets = planStreets(brief, rng.fork('streets'))
-    const cityName = await this.#narrator.nameCity({ theme: brief.theme, seed: brief.seed })
+    // the town's history, before a plot is placed: it decides the mix, which
+    // doors open, how every place is written and what the main line is about
+    const premise = premiseOf(await this.#narrator.writePremise?.({ theme: brief.theme, seed: brief.seed }))
+    const cityName = await this.#narrator.nameCity({ theme: brief.theme, seed: brief.seed, ...(premise ? { premise } : {}) })
     const found = World.found({
       name: cityName,
       theme: brief.theme,
@@ -79,8 +83,9 @@ export class Forge {
     paintStreets(world, streets)
 
     layRoads(world, streets.crossings, streets.exits)
-    await this.#raise(world, this.#townSites(brief, streets, rng), {
+    await this.#raise(world, this.#townSites(brief, streets, rng, premise), {
       theme: brief.theme,
+      ...(premise ? { premise } : {}),
       density: brief.density,
       signs: new Signs(brief.seed),
       doors: rng.fork('doors'),
@@ -90,7 +95,7 @@ export class Forge {
     const problems = world.check()
     if (problems.length) return err({ code: 'unsound-world', problems })
 
-    const { quests, rejected } = await this.#writeQuests(world, rng.fork('quests'))
+    const { quests, rejected } = await this.#writeQuests(world, premise, rng.fork('quests'))
     return ok({ world, quests, rejected })
   }
 
@@ -123,23 +128,24 @@ export class Forge {
    */
   async #raise(world: World, chosen: readonly Chosen[], setup: RaiseSetup): Promise<string[]> {
     const planned = planRaise(world, chosen, setup)
-    const requests = instanceRequests(planned, setup.theme)
+    const requests = instanceRequests(planned, setup)
     const written = await (this.#narrator.writeInstances?.(requests) ?? writeEachPlace(this.#narrator, requests))
     return assemble(world, planned, written)
   }
 
   /**
    * What a whole town is built out of. What kind of town it is decides the mix,
-   * the seed moves it around, and the few places the town is known for are
+   * its own history pushes that further, the seed moves it around, and the few
+   * places the town is known for, the ones the history demands included, are
    * dropped on seeded sites before the rest is rolled.
    */
-  #townSites(brief: Brief, streets: StreetPlan, rng: Rng): Chosen[] {
+  #townSites(brief: Brief, streets: StreetPlan, rng: Rng, premise: Premise | undefined): Chosen[] {
     const sites = streets.blocks.flatMap((block, index) => sitesInBlock(block, rng.fork(`block/${index}`)))
     const avenues = Avenues.from(streets.columns, streets.rows)
     const mix = rng.fork('plots')
     const flavour = flavourOf(brief.theme)
-    const weights = kindWeights(flavour, mix)
-    const wanted = stapleKinds(flavour, mix)
+    const weights = kindWeights(flavour, mix, premise?.build)
+    const wanted = stapleKinds(flavour, mix, premise?.build.mustHave)
     const spots = mix.shuffle(sites.map((_, index) => index)).slice(0, wanted.length)
     const staples = new Map(spots.map((site, order) => [site, wanted[order]!]))
 
@@ -172,8 +178,8 @@ export class Forge {
     return chosen
   }
 
-  async #writeQuests(world: World, rng: Rng): Promise<{ quests: QuestDoc[]; rejected: ForgeResult['rejected'] }> {
-    const summary = summarise(world)
+  async #writeQuests(world: World, premise: Premise | undefined, rng: Rng): Promise<{ quests: QuestDoc[]; rejected: ForgeResult['rejected'] }> {
+    const summary = summarise(world, premise)
     const raw = await this.#narrator.writeQuests({ summary, sideQuests: questDemand(summary, rng) })
     const quests: QuestDoc[] = []
     const rejected: Array<{ index: number; problems: readonly QuestProblem[] }> = []
@@ -228,14 +234,16 @@ function violationsOf(error: WorldError): readonly SchemaViolation[] {
 }
 
 /**
- * The abstract world a quest writer reads: places, who is in them, what is
- * there, where its door is and what a thing can be left on. No coordinates
- * beyond the door, because that is all a quest ever needs to measure a walk.
+ * The abstract world a quest writer reads: what the town is about, its places,
+ * who is in them, what is there, where its door is and what a thing can be left
+ * on. No coordinates beyond the door, because that is all a quest ever needs to
+ * measure a walk.
  */
-export function summarise(world: World): WorldSummary {
+export function summarise(world: World, premise?: Premise): WorldSummary {
   return {
     cityName: world.name,
     theme: world.theme,
+    ...(premise ? { premise } : {}),
     places: world.plots().map((plot) => {
       const interior = world.interiors().find((i) => i.plotId === plot.id)
       const npcs = interior ? world.npcs().filter((n) => n.station?.interiorId === interior.id) : []

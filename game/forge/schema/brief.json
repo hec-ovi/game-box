@@ -16,13 +16,13 @@
       "default": 3,
       "type": "integer",
       "minimum": 1,
-      "maximum": 77
+      "maximum": 57
     },
     "blocksY": {
       "default": 3,
       "type": "integer",
       "minimum": 1,
-      "maximum": 77
+      "maximum": 57
     },
     "blockCells": {
       "type": "integer",

@@ -18,9 +18,6 @@ const ranked = (quests: readonly { difficulty?: string | undefined }[]): number[
 /** The middling job in a town: what most of its work feels like. */
 const median = (quests: readonly { difficulty?: string | undefined }[]): string => BANDS[ranked(quests)[Math.floor(quests.length / 2)]!]!
 
-/** The biggest job a town has in it. */
-const hardest = (quests: readonly { difficulty?: string | undefined }[]): number => ranked(quests).at(-1)!
-
 /** One city and one small town off the same seed: everything below is one measured against the other. */
 const [city, town] = await Promise.all([
   buildTown('scale-city', { blocksX: 18, blocksY: 18 }),
@@ -81,11 +78,14 @@ describe('a town offers as much as it holds', () => {
     // sitting on a boundary, so which side of it the middle job falls is noise
     const band = (quests: typeof city.quests) => BANDS.indexOf(median(quests))
     expect(Math.abs(band(city.quests) - band(town.quests)), `${median(city.quests)} in a city against ${median(town.quests)} in a town`).toBeLessThanOrEqual(1)
-    // and only a city is big enough to hold a side job that crosses it. The main
-    // line is measured out differently: its two sides are the two ends of the
-    // town's own argument, so its longest link spans whatever town it is in
-    const sides = (built: typeof city) => built.quests.filter((quest) => quest.kind === 'side')
-    expect(hardest(sides(city))).toBeGreaterThan(hardest(sides(town)))
+    // and a city holds far more of the work that crosses a town. The biggest
+    // single job is not the measure: a small town throws one up on about half
+    // its seeds, so the top of the range is one draw rather than a property.
+    // The main line is measured out differently again: its two sides are the two
+    // ends of the town's own argument, so its longest link spans whatever town
+    // it is in
+    const crossing = (built: typeof city) => built.quests.filter((quest) => quest.kind === 'side' && quest.difficulty === 'epic').length
+    expect(crossing(city), `${crossing(city)} jobs cross the city, ${crossing(town)} cross the town`).toBeGreaterThan(crossing(town) * 4)
     expect(city.quests.filter((quest) => quest.difficulty === 'epic').length).toBeLessThan(city.quests.length * 0.2)
   })
 

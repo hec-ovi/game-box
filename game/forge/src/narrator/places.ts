@@ -35,9 +35,18 @@ export function placeName(kind: BuildingKind, words: Words, rng: Rng): string {
   return rng.pick(PATTERNS[kind])(sign)
 }
 
-/** A name for the town itself: a head and a tail, or a tail on its own. */
-export function cityName(words: Words, rng: Rng): string {
+/** How often a town is named after what it lives on, when its premise says what that is. */
+const NAMED_FOR = 0.6
+
+/**
+ * A name for the town itself: a head, and then either the thing the town lives
+ * on or one of the words a town of this kind is called after. That is what a
+ * premise buys the naming: Old Wharf and Upper Campus are two towns before
+ * anybody has read a word about either of them.
+ */
+export function cityName(words: Words, rng: Rng, livesOn?: string): string {
   const tail = rng.pick(words.cityTails)
-  if (rng.chance(0.45)) return `${rng.pick(words.cityHeads)} ${tail}`
-  return `${rng.pick(words.adjectives)} ${tail}`
+  const head = rng.chance(0.45) ? rng.pick(words.cityHeads) : rng.pick(words.adjectives)
+  if (livesOn && rng.chance(NAMED_FOR)) return `${head} ${livesOn}`
+  return `${head} ${tail}`
 }
