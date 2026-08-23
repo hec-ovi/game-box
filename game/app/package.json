@@ -31,7 +31,8 @@
     "@gb/traffic": "workspace:*",
     "@gb/hud": "workspace:*",
     "@gb/land": "workspace:*",
-    "@gb/furnish": "workspace:*"
+    "@gb/furnish": "workspace:*",
+    "@gb/prefab": "workspace:*"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",

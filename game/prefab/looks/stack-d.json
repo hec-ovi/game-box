@@ -1,0 +1,26 @@
+{
+  "id": "stack-d",
+  "family": "d",
+  "note": "a lit middle with a dark cap: glazing over the entrance floor, cyan seams at street level",
+  "kinds": [
+    "office",
+    "apartment",
+    "hotel",
+    "station",
+    "workshop"
+  ],
+  "door": {
+    "wide": 2.0,
+    "tall": 2.6
+  },
+  "shopfront": true,
+  "glass": "body",
+  "lines": {
+    "section": "ground",
+    "count": 2,
+    "spread": "quarter",
+    "colour": "cyan",
+    "thickness": 0.1
+  },
+  "crown": "cyan"
+}

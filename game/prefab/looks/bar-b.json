@@ -1,0 +1,27 @@
+{
+  "id": "bar-b",
+  "family": "b",
+  "note": "a narrow lit front, amber the whole way up, with the top storey glazed",
+  "kinds": [
+    "bar",
+    "restaurant",
+    "cafe",
+    "shop",
+    "hotel"
+  ],
+  "door": {
+    "wide": 1.8,
+    "tall": 2.4
+  },
+  "shopfront": true,
+  "fascia": true,
+  "glass": "crown",
+  "lines": {
+    "section": "ground",
+    "count": 2,
+    "spread": "third",
+    "colour": "amber",
+    "thickness": 0.1
+  },
+  "crown": "amber"
+}

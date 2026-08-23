@@ -1,0 +1,26 @@
+{
+  "id": "shop-b",
+  "family": "b",
+  "note": "a shopfront: a wide door, a fascia band over it and three magenta tubes across the frontage",
+  "kinds": [
+    "shop",
+    "market",
+    "cafe",
+    "restaurant",
+    "bar"
+  ],
+  "door": {
+    "wide": 2.4,
+    "tall": 2.6
+  },
+  "shopfront": true,
+  "fascia": true,
+  "lines": {
+    "section": "ground",
+    "count": 3,
+    "spread": "quarter",
+    "colour": "magenta",
+    "thickness": 0.08
+  },
+  "crown": "magenta"
+}

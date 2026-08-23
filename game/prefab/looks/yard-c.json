@@ -1,0 +1,9 @@
+{
+  "id": "yard-c",
+  "family": "c",
+  "note": "a working shed: a tall loading door, a heavy fascia and one amber run at the parapet",
+  "kinds": ["warehouse", "workshop", "market", "station", "shop"],
+  "door": { "wide": 2.6, "tall": 2.9 },
+  "fascia": true,
+  "crown": "amber"
+}

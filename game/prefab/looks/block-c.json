@@ -1,0 +1,9 @@
+{
+  "id": "block-c",
+  "family": "c",
+  "note": "a residential block: a plain street wall, a modest door and one teal line round a stepped parapet",
+  "kinds": ["house", "apartment", "chapel", "clinic", "station"],
+  "door": { "wide": 1.6, "tall": 2.3 },
+  "crown": "teal",
+  "setback": 0.6
+}

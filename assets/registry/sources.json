@@ -88,6 +88,17 @@
       "attribution": null,
       "redistributable": true,
       "take": "Road pieces, kerbs, crossings, street furniture."
+    },
+    {
+      "id": "glb-buildings",
+      "name": "glb-buildings",
+      "author": "Hector Oviedo",
+      "page": "https://github.com/hec-ovi/glb-buildings-skill",
+      "file": null,
+      "license": "MIT",
+      "attribution": null,
+      "redistributable": true,
+      "take": "The producer @gb/prefab bakes its building pack with, offline. Its drawn-from-code tiles only: the image packs it can also carry have no licence record and never reach the pack."
     }
   ]
 }

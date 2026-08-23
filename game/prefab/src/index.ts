@@ -1,0 +1,10 @@
+/** @gb/prefab: whole buildings from a committed pack, one draw for the city. See CONTRACT.md. */
+export { HEIGHT_TOLERANCE, PROUD } from './fit.ts'
+export { bucketOf, bucketKey, everyBucket, heightOf, DEPTHS, FRONTS, STOREYS, type Bucket } from './bucket.ts'
+export { Catalogue, CatalogueSchema, InvalidCatalogue, type CatalogueDoc, type Design, type ModelSpec } from './catalogue.ts'
+export { PrefabDressing, type BuildingSize } from './dressing.ts'
+export { Library, LibraryIncomplete, type LibrarySpec } from './library.ts'
+export { loadPrefab, PackChanged } from './load.ts'
+export { GLOW, prefabMaterial, type PrefabAtlas } from './material.ts'
+export { LAYER_ATTRIBUTE, MATERIAL_NAME } from './pack.ts'
+export { orient, turnsFor } from './orient.ts'

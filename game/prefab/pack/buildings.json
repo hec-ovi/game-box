@@ -1,0 +1,9236 @@
+{
+  "pack": "gb-buildings",
+  "version": "1.0.0",
+  "sha256": "35db9bb20e901a027606af4a062f0610c04eeea2524379af6aeb2b8599d93105",
+  "producer": "glb-buildings@6e05c32",
+  "atlas": {
+    "colour": {
+      "size": 256,
+      "layers": 14,
+      "sha256": "1da9afffa3990e70bd513bdb26e6f84eca9fc09df5d722d61e5bca1570122402"
+    },
+    "emissive": {
+      "size": 256,
+      "layers": 14,
+      "sha256": "689914627a88653cb955ca33dbaf07ed4e8c3284439a768f51ade210ca3a4043"
+    }
+  },
+  "models": [
+    {
+      "id": "bar-b-6x10x1",
+      "look": "bar-b",
+      "front": 6,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-6x12x1",
+      "look": "bar-b",
+      "front": 6,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-6x14x1",
+      "look": "bar-b",
+      "front": 6,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-6x16x1",
+      "look": "bar-b",
+      "front": 6,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-8x10x1",
+      "look": "bar-b",
+      "front": 8,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-8x12x1",
+      "look": "bar-b",
+      "front": 8,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-8x14x1",
+      "look": "bar-b",
+      "front": 8,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-8x16x1",
+      "look": "bar-b",
+      "front": 8,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-10x10x1",
+      "look": "bar-b",
+      "front": 10,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-10x12x1",
+      "look": "bar-b",
+      "front": 10,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-10x14x1",
+      "look": "bar-b",
+      "front": 10,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-10x16x1",
+      "look": "bar-b",
+      "front": 10,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-12x10x1",
+      "look": "bar-b",
+      "front": 12,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-12x12x1",
+      "look": "bar-b",
+      "front": 12,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-12x14x1",
+      "look": "bar-b",
+      "front": 12,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-12x16x1",
+      "look": "bar-b",
+      "front": 12,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-6x10x2",
+      "look": "bar-b",
+      "front": 6,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-6x12x2",
+      "look": "bar-b",
+      "front": 6,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-6x14x2",
+      "look": "bar-b",
+      "front": 6,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-6x16x2",
+      "look": "bar-b",
+      "front": 6,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-8x10x2",
+      "look": "bar-b",
+      "front": 8,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-8x12x2",
+      "look": "bar-b",
+      "front": 8,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-8x14x2",
+      "look": "bar-b",
+      "front": 8,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-8x16x2",
+      "look": "bar-b",
+      "front": 8,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-10x10x2",
+      "look": "bar-b",
+      "front": 10,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-10x12x2",
+      "look": "bar-b",
+      "front": 10,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-10x14x2",
+      "look": "bar-b",
+      "front": 10,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-10x16x2",
+      "look": "bar-b",
+      "front": 10,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-12x10x2",
+      "look": "bar-b",
+      "front": 12,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-12x12x2",
+      "look": "bar-b",
+      "front": 12,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-12x14x2",
+      "look": "bar-b",
+      "front": 12,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-12x16x2",
+      "look": "bar-b",
+      "front": 12,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-6x10x3",
+      "look": "bar-b",
+      "front": 6,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-6x12x3",
+      "look": "bar-b",
+      "front": 6,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-6x14x3",
+      "look": "bar-b",
+      "front": 6,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-6x16x3",
+      "look": "bar-b",
+      "front": 6,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-8x10x3",
+      "look": "bar-b",
+      "front": 8,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-8x12x3",
+      "look": "bar-b",
+      "front": 8,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-8x14x3",
+      "look": "bar-b",
+      "front": 8,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-8x16x3",
+      "look": "bar-b",
+      "front": 8,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-10x10x3",
+      "look": "bar-b",
+      "front": 10,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-10x12x3",
+      "look": "bar-b",
+      "front": 10,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-10x14x3",
+      "look": "bar-b",
+      "front": 10,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-10x16x3",
+      "look": "bar-b",
+      "front": 10,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-12x10x3",
+      "look": "bar-b",
+      "front": 12,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-12x12x3",
+      "look": "bar-b",
+      "front": 12,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-12x14x3",
+      "look": "bar-b",
+      "front": 12,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-12x16x3",
+      "look": "bar-b",
+      "front": 12,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-6x10x4",
+      "look": "bar-b",
+      "front": 6,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-6x12x4",
+      "look": "bar-b",
+      "front": 6,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-6x14x4",
+      "look": "bar-b",
+      "front": 6,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-6x16x4",
+      "look": "bar-b",
+      "front": 6,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-8x10x4",
+      "look": "bar-b",
+      "front": 8,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-8x12x4",
+      "look": "bar-b",
+      "front": 8,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-8x14x4",
+      "look": "bar-b",
+      "front": 8,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-8x16x4",
+      "look": "bar-b",
+      "front": 8,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-10x10x4",
+      "look": "bar-b",
+      "front": 10,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-10x12x4",
+      "look": "bar-b",
+      "front": 10,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-10x14x4",
+      "look": "bar-b",
+      "front": 10,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-10x16x4",
+      "look": "bar-b",
+      "front": 10,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-12x10x4",
+      "look": "bar-b",
+      "front": 12,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-12x12x4",
+      "look": "bar-b",
+      "front": 12,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-12x14x4",
+      "look": "bar-b",
+      "front": 12,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "bar-b-12x16x4",
+      "look": "bar-b",
+      "front": 12,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "bar",
+        "restaurant",
+        "cafe",
+        "shop",
+        "hotel"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-6x10x1",
+      "look": "block-c",
+      "front": 6,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-6x12x1",
+      "look": "block-c",
+      "front": 6,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-6x14x1",
+      "look": "block-c",
+      "front": 6,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-6x16x1",
+      "look": "block-c",
+      "front": 6,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-8x10x1",
+      "look": "block-c",
+      "front": 8,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-8x12x1",
+      "look": "block-c",
+      "front": 8,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-8x14x1",
+      "look": "block-c",
+      "front": 8,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-8x16x1",
+      "look": "block-c",
+      "front": 8,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-10x10x1",
+      "look": "block-c",
+      "front": 10,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-10x12x1",
+      "look": "block-c",
+      "front": 10,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-10x14x1",
+      "look": "block-c",
+      "front": 10,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-10x16x1",
+      "look": "block-c",
+      "front": 10,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-12x10x1",
+      "look": "block-c",
+      "front": 12,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-12x12x1",
+      "look": "block-c",
+      "front": 12,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-12x14x1",
+      "look": "block-c",
+      "front": 12,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-12x16x1",
+      "look": "block-c",
+      "front": 12,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-6x10x2",
+      "look": "block-c",
+      "front": 6,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-6x12x2",
+      "look": "block-c",
+      "front": 6,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-6x14x2",
+      "look": "block-c",
+      "front": 6,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-6x16x2",
+      "look": "block-c",
+      "front": 6,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-8x10x2",
+      "look": "block-c",
+      "front": 8,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-8x12x2",
+      "look": "block-c",
+      "front": 8,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-8x14x2",
+      "look": "block-c",
+      "front": 8,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-8x16x2",
+      "look": "block-c",
+      "front": 8,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-10x10x2",
+      "look": "block-c",
+      "front": 10,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-10x12x2",
+      "look": "block-c",
+      "front": 10,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-10x14x2",
+      "look": "block-c",
+      "front": 10,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-10x16x2",
+      "look": "block-c",
+      "front": 10,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-12x10x2",
+      "look": "block-c",
+      "front": 12,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-12x12x2",
+      "look": "block-c",
+      "front": 12,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-12x14x2",
+      "look": "block-c",
+      "front": 12,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-12x16x2",
+      "look": "block-c",
+      "front": 12,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-6x10x3",
+      "look": "block-c",
+      "front": 6,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-6x12x3",
+      "look": "block-c",
+      "front": 6,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-6x14x3",
+      "look": "block-c",
+      "front": 6,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-6x16x3",
+      "look": "block-c",
+      "front": 6,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-8x10x3",
+      "look": "block-c",
+      "front": 8,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-8x12x3",
+      "look": "block-c",
+      "front": 8,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-8x14x3",
+      "look": "block-c",
+      "front": 8,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-8x16x3",
+      "look": "block-c",
+      "front": 8,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-10x10x3",
+      "look": "block-c",
+      "front": 10,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-10x12x3",
+      "look": "block-c",
+      "front": 10,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-10x14x3",
+      "look": "block-c",
+      "front": 10,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-10x16x3",
+      "look": "block-c",
+      "front": 10,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-12x10x3",
+      "look": "block-c",
+      "front": 12,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-12x12x3",
+      "look": "block-c",
+      "front": 12,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-12x14x3",
+      "look": "block-c",
+      "front": 12,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-12x16x3",
+      "look": "block-c",
+      "front": 12,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-6x10x4",
+      "look": "block-c",
+      "front": 6,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 184,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-6x12x4",
+      "look": "block-c",
+      "front": 6,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 184,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-6x14x4",
+      "look": "block-c",
+      "front": 6,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 184,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-6x16x4",
+      "look": "block-c",
+      "front": 6,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 184,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-8x10x4",
+      "look": "block-c",
+      "front": 8,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 184,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-8x12x4",
+      "look": "block-c",
+      "front": 8,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 184,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-8x14x4",
+      "look": "block-c",
+      "front": 8,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 184,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-8x16x4",
+      "look": "block-c",
+      "front": 8,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 184,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-10x10x4",
+      "look": "block-c",
+      "front": 10,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 184,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-10x12x4",
+      "look": "block-c",
+      "front": 10,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 184,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-10x14x4",
+      "look": "block-c",
+      "front": 10,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 184,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-10x16x4",
+      "look": "block-c",
+      "front": 10,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 184,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-12x10x4",
+      "look": "block-c",
+      "front": 12,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 184,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-12x12x4",
+      "look": "block-c",
+      "front": 12,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 184,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-12x14x4",
+      "look": "block-c",
+      "front": 12,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 184,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "block-c-12x16x4",
+      "look": "block-c",
+      "front": 12,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "apartment",
+        "chapel",
+        "clinic",
+        "station"
+      ],
+      "triangles": 184,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-6x10x1",
+      "look": "corpo-a",
+      "front": 6,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-6x12x1",
+      "look": "corpo-a",
+      "front": 6,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-6x14x1",
+      "look": "corpo-a",
+      "front": 6,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-6x16x1",
+      "look": "corpo-a",
+      "front": 6,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-8x10x1",
+      "look": "corpo-a",
+      "front": 8,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-8x12x1",
+      "look": "corpo-a",
+      "front": 8,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-8x14x1",
+      "look": "corpo-a",
+      "front": 8,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-8x16x1",
+      "look": "corpo-a",
+      "front": 8,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-10x10x1",
+      "look": "corpo-a",
+      "front": 10,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-10x12x1",
+      "look": "corpo-a",
+      "front": 10,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-10x14x1",
+      "look": "corpo-a",
+      "front": 10,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-10x16x1",
+      "look": "corpo-a",
+      "front": 10,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-12x10x1",
+      "look": "corpo-a",
+      "front": 12,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-12x12x1",
+      "look": "corpo-a",
+      "front": 12,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-12x14x1",
+      "look": "corpo-a",
+      "front": 12,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-12x16x1",
+      "look": "corpo-a",
+      "front": 12,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-6x10x2",
+      "look": "corpo-a",
+      "front": 6,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-6x12x2",
+      "look": "corpo-a",
+      "front": 6,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-6x14x2",
+      "look": "corpo-a",
+      "front": 6,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-6x16x2",
+      "look": "corpo-a",
+      "front": 6,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-8x10x2",
+      "look": "corpo-a",
+      "front": 8,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-8x12x2",
+      "look": "corpo-a",
+      "front": 8,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-8x14x2",
+      "look": "corpo-a",
+      "front": 8,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-8x16x2",
+      "look": "corpo-a",
+      "front": 8,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-10x10x2",
+      "look": "corpo-a",
+      "front": 10,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-10x12x2",
+      "look": "corpo-a",
+      "front": 10,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-10x14x2",
+      "look": "corpo-a",
+      "front": 10,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-10x16x2",
+      "look": "corpo-a",
+      "front": 10,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-12x10x2",
+      "look": "corpo-a",
+      "front": 12,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-12x12x2",
+      "look": "corpo-a",
+      "front": 12,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-12x14x2",
+      "look": "corpo-a",
+      "front": 12,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-12x16x2",
+      "look": "corpo-a",
+      "front": 12,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-6x10x3",
+      "look": "corpo-a",
+      "front": 6,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-6x12x3",
+      "look": "corpo-a",
+      "front": 6,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-6x14x3",
+      "look": "corpo-a",
+      "front": 6,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-6x16x3",
+      "look": "corpo-a",
+      "front": 6,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-8x10x3",
+      "look": "corpo-a",
+      "front": 8,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-8x12x3",
+      "look": "corpo-a",
+      "front": 8,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-8x14x3",
+      "look": "corpo-a",
+      "front": 8,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-8x16x3",
+      "look": "corpo-a",
+      "front": 8,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-10x10x3",
+      "look": "corpo-a",
+      "front": 10,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-10x12x3",
+      "look": "corpo-a",
+      "front": 10,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-10x14x3",
+      "look": "corpo-a",
+      "front": 10,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-10x16x3",
+      "look": "corpo-a",
+      "front": 10,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-12x10x3",
+      "look": "corpo-a",
+      "front": 12,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-12x12x3",
+      "look": "corpo-a",
+      "front": 12,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-12x14x3",
+      "look": "corpo-a",
+      "front": 12,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-12x16x3",
+      "look": "corpo-a",
+      "front": 12,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 252,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-6x10x4",
+      "look": "corpo-a",
+      "front": 6,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-6x12x4",
+      "look": "corpo-a",
+      "front": 6,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-6x14x4",
+      "look": "corpo-a",
+      "front": 6,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-6x16x4",
+      "look": "corpo-a",
+      "front": 6,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-8x10x4",
+      "look": "corpo-a",
+      "front": 8,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-8x12x4",
+      "look": "corpo-a",
+      "front": 8,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-8x14x4",
+      "look": "corpo-a",
+      "front": 8,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-8x16x4",
+      "look": "corpo-a",
+      "front": 8,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-10x10x4",
+      "look": "corpo-a",
+      "front": 10,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-10x12x4",
+      "look": "corpo-a",
+      "front": 10,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-10x14x4",
+      "look": "corpo-a",
+      "front": 10,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-10x16x4",
+      "look": "corpo-a",
+      "front": 10,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-12x10x4",
+      "look": "corpo-a",
+      "front": 12,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-12x12x4",
+      "look": "corpo-a",
+      "front": 12,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-12x14x4",
+      "look": "corpo-a",
+      "front": 12,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "corpo-a-12x16x4",
+      "look": "corpo-a",
+      "front": 12,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "hotel",
+        "clinic",
+        "station",
+        "apartment"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-6x10x1",
+      "look": "lodge-d",
+      "front": 6,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-6x12x1",
+      "look": "lodge-d",
+      "front": 6,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-6x14x1",
+      "look": "lodge-d",
+      "front": 6,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-6x16x1",
+      "look": "lodge-d",
+      "front": 6,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-8x10x1",
+      "look": "lodge-d",
+      "front": 8,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-8x12x1",
+      "look": "lodge-d",
+      "front": 8,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-8x14x1",
+      "look": "lodge-d",
+      "front": 8,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-8x16x1",
+      "look": "lodge-d",
+      "front": 8,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-10x10x1",
+      "look": "lodge-d",
+      "front": 10,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-10x12x1",
+      "look": "lodge-d",
+      "front": 10,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-10x14x1",
+      "look": "lodge-d",
+      "front": 10,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-10x16x1",
+      "look": "lodge-d",
+      "front": 10,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-12x10x1",
+      "look": "lodge-d",
+      "front": 12,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-12x12x1",
+      "look": "lodge-d",
+      "front": 12,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-12x14x1",
+      "look": "lodge-d",
+      "front": 12,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-12x16x1",
+      "look": "lodge-d",
+      "front": 12,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-6x10x2",
+      "look": "lodge-d",
+      "front": 6,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-6x12x2",
+      "look": "lodge-d",
+      "front": 6,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-6x14x2",
+      "look": "lodge-d",
+      "front": 6,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-6x16x2",
+      "look": "lodge-d",
+      "front": 6,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-8x10x2",
+      "look": "lodge-d",
+      "front": 8,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-8x12x2",
+      "look": "lodge-d",
+      "front": 8,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-8x14x2",
+      "look": "lodge-d",
+      "front": 8,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-8x16x2",
+      "look": "lodge-d",
+      "front": 8,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-10x10x2",
+      "look": "lodge-d",
+      "front": 10,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-10x12x2",
+      "look": "lodge-d",
+      "front": 10,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-10x14x2",
+      "look": "lodge-d",
+      "front": 10,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-10x16x2",
+      "look": "lodge-d",
+      "front": 10,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-12x10x2",
+      "look": "lodge-d",
+      "front": 12,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-12x12x2",
+      "look": "lodge-d",
+      "front": 12,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-12x14x2",
+      "look": "lodge-d",
+      "front": 12,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-12x16x2",
+      "look": "lodge-d",
+      "front": 12,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-6x10x3",
+      "look": "lodge-d",
+      "front": 6,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-6x12x3",
+      "look": "lodge-d",
+      "front": 6,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-6x14x3",
+      "look": "lodge-d",
+      "front": 6,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-6x16x3",
+      "look": "lodge-d",
+      "front": 6,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-8x10x3",
+      "look": "lodge-d",
+      "front": 8,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-8x12x3",
+      "look": "lodge-d",
+      "front": 8,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-8x14x3",
+      "look": "lodge-d",
+      "front": 8,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-8x16x3",
+      "look": "lodge-d",
+      "front": 8,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-10x10x3",
+      "look": "lodge-d",
+      "front": 10,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-10x12x3",
+      "look": "lodge-d",
+      "front": 10,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-10x14x3",
+      "look": "lodge-d",
+      "front": 10,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-10x16x3",
+      "look": "lodge-d",
+      "front": 10,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-12x10x3",
+      "look": "lodge-d",
+      "front": 12,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-12x12x3",
+      "look": "lodge-d",
+      "front": 12,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-12x14x3",
+      "look": "lodge-d",
+      "front": 12,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-12x16x3",
+      "look": "lodge-d",
+      "front": 12,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-6x10x4",
+      "look": "lodge-d",
+      "front": 6,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-6x12x4",
+      "look": "lodge-d",
+      "front": 6,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-6x14x4",
+      "look": "lodge-d",
+      "front": 6,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-6x16x4",
+      "look": "lodge-d",
+      "front": 6,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-8x10x4",
+      "look": "lodge-d",
+      "front": 8,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-8x12x4",
+      "look": "lodge-d",
+      "front": 8,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-8x14x4",
+      "look": "lodge-d",
+      "front": 8,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-8x16x4",
+      "look": "lodge-d",
+      "front": 8,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-10x10x4",
+      "look": "lodge-d",
+      "front": 10,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-10x12x4",
+      "look": "lodge-d",
+      "front": 10,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-10x14x4",
+      "look": "lodge-d",
+      "front": 10,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-10x16x4",
+      "look": "lodge-d",
+      "front": 10,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-12x10x4",
+      "look": "lodge-d",
+      "front": 12,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-12x12x4",
+      "look": "lodge-d",
+      "front": 12,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-12x14x4",
+      "look": "lodge-d",
+      "front": 12,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "lodge-d-12x16x4",
+      "look": "lodge-d",
+      "front": 12,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "house",
+        "chapel",
+        "cafe",
+        "clinic",
+        "warehouse"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-6x10x1",
+      "look": "shop-b",
+      "front": 6,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-6x12x1",
+      "look": "shop-b",
+      "front": 6,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-6x14x1",
+      "look": "shop-b",
+      "front": 6,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-6x16x1",
+      "look": "shop-b",
+      "front": 6,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-8x10x1",
+      "look": "shop-b",
+      "front": 8,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-8x12x1",
+      "look": "shop-b",
+      "front": 8,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-8x14x1",
+      "look": "shop-b",
+      "front": 8,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-8x16x1",
+      "look": "shop-b",
+      "front": 8,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-10x10x1",
+      "look": "shop-b",
+      "front": 10,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-10x12x1",
+      "look": "shop-b",
+      "front": 10,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-10x14x1",
+      "look": "shop-b",
+      "front": 10,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-10x16x1",
+      "look": "shop-b",
+      "front": 10,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-12x10x1",
+      "look": "shop-b",
+      "front": 12,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-12x12x1",
+      "look": "shop-b",
+      "front": 12,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-12x14x1",
+      "look": "shop-b",
+      "front": 12,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-12x16x1",
+      "look": "shop-b",
+      "front": 12,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 260,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-6x10x2",
+      "look": "shop-b",
+      "front": 6,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 272,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-6x12x2",
+      "look": "shop-b",
+      "front": 6,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 272,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-6x14x2",
+      "look": "shop-b",
+      "front": 6,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 272,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-6x16x2",
+      "look": "shop-b",
+      "front": 6,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 272,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-8x10x2",
+      "look": "shop-b",
+      "front": 8,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 272,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-8x12x2",
+      "look": "shop-b",
+      "front": 8,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 272,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-8x14x2",
+      "look": "shop-b",
+      "front": 8,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 272,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-8x16x2",
+      "look": "shop-b",
+      "front": 8,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 272,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-10x10x2",
+      "look": "shop-b",
+      "front": 10,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 272,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-10x12x2",
+      "look": "shop-b",
+      "front": 10,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 272,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-10x14x2",
+      "look": "shop-b",
+      "front": 10,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 272,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-10x16x2",
+      "look": "shop-b",
+      "front": 10,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 272,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-12x10x2",
+      "look": "shop-b",
+      "front": 12,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 272,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-12x12x2",
+      "look": "shop-b",
+      "front": 12,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 272,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-12x14x2",
+      "look": "shop-b",
+      "front": 12,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 272,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-12x16x2",
+      "look": "shop-b",
+      "front": 12,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 272,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-6x10x3",
+      "look": "shop-b",
+      "front": 6,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 284,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-6x12x3",
+      "look": "shop-b",
+      "front": 6,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 284,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-6x14x3",
+      "look": "shop-b",
+      "front": 6,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 284,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-6x16x3",
+      "look": "shop-b",
+      "front": 6,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 284,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-8x10x3",
+      "look": "shop-b",
+      "front": 8,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 284,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-8x12x3",
+      "look": "shop-b",
+      "front": 8,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 284,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-8x14x3",
+      "look": "shop-b",
+      "front": 8,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 284,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-8x16x3",
+      "look": "shop-b",
+      "front": 8,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 284,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-10x10x3",
+      "look": "shop-b",
+      "front": 10,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 284,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-10x12x3",
+      "look": "shop-b",
+      "front": 10,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 284,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-10x14x3",
+      "look": "shop-b",
+      "front": 10,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 284,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-10x16x3",
+      "look": "shop-b",
+      "front": 10,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 284,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-12x10x3",
+      "look": "shop-b",
+      "front": 12,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 284,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-12x12x3",
+      "look": "shop-b",
+      "front": 12,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 284,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-12x14x3",
+      "look": "shop-b",
+      "front": 12,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 284,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-12x16x3",
+      "look": "shop-b",
+      "front": 12,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 284,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-6x10x4",
+      "look": "shop-b",
+      "front": 6,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 292,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-6x12x4",
+      "look": "shop-b",
+      "front": 6,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 292,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-6x14x4",
+      "look": "shop-b",
+      "front": 6,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 292,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-6x16x4",
+      "look": "shop-b",
+      "front": 6,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 292,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-8x10x4",
+      "look": "shop-b",
+      "front": 8,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 292,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-8x12x4",
+      "look": "shop-b",
+      "front": 8,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 292,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-8x14x4",
+      "look": "shop-b",
+      "front": 8,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 292,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-8x16x4",
+      "look": "shop-b",
+      "front": 8,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 292,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-10x10x4",
+      "look": "shop-b",
+      "front": 10,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 292,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-10x12x4",
+      "look": "shop-b",
+      "front": 10,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 292,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-10x14x4",
+      "look": "shop-b",
+      "front": 10,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 292,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-10x16x4",
+      "look": "shop-b",
+      "front": 10,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 292,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-12x10x4",
+      "look": "shop-b",
+      "front": 12,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 292,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-12x12x4",
+      "look": "shop-b",
+      "front": 12,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 292,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-12x14x4",
+      "look": "shop-b",
+      "front": 12,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 292,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "shop-b-12x16x4",
+      "look": "shop-b",
+      "front": 12,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "shop",
+        "market",
+        "cafe",
+        "restaurant",
+        "bar"
+      ],
+      "triangles": 292,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-6x10x1",
+      "look": "stack-d",
+      "front": 6,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-6x12x1",
+      "look": "stack-d",
+      "front": 6,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-6x14x1",
+      "look": "stack-d",
+      "front": 6,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-6x16x1",
+      "look": "stack-d",
+      "front": 6,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-8x10x1",
+      "look": "stack-d",
+      "front": 8,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-8x12x1",
+      "look": "stack-d",
+      "front": 8,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-8x14x1",
+      "look": "stack-d",
+      "front": 8,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-8x16x1",
+      "look": "stack-d",
+      "front": 8,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-10x10x1",
+      "look": "stack-d",
+      "front": 10,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-10x12x1",
+      "look": "stack-d",
+      "front": 10,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-10x14x1",
+      "look": "stack-d",
+      "front": 10,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-10x16x1",
+      "look": "stack-d",
+      "front": 10,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-12x10x1",
+      "look": "stack-d",
+      "front": 12,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-12x12x1",
+      "look": "stack-d",
+      "front": 12,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-12x14x1",
+      "look": "stack-d",
+      "front": 12,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-12x16x1",
+      "look": "stack-d",
+      "front": 12,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-6x10x2",
+      "look": "stack-d",
+      "front": 6,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-6x12x2",
+      "look": "stack-d",
+      "front": 6,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-6x14x2",
+      "look": "stack-d",
+      "front": 6,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-6x16x2",
+      "look": "stack-d",
+      "front": 6,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-8x10x2",
+      "look": "stack-d",
+      "front": 8,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-8x12x2",
+      "look": "stack-d",
+      "front": 8,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-8x14x2",
+      "look": "stack-d",
+      "front": 8,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-8x16x2",
+      "look": "stack-d",
+      "front": 8,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-10x10x2",
+      "look": "stack-d",
+      "front": 10,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-10x12x2",
+      "look": "stack-d",
+      "front": 10,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-10x14x2",
+      "look": "stack-d",
+      "front": 10,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-10x16x2",
+      "look": "stack-d",
+      "front": 10,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-12x10x2",
+      "look": "stack-d",
+      "front": 12,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-12x12x2",
+      "look": "stack-d",
+      "front": 12,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-12x14x2",
+      "look": "stack-d",
+      "front": 12,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-12x16x2",
+      "look": "stack-d",
+      "front": 12,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 228,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-6x10x3",
+      "look": "stack-d",
+      "front": 6,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-6x12x3",
+      "look": "stack-d",
+      "front": 6,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-6x14x3",
+      "look": "stack-d",
+      "front": 6,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-6x16x3",
+      "look": "stack-d",
+      "front": 6,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-8x10x3",
+      "look": "stack-d",
+      "front": 8,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-8x12x3",
+      "look": "stack-d",
+      "front": 8,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-8x14x3",
+      "look": "stack-d",
+      "front": 8,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-8x16x3",
+      "look": "stack-d",
+      "front": 8,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-10x10x3",
+      "look": "stack-d",
+      "front": 10,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-10x12x3",
+      "look": "stack-d",
+      "front": 10,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-10x14x3",
+      "look": "stack-d",
+      "front": 10,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-10x16x3",
+      "look": "stack-d",
+      "front": 10,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-12x10x3",
+      "look": "stack-d",
+      "front": 12,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-12x12x3",
+      "look": "stack-d",
+      "front": 12,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-12x14x3",
+      "look": "stack-d",
+      "front": 12,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-12x16x3",
+      "look": "stack-d",
+      "front": 12,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 240,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-6x10x4",
+      "look": "stack-d",
+      "front": 6,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 248,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-6x12x4",
+      "look": "stack-d",
+      "front": 6,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 248,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-6x14x4",
+      "look": "stack-d",
+      "front": 6,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 248,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-6x16x4",
+      "look": "stack-d",
+      "front": 6,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 248,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-8x10x4",
+      "look": "stack-d",
+      "front": 8,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 248,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-8x12x4",
+      "look": "stack-d",
+      "front": 8,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 248,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-8x14x4",
+      "look": "stack-d",
+      "front": 8,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 248,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-8x16x4",
+      "look": "stack-d",
+      "front": 8,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 248,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-10x10x4",
+      "look": "stack-d",
+      "front": 10,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 248,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-10x12x4",
+      "look": "stack-d",
+      "front": 10,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 248,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-10x14x4",
+      "look": "stack-d",
+      "front": 10,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 248,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-10x16x4",
+      "look": "stack-d",
+      "front": 10,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 248,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-12x10x4",
+      "look": "stack-d",
+      "front": 12,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 248,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-12x12x4",
+      "look": "stack-d",
+      "front": 12,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 248,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-12x14x4",
+      "look": "stack-d",
+      "front": 12,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 248,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "stack-d-12x16x4",
+      "look": "stack-d",
+      "front": 12,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "office",
+        "apartment",
+        "hotel",
+        "station",
+        "workshop"
+      ],
+      "triangles": 248,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-6x10x1",
+      "look": "tower-a",
+      "front": 6,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-6x12x1",
+      "look": "tower-a",
+      "front": 6,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-6x14x1",
+      "look": "tower-a",
+      "front": 6,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-6x16x1",
+      "look": "tower-a",
+      "front": 6,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-8x10x1",
+      "look": "tower-a",
+      "front": 8,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-8x12x1",
+      "look": "tower-a",
+      "front": 8,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-8x14x1",
+      "look": "tower-a",
+      "front": 8,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-8x16x1",
+      "look": "tower-a",
+      "front": 8,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-10x10x1",
+      "look": "tower-a",
+      "front": 10,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-10x12x1",
+      "look": "tower-a",
+      "front": 10,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-10x14x1",
+      "look": "tower-a",
+      "front": 10,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-10x16x1",
+      "look": "tower-a",
+      "front": 10,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-12x10x1",
+      "look": "tower-a",
+      "front": 12,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-12x12x1",
+      "look": "tower-a",
+      "front": 12,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-12x14x1",
+      "look": "tower-a",
+      "front": 12,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-12x16x1",
+      "look": "tower-a",
+      "front": 12,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-6x10x2",
+      "look": "tower-a",
+      "front": 6,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-6x12x2",
+      "look": "tower-a",
+      "front": 6,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-6x14x2",
+      "look": "tower-a",
+      "front": 6,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-6x16x2",
+      "look": "tower-a",
+      "front": 6,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-8x10x2",
+      "look": "tower-a",
+      "front": 8,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-8x12x2",
+      "look": "tower-a",
+      "front": 8,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-8x14x2",
+      "look": "tower-a",
+      "front": 8,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-8x16x2",
+      "look": "tower-a",
+      "front": 8,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-10x10x2",
+      "look": "tower-a",
+      "front": 10,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-10x12x2",
+      "look": "tower-a",
+      "front": 10,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-10x14x2",
+      "look": "tower-a",
+      "front": 10,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-10x16x2",
+      "look": "tower-a",
+      "front": 10,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-12x10x2",
+      "look": "tower-a",
+      "front": 12,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-12x12x2",
+      "look": "tower-a",
+      "front": 12,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-12x14x2",
+      "look": "tower-a",
+      "front": 12,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-12x16x2",
+      "look": "tower-a",
+      "front": 12,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 180,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-6x10x3",
+      "look": "tower-a",
+      "front": 6,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-6x12x3",
+      "look": "tower-a",
+      "front": 6,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-6x14x3",
+      "look": "tower-a",
+      "front": 6,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-6x16x3",
+      "look": "tower-a",
+      "front": 6,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-8x10x3",
+      "look": "tower-a",
+      "front": 8,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-8x12x3",
+      "look": "tower-a",
+      "front": 8,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-8x14x3",
+      "look": "tower-a",
+      "front": 8,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-8x16x3",
+      "look": "tower-a",
+      "front": 8,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-10x10x3",
+      "look": "tower-a",
+      "front": 10,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-10x12x3",
+      "look": "tower-a",
+      "front": 10,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-10x14x3",
+      "look": "tower-a",
+      "front": 10,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-10x16x3",
+      "look": "tower-a",
+      "front": 10,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-12x10x3",
+      "look": "tower-a",
+      "front": 12,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-12x12x3",
+      "look": "tower-a",
+      "front": 12,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-12x14x3",
+      "look": "tower-a",
+      "front": 12,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-12x16x3",
+      "look": "tower-a",
+      "front": 12,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 192,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-6x10x4",
+      "look": "tower-a",
+      "front": 6,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-6x12x4",
+      "look": "tower-a",
+      "front": 6,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-6x14x4",
+      "look": "tower-a",
+      "front": 6,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-6x16x4",
+      "look": "tower-a",
+      "front": 6,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-8x10x4",
+      "look": "tower-a",
+      "front": 8,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-8x12x4",
+      "look": "tower-a",
+      "front": 8,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-8x14x4",
+      "look": "tower-a",
+      "front": 8,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-8x16x4",
+      "look": "tower-a",
+      "front": 8,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-10x10x4",
+      "look": "tower-a",
+      "front": 10,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-10x12x4",
+      "look": "tower-a",
+      "front": 10,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-10x14x4",
+      "look": "tower-a",
+      "front": 10,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-10x16x4",
+      "look": "tower-a",
+      "front": 10,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-12x10x4",
+      "look": "tower-a",
+      "front": 12,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-12x12x4",
+      "look": "tower-a",
+      "front": 12,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-12x14x4",
+      "look": "tower-a",
+      "front": 12,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "tower-a-12x16x4",
+      "look": "tower-a",
+      "front": 12,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "apartment",
+        "office",
+        "hotel",
+        "house",
+        "clinic"
+      ],
+      "triangles": 200,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-6x10x1",
+      "look": "yard-c",
+      "front": 6,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-6x12x1",
+      "look": "yard-c",
+      "front": 6,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-6x14x1",
+      "look": "yard-c",
+      "front": 6,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-6x16x1",
+      "look": "yard-c",
+      "front": 6,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-8x10x1",
+      "look": "yard-c",
+      "front": 8,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-8x12x1",
+      "look": "yard-c",
+      "front": 8,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-8x14x1",
+      "look": "yard-c",
+      "front": 8,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-8x16x1",
+      "look": "yard-c",
+      "front": 8,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-10x10x1",
+      "look": "yard-c",
+      "front": 10,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-10x12x1",
+      "look": "yard-c",
+      "front": 10,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-10x14x1",
+      "look": "yard-c",
+      "front": 10,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-10x16x1",
+      "look": "yard-c",
+      "front": 10,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-12x10x1",
+      "look": "yard-c",
+      "front": 12,
+      "depth": 10,
+      "storeys": 1,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-12x12x1",
+      "look": "yard-c",
+      "front": 12,
+      "depth": 12,
+      "storeys": 1,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-12x14x1",
+      "look": "yard-c",
+      "front": 12,
+      "depth": 14,
+      "storeys": 1,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-12x16x1",
+      "look": "yard-c",
+      "front": 12,
+      "depth": 16,
+      "storeys": 1,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 164,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-6x10x2",
+      "look": "yard-c",
+      "front": 6,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-6x12x2",
+      "look": "yard-c",
+      "front": 6,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-6x14x2",
+      "look": "yard-c",
+      "front": 6,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-6x16x2",
+      "look": "yard-c",
+      "front": 6,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-8x10x2",
+      "look": "yard-c",
+      "front": 8,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-8x12x2",
+      "look": "yard-c",
+      "front": 8,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-8x14x2",
+      "look": "yard-c",
+      "front": 8,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-8x16x2",
+      "look": "yard-c",
+      "front": 8,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-10x10x2",
+      "look": "yard-c",
+      "front": 10,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-10x12x2",
+      "look": "yard-c",
+      "front": 10,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-10x14x2",
+      "look": "yard-c",
+      "front": 10,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-10x16x2",
+      "look": "yard-c",
+      "front": 10,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-12x10x2",
+      "look": "yard-c",
+      "front": 12,
+      "depth": 10,
+      "storeys": 2,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-12x12x2",
+      "look": "yard-c",
+      "front": 12,
+      "depth": 12,
+      "storeys": 2,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-12x14x2",
+      "look": "yard-c",
+      "front": 12,
+      "depth": 14,
+      "storeys": 2,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-12x16x2",
+      "look": "yard-c",
+      "front": 12,
+      "depth": 16,
+      "storeys": 2,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 176,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-6x10x3",
+      "look": "yard-c",
+      "front": 6,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 188,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-6x12x3",
+      "look": "yard-c",
+      "front": 6,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 188,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-6x14x3",
+      "look": "yard-c",
+      "front": 6,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 188,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-6x16x3",
+      "look": "yard-c",
+      "front": 6,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 188,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-8x10x3",
+      "look": "yard-c",
+      "front": 8,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 188,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-8x12x3",
+      "look": "yard-c",
+      "front": 8,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 188,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-8x14x3",
+      "look": "yard-c",
+      "front": 8,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 188,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-8x16x3",
+      "look": "yard-c",
+      "front": 8,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 188,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-10x10x3",
+      "look": "yard-c",
+      "front": 10,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 188,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-10x12x3",
+      "look": "yard-c",
+      "front": 10,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 188,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-10x14x3",
+      "look": "yard-c",
+      "front": 10,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 188,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-10x16x3",
+      "look": "yard-c",
+      "front": 10,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 188,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-12x10x3",
+      "look": "yard-c",
+      "front": 12,
+      "depth": 10,
+      "storeys": 3,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 188,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-12x12x3",
+      "look": "yard-c",
+      "front": 12,
+      "depth": 12,
+      "storeys": 3,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 188,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-12x14x3",
+      "look": "yard-c",
+      "front": 12,
+      "depth": 14,
+      "storeys": 3,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 188,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-12x16x3",
+      "look": "yard-c",
+      "front": 12,
+      "depth": 16,
+      "storeys": 3,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 188,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-6x10x4",
+      "look": "yard-c",
+      "front": 6,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 196,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-6x12x4",
+      "look": "yard-c",
+      "front": 6,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 196,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-6x14x4",
+      "look": "yard-c",
+      "front": 6,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 196,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-6x16x4",
+      "look": "yard-c",
+      "front": 6,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 196,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-8x10x4",
+      "look": "yard-c",
+      "front": 8,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 196,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-8x12x4",
+      "look": "yard-c",
+      "front": 8,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 196,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-8x14x4",
+      "look": "yard-c",
+      "front": 8,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 196,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-8x16x4",
+      "look": "yard-c",
+      "front": 8,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 196,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-10x10x4",
+      "look": "yard-c",
+      "front": 10,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 196,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-10x12x4",
+      "look": "yard-c",
+      "front": 10,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 196,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-10x14x4",
+      "look": "yard-c",
+      "front": 10,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 196,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-10x16x4",
+      "look": "yard-c",
+      "front": 10,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 196,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-12x10x4",
+      "look": "yard-c",
+      "front": 12,
+      "depth": 10,
+      "storeys": 4,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 196,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-12x12x4",
+      "look": "yard-c",
+      "front": 12,
+      "depth": 12,
+      "storeys": 4,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 196,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-12x14x4",
+      "look": "yard-c",
+      "front": 12,
+      "depth": 14,
+      "storeys": 4,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 196,
+      "door": {
+        "along": 0
+      }
+    },
+    {
+      "id": "yard-c-12x16x4",
+      "look": "yard-c",
+      "front": 12,
+      "depth": 16,
+      "storeys": 4,
+      "kinds": [
+        "warehouse",
+        "workshop",
+        "market",
+        "station",
+        "shop"
+      ],
+      "triangles": 196,
+      "door": {
+        "along": 0
+      }
+    }
+  ]
+}

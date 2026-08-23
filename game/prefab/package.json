@@ -1,0 +1,30 @@
+{
+  "name": "@gb/prefab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "build:pack": "node tools/build-buildings.ts"
+  },
+  "dependencies": {
+    "@gb/kit": "workspace:*",
+    "@gb/kitbash": "workspace:*",
+    "@gb/scene": "workspace:*",
+    "@gb/world": "workspace:*",
+    "three": "^0.185.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@gb/forge": "workspace:*",
+    "@gltf-transform/core": "^4.4.2",
+    "@gltf-transform/extensions": "^4.4.2",
+    "@gltf-transform/functions": "^4.4.2",
+    "@types/three": "^0.185.4",
+    "meshoptimizer": "^1.2.0",
+    "sharp": "^0.35.3"
+  }
+}
