@@ -172,7 +172,6 @@ because `follow` spawned a companion without retiring the street walker.
 | 74 | Gesture calls for a person stopped in the street | app | `bodies.members().get(npcId)?.gesture(...)` on the turn, `stopGesture()` when it ends. **Look it up every frame; never cache the `CastMember`** — bodies are recycled, and a cached member is a stranger's arms. `Street.populate` types its parameter as the port, which has no `members()`, so keep the concrete `SceneCast` on the field you call from |
 | 75 | Pass `at: { x, z }` from `walkers()` when a passer-by becomes a companion | app | Otherwise they teleport to the player instead of stepping off the pavement where they stood |
 | 76 | Treat `held === false` and `members().get(id) === undefined` as the conversation ending | app | A held walker is still retired past `retireRadius`, deliberately: an app-leaked hold would otherwise pin a walker forever. Walking 70 m away with a panel open ends the person, not just the hold |
-| 77 | `GESTURES` holds only the standing and seated talk clips | cast | A held street walker always plays `Idle_Loop` underneath, so only the standing one ever applies outdoors. Both animation packs are on disk with 85 clips between them and 16 shipped |
 
 ## From the save
 
@@ -213,6 +212,44 @@ than crowd times roads.
 |---|---|---|---|
 | 83 | `street.ts` passes `PERSON_CLEAR` (0.34 m) as a person's radius to traffic | app | That is the body-collision capsule, not a person's width in the road. It makes the hazard band 1.24 m either side of a lane centre, so a car passes 0.56 m from somebody's middle without slowing: it clips a shoulder. Leave `radius` out, the port defaults to 0.5, or pass 0.5. One word, and it is the difference between clearing somebody and shaving them |
 | 84 | `near()` allocates an array plus one object per person per frame | app | Traffic's contract now permits reusing one array and mutating its entries. Small, and it is the app's frame |
+
+## From the clips
+
+Row 77 is closed. 16 clips became 28, every wrong stance is fixed, and
+`GESTURES` went from two talking loops to four (a nod and a head shake), so a
+conversation can answer as well as talk. Pack 0.62 MB to 0.99 MB.
+
+The lasting part is a second build-time maker: `tools/anims/blend.mjs` lays one
+clip's movement over another's stance, the same sum the runtime gesture layer
+does. Measured from the movement's own first frame it adds only the movement, so
+a seated body drinks. That is where `sit-drink`, `sleep` and `work-desk` came
+from, with no purchase. What it cannot do is invent a limb the source never
+moves, or reach a *place*: anything that must reach is a measured pose.
+
+| # | Work | Box | Detail |
+|---|---|---|---|
+| 85 | A sleep anchor is placed for a body sitting up | forge | `stance.ts` puts it 0.43 m toward the headboard, the seat rule. A lying body is centred on its root, so the anchor belongs at the middle of the mattress; today a sleeper lies at the right height with their head past the headboard. Place against: centred, 0.96 m either side, height carried by the clip |
+| 86 | The bed is 6 cm too short | forge + furnish | Pad 1.84 m, a body with boots is 1.90 m end to end |
+| 87 | `work-desk` has no reach band | forge | Staff at a counter have one (0.15 m); a seated desk worker has none. The wrists sit at 0.78 m, 0.20 to 0.24 m in front of the root, so the desk edge belongs under them |
+| 88 | `METRICS.worktopHeight` is 0.9 and every standing clip on this rig reaches 1.02 | world | A cook's hands ride 12 cm over the hob. Either the worktop rises to counter height or that stance needs a clip nobody sells. Same family as the bar-counter fault |
+| 89 | The nod and the head shake are available | app + crowd | `GESTURES` has four entries now, not two |
+
+### Decided: the fabric tile goes on roughness, not colour
+
+`@gb/cast` measured it properly and found only the third objection real. Download
+is not the problem: multiplied into a repainted sheet and re-encoded, a sheet
+goes 23 KB to 33 KB, about **+0.24 MB across the whole 13 MB character pack**.
+The UV objection is answered: the garments are properly unwrapped, 2,365 distinct
+UV cells over 3,006 body vertices, so a tile reads as a pattern rather than one
+stretched swatch.
+
+The real objection is the map. Multiplied into base colour it is a *printed*
+quilt that does not respond to light, which is the cloth the owner said he does
+not want. His words are "a sheen that moves, not cloth", and a sheen is a
+specular property. So: **roughness (or normal), not base colour**, masked per
+fabric region so the face and hands on the shared sheet are not quilted. The
+sheets already exist in the same UV layout and `tools/wardrobe/fabrics.mjs`
+already names each region, so it is the same one-step multiply.
 
 ## Checked and closed
 
