@@ -5,6 +5,7 @@ import { OpenField } from './field.ts'
 import { Ground, type TierSpec } from './ground.ts'
 import { HeightField, type Basin } from './height.ts'
 import { Noise } from './noise.ts'
+import { SUN_SHADOW, type ShadowSpec, type SunShadow } from './shadow.ts'
 import { Atmosphere } from './sky.ts'
 import { buildTerrain } from './terrain.ts'
 import { landTheme, matchTheme, type LandTheme } from './theme.ts'
@@ -67,6 +68,8 @@ export interface LandOptions {
   readonly time?: number
   /** Default clear. */
   readonly weather?: Weather
+  /** How much ground the sun's shadow map covers and how fine it is. Left out, `SUN_SHADOW`. */
+  readonly shadow?: Partial<ShadowSpec>
 }
 
 export interface LandCost {
@@ -77,6 +80,8 @@ export interface LandCost {
   readonly drops: number
   /** Draws in clear daylight. Night adds the stars and the moon, rain adds one more. */
   readonly draws: number
+  /** Of those, the ones drawn a second time into the sun's shadow map while the sun is up. */
+  readonly shadowDraws: number
 }
 
 /**
@@ -158,6 +163,15 @@ export class Land {
 
   get skyLight(): THREE.HemisphereLight {
     return this.#air.skyLight
+  }
+
+  /**
+   * The sun's shadow map: how much ground around the player it covers, how fine
+   * it is, and where it fades out as the sun goes down. It follows the viewer
+   * `update` is given, so nothing outside has to drive it.
+   */
+  get shadow(): SunShadow {
+    return this.#air.shadow
   }
 
   /** Haze in the theme's colour, at this hour and this weather. Assign it to `scene.fog` once. */
@@ -265,7 +279,7 @@ export function buildLand(world: World, options: LandOptions = {}): Result<Land,
   const trees = buildTrees(world, ground, height, water.basins, theme, scatter, rng.fork('trees'), Math.round(theme.trees.max * (low ? 0.4 : 1)))
 
   const skyRadius = skyReach(theme)
-  const air = new Atmosphere(theme, centre, skyRadius, rng.fork('stars'))
+  const air = new Atmosphere(theme, centre, skyRadius, rng.fork('stars'), { ...SUN_SHADOW, ...options.shadow })
   const rain = new Rainfall(Math.round(DROPS * (low ? 0.45 : 1)), rng.fork('rain'))
 
   const land = new Land({
@@ -287,6 +301,8 @@ export function buildLand(world: World, options: LandOptions = {}): Result<Land,
       ponds: water.basins.length,
       // the terrain, the sky, the water if there is any, and one per tree species
       draws: 2 + (water.mesh ? 1 : 0) + trees.meshes.length,
+      // the woods cast; the ground, the water and the sky do not
+      shadowDraws: trees.meshes.length,
     },
   })
   land.setWeather(options.weather ?? 'clear')

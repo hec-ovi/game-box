@@ -2,7 +2,7 @@ import { Forge, OfflineNarrator } from '@gb/forge'
 import { World, type CellKind } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { buildLand, matchTheme, THEMES, type Land } from '../src/index.ts'
+import { buildLand, matchTheme, SHADOW_LAYER, THEMES, type Land } from '../src/index.ts'
 
 const towns = new Map<string, Promise<World>>()
 
@@ -363,6 +363,9 @@ describe('cost', () => {
     const land = landOf(await town('rain-soaked port'))
 
     expect(land.cost.draws).toBeLessThanOrEqual(6)
+    // the shadow pass redraws the woods and nothing else of the landscape
+    expect(land.cost.shadowDraws).toBe(land.trees.length)
+    expect(land.cost.shadowDraws).toBeLessThanOrEqual(2)
     expect(land.cost.triangles).toBeLessThan(200000)
     expect(land.cost.trees).toBeLessThanOrEqual(land.theme.trees.max)
     expect(land.root.children.filter((child) => child instanceof THREE.Mesh).length).toBeLessThanOrEqual(6)
@@ -698,5 +701,157 @@ describe('weather', () => {
       expect(position.getY(vertex)).toBeGreaterThanOrEqual(viewer.y - 5.7)
       expect(position.getY(vertex)).toBeLessThanOrEqual(viewer.y + 15.7)
     }
+  })
+})
+
+/** Put the light where it says it is and read the shadow camera off it, as the renderer does. */
+function shadowCamera(land: Land): THREE.OrthographicCamera {
+  land.sun.updateMatrixWorld(true)
+  land.sun.target.updateMatrixWorld(true)
+  land.sun.shadow.updateMatrices(land.sun)
+  return land.sun.shadow.camera
+}
+
+/** Whether a point in the world falls inside a camera's clip volume. */
+function inside(camera: THREE.Camera, point: THREE.Vector3): boolean {
+  const clip = point.clone().project(camera)
+  return Math.abs(clip.x) <= 1 && Math.abs(clip.y) <= 1 && clip.z >= -1 && clip.z <= 1
+}
+
+/** Points evenly over a sphere of this radius around a centre. */
+function shell(centre: THREE.Vector3, radius: number, steps = 12): THREE.Vector3[] {
+  const out: THREE.Vector3[] = []
+  for (let i = 0; i < steps; i++) {
+    for (let j = 0; j < steps; j++) {
+      const theta = (i / (steps - 1)) * Math.PI
+      const phi = (j / steps) * Math.PI * 2
+      out.push(new THREE.Vector3(
+        centre.x + radius * Math.sin(theta) * Math.cos(phi),
+        centre.y + radius * Math.cos(theta),
+        centre.z + radius * Math.sin(theta) * Math.sin(phi),
+      ))
+    }
+  }
+  return out
+}
+
+describe('the sun casts a shadow', () => {
+  it('on a map fine enough for a person and a door to read', async () => {
+    const land = landOf(await town())
+
+    expect(land.sun.castShadow).toBe(true)
+    expect(land.sun.shadow.mapSize.width).toBe(land.shadow.spec.mapSize)
+    const camera = shadowCamera(land)
+    expect(camera.right - camera.left).toBe(land.shadow.spec.radius * 2)
+    // a 1.8 m person and a 2.1 m door, in texels of shadow
+    expect(1.8 / land.shadow.texel).toBeGreaterThan(12)
+    expect(2.1 / land.shadow.texel).toBeGreaterThan(14)
+  })
+
+  it('over the near field round the viewer, wherever the viewer is', async () => {
+    const land = landOf(await town())
+    land.setTime(9)
+    const middle = middleOf(await town())
+    const reach = land.shadow.spec.radius - 0.5
+
+    for (const viewer of [
+      new THREE.Vector3(middle.x, 1.7, middle.z),
+      new THREE.Vector3(middle.x + 3000, 120, middle.z - 2400),
+      new THREE.Vector3(middle.x - 5200, -40, middle.z + 900),
+    ]) {
+      land.update(0, viewer)
+      const camera = shadowCamera(land)
+      for (const point of shell(viewer, reach)) {
+        expect(inside(camera, point)).toBe(true)
+      }
+    }
+  })
+
+  it('on a map that moves in whole texels, so the edges cannot crawl', async () => {
+    const land = landOf(await town())
+    land.setTime(10)
+    const middle = middleOf(await town())
+    const texel = land.shadow.texel
+    const seen: THREE.Vector3[] = []
+
+    // slide the viewer four texels in forty steps: a map that is not quantised
+    // slides with every one of them
+    for (let step = 0; step < 40; step++) {
+      land.update(0, new THREE.Vector3(middle.x + step * texel * 0.1, 1.7, middle.z + step * texel * 0.07))
+      const at = shadowCamera(land).position.clone()
+      if (!seen.length || at.distanceTo(seen[seen.length - 1]!) > 1e-9) seen.push(at)
+    }
+
+    expect(seen.length).toBeLessThan(12)
+    for (let i = 1; i < seen.length; i++) {
+      const moved = seen[i]!.distanceTo(seen[i - 1]!)
+      // one texel, or two or three of the map's axes ticking together
+      expect(moved).toBeGreaterThanOrEqual(texel * 0.999)
+      expect(moved).toBeLessThanOrEqual(texel * Math.sqrt(3) * 1.001)
+    }
+  })
+
+  it('without turning the sun: the light is a direction, the map is a place', async () => {
+    const land = landOf(await town())
+    land.setTime(14)
+    const heading = (): THREE.Vector3 =>
+      land.sun.position.clone().sub(land.sun.target.position).normalize()
+    const home = heading()
+
+    for (const viewer of [new THREE.Vector3(0, 0, 0), new THREE.Vector3(4000, 300, -2000)]) {
+      land.update(0, viewer)
+      expect(heading().distanceTo(home)).toBeLessThan(1e-6)
+    }
+  })
+
+  it('that dissolves as the sun reaches the horizon, and is gone before the sun is', async () => {
+    const land = landOf(await town())
+    const strength = (hours: number): number => {
+      land.setTime(hours)
+      return land.sun.shadow.intensity
+    }
+
+    expect(strength(12)).toBe(1)
+    let last = 1
+    for (const hour of [15, 16, 17, 17.4, 17.7, 18]) {
+      const now = strength(hour)
+      expect(now).toBeLessThanOrEqual(last)
+      last = now
+    }
+    // gone at the horizon, while the sun itself is still lighting the place
+    expect(strength(18)).toBe(0)
+    expect(land.sun.intensity).toBeGreaterThan(0)
+    expect(strength(0)).toBe(0)
+  })
+
+  it('and the moon casts none: a hard shadow at 0.3 lux is a smudge, not a shadow', async () => {
+    const land = landOf(await town(), { time: 0 })
+
+    expect(land.moon.castShadow).toBe(false)
+    expect(land.moon.intensity).toBeGreaterThan(0)
+    // the sun is out of the frame, so a sleeping town pays for no shadow map at all
+    expect(land.sun.visible).toBe(false)
+  })
+
+  it('from the woods but not from the ground, which shadows itself into stripes', async () => {
+    const land = landOf(await town())
+
+    for (const wood of land.trees) {
+      expect(wood.castShadow).toBe(true)
+      expect(wood.receiveShadow).toBe(true)
+    }
+    expect(land.terrain.castShadow).toBe(false)
+    expect(land.terrain.receiveShadow).toBe(true)
+    expect(land.water?.castShadow ?? false).toBe(false)
+    expect(land.sky.castShadow).toBe(false)
+  })
+
+  it('and lets a box hand it one merged stand-in instead of four meshes', async () => {
+    const land = landOf(await town())
+    const proxy = new THREE.Object3D()
+    proxy.layers.set(SHADOW_LAYER)
+
+    expect(shadowCamera(land).layers.test(proxy.layers)).toBe(true)
+    expect(new THREE.PerspectiveCamera().layers.test(proxy.layers)).toBe(false)
   })
 })

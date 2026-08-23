@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { SkyMesh } from 'three/addons/objects/SkyMesh.js'
 import { smoothstep01 } from './height.ts'
 import { buildMoon } from './moon.ts'
+import { SunShadow, type ShadowSpec } from './shadow.ts'
 import { buildStars } from './stars.ts'
 import type { LandTheme } from './theme.ts'
 import { WEATHER, type Weather } from './weather.ts'
@@ -33,8 +34,9 @@ const COLD = new THREE.Color(0xb9c7d4)
  *
  * The dome, the stars and the moon are hung on the eye rather than on the town,
  * because that is where a sky is: at infinity, centred on whoever is looking.
- * `follow` moves them; the lights stay on the town, since a directional light
- * is a direction and its position says nothing.
+ * `follow` moves them, and it moves the sun's shadow map with them: the moon
+ * stays on the town, since a directional light that casts nothing is a
+ * direction and its position says nothing.
  */
 export class Atmosphere {
   readonly sky: SkyMesh
@@ -54,13 +56,14 @@ export class Atmosphere {
   readonly #sunward = new THREE.Vector3()
   readonly #moonward = new THREE.Vector3()
   readonly #moonReach: number
+  readonly #shadow: SunShadow
   readonly #warm: THREE.Color
   readonly #day: { sun: THREE.Color; sky: THREE.Color; bounce: THREE.Color; haze: THREE.Color }
   readonly #night: { sky: THREE.Color; bounce: THREE.Color; haze: THREE.Color }
   #time = 12
   #weather: Weather = 'clear'
 
-  constructor(theme: LandTheme, centre: { x: number; z: number }, radius: number, rng: Rng) {
+  constructor(theme: LandTheme, centre: { x: number; z: number }, radius: number, rng: Rng, shadow?: ShadowSpec) {
     this.#theme = theme
     this.#centre = new THREE.Vector3(centre.x, 0, centre.z)
     this.#eye = this.#centre.clone()
@@ -104,7 +107,7 @@ export class Atmosphere {
     this.sun = new THREE.DirectionalLight(light.sun, light.sunIntensity)
     this.sun.name = 'land:sun'
     this.sun.target.name = 'land:sun-target'
-    this.sun.target.position.copy(this.#centre)
+    this.#shadow = new SunShadow(this.sun, shadow)
 
     this.moon = new THREE.DirectionalLight(light.moon, light.moonIntensity)
     this.moon.name = 'land:moon'
@@ -126,6 +129,11 @@ export class Atmosphere {
       this.skyLight,
     ]
     this.apply()
+  }
+
+  /** The sun's shadow map: how much ground it covers and how fine it is. */
+  get shadow(): SunShadow {
+    return this.#shadow
   }
 
   get time(): number {
@@ -163,6 +171,7 @@ export class Atmosphere {
   follow(viewer: THREE.Vector3): void {
     if (viewer.equals(this.#eye)) return
     this.#eye.copy(viewer)
+    this.#shadow.aim(this.#sunward, viewer)
     this.sky.position.copy(viewer)
     this.stars.position.copy(viewer)
     this.moonDisc.position.copy(this.#moonward).multiplyScalar(this.#moonReach).add(viewer)
@@ -184,7 +193,7 @@ export class Atmosphere {
     this.sky.cloudCoverage.value = theme.sky.cloudCoverage + (1 - theme.sky.cloudCoverage) * cloud
     this.sky.cloudDensity.value = theme.sky.cloudDensity + (1 - theme.sky.cloudDensity) * cloud * 0.9
 
-    this.sun.position.copy(this.#sunward).multiplyScalar(400).add(this.#centre)
+    this.#shadow.aim(this.#sunward, this.#eye)
     this.sun.color.copy(this.#day.sun).lerp(this.#warm, low).lerp(COLD, look.grey * 0.6)
     this.sun.intensity = theme.light.sunIntensity * day * look.light
     this.sun.visible = this.sun.intensity > 0.002

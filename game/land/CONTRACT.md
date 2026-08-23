@@ -1,6 +1,6 @@
 # @gb/land contract
 
-contractVersion: 0.3.2
+contractVersion: 0.4.0
 
 ## Purpose
 
@@ -17,6 +17,7 @@ Builds the world the city stands in and the sky over it: kilometres of open, rol
 | `options.detail` | `'full'` or `'low'` | `'low'` doubles the size of every ground quad and thins the woods and the rain, for the WebGL2 tier |
 | `options.time` | hours, 0 to 24 | default midday |
 | `options.weather` | `'clear'`, `'overcast'` or `'rain'` | default clear |
+| `options.shadow` | any part of a `ShadowSpec` | left out, `SUN_SHADOW`: 100 m of near field at 2,048 square |
 | `land.setTime(hours)` | hours, wrapping | cheap enough for every frame |
 | `land.setWeather(weather)` | one of `WEATHERS` | |
 | `land.update(seconds, viewer)` | seconds since the last frame, the camera's position in metres | call every frame the player is outside, walking or not: the sky rides on this |
@@ -35,6 +36,9 @@ Builds the world the city stands in and the sky over it: kilometres of open, rol
 | `Land.sky` | the skydome, named `land:sky` | Preetham daylight with clouds, centred on the camera, drawn first and never into the depth buffer |
 | `Land.stars` | `THREE.Points` named `land:stars` | 1,200 stars on a sphere around the camera, a handful bright and most of them faint, faded out before the sun reaches the horizon; the moon beside them is the sprite `land:moon-disc` |
 | `Land.sun`, `Land.moon`, `Land.skyLight` | two directional lights and a hemisphere light | the sun and the moon on opposite ends of the same arc, and the sky filling in behind them |
+| `Land.sun.castShadow` | true | the sun is the one thing in the game that casts. Its map follows the viewer `update` is given |
+| `Land.shadow` | a `SunShadow`: `spec` and `texel` | how much ground the map covers, how many pixels it has, and the metres one of them covers |
+| `SHADOW_LAYER` | 7 | the layer the shadow camera draws and no camera does, for a merged stand-in |
 | `Land.rain` | `THREE.LineSegments` named `land:rain` | streaks inside `Land.rainVolume`, centred on the last viewer it was given |
 | `Land.fog` | `THREE.FogExp2` | assign to `scene.fog` once: the same object is edited as the time and weather change |
 | `Land.heightAt(x, z)` | metres | the height of the triangle the mesh draws there, to float precision. Zero over the town and its roads |
@@ -44,7 +48,7 @@ Builds the world the city stands in and the sky over it: kilometres of open, rol
 | `Land.time`, `Land.weather` | hours and the weather it was last told | this box remembers what it was told, it does not run a clock |
 | `Land.wetness` | 0 dry to 1 soaked | what another box should read to decide how wet to make a surface |
 | `Land.horizon`, `Land.cameraFar` | metres | how far the land goes, and the far plane to give the camera: it holds the whole sky and everything the haze still shows of the land |
-| `Land.cost` | `triangles`, `vertices`, `trees`, `ponds`, `drops`, `draws` | what this landscape costs to draw |
+| `Land.cost` | `triangles`, `vertices`, `trees`, `ponds`, `drops`, `draws`, `shadowDraws` | what this landscape costs to draw, and how much of it is drawn again into the shadow map |
 
 ## Errors (closed set)
 
@@ -68,6 +72,13 @@ Builds the world the city stands in and the sky over it: kilometres of open, rol
 - Water is carved, not floated. A pond's level is set below the lowest point of its own rim and its shore is walked out to where the ground comes back up through the surface. A bowl the drawn ground does not close on every side stays a dry hollow rather than a pond hanging over the land.
 - Time and weather move light, never geometry. `setTime` and `setWeather` write the sun and moon positions, the sky's uniforms and the colours and strengths of the lights and the fog, all in place. No vertex is touched again after the build.
 - The sun and the moon are the two ends of one arc: sunrise at 06:00, noon overhead at the theme's `noonElevation`, sunset at 18:00, the moon opposite it all the way round. Twilight runs from seven degrees below the horizon to eleven above.
+- The sun casts and nothing else does. One directional light, one shadow map, and it is 100 m of near field at 2,048 square: a texel covers 9.8 cm, so a 1.8 m person lays down 18 texels of shadow and a 2.1 m door 21, and the soft filter blurs the edge over about 15 cm. Stretching one map over the 6 to 7 km the land runs would put a texel at 3 m, where a person casts nothing and a house casts a smear. Cascades are the wrong trade on this stack: on the WebGL2 fallback a shadow pass is charged by the caster, about 6 us each, so every extra cascade multiplies the one bill that matters.
+- The shadow map rides on the player and lands on whole texels. It is centred on the viewer `update` is given, so the near field goes with them six kilometres out of town; and the centre is snapped to whole texels of the light's own three axes before it is used, so the grid stays pinned to the world. Without the snap every shadow edge in the scene boils as the player walks, which looks worse than no shadows. Sliding the viewer a centimetre at a time moves the map in 9.8 cm steps and never between them. Moving it does not turn the sun: the light and its target move together, so the direction is the one the hour says.
+- Nothing has to be widened for a tall building upwind. Whatever lands its shadow inside the map already stands inside the map's own square, because a shadow and its caster are the same point projected along the beam. The slab simply runs 2 km back up the beam, which holds a 40 m building with the sun two degrees up.
+- Dusk dissolves the shadow rather than letting it degenerate. A square held square to the beam covers `radius / sin(elevation)` metres of ground along the sun's bearing, so the ground texel stretches the same way: 20 cm at 30 degrees, 1.1 m at five, 6.5 m at one. It stretches along the beam only, the axis a low sun makes long anyway, and by then the ground is taking under a tenth of the sunlight, so the shadow rides the sun most of the way down and fades out over the last five degrees. Below the horizon there is no shadow and no shadow pass: the sun goes invisible and the frame stops paying for it.
+- The moon casts nothing. Its light is a fifth of the sun's against a lifted ambient, so a hard-edged moon shadow would read as a dirty smear rather than a shadow, and it would put a second shadow pass on the frame at the hour the city is already paying for lit windows and street lamps. Night is shaped by the ambient and by what the lamps light, not by a shadow map.
+- The woods cast and the ground does not. One instanced mesh a species is one draw, and the near field of a wood is what a walk through it needs. The terrain stays out of the map because six metre quads with smoothed normals shadow themselves into a flat dark field under a low sun, and the shape of the hills is already in their shading. Water and the sky never cast; the terrain and the water receive.
+- The shadow camera also draws layer 7 (`SHADOW_LAYER`), which no camera draws. A box that draws one building as four meshes can put one merged stand-in on it, drop `castShadow` from the meshes people see, and pay one caster instead of four. Measured on a town of 173 buildings, that is the difference between 4.8 ms and 1.4 ms a frame.
 - The night sky is depth-correct. The stars and the moon are geometry at a real distance and they read the depth buffer like anything else, so a wall, a tree or someone standing in front of them hides them, and the moon comes up from behind the hills rather than over them. The skydome is the one object that ignores depth, and it may: it is a background, it draws before everything and it writes nothing back.
 - The sky rides with the camera. The dome, the stars and the moon are centred on the last viewer `update` was given, in all three axes, because a sky is at infinity and the observer stands in the middle of it. Constellations hold their bearings across a six kilometre walk and the horizon stays at eye level up a hill, and the sky costs the far plane the same thing wherever the player is. The dome is scaled by its own diagonal, so its eight corners land on the reach rather than 1.73 times past it; the stars sit at 0.96 of the reach and the moon at 0.92. The two lights stay on the town, because a directional light is a direction and its position says nothing.
 - The far plane is set by the air, not by the size of the map. `FogExp2` leaves `exp(-(density * metres)^2)` of a surface, and `cameraFar` is the distance where that is a hundredth: less than one step of colour, so nothing it cuts can be seen. 6.7 km on the temperate theme, 9.8 km in the clear desert air of the arid one, 3.9 km in maritime haze. The sky is hung just inside it, which is what puts the moon behind the last ridge you can still make out.
@@ -89,7 +100,7 @@ Measured on three towns, at the default detail:
 | 89x89 cells, arid | 159,568 tris | 2,200 trees, 61,600 tris | 2 | 5 | 75 ms |
 | 51x51 cells, maritime | 131,990 tris | 4,000 trees, 93,400 tris | 7 | 5 | 78 ms |
 
-The land is 6 to 7 km across and it is still five draws: the terrain, the water, the sky and one instanced mesh per tree species. Night adds two (1,200 stars in one `Points` draw and a two triangle moon sprite carrying a 64 KB face it paints at build time), rain adds one.
+The land is 6 to 7 km across and it is still five draws: the terrain, the water, the sky and one instanced mesh per tree species. Night adds two (1,200 stars in one `Points` draw and a two triangle moon sprite carrying a 64 KB face it paints at build time), rain adds one. The sun's shadow map redraws the woods and nothing else of the landscape: one or two draws, 60,000 to 93,000 triangles, `cost.shadowDraws`.
 
 Ground resolution is 6 m quads for the first half kilometre out of town, 24 m to about 1.8 km, then 96 m to the horizon. `detail: 'low'` doubles all three, which is a quarter of the geometry (35,300 tris) and a 28 ms build.
 
@@ -98,7 +109,21 @@ Per query and per frame:
 - `heightAt`: 0.04 us. Two binary searches along a lattice and four numbers.
 - `walkableAt`: 0.09 to 0.16 us, the difference being one pass over the ponds. Both are safe several times a frame in a collision loop.
 - `setTime` / `setWeather`: 0.0005 ms. Two vectors, a few colour blends and eight uniform writes.
-- `update`: 0.08 ms while raining, for 3,000 streaks and 72 KB of positions uploaded. Dry, it is the four vector writes that put the sky back on the eye.
+- `update`: 0.08 ms while raining, for 3,000 streaks and 72 KB of positions uploaded. Dry, it is the four vector writes that put the sky back on the eye. Aiming the shadow map is part of it: three dot products and three rounds, under a microsecond.
+
+### What the shadow costs, and who pays it
+
+Measured on this machine's WebGL2 fallback (no WebGPU), at 1920 by 1080, standing in the middle of a 120 m town of 173 buildings drawn the way `@gb/kitbash` draws them, 1.28 M triangles of caster.
+
+| | caster draws | shadow triangles | frame | shadow pass |
+|---|---|---|---|---|
+| sun does not cast | 0 | 0 | 1.60 ms | |
+| sun casts, buildings as 4 meshes each | 756 | 1,278,720 | 6.35 ms | 4.75 ms |
+| sun casts, one merged caster a building | 237 | 1,278,720 | 2.04 ms | 1.44 ms |
+
+The two casting rows draw the same triangles into the same map. The only thing that changes is how many objects are handed to the pass, and the cost moves with it: about 6 us an object, of which 4.3 ms of the 4.75 is CPU submission with no GPU wait in it. Dropping the map from 2,048 square to 512 changed the pass by 0.6 ms, and halving the radius changed it by nothing, because in a town this size the whole place is inside the map either way. It is a draw call bill, not a pixel bill and not a triangle bill.
+
+The landscape's own share of those 756 is two: the woods. Practically the whole 4.75 ms is the city, and it is over the roughly 2 ms this is worth at 1080p. What to drop is caster draws, not resolution and not radius: `SHADOW_LAYER` is there so a building can hand the pass one merged stand-in instead of four meshes, which is the 1.44 ms row. After sunset none of it is paid: the sun goes invisible and the pass does not run.
 
 ## Standing it up
 
@@ -128,7 +153,11 @@ if (!land.walkableAt(x, z)) { /* refuse the step */ }
 
 And whenever the weather changes: `land.setWeather('rain')`.
 
-The land carries its own daylight, so the scene needs no other lights, and `scene.background` is no longer used: the sky is a real object. `@gb/scene` still builds its own block of mountains per cell, which this replaces; hide `city.root.getObjectByName('mountains')`. Going inside a building, hide `land.root` with the rest of the outside and stop calling `update`.
+The land carries its own daylight, so the scene needs no other lights, and `scene.background` is no longer used: the sky is a real object. That includes an environment map: lighting the scene from a prefiltered copy of this skydome on top of `Land.skyLight` counts the sky twice, and a cast shadow only takes away the sun's own share of the light. Measured on the temperate theme at midday, a shadow darkens what it falls on by 39 percent with the land's lights alone, by 6 percent with the sky also in `scene.environment` at 0.35, and by 1.4 percent at 1.0, where it has stopped being visible at all. Pick one of the two.
+
+For the sun's shadow the renderer needs `shadowMap.enabled = true` and a filter (`PCFSoftShadowMap` is what the near field is tuned for), and it has to be driven from `renderer.setAnimationLoop`: that is where `WebGPURenderer` advances the node frame the shadow map is redrawn on, so a loop that calls `render` from its own `requestAnimationFrame` draws the map once and then leaves it frozen where the player stood.
+
+`@gb/scene` still builds its own block of mountains per cell, which this replaces; hide `city.root.getObjectByName('mountains')`. Going inside a building, hide `land.root` with the rest of the outside and stop calling `update`.
 
 Wet ground is not this box: `land.wetness` is published for whoever owns the street and the buildings to read, 0 dry to 1 soaked.
 

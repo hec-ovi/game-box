@@ -54,6 +54,10 @@ export function buildTrees(
       mine.length,
     )
     mesh.name = `land:trees:${species.id}`
+    // a wood is one draw in the sun's shadow map however many trees are in it,
+    // and it shades itself as well as the ground
+    mesh.castShadow = true
+    mesh.receiveShadow = true
     mine.forEach((spot, index) => {
       position.set(spot.x, spot.y, spot.z)
       quaternion.setFromAxisAngle(axis, spot.turn)
