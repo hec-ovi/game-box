@@ -106,3 +106,31 @@ balcony, a panel or a lit screen is a rectangle of them, and each one claims
 the cells it stands on, so two can never overlap."
 
 Getting this right is what makes "from there we simply randomize" safe.
+
+## Furniture is generated, not modelled
+
+> "i am trying to avoid the artistic side, and see how much we can automate,
+> we will find a way, maybe not models, but like primitive tables etc, we
+> polish them, like one side sharp, the other circular, and make variations
+> from there, so we keep the dynamic creation flexible enough. so a position
+> is a position and all tables have same height, just add some elements or
+> textures, and we good"
+
+A prop is built from parameters, not loaded from a file. A table is a slab on
+legs; the variation is in the profile (one edge sharp, one radiused), the leg
+form, the proportions, the panel details, the material and any lit trim.
+
+**Height is a contract, not a measurement.** Every table stands at exactly
+`tableHeight`, every seat at exactly the seat height, every counter at its
+counter height. A body's animation is written against those numbers, so making
+them exact by construction removes a whole class of bug rather than fixing it
+each time. Both of today's visible faults came from height being whatever a
+model's bounding box happened to be: seats 7 to 15 cm too low because the top
+of a chair is its backrest, and staff standing 0.60 m off a counter.
+
+**A position is a position.** Where a thing goes is a cell rectangle in the
+room matrix. What it looks like is independent of that, so the two can be
+retuned separately, which is what keeps the generation flexible.
+
+What this buys, beyond the look: no asset licence to chase, deterministic from
+a seed, and one shared material, so the whole room batches.
