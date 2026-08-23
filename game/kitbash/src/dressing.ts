@@ -4,6 +4,8 @@ import * as THREE from 'three'
 import { assemble } from './assemble.ts'
 import { planBuilding, type BuildingSize } from './compose/plan.ts'
 import type { KitLibrary } from './kit/library.ts'
+import { buildSigns } from './sign/build.ts'
+import { SIGN } from './sign/sign.ts'
 import { buildStreetLamps } from './street/lamps.ts'
 
 /**
@@ -24,6 +26,10 @@ export class KitDressing implements Dressing {
   building(plot: Plot, size: BuildingSize): THREE.Object3D {
     const plan = planBuilding(plot, size, size.width / plot.rect.w)
     const building = assemble(plan.placements, this.#kit, plot.id)
+
+    // every sign in the city is one material, so the lot is one more draw
+    const signs = buildSigns(plan.signs, this.#kit.material(SIGN.material), plot.id)
+    if (signs) building.add(signs)
 
     // an empty at the doorway, so whoever needs the door does not have to work
     // it out from the geometry again

@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { FURNITURE, FURNITURE_IDS, KitDressing, LAMP_LENS, LAMP_POST, PIECES, PIECE_IDS, RELIEF, type FurnitureId, type PieceId } from '../src/index.ts'
 import { KIT_FILE, loadPackedKit } from './pack.ts'
-import { boundsOf, meshesOf, plotOf, sizeOf, trianglesOf } from './support.ts'
+import { boundsOf, meshesOf, plotOf, sizeOf, trianglesOf, wallBounds } from './support.ts'
 
 // the pack arrives with tools/fetch-assets.mjs and tools/build-kit.ts; without it there is nothing to build from
 const packed = existsSync(KIT_FILE)
@@ -37,7 +37,7 @@ describe.skipIf(!packed)('the shipped kit', () => {
     ] as const) {
       const plot = plotOf({ kind: 'shop', storeys, rect, entrance: { cell: { x: rect.x, y: rect.y + rect.h }, facing: 'south' } })
       const size = sizeOf(plot, heightOf(storeys))
-      const bounds = boundsOf(dressing!.building(plot, size))
+      const bounds = wallBounds(dressing!.building(plot, size))
       const measured = bounds.getSize(new THREE.Vector3())
 
       expect(measured.x).toBeGreaterThanOrEqual(size.width - 1e-3)

@@ -20,6 +20,14 @@ export interface Face {
   centreOf(index: number): readonly [number, number]
   /** True for the walls whose modules run along the plot's x cells. */
   readonly acrossX: boolean
+  /** Middle of the wall plane, as [x, z]. */
+  readonly origin: readonly [number, number]
+  /**
+   * Unit vector along the wall, as [x, z], pointing the way the modules are
+   * numbered: rightwards to somebody standing outside looking at it. The wall
+   * looks out along `right` turned a quarter up, which is `[-z, x]`.
+   */
+  readonly right: readonly [number, number]
 }
 
 const HALF_TURN = Math.PI
@@ -33,10 +41,10 @@ export function facesOf(width: number, depth: number, module: number): Record<Fa
   const [stepX, stepZ] = [width / across, depth / along]
 
   return {
-    north: { id: 'north', acrossX: true, modules: across, moduleWidth: stepX, rotationY: HALF_TURN, centreOf: (i) => [halfW - (i + 0.5) * stepX, -halfD] },
-    east: { id: 'east', acrossX: false, modules: along, moduleWidth: stepZ, rotationY: QUARTER, centreOf: (i) => [halfW, halfD - (i + 0.5) * stepZ] },
-    south: { id: 'south', acrossX: true, modules: across, moduleWidth: stepX, rotationY: 0, centreOf: (i) => [-halfW + (i + 0.5) * stepX, halfD] },
-    west: { id: 'west', acrossX: false, modules: along, moduleWidth: stepZ, rotationY: -QUARTER, centreOf: (i) => [-halfW, -halfD + (i + 0.5) * stepZ] },
+    north: { id: 'north', acrossX: true, modules: across, moduleWidth: stepX, rotationY: HALF_TURN, origin: [0, -halfD], right: [-1, 0], centreOf: (i) => [halfW - (i + 0.5) * stepX, -halfD] },
+    east: { id: 'east', acrossX: false, modules: along, moduleWidth: stepZ, rotationY: QUARTER, origin: [halfW, 0], right: [0, -1], centreOf: (i) => [halfW, halfD - (i + 0.5) * stepZ] },
+    south: { id: 'south', acrossX: true, modules: across, moduleWidth: stepX, rotationY: 0, origin: [0, halfD], right: [1, 0], centreOf: (i) => [-halfW + (i + 0.5) * stepX, halfD] },
+    west: { id: 'west', acrossX: false, modules: along, moduleWidth: stepZ, rotationY: -QUARTER, origin: [-halfW, 0], right: [0, 1], centreOf: (i) => [-halfW, -halfD + (i + 0.5) * stepZ] },
   }
 }
 

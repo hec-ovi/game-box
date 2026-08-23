@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { FURNITURE, FURNITURE_IDS, LAMP_LENS, LAMP_POST, type FurnitureId } from '../catalog/furniture.ts'
 import { PIECES, PIECE_IDS, type PieceId } from '../catalog/pieces.ts'
 import { canonical } from './geometry.ts'
-import { KitLibrary, type KitPart } from './library.ts'
+import { DEFAULT_THEME, KitLibrary, type KitPart } from './library.ts'
 
 /** Roughly what each kit material looks like, so a kitless city still reads as a street. */
 const COLOURS: Record<string, number> = {
@@ -28,7 +28,7 @@ const LANTERN = 0.55
  * with, and what a building falls back to if the packed kit has not loaded:
  * the same composition, the same footprint, no art.
  */
-export function placeholderKit(): KitLibrary {
+export function placeholderKit(theme = DEFAULT_THEME): KitLibrary {
   const parts = new Map<PieceId | FurnitureId, KitPart[]>()
   const materials = new Map<string, THREE.Material>()
   const material = (name: string): THREE.Material => {
@@ -59,7 +59,7 @@ export function placeholderKit(): KitLibrary {
     material(LAMP_LENS)
   }
 
-  return new KitLibrary(parts, materials)
+  return new KitLibrary(parts, materials, undefined, theme)
 }
 
 /** The piece's bounds as a plain box, in the shape a loaded kit is brought to. */

@@ -3,6 +3,8 @@ import type { Plot } from '@gb/world'
 import { isGlazed, MODULE, type PieceId } from '../catalog/pieces.ts'
 import { RECIPES, type Course } from '../catalog/recipes.ts'
 import type { Room } from '../night/room.ts'
+import { planSigns } from '../sign/plan.ts'
+import type { Sign } from '../sign/sign.ts'
 import { bandsOf, type Band } from './bands.ts'
 import { doorModule, entranceFace, facesOf, type Face } from './faces.ts'
 import { roomsAcross } from './rooms.ts'
@@ -27,12 +29,14 @@ export interface BuildingPlan {
   readonly placements: readonly Placement[]
   /** Middle of the doorway on the wall plane, and the way it looks out. */
   readonly door: { readonly position: readonly [number, number, number]; readonly rotationY: number }
+  /** Every lit sign hung on it, in the building's own frame. */
+  readonly signs: readonly Sign[]
 }
 
 /**
  * Turns a plot into the pieces that build it: walls module by module on every
- * face, the door on the face the entrance says, a flat deck on top, and the
- * room every glazed module looks into.
+ * face, the door on the face the entrance says, a flat deck on top, the room
+ * every glazed module looks into, and the signs hung on its walls.
  *
  * Every draw comes from the plot's own seed, forked per feature, so the same
  * plot is the same building every time and adding a feature here cannot move
@@ -43,6 +47,7 @@ export function planBuilding(plot: Plot, size: BuildingSize, cellSize: number): 
   const rng = new Rng(`${plot.id}:${plot.kind}:${plot.style}`)
   const rhythm = rng.fork('rhythm')
   const interiors = rng.fork('rooms')
+  const signage = rng.fork('signs')
   const faces = facesOf(size.width, size.depth, MODULE.width)
   const bands = bandsOf(plot.storeys, size.height)
   const front = faces[entranceFace(plot)]
@@ -67,7 +72,8 @@ export function planBuilding(plot: Plot, size: BuildingSize, cellSize: number): 
     }
   }
   placements.push(...deck(size))
-  return { placements, door: { position: [doorX, 0, doorZ], rotationY: front.rotationY } }
+  const signs = planSigns(plot, size.height, Object.values(faces), front, doorIndex, bands, signage)
+  return { placements, door: { position: [doorX, 0, doorZ], rotationY: front.rotationY }, signs }
 }
 
 /**

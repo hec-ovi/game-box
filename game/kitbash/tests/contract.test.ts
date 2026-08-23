@@ -2,7 +2,7 @@ import { BUILDING_KINDS, CELL as CELL_CHARS, METRICS, type AnchorKind, type Cell
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { GROUND_LOOKS, GROUND_TEXTURES, KIT_MATERIALS, KitDressing, KitIncomplete, KitLibrary, KitUnmergeable, PIECES, PIECE_IDS, placeholderKit, RELIEF, loadKit, type KitPart, type PieceId } from '../src/index.ts'
-import { boundsOf, CELL, fingerprint, meshesOf, plotOf, sizeOf, trianglesOf } from './support.ts'
+import { boundsOf, CELL, fingerprint, meshesOf, plotOf, sizeOf, trianglesOf, wallBounds } from './support.ts'
 
 const kit = placeholderKit()
 const dressing = new KitDressing(kit)
@@ -25,7 +25,7 @@ describe('building', () => {
     for (const rect of [{ x: 4, y: 4, w: 2, h: 2 }, { x: 10, y: 4, w: 5, h: 3 }, { x: 4, y: 12, w: 1, h: 4 }]) {
       const plot = plotOf({ kind: 'shop', rect, entrance: { cell: { x: rect.x, y: rect.y + rect.h }, facing: 'south' } })
       const size = sizeOf(plot, heightOf(plot.storeys))
-      const bounds = boundsOf(dressing.building(plot, size))
+      const bounds = wallBounds(dressing.building(plot, size))
       const measured = bounds.getSize(new THREE.Vector3())
 
       // the wall plane is the plot boundary; only window and trim relief stands past it
@@ -44,7 +44,7 @@ describe('building', () => {
   it('is as tall as its storeys and stands on the ground', () => {
     for (const storeys of [1, 2, 3, 6]) {
       const plot = plotOf({ kind: 'apartment', storeys, rect: { x: 4, y: 4, w: 3, h: 3 }, entrance: { cell: { x: 5, y: 7 }, facing: 'south' } })
-      const bounds = boundsOf(dressing.building(plot, sizeOf(plot, heightOf(storeys))))
+      const bounds = wallBounds(dressing.building(plot, sizeOf(plot, heightOf(storeys))))
 
       expect(bounds.max.y).toBeCloseTo(heightOf(storeys), 3)
       expect(bounds.min.y).toBeCloseTo(0, 1)

@@ -1,5 +1,6 @@
 import { World, type Plot } from '@gb/world'
 import * as THREE from 'three'
+import { SIGN } from '../src/index.ts'
 
 export const CELL = 2
 
@@ -24,6 +25,21 @@ export function sizeOf(plot: Plot, height: number): { width: number; depth: numb
 
 export function boundsOf(object: THREE.Object3D): THREE.Box3 {
   return new THREE.Box3().setFromObject(object)
+}
+
+/** The building without its signage: the walls the plot boundary is a promise about. */
+export function wallBounds(object: THREE.Object3D): THREE.Box3 {
+  const box = new THREE.Box3()
+  for (const mesh of meshesOf(object)) {
+    if ((mesh.material as THREE.Material).name === SIGN.material) continue
+    box.union(new THREE.Box3().setFromObject(mesh))
+  }
+  return box
+}
+
+/** Just the signs, when a test is about them and not about the walls. */
+export function signMesh(object: THREE.Object3D): THREE.Mesh | undefined {
+  return meshesOf(object).find((mesh) => (mesh.material as THREE.Material).name === SIGN.material)
 }
 
 export function meshesOf(object: THREE.Object3D): THREE.Mesh[] {
