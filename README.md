@@ -79,6 +79,16 @@ GAME_BOX_LLM_UPSTREAM=openrouter                # a hosted one
 
 `pnpm -C host start` runs it without reading `.env`, for when the variables are already exported.
 
+To check which upstream it actually picked up:
+
+```
+curl -s -X POST 127.0.0.1:8976/v1/chat/completions \
+  -H 'content-type: application/json' \
+  -d '{"messages":[{"role":"user","content":"hi"}]}' | head -c 200
+```
+
+The `model` field in the reply is the answer. `game-box/standin` means no upstream was read, so either nothing is configured or the environment did not reach the process. Any other name is the model that answered.
+
 **The sidecar, in front of a hosted model.** The same sidecar, routed through OpenRouter to `stealth/ox-alpha` instead of a machine of your own. The key is read from the environment, sent only to OpenRouter, and never written to a tracked file: copy `.env.example` to `.env` and fill it in.
 
 ```
