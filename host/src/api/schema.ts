@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { contract } from '../contract.ts'
+import { samplingFields } from '../llm/sampling.ts'
 import {
   CHOICE_DESCRIPTION,
   MessageSchema,
@@ -16,7 +17,7 @@ export const ChatRequestSchema = z
     model: z.string().optional(),
     messages: z.array(MessageSchema).min(1),
     stream: z.boolean().optional(),
-    temperature: z.number().min(0).max(2).optional(),
+    ...samplingFields,
     tools: z.array(ToolSchema).min(1).max(16).meta({ description: TOOLS_DESCRIPTION }).optional(),
     tool_choice: ToolChoiceSchema.meta({ description: CHOICE_DESCRIPTION }).optional(),
   })

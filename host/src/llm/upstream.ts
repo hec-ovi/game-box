@@ -1,6 +1,7 @@
 import { err, ok, type Result } from '../result.ts'
 import { upstreamFailed, type LlmError } from './errors.ts'
 import { PendingCall } from './pending-call.ts'
+import { samplingOf } from './sampling.ts'
 import type { GenerateRequest, TokenEvent } from './schema.ts'
 
 interface Delta {
@@ -25,8 +26,8 @@ export async function generate(
     model: request.model ?? 'default',
     messages: request.messages,
     stream: true,
+    ...samplingOf(request),
   }
-  if (request.temperature !== undefined) body.temperature = request.temperature
   if (request.tools !== undefined) body.tools = request.tools
   if (request.tool_choice !== undefined) body.tool_choice = request.tool_choice
 
@@ -80,7 +81,16 @@ async function* read(body: ReadableStream<Uint8Array>): AsyncGenerator<TokenEven
           return
         }
 
-        const choice = choiceOf(data)
+        const payload = objectOf(data)
+        if (!payload) continue
+        // An engine that breaks mid-reply still answers 200 and puts the
+        // failure in the stream, so a reply carrying one has not stopped.
+        if ('error' in payload) {
+          yield { type: 'done', finishReason: 'error' }
+          return
+        }
+
+        const choice = choiceOf(payload)
         if (!choice) continue
         if (typeof choice.delta?.content === 'string' && choice.delta.content !== '') {
           yield { type: 'token', text: choice.delta.content }
@@ -112,15 +122,18 @@ function reasonFor(upstreamReason: string, unparseable: boolean): 'stop' | 'leng
   return unparseable ? 'error' : 'stop'
 }
 
-function choiceOf(data: string): Choice | undefined {
+function objectOf(data: string): Record<string, unknown> | undefined {
   let payload: unknown
   try {
     payload = JSON.parse(data)
   } catch {
     return undefined
   }
-  if (payload === null || typeof payload !== 'object') return undefined
-  const choices = (payload as { choices?: unknown }).choices
+  return payload === null || typeof payload !== 'object' ? undefined : (payload as Record<string, unknown>)
+}
+
+function choiceOf(payload: Record<string, unknown>): Choice | undefined {
+  const choices = payload.choices
   if (!Array.isArray(choices)) return undefined
   const first: unknown = choices[0]
   return first === null || typeof first !== 'object' ? undefined : (first as Choice)

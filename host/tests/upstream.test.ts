@@ -78,4 +78,31 @@ describe('an upstream engine', () => {
       assert.ok(!(cap in (sent ?? {})), `an output-length cap reached the engine: ${cap}`)
     }
   })
+
+  it('is sent the seed the caller pinned', async () => {
+    await post({ ...REQUEST, seed: 20260823 })
+
+    assert.equal(upstream.seen.at(-1)?.seed, 20260823)
+  })
+
+  it('is sent no seed when the caller pinned none', async () => {
+    await post(REQUEST)
+
+    assert.ok(!('seed' in (upstream.seen.at(-1) ?? {})), 'the host invented a seed nobody asked for')
+  })
+
+  // A broken engine answers 200 and writes the failure into the stream. Read
+  // as a finished reply it becomes an empty answer that says it went fine, and
+  // a caller builds a city out of nothing.
+  it('calls a failure written into the stream a failure', async () => {
+    upstream.answerWith(['{"error":{"code":500,"message":"decode() failed","type":"server_error"}}'])
+    try {
+      const body = await (await post(REQUEST)).json()
+
+      assert.ok(chatResponseContract.is(body), `response off-contract: ${JSON.stringify(body)}`)
+      assert.equal(body.choices[0]?.finish_reason, 'error')
+    } finally {
+      upstream.answerWith(SPEAKING_AND_ACTING)
+    }
+  })
 })

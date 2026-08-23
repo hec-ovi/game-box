@@ -45,7 +45,8 @@ async function route(request: IncomingMessage, response: ServerResponse): Promis
   // the browser asks before it sends; answer it here rather than in every route
   if (request.method === 'OPTIONS') {
     response.writeHead(204, { ...cors, 'content-length': 0 })
-    return response.end()
+    response.end()
+    return
   }
 
   if (path === HEALTH_PATH) {

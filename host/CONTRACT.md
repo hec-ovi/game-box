@@ -1,6 +1,6 @@
 # host contract
 
-contractVersion: 0.1.0
+contractVersion: 0.2.0
 
 ## Purpose
 
@@ -10,6 +10,11 @@ Serve local text generation, speech recognition and speech synthesis to any clie
 
 ```
 node --experimental-strip-types src/main.ts     # or: npm start
+```
+
+```
+GAME_BOX_LLM_UPSTREAM=http://127.0.0.1:8080 \
+  node --experimental-strip-types tools/repeatable.ts   # does the engine repeat itself?
 ```
 
 Node 22 or newer, one dependency (zod), no build step. The port comes from `GAME_BOX_PORT` (default 8976) and the socket is bound to 127.0.0.1 only.
@@ -24,7 +29,7 @@ Node 22 or newer, one dependency (zod), no build step. The port comes from `GAME
 
 | Param | Schema | Preconditions |
 |---|---|---|
-| `POST /v1/chat/completions` body | [schema/api/chat-request.json](schema/api/chat-request.json) | JSON body; `messages` non-empty; `stream` optional; `tools` and `tool_choice` optional, for callers that want a typed call back instead of prose |
+| `POST /v1/chat/completions` body | [schema/api/chat-request.json](schema/api/chat-request.json) | JSON body; `messages` non-empty; `stream` optional; `tools` and `tool_choice` optional, for callers that want a typed call back instead of prose; `temperature` and `seed` optional, and both reach the engine unchanged |
 | `/v1/realtime` client events (WebSocket text frames) | [schema/api/realtime-client-event.json](schema/api/realtime-client-event.json) | audio only as the base64 PCM envelope, never binary frames |
 
 ## Outputs
@@ -37,6 +42,30 @@ Node 22 or newer, one dependency (zod), no build step. The port comes from `GAME
 | error body (HTTP 4xx/5xx) | [schema/api/error.json](schema/api/error.json) | every non-2xx response carries this body |
 | `GET /health` | inline: `{status:"ok", service:"game-box", contractVersion}` | always 200 when the process is up |
 
+## Getting the same answer twice
+
+Send `temperature: 0` and a `seed`. Temperature 0 makes the engine take its most
+likely token every time, so the seed only decides ties; the seed is there
+because without one the engine draws a fresh seed per request. Send both and the
+same question is asking for the same answer.
+
+`seed` is a 32-bit integer, 0 to 4294967294. The top value, 4294967295, is what
+llama.cpp reads as "pick one at random", so a request carrying it is refused
+rather than quietly unpinned.
+
+The service never invents either value: a request that pins nothing gets
+whatever the engine's own defaults produce, which is a different answer each
+time.
+
+Repeating is then the engine's job, and this service cannot promise it. Two
+things outside the request decide it. Prompt-cache reuse and continuous batching
+both change the batch shape a token is computed in, and llama.cpp does not
+guarantee bit-identical logits across batch shapes, so an answer computed beside
+four other requests can differ from the same answer computed alone. `--parallel
+1` removes that; the cost is that requests queue instead of fanning out. Run
+`tools/repeatable.ts` against the engine as it is actually started to find out
+which side of that line it falls on.
+
 ## Events
 
 SSE stream for chat; WebSocket events for realtime, as listed in Outputs.
@@ -48,6 +77,7 @@ SSE stream for chat; WebSocket events for realtime, as listed in Outputs.
 - HTTP 405 `invalid_request_error`: wrong method for that endpoint.
 - HTTP 413 `invalid_request_error`: request body over 8 MiB.
 - HTTP 502 `server_error`: the LLM upstream engine failed before streaming started.
+- `finish_reason: "error"` (HTTP 200): the engine broke after the reply started. The answer carries whatever arrived first; it never claims to have stopped normally.
 - WS `error` event `invalid_request_error`: malformed frame, unknown event type, or invalid audio envelope; session state is unchanged.
 
 ## Dependencies
@@ -59,6 +89,7 @@ None. This service knows about text, audio, tools and models; it does not know w
 - The server binds 127.0.0.1 only; never a public interface.
 - Every request body is validated against this layer's schemas before any other layer is called (fail closed).
 - No output-length cap is ever accepted or forwarded; responses end when generation ends.
+- Sampler settings are the caller's to make. None is defaulted, none is dropped: what a request pins reaches the engine, and what it leaves out is left out.
 - Tool definitions and the tool choice are forwarded to the engine unchanged, and a tool call comes back in the OpenAI shape with its arguments as JSON text. A caller that offers a tool gets either a complete call or an error, never a half-built one.
 - Speaking and acting are not exclusive: a reply that carries both text and a call keeps both, because a character who says something while doing it must not lose either half.
 - A WS `error` event leaves the recognition session exactly as it was.

@@ -34,7 +34,7 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI
 | You want to change | Open |
 |---|---|
 | HTTP/WS endpoints, SSE shapes, OpenAI compatibility, tool calls, error bodies | `host/src/api/` |
-| Text generation, engine selection, llama.cpp/upstream wiring | `host/src/llm/` |
+| Text generation, engine selection, llama.cpp/upstream wiring, pinning an answer so the same request comes back the same | `host/src/llm/` |
 | Speech recognition, audio envelopes, partial transcripts | `host/src/stt/` |
 | Speech synthesis, voices, streaming audio frames | `host/src/tts/` |
 | Model cache, integrity check, downloads | `host/src/models/` |

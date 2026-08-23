@@ -36,7 +36,14 @@
     "temperature": {
       "type": "number",
       "minimum": 0,
-      "maximum": 2
+      "maximum": 2,
+      "description": "How far the engine strays from its most likely token. 0 makes it take the most likely one every time."
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4294967294,
+      "description": "Pins the random draw. Without a seed the engine picks a fresh one per request, so the same question comes back different."
     },
     "tools": {
       "minItems": 1,

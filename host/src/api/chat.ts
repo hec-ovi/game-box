@@ -1,5 +1,6 @@
 import { violationText } from '../contract.ts'
 import { collect, generate, type GenerateRequest, type TokenEvent } from '../llm/index.ts'
+import { samplingOf } from '../llm/sampling.ts'
 import { errorBody } from './errors.ts'
 import { nextCallId, nextCompletionId, nowUnix } from './ids.ts'
 import {
@@ -55,12 +56,15 @@ interface Head {
   readonly model: string
 }
 
-/** Tool definitions and the tool choice are forwarded to the engine unchanged. */
+/**
+ * Tool definitions, the tool choice and the sampler settings are forwarded to
+ * the engine unchanged.
+ */
 function llmRequestFrom(request: ChatRequest): GenerateRequest {
   return {
     messages: request.messages,
     ...(request.model === undefined ? {} : { model: request.model }),
-    ...(request.temperature === undefined ? {} : { temperature: request.temperature }),
+    ...samplingOf(request),
     ...(request.tools === undefined ? {} : { tools: request.tools }),
     ...(request.tool_choice === undefined ? {} : { tool_choice: request.tool_choice }),
   }

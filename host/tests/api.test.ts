@@ -115,6 +115,16 @@ describe('POST /v1/chat/completions', () => {
     }
   })
 
+  // llama-server reads the top 32-bit value as "pick a seed at random", so a
+  // caller that landed on it would get an unpinned answer while believing the
+  // opposite. Better a refusal than a silent one.
+  it('refuses the one seed an engine reads as no seed at all', async () => {
+    const ask = (seed: number) => post({ messages: [{ role: 'user', content: 'hi' }], seed })
+
+    assert.equal((await ask(4_294_967_295)).status, 400)
+    assert.equal((await ask(4_294_967_294)).status, 200)
+  })
+
   it('answers a forced tool call as tool_calls', async () => {
     const response = await post(nameCityRequest('name a western town'))
     assert.equal(response.status, 200)

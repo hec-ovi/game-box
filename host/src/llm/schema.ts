@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { contract } from '../contract.ts'
+import { samplingFields } from './sampling.ts'
 
 export const MessageSchema = z.strictObject({
   role: z.enum(['system', 'user', 'assistant']),
@@ -31,7 +32,7 @@ export const GenerateRequestSchema = z
   .strictObject({
     messages: z.array(MessageSchema).min(1),
     model: z.string().optional(),
-    temperature: z.number().min(0).max(2).optional(),
+    ...samplingFields,
     tools: z.array(ToolSchema).min(1).max(16).meta({ description: TOOLS_DESCRIPTION }).optional(),
     tool_choice: ToolChoiceSchema.meta({ description: CHOICE_DESCRIPTION }).optional(),
   })

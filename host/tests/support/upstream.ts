@@ -6,24 +6,34 @@ export interface RunningUpstream {
   readonly base: string
   /** Every request body the engine received. */
   readonly seen: Array<Record<string, unknown>>
+  /** Change what it answers with, for a test that needs the engine to break. */
+  answerWith(payloads: readonly string[]): void
   close(): Promise<void>
 }
 
 /** Answers `POST /v1/chat/completions` with one SSE event per payload. */
 export async function startUpstream(payloads: readonly string[]): Promise<RunningUpstream> {
   const seen: Array<Record<string, unknown>> = []
+  let answer = payloads
   const server = createServer((request, response) => {
     const chunks: Buffer[] = []
     request.on('data', (chunk: Buffer) => chunks.push(chunk))
     request.on('end', () => {
       seen.push(JSON.parse(Buffer.concat(chunks).toString('utf8')) as Record<string, unknown>)
       response.writeHead(200, { 'content-type': 'text/event-stream' })
-      for (const payload of payloads) response.write(`data: ${payload}\n\n`)
+      for (const payload of answer) response.write(`data: ${payload}\n\n`)
       response.end()
     })
   })
   const port = await open(server)
-  return { base: `http://127.0.0.1:${port}`, seen, close: () => stop(server) }
+  return {
+    base: `http://127.0.0.1:${port}`,
+    seen,
+    answerWith: (next) => {
+      answer = next
+    },
+    close: () => stop(server),
+  }
 }
 
 function open(server: Server): Promise<number> {
