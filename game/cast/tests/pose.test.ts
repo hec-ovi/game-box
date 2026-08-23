@@ -1,4 +1,4 @@
-import { ANCHOR_KINDS, BODY_KINDS } from '@gb/world'
+import { ANCHOR_KINDS, BODY_KINDS, METRICS } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { Cast, CLIPS, clipsUsed, GESTURES } from '../src/index.ts'
@@ -19,6 +19,14 @@ const LIMB = /^(lowerarm_|thigh_|calf_|foot_|ball_)/
 const ADDED = /^(hair|beard|brows)_/
 
 const degrees = (radians: number) => (radians * 180) / Math.PI
+
+/** How high off the floor one joint of a posed body sits. */
+function jointHeight(object: THREE.Object3D, name: string): number {
+  object.updateMatrixWorld(true)
+  const bone = object.getObjectByName(name)
+  if (!bone) throw new Error(`this character has no ${name} bone`)
+  return bone.getWorldPosition(new THREE.Vector3()).y
+}
 
 /** The skin and clothes, without the hair pieces bolted on at spawn. */
 function bodySkins(object: THREE.Object3D): Skin[] {
@@ -67,6 +75,25 @@ describe('what a spawned person is doing', () => {
           `${base} on a ${kind} anchor is still in the rest pose, playing ${String(member.playing)}`,
         ).toBeGreaterThan(5)
       }
+    }
+  })
+
+  it('stands a bench worker up with their hands on the top, and sits a desk worker down', () => {
+    for (const base of BODY_KINDS) {
+      const bench = cast.spawn(person({ id: `npc_bench_${base}`, appearance: { base, variant: 1 } }), Cast.doingAt('work-bench'))
+      const desk = cast.spawn(person({ id: `npc_desk_${base}`, appearance: { base, variant: 1 } }), Cast.doingAt('work-desk'))
+      cast.update(0.4)
+
+      // the bench is drawn at the service counter height, and this is the clip
+      // that reaches for it: hands on the top, hips where a standing body's are
+      const hands = (jointHeight(bench.object, 'hand_l') + jointHeight(bench.object, 'hand_r')) / 2
+      expect(Math.abs(hands - METRICS.furniture.serviceCounterHeight), `${base}'s hands are at ${hands} m`).toBeLessThan(0.05)
+      expect(jointHeight(bench.object, 'pelvis'), `${base} is not on their feet at the bench`).toBeGreaterThan(0.85)
+
+      // and the desk worker is in the chair, hips a hand over the seat
+      expect(jointHeight(desk.object, 'pelvis'), `${base} is not sat at the desk`).toBeLessThan(
+        METRICS.furniture.seatHeight + 0.15,
+      )
     }
   })
 

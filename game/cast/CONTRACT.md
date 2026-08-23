@@ -1,6 +1,6 @@
 # @gb/cast contract
 
-contractVersion: 0.4.0
+contractVersion: 0.5.0
 
 ## Purpose
 
@@ -71,6 +71,7 @@ The clothes are recut fantasy art. The only CC0 wardrobe on this skeleton is Qua
 - Everybody has hair, or is bald on purpose: the hairstyle, the eyebrows, the beard and the colour of all three are drawn from the NPC's id, and the eyebrows always match the hair. Tinted materials are shared across the whole cast, so a crowd costs one material per colour per hair texture, not one per person.
 - The same NPC id gets the same outfit, the same hair and the same point in the loop every time the city is opened, so a shared world file looks the same to everyone.
 - Every name in `CLIP_FOR_ANCHOR`, `CLIPS` and `GESTURES` is in the shipped library, and the tests fail if one goes missing, so a renamed clip is caught at build time.
+- A stance is a clip, so the two working anchors play two of them: `work-desk` sits in the chair (`Sitting_Idle_Loop`), `work-bench` stands at the bench on the standing rail loop (`Idle_Rail_Loop`), which holds the hands at 1.02 to 1.04 m, the height `METRICS.furniture.serviceCounterHeight` is drawn at.
 - The head-look and gesture layers run after the mixer and never replace the base clip: the head turns off the pose the clip left, and a gesture adds to it on the upper body only.
 - The head stays inside about 77 degrees of yaw and 46 of pitch off the clip's own pose, and eases in and out over about a fifth of a second.
 

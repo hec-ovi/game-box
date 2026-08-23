@@ -11,7 +11,10 @@ export const CLIP_FOR_ANCHOR: Record<AnchorKind, string> = {
   'sit-drink': 'Sitting_Idle_Loop',
   serve: 'Idle_Rail_Loop',
   cook: 'Idle_Loop',
+  // the two working stances are two bodies: one sits in the chair at the desk,
+  // the other stands at the bench with its hands on the top
   'work-desk': 'Sitting_Idle_Loop',
+  'work-bench': 'Idle_Rail_Loop',
   sleep: 'Sitting_Idle_Loop',
   browse: 'Idle_Loop',
   lean: 'Idle_Rail_Loop',
