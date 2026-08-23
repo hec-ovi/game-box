@@ -57,6 +57,8 @@ export class Car implements CarView {
   claimedAt = 0
   /** Acceleration decided this step, applied in the move pass. */
   accel = 0
+  /** Metres of road in front of its nose before somebody is standing in it, decided this step. */
+  clearAhead = Number.POSITIVE_INFINITY
   /** Seconds it has been standing still, which is how a jam gets cleaned up. */
   stalled = 0
   /** Sim time this car last moved, so a car updated every third frame catches up. */

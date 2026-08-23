@@ -72,6 +72,27 @@ describe('somebody in the road', () => {
     expect(braking * STEP, 'stopped dead instead of slowing down').toBeGreaterThan(2)
   })
 
+  it('is stopped at, not driven past, when they step out too close to brake for', () => {
+    const { traffic, people, car, lane } = street()
+    for (let frame = 0; frame < 120; frame++) traffic.update(STEP, { x: car.x, z: car.z })
+    expect(car.speed, 'the test needs a car at speed').toBeGreaterThan(5)
+
+    // somebody steps off the kerb closer than any brakes stop a car from here,
+    // which is what the player does. Driving through them is not the answer
+    const at = lane.path.nearestTo(car).s
+    const gap = 5 - CAR_LENGTH / 2 - 0.5
+    expect(gap, 'the test needs them inside the braking distance').toBeLessThan(car.speed ** 2 / (2 * CITY_DRIVING.maxBrake))
+    people.spots = [lane.path.pointAt(at + 5)]
+
+    let closest = Number.POSITIVE_INFINITY
+    for (let frame = 0; frame < 300; frame++) {
+      traffic.update(STEP, { x: car.x, z: car.z })
+      closest = Math.min(closest, relative(car, people.spots[0]!).along)
+    }
+    expect(closest, 'drove over them').toBeGreaterThan(CAR_LENGTH / 2)
+    expect(car.speed).toBeLessThan(0.05)
+  })
+
   it('is driven around the moment they step back onto the pavement', () => {
     const { traffic, people, car, lane, from } = street()
     people.spots = [lane.path.pointAt(from + 45)]
@@ -124,6 +145,32 @@ describe('somebody in the road', () => {
     }
     expect(waiting, 'no car ever came to this junction, so the test proves nothing').toBeGreaterThan(0)
     expect(inside, 'a car drove into a junction it could not leave').toBe(0)
+  })
+
+  it('keeps cars out of a junction somebody is standing in the middle of', () => {
+    const people = new People()
+    const traffic = open(lattice({ across: 3, down: 3, span: 13 }), { maxCars: 16, obstacles: people })
+    const junction = traffic.graph.junctions.find((one) => one.exits.length >= 3 && one.entries.length >= 3)!
+    // out in the middle of the square rather than in the mouth of a road out: a
+    // car that drives in stops on top of them and holds the junction against
+    // every other arm for as long as they stand there
+    people.spots = [junction.centre]
+    traffic.populate(junction.centre)
+
+    let parked = 0
+    let waiting = 0
+    for (let frame = 0; frame < 1800; frame++) {
+      traffic.update(STEP, junction.centre)
+      for (const car of traffic.cars()) {
+        if (junction.contains(car)) {
+          if (car.speed < 0.1) parked++
+        } else if (car.speed < 0.1 && Math.hypot(car.x - junction.centre.x, car.z - junction.centre.z) < junction.half + 12) {
+          waiting++
+        }
+      }
+    }
+    expect(waiting, 'no car ever came to this junction, so the test proves nothing').toBeGreaterThan(0)
+    expect(parked, 'a car stopped inside a junction it could not get out of').toBe(0)
   })
 
   it('does not gridlock a city with people scattered over it', () => {

@@ -1,6 +1,6 @@
 # @gb/traffic contract
 
-contractVersion: 0.5.0
+contractVersion: 0.6.0
 
 ## Purpose
 
@@ -38,7 +38,9 @@ Drives cars around a generated city: reads its road graph, puts cars on lanes, f
 
 `CarBodies` is the seam to three.js: `acquire({ id, model })` returns a `CarBody` and `release(body, { id, model })` takes it back. A `CarBody` is anything with `position: { x, y, z }` and `rotation: { y }`, which a three.js `Object3D` already is, so the simulation itself never touches a renderer. Left out, the traffic runs as pure simulation, which is how the tests drive it. `model` is one of `CAR_MODELS`: `NormalCar1`, `NormalCar2`, `SUV`, `Taxi`, `SportsCar`, `SportsCar2`, `Cop`.
 
-`Obstacles` is the seam to the people: `near(centre, radius)` returns everything standing or walking within `radius` metres of `centre`, each one an `{ x, z, radius? }` in metres (half a metre if the radius is left out). It is read once per update and nothing is kept between calls, so somebody stepping back onto the pavement clears the road the same frame. The port knows nothing about roads: traffic works out for itself who is in which lane. Left out, cars have only each other to avoid, exactly as before.
+`Obstacles` is the seam to the people: `near(centre, radius)` returns everything standing or walking within `radius` metres of `centre`, each one an `{ x, z, radius? }` in metres (half a metre if the radius is left out, which is a person). It is read once per update and nothing is kept between calls, so somebody stepping back onto the pavement clears the road the same frame, and the array may be the same one every call. The port knows nothing about roads and carries no velocity: traffic works out for itself who is in which lane, and treats everybody as if they will still be there when the car arrives. Left out, cars have only each other to avoid.
+
+Whoever fills it puts everybody in it who can be run over: the walkers, the companions and the player. A person is read once per update whether they are on the pavement or in the road, so the port costs the same to feed either way.
 
 `CarPack` is the one that draws them. Three lines put cars on the streets:
 
@@ -97,8 +99,9 @@ Catch it and leave `bodies` out. The traffic still runs; it is just not drawn.
 
   An even split rather than lanes and shoulders: one rule reads every class, and a 4.5 m lane on the road out is a lane a car sits in the middle of rather than a lane plus a strip nothing uses. Widths come from `@gb/world`'s `METRICS.road`, the count from the segment's own `lanes`, and the metres are `roadwayCells` times the world's `cellSize`, so a class that widens widens here with nothing to change.
 - Following is Treiber's Intelligent Driver Model, so a car closes on the one in front and settles at a gap it could stop in. Cars on one lane keep their order: no overtaking, no driving through. **A car keeps the lane it is in until the next junction**, so a slow car on a four lane road is followed rather than passed; which lane it leaves the junction in is the turn it takes, below.
-- Somebody in the road is the car in front that never moves off: they go into the same following model at zero speed, so a car eases down and stops about two metres short of them, and pulls away again when they step clear. It brakes, it never swerves and it never drives through. A person counts as being in the way when they are within half a car's width of the lane the car is driving, so the far side of the road is somebody else's problem.
-- A car sees one stretch of road ahead of the one it is on, the same lookahead it uses for the car in front, and does not take a junction whose road out has somebody standing in its mouth, because a car that stops inside a junction holds it against every other arm. New cars never appear on top of somebody, nor so close behind them that they could not stop.
+- Somebody in the road is the car in front that never moves off: they go into the same following model at zero speed, so a car eases down and stops about two metres short of them, and pulls away again when they step clear. It brakes, it never swerves and it never sounds a horn. A person counts as being in the way when they are within half a car's width of the lane the car is driving, so somebody on the kerb of a ten metre street is two and a half metres clear of the nearest lane and stops nobody. That is the whole of the rule on purpose: a city where every car stops for the pavement is a city that never moves, and a car that swerves is a lane change, which this box does not model.
+- **A car never drives into anybody, even when no brakes could have stopped it.** Braking is the driving and the model does all of it; under the model is a floor that no car passes. Somebody who appears closer than the stopping distance, which is the player stepping off a kerb and nobody else, is stopped at rather than driven through, half a metre short of them. Half a metre because a car pressed against somebody is a car shoving them down the street: whoever owns the walking pushes a body out of a car it is standing inside, so the two must never touch in the first place. Nothing here ever moves a person; the only things this box writes are its own cars.
+- A car sees one stretch of road ahead of the one it is on, the same lookahead it uses for the car in front, and does not take a junction it would have to stop inside, because a car stopped in a junction holds it against every other arm. Both halves are checked: somebody in the mouth of the road out, and somebody out in the middle of the square on the very line this car would drive. The line is what is checked rather than the square, so a right turn that hugs the kerb still goes while somebody stands in the middle. A car already inside when they step in front of it stops, because there is nothing else it can do. New cars never appear on top of somebody, nor so close behind them that they could not stop.
 - Nobody is nudged out of the way and nobody is waited on forever: a car stopped for twelve seconds is taken off the road once the player is far enough away not to see it go, which also gives back any junction it was holding. Inside `nearRadius` it keeps waiting, because a car that vanishes, swerves into oncoming traffic or drives over somebody all look worse than a car waiting for a person standing in the street.
 - **A junction is as wide as its widest arm**, so where an avenue crosses a street the square kept clear is the avenue's, which is how the city paints it. A node with one road on it is not a junction but the end of a road: nothing is kept clear there and the lane runs right up to it, which is what lets the short stub of the road out of the valley be driven at all.
 - **A turn stays in its lane.** Straight on keeps the lane it is in, a right turn leaves the kerb lane and joins the kerb lane, a left turn leaves the lane against the centreline and joins the same, so nothing crosses a lane inside a junction and a left turn on a four lane road is one curve rather than a diagonal. A lane the rule strands, which a bend in a four lane road does, takes the way out nearest its own place: every lane that arrives at a junction with a road out of it can leave. Turns through a junction are curves that stay inside the square the roadways share.
@@ -143,7 +146,17 @@ A car is one node named for its model, with four children: `<Model>_Body`, `<Mod
 
 ## What it costs
 
-The simulation, on a 6 by 6 junction lattice with the default 40 cars, bodies stubbed out: 7.9 us per update on streets with no `obstacles` port, 26 us with twenty people scattered on the lanes, 42 us with forty, 74 us with eighty. The same lattice built of avenues, which is twice the lanes, costs 6.8 us empty and 25, 43 and 84 us with the same people, so the cost follows the cars near the player and the people beside them, not the lanes in the city.
+The simulation, on a 6 by 6 junction lattice with the default 40 cars, bodies stubbed out: 8.5 us per update on streets with no `obstacles` port. With the port it depends on where the people are, not how many roads there are:
+
+| people near the player | on the pavements | out in the lanes |
+|---|---|---|
+| 20 | 14 us | 27 us |
+| 40 | 19 us | 41 us |
+| 80 | 29 us | 64 us |
+
+The same lattice built of avenues, twice the lanes, costs 8.0 us empty, 16, 21 and 33 us with people on the pavements and 26, 37 and 64 us with them in the lanes. Standing in a lane costs more because the traffic then does what it is for: cars brake, queue behind each other and sit at junctions waiting for a way across.
+
+Every person is measured once, against the two or three pieces of road they could be standing in, found through a grid of the roads built when the city loads. So the cost follows the people near the player, and a city with more streets in it is no dearer to watch.
 
 The art, per car: **4 draw calls and 3,170 triangles**, one body and three wheels, every one of them on the same material. Forty cars is 160 draws.
 
@@ -158,7 +171,7 @@ Cars never cover more than a fifth of a city frame, so the clear coat, the glass
 
 ## How to modify this blackbox safely
 
-The behaviour lives in five places and they stay separate: `idm.ts` is the car following model, `junctions.ts` is right of way, `hazards.ts` turns the people into distances a driver can brake against, `road-class.ts` is how wide a class of road is and where its lanes sit in it, and `lane-graph.ts` cuts the lanes and joins them across junctions. One way streets, traffic lights and pulling out to pass are all changes to `lane-graph.ts` plus one of the other two, not new boxes.
+The behaviour lives in six places and they stay separate: `idm.ts` is the car following model, `junctions.ts` is right of way, `hazards.ts` turns the people into distances a driver can brake against, `track-index.ts` is the grid of where the roads are that lets it do that per person rather than per car, `road-class.ts` is how wide a class of road is and where its lanes sit in it, and `lane-graph.ts` cuts the lanes and joins them across junctions. One way streets, traffic lights and pulling out to pass are all changes to `lane-graph.ts` plus one of the others, not new boxes.
 
 Where a car leaves the world is `src/runoff.ts`, and nothing else knows about it. Taking a car off the road, whether it was retired or handed to a driver, is `#takeOff` in `src/traffic.ts` and is one path, so the two cannot drift apart.
 

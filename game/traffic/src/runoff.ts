@@ -41,6 +41,11 @@ export class Runoffs {
     return this.#byLane.get(lane.id)
   }
 
+  /** Every way off the map, for anything that needs to know where the roads are. */
+  get all(): Iterable<Runoff> {
+    return this.#byLane.values()
+  }
+
   /** How many ways out of the map there are. */
   get count(): number {
     return this.#byLane.size

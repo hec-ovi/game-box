@@ -11,7 +11,7 @@ import { ahead, join, leave } from './queue.ts'
 import { Runoffs } from './runoff.ts'
 import { RUNOFF, withDefaults, type Settings, type TrafficOptions } from './settings.ts'
 import { Spawner } from './spawner.ts'
-import { Lane, Link } from './track.ts'
+import { Lane, Link, type Track } from './track.ts'
 
 /** Metres of clear road a car leaves in front of the junction it is waiting for. */
 const STOP_BUFFER = 1
@@ -23,6 +23,8 @@ const ROAD_PER_CAR = 40
 const PATIENCE = 12
 /** Cars created per update once the streets are already populated. */
 const SPAWNS_PER_UPDATE = 2
+/** Metres a car keeps off somebody it was asked to brake for too late to stop for. */
+const LAST_GAP = 0.5
 
 const CAR_LENGTH = METRICS.vehicle.carLength
 
@@ -53,7 +55,7 @@ export class Traffic {
     const road = graph.lanes.reduce((total, lane) => total + lane.length, 0)
     this.#capacity = Math.max(1, Math.min(settings.maxCars, Math.floor(road / ROAD_PER_CAR)))
     this.#runoffs = new Runoffs(graph, RUNOFF)
-    this.#hazards = new Hazards(settings.obstacles)
+    this.#hazards = new Hazards(settings.obstacles, roadsOf(graph, this.#runoffs))
     this.#junctions = new JunctionControl(CAR_LENGTH + CITY_DRIVING.minGap, this.#hazards)
     this.#spawner = new Spawner(graph, settings, this.#hazards, CAR_LENGTH)
   }
@@ -93,7 +95,7 @@ export class Traffic {
   /** Fill the streets around a point in one go, for the moment a city opens. */
   populate(focus: Point): void {
     this.#focus = focus
-    this.#hazards.refresh([], focus, this.#settings.despawnRadius)
+    this.#hazards.refresh(focus, this.#settings.despawnRadius)
     while (this.#cars.length < this.#capacity) {
       if (!this.#add(focus)) return
     }
@@ -110,7 +112,7 @@ export class Traffic {
     this.#frame++
 
     const due = this.#collectDue()
-    this.#hazards.refresh(due, focus, this.#settings.despawnRadius)
+    this.#hazards.refresh(focus, this.#settings.despawnRadius)
     for (const car of due) this.#approach(car)
     this.#junctions.settle()
     for (const car of due) car.accel = this.#decide(car)
@@ -162,9 +164,9 @@ export class Traffic {
     let accel = idmAcceleration(CITY_DRIVING, car.speed, car.desiredSpeed, lead.gap, car.speed - lead.speed)
     // somebody in the road is the car in front that never moves off: same
     // model, zero speed, so the braking is the braking a driver already does
-    const person = this.#hazards.gapFor(car)
-    if (person < Number.POSITIVE_INFINITY) {
-      accel = Math.min(accel, idmAcceleration(CITY_DRIVING, car.speed, car.desiredSpeed, person, car.speed))
+    car.clearAhead = this.#hazards.gapFor(car)
+    if (car.clearAhead < Number.POSITIVE_INFINITY) {
+      accel = Math.min(accel, idmAcceleration(CITY_DRIVING, car.speed, car.desiredSpeed, car.clearAhead, car.speed))
     }
     if (car.track instanceof Lane && car.next && car.holds !== car.next.junctionId) {
       const toStop = car.remaining - STOP_BUFFER
@@ -187,8 +189,18 @@ export class Traffic {
   #move(car: Car): void {
     const step = Math.min(this.#now - car.clock, this.#settings.maxStep)
     if (step <= 0) return
-    const speed = Math.max(0, car.speed + car.accel * step)
-    car.s += ((car.speed + speed) / 2) * step
+    let speed = Math.max(0, car.speed + car.accel * step)
+    let advance = ((car.speed + speed) / 2) * step
+    // the model does the braking; this is the floor under it. Somebody who
+    // appears closer than the car could ever stop in is stopped at rather than
+    // driven through, and half a metre short so the two never touch: a car
+    // pressed against a body is a body being shoved down the street.
+    const room = car.clearAhead - LAST_GAP
+    if (advance > room) {
+      advance = Math.max(0, room)
+      speed = 0
+    }
+    car.s += advance
     car.speed = speed
     car.stalled = speed < 0.1 ? car.stalled + step : 0
     this.#cross(car)
@@ -273,4 +285,11 @@ export class Traffic {
     car.body.position.z = car.z
     car.body.rotation.y = car.heading
   }
+}
+
+/** Every piece of road in the city, for whatever needs to know where they all are. */
+function* roadsOf(graph: LaneGraph, runoffs: Runoffs): Iterable<Track> {
+  yield* graph.lanes
+  for (const junction of graph.junctions) yield* junction.links
+  yield* runoffs.all
 }

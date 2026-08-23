@@ -65,15 +65,18 @@ export class JunctionControl {
   }
 
   /**
-   * Never enter a junction you cannot leave: the lane out has to have room, and
-   * somebody standing in its mouth takes that room the same as a queue does.
+   * Never enter a junction you cannot drive out of the far side of: the lane out
+   * has to have room, and somebody standing in the way takes that room the same
+   * as a queue does, whether they are in the mouth of the lane out or out in the
+   * middle of the junction on the very line this car would take.
    */
   #hasRoom(car: Car): boolean {
-    const exit = car.next?.to
-    if (!exit) return false
-    const last = exit.last
+    const link = car.next
+    if (!link) return false
+    const last = link.to.last
     if (last !== undefined && last.s <= this.#exitRoom) return false
-    return this.#hazards.clearFor(exit, 0, this.#exitRoom)
+    if (!this.#hazards.clearFor(link.to, 0, this.#exitRoom)) return false
+    return this.#hazards.clearFor(link, 0, link.length)
   }
 }
 
