@@ -314,3 +314,95 @@ describe('founding a city', () => {
     expect(World.create(spec).name).toBe('Dry Gulch')
   })
 })
+
+describe('what a city was designed against', () => {
+  const catalogue = { pack: 'gb-prefab', version: '1.2.0', sha256: 'a'.repeat(64) }
+  const design = { pack: 'gb-prefab', model: 'corner-tower-03', mirror: true, rooms: 5 }
+
+  it('pins the building a plot got, and hands it back after a save and a load', () => {
+    const { world, plot } = hamlet()
+    expect(world.recordCatalogues([catalogue]).ok).toBe(true)
+    expect(world.recordDesign(plot.id, design).ok).toBe(true)
+
+    const reloaded = World.load(JSON.parse(JSON.stringify(world.toJSON())))
+    expect(reloaded.ok).toBe(true)
+    if (!reloaded.ok) return
+    expect(reloaded.value.check()).toEqual([])
+    // the same model, the same way round, in the same place: nothing re-picked it
+    expect(reloaded.value.plot(plot.id)?.design).toEqual(design)
+    expect(reloaded.value.catalogues()).toEqual([catalogue])
+  })
+
+  it('takes a design on a plot added later, so a pack pins its own buildings', () => {
+    const { world } = hamlet()
+    expect(world.recordCatalogues([catalogue]).ok).toBe(true)
+    const site = world.buildSites(3, 3)[0]!
+    const added = world.addPlot({
+      kind: 'house',
+      name: 'Hollis Place',
+      rect: site,
+      entrance: { cell: { x: site.x, y: site.y + site.h }, facing: 'south' },
+      storeys: 1,
+      style: 'western-timber',
+      design,
+    })
+    expect(added.ok).toBe(true)
+    if (!added.ok) return
+    expect(added.value.design).toEqual(design)
+    expect(world.check()).toEqual([])
+  })
+
+  it('refuses a design against a catalogue the city does not name, whichever door it comes through', () => {
+    const { world, plot } = hamlet()
+    const refused = world.recordDesign(plot.id, design)
+    expect(refused.ok).toBe(false)
+    if (!refused.ok) expect(refused.error.code).toBe('unknown-reference')
+
+    // a plot added with a design of its own is held to the same list
+    const site = world.buildSites(3, 3)[0]!
+    const added = world.addPlot({
+      kind: 'house',
+      name: 'Hollis Place',
+      rect: site,
+      entrance: { cell: { x: site.x, y: site.y + site.h }, facing: 'south' },
+      storeys: 1,
+      style: 'western-timber',
+      design,
+    })
+    expect(added.ok).toBe(false)
+    if (!added.ok) expect(added.error.code).toBe('unknown-reference')
+    // and it refused before it took the ground
+    expect(world.buildSites(3, 3)).toContainEqual(site)
+
+    // and a list that drops a catalogue plots are already pinned to
+    expect(world.recordCatalogues([catalogue]).ok).toBe(true)
+    expect(world.recordDesign(plot.id, design).ok).toBe(true)
+    const dropped = world.recordCatalogues([{ pack: 'other-pack', version: '1.0.0' }])
+    expect(dropped.ok).toBe(false)
+    if (!dropped.ok) expect(dropped.error.code).toBe('unknown-reference')
+
+    // and the same dangling reference in a document somebody else wrote
+    const doc = JSON.parse(JSON.stringify(world.toJSON()))
+    doc.catalogues = [{ ...catalogue, pack: 'some-other-pack' }]
+    const loaded = World.load(doc)
+    expect(loaded.ok).toBe(false)
+    if (!loaded.ok && loaded.error.code === 'inconsistent-world') {
+      expect(loaded.error.problems.some((p) => p.message.includes('gb-prefab'))).toBe(true)
+    } else {
+      throw new Error('expected inconsistent-world')
+    }
+  })
+
+  it('catches an interior its plot does not point back at, so interiorId is every door that opens', () => {
+    const { world } = hamlet()
+    const doc = JSON.parse(JSON.stringify(world.toJSON()))
+    delete doc.plots[0].interiorId
+    const loaded = World.load(doc)
+    expect(loaded.ok).toBe(false)
+    if (!loaded.ok && loaded.error.code === 'inconsistent-world') {
+      expect(loaded.error.problems.some((p) => p.message.includes('does not point back'))).toBe(true)
+    } else {
+      throw new Error('expected inconsistent-world')
+    }
+  })
+})

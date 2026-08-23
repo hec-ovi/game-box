@@ -1,6 +1,7 @@
 import { contract } from '@gb/kit'
 import { z } from 'zod'
 import { METRICS } from '../metrics.ts'
+import { AssetPackRefSchema, MAX_CATALOGUES, PlotDesignSchema } from './design.ts'
 import {
   ANCHOR_KINDS,
   BODY_KINDS,
@@ -97,6 +98,8 @@ export const PlotSchema = z.object({
   /** Asset style key: which building kit dresses this plot. */
   style: z.string().min(1).max(40),
   interiorId: id('interior').optional(),
+  /** The building this plot was dressed with, pinned when it was chosen. */
+  design: PlotDesignSchema.optional(),
 })
 
 export const RoadNodeSchema = z.object({ id: id('node'), cell: Cell })
@@ -155,6 +158,8 @@ export const WorldSchema = z.object({
   generator: z.object({ name: z.string().min(1), version: z.string().min(1) }),
   /** Metres per grid cell. Everything else in cells is read through this. */
   cellSize: z.number().positive().max(16),
+  /** The art catalogues this city was designed against. Absent means it records none. */
+  catalogues: z.array(AssetPackRefSchema).max(MAX_CATALOGUES).optional(),
   grid: z.object({
     width: z.number().int().min(4).max(1024),
     height: z.number().int().min(4).max(1024),

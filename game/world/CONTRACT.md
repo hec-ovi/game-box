@@ -1,6 +1,6 @@
 # @gb/world contract
 
-contractVersion: 0.6.0
+contractVersion: 0.7.0
 
 ## Purpose
 
@@ -13,7 +13,9 @@ Holds a city: its grid of streets and plots, the buildings you can enter, the pe
 | `World.found(spec)` | `CitySpec`: name, theme, seed, width, height, cellSize?, generator? | none: the spec is checked here |
 | `World.create(spec)` | same `CitySpec` | the spec must already be sound; a bad one throws. Going: use `found` |
 | `World.load(value)` | [schema/world.json](schema/world.json) | any untrusted JSON, including generated output |
-| `World.addPlot(spec)` | `PlotSpec`: kind, name, rect, entrance, storeys, style | footprint is free land; kind is one of `BUILDING_KINDS` |
+| `World.addPlot(spec)` | `PlotSpec`: kind, name, rect, entrance, storeys, style, design? | footprint is free land; kind is one of `BUILDING_KINDS`; a design names a recorded catalogue |
+| `World.recordCatalogues(refs)` | `AssetPackRef[]`, at most `MAX_CATALOGUES`: `{ pack, version, sha256? }` | the list is checked here, and must still name every catalogue a plot is already pinned to. Replaces the recorded list |
+| `World.recordDesign(plotId, design)` | `PlotDesign`: `{ pack, model, mirror, rooms }` | the plot exists and `pack` is one of the recorded catalogues |
 | `World.addInterior(interior)` | `interior` in [schema/world.json](schema/world.json) | its `plotId` exists |
 | `World.addNpc(npc)` / `addItem(item, placement)` | same | referenced interior, anchor and item exist |
 
@@ -25,14 +27,41 @@ Holds a city: its grid of streets and plots, the buildings you can enter, the pe
 | `World.check()` | `IntegrityProblem[]` | empty means every reference resolves and the grid agrees with the plots |
 | `buildSites(w, h)` | `Rect[]` | free footprints that touch a sidewalk: where a later generation pass may build |
 | queries: `plot`, `npc`, `item`, `interior`, `plotsOfKind`, `npcsIn`, `positionOf` | plain records | undefined when the id is unknown, never a throw |
+| `World.catalogues()` | `AssetPackRef[]` | what this city was designed against. Empty means the file records none |
 | `questView(world)` | `QuestView` | the five questions `@gb/quest` asks of a world: `hasNpc`, `hasPlot`, `hasInterior`, `hasItem`, `hasAnchor(interiorId, anchorId)` |
+
+## What a city was designed against
+
+A world file says which art it was drawn from, so opening it years later draws
+the same city and not a newer catalogue's idea of it.
+
+- **`world.catalogues`** is the list of art packs the city was designed
+  against: pack, version, and the hash of that pack's own manifest where the
+  producer publishes one. Absent means the file records nothing, which is the
+  honest state of every city exported before this.
+- **`plot.design`** is what one plot was actually dressed with: `pack` (one of
+  the recorded catalogues), `model`, `mirror`, and `rooms`, the whole pictures
+  its window rooms are slid along. It is written once, when the choice is made,
+  and read back forever after.
+- A plot whose `design.pack` is not in `world.catalogues` is a dangling
+  reference like any other: `load` refuses the document, `check()` reports it,
+  and the three ways to write one (`addPlot`, `recordDesign`,
+  `recordCatalogues` dropping a pack in use) all refuse instead.
+
+A renderer reads `plot.design` and draws that model. A model the reader's copy
+of the pack no longer has falls back the same way a missing pack does; nothing
+re-picks. Whoever holds the catalogue writes the pin, because the generator
+never sees the art.
+
+Both fields are optional and `schemaVersion` is still 1, so a city exported
+before this loads, checks and hashes exactly as it did.
 
 ## Errors (closed set)
 
 - `invalid-document`: failed the JSON Schema, whether it arrived as a whole document or as a city spec. Carries the offending paths.
 - `inconsistent-world`: schema-valid but references dangle or the grid disagrees. Carries every problem found, not just the first.
 - `no-space`: the footprint is not free land.
-- `unknown-reference`: an added interior, NPC or item points at something that does not exist.
+- `unknown-reference`: an added interior, NPC or item points at something that does not exist, or a design names a catalogue the city has not recorded.
 
 ## Dependencies
 
@@ -40,9 +69,11 @@ Holds a city: its grid of streets and plots, the buildings you can enter, the pe
 
 ## Invariants
 
-- A `World` that returns `ok` from `load` is sound: no duplicate ids, no dangling references, exactly one street door per interior, no two NPCs on one anchor, every item somewhere in the world, every plot footprint marked on the grid.
+- A `World` that returns `ok` from `load` is sound: no duplicate ids, no dangling references, exactly one street door per interior, one plot per interior pointing back at it, no two NPCs on one anchor, every item somewhere in the world, every plot footprint marked on the grid.
 - Content is only ever accepted through the schema plus the integrity check, so a language model cannot write a broken city into the file (fail closed).
 - Ids are minted once and never reused; a document loaded and saved keeps every id it had.
+- **A plot's design is a fact about the file, never re-derived.** Nothing here chooses a model, and nothing rewrites one that is written down, so the same file is the same city on every machine and in every version of the art.
+- **`plot.interiorId` is exactly the set of doors that open.** A plot with an interior can be walked into and a plot without one cannot, and the two directions are checked: an interior whose plot does not point back at it is refused. There is no second field saying the same thing.
 - The grid is the single source of truth for what occupies a cell, which is what makes "add three more houses later" a lookup rather than a regeneration.
 - Vocabularies (`BUILDING_KINDS`, `ANCHOR_KINDS`, `NPC_ROLES`, `ITEM_ARCHETYPES`, `FURNITURE_PROPS`, `ROAD_KINDS`) are closed: every value maps to something the game can render, animate or place.
 - An anchor kind is one stance, not one job: `work-desk` is sat in the chair at a desk, `work-bench` is on their feet at a bench with their hands on the top. Two stances at one surface height are two kinds, because a clip is chosen from the kind alone.

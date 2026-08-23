@@ -27,6 +27,7 @@ export function checkIntegrity(doc: WorldDoc): IntegrityProblem[] {
   const npcs = new Map(doc.npcs.map((n) => [n.id, n]))
   const items = new Map(doc.items.map((i) => [i.id, i]))
   const nodes = new Set(doc.roads.nodes.map((n) => n.id))
+  const catalogues = new Set((doc.catalogues ?? []).map((c) => c.pack))
 
   for (const plot of doc.plots) claim(`plot ${plot.id}`, plot.id)
   for (const interior of doc.interiors) claim(`interior ${interior.id}`, interior.id)
@@ -59,6 +60,10 @@ export function checkIntegrity(doc: WorldDoc): IntegrityProblem[] {
       cell.x >= x - 1 && cell.x <= x + w && cell.y >= y - 1 && cell.y <= y + h
     if (!onEdge) fail(where, 'entrance cell is not on the footprint edge')
 
+    if (plot.design && !catalogues.has(plot.design.pack)) {
+      fail(where, `design names catalogue ${plot.design.pack}, which this world does not record`)
+    }
+
     if (plot.interiorId) {
       const interior = interiors.get(plot.interiorId)
       if (!interior) fail(where, `interiorId ${plot.interiorId} does not exist`)
@@ -69,7 +74,9 @@ export function checkIntegrity(doc: WorldDoc): IntegrityProblem[] {
 
   for (const interior of doc.interiors) {
     const where = `interior ${interior.id}`
-    if (!plots.has(interior.plotId)) fail(where, `plotId ${interior.plotId} does not exist`)
+    const owner = plots.get(interior.plotId)
+    if (!owner) fail(where, `plotId ${interior.plotId} does not exist`)
+    else if (owner.interiorId !== interior.id) fail(where, `plot ${owner.id} does not point back at it`)
 
     const rooms = new Set(interior.rooms.map((r) => r.id))
     for (const room of interior.rooms) claim(`${where} room`, room.id)

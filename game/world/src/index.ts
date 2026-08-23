@@ -21,6 +21,7 @@ export {
   type RoadNode,
   type RoadSegment,
 } from './model/schema.ts'
+export { MAX_CATALOGUES, type AssetPackRef, type PlotDesign } from './model/design.ts'
 export {
   BUILDING_KINDS,
   ROOM_KINDS,

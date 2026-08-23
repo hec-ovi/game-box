@@ -6,7 +6,7 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI
 
 | You want to change | Open |
 |---|---|
-| The city: grid, plots, interiors, NPCs, items, and what a sound world means | `game/world/` |
+| The city: grid, plots, interiors, NPCs, items, the art each plot was designed against, and what a sound world means | `game/world/` |
 | Quests: the flow schema, what makes one playable, how it advances | `game/quest/` |
 | The playthrough: inventory, money, flags, reputation, companions, things left lying somewhere, where the player is standing, the job they are following, the clock and the weather | `game/play/` |
 | Generating a city: streets, plots, interiors, people, quests | `game/forge/` |

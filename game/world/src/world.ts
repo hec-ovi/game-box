@@ -3,6 +3,7 @@ import { CELL, Grid, type Rect } from './grid.ts'
 import { checkIntegrity, type IntegrityProblem } from './integrity.ts'
 import { METRICS, cellCentre } from './metrics.ts'
 import { citySpecContract, type CitySpec } from './model/city-spec.ts'
+import { catalogueListContract, plotDesignContract, type AssetPackRef, type PlotDesign } from './model/design.ts'
 import { worldContract, type Interior, type Item, type Npc, type Placement, type Plot, type WorldDoc } from './model/schema.ts'
 import type { BuildingKind, Facing } from './model/vocabulary.ts'
 
@@ -19,6 +20,8 @@ export interface PlotSpec {
   readonly entrance: { readonly cell: { x: number; y: number }; readonly facing: Facing }
   readonly storeys: number
   readonly style: string
+  /** The building it was dressed with, when whoever placed it already knows. */
+  readonly design?: PlotDesign
 }
 
 /**
@@ -189,6 +192,12 @@ export class World {
     if (!this.#grid.isAll(spec.rect, ['empty'])) {
       return err({ code: 'no-space', message: `${spec.name}: footprint is not free` })
     }
+    let design: PlotDesign | undefined
+    if (spec.design) {
+      const checked = this.#checkDesign(spec.name, spec.design)
+      if (!checked.ok) return checked
+      design = checked.value
+    }
     const plot: Plot = {
       id: this.mintId('plot'),
       kind: spec.kind,
@@ -197,11 +206,55 @@ export class World {
       storeys: spec.storeys,
       entrance: spec.entrance,
       style: spec.style,
+      ...(design ? { design } : {}),
     }
     this.#grid.fill(spec.rect, 'building')
     this.#syncGrid()
     this.#doc.plots.push(plot)
     return ok(plot)
+  }
+
+  /** The art catalogues this city was designed against. Empty means it records none. */
+  catalogues(): readonly AssetPackRef[] {
+    return this.#doc.catalogues ?? []
+  }
+
+  /**
+   * Write down which catalogues this city is being designed against, before
+   * any plot is pinned to one. Replaces whatever was recorded before.
+   */
+  recordCatalogues(refs: readonly AssetPackRef[]): Result<readonly AssetPackRef[], WorldError> {
+    const checked = catalogueListContract.parse(refs)
+    if (!checked.ok) return err({ code: 'invalid-document', violations: checked.error })
+    const orphaned = this.#doc.plots.find((p) => p.design && !checked.value.some((ref) => ref.pack === p.design!.pack))
+    if (orphaned) {
+      return err({ code: 'unknown-reference', message: `plot ${orphaned.id} is designed against ${orphaned.design!.pack}, which this list drops` })
+    }
+    this.#doc.catalogues = checked.value
+    return ok(checked.value)
+  }
+
+  /**
+   * Pin what a plot was dressed with, at the moment it was chosen. From then on
+   * the file says which model the plot has and nothing re-picks it.
+   */
+  recordDesign(plotId: string, design: PlotDesign): Result<Plot, WorldError> {
+    const plot = this.plot(plotId)
+    if (!plot) return err({ code: 'unknown-reference', message: `no plot ${plotId} to pin a design on` })
+    const checked = this.#checkDesign(`plot ${plotId}`, design)
+    if (!checked.ok) return checked
+    plot.design = checked.value
+    return ok(plot)
+  }
+
+  /** A design is only worth writing down if the city names the catalogue it came from. */
+  #checkDesign(who: string, design: PlotDesign): Result<PlotDesign, WorldError> {
+    const checked = plotDesignContract.parse(design)
+    if (!checked.ok) return err({ code: 'invalid-document', violations: checked.error })
+    if (!this.catalogues().some((ref) => ref.pack === checked.value.pack)) {
+      return err({ code: 'unknown-reference', message: `${who} is designed against unrecorded catalogue ${checked.value.pack}` })
+    }
+    return ok(checked.value)
   }
 
   addInterior(interior: Interior): Result<Interior, WorldError> {
