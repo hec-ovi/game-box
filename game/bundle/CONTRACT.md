@@ -48,3 +48,5 @@ The file a city travels in: world, quests and the art packs it needs, sealed beh
 ## How to modify this blackbox safely
 
 Adding a field to the bundle changes every hash, so it needs `schemaVersion: 2` and a migration that can still open version 1. Regenerate `schema/` (`pnpm --filter @gb/bundle run schema`) and run `pnpm --filter @gb/bundle test`.
+
+`tests/fixtures/sealed-bundle.json` is a city sealed by this packer and kept as it was shared. It is never regenerated: it is the only proof that a file somebody already has still opens, still plays every quest in it, and still reseals to the hash it was shared with.

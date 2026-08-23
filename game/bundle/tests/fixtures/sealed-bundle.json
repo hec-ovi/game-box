@@ -1,0 +1,2271 @@
+{
+ "format": "game-box.bundle",
+ "schemaVersion": 1,
+ "world": {
+  "format": "game-box.world",
+  "schemaVersion": 1,
+  "id": "world_0001",
+  "name": "Fair Sound",
+  "theme": "harbour town",
+  "seed": "bundle-seal",
+  "generator": {
+   "name": "forge",
+   "version": "0.1.0"
+  },
+  "cellSize": 2,
+  "grid": {
+   "width": 37,
+   "height": 39,
+   "rows": [
+    "MMMMMMMMMMMMMMMMMMMMMMMMSSSSSSSSSMMMM",
+    "MMMMMMMMMMMMMMMMMMMMMMWWSSSSSSSSSWWMM",
+    "MWWWMMMMMMMMMMMMMMMMMMWWSSSSSSSSSWWWM",
+    "MWWWMMMMMMMMMMMMMMMMMMWWSSSSSSSSSWWWM",
+    "SSSSSSSSSSSWWWWWWWWWWWWWSSSSSSSSSSSSS",
+    "SSSSSSSSSSSWWWWWWWWWWWWWSSSSSSSSSSSSS",
+    "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS",
+    "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS",
+    "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS",
+    "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS",
+    "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS",
+    "SSSSSSSSSSSWWWWWWWWWWWWWWWSSSSSSSSSSS",
+    "SSSSSSSSSSSWWWWWWWWWWWWWWWSSSSSSSSSSS",
+    "MWWWWWSSSSSWWBBBBBBBBB..WWSSSSSWWWWWM",
+    "MWWWWWSSSSSWWBBBBBBBBB..WWSSSSSWWWWWM",
+    "MMMMWWSSSSSWWBBBBBBBBB..WWSSSSSWWMMMM",
+    "MMMMWWSSSSSWWBBBBBBBBB..WWSSSSSWWMMMM",
+    "MMMMWWSSSSSWWBBBB.......WWSSSSSWWMMMM",
+    "MMMMWWSSSSSWWBBBB.......WWSSSSSWWMMMM",
+    "MMMMWWSSSSSWWBBBB.......WWSSSSSWWMMMM",
+    "MMMMWWSSSSSWWBBBB.......WWSSSSSWWMMMM",
+    "MMMMWWSSSSSWW...........WWSSSSSWWMMMM",
+    "MMMMWWSSSSSWWBBBBBBBBB..WWSSSSSWWMMMM",
+    "MMMMWWSSSSSWWBBBBBBBBB..WWSSSSSWWMMMM",
+    "MMMMWWSSSSSWWBBBBBBBBB..WWSSSSSWWMMMM",
+    "MMMMWWSSSSSWWBBBBBBBBB..WWSSSSSWWMMMM",
+    "MMMMWWSSSSSWWWWWWWWWWWWWWWSSSSSWWMMMM",
+    "MMMMWWSSSSSWWWWWWWWWWWWWWWSSSSSWWMMMM",
+    "MMMMSSSSSSSSSSSSSSSSSSSSSSSSSSSSSMMMM",
+    "MMMMSSSSSSSSSSSSSSSSSSSSSSSSSSSSSMMMM",
+    "MMMMSSSSSSSSSSSSSSSSSSSSSSSSSSSSSMMMM",
+    "MMMMSSSSSSSSSSSSSSSSSSSSSSSSSSSSSMMMM",
+    "MMMMSSSSSSSSSSSSSSSSSSSSSSSSSSSSSMMMM",
+    "MMMMWWSSSSSWWWWWWWWWWWWWSSSSSSSSSMMMM",
+    "MMMMWWSSSSSWWWWWWWWWWWWWSSSSSSSSSMMMM",
+    "MMMMMMMMMMMMMMMMMMMMMMWWSSSSSSSSSWWMM",
+    "MMMMMMMMMMMMMMMMMMMMMMWWSSSSSSSSSWWMM",
+    "MMMMMMMMMMMMMMMMMMMMMMWWSSSSSSSSSWWMM",
+    "MMMMMMMMMMMMMMMMMMMMMMMMSSSSSSSSSMMMM"
+   ]
+  },
+  "roads": {
+   "nodes": [
+    {
+     "id": "node_0001",
+     "cell": {
+      "x": 8,
+      "y": 8
+     }
+    },
+    {
+     "id": "node_0002",
+     "cell": {
+      "x": 8,
+      "y": 30
+     }
+    },
+    {
+     "id": "node_0003",
+     "cell": {
+      "x": 28,
+      "y": 8
+     }
+    },
+    {
+     "id": "node_0004",
+     "cell": {
+      "x": 28,
+      "y": 30
+     }
+    },
+    {
+     "id": "node_0005",
+     "cell": {
+      "x": 28,
+      "y": 0
+     }
+    },
+    {
+     "id": "node_0006",
+     "cell": {
+      "x": 36,
+      "y": 8
+     }
+    },
+    {
+     "id": "node_0007",
+     "cell": {
+      "x": 0,
+      "y": 8
+     }
+    },
+    {
+     "id": "node_0008",
+     "cell": {
+      "x": 28,
+      "y": 38
+     }
+    }
+   ],
+   "segments": [
+    {
+     "id": "road_0001",
+     "from": "node_0001",
+     "to": "node_0002",
+     "kind": "street",
+     "lanes": 2
+    },
+    {
+     "id": "road_0002",
+     "from": "node_0001",
+     "to": "node_0003",
+     "kind": "street",
+     "lanes": 2
+    },
+    {
+     "id": "road_0003",
+     "from": "node_0002",
+     "to": "node_0004",
+     "kind": "street",
+     "lanes": 2
+    },
+    {
+     "id": "road_0004",
+     "from": "node_0003",
+     "to": "node_0004",
+     "kind": "street",
+     "lanes": 2
+    },
+    {
+     "id": "road_0005",
+     "from": "node_0003",
+     "to": "node_0005",
+     "kind": "exit",
+     "lanes": 4
+    },
+    {
+     "id": "road_0006",
+     "from": "node_0003",
+     "to": "node_0006",
+     "kind": "exit",
+     "lanes": 4
+    },
+    {
+     "id": "road_0007",
+     "from": "node_0001",
+     "to": "node_0007",
+     "kind": "exit",
+     "lanes": 4
+    },
+    {
+     "id": "road_0008",
+     "from": "node_0004",
+     "to": "node_0008",
+     "kind": "exit",
+     "lanes": 4
+    }
+   ]
+  },
+  "plots": [
+   {
+    "id": "plot_0001",
+    "kind": "station",
+    "name": "Buoy Halt",
+    "rect": {
+     "x": 13,
+     "y": 13,
+     "w": 4,
+     "h": 4
+    },
+    "storeys": 1,
+    "entrance": {
+     "cell": {
+      "x": 15,
+      "y": 12
+     },
+     "facing": "north"
+    },
+    "style": "harbour-station",
+    "interiorId": "interior_0001"
+   },
+   {
+    "id": "plot_0002",
+    "kind": "cafe",
+    "name": "Grey Gull Coffee",
+    "rect": {
+     "x": 17,
+     "y": 13,
+     "w": 5,
+     "h": 4
+    },
+    "storeys": 1,
+    "entrance": {
+     "cell": {
+      "x": 19,
+      "y": 12
+     },
+     "facing": "north"
+    },
+    "style": "harbour-cafe",
+    "interiorId": "interior_0002"
+   },
+   {
+    "id": "plot_0003",
+    "kind": "clinic",
+    "name": "Net Street Clinic",
+    "rect": {
+     "x": 13,
+     "y": 22,
+     "w": 5,
+     "h": 4
+    },
+    "storeys": 1,
+    "entrance": {
+     "cell": {
+      "x": 15,
+      "y": 26
+     },
+     "facing": "south"
+    },
+    "style": "harbour-clinic",
+    "interiorId": "interior_0003"
+   },
+   {
+    "id": "plot_0004",
+    "kind": "bar",
+    "name": "The Anchor & Fair",
+    "rect": {
+     "x": 18,
+     "y": 22,
+     "w": 4,
+     "h": 4
+    },
+    "storeys": 2,
+    "entrance": {
+     "cell": {
+      "x": 20,
+      "y": 26
+     },
+     "facing": "south"
+    },
+    "style": "harbour-bar",
+    "interiorId": "interior_0004"
+   },
+   {
+    "id": "plot_0005",
+    "kind": "house",
+    "name": "Sellers House",
+    "rect": {
+     "x": 13,
+     "y": 17,
+     "w": 4,
+     "h": 4
+    },
+    "storeys": 2,
+    "entrance": {
+     "cell": {
+      "x": 12,
+      "y": 19
+     },
+     "facing": "west"
+    },
+    "style": "harbour-house",
+    "interiorId": "interior_0005"
+   }
+  ],
+  "interiors": [
+   {
+    "id": "interior_0001",
+    "plotId": "plot_0001",
+    "kind": "station",
+    "size": {
+     "w": 7.6,
+     "h": 7.6
+    },
+    "rooms": [
+     {
+      "id": "room_0001",
+      "kind": "hall",
+      "name": "Concourse",
+      "rect": {
+       "x": 0,
+       "y": 0,
+       "w": 7.6,
+       "h": 7.6
+      }
+     }
+    ],
+    "doors": [
+     {
+      "id": "door_0001",
+      "from": "outside",
+      "to": "room_0001",
+      "pos": {
+       "x": 4.322,
+       "y": 0
+      },
+      "rot": 0,
+      "locked": false
+     }
+    ],
+    "furniture": [
+     {
+      "id": "prop_0001",
+      "prop": "counter",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 1.15,
+       "y": 6
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0002",
+      "prop": "counter",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 4.15,
+       "y": 6
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0003",
+      "prop": "chair",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 0.35,
+       "y": 1.2
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0004",
+      "prop": "chair",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 0.35,
+       "y": 3.15
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0005",
+      "prop": "chair",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 0.35,
+       "y": 4.65
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0006",
+      "prop": "chair",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 0.35,
+       "y": 5.4
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0007",
+      "prop": "plant",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 0.35,
+       "y": 0.4
+      },
+      "rot": 90
+     }
+    ],
+    "anchors": [
+     {
+      "id": "anchor_0001",
+      "kind": "serve",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 4.15,
+       "y": 6.45
+      },
+      "rot": 0,
+      "propId": "prop_0002"
+     },
+     {
+      "id": "anchor_0002",
+      "kind": "sit",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 0.676,
+       "y": 1.2
+      },
+      "rot": 90,
+      "propId": "prop_0003"
+     },
+     {
+      "id": "anchor_0003",
+      "kind": "sit",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 0.676,
+       "y": 3.15
+      },
+      "rot": 90,
+      "propId": "prop_0004"
+     },
+     {
+      "id": "anchor_0004",
+      "kind": "sit",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 0.676,
+       "y": 4.65
+      },
+      "rot": 90,
+      "propId": "prop_0005"
+     },
+     {
+      "id": "anchor_0005",
+      "kind": "sit",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 0.676,
+       "y": 5.4
+      },
+      "rot": 90,
+      "propId": "prop_0006"
+     },
+     {
+      "id": "anchor_0006",
+      "kind": "guard",
+      "roomId": "room_0001",
+      "pos": {
+       "x": 3.133,
+       "y": 0.437
+      },
+      "rot": 168.782
+     }
+    ]
+   },
+   {
+    "id": "interior_0002",
+    "plotId": "plot_0002",
+    "kind": "cafe",
+    "size": {
+     "w": 9.6,
+     "h": 7.6
+    },
+    "rooms": [
+     {
+      "id": "room_0002",
+      "kind": "main",
+      "name": "Cafe floor",
+      "rect": {
+       "x": 3.38,
+       "y": 0,
+       "w": 6.22,
+       "h": 7.6
+      }
+     },
+     {
+      "id": "room_0003",
+      "kind": "kitchen",
+      "name": "Kitchen",
+      "rect": {
+       "x": 0,
+       "y": 0,
+       "w": 3.38,
+       "h": 7.6
+      }
+     }
+    ],
+    "doors": [
+     {
+      "id": "door_0002",
+      "from": "outside",
+      "to": "room_0002",
+      "pos": {
+       "x": 6.284,
+       "y": 0
+      },
+      "rot": 0,
+      "locked": false
+     },
+     {
+      "id": "door_0003",
+      "from": "room_0002",
+      "to": "room_0003",
+      "pos": {
+       "x": 3.38,
+       "y": 4.385
+      },
+      "rot": 270,
+      "locked": false
+     }
+    ],
+    "furniture": [
+     {
+      "id": "prop_0008",
+      "prop": "counter",
+      "roomId": "room_0002",
+      "pos": {
+       "x": 6.95,
+       "y": 6
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0009",
+      "prop": "coffee-machine",
+      "roomId": "room_0002",
+      "pos": {
+       "x": 6.95,
+       "y": 6
+      },
+      "rot": 0,
+      "lift": 1
+     },
+     {
+      "id": "prop_0010",
+      "prop": "table",
+      "roomId": "room_0002",
+      "pos": {
+       "x": 7.69,
+       "y": 3.8
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0011",
+      "prop": "chair",
+      "roomId": "room_0002",
+      "pos": {
+       "x": 6.54,
+       "y": 3.8
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0012",
+      "prop": "chair",
+      "roomId": "room_0002",
+      "pos": {
+       "x": 7.69,
+       "y": 4.6
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0013",
+      "prop": "plant",
+      "roomId": "room_0002",
+      "pos": {
+       "x": 3.78,
+       "y": 7.25
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0014",
+      "prop": "stove",
+      "roomId": "room_0003",
+      "pos": {
+       "x": 0.425,
+       "y": 3.55
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0015",
+      "prop": "sink",
+      "roomId": "room_0003",
+      "pos": {
+       "x": 0.375,
+       "y": 1.1
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0016",
+      "prop": "fridge",
+      "roomId": "room_0003",
+      "pos": {
+       "x": 0.45,
+       "y": 7
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0017",
+      "prop": "counter",
+      "roomId": "room_0003",
+      "pos": {
+       "x": 2.98,
+       "y": 6.35
+      },
+      "rot": 270
+     }
+    ],
+    "anchors": [
+     {
+      "id": "anchor_0007",
+      "kind": "serve",
+      "roomId": "room_0002",
+      "pos": {
+       "x": 6.95,
+       "y": 6.45
+      },
+      "rot": 0,
+      "propId": "prop_0008"
+     },
+     {
+      "id": "anchor_0008",
+      "kind": "sit",
+      "roomId": "room_0002",
+      "pos": {
+       "x": 6.866,
+       "y": 3.8
+      },
+      "rot": 90,
+      "propId": "prop_0011"
+     },
+     {
+      "id": "anchor_0009",
+      "kind": "sit",
+      "roomId": "room_0002",
+      "pos": {
+       "x": 7.69,
+       "y": 4.274
+      },
+      "rot": 0,
+      "propId": "prop_0012"
+     },
+     {
+      "id": "anchor_0010",
+      "kind": "cook",
+      "roomId": "room_0003",
+      "pos": {
+       "x": 0.9,
+       "y": 3.55
+      },
+      "rot": 270,
+      "propId": "prop_0014"
+     }
+    ]
+   },
+   {
+    "id": "interior_0003",
+    "plotId": "plot_0003",
+    "kind": "clinic",
+    "size": {
+     "w": 9.6,
+     "h": 7.6
+    },
+    "rooms": [
+     {
+      "id": "room_0004",
+      "kind": "hall",
+      "name": "Waiting room",
+      "rect": {
+       "x": 0,
+       "y": 4.114,
+       "w": 9.6,
+       "h": 3.486
+      }
+     },
+     {
+      "id": "room_0005",
+      "kind": "main",
+      "name": "Treatment room",
+      "rect": {
+       "x": 3.593,
+       "y": 0,
+       "w": 6.007,
+       "h": 4.114
+      }
+     },
+     {
+      "id": "room_0006",
+      "kind": "storage",
+      "name": "Supply room",
+      "rect": {
+       "x": 0,
+       "y": 0,
+       "w": 3.593,
+       "h": 4.114
+      }
+     }
+    ],
+    "doors": [
+     {
+      "id": "door_0004",
+      "from": "outside",
+      "to": "room_0004",
+      "pos": {
+       "x": 5.441,
+       "y": 7.6
+      },
+      "rot": 180,
+      "locked": false
+     },
+     {
+      "id": "door_0005",
+      "from": "room_0004",
+      "to": "room_0005",
+      "pos": {
+       "x": 6.041,
+       "y": 4.114
+      },
+      "rot": 0,
+      "locked": false
+     },
+     {
+      "id": "door_0006",
+      "from": "room_0004",
+      "to": "room_0006",
+      "pos": {
+       "x": 1.991,
+       "y": 4.114
+      },
+      "rot": 0,
+      "locked": false
+     }
+    ],
+    "furniture": [
+     {
+      "id": "prop_0018",
+      "prop": "counter",
+      "roomId": "room_0004",
+      "pos": {
+       "x": 5.45,
+       "y": 5.714
+      },
+      "rot": 180
+     },
+     {
+      "id": "prop_0019",
+      "prop": "counter",
+      "roomId": "room_0004",
+      "pos": {
+       "x": 8.45,
+       "y": 5.714
+      },
+      "rot": 180
+     },
+     {
+      "id": "prop_0020",
+      "prop": "chair",
+      "roomId": "room_0004",
+      "pos": {
+       "x": 9.25,
+       "y": 6.814
+      },
+      "rot": 270
+     },
+     {
+      "id": "prop_0021",
+      "prop": "plant",
+      "roomId": "room_0004",
+      "pos": {
+       "x": 0.35,
+       "y": 4.514
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0022",
+      "prop": "bed",
+      "roomId": "room_0005",
+      "pos": {
+       "x": 6.343,
+       "y": 1.1
+      },
+      "rot": 180
+     },
+     {
+      "id": "prop_0023",
+      "prop": "bed",
+      "roomId": "room_0005",
+      "pos": {
+       "x": 8.5,
+       "y": 2.75
+      },
+      "rot": 270
+     },
+     {
+      "id": "prop_0024",
+      "prop": "sink",
+      "roomId": "room_0005",
+      "pos": {
+       "x": 9.043,
+       "y": 0.375
+      },
+      "rot": 180
+     },
+     {
+      "id": "prop_0025",
+      "prop": "cabinet",
+      "roomId": "room_0005",
+      "pos": {
+       "x": 9.275,
+       "y": 1.2
+      },
+      "rot": 270
+     },
+     {
+      "id": "prop_0026",
+      "prop": "shelf",
+      "roomId": "room_0006",
+      "pos": {
+       "x": 0.3,
+       "y": 1
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0027",
+      "prop": "shelf",
+      "roomId": "room_0006",
+      "pos": {
+       "x": 0.3,
+       "y": 2.65
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0028",
+      "prop": "shelf",
+      "roomId": "room_0006",
+      "pos": {
+       "x": 3.293,
+       "y": 2.05
+      },
+      "rot": 270
+     },
+     {
+      "id": "prop_0029",
+      "prop": "shelf",
+      "roomId": "room_0006",
+      "pos": {
+       "x": 3.293,
+       "y": 3.1
+      },
+      "rot": 270
+     },
+     {
+      "id": "prop_0030",
+      "prop": "crate-stack",
+      "roomId": "room_0006",
+      "pos": {
+       "x": 1.797,
+       "y": 1.157
+      },
+      "rot": 0
+     }
+    ],
+    "anchors": [
+     {
+      "id": "anchor_0011",
+      "kind": "serve",
+      "roomId": "room_0004",
+      "pos": {
+       "x": 8.45,
+       "y": 5.264
+      },
+      "rot": 180,
+      "propId": "prop_0019"
+     },
+     {
+      "id": "anchor_0012",
+      "kind": "sit",
+      "roomId": "room_0004",
+      "pos": {
+       "x": 8.924,
+       "y": 6.814
+      },
+      "rot": 270,
+      "propId": "prop_0020"
+     },
+     {
+      "id": "anchor_0013",
+      "kind": "sleep",
+      "roomId": "room_0005",
+      "pos": {
+       "x": 6.343,
+       "y": 0.67
+      },
+      "rot": 180,
+      "propId": "prop_0022"
+     },
+     {
+      "id": "anchor_0014",
+      "kind": "sleep",
+      "roomId": "room_0005",
+      "pos": {
+       "x": 8.93,
+       "y": 2.75
+      },
+      "rot": 270,
+      "propId": "prop_0023"
+     },
+     {
+      "id": "anchor_0015",
+      "kind": "stand",
+      "roomId": "room_0006",
+      "pos": {
+       "x": 1.797,
+       "y": 2.057
+      },
+      "rot": 174.612
+     }
+    ]
+   },
+   {
+    "id": "interior_0004",
+    "plotId": "plot_0004",
+    "kind": "bar",
+    "size": {
+     "w": 7.6,
+     "h": 7.6
+    },
+    "rooms": [
+     {
+      "id": "room_0007",
+      "kind": "main",
+      "name": "Taproom",
+      "rect": {
+       "x": 0,
+       "y": 2.4,
+       "w": 7.6,
+       "h": 5.2
+      }
+     },
+     {
+      "id": "room_0008",
+      "kind": "cellar",
+      "name": "Cellar",
+      "rect": {
+       "x": 0,
+       "y": 0,
+       "w": 7.6,
+       "h": 2.4
+      }
+     }
+    ],
+    "doors": [
+     {
+      "id": "door_0007",
+      "from": "outside",
+      "to": "room_0007",
+      "pos": {
+       "x": 2.329,
+       "y": 7.6
+      },
+      "rot": 180,
+      "locked": false
+     },
+     {
+      "id": "door_0008",
+      "from": "room_0007",
+      "to": "room_0008",
+      "pos": {
+       "x": 3.264,
+       "y": 2.4
+      },
+      "rot": 0,
+      "locked": false
+     }
+    ],
+    "furniture": [
+     {
+      "id": "prop_0031",
+      "prop": "bar-counter",
+      "roomId": "room_0007",
+      "pos": {
+       "x": 1.15,
+       "y": 4
+      },
+      "rot": 180
+     },
+     {
+      "id": "prop_0032",
+      "prop": "bar-counter",
+      "roomId": "room_0007",
+      "pos": {
+       "x": 4.15,
+       "y": 4
+      },
+      "rot": 180
+     },
+     {
+      "id": "prop_0033",
+      "prop": "register",
+      "roomId": "room_0007",
+      "pos": {
+       "x": 4.15,
+       "y": 3.925
+      },
+      "rot": 180,
+      "lift": 1.1
+     },
+     {
+      "id": "prop_0034",
+      "prop": "bar-stool",
+      "roomId": "room_0007",
+      "pos": {
+       "x": 1,
+       "y": 4.675
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0035",
+      "prop": "bar-stool",
+      "roomId": "room_0007",
+      "pos": {
+       "x": 2.1,
+       "y": 4.675
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0036",
+      "prop": "bar-stool",
+      "roomId": "room_0007",
+      "pos": {
+       "x": 3.2,
+       "y": 4.675
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0037",
+      "prop": "bar-stool",
+      "roomId": "room_0007",
+      "pos": {
+       "x": 4.3,
+       "y": 4.675
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0038",
+      "prop": "jukebox",
+      "roomId": "room_0007",
+      "pos": {
+       "x": 7.25,
+       "y": 2.95
+      },
+      "rot": 270
+     },
+     {
+      "id": "prop_0039",
+      "prop": "shelf",
+      "roomId": "room_0008",
+      "pos": {
+       "x": 1.9,
+       "y": 0.3
+      },
+      "rot": 180
+     },
+     {
+      "id": "prop_0040",
+      "prop": "shelf",
+      "roomId": "room_0008",
+      "pos": {
+       "x": 4.3,
+       "y": 0.3
+      },
+      "rot": 180
+     },
+     {
+      "id": "prop_0041",
+      "prop": "shelf",
+      "roomId": "room_0008",
+      "pos": {
+       "x": 0.3,
+       "y": 0.7
+      },
+      "rot": 90
+     },
+     {
+      "id": "prop_0042",
+      "prop": "crate-stack",
+      "roomId": "room_0008",
+      "pos": {
+       "x": 6.5,
+       "y": 1.2
+      },
+      "rot": 0
+     }
+    ],
+    "anchors": [
+     {
+      "id": "anchor_0016",
+      "kind": "serve",
+      "roomId": "room_0007",
+      "pos": {
+       "x": 4.15,
+       "y": 3.55
+      },
+      "rot": 180,
+      "propId": "prop_0032"
+     },
+     {
+      "id": "anchor_0017",
+      "kind": "sit-drink",
+      "roomId": "room_0007",
+      "pos": {
+       "x": 1,
+       "y": 4.345
+      },
+      "rot": 0,
+      "propId": "prop_0034"
+     },
+     {
+      "id": "anchor_0018",
+      "kind": "sit-drink",
+      "roomId": "room_0007",
+      "pos": {
+       "x": 2.1,
+       "y": 4.345
+      },
+      "rot": 0,
+      "propId": "prop_0035"
+     },
+     {
+      "id": "anchor_0019",
+      "kind": "sit-drink",
+      "roomId": "room_0007",
+      "pos": {
+       "x": 3.2,
+       "y": 4.345
+      },
+      "rot": 0,
+      "propId": "prop_0036"
+     },
+     {
+      "id": "anchor_0020",
+      "kind": "sit-drink",
+      "roomId": "room_0007",
+      "pos": {
+       "x": 4.3,
+       "y": 4.345
+      },
+      "rot": 0,
+      "propId": "prop_0037"
+     },
+     {
+      "id": "anchor_0021",
+      "kind": "stand",
+      "roomId": "room_0008",
+      "pos": {
+       "x": 3.8,
+       "y": 1.2
+      },
+      "rot": 204.069
+     }
+    ]
+   },
+   {
+    "id": "interior_0005",
+    "plotId": "plot_0005",
+    "kind": "house",
+    "size": {
+     "w": 7.6,
+     "h": 7.6
+    },
+    "rooms": [
+     {
+      "id": "room_0009",
+      "kind": "hall",
+      "name": "Entrance hall",
+      "rect": {
+       "x": 0,
+       "y": 0,
+       "w": 2.2,
+       "h": 7.6
+      }
+     },
+     {
+      "id": "room_0010",
+      "kind": "main",
+      "name": "Living room",
+      "rect": {
+       "x": 2.2,
+       "y": 2.789,
+       "w": 5.4,
+       "h": 4.811
+      }
+     },
+     {
+      "id": "room_0011",
+      "kind": "bedroom",
+      "name": "Bedroom",
+      "rect": {
+       "x": 2.2,
+       "y": 0,
+       "w": 2.7,
+       "h": 2.789
+      }
+     },
+     {
+      "id": "room_0012",
+      "kind": "kitchen",
+      "name": "Kitchen",
+      "rect": {
+       "x": 4.9,
+       "y": 0,
+       "w": 2.7,
+       "h": 2.789
+      }
+     }
+    ],
+    "doors": [
+     {
+      "id": "door_0009",
+      "from": "outside",
+      "to": "room_0009",
+      "pos": {
+       "x": 0,
+       "y": 3.93
+      },
+      "rot": 270,
+      "locked": false
+     },
+     {
+      "id": "door_0010",
+      "from": "room_0009",
+      "to": "room_0010",
+      "pos": {
+       "x": 2.2,
+       "y": 4.512
+      },
+      "rot": 90,
+      "locked": false
+     },
+     {
+      "id": "door_0011",
+      "from": "room_0009",
+      "to": "room_0011",
+      "pos": {
+       "x": 2.2,
+       "y": 1.161
+      },
+      "rot": 90,
+      "locked": false
+     },
+     {
+      "id": "door_0012",
+      "from": "room_0011",
+      "to": "room_0012",
+      "pos": {
+       "x": 4.9,
+       "y": 1.538
+      },
+      "rot": 90,
+      "locked": false
+     }
+    ],
+    "furniture": [
+     {
+      "id": "prop_0043",
+      "prop": "cabinet",
+      "roomId": "room_0009",
+      "pos": {
+       "x": 0.65,
+       "y": 0.325
+      },
+      "rot": 180
+     },
+     {
+      "id": "prop_0044",
+      "prop": "sofa",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 5.05,
+       "y": 3.314
+      },
+      "rot": 180
+     },
+     {
+      "id": "prop_0045",
+      "prop": "rug",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 5.05,
+       "y": 4.714
+      },
+      "rot": 180
+     },
+     {
+      "id": "prop_0046",
+      "prop": "tv",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 5.45,
+       "y": 7.375
+      },
+      "rot": 0
+     },
+     {
+      "id": "prop_0047",
+      "prop": "shelf",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 7.3,
+       "y": 6.889
+      },
+      "rot": 270
+     },
+     {
+      "id": "prop_0048",
+      "prop": "lamp",
+      "roomId": "room_0011",
+      "pos": {
+       "x": 2.525,
+       "y": 0.275
+      },
+      "rot": 180
+     },
+     {
+      "id": "prop_0049",
+      "prop": "stove",
+      "roomId": "room_0012",
+      "pos": {
+       "x": 7.175,
+       "y": 1.45
+      },
+      "rot": 270
+     },
+     {
+      "id": "prop_0050",
+      "prop": "sink",
+      "roomId": "room_0012",
+      "pos": {
+       "x": 7.225,
+       "y": 0.5
+      },
+      "rot": 270
+     },
+     {
+      "id": "prop_0051",
+      "prop": "fridge",
+      "roomId": "room_0012",
+      "pos": {
+       "x": 7.15,
+       "y": 2.2
+      },
+      "rot": 270
+     }
+    ],
+    "anchors": [
+     {
+      "id": "anchor_0022",
+      "kind": "sit",
+      "roomId": "room_0010",
+      "pos": {
+       "x": 5.05,
+       "y": 3.464
+      },
+      "rot": 180,
+      "propId": "prop_0044"
+     },
+     {
+      "id": "anchor_0023",
+      "kind": "cook",
+      "roomId": "room_0012",
+      "pos": {
+       "x": 6.7,
+       "y": 1.45
+      },
+      "rot": 90,
+      "propId": "prop_0049"
+     }
+    ]
+   }
+  ],
+  "npcs": [
+   {
+    "id": "npc_0001",
+    "name": "Orla Braid",
+    "role": "receptionist",
+    "appearance": {
+     "base": "male",
+     "variant": 2
+    },
+    "station": {
+     "interiorId": "interior_0001",
+     "anchorId": "anchor_0001"
+    },
+    "workPlotId": "plot_0001",
+    "personality": "friendly on the surface, sharp underneath. Hums the same four bars all day. Works at Buoy Halt.",
+    "knowledge": [
+     "Works at Buoy Halt as the receptionist.",
+     "Keeps the spare keys and a list of who borrowed them.",
+     "People wait here who never board anything.",
+     "There was a fire on this street years ago and the gap is still there."
+    ]
+   },
+   {
+    "id": "npc_0002",
+    "name": "Delia Braid",
+    "role": "patron",
+    "appearance": {
+     "base": "female",
+     "variant": 0
+    },
+    "station": {
+     "interiorId": "interior_0001",
+     "anchorId": "anchor_0005"
+    },
+    "workPlotId": "plot_0001",
+    "personality": "talks to whoever sits down, whether they meant to or not. Counts change out loud, every time. Works at Buoy Halt.",
+    "knowledge": [
+     "Works at Buoy Halt as the patron.",
+     "Was here the night of the thing everybody stopped talking about.",
+     "People wait here who never board anything."
+    ]
+   },
+   {
+    "id": "npc_0003",
+    "name": "Mara Cray",
+    "role": "bartender",
+    "appearance": {
+     "base": "male",
+     "variant": 4
+    },
+    "station": {
+     "interiorId": "interior_0002",
+     "anchorId": "anchor_0007"
+    },
+    "workPlotId": "plot_0002",
+    "personality": "keeps the peace by knowing who to serve last. Counts change out loud, every time. Works at Grey Gull Coffee.",
+    "knowledge": [
+     "Works at Grey Gull Coffee as the bartender.",
+     "Knows which regulars have stopped coming in and why.",
+     "The morning crowd and the evening crowd never overlap."
+    ]
+   },
+   {
+    "id": "npc_0004",
+    "name": "Lorne Hedge",
+    "role": "patron",
+    "appearance": {
+     "base": "female",
+     "variant": 4
+    },
+    "station": {
+     "interiorId": "interior_0002",
+     "anchorId": "anchor_0009"
+    },
+    "workPlotId": "plot_0002",
+    "personality": "talks to whoever sits down, whether they meant to or not. Sleeps badly and is up before anyone else. Works at Grey Gull Coffee.",
+    "knowledge": [
+     "Works at Grey Gull Coffee as the patron.",
+     "Sees who comes in with somebody they should not.",
+     "Somebody left a bag here a week ago and never came back."
+    ]
+   },
+   {
+    "id": "npc_0005",
+    "name": "Perrin Ashby",
+    "role": "receptionist",
+    "appearance": {
+     "base": "female",
+     "variant": 1
+    },
+    "station": {
+     "interiorId": "interior_0003",
+     "anchorId": "anchor_0011"
+    },
+    "workPlotId": "plot_0003",
+    "personality": "friendly on the surface, sharp underneath. Sleeps badly and is up before anyone else. Works at Net Street Clinic.",
+    "knowledge": [
+     "Works at Net Street Clinic as the receptionist.",
+     "Takes the messages nobody else was supposed to hear.",
+     "People come in at night with injuries they will not explain.",
+     "The road out of town is slower than it looks on a map."
+    ]
+   },
+   {
+    "id": "npc_0006",
+    "name": "Anwen Cole",
+    "role": "patron",
+    "appearance": {
+     "base": "female",
+     "variant": 7
+    },
+    "station": {
+     "interiorId": "interior_0003",
+     "anchorId": "anchor_0013"
+    },
+    "workPlotId": "plot_0003",
+    "personality": "here most nights, opinions on everything. Trusts the weather more than the news. Works at Net Street Clinic.",
+    "knowledge": [
+     "Works at Net Street Clinic as the patron.",
+     "Was here the night of the thing everybody stopped talking about.",
+     "The medicine cupboard is counted twice a day now."
+    ]
+   },
+   {
+    "id": "npc_0007",
+    "name": "Yara Sorrel",
+    "role": "patron",
+    "appearance": {
+     "base": "male",
+     "variant": 5
+    },
+    "station": {
+     "interiorId": "interior_0003",
+     "anchorId": "anchor_0014"
+    },
+    "workPlotId": "plot_0003",
+    "personality": "here most nights, opinions on everything. Has a brother in the next town they will not name. Works at Net Street Clinic.",
+    "knowledge": [
+     "Works at Net Street Clinic as the patron.",
+     "Can name every drink on the shelf and half the people at the bar.",
+     "People come in at night with injuries they will not explain."
+    ]
+   },
+   {
+    "id": "npc_0008",
+    "name": "Yann Cole",
+    "role": "bartender",
+    "appearance": {
+     "base": "male",
+     "variant": 1
+    },
+    "station": {
+     "interiorId": "interior_0004",
+     "anchorId": "anchor_0016"
+    },
+    "workPlotId": "plot_0004",
+    "personality": "friendly, and reads a room in one glance. Feeds a stray that turns up at the same hour every day. Works at The Anchor & Fair.",
+    "knowledge": [
+     "Works at The Anchor & Fair as the bartender.",
+     "Knows which regulars have stopped coming in and why.",
+     "The cellar door sticks unless you lift it.",
+     "The road out of town is slower than it looks on a map."
+    ]
+   },
+   {
+    "id": "npc_0009",
+    "name": "Esme Kade",
+    "role": "patron",
+    "appearance": {
+     "base": "female",
+     "variant": 4
+    },
+    "station": {
+     "interiorId": "interior_0004",
+     "anchorId": "anchor_0017"
+    },
+    "workPlotId": "plot_0004",
+    "personality": "nurses one drink for hours and watches the door. Collects something small and will show you if asked. Works at The Anchor & Fair.",
+    "knowledge": [
+     "Works at The Anchor & Fair as the patron.",
+     "Sees who comes in with somebody they should not.",
+     "The back room is booked on the same night every week."
+    ]
+   }
+  ],
+  "items": [
+   {
+    "id": "item_0001",
+    "name": "Stained bag",
+    "description": "A stained bag. It is worth more to the right person than it looks.",
+    "archetype": "bag",
+    "value": 8,
+    "bulk": "bag",
+    "ownerNpcId": "npc_0001"
+   },
+   {
+    "id": "item_0002",
+    "name": "Plain parcel",
+    "description": "A plain parcel. Somebody has written on it and rubbed it out again.",
+    "archetype": "parcel",
+    "value": 2,
+    "bulk": "bag",
+    "ownerNpcId": "npc_0001"
+   },
+   {
+    "id": "item_0003",
+    "name": "Sealed plate",
+    "description": "A sealed plate. There is a name on the underside, half gone.",
+    "archetype": "plate",
+    "value": 19,
+    "bulk": "pocket",
+    "ownerNpcId": "npc_0003"
+   },
+   {
+    "id": "item_0004",
+    "name": "Sealed ledger",
+    "description": "A sealed ledger. It is worth more to the right person than it looks.",
+    "archetype": "ledger",
+    "value": 4,
+    "bulk": "pocket",
+    "ownerNpcId": "npc_0003"
+   },
+   {
+    "id": "item_0005",
+    "name": "Tarnished cup",
+    "description": "A tarnished cup. It has been repaired at least once.",
+    "archetype": "cup",
+    "value": 36,
+    "bulk": "pocket",
+    "ownerNpcId": "npc_0003"
+   },
+   {
+    "id": "item_0006",
+    "name": "Plain ledger",
+    "description": "A plain ledger. It is worth more to the right person than it looks.",
+    "archetype": "ledger",
+    "value": 29,
+    "bulk": "pocket",
+    "ownerNpcId": "npc_0005"
+   },
+   {
+    "id": "item_0007",
+    "name": "Tarnished cash",
+    "description": "A tarnished cash. It is worth more to the right person than it looks.",
+    "archetype": "cash",
+    "value": 15,
+    "bulk": "pocket",
+    "ownerNpcId": "npc_0008"
+   },
+   {
+    "id": "item_0008",
+    "name": "Borrowed bottle",
+    "description": "A borrowed bottle. Nothing about it invites questions.",
+    "archetype": "bottle",
+    "value": 29,
+    "bulk": "pocket",
+    "ownerNpcId": "npc_0008"
+   },
+   {
+    "id": "item_0009",
+    "name": "Chipped book",
+    "description": "A chipped book. It has been somewhere else and come back.",
+    "archetype": "book",
+    "value": 52,
+    "bulk": "pocket"
+   }
+  ],
+  "placements": [
+   {
+    "at": "anchor",
+    "itemId": "item_0001",
+    "interiorId": "interior_0001",
+    "anchorId": "anchor_0001"
+   },
+   {
+    "at": "anchor",
+    "itemId": "item_0002",
+    "interiorId": "interior_0001",
+    "anchorId": "anchor_0002"
+   },
+   {
+    "at": "anchor",
+    "itemId": "item_0003",
+    "interiorId": "interior_0002",
+    "anchorId": "anchor_0007"
+   },
+   {
+    "at": "anchor",
+    "itemId": "item_0004",
+    "interiorId": "interior_0002",
+    "anchorId": "anchor_0008"
+   },
+   {
+    "at": "anchor",
+    "itemId": "item_0005",
+    "interiorId": "interior_0002",
+    "anchorId": "anchor_0009"
+   },
+   {
+    "at": "anchor",
+    "itemId": "item_0006",
+    "interiorId": "interior_0003",
+    "anchorId": "anchor_0011"
+   },
+   {
+    "at": "anchor",
+    "itemId": "item_0007",
+    "interiorId": "interior_0004",
+    "anchorId": "anchor_0016"
+   },
+   {
+    "at": "anchor",
+    "itemId": "item_0008",
+    "interiorId": "interior_0004",
+    "anchorId": "anchor_0017"
+   },
+   {
+    "at": "anchor",
+    "itemId": "item_0009",
+    "interiorId": "interior_0005",
+    "anchorId": "anchor_0022"
+   }
+  ],
+  "idCounters": {
+   "world": 1,
+   "node": 8,
+   "road": 8,
+   "plot": 5,
+   "room": 12,
+   "door": 12,
+   "prop": 51,
+   "anchor": 23,
+   "interior": 5,
+   "npc": 9,
+   "item": 9
+  }
+ },
+ "quests": [
+  {
+   "format": "game-box.quest",
+   "schemaVersion": 1,
+   "id": "quest_0001",
+   "kind": "main",
+   "title": "The sealed plate nobody agrees on",
+   "summary": "Perrin Ashby wants the sealed plate from Grey Gull Coffee. Orla Braid at Buoy Halt wants it more, and will say so with money.",
+   "giverNpcId": "npc_0005",
+   "difficulty": "small",
+   "startStepId": "step_0001",
+   "steps": [
+    {
+     "id": "step_0001",
+     "objective": "Pick up the sealed plate at Grey Gull Coffee",
+     "markerLabel": "Grey Gull Coffee",
+     "next": [
+      "step_0002"
+     ],
+     "requires": [],
+     "effects": [],
+     "kind": "collect",
+     "itemId": "item_0003",
+     "allowSteal": true
+    },
+    {
+     "id": "step_0002",
+     "objective": "Decide who gets it",
+     "next": [],
+     "requires": [],
+     "effects": [],
+     "kind": "choice",
+     "prompt": "Who ends up with the sealed plate?",
+     "options": [
+      {
+       "id": "client",
+       "label": "Perrin Ashby, who asked for it",
+       "next": "step_0003"
+      },
+      {
+       "id": "buyer",
+       "label": "Orla Braid, who is paying more",
+       "next": "step_0004"
+      }
+     ]
+    },
+    {
+     "id": "step_0003",
+     "objective": "Hand it to Perrin Ashby at Net Street Clinic",
+     "markerLabel": "Net Street Clinic",
+     "next": [
+      "step_0005"
+     ],
+     "requires": [],
+     "effects": [
+      {
+       "kind": "set-flag",
+       "flag": "sided:plot_0003",
+       "value": true
+      },
+      {
+       "kind": "set-flag",
+       "flag": "crossed:plot_0001",
+       "value": true
+      },
+      {
+       "kind": "reputation",
+       "faction": "plot_0003",
+       "delta": 5
+      },
+      {
+       "kind": "reputation",
+       "faction": "plot_0001",
+       "delta": -5
+      },
+      {
+       "kind": "set-flag",
+       "flag": "owed:npc_0005",
+       "value": true
+      }
+     ],
+     "kind": "deliver",
+     "itemId": "item_0003",
+     "toNpcId": "npc_0005"
+    },
+    {
+     "id": "step_0004",
+     "objective": "Sell it to Orla Braid at Buoy Halt",
+     "markerLabel": "Buoy Halt",
+     "hint": "Word gets round a town this size.",
+     "next": [
+      "step_0005"
+     ],
+     "requires": [],
+     "effects": [
+      {
+       "kind": "pay",
+       "amount": 23
+      },
+      {
+       "kind": "reputation",
+       "faction": "town",
+       "delta": -3
+      },
+      {
+       "kind": "set-flag",
+       "flag": "sided:plot_0001",
+       "value": true
+      },
+      {
+       "kind": "set-flag",
+       "flag": "crossed:plot_0003",
+       "value": true
+      },
+      {
+       "kind": "reputation",
+       "faction": "plot_0001",
+       "delta": 5
+      },
+      {
+       "kind": "reputation",
+       "faction": "plot_0003",
+       "delta": -5
+      }
+     ],
+     "kind": "deliver",
+     "itemId": "item_0003",
+     "toNpcId": "npc_0001"
+    },
+    {
+     "id": "step_0005",
+     "objective": "Live with it",
+     "next": [],
+     "requires": [],
+     "effects": [
+      {
+       "kind": "set-flag",
+       "flag": "standing_1",
+       "value": true
+      }
+     ],
+     "kind": "complete"
+    }
+   ],
+   "reward": {
+    "money": 67,
+    "reputation": -2,
+    "faction": "plot_0003",
+    "items": []
+   }
+  },
+  {
+   "format": "game-box.quest",
+   "schemaVersion": 1,
+   "id": "quest_0002",
+   "kind": "main",
+   "title": "The plain parcel nobody agrees on",
+   "summary": "Perrin Ashby wants the plain parcel from Buoy Halt. Lorne Hedge at Grey Gull Coffee wants it more, and will say so with money.",
+   "giverNpcId": "npc_0005",
+   "difficulty": "small",
+   "requires": [
+    {
+     "kind": "flag",
+     "flag": "standing_1",
+     "value": true
+    }
+   ],
+   "startStepId": "step_0001",
+   "steps": [
+    {
+     "id": "step_0001",
+     "objective": "Pick up the plain parcel at Buoy Halt",
+     "markerLabel": "Buoy Halt",
+     "next": [
+      "step_0002"
+     ],
+     "requires": [],
+     "effects": [],
+     "kind": "collect",
+     "itemId": "item_0002",
+     "allowSteal": true
+    },
+    {
+     "id": "step_0002",
+     "objective": "Decide who gets it",
+     "next": [],
+     "requires": [],
+     "effects": [],
+     "kind": "choice",
+     "prompt": "Who ends up with the plain parcel?",
+     "options": [
+      {
+       "id": "client",
+       "label": "Perrin Ashby, who asked for it",
+       "next": "step_0003"
+      },
+      {
+       "id": "buyer",
+       "label": "Lorne Hedge, who is paying more",
+       "next": "step_0004"
+      }
+     ]
+    },
+    {
+     "id": "step_0003",
+     "objective": "Hand it to Perrin Ashby at Net Street Clinic",
+     "markerLabel": "Net Street Clinic",
+     "next": [
+      "step_0005"
+     ],
+     "requires": [],
+     "effects": [
+      {
+       "kind": "set-flag",
+       "flag": "sided:plot_0003",
+       "value": true
+      },
+      {
+       "kind": "set-flag",
+       "flag": "crossed:plot_0002",
+       "value": true
+      },
+      {
+       "kind": "reputation",
+       "faction": "plot_0003",
+       "delta": 5
+      },
+      {
+       "kind": "reputation",
+       "faction": "plot_0002",
+       "delta": -5
+      },
+      {
+       "kind": "set-flag",
+       "flag": "owed:npc_0005",
+       "value": true
+      }
+     ],
+     "kind": "deliver",
+     "itemId": "item_0002",
+     "toNpcId": "npc_0005"
+    },
+    {
+     "id": "step_0004",
+     "objective": "Sell it to Lorne Hedge at Grey Gull Coffee",
+     "markerLabel": "Grey Gull Coffee",
+     "hint": "Word gets round a town this size.",
+     "next": [
+      "step_0005"
+     ],
+     "requires": [],
+     "effects": [
+      {
+       "kind": "pay",
+       "amount": 23
+      },
+      {
+       "kind": "reputation",
+       "faction": "town",
+       "delta": -3
+      },
+      {
+       "kind": "set-flag",
+       "flag": "sided:plot_0002",
+       "value": true
+      },
+      {
+       "kind": "set-flag",
+       "flag": "crossed:plot_0003",
+       "value": true
+      },
+      {
+       "kind": "reputation",
+       "faction": "plot_0002",
+       "delta": 5
+      },
+      {
+       "kind": "reputation",
+       "faction": "plot_0003",
+       "delta": -5
+      }
+     ],
+     "kind": "deliver",
+     "itemId": "item_0002",
+     "toNpcId": "npc_0004"
+    },
+    {
+     "id": "step_0005",
+     "objective": "Live with it",
+     "next": [],
+     "requires": [],
+     "effects": [
+      {
+       "kind": "set-flag",
+       "flag": "standing_2",
+       "value": true
+      }
+     ],
+     "kind": "complete"
+    }
+   ],
+   "reward": {
+    "money": 67,
+    "reputation": -2,
+    "faction": "plot_0003",
+    "items": []
+   }
+  },
+  {
+   "format": "game-box.quest",
+   "schemaVersion": 1,
+   "id": "quest_0003",
+   "kind": "side",
+   "title": "Stained bag for Yann Cole",
+   "summary": "Yann Cole works at The Anchor & Fair and wants the stained bag that is sitting over at Buoy Halt.",
+   "giverNpcId": "npc_0008",
+   "difficulty": "small",
+   "requires": [
+    {
+     "kind": "flag",
+     "flag": "crossed:plot_0004",
+     "value": false
+    }
+   ],
+   "startStepId": "step_0001",
+   "steps": [
+    {
+     "id": "step_0001",
+     "objective": "Take the stained bag from Buoy Halt without a fuss",
+     "markerLabel": "Buoy Halt",
+     "hint": "It is inside Buoy Halt.",
+     "next": [
+      "step_0002"
+     ],
+     "requires": [],
+     "effects": [],
+     "kind": "collect",
+     "itemId": "item_0001",
+     "allowSteal": true
+    },
+    {
+     "id": "step_0002",
+     "objective": "Take it back to Yann Cole at The Anchor & Fair",
+     "markerLabel": "The Anchor & Fair",
+     "next": [
+      "step_0003"
+     ],
+     "requires": [],
+     "effects": [],
+     "kind": "deliver",
+     "itemId": "item_0001",
+     "toNpcId": "npc_0008"
+    },
+    {
+     "id": "step_0003",
+     "objective": "Collect what you are owed",
+     "next": [],
+     "requires": [],
+     "effects": [],
+     "kind": "complete"
+    }
+   ],
+   "reward": {
+    "money": 58,
+    "reputation": -2,
+    "faction": "plot_0004",
+    "items": []
+   }
+  },
+  {
+   "format": "game-box.quest",
+   "schemaVersion": 1,
+   "id": "quest_0004",
+   "kind": "side",
+   "title": "What else is in Grey Gull Coffee",
+   "summary": "Orla Braid wants the sealed ledger out of Grey Gull Coffee. Esme Kade at The Anchor & Fair knows what else is in there.",
+   "giverNpcId": "npc_0001",
+   "difficulty": "small",
+   "requires": [
+    {
+     "kind": "flag",
+     "flag": "crossed:plot_0001",
+     "value": false
+    }
+   ],
+   "startStepId": "step_0001",
+   "steps": [
+    {
+     "id": "step_0001",
+     "objective": "Pick up the sealed ledger at Grey Gull Coffee",
+     "markerLabel": "Grey Gull Coffee",
+     "next": [
+      "step_0002",
+      "step_0004"
+     ],
+     "requires": [],
+     "effects": [],
+     "kind": "collect",
+     "itemId": "item_0004",
+     "allowSteal": true
+    },
+    {
+     "id": "step_0002",
+     "objective": "Ask Esme Kade what else Grey Gull Coffee is holding",
+     "markerLabel": "The Anchor & Fair",
+     "hint": "Esme Kade talks more freely than anybody there.",
+     "next": [
+      "step_0003"
+     ],
+     "requires": [],
+     "effects": [
+      {
+       "kind": "reveal",
+       "stepId": "step_0003"
+      }
+     ],
+     "optional": true,
+     "kind": "talk",
+     "npcId": "npc_0009"
+    },
+    {
+     "id": "step_0003",
+     "objective": "Go back for the tarnished cup Esme Kade mentioned",
+     "markerLabel": "Grey Gull Coffee",
+     "next": [],
+     "requires": [],
+     "effects": [
+      {
+       "kind": "pay",
+       "amount": 23
+      }
+     ],
+     "optional": true,
+     "hidden": true,
+     "kind": "collect",
+     "itemId": "item_0005",
+     "allowSteal": true
+    },
+    {
+     "id": "step_0004",
+     "objective": "Take it to Orla Braid at Buoy Halt",
+     "markerLabel": "Buoy Halt",
+     "next": [
+      "step_0005"
+     ],
+     "requires": [],
+     "effects": [],
+     "kind": "deliver",
+     "itemId": "item_0004",
+     "toNpcId": "npc_0001"
+    },
+    {
+     "id": "step_0005",
+     "objective": "Get paid",
+     "next": [],
+     "requires": [],
+     "effects": [],
+     "kind": "complete"
+    }
+   ],
+   "reward": {
+    "money": 57,
+    "reputation": -2,
+    "faction": "plot_0001",
+    "items": []
+   }
+  },
+  {
+   "format": "game-box.quest",
+   "schemaVersion": 1,
+   "id": "quest_9001",
+   "kind": "side",
+   "title": "Put it back where it lives",
+   "summary": "Somebody left Stained bag lying about and wants it stowed properly.",
+   "giverNpcId": "npc_0001",
+   "difficulty": "errand",
+   "requires": [],
+   "failWhen": [],
+   "startStepId": "step_9001",
+   "steps": [
+    {
+     "id": "step_9001",
+     "objective": "Pick it up",
+     "kind": "collect",
+     "itemId": "item_0001",
+     "count": 1,
+     "alternates": [],
+     "allowSteal": true,
+     "next": [
+      "step_9002"
+     ],
+     "requires": [],
+     "effects": []
+    },
+    {
+     "id": "step_9002",
+     "objective": "Stow it where it lives",
+     "kind": "stash",
+     "itemId": "item_0001",
+     "interiorId": "interior_0001",
+     "anchorId": "anchor_0001",
+     "next": [
+      "step_9003"
+     ],
+     "requires": [],
+     "effects": []
+    },
+    {
+     "id": "step_9003",
+     "objective": "Tell them it is done",
+     "kind": "complete",
+     "next": [],
+     "requires": [],
+     "effects": []
+    }
+   ],
+   "reward": {
+    "money": 5,
+    "reputation": 1,
+    "faction": "town",
+    "items": []
+   }
+  }
+ ],
+ "requires": [
+  {
+   "pack": "kenney-city",
+   "version": "1.0.0"
+  }
+ ],
+ "createdWith": {
+  "generator": "forge",
+  "version": "0.1.0"
+ },
+ "contentHash": "34102454679cc53b26ef00db15a6558e02c7a7c4c639047b3487a5986f5426d6"
+}

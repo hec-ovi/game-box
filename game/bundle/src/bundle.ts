@@ -1,7 +1,7 @@
 import { err, ok, type Result, type SchemaViolation } from '@gb/kit'
 import { PlayerState } from '@gb/play'
 import { QuestLog, validateQuest, type QuestDoc, type QuestProblem } from '@gb/quest'
-import { World, type IntegrityProblem } from '@gb/world'
+import { questView, World, type IntegrityProblem } from '@gb/world'
 import { bundleContract, saveContract, type AssetPackRef, type BundleDoc, type SaveDoc } from './schema.ts'
 import { contentHash } from './stable-json.ts'
 
@@ -59,7 +59,7 @@ export class Bundle {
         : err({ code: 'invalid-bundle', violations: 'violations' in world.error ? world.error.violations : [] })
     }
 
-    const view = viewOf(world.value)
+    const view = questView(world.value)
     const quests: QuestDoc[] = []
     for (const candidate of doc.quests) {
       const validated = validateQuest(candidate, view)
@@ -114,17 +114,5 @@ export class Bundle {
       })
     }
     return ok({ player: player.value, log: log.value })
-  }
-}
-
-/** The five questions `@gb/quest` asks about a world. */
-function viewOf(world: World) {
-  return {
-    hasNpc: (id: string) => world.hasNpc(id),
-    hasPlot: (id: string) => world.hasPlot(id),
-    hasInterior: (id: string) => world.hasInterior(id),
-    hasItem: (id: string) => world.hasItem(id),
-    hasAnchor: (interiorId: string, anchorId: string) =>
-      world.interior(interiorId)?.anchors.some((a) => a.id === anchorId) ?? false,
   }
 }

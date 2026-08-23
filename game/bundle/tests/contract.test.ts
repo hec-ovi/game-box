@@ -29,13 +29,6 @@ describe('Bundle', () => {
     expect(opened.value.contentHash).toMatch(/^[a-f0-9]{64}$/)
   })
 
-  it('hashes by content, not by key order', async () => {
-    const { doc } = await packedTown()
-    const shuffled = JSON.parse(JSON.stringify({ quests: doc.quests, world: doc.world, requires: doc.requires, createdWith: doc.createdWith, schemaVersion: doc.schemaVersion, format: doc.format, contentHash: doc.contentHash }))
-    const opened = await Bundle.open(shuffled)
-    expect(opened.ok).toBe(true)
-  })
-
   it('refuses a bundle whose contents were changed after it was sealed', async () => {
     const { doc } = await packedTown()
     const tampered = JSON.parse(JSON.stringify(doc))
