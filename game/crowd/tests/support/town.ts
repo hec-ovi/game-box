@@ -70,3 +70,15 @@ export function corridor(cells = 60, seed = 'crowd-corridor'): World {
   world.paint({ x: 0, y: 3, w: cells, h: 1 }, 'street')
   return world
 }
+
+/**
+ * True where a roadway cell of the test town is part of a crossing: the piece
+ * of road that interrupts a pavement band at a junction. Worked out from the
+ * town's own bands rather than from anything the crowd builds, so a test using
+ * it is not asking the crowd to mark its own homework.
+ */
+export function atCrossing(x: number, y: number): boolean {
+  const alongRow = band(y) === 'sidewalk' && band(x) === 'street'
+  const alongColumn = band(x) === 'sidewalk' && band(y) === 'street'
+  return alongRow || alongColumn
+}

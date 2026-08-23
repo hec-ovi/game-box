@@ -67,6 +67,12 @@ export class Follower {
     if (this.#owned) this.walker.release()
   }
 
+  /** Nowhere to be sent this frame: stand where we are. */
+  hold(seconds: number): void {
+    this.#stand()
+    this.walker.advance(seconds)
+  }
+
   /** One frame of keeping up with the spot the crowd has picked out for us. */
   advance(seconds: number, slot: Point): void {
     const gap = distance(this.walker.x, this.walker.z, slot.x, slot.z)
@@ -117,7 +123,12 @@ export class Follower {
       return
     }
     const path = this.#nav.path(this.#ground.cellAt(this.walker.x, this.walker.z), this.#ground.cellAt(slot.x, slot.z))
-    if (path) this.walker.follow(this.#nav.waypoints(path))
+    if (path) {
+      this.walker.follow(this.#nav.waypoints(path))
+      return
+    }
+    // out of town there are no routes to ask for: walk at them and slide around whatever is in the way
+    if (!this.#ground.holds(slot.x, slot.z)) this.walker.follow([slot])
   }
 
   /** True when nothing stands between us and the spot, so no route is needed to walk to it. */

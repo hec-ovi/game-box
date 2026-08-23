@@ -40,6 +40,8 @@ export interface CrowdOptions {
   lostRadius: number
   /** Ground the walkers stand on. Cheapest first: the crowd prefers pavement. */
   pavement: readonly CellKind[]
+  /** How far out of their way a walker will walk to cross at a crossing, in metres. */
+  crossingDetour: number
   /** How high those cells sit above the roadway. Set 0 for flat ground. */
   kerbHeight: number
   /** Longest slice of walking one update may do, in seconds. A stalled tab must not teleport the crowd. */
@@ -73,6 +75,7 @@ export const CROWD_DEFAULTS: CrowdOptions = {
   catchUp: 5,
   lostRadius: 30,
   pavement: ['sidewalk', 'park'],
+  crossingDetour: 40,
   kerbHeight: METRICS.street.curbHeight,
   maxStep: 0.25,
   spawnsPerUpdate: 2,

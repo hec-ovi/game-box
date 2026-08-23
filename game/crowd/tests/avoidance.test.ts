@@ -151,7 +151,8 @@ describe('people keep out of each other', () => {
     let tightest = Infinity
     let nearestToPlayer = Infinity
 
-    for (let frame = 0; frame < 3600; frame++) {
+    // a hundred seconds, not sixty: a trip now includes the walk to a crossing and back
+    for (let frame = 0; frame < 6000; frame++) {
       crowd.update(STEP, middle)
       const walkers = crowd.walkers()
       for (let i = 0; i < walkers.length; i++) {
@@ -175,9 +176,9 @@ describe('people keep out of each other', () => {
     expect(crowd.count).toBe(40)
     expect(tightest).toBeGreaterThanOrEqual(crowd.options.personalSpace - 1e-9)
     expect(nearestToPlayer).toBeGreaterThanOrEqual(crowd.options.personalSpace - 1e-9)
-    // a minute on a busy pavement: everybody covered real ground, so nobody was ever jammed against anybody
-    for (const walker of crowd.walkers()) expect(ground.get(walker.id) ?? 0).toBeGreaterThan(15)
-    // and nearly all of them finished a trip in that minute
+    // a busy pavement: everybody covered real ground, so nobody was ever jammed against anybody
+    for (const walker of crowd.walkers()) expect(ground.get(walker.id) ?? 0).toBeGreaterThan(20)
+    // and nearly all of them finished a trip, crossings and all
     expect(arrived.size).toBeGreaterThanOrEqual(38)
   })
 

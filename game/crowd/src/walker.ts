@@ -21,11 +21,16 @@ export interface WalkerSetup {
   readonly pauseMax: number
 }
 
-/** Close enough to a corner to call it turned, in metres. */
-const ARRIVED = 0.05
+/**
+ * Close enough to a corner to call it turned, in metres. Well inside personal
+ * space, so a corner is rounded rather than stepped on: asking for the exact
+ * spot would let one person standing on it hold up everybody whose route turns
+ * there, which is what a junction corner is once crossings send people to it.
+ */
+const ARRIVED = 0.3
 
-/** Under this share of the step it asked for, a walker is not walking, it is boxed in. */
-const STALLED = 0.05
+/** Ground a walker has to gain on where it is going, in metres, before it counts as getting anywhere. */
+const PROGRESS = 0.25
 
 /** Under this much of its pace, a walker is held up rather than walking slowly. */
 const CRAWL = 0.15
@@ -63,6 +68,8 @@ export class Walker {
   #pauseMin: number
   #pauseMax: number
   #route: Point[] = []
+  /** Metres from each corner to the end of the route, so `remaining` is a sum and not a walk of the route. */
+  #after: number[] = []
   #leg = 0
   #state: WalkerState = 'idle'
   #clip: string = CLIPS.idle
@@ -70,6 +77,8 @@ export class Walker {
   #facing = 0
   #stalled = 0
   #slowed = 0
+  /** The least we have ever had left to walk on this route: what says whether we are getting anywhere. */
+  #best = Infinity
   /** What the crowd is asking of us, and the way and pace we settled on. Kept here so a frame allocates nothing. */
   #urge: Urge = { x: 0, z: 0, pace: 1 }
   #wayX = 0
@@ -105,24 +114,19 @@ export class Walker {
 
   /** Metres left to walk. Zero when idle. */
   get remaining(): number {
-    let left = 0
-    let fromX = this.x
-    let fromZ = this.z
-    for (let i = this.#leg; i < this.#route.length; i++) {
-      const point = this.#route[i]!
-      left += distance(fromX, fromZ, point.x, point.z)
-      fromX = point.x
-      fromZ = point.z
-    }
-    return left
+    const corner = this.#route[this.#leg]
+    if (!corner) return 0
+    return this.#after[this.#leg]! + distance(this.x, this.z, corner.x, corner.z)
   }
 
   /** Take a route in metres and start walking it. The first point may be where we stand. */
   follow(route: readonly Point[]): void {
     this.#route = route.filter((point) => distance(this.x, this.z, point.x, point.z) > ARRIVED)
+    this.#measure()
     this.#leg = 0
     this.#stalled = 0
     this.#slowed = 0
+    this.#best = Infinity
     if (this.#route.length === 0) {
       this.#rest()
       return
@@ -183,8 +187,6 @@ export class Walker {
    */
   #travel(seconds: number): void {
     const wanted = this.speed * seconds
-    const fromX = this.x
-    const fromZ = this.z
     const target = this.#nextCorner()
     if (!target) {
       this.#rest()
@@ -211,7 +213,20 @@ export class Walker {
       this.#rest()
       return
     }
-    this.#settle(seconds, wanted, distance(fromX, fromZ, this.x, this.z))
+    this.#settle(seconds)
+  }
+
+  /** How far each corner is from the end, once, so asking what is left costs one sum. */
+  #measure(): void {
+    const after = this.#after
+    after.length = this.#route.length
+    let left = 0
+    for (let i = this.#route.length - 1; i >= 0; i--) {
+      after[i] = left
+      const corner = this.#route[i]!
+      const before = this.#route[i - 1]
+      if (before) left += distance(before.x, before.z, corner.x, corner.z)
+    }
   }
 
   /** The corner we are walking to, having stepped past any we are already standing on. */
@@ -224,14 +239,21 @@ export class Walker {
     return undefined
   }
 
-  /** Held up or walking: what it looks like, and how long we put up with it before trying another way. */
-  #settle(seconds: number, wanted: number, moved: number): void {
+  /**
+   * Held up or walking: what it looks like, and how long we put up with it
+   * before trying another way. Being boxed in is measured by the ground gained
+   * on where we are going, never by the ground covered: somebody shoved to and
+   * fro in a scrum at a crossing covers plenty of metres and gets nowhere.
+   */
+  #settle(seconds: number): void {
     if (this.#pace < CRAWL) this.#slowed += seconds
     else this.#slowed = 0
     if (this.#slowed >= HELD) this.#hold()
     else if (this.#state === 'waiting') this.#walkOn()
 
-    if (moved >= wanted * STALLED) {
+    const left = this.remaining
+    if (left <= this.#best - PROGRESS) {
+      this.#best = left
       this.#stalled = 0
       return
     }

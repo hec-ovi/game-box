@@ -1,9 +1,9 @@
 import { CLIPS, clipsUsed } from '@gb/cast'
 import { CityNav } from '@gb/nav'
-import { METRICS, World, type CellKind } from '@gb/world'
+import { METRICS, World, type CellKind, type Npc } from '@gb/world'
 import * as THREE from 'three'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { Crowd, SceneCast, type CrowdOptions, type Point, type WalkerView } from '../src/index.ts'
+import { Crowd, SceneCast, type CrowdOptions, type CrowdPeople, type Point, type WalkerView } from '../src/index.ts'
 import { FakeCast } from './support/fake-cast.ts'
 import { StubCast } from './support/stub-cast.ts'
 import { testTown } from './support/town.ts'
@@ -110,9 +110,8 @@ describe('Crowd', () => {
       { population: 4, tripMin: 10, tripMax: 20 },
     )
     const library = new Set(clipsUsed())
-    // the crowd mints its people as npc_900000 upwards, one per walker, in the order they appear
-    const bodyOf = (walker: WalkerView) =>
-      cast.members.find((member) => member.npcId === `npc_${900000 + Number(walker.id.slice('walker_'.length))}`)
+    // a walker's id is the id of the person walking, which is the id their body was spawned under
+    const bodyOf = (walker: WalkerView) => cast.members.find((member) => member.npcId === walker.id)
     let standing = 0
     let walking = 0
 
@@ -167,6 +166,44 @@ describe('Crowd', () => {
 
     const twice = [run(8), run(8)]
     expect(twice[0]).toEqual(twice[1])
+  })
+
+  it('is walked by people the game can ask about, one id each', () => {
+    const { crowd, cast } = crowdOf({ population: 6 })
+    for (let i = 0; i < 300; i++) crowd.update(STEP, middle)
+
+    const walkers = crowd.walkers()
+    expect(walkers.length).toBe(6)
+    for (const walker of walkers) {
+      const who = crowd.person(walker.id)
+      expect(who?.id).toBe(walker.id)
+      // the body on the street is that person's body, not somebody else's
+      expect(cast.live.some((actor) => actor.npc.id === walker.id)).toBe(true)
+    }
+    expect(new Set(walkers.map((walker) => walker.id)).size).toBe(6)
+    expect(crowd.person('npc_nobody')).toBeUndefined()
+  })
+
+  it('walks the city its own people when the game hands them over, and nobody twice at once', () => {
+    const residents: Npc[] = Array.from({ length: 5 }, (_, i) => ({
+      id: `npc_${i + 1}`,
+      name: `Resident ${i + 1}`,
+      role: 'resident',
+      appearance: { base: 'male', variant: i },
+      personality: 'Lives here.',
+      knowledge: [],
+    }))
+    // the game's own people, offered round and round: the crowd must not put one out twice
+    const people: CrowdPeople = { street: (serial) => residents[serial % residents.length] }
+    const cast = new FakeCast()
+    const crowd = Crowd.create({ world, nav, cast, people, seed: 'residents' }, { population: 8 })
+
+    for (let i = 0; i < 300; i++) crowd.update(STEP, middle)
+
+    const walkers = crowd.walkers()
+    expect(walkers.length).toBe(residents.length)
+    expect(walkers.map((walker) => walker.id).sort()).toEqual(residents.map((who) => who.id).sort())
+    for (const walker of walkers) expect(crowd.person(walker.id)?.name).toBe(`Resident ${walker.id.slice(4)}`)
   })
 
   it('finds nobody to walk in a city with no pavement, and says so by staying empty', () => {

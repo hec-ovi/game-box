@@ -1,4 +1,4 @@
-import { METRICS } from '@gb/world'
+import { METRICS, type Npc } from '@gb/world'
 import type { Rng } from '@gb/kit'
 import { Follower } from './follower.ts'
 import type { Ground } from './ground.ts'
@@ -33,6 +33,8 @@ export interface EscortDeps {
 export class Escort {
   #deps: EscortDeps
   #followers: Follower[] = []
+  /** Who each companion is, so the game can read them back off the id their view carries. */
+  #people = new Map<string, Npc>()
   /** The same people as bodies, kept in step so reading them every frame allocates nothing. */
   #bodies: Walker[] = []
   #wayX = 0
@@ -50,6 +52,11 @@ export class Escort {
 
   list(): readonly WalkerView[] {
     return this.#followers.map((follower) => follower.view())
+  }
+
+  /** The person walking with the player under this id, if it is one of ours. */
+  person(npcId: string): Npc | undefined {
+    return this.#people.get(npcId)
   }
 
   /** Somebody comes along. Following twice is following once. */
@@ -72,6 +79,7 @@ export class Escort {
     })
     this.#followers.push(new Follower(who.npc.id, walker, { ...this.#deps, owned: !who.actor }))
     this.#bodies.push(walker)
+    this.#people.set(who.npc.id, who.npc)
   }
 
   /** A body the crowd spawned goes back to the cast; one the game handed over is left alone. */
@@ -80,15 +88,17 @@ export class Escort {
     if (index === -1) return
     this.#followers.splice(index, 1)[0]!.release()
     this.#bodies.splice(index, 1)
+    this.#people.delete(npcId)
   }
 
   clear(): void {
     for (const follower of this.#followers) follower.release()
     this.#followers.length = 0
     this.#bodies.length = 0
+    this.#people.clear()
   }
 
-  /** One frame: everybody to their own spot. */
+  /** One frame: everybody to their own spot, and whoever has none stands still. */
   advance(seconds: number, player: Body): void {
     if (this.#followers.length === 0) return
     const pace = Math.hypot(player.vx, player.vz)
@@ -96,11 +106,20 @@ export class Escort {
       this.#wayX = player.vx / pace
       this.#wayZ = player.vz / pace
     }
-    for (let i = 0; i < this.#followers.length; i++) this.#followers[i]!.advance(seconds, this.#spotFor(i, player))
+    for (let i = 0; i < this.#followers.length; i++) {
+      const spot = this.#spotFor(i, player)
+      if (spot) this.#followers[i]!.advance(seconds, spot)
+      else this.#followers[i]!.hold(seconds)
+    }
   }
 
-  /** Behind the player, fanned out, and moved along the fan if that spot is inside a wall. */
-  #spotFor(index: number, player: Body): Point {
+  /**
+   * Behind the player, fanned out, and moved along the fan if that spot is
+   * inside a wall. Nowhere in the fan is open, nobody is placed: standing
+   * still is a companion waiting a moment, and standing on the player is a
+   * companion inside their head.
+   */
+  #spotFor(index: number, player: Body): Point | undefined {
     const gap = this.#deps.options.followGap
     for (let turn = 0; turn < FAN.length; turn++) {
       const angle = FAN[(index + turn) % FAN.length]!
@@ -110,8 +129,6 @@ export class Escort {
       this.#slot.z = player.z - (this.#wayX * sin + this.#wayZ * cos) * gap
       if (this.#deps.space.open(this.#slot.x, this.#slot.z)) return this.#slot
     }
-    this.#slot.x = player.x
-    this.#slot.z = player.z
-    return this.#slot
+    return undefined
   }
 }

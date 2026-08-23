@@ -1,3 +1,4 @@
+import type { Rng } from '@gb/kit'
 import type { Cell, Point } from '@gb/nav'
 import type { Npc } from '@gb/world'
 
@@ -27,6 +28,38 @@ export interface Companion {
   readonly at?: Point
   /** A body the game already has for them. With none, the crowd asks its cast for one and gives it back later. */
   readonly actor?: CrowdActor
+}
+
+/**
+ * The ground the whole world stands on, city and country alike, in metres.
+ * The city grid stops at the edge of town and has nothing to say about the
+ * landscape around it, which is where a companion following the player out of
+ * town walks. `@gb/land`'s `Land` is one of these already.
+ */
+export interface CrowdGround {
+  /** Where the ground is at this point. Feet go here, plus the kerb inside town. */
+  heightAt(x: number, z: number): number
+  /** True where somebody may stand: not too steep, not under water. */
+  walkableAt(x: number, z: number): boolean
+}
+
+/**
+ * Who is out on the street. The crowd asks for somebody every time it puts a
+ * new walker on the pavement, and whoever it is answers `Crowd.person(id)`
+ * from then on, so the game can talk to the people it passes.
+ *
+ * The default mints strangers who are in no world and own nothing. Give the
+ * crowd a source of the city's own residents instead and the people walking
+ * past are the people the world knows: `world.npc(walker.id)` resolves, and
+ * the same person is never on the street twice at once.
+ */
+export interface CrowdPeople {
+  /**
+   * Somebody to put on the street, or nothing when there is nobody to spare.
+   * `serial` counts the walkers this crowd has made, and `rng` is that
+   * walker's own stream, so the same city fills with the same faces.
+   */
+  street(serial: number, rng: Rng): Npc | undefined
 }
 
 /** Where bodies come from. `SceneCast` wraps `@gb/cast`; a test passes its own. */

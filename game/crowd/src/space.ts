@@ -103,8 +103,13 @@ export class Space {
     this.#focus = undefined
   }
 
-  /** True when a body may stand here: on the map, and not inside a building, a mountain or water. */
+  /**
+   * True when a body may stand here: inside the city, not in a building, a
+   * mountain or water; outside it, wherever the ground the game gave us takes
+   * feet. Without a ground source the city is all there is.
+   */
   open(x: number, z: number): boolean {
+    if (!this.#ground.holds(x, z)) return this.#ground.outside(x, z)
     const cell = this.#asked
     cell.x = Math.floor(x / this.#ground.cellSize)
     cell.y = Math.floor(z / this.#ground.cellSize)
