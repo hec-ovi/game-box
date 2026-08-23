@@ -6,9 +6,13 @@ docs/REQUIREMENTS.md
 .research/
 
 node_modules/
-target/
-build/
-dist/
+
+# build output, anchored: an unanchored rule also swallows source folders that
+# happen to be called build/ or dist/, and it does it silently
+/target/
+/assets/build/
+/assets/dist/
+/game/*/dist/
 *.gguf
 *.onnx
 *.safetensors
