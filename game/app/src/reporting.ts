@@ -35,12 +35,15 @@ export class Reporting {
 
   /**
    * The open steps of the quest being followed: what the map pins and the guide
-   * walks to. Nothing chosen follows the first quest with an open step, which
-   * is what the interface shows when it is not told which to follow.
+   * walks to. A quest that has finished is no longer one to follow, so this
+   * falls back to the first quest with an open step exactly as the interface
+   * does, and the pins agree with the panel rather than pointing at a job the
+   * player already handed in.
    */
   following(): readonly Objective[] {
     const objectives = this.#log.objectives()
-    const tracked = this.#tracked === undefined ? objectives[0]?.questId : this.#tracked
+    const chosen = objectives.some((objective) => objective.questId === this.#tracked)
+    const tracked = chosen ? this.#tracked : objectives[0]?.questId
     return tracked ? objectives.filter((objective) => objective.questId === tracked) : []
   }
 

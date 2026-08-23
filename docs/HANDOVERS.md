@@ -59,17 +59,19 @@ is done and the check confirms it.
 A quest was completed end to end twice, once with the model and once offline.
 These are what it found on the way. Numbered by what a player hits first.
 
+Rows 39, 40, 41, 42, 45 and 46 landed in `app` and were checked in a browser:
+five walkers out of fifteen with somebody left in every shop, a `collect` step
+pinned and routed from indoors and out, and `?sidecar=` surviving a refresh.
+
 | # | Defect | Box | Detail |
 |---|---|---|---|
-| 39 | The crosshair offers people who are not in the room, **and it blocks a quest** | app | `buildings.ts` hides the body of anyone out walking; `Targeting.#inTheRoom()` still lists them. `pick()` scores `facing / max(0.3, distance)`, so an invisible person 0.45 m from the quest item always wins the prompt. "Take the stained glass" was unselectable from any reachable position |
-| 40 | Every resident was out walking at once, so every open building was empty | app + crowd | the street draw takes from all residents, stationed ones included |
-| 41 | A `collect` step gets no map pin and no route | app | `places.ts` `spot()` resolves only `place` and `npcId`; a collect objective carries `itemId`. Needs item to interior to plot. A `deliver` step works fine |
-| 42 | `G` says "Nothing to head for: follow a quest first" while following a quest | app | and indoors it measures from room-local coordinates as if they were world: 80 m south for a doorstep 37 m away and roughly north |
 | 43 | A timed quest is an invisible real-time stopwatch | forge + play + hud | a timer is ~1.5 to 2 real minutes, one model reply is 8 to 19 s of it, and nothing on screen says a quest is timed or how long is left. One expired mid-playthrough and the first sign was an empty journal |
 | 44 | Every carried thing is the same beige cube | scene + furnish | box, envelope, stained glass, ledger and cash all render identically |
-| 45 | The acted line is stale | app | `talking.ts` `say()` clears the reply each turn but not `acted`, so "gave you a job" sits under the next reply |
-| 46 | `?sidecar=` and `?bundle=` are thrown away | app | `boot.ts` rewrites the URL from the brief alone after a build |
-| 47 | Wording a player would not follow | app + hud | "they are standing right there" while across town; "Nothing yet. Find someone to talk to." after finishing a job; a conversation opens blank until the player speaks first |
+| 47 | "It belongs to somebody, and they are standing right there" is shown as the hint while the player is across town | forge | `src/quests/recipes/hot-parcel.ts`; the hint reads as if the player were in the room |
+| 48 | A conversation opens with a blank panel and the NPC says nothing until the player speaks first | app + talk | decide whether a greeting is worth a model call; `@gb/talk` would own the line |
+| 49 | `TalkPatch.acted` cannot be cleared | hud | `acted` appends within a panel and only a **new** `speaker` resets it, so a per-turn line is impossible from outside. `app` announces what the speaker did instead, which leaves `acted` with no consumer: either take `acted: null` to clear it, or drop the field |
+| 50 | "Nothing yet. Find someone to talk to." reads as if the player had never had a job | hud | `src/surfaces/objectives.ts`; true after finishing one and being offered two more |
+| 51 | **A room can be cut in half by its own furniture, and a chair can sit on the doorstep** | forge | measured over 121 interiors in 15 generated cities: 5 put a prop on the spot 1.2 m inside the street door, and 8 of 365 stationed people plus 7 of 242 items end up in a pocket of floor the player cannot walk to. `g/Golden Wheel Coffee` seats tables at x=1.60 and x=4.00 with chairs at 0.45, 2.85 and 5.15, leaving aisles of 0.40 to 0.50 m against a 0.70 m body, so a row of tables seals the room. Identical with `@gb/scene`'s `Greybox` and with `@gb/furnish`, so it is the layout and not the drawing: the plan has to reserve an aisle a body fits down and keep the doorstep clear |
 
 ## Checked and closed
 

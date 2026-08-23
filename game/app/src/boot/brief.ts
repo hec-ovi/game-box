@@ -37,12 +37,15 @@ export function tidy(brief: CityBrief): CityBrief {
   }
 }
 
+/** The four the brief owns. Everything else in the address bar belongs to somebody else. */
+const BRIEF_KEYS = ['theme', 'seed', 'blocks', 'model']
+
 /**
  * The address bar, which is how a city is shared and how the same one is opened
  * again. Nothing in it means nothing was asked for.
  */
 export function briefFromQuery(query: URLSearchParams): CityBrief | undefined {
-  if (!['seed', 'theme', 'blocks', 'model'].some((key) => query.has(key))) return undefined
+  if (!BRIEF_KEYS.some((key) => query.has(key))) return undefined
   return tidy({
     theme: query.get('theme') ?? DEFAULTS.theme,
     seed: query.get('seed') ?? DEFAULTS.seed,
@@ -51,10 +54,16 @@ export function briefFromQuery(query: URLSearchParams): CityBrief | undefined {
   })
 }
 
-/** The same brief written back, so the address bar names the city on screen. */
-export function briefToQuery(brief: CityBrief): string {
+/**
+ * The same brief written back, so the address bar names the city on screen.
+ * Whatever else was asked for rides along: `?sidecar=` and `?bundle=` are not
+ * the brief's to answer for, and a refresh that dropped them would quietly
+ * reconnect somewhere else.
+ */
+export function briefToQuery(brief: CityBrief, carry?: URLSearchParams): string {
   const query = new URLSearchParams({ theme: brief.theme, seed: brief.seed, blocks: String(brief.blocks) })
   if (brief.model) query.set('model', '1')
+  for (const [key, value] of carry ?? []) if (!BRIEF_KEYS.includes(key)) query.append(key, value)
   return `?${query.toString()}`
 }
 

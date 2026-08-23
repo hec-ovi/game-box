@@ -1,4 +1,5 @@
 import type { CityNav, Point } from '@gb/nav'
+import type { Objective } from '@gb/quest'
 import type { World } from '@gb/world'
 import type { Marked } from './places.ts'
 import type { Vec2 } from './walk.ts'
@@ -14,24 +15,41 @@ const ARRIVED = 6
  * from `@gb/nav`, so the distance is the walk rather than the crow's flight and
  * the direction is the first stretch of pavement rather than a line through a
  * building. The map is north up, so a compass point reads straight off it.
+ *
+ * `from` is where the player stands on the city, which indoors is the doorstep
+ * of the building they are in rather than their metres across its floor.
  */
 export class Guide {
   #world: World
   #nav: CityNav
   #from: () => Vec2
   #goals: () => readonly Marked[]
+  #steps: () => readonly Objective[]
 
-  constructor(input: { world: World; nav: CityNav; from: () => Vec2; goals: () => readonly Marked[] }) {
+  constructor(input: {
+    world: World
+    nav: CityNav
+    from: () => Vec2
+    goals: () => readonly Marked[]
+    steps: () => readonly Objective[]
+  }) {
     this.#world = input.world
     this.#nav = input.nav
     this.#from = input.from
     this.#goals = input.goals
+    this.#steps = input.steps
   }
 
   /** One line for the player: where they are headed and which way to set off. */
   say(): string {
     const goal = this.#goals()[0]
-    if (!goal) return 'Nothing to head for: follow a quest first'
+    // a step with nowhere on it is a step the player is still following, so say
+    // that about the step rather than telling them to go and find a job
+    if (!goal) {
+      const step = this.#steps()[0]
+      if (!step) return 'Nothing to head for: follow a quest first'
+      return `${step.markerLabel ?? step.text}: not a place you can walk to`
+    }
 
     const from = this.#from()
     const route = this.#route(from, goal)

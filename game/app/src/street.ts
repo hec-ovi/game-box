@@ -7,6 +7,13 @@ import { alsoBlockedBy, PERSON_CLEAR, type Rolling } from './bodies.ts'
 import { cityGround, citySolid, type Ground } from './solids.ts'
 import type { Solid, Vec2 } from './walk.ts'
 
+/**
+ * How much of the town is out on the pavement at once. The rest are at their
+ * posts, which is where the player goes looking for them: a town that empties
+ * itself onto the street has nobody behind any counter in it.
+ */
+const OUT_TODAY = 1 / 3
+
 /** The player's own car: solid to walk into, and something traffic brakes for. */
 export interface PlayerCar {
   rolling(): readonly Rolling[]
@@ -41,9 +48,10 @@ export class Street {
    * out to talk to.
    *
    * The people out there are the city's own, so somebody the player passes is
-   * somebody who lives here, can be named and can be talked to. The landscape
-   * is the ground under them, so a companion followed out of town stands on the
-   * hillside rather than at zero.
+   * somebody who lives here, can be named and can be talked to. Only a share of
+   * the town is offered, so the buildings still have people standing in them.
+   * The landscape is the ground under them, so a companion followed out of town
+   * stands on the hillside rather than at zero.
    */
   populate(cast: CrowdCast): void {
     const residents = this.residents()
@@ -60,9 +68,40 @@ export class Street {
     )
   }
 
-  /** Everybody who lives in the city, for the crowd to draw the street from. */
+  /**
+   * Who is out today, for the crowd to draw the street from. Two rules keep the
+   * buildings from emptying onto the pavement: **nobody is the last person out
+   * of a room**, so every building the player can walk into still has somebody
+   * standing in it, and no more than a share of the town is out at once, so a
+   * bar keeps its regulars rather than its bartender on their own. Anybody the
+   * city stationed nowhere is always out, because there is nowhere to look for
+   * them. The city's own order decides, so the same town sends the same people
+   * out every time and somebody found at their post is there on the next visit.
+   */
   residents(): readonly Npc[] {
-    return this.#world.npcs()
+    const people = this.#world.npcs()
+    const atTheirPost = new Map<string, number>()
+    for (const npc of people) {
+      const room = npc.station?.interiorId
+      if (room) atTheirPost.set(room, (atTheirPost.get(room) ?? 0) + 1)
+    }
+
+    const share = Math.ceil(people.length * OUT_TODAY)
+    const out: Npc[] = []
+    let stationed = 0
+    for (const npc of people) {
+      const room = npc.station?.interiorId
+      if (!room) {
+        out.push(npc)
+        continue
+      }
+      const left = atTheirPost.get(room) ?? 0
+      if (stationed >= share || left <= 1) continue
+      atTheirPost.set(room, left - 1)
+      stationed += 1
+      out.push(npc)
+    }
+    return out
   }
 
   /**

@@ -34,6 +34,7 @@ export class Boot {
   #game: Playing | undefined
   #city: City | undefined
   #brief: CityBrief | undefined
+  #asked = new URLSearchParams()
   #running: AbortController | undefined
 
   constructor(input: { mount: HTMLElement; panel: Panel; sidecar: Sidecar; start?: Start }) {
@@ -59,6 +60,7 @@ export class Boot {
    * white screen.
    */
   async start(query: URLSearchParams): Promise<void> {
+    this.#asked = query
     const asked = briefFromQuery(query)
     const before = rememberedBrief()
     this.#panel.brief = asked ?? before ?? DEFAULTS
@@ -154,7 +156,7 @@ export class Boot {
 
     if (brief) {
       rememberBrief(brief)
-      history.replaceState(null, '', briefToQuery(brief))
+      history.replaceState(null, '', briefToQuery(brief, this.#asked))
     }
     this.#panel.holding({ city: true, playing: true })
     this.#panel.waiting()

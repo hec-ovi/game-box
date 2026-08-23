@@ -1,10 +1,10 @@
 // @vitest-environment node
 import type { Driving } from '@gb/drive'
-import type { Hud, HudPatch } from '@gb/hud'
+import type { Hud, HudPatch, Notice } from '@gb/hud'
 import { CityNav } from '@gb/nav'
 import { PlayerState } from '@gb/play'
 import { QuestLog, rewardFor, validateQuest, type Objective } from '@gb/quest'
-import { PropFootprint, type CityBuild } from '@gb/scene'
+import { Greybox, PropFootprint, type CityBuild } from '@gb/scene'
 import { METRICS, World, type Interior } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
@@ -12,7 +12,7 @@ import { blocked, slide, step } from '../src/walk.ts'
 import { alsoBlockedBy } from '../src/bodies.ts'
 import { cityGround, citySolid, furnishedSolid } from '../src/solids.ts'
 import { Attending, type Post } from '../src/attending.ts'
-import type { Buildings } from '../src/buildings.ts'
+import { Buildings } from '../src/buildings.ts'
 import { Chart } from '../src/chart.ts'
 import { Conditions } from '../src/conditions.ts'
 import { Guide } from '../src/guide.ts'
@@ -26,7 +26,10 @@ import { Conversation, type TalkMove } from '@gb/talk'
 import type { Player } from '../src/player.ts'
 import { Street } from '../src/street.ts'
 import { Talking } from '../src/talking.ts'
-import { Targeting } from '../src/targets.ts'
+import { pick, Targeting } from '../src/targets.ts'
+import type { Stage } from '../src/renderer.ts'
+import type { Sky } from '../src/sky.ts'
+import type { Vec2 } from '../src/walk.ts'
 import { CLOSE_FOV, WIDE_FOV, Zoom } from '../src/zoom.ts'
 
 /** Everything from x = 4 east is wall. */
@@ -518,6 +521,139 @@ function screenful() {
   return { pushed, hud: { show: (patch: HudPatch) => void pushed.push(patch) } as unknown as Hud }
 }
 
+/**
+ * A bar with a counter along the north wall: two people behind it and a panel of
+ * stained glass lying between them, at the distances the browser playthrough
+ * measured (the glass at x=10.10, the nearest person at x=9.65, 0.45 m apart).
+ */
+function anchorage(): { world: World; plotId: string; doorstep: Vec2 } {
+  const world = World.create({ name: 'Anchorage', theme: 'plain', seed: 'reach', width: 24, height: 14 })
+  const plot = world.addPlot({
+    kind: 'bar',
+    name: 'The Bright Anchor',
+    rect: { x: 1, y: 2, w: 8, h: 4 },
+    entrance: { cell: { x: 5, y: 6 }, facing: 'south' },
+    storeys: 1,
+    style: 'brick',
+  })
+  if (!plot.ok) throw new Error(JSON.stringify(plot.error))
+
+  const inside = world.addInterior({
+    id: 'interior_0001',
+    plotId: plot.value.id,
+    kind: 'bar',
+    size: { w: 14, h: 8 },
+    rooms: [{ id: 'room_0001', kind: 'main', name: 'The bar', rect: { x: 0, y: 0, w: 14, h: 8 } }],
+    doors: [{ id: 'door_0001', from: 'outside', to: 'room_0001', pos: { x: 7, y: 8 }, rot: 0, locked: false }],
+    furniture: [],
+    anchors: [
+      { id: 'anchor_0001', kind: 'serve', roomId: 'room_0001', pos: { x: 9.65, y: 3 }, rot: 180 },
+      { id: 'anchor_0002', kind: 'serve', roomId: 'room_0001', pos: { x: 11.5, y: 3 }, rot: 180 },
+    ],
+  })
+  if (!inside.ok) throw new Error(JSON.stringify(inside.error))
+
+  for (const [id, name, anchorId] of [
+    ['npc_0001', 'Wren Ashby', 'anchor_0001'],
+    ['npc_0002', 'Mab Tolliver', 'anchor_0002'],
+  ] as const) {
+    const added = world.addNpc({
+      id,
+      name,
+      role: 'bartender',
+      appearance: { base: 'female', variant: 2 },
+      personality: 'Busy.',
+      knowledge: ['The bar shuts at two.'],
+      station: { interiorId: 'interior_0001', anchorId },
+    })
+    if (!added.ok) throw new Error(JSON.stringify(added.error))
+  }
+
+  // the glass lies on the counter beside the first of them
+  const glass = world.addItem(
+    { id: 'item_0001', name: 'Stained glass', description: 'A panel of coloured glass.', archetype: 'painting', value: 40, bulk: 'two-handed' },
+    { at: 'anchor', itemId: 'item_0001', interiorId: 'interior_0001', anchorId: 'anchor_0001' },
+  )
+  if (!glass.ok) throw new Error(JSON.stringify(glass.error))
+  return { world, plotId: plot.value.id, doorstep: { x: 11, z: 13 } }
+}
+
+/** The bar, opened: a real `Buildings` with the renderer and the street stubbed out. */
+function walkIn(away: () => string[]): { buildings: Buildings; targeting: Targeting; world: World } {
+  const { world, plotId, doorstep } = anchorage()
+  const city = { doorsteps: new Map([[plotId, doorstep]]) } as unknown as CityBuild
+  const street = { solid: () => () => false, floor: () => () => 0, walkers: () => [] } as unknown as Street
+  const buildings = new Buildings({
+    world,
+    dressing: new Greybox(),
+    stage: { show: () => {}, indoors: () => {} } as unknown as Stage,
+    body: { setSolid: () => {}, setGround: () => {}, placeAt: () => {}, position: { x: 5, z: 21 } } as unknown as Player,
+    city,
+    sky: { visible: true } as unknown as Sky,
+    street,
+    announce: () => {},
+    arrived: () => {},
+    cameOut: () => {},
+    away,
+  })
+  buildings.enter(plotId)
+  const driving = { aboard: false, target: () => undefined } as unknown as Driving
+  return { buildings, targeting: new Targeting({ world, city, buildings, street, driving }), world }
+}
+
+describe('what is in reach inside a room', () => {
+  // right in front of the counter, looking north at it: the person is dead
+  // ahead and the glass is the 0.45 m off it that the counter puts it
+  const at = { x: 9.65, z: 4.2 }
+  const north = 0
+
+  it('offers the person and the thing beside them when both are actually in the room', () => {
+    const { targeting } = walkIn(() => [])
+    const listed = targeting.list()
+    expect(listed.map((target) => target.label).toSorted()).toEqual([
+      'Step outside',
+      'Take the stained glass',
+      'Talk to Mab Tolliver',
+      'Talk to Wren Ashby',
+    ])
+    // aimed at the counter, the person standing on it wins, which is right
+    expect(pick(at, north, listed)?.label).toBe('Talk to Wren Ashby')
+  })
+
+  it('leaves out somebody who is out walking the street, so the thing beside them can be taken', () => {
+    const { targeting } = walkIn(() => ['npc_0001'])
+    const listed = targeting.list()
+
+    expect(listed.map((target) => target.label)).not.toContain('Talk to Wren Ashby')
+    // the other one is still behind the counter and still offered
+    expect(listed.map((target) => target.label)).toContain('Talk to Mab Tolliver')
+
+    // and the glass is now the thing in reach, from the one spot that could
+    // never select it while a body nobody can see was standing on it
+    const glass = listed.find((target) => target.kind === 'take')!
+    expect(Math.round(glass.at.x * 100) / 100).toBe(10.1)
+    expect(pick(at, north, listed)?.label).toBe('Take the stained glass')
+  })
+
+  it('does not stop the player walking through somebody who is not in the room', () => {
+    const { buildings } = walkIn(() => ['npc_0001'])
+    expect(buildings.peopleHere().map((person) => person.id)).toEqual(['npc_0002'])
+
+    // and asking somebody along takes them off their post the same way
+    buildings.showPerson('npc_0002', false)
+    expect(buildings.peopleHere()).toEqual([])
+  })
+
+  it('measures the way to a quest from the door of the building the player is in', () => {
+    const { buildings } = walkIn(() => [])
+    // inside, the player stands at their own metres across the room's floor,
+    // which is nowhere near where the city thinks the building is
+    expect(buildings.cityPosition()).toEqual({ x: 11, z: 13 })
+    buildings.leave()
+    expect(buildings.cityPosition()).toEqual({ x: 5, z: 21 })
+  })
+})
+
 describe('the map the player opens', () => {
   const world = town()
   const at = { x: 5, z: 21 }
@@ -557,6 +693,25 @@ describe('the map the player opens', () => {
     expect(map.plots.filter((plot) => plot.label !== undefined)).toEqual([{ id: bar.id, rect: bar.rect, label: 'The Copper Wheel' }])
   })
 
+  it('pins the building a thing is lying in, for a step that names only the thing', () => {
+    const { world: bar, plotId } = anchorage()
+    const fetchIt: Objective = {
+      questId: 'quest_0001',
+      questTitle: 'The delivery',
+      stepId: 'step_0001',
+      text: 'Find the stained glass',
+      itemId: 'item_0001',
+    }
+    // the glass is on a counter inside, and a room has its own metres, so this
+    // has to go thing to room to building or there is nothing to draw
+    expect(bar.positionOf('item_0001')).toBeUndefined()
+    expect(marked(bar, [fetchIt])).toEqual([{ label: 'The Bright Anchor', x: 11, z: 13, plotId }])
+
+    // and any of an interchangeable pool answers, so three of five is one pin
+    const orTheOther: Objective = { ...fetchIt, itemId: 'item_0404', alternates: ['item_0001'] }
+    expect(marked(bar, [orTheOther])).toHaveLength(1)
+  })
+
   it('pins a place once, however many steps of the quest send the player to it', () => {
     const bar = world.plots()[0]!
     expect(marked(world, [heading(bar.id), { ...heading(bar.id), stepId: 'step_0003' }])).toHaveLength(1)
@@ -581,32 +736,38 @@ describe('the way to the quest you are following', () => {
   const bar = world.plots()[0]!
   const island = world.plots()[1]!
 
-  function guide(from: { x: number; z: number }, goals: readonly Marked[]) {
-    return new Guide({ world, nav, from: () => from, goals: () => goals })
+  function guide(from: { x: number; z: number }, steps: readonly Objective[]) {
+    return new Guide({ world, nav, from: () => from, goals: () => marked(world, steps), steps: () => steps })
   }
 
   it('gives the walk and the way the street runs, not the line through the water', () => {
     // the bar is twelve metres due north, and the only crossing is away east
-    const said = guide({ x: 5, z: 21 }, marked(world, [heading(bar.id)])).say()
+    const said = guide({ x: 5, z: 21 }, [heading(bar.id)]).say()
     expect(said).toMatch(/^The Copper Wheel: /)
     expect(said).toMatch(/head east/)
     expect(Number(/(\d+) m/.exec(said)![1])).toBeGreaterThan(60)
   })
 
   it('calls a place by the name the quest gave it', () => {
-    expect(guide({ x: 5, z: 21 }, marked(world, [heading(bar.id, 'the bar')])).say()).toMatch(/^the bar: /)
+    expect(guide({ x: 5, z: 21 }, [heading(bar.id, 'the bar')]).say()).toMatch(/^the bar: /)
   })
 
   it('says so when there is no way there on foot', () => {
-    expect(guide({ x: 5, z: 21 }, marked(world, [heading(island.id)])).say()).toBe('Kell Supply: no way there on foot')
+    expect(guide({ x: 5, z: 21 }, [heading(island.id)]).say()).toBe('Kell Supply: no way there on foot')
   })
 
   it('says you are there when you are standing on it', () => {
-    expect(guide({ x: 5, z: 9 }, marked(world, [heading(bar.id)])).say()).toBe('The Copper Wheel: you are there')
+    expect(guide({ x: 5, z: 9 }, [heading(bar.id)]).say()).toBe('The Copper Wheel: you are there')
   })
 
   it('says there is nothing to head for when no quest is being followed', () => {
     expect(guide({ x: 5, z: 21 }, []).say()).toBe('Nothing to head for: follow a quest first')
+  })
+
+  it('says a step points nowhere rather than telling a player who is following one to go and find a job', () => {
+    // a choice or a merge is a step the player can see and nowhere to walk to
+    const nowhere: Objective = { questId: 'quest_0001', questTitle: 'The delivery', stepId: 'step_0009', text: 'Make up your mind' }
+    expect(guide({ x: 5, z: 21 }, [nowhere]).say()).toBe('Make up your mind: not a place you can walk to')
   })
 })
 
@@ -715,6 +876,58 @@ describe('the journal', () => {
     log.handle({ kind: 'talked', npcId: 'npc_0001' })
 
     expect(steps().map((step) => step.done)).toEqual([true, false, false])
+  })
+})
+
+describe('which quest the map and the guide are following', () => {
+  /** Two one-errand jobs from two different people, so finishing one leaves one. */
+  function errands() {
+    const quests = ['npc_0001', 'npc_0002'].map((npcId, index) => {
+      const id = `quest_000${index + 1}`
+      const doc = {
+        format: 'game-box.quest',
+        schemaVersion: 1,
+        id,
+        kind: 'side',
+        title: `Job ${index + 1}`,
+        summary: 'A word, and it is done.',
+        giverNpcId: npcId,
+        difficulty: 'small',
+        startStepId: 'step_0001',
+        reward: rewardFor('small'),
+        steps: [
+          { id: 'step_0001', objective: `Have a word about job ${index + 1}`, kind: 'talk', npcId, next: ['step_0002'] },
+          { id: 'step_0002', objective: 'Done', kind: 'complete' },
+        ],
+      }
+      const anything = { hasNpc: () => true, hasPlot: () => true, hasInterior: () => true, hasItem: () => true, hasAnchor: () => true }
+      const checked = validateQuest(doc, anything)
+      if (!checked.ok) throw new Error(JSON.stringify(checked.error))
+      return checked.value
+    })
+    const player = PlayerState.create('world_0001')
+    const log = QuestLog.create(quests, player)
+    const report = new Reporting({ world: town(), log, player, hud: screenful().hud })
+    log.start('quest_0001')
+    log.start('quest_0002')
+    return { log, report }
+  }
+
+  it('follows the one the player chose', () => {
+    const { report } = errands()
+    report.track('quest_0002')
+    expect(report.following().map((objective) => objective.questId)).toEqual(['quest_0002'])
+  })
+
+  it('falls back to a live job once the one it was following is handed in', () => {
+    const { log, report } = errands()
+    report.track('quest_0001')
+    log.handle({ kind: 'talked', npcId: 'npc_0001' })
+    expect(log.status('quest_0001')).toBe('complete')
+
+    // otherwise the map loses its pins and the guide says to go and find a job,
+    // with a job open and its step on the panel
+    expect(report.following().map((objective) => objective.questId)).toEqual(['quest_0002'])
   })
 })
 
@@ -848,15 +1061,19 @@ describe('a conversation you can click through', () => {
   /** Everything the game pushes at the interface, and nothing else. */
   function panel() {
     const pushed: HudPatch[] = []
-    const hud = { show: (patch: HudPatch) => void pushed.push(patch), announce: () => {} } as unknown as Hud
-    return { pushed, hud }
+    const announced: Notice[] = []
+    const hud = {
+      show: (patch: HudPatch) => void pushed.push(patch),
+      announce: (notice: Notice) => void announced.push(notice),
+    } as unknown as Hud
+    return { pushed, announced, hud }
   }
 
   function chatting() {
     const { world, npcId, itemId } = bar()
     const player = PlayerState.create(world.id)
     const log = QuestLog.create([errand], player)
-    const { pushed, hud } = panel()
+    const { pushed, announced, hud } = panel()
     let reached = 0
     const talking = new Talking({
       world,
@@ -879,8 +1096,10 @@ describe('a conversation you can click through', () => {
     const menu = () =>
       ([...pushed].reverse().find((patch) => patch.talk?.moves)?.talk?.moves ?? []) as readonly TalkMove[]
     const spoken = () => pushed.map((patch) => patch.talk?.replyChunk ?? '').join('')
-    const noted = () => pushed.flatMap((patch) => (patch.talk?.acted ? [patch.talk.acted] : []))
-    return { world, npcId, itemId, player, log, talking, pushed, menu, spoken, noted, reached: () => reached }
+    // what the speaker actually did is announced: the conversation panel keeps
+    // every line it is given, so a line written into it outlives its own turn
+    const noted = () => announced.flatMap((notice) => (notice.kind === 'note' ? [notice.text] : []))
+    return { world, npcId, itemId, player, log, talking, pushed, announced, menu, spoken, noted, reached: () => reached }
   }
 
   it('offers what the NPC will allow, and leaves walking away to the controls that already do it', async () => {
@@ -896,7 +1115,7 @@ describe('a conversation you can click through', () => {
   })
 
   it('takes the job on a click, with a line spoken and no model asked for it', async () => {
-    const { npcId, log, talking, menu, spoken, noted, reached } = chatting()
+    const { npcId, log, talking, menu, spoken, noted, pushed, reached } = chatting()
     await talking.start(npcId)
     const taken = menu()[0]!
     const before = reached()
@@ -908,7 +1127,9 @@ describe('a conversation you can click through', () => {
 
     expect(log.status('quest_0002')).toBe('active')
     expect(spoken().length).toBeGreaterThan(0)
-    expect(noted()).toEqual(['gave you a job'])
+    expect(noted()).toEqual(['Iris Vane gave you a job'])
+    // and never into the panel, where it would sit under the next reply
+    expect(pushed.some((patch) => patch.talk?.acted !== undefined)).toBe(false)
     // and the move it just used is off the menu it publishes at the end
     expect(menu().map((move) => move.action)).not.toContain('give_quest')
   })
@@ -930,7 +1151,7 @@ describe('a conversation you can click through', () => {
 
     expect(log.status('quest_0002')).toBe('complete')
     expect(player.money).toBeGreaterThan(0)
-    expect(noted()).toEqual(['gave you a job', 'took what you were carrying'])
+    expect(noted()).toEqual(['Iris Vane gave you a job', 'Iris Vane took what you were carrying'])
   })
 
   it('still takes a typed line, which does go looking for a model, and ends on a menu', async () => {

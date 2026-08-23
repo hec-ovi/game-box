@@ -199,9 +199,12 @@ export class Game {
     })
 
     // where the tracked quest is sending the player: the map pins it and the
-    // guide walks to it, both off the one answer
-    const goals = () => marked(this.#world, this.#report.following())
-    this.#chart = new Chart({ world: this.#world, hud: this.#hud, you: () => this.#body, goals })
+    // guide walks to it, both off the one answer. Both measure from where the
+    // player stands on the city, which indoors is the door they came in by
+    const steps = () => this.#report.following()
+    const goals = () => marked(this.#world, steps())
+    const standing = () => ({ position: this.#buildings.cityPosition(), heading: this.#body.heading })
+    this.#chart = new Chart({ world: this.#world, hud: this.#hud, you: standing, goals })
 
     this.#targeting = new Targeting({
       world: this.#world,
@@ -222,7 +225,7 @@ export class Game {
       talking: this.#talking,
       companions: this.#companions,
       driving: this.#driving,
-      guide: new Guide({ world: this.#world, nav, from: () => this.#body.position, goals }),
+      guide: new Guide({ world: this.#world, nav, from: () => this.#buildings.cityPosition(), goals, steps }),
       conditions: new Conditions(this.#player.clock),
       report: this.#report,
       aimed: () => this.#target,

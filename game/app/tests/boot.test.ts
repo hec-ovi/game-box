@@ -130,6 +130,18 @@ describe('the address bar', () => {
     expect(briefFromQuery(new URLSearchParams(briefToQuery(brief!)))).toEqual(brief)
   })
 
+  it('carries whatever else was asked for through the rewrite', () => {
+    const asked = new URLSearchParams('?seed=harbour&theme=quiet%20coastal%20town&blocks=1&sidecar=http://127.0.0.1:9/&bundle=/city.json')
+    const written = new URLSearchParams(briefToQuery(briefFromQuery(asked)!, asked))
+
+    // the brief is not the only thing in the address bar, and a refresh that
+    // dropped these would quietly reconnect to a different sidecar
+    expect(written.get('sidecar')).toBe('http://127.0.0.1:9/')
+    expect(written.get('bundle')).toBe('/city.json')
+    expect(written.get('seed')).toBe('harbour')
+    expect(written.getAll('theme')).toEqual(['quiet coastal town'])
+  })
+
   it('says nothing was asked for when nothing was', () => {
     expect(briefFromQuery(new URLSearchParams(''))).toBeUndefined()
     expect(briefFromQuery(new URLSearchParams('?bundle=/city.json'))).toBeUndefined()
@@ -306,6 +318,16 @@ describe('the front door end to end', () => {
     expect(panel.open).toBe(false)
   }, 30_000)
 
+  it('leaves the sidecar the player named in the address bar, so a refresh comes back to it', async () => {
+    const { boot } = open()
+    await boot.start(new URLSearchParams('?seed=frontdoor&theme=quiet%20coastal%20town&blocks=1&sidecar=http://127.0.0.1:9/'))
+
+    expect(started).toHaveLength(1)
+    const written = new URLSearchParams(location.search)
+    expect(written.get('sidecar')).toBe('http://127.0.0.1:9/')
+    expect(written.get('seed')).toBe('frontdoor')
+  }, 30_000)
+
   it('comes back to the same city on a refresh with nothing in the address bar', async () => {
     await open().boot.start(new URLSearchParams('?seed=comeback&theme=quiet%20coastal%20town&blocks=1'))
     const first = started[0]
@@ -387,5 +409,25 @@ describe('the people on the street', () => {
     expect(walkers.length).toBeGreaterThan(0)
     for (const walker of walkers) expect(world.npc(walker.id)?.name).toBeTruthy()
     expect(asked).toBeGreaterThan(0)
+  }, 40_000)
+
+  it('leaves somebody at every post, so a building the player walks into is not empty', async () => {
+    const made = await new CityMaker(new Sidecar()).build({ ...DEFAULTS, blocks: 2 }, QUIET)
+    if (!made.ok) throw new Error(made.message)
+    const world = made.value.bundle.world
+
+    const street = new Street({ world, nav: CityNav.from(world), playerOutdoors: () => undefined })
+    const out = new Set(street.residents().map((npc) => npc.id))
+
+    // the whole town on the pavement is a town where every shop is deserted
+    expect(out.size).toBeGreaterThan(0)
+    expect(out.size).toBeLessThan(world.npcs().length)
+
+    const rooms = new Set(world.npcs().flatMap((npc) => (npc.station ? [npc.station.interiorId] : [])))
+    expect(rooms.size).toBeGreaterThan(0)
+    for (const room of rooms) {
+      const staying = world.npcs().filter((npc) => npc.station?.interiorId === room && !out.has(npc.id))
+      expect(staying.length, `nobody left in ${room}`).toBeGreaterThan(0)
+    }
   }, 40_000)
 })

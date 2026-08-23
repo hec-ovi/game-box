@@ -8,7 +8,12 @@ import type { Attending } from './attending.ts'
 import type { Player } from './player.ts'
 import type { Reporting } from './reporting.ts'
 
-/** What the player reads once the speaker has actually done something. */
+/**
+ * What the player reads once the speaker has actually done something. It is
+ * announced rather than written into the conversation panel, because the panel
+ * keeps every line it is given for as long as the conversation lasts, and "gave
+ * you a job" sitting under the next reply reads as a second job.
+ */
 const DONE: Record<ActionName, string> = {
   give_quest: 'gave you a job',
   take_delivery: 'took what you were carrying',
@@ -35,6 +40,7 @@ export class Talking {
   #attending: Attending
   #report: Reporting
   #open: Conversation | undefined
+  #speaker = 'Someone'
 
   constructor(input: {
     world: World
@@ -72,11 +78,10 @@ export class Talking {
 
     const conversation = opened.value.conversation
     this.#open = conversation
+    this.#speaker = this.#world.npc(npcId)?.name ?? 'Someone'
     this.#attending.hold(npcId)
     this.#report.report({ ok: true, value: opened.value.changes })
-    this.#hud.show({
-      talk: { speaker: this.#world.npc(npcId)?.name ?? 'Someone', moves: this.#menu(conversation) },
-    })
+    this.#hud.show({ talk: { speaker: this.#speaker, moves: this.#menu(conversation) } })
   }
 
   /** Send a line to whoever the player is talking to and play back the reply. */
@@ -112,7 +117,7 @@ export class Talking {
       // Breaking out of the stream is what releases the call.
       if (this.#open !== conversation) break
       if (event.kind === 'said') this.#hud.show({ talk: { replyChunk: event.text } })
-      if (event.kind === 'did') this.#hud.show({ talk: { acted: DONE[event.action] } })
+      if (event.kind === 'did') this.#report.note(`${this.#speaker} ${DONE[event.action]}`)
       if (event.kind === 'changed') this.#report.announce(event.change)
       if (event.kind === 'over') this.end()
     }

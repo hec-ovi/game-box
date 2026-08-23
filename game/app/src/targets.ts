@@ -89,9 +89,12 @@ export class Targeting {
     const targets: Target[] = [
       { kind: 'leave', id: place.plotId, label: 'Step outside', at: { x: built.entrance.x, z: built.entrance.z } },
     ]
-    for (const [npcId, body] of built.people) {
-      const npc = this.#world.npc(npcId)
-      if (npc) targets.push({ kind: 'talk', id: npcId, label: `Talk to ${npc.name}`, at: { x: body.position.x, z: body.position.z } })
+    // only the people actually standing in here: somebody out walking the
+    // street is drawn nowhere near this room and is not there to be talked to,
+    // and offering them wins the prompt off whatever is really on the counter
+    for (const person of this.#buildings.peopleHere()) {
+      const npc = this.#world.npc(person.id)
+      if (npc) targets.push({ kind: 'talk', id: person.id, label: `Talk to ${npc.name}`, at: { x: person.x, z: person.z } })
     }
     for (const [itemId, object] of built.pickups) {
       const item = this.#world.item(itemId)

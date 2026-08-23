@@ -12,6 +12,13 @@ import type { Vec2 } from './walk.ts'
 /** Where the player is standing: out in the city, or inside one building. */
 export type Place = { kind: 'city' } | { kind: 'interior'; interior: Interior; plotId: string }
 
+/** Somebody actually standing at their post in the room the player is in. */
+export interface AtTheirPost {
+  readonly id: string
+  readonly x: number
+  readonly z: number
+}
+
 /** Somewhere a quest can be told the player arrived at. */
 export type Arrival = { plotId: string } | { interiorId: string }
 
@@ -32,10 +39,11 @@ export class Buildings {
   #announce: (text: string) => void
   #arrived: (at: Arrival) => void
   #cameOut: (at: Vec2) => void
-  #away: () => Iterable<string>
+  #whoIsOut: () => Iterable<string>
 
   #built = new Map<string, InteriorBuild>()
   #place: Place = { kind: 'city' }
+  #away = new Set<string>()
 
   constructor(input: {
     world: World
@@ -62,7 +70,7 @@ export class Buildings {
     this.#announce = input.announce
     this.#arrived = input.arrived
     this.#cameOut = input.cameOut
-    this.#away = input.away
+    this.#whoIsOut = input.away
   }
 
   get place(): Place {
@@ -95,15 +103,16 @@ export class Buildings {
     }
 
     // somebody out in the street or walking with the player is not also
-    // standing behind their own counter
-    const away = new Set(this.#away())
-    for (const [npcId, body] of built.people) body.visible = !away.has(npcId)
+    // standing behind their own counter. The street stops while the player is
+    // inside, so who is out is read once on the way in and kept.
+    this.#away = new Set(this.#whoIsOut())
+    for (const [npcId, body] of built.people) body.visible = !this.#away.has(npcId)
 
     this.#place = { kind: 'interior', interior, plotId }
     this.#stage.show(built.root)
     this.#stage.indoors(true)
     this.#sky.visible = false
-    this.#body.setSolid(alsoBlockedBy(furnishedSolid(interior, built.blockers), () => this.#peopleInHere()))
+    this.#body.setSolid(alsoBlockedBy(furnishedSolid(interior, built.blockers), () => this.peopleHere()))
     this.#body.setGround(() => 0)
 
     const step = 1.2
@@ -138,15 +147,38 @@ export class Buildings {
 
   /** Somebody walking with the player is not also standing at their anchor. */
   showPerson(npcId: string, visible: boolean): void {
+    if (visible) this.#away.delete(npcId)
+    else this.#away.add(npcId)
     for (const built of this.#built.values()) {
       const body = built.people.get(npcId)
       if (body) body.visible = visible
     }
   }
 
-  /** The people standing about in the room the player is in. */
-  #peopleInHere(): readonly Vec2[] {
+  /**
+   * The people standing at their posts in the room the player is in. Whoever is
+   * out on the street or walking with the player is not one of them, so the
+   * crosshair does not offer them and the player does not walk into them.
+   */
+  peopleHere(): readonly AtTheirPost[] {
     const built = this.inside
-    return [...(built?.people.values() ?? [])].map((body) => ({ x: body.position.x, z: body.position.z }))
+    if (!built) return []
+    const here: AtTheirPost[] = []
+    for (const [id, body] of built.people) {
+      if (this.#away.has(id)) continue
+      here.push({ id, x: body.position.x, z: body.position.z })
+    }
+    return here
+  }
+
+  /**
+   * Where the player is standing on the city, whichever side of a door they are
+   * on: their own spot outside, and the doorstep of the building they are in.
+   * A room is measured in its own metres from its own corner, so the number on
+   * the map and the number the route starts from have to be this one.
+   */
+  cityPosition(): Vec2 {
+    if (this.#place.kind !== 'interior') return this.#body.position
+    return this.#city.doorsteps.get(this.#place.plotId) ?? this.#body.position
   }
 }
