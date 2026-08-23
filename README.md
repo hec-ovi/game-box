@@ -2,9 +2,17 @@
 
 > **Under construction.** The loop works end to end: a city generates, you walk it, go into the places that open, talk to the people there and finish the jobs they hand out. Plenty is unfinished and everything here can still change.
 
-A browser game where the city is written for you. Give it a theme and a seed, and a local model lays out a town, furnishes its interiors, invents the people standing in them and writes the errands they hand out. The result is one file you can send to someone else, and they walk the same city with the same people and the same jobs.
+A first-person open-world city game that runs in a browser. TypeScript and three.js, WebGPU where the machine has it and WebGL2 where it does not, in a pnpm workspace on Node 22.
+
+You give it a theme and a seed. It writes the town's history, lays out streets and buildings from that history, furnishes the handful of places that open, invents the people standing in them and writes the errands they hand out. What comes back is one JSON file. Send it to somebody and they walk the same city, meet the same people and get the same jobs.
 
 The loop is quests, not combat: talk to somebody, cross town, go into a building, find a person or a thing, take it, carry it, leave it somewhere, deliver it, get paid. Quests branch, and a branch you did not take stays in the journal so the choice reads as one.
+
+## What you need
+
+- **Node 22 or newer, and pnpm.** That is the whole requirement to play.
+- **A browser.** No native build, no compile step, no server unless you want the model.
+- **A model endpoint, optional.** Anything that speaks the OpenAI chat shape. Without one the city is written by an offline author built into the game, and everything is playable: the same streets, the same interiors, the same quest kinds, named and described from the seed instead of by a model.
 
 ## Playing it
 
@@ -46,14 +54,33 @@ A city built this way is checked before it ships: every generated quest is drive
 
 ## The model
 
-NPC dialogue and the world author both talk to a small sidecar on 127.0.0.1 that speaks the OpenAI shape. It runs a stand-in by default; point it at any OpenAI-compatible server for the real thing:
+Three ways to run, and the game is playable in all three.
+
+**Nothing running.** The default. The city is written by the offline author in the browser.
 
 ```
-node --experimental-strip-types host/src/main.ts              # stand-in
-GAME_BOX_LLM_UPSTREAM=http://127.0.0.1:8080 node --experimental-strip-types host/src/main.ts   # a real model
+http://localhost:5180/?seed=gulch&theme=dusty+western+town
 ```
 
-Everything generated comes back as a **tool call whose parameters are the JSON Schema of the contract that will validate it**, so the thing that defines the shape and the thing that checks it are the same object. Nothing a model writes is trusted: a quest is refused unless every path ends, every person and thing it names exists, and every item is in the player's hands before they are asked for it.
+**The sidecar, answering from a stand-in.** A small Node service on `127.0.0.1:8976` that speaks the OpenAI chat shape. With no upstream set it answers from a built-in stand-in, which is how the model path gets exercised without a model.
+
+```
+node --experimental-strip-types host/src/main.ts
+```
+
+**The sidecar, in front of a real model.** Point it at any OpenAI-compatible server. A local llama-server is what this is developed against, but nothing is specific to it.
+
+```
+GAME_BOX_LLM_UPSTREAM=http://127.0.0.1:8080 node --experimental-strip-types host/src/main.ts
+```
+
+Then add `&model` to the URL, or `--model` to `gb build`, and the names, the history, the people and the quests come from the endpoint instead of the offline author.
+
+`GAME_BOX_PORT` moves the sidecar off 8976, and `?sidecar=` in the URL points the game at a different one.
+
+Everything generated comes back as a **tool call whose parameters are the JSON Schema of the contract that will validate it**, so the thing that defines the shape and the thing that checks it are the same object. Nothing a model writes is trusted: a quest is refused unless every path ends, every person and thing it names exists, and every item is in the player's hands before they are asked for it. A malformed answer is dropped and the offline author fills in, so a bad reply costs some flavour rather than the city.
+
+One thing to know before relying on a model for a shared world: nothing pins the sampler yet, so two runs with the same seed against a real endpoint do not give the same city. The offline author is reproducible today; the model path is not.
 
 ## Layout
 
@@ -63,13 +90,21 @@ The game, in TypeScript under `game/`:
 
 | | |
 |---|---|
-| `world` | the city as a grid of cells, its plots, interiors, people and things, and what makes one sound |
-| `forge` | generates a city: streets and plots by arithmetic, names and quests by a model |
+| `world` | the city as a grid of cells, its plots, interiors, people and things, its history, and what makes one sound |
+| `forge` | generates a city: streets and plots by arithmetic, the history, the places and the quests by a model |
+| `scribe` | the model-backed author behind forge: the history, the places, the people, the quests |
 | `quest`, `play` | quests as checked flows, and the playthrough they run against |
-| `bundle` | the sealed file a city travels in, and the save that belongs to it |
-| `scene`, `cast`, `kitbash`, `land` | turning all that into something you can stand in |
-| `crowd`, `traffic` | people on the pavement, cars on the road |
+| `bundle` | the sealed file a city travels in, what art it was built against, and the save that belongs to it |
+| `scene` | the city as something you can stand in: batching, interiors, the street surface |
+| `prefab` | real buildings from an art pack, pinned per plot so a shared city keeps its buildings |
+| `kitbash` | the fallback building kit, and the words on a sign |
+| `furnish` | interiors: floors, walls, furniture built from parameters, carried things, screens that play |
+| `cast` | the people: outfits, hair, and the clip a stance implies |
+| `crowd`, `traffic`, `drive` | walkers on the pavement, cars on the road, and taking one |
+| `land` | ground, water, trees, the horizon and the sky |
 | `nav`, `talk`, `hud`, `app` | getting about, conversation, the interface, and the running game |
+| `cli` | `gb build`, `inspect` and `check` from the terminal |
+| `sidecar`, `kit` | the client that talks to the model, and the shared primitives every box uses |
 
 The sidecar, in `host/`: `api`, `llm`, `stt`, `tts`, `models`. Node with one dependency and no build step.
 
