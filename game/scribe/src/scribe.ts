@@ -1,10 +1,11 @@
 import type { ItemProfile, Narrator, NpcProfile, WorldSummary } from '@gb/forge'
-import { OfflineNarrator } from '@gb/forge'
+import { OfflineNarrator, premiseLines } from '@gb/forge'
 import { Sidecar } from '@gb/sidecar'
-import type { BuildingKind, ItemArchetype, NpcRole } from '@gb/world'
+import type { BuildingKind, ItemArchetype, NpcRole, Premise } from '@gb/world'
 import { Asker, type ScribeProblem } from './asker.ts'
 import { InstanceWriter, type Instance, type InstanceRequest } from './instance.ts'
 import { PlaceNamer, type PlaceRequest } from './place-names.ts'
+import { PremiseWriter } from './premise.ts'
 import { Progress, type ProgressPort } from './progress.ts'
 import { bullets, prompt } from './prompts.ts'
 import { QuestWriter } from './quests.ts'
@@ -18,6 +19,12 @@ import { Waves } from './waves.ts'
  * the sidecar's own clock.
  */
 const QUEST_MS = 900_000
+
+/** What the city stage answers: its history, then its name. */
+const CITY_ANSWERS = 2
+
+/** What a call is told when nobody has written the city's history. */
+const NO_HISTORY = 'Nothing has been written about the city itself yet.'
 
 export interface ScribeOptions {
   readonly sidecar?: Sidecar
@@ -50,6 +57,8 @@ export class Scribe implements Narrator {
   #seed: string
   #problems: ScribeProblem[] = []
   #characters = new Map<string, string>()
+  /** The city stage is the history and then the name, so whichever runs first opens it. */
+  #wroteHistory = false
 
   constructor(options: ScribeOptions = {}) {
     const sidecar = options.sidecar ?? new Sidecar()
@@ -69,10 +78,32 @@ export class Scribe implements Narrator {
     return this.#problems
   }
 
-  async nameCity(input: { theme: string; seed: string }): Promise<string> {
+  /**
+   * The city's history, written before a street is laid. Everything the forge
+   * does afterwards is built out of it, so an answer the town cannot be built
+   * from is never handed on: the model is told what was wrong, and a town whose
+   * history the model will not write gets the one the seed composes.
+   */
+  async writePremise(input: { theme: string; seed: string }): Promise<Premise> {
     this.#seed = input.seed
-    this.#progress.start('city', 1, 'naming the city')
-    const answer = await this.#descriptive.ask(NAME_CITY, prompt('name-city', input))
+    this.#wroteHistory = true
+    this.#progress.start('city', CITY_ANSWERS, 'writing the history')
+    const premise = await new PremiseWriter({ asker: this.#descriptive, fallback: this.#fallback }).write(input)
+    this.#progress.finished(premise.livesOn)
+    return premise
+  }
+
+  /** Named after what the town lives on, which is why the history goes out with the question. */
+  async nameCity(input: { theme: string; seed: string; premise?: Premise }): Promise<string> {
+    this.#seed = input.seed
+    if (!this.#wroteHistory) this.#progress.start('city', 1, 'naming the city')
+    const answer = await this.#descriptive.ask(
+      NAME_CITY,
+      prompt('name-city', {
+        theme: input.theme,
+        premise: input.premise ? premiseLines(input.premise) : NO_HISTORY,
+      }),
+    )
     const name = answer?.name ?? (await this.#fallback.nameCity(input))
     this.#registry.nameCity(name)
     this.#progress.finished(name)

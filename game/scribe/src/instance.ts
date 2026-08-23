@@ -5,7 +5,7 @@ import { FamilyClaims } from './claim.ts'
 import type { Progress } from './progress.ts'
 import { bullets, prompt } from './prompts.ts'
 import type { NameRegistry } from './registry.ts'
-import { instanceTool, type Premises } from './tools.ts'
+import { instanceTool, type WrittenPlace } from './tools.ts'
 import { UniqueNames, type Pass } from './unique.ts'
 import type { Waves } from './waves.ts'
 
@@ -234,7 +234,7 @@ export class InstanceWriter implements Pass<InstanceRequest, Instance> {
 }
 
 /** The answer, put back together against the shell it was written for. */
-function made(request: InstanceRequest, answer: Premises): Instance {
+function made(request: InstanceRequest, answer: WrittenPlace): Instance {
   return {
     name: answer.name,
     character: answer.character,
@@ -256,7 +256,7 @@ function made(request: InstanceRequest, answer: Premises): Instance {
 }
 
 /** Everything wrong with an answer that the schema alone could not refuse. */
-function problemsWith(answer: Premises, shell: { postIds: readonly string[]; thingIds: readonly string[] }): Violation[] {
+function problemsWith(answer: WrittenPlace, shell: { postIds: readonly string[]; thingIds: readonly string[] }): Violation[] {
   const problems: Violation[] = []
   const once = (got: readonly string[], wanted: readonly string[], field: string, what: string): void => {
     for (const id of wanted) {

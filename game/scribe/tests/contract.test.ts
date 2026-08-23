@@ -131,7 +131,7 @@ describe('Scribe', () => {
   })
 
   it('builds a whole city with the model as its narrator, quests included', async () => {
-    const { sidecar } = fakeModel([
+    const { sent, sidecar } = fakeModel([
       {
         name: 'Cold Harbour',
         personality: 'Watches the door more than the glasses.',
@@ -152,6 +152,9 @@ describe('Scribe', () => {
     expect(built.ok).toBe(true)
     if (!built.ok) return
 
+    // the history is the first thing the model is asked for. `writePremise` is optional on
+    // the port, so a scribe that stops answering it loses the whole stage silently
+    expect(sent[0]!.toolName).toBe('write_premise')
     expect(built.value.world.check()).toEqual([])
     expect(built.value.world.plots().length).toBeGreaterThan(2)
     expect(built.value.world.npcs().length).toBeGreaterThan(0)

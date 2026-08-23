@@ -1,5 +1,6 @@
 import { contract, type Contract } from '@gb/kit'
 import { questDraftContract } from '@gb/quest'
+import { premiseContract, type Premise } from '@gb/world'
 import { z } from 'zod'
 import { familyPattern } from './claim.ts'
 import { prompt } from './prompts.ts'
@@ -30,6 +31,23 @@ export interface Thing {
   readonly description: string
 }
 export type QuestDraft = typeof questDraftContract extends Contract<infer T> ? T : never
+
+/**
+ * The city's history, and the first call of a build.
+ *
+ * Its parameters are `@gb/world`'s own premise schema, unaltered, so what the
+ * model decodes against and what the city accepts cannot drift apart. The
+ * order matters as much as the fields: a constrained model writes the
+ * properties in the order the schema lists them, and this one lists what the
+ * town lives on, what happened and who is arguing before it lists the buildings
+ * the town is made of, so the mix is written out of the history rather than
+ * before it.
+ */
+export const WRITE_PREMISE: Tool<Premise> = {
+  name: 'write_premise',
+  description: prompt('tool-write-premise'),
+  contract: premiseContract,
+}
 
 export const NAME_CITY: Tool<CityName> = {
   name: 'name_city',
@@ -66,7 +84,7 @@ export const DESCRIBE_ITEM: Tool<Thing> = {
 }
 
 /** One place and everybody in it, as one answer. */
-export interface Premises {
+export interface WrittenPlace {
   readonly name: string
   readonly character: string
   readonly people: readonly {
@@ -98,7 +116,7 @@ export interface Shell {
  * limit, because nothing downstream holds it to one: measured, a bar's came
  * back at 430 characters against a 400 cap, and the cap cost the whole place.
  */
-export function instanceTool(shell: Shell): Tool<Premises> {
+export function instanceTool(shell: Shell): Tool<WrittenPlace> {
   const people = z.object({
     postId: oneOf(shell.postIds),
     given: z.string().min(2).max(30),
