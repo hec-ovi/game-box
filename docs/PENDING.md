@@ -29,6 +29,13 @@ Concretely, in order:
 | `nav` calls a mountain cell impassable, `land` calls it walkable verge | `nav` and `land` disagree | Does not block walking out, since the corridor is street and pavement the whole way, but the two boxes describe the same cells differently. |
 | NPC clothing is medieval | `cast` | The only clothing we ship is Quaternius Modular Character Outfits **Fantasy**: Peasant and Ranger, two genders. |
 
+## Small, found by agents, nobody assigned
+
+- `@gb/quest`: a `talk` step with a `topic` is only credited by a `talked` event carrying the same topic, but `objectives()` does not publish `topic`, so no caller can ever complete one. Publish it or drop the match. `forge` works around it by emitting no topics.
+- `@gb/quest`: an `any-of` needs both branches reachable through `next` from the start AND pointing back at the any-of step. Neither the contract nor its two error messages say so; it cost an agent three attempts to find the shape.
+- `@gb/nav`: `tests/contract.test.ts:125` does `plotsOfKind('bar')[0]!` on a generated town, so it assumes a building kind exists. Seeded staples nearly broke it; forge now keeps a bar in every town as a documented invariant, but the test should not lean on that.
+- Quests never pay in items, because nothing removes a rewarded item from the shelf it lies on and paying in goods would duplicate it. Revisit when the app owns pickup.
+
 ## Traps found, worth knowing
 
 - **`material.onBeforeCompile` does nothing under `WebGPURenderer`**, on either backend. It fails silently, so a material looks untouched rather than broken. Use `contextNode` with TSL instead. Only `furnish` had it; it is fixed.
