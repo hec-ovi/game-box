@@ -4,6 +4,8 @@ street: You are out on the street. It is {{reading}}, and {{weather}}.
 others: Sat or stood in here with you: {{people}}.
 alone: Nobody else is in here.
 person: {{name}} the {{role}}
+# What the place is called when they are not in a building at all.
+outside: the street
 # What you are doing, taken from the spot you keep.
 browse: at the shelves
 cook: at the stove
@@ -15,6 +17,7 @@ sit-drink: sat with a drink in front of you
 sleep: half asleep in your own room
 stand: on your feet where you always are
 work-desk: at your desk
+work-bench: at your bench
 # What the sky is doing.
 clear: the sky is clear
 overcast: it has been grey all day

@@ -28,6 +28,25 @@ export function listed(source: string): Record<string, readonly string[]> {
   return out
 }
 
+/** One step of a `number: value` list, covering everything up to its own number. */
+export interface Band<T> {
+  readonly upTo: number
+  readonly value: T
+}
+
+/** A prompt list read as bands, lowest first. Keys that are not numbers are skipped. */
+export function bands<T>(entries: Record<string, T>): ReadonlyArray<Band<T>> {
+  return Object.entries(entries)
+    .map(([upTo, value]) => ({ upTo: Number(upTo), value }))
+    .filter((band) => Number.isFinite(band.upTo))
+    .sort((a, b) => a.upTo - b.upTo)
+}
+
+/** The band a number falls in. Anything above them all belongs to the last. */
+export function inBand<T>(list: ReadonlyArray<Band<T>>, at: number): T | undefined {
+  return (list.find((band) => at <= band.upTo) ?? list[list.length - 1])?.value
+}
+
 /** A fragment of stored text, punctuated so it can sit in a spoken line. */
 export function sentence(text: string): string {
   const trimmed = text.trim()

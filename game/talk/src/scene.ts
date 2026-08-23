@@ -1,6 +1,7 @@
+import type { Npc } from '@gb/world'
 import type { Situation } from './moves.ts'
 import { PROMPTS } from './prompts.generated.ts'
-import { fill, keyed } from './text.ts'
+import { bands, fill, inBand, keyed } from './text.ts'
 
 const WORDS = keyed(PROMPTS.surroundings)
 const STANDING = bands(keyed(PROMPTS.standing))
@@ -18,40 +19,61 @@ export class Scene {
     this.#situation = situation
   }
 
+  /** The building they are in, named the way the town names it. */
+  get place(): string {
+    return this.#plot()?.name ?? WORDS.outside!
+  }
+
+  /** The spot they keep, as an anchor kind. Nothing when they are not stationed. */
+  get doing(): string | undefined {
+    return this.#anchor()?.kind
+  }
+
   /** The room, the company, the hour and the weather, in one paragraph. */
   where(): string {
-    const { world, player, npcId } = this.#situation
-    const clock = player.clock
+    const clock = this.#situation.player.clock
     const hour = { reading: clock.reading, weather: WORDS[clock.weather] ?? '' }
-    const station = world.npc(npcId)?.station
-    if (!station) return fill(WORDS.street!, hour)
+    if (!this.#station()) return fill(WORDS.street!, hour)
 
-    const interior = world.interior(station.interiorId)
-    const anchor = interior?.anchors.find((candidate) => candidate.id === station.anchorId)
-    const here = fill(WORDS.inside!, { ...hour, station: (anchor && WORDS[anchor.kind]) ?? WORDS.stand! })
-    return `${here} ${this.#company(interior?.plotId)}`
+    const here = fill(WORDS.inside!, { ...hour, station: WORDS[this.doing ?? ''] ?? WORDS.stand! })
+    return `${here} ${this.#company()}`
   }
 
   /** How this person takes the player before a word is said. */
   standing(): string {
-    const reputation = this.#situation.player.reputation()
-    return (STANDING.find((band) => reputation <= band.upTo) ?? STANDING[STANDING.length - 1])?.line ?? ''
+    return inBand(STANDING, this.#situation.player.reputation()) ?? ''
   }
 
   /** Who else is in the building, which is who they can see from where they stand. */
-  #company(plotId: string | undefined): string {
+  others(): readonly Npc[] {
     const { world, npcId } = this.#situation
-    const others = plotId ? world.npcsIn(plotId).filter((other) => other.id !== npcId) : []
+    const plotId = this.#plot()?.id
+    return plotId ? world.npcsIn(plotId).filter((other) => other.id !== npcId) : []
+  }
+
+  #company(): string {
+    const others = this.others()
     if (!others.length) return WORDS.alone!
     const people = others.map((other) => fill(WORDS.person!, { name: other.name, role: other.role })).join(', ')
     return fill(WORDS.others!, { people })
   }
-}
 
-/** The standing lines in order, each covering everything up to its own number. */
-function bands(lines: Record<string, string>): ReadonlyArray<{ upTo: number; line: string }> {
-  return Object.entries(lines)
-    .map(([upTo, line]) => ({ upTo: Number(upTo), line }))
-    .filter((band) => Number.isFinite(band.upTo))
-    .sort((a, b) => a.upTo - b.upTo)
+  #station() {
+    return this.#situation.world.npc(this.#situation.npcId)?.station
+  }
+
+  #interior() {
+    const station = this.#station()
+    return station && this.#situation.world.interior(station.interiorId)
+  }
+
+  #anchor() {
+    const station = this.#station()
+    return station && this.#interior()?.anchors.find((candidate) => candidate.id === station.anchorId)
+  }
+
+  #plot() {
+    const interior = this.#interior()
+    return interior && this.#situation.world.plot(interior.plotId)
+  }
 }

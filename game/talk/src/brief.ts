@@ -30,17 +30,14 @@ export class Brief {
 
   /** The character the voice track speaks as: their knowledge, their room, their hour. */
   voice(moves: readonly Move[]): string {
-    const { world } = this.#situation
     const npc = this.#npc()
-    const interior = npc.station ? world.interior(npc.station.interiorId) : undefined
-    const plot = interior ? world.plot(interior.plotId) : undefined
 
     return fill(PROMPTS.npc, {
       name: npc.name,
       role: npc.role,
-      place: plot?.name ?? 'the street',
+      place: this.#scene.place,
       city: this.city,
-      theme: world.theme,
+      theme: this.#situation.world.theme,
       personality: npc.personality,
       knowledge: npc.knowledge.map((fact) => `- ${fact}`).join('\n') || '- nothing worth repeating',
       surroundings: this.#scene.where(),

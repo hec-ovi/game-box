@@ -287,15 +287,18 @@ describe('Conversation', () => {
   })
 
   it('streams what they say, in pieces, and the voice track is offered nothing to call', async () => {
-    const { conversation, model } = setup({ text: ['We close ', 'at midnight.'] })
+    const { conversation, model, opening } = setup({ text: ['We close ', 'at midnight.'] })
     const events = await collect(conversation.say('when do you close?'))
 
     expect(events.filter((e) => e.kind === 'said').length).toBeGreaterThan(1)
     expect(said(events)).toBe('We close at midnight.')
     expect(conversation.history()).toEqual([
+      { role: 'assistant', content: opening.line },
       { role: 'user', content: 'when do you close?' },
       { role: 'assistant', content: 'We close at midnight.' },
     ])
+    // the model answers on top of the line the player already read, not from nothing
+    expect(model.voice[0]!.messages[1]).toEqual({ role: 'assistant', content: opening.line })
     expect(model.voice[0]!.messages.some((m) => m.role === 'user' && m.content === 'when do you close?')).toBe(true)
   })
 
@@ -620,6 +623,61 @@ describe('Conversation', () => {
   })
 })
 
+describe('the first words', () => {
+  it('opens with something said and something to click, and asks nothing of the model', () => {
+    const forbidden = () => {
+      throw new Error('the first words must run on the game data alone')
+    }
+    const { conversation, opening } = setup({}, { sidecar: { ask: forbidden, converse: forbidden } as unknown as Sidecar })
+
+    expect(opening.line).not.toBe('')
+    expect(opening.moves).toEqual(conversation.moves())
+    expect(opening.moves.map((move) => move.action)).toEqual(['give_quest', 'end_talk'])
+    expect(opening.line).not.toMatch(/[a-z]+_\d{4}/)
+    expect(conversation.history()[0]).toEqual({ role: 'assistant', content: opening.line })
+  })
+
+  it('greets the same way every time, so a shared world file plays the same everywhere', () => {
+    const first = setup({}).opening.line
+    expect(setup({}).opening.line).toBe(first)
+  })
+
+  it("the hour and the player's name in town are in it", () => {
+    const { world, log, player, mara } = setup({})
+    const greet = () => {
+      const opened = Conversation.open({ world, log, player, sidecar: speaker({}).sidecar, npcId: mara.id })
+      if (!opened.ok) throw new Error('did not open')
+      return opened.value.opening.line
+    }
+
+    player.clock.setTime(21, 30)
+    player.adjustReputation(-50)
+    const scorned = greet()
+    expect(scorned).toMatch(/^(Evening|Late to be out)\./)
+
+    player.adjustReputation(100)
+    expect(greet()).not.toBe(scorned)
+  })
+
+  it('names the one thing on the menu worth mentioning, and greets without one', () => {
+    const { world, log, player, mara, hollis, ledger } = setup({})
+    log.start('quest_0001')
+    player.take(ledger.id)
+    log.handle({ kind: 'acquired', itemId: ledger.id, stolen: true })
+
+    const owed = Conversation.open({ world, log, player, sidecar: speaker({}).sidecar, npcId: mara.id })
+    if (!owed.ok) throw new Error('did not open')
+    expect(owed.value.opening.moves.map((move) => move.action)).toContain('take_delivery')
+    expect(owed.value.opening.line).toContain('salt-stained ledger')
+
+    // somebody with nothing between them and the player still says something
+    const idle = Conversation.open({ world, log, player, sidecar: speaker({}).sidecar, npcId: hollis.id })
+    if (!idle.ok) throw new Error('did not open')
+    expect(idle.value.opening.line).not.toBe('')
+    expect(idle.value.opening.moves.map((move) => move.action)).toEqual(['end_talk'])
+  })
+})
+
 describe('Conversation.moves and choose', () => {
   it("offers every legal move in the player's own words, with no id in any of them", () => {
     const { conversation, key } = setup({}, { carries: true })
@@ -651,11 +709,12 @@ describe('Conversation.moves and choose', () => {
     player.take(ledger.id)
     log.handle({ kind: 'acquired', itemId: ledger.id, stolen: true })
     const delivery = conversation.moves().find((move) => move.key.startsWith('take_delivery'))!
+    const before = [...conversation.history()]
 
     // the player drops it between drawing the menu and clicking it
     player.drop(ledger.id)
     expect(await collect(conversation.choose(delivery.key))).toEqual([])
-    expect(conversation.history()).toEqual([])
+    expect(conversation.history()).toEqual(before)
     expect(log.status('quest_0001')).toBe('active')
     expect(player.money).toBe(0)
   })
@@ -673,10 +732,11 @@ describe('Conversation.moves and choose', () => {
   })
 
   it('puts a clicked turn in the transcript, so a typed turn after it knows what was clicked', async () => {
-    const { conversation, model } = setup({ text: 'Take your time.' })
+    const { conversation, model, opening } = setup({ text: 'Take your time.' })
 
     await collect(conversation.choose('give_quest#quest_0001'))
     expect(conversation.history()).toEqual([
+      { role: 'assistant', content: opening.line },
       { role: 'user', content: 'Take the job: The Ledger' },
       { role: 'assistant', content: "Good. Take the ledger. Come back to me when it's done." },
     ])
@@ -707,10 +767,13 @@ describe('cutting a turn short', () => {
 
   it('says nothing more once the player has cut in', async () => {
     const model = cutIn('request')
-    const { conversation } = setup({}, { sidecar: model.sidecar, signal: model.stop.signal })
+    const { conversation, opening } = setup({}, { sidecar: model.sidecar, signal: model.stop.signal })
 
     await collect(conversation.say('give me the job'))
     expect(await collect(conversation.say('still there?'))).toEqual([])
-    expect(conversation.history()).toEqual([{ role: 'user', content: 'give me the job' }])
+    expect(conversation.history()).toEqual([
+      { role: 'assistant', content: opening.line },
+      { role: 'user', content: 'give me the job' },
+    ])
   })
 })

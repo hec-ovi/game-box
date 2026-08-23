@@ -1,10 +1,10 @@
 # @gb/talk contract
 
-contractVersion: 0.5.0
+contractVersion: 0.6.0
 
 ## Purpose
 
-Conversations with the people in the city: one track writes what they say, another picks what they do from the short list of things the quest script made legal this turn.
+Conversations with the people in the city: they speak first off the game's own data, one track writes what they say next, and another picks what they do from the short list of things the quest script made legal this turn.
 
 ## Inputs
 
@@ -18,7 +18,8 @@ Conversations with the people in the city: one track writes what they say, anoth
 
 | Param | Schema | Postconditions |
 |---|---|---|
-| `open` | `{ conversation, changes }` | walking up to someone is a `talked` event, so a step that already asked for it completes here |
+| `open` | `{ conversation, changes, opening }` | walking up to someone is a `talked` event, so a step that already asked for it completes here |
+| `opening` | `{ line, moves }` | what they say before the player has said anything, and the moves that were legal when they said it. Always a line, never a model call |
 | `say` | a stream of `TalkEvent` | `said` pieces as they are spoken, `did` for the action taken, `changed` for every quest change it caused, `over` when it ends |
 | `available()` | the action names legal right now | what the UI can promise before a word is said |
 | `moves()` | every legal move as `{ key, action, label }` | `label` is what the player clicks, in their own words and with no id in it; `action` is its `ActionName`, so a caller can filter or group without reading the key; `key` names the move and what it is about, never its place in the list |
@@ -27,6 +28,14 @@ Conversations with the people in the city: one track writes what they say, anoth
 ## Talking to someone counts when it counts
 
 A `talked` event fires when the conversation opens, and again after anything the NPC does. The second one is what makes a generated job playable: those quests open with "go and hear them out", and the step that says so is opened by the giver handing the job over, one moment after the greeting. Credited only on the way in, the objective would read as an errand to go and find the person the player is stood in front of. Credited again after the move, the objective the player sees is the first thing they still have to do.
+
+## They speak first
+
+Opening a conversation hands back the opening turn, so the panel has something in it the instant it appears. No model is asked for that line. One reply from the local model has been measured at 8 to 19 seconds in this project, and nineteen seconds of empty panel at the moment the player presses the key is worse than saying nothing, so the line is built from what the box already holds: the hour and the sky off the playthrough clock, the building they are in, the spot they keep in it, who else is in there with them, their trade, what the player's name in town is worth, and the one move on the menu worth mentioning. It costs under a hundredth of a millisecond, because it is string work over data already in memory.
+
+The draw is seeded from the world's own seed and this person's id, so a world file shared between two machines greets the same way on both. The hour is in the seed as well, so somebody spoken to at dawn and again at dusk does not open with the same line twice.
+
+The line goes into the transcript as their turn, so the model answers on top of what the player has already read. The moves that come with it are the ones `moves()` gives: the greeting nudges at the one worth mentioning ("that's my ledger you're carrying") and the button under it carries it out with no model call either. No greeting names a quest by its title, because the pitch keeps for the turn the player asks for it.
 
 ## One turn, two tracks
 
@@ -72,7 +81,7 @@ The spoken side is terse but never reads stored text out as it is stored: a fact
 
 ## Dependencies
 
-- `@gb/world`, `@gb/quest`, `@gb/play`, `@gb/sidecar` contracts.
+- `@gb/kit`, `@gb/world`, `@gb/quest`, `@gb/play`, `@gb/sidecar` contracts.
 
 ## Invariants
 
@@ -84,8 +93,10 @@ The spoken side is terse but never reads stored text out as it is stored: a fact
 - Clicking and typing are one conversation: a picked move goes into the transcript as the player's turn, so a typed turn after it answers with the click in mind.
 - With no model reachable, the same words in the same state give the same conversation every time, down to the line.
 - The reply streams, so speech can start before the sentence is finished.
+- A conversation opens with a line and a menu, whatever the model is doing. Nothing about opening one reaches the sidecar.
+- The same world file, the same person and the same hour give the same opening line on every machine.
 - A turn the player cut short changes nothing: no quest moves, no item, no money, no companion.
 
 ## How to modify this blackbox safely
 
-A new action is a name in `ACTIONS`, a rule in `legalMoves` for when it is offered and which ids it may carry, its wording in `prompts/moves.md` and `prompts/picks.md`, how the player would ask for it in `prompts/hearing.md`, how it is weighed in `listen.ts`, what it says in `prompts/offline.md`, and a branch in `Performer`. A move that the decider keeps misreading can take a line in `prompts/rules.md`, which is added to the menu prompt only while that move is on it. The rest of the wording lives in `prompts/npc.md`, `situation*.md`, `surroundings.md` and `standing.md`, and every prompt is bundled by `pnpm --filter @gb/talk run generate`. Run `pnpm --filter @gb/talk test`.
+A new action is a name in `ACTIONS`, a rule in `legalMoves` for when it is offered and which ids it may carry, its wording in `prompts/moves.md` and `prompts/picks.md`, how the player would ask for it in `prompts/hearing.md`, how it is weighed in `listen.ts`, what it says in `prompts/offline.md`, how it is nudged at in `prompts/hook.md`, and a branch in `Performer`. A move that the decider keeps misreading can take a line in `prompts/rules.md`, which is added to the menu prompt only while that move is on it. The opening line is drawn pool by pool from `prompts/greeting.md`: the hour, the standing band, the spot they keep, the sky, the room. The rest of the wording lives in `prompts/npc.md`, `situation*.md`, `surroundings.md` and `standing.md`, and every prompt is bundled by `pnpm --filter @gb/talk run generate`. Run `pnpm --filter @gb/talk test`.

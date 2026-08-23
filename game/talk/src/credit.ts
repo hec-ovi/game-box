@@ -11,7 +11,7 @@ const ROUNDS = 8
  * handing the job over: crediting only on the way in leaves the player stood at
  * the counter being told to go and find whoever is stood in front of them.
  */
-export class Greeting {
+export class Credit {
   #situation: Situation
 
   constructor(situation: Situation) {
@@ -19,7 +19,7 @@ export class Greeting {
   }
 
   /** Every quest change this talk earns, now. Empty once there is nothing left to credit. */
-  credit(): readonly Change[] {
+  earned(): readonly Change[] {
     const { log, npcId } = this.#situation
     const changes: Change[] = []
     for (let round = 0; round < ROUNDS; round++) {
