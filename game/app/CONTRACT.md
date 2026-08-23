@@ -1,6 +1,6 @@
 # @gb/app contract
 
-contractVersion: 0.3.0
+contractVersion: 0.3.1
 
 ## Purpose
 
@@ -51,6 +51,7 @@ None at the boundary. A city that will not build and a file that will not open a
 - The floor has height: the pavement stands a kerb above the road, and walking onto it steps up rather than clipping through. Crouching and standing ease between heights for the same reason.
 - Boxes that must not know about each other are joined here and only here: the crowd is told what is driving, traffic is told who is walking, both are told the hour so headlamps and lit windows agree with the sky, and none of them imports another.
 - The people on the street are the city's own residents, so anybody the player passes can be named and talked to, and somebody who is out walking is not also standing behind their own counter.
+- **Whoever is being talked to turns to the player and looks them in the eye**, and goes back to what they were doing when the conversation ends. A pedestrian stops mid-route, comes round, and walks the rest of their route afterwards; a companion stops keeping up and catches up again; somebody at their post in a room stays on their post and turns only as far as their head cannot reach, so a shopkeeper never swings their back to their own counter. The turn eases rather than snapping, and the head leads it. It happens on the conversation opening, not on being looked at: a pedestrian who stopped every time the crosshair crossed them would bring the pavement to a halt.
 - A companion who followed the player into a building is waiting by the door when they come out, rather than where they were standing when the door closed.
 - The player is stopped by people and by cars, not only by walls. Both move every frame, so what is solid is asked fresh rather than baked, and a car is treated as the long thing it is rather than as a circle.
 - The landscape brings its own sky and light. Plain daylight only comes out if the landscape fails to build, so a scene is never unlit.
@@ -107,6 +108,7 @@ One responsibility each. `boot/` is everything before there is a game; the rest 
 | `targets.ts` | what can be acted on, and which one is in reach |
 | `interaction.ts` | what the player did and what it does |
 | `talking.ts` | a conversation on screen |
+| `attending.ts` | whoever is being talked to, turned to face the player |
 | `companions.ts` | who is walking with the player |
 | `reporting.ts` | everything the hud is told |
 | `solids.ts`, `bodies.ts` | what stops you: walls, floors, people, cars |
