@@ -92,6 +92,15 @@ and the abandon control. What they leave for their callers:
 | 56 | Bind `Game.abandon` to `HudIntent.abandon` | app | The hud asks twice on its own; do not add a second confirm. After `QuestLog.abandon`, push `quests` without that quest, the hud drops nothing itself |
 | 57 | Publish a per-quest step list carrying each step's state | quest | The three states are derivable today only by walking `QuestLog.toJSON()`'s `open[]` and `done[]` against the quest doc's step order. Publishing it saves every caller that walk and stops them disagreeing |
 
+## From the things you carry
+
+Row 44's furnish half landed: all 25 archetypes are built shapes, three casts
+each, one shared material, no draw added.
+
+| # | Defect | Found by | Box | Detail |
+|---|---|---|---|---|
+| 58 | Every pickup is placed at a constant y = 0.9 whatever it stands on | furnish | scene | `buildInterior`. In a generated bar an item on a `serve` anchor at a `bar-counter` (customer rail 1.10) lands 20 cm **inside** the counter; one on a `sit-drink` anchor at a stool (0.75) floats 15 cm. Every item's lowest triangle is now at zero and `FurnishLibrary.contact(prop)` publishes each piece's drawn top, so the height is there to be read |
+
 ## Checked and closed
 
 About fifty handovers landed and were verified in the code rather than taken on
