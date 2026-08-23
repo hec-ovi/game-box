@@ -112,6 +112,10 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
       scene.add(root)
     },
     draw() {
+      // By hand, for a suspended frame loop. The shadow map only redraws while
+      // the node frame advances, which happens inside `setAnimationLoop`, so a
+      // loop built out of this instead of `start` would freeze every shadow
+      // where the player last stood.
       renderer.render(scene, camera)
     },
     start(frame) {
@@ -127,6 +131,7 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
       horizon?.dispose()
       renderer.setAnimationLoop(null)
       renderer.dispose()
+      renderer.domElement.remove()
       window.removeEventListener('resize', resize)
     },
   }

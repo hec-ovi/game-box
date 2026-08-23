@@ -22,10 +22,225 @@
       #game canvas {
         display: block;
       }
+
+      /* The front door: the panel that is on screen with the first byte of the
+         page, a long minute before the renderer and the city are ready. It is
+         written here rather than loaded because a second request would arrive
+         after the thing it is meant to cover.
+
+         The look belongs to @gb/hud. Its tokens are declared on `.gb-hud` by a
+         stylesheet its constructor installs, and that constructor has not run
+         yet at first paint, so the same names are declared here with the same
+         values from game/hud/src/style/tokens.ts. Nothing below writes a colour
+         of its own. */
+      .gb-boot {
+        --gb-ink: #f2efe6;
+        --gb-dim: rgba(242, 239, 230, 0.64);
+        --gb-panel: rgba(10, 12, 17, 0.9);
+        --gb-solid: rgba(9, 11, 15, 0.96);
+        --gb-well: rgba(0, 0, 0, 0.45);
+        --gb-edge: rgba(242, 239, 230, 0.16);
+        --gb-edge-lit: rgba(242, 239, 230, 0.38);
+        --gb-accent: #e9c178;
+        --gb-accent-deep: #9c6f30;
+        --gb-warn: #d8583a;
+        --gb-frame: 0 0 0 1px rgba(0, 0, 0, 0.72), inset 0 0 0 1px rgba(242, 239, 230, 0.07),
+          0 12px 34px rgba(0, 0, 0, 0.5);
+        --gb-display: 'Avenir Next Condensed', 'Roboto Condensed', 'Liberation Sans Narrow', 'Arial Narrow',
+          ui-sans-serif, system-ui, sans-serif;
+        --gb-body: ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif;
+        --gb-mono: ui-monospace, 'SFMono-Regular', 'JetBrains Mono', Menlo, Consolas, monospace;
+        --gb-s1: 4px;
+        --gb-s2: 8px;
+        --gb-s3: 12px;
+        --gb-s4: 16px;
+        --gb-s5: 22px;
+        --gb-s6: 32px;
+
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        display: grid;
+        place-items: center;
+        background: rgba(0, 0, 0, 0.55);
+        font: 14px/1.55 var(--gb-body);
+        color: var(--gb-ink);
+      }
+      .gb-boot[hidden] {
+        display: none;
+      }
+      .gb-boot-card {
+        width: min(30rem, calc(100vw - var(--gb-s6)));
+        padding: var(--gb-s5);
+        background: var(--gb-solid);
+        box-shadow: var(--gb-frame);
+        display: flex;
+        flex-direction: column;
+        gap: var(--gb-s3);
+      }
+      .gb-boot-title {
+        margin: 0;
+        font: 600 1.15rem/1.2 var(--gb-display);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .gb-boot-sub {
+        margin: calc(-1 * var(--gb-s2)) 0 0;
+        color: var(--gb-dim);
+      }
+      .gb-boot-field {
+        display: flex;
+        flex-direction: column;
+        gap: var(--gb-s1);
+      }
+      .gb-boot-field > span {
+        font: 0.75rem/1.2 var(--gb-display);
+        color: var(--gb-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+      .gb-boot-row {
+        display: flex;
+        gap: var(--gb-s2);
+      }
+      .gb-boot-row > input {
+        flex: 1;
+      }
+      .gb-boot input[type='text'],
+      .gb-boot input[type='number'] {
+        padding: var(--gb-s2) var(--gb-s3);
+        background: var(--gb-well);
+        color: var(--gb-ink);
+        border: 1px solid var(--gb-edge);
+        border-radius: 0;
+        font: inherit;
+        min-width: 0;
+      }
+      .gb-boot input[type='number'] {
+        font-family: var(--gb-mono);
+        font-variant-numeric: tabular-nums;
+        width: 6rem;
+      }
+      .gb-boot input:focus-visible,
+      .gb-boot button:focus-visible {
+        outline: 2px solid var(--gb-accent);
+        outline-offset: 1px;
+      }
+      .gb-boot-check {
+        display: flex;
+        align-items: center;
+        gap: var(--gb-s2);
+        color: var(--gb-dim);
+      }
+      .gb-boot-check input {
+        accent-color: var(--gb-accent-deep);
+      }
+      .gb-boot-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--gb-s2);
+        margin-top: var(--gb-s1);
+      }
+      .gb-boot button {
+        padding: var(--gb-s2) var(--gb-s4);
+        background: transparent;
+        color: var(--gb-ink);
+        border: 1px solid var(--gb-edge);
+        border-radius: 0;
+        font: 0.8rem/1.2 var(--gb-display);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+      .gb-boot button:hover:not(:disabled) {
+        border-color: var(--gb-edge-lit);
+      }
+      .gb-boot button:disabled {
+        color: var(--gb-dim);
+        cursor: default;
+        opacity: 0.55;
+      }
+      .gb-boot button[hidden] {
+        display: none;
+      }
+      .gb-boot button[data-boot='generate'] {
+        border-color: var(--gb-accent-deep);
+        color: var(--gb-accent);
+      }
+      .gb-boot-key {
+        display: inline-block;
+        margin-left: var(--gb-s1);
+        padding: 0 var(--gb-s1);
+        border: 1px solid var(--gb-edge);
+        font: inherit;
+        color: var(--gb-dim);
+      }
+      .gb-boot-status {
+        margin: 0;
+        min-height: 1.55em;
+        color: var(--gb-dim);
+      }
+      .gb-boot-status[data-trouble='true'] {
+        color: var(--gb-warn);
+      }
+      .gb-boot-status[data-working='true']::after {
+        content: '';
+        display: inline-block;
+        width: 0.5em;
+        height: 0.5em;
+        margin-left: 0.45em;
+        background: var(--gb-accent);
+        animation: gb-boot-pulse 1s steps(2, end) infinite;
+      }
+      @keyframes gb-boot-pulse {
+        50% {
+          opacity: 0.15;
+        }
+      }
     </style>
   </head>
   <body>
     <div id="game"></div>
+
+    <section class="gb-boot" id="boot" aria-label="Make a city">
+      <form class="gb-boot-card" data-boot="form" novalidate>
+        <h1 class="gb-boot-title">game-box</h1>
+        <p class="gb-boot-sub">A theme, a seed and a size. The same three make the same city every time.</p>
+
+        <label class="gb-boot-field">
+          <span>Theme</span>
+          <input data-boot="theme" type="text" maxlength="60" autocomplete="off" spellcheck="false" value="quiet coastal town" />
+        </label>
+
+        <label class="gb-boot-field">
+          <span>Seed</span>
+          <span class="gb-boot-row">
+            <input data-boot="seed" type="text" maxlength="120" autocomplete="off" spellcheck="false" value="town" />
+            <button type="button" data-boot="roll">Fresh seed</button>
+          </span>
+        </label>
+
+        <label class="gb-boot-field">
+          <span>Blocks across and down</span>
+          <input data-boot="blocks" type="number" min="1" max="12" step="1" value="2" />
+        </label>
+
+        <label class="gb-boot-check">
+          <input data-boot="model" type="checkbox" />
+          <span>Write the names, people and jobs with the local model</span>
+        </label>
+
+        <div class="gb-boot-buttons">
+          <button type="submit" data-boot="generate" disabled>Generate</button>
+          <button type="button" data-boot="export" disabled>Export</button>
+          <button type="button" data-boot="cancel" hidden>Cancel</button>
+          <button type="button" data-boot="close" hidden>Back to the city <kbd class="gb-boot-key">N</kbd></button>
+        </div>
+
+        <p class="gb-boot-status" data-boot="status" role="status" data-working="true">Loading the game</p>
+      </form>
+    </section>
+
     <script type="module" src="./src/main.ts"></script>
   </body>
 </html>

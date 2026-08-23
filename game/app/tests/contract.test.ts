@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { PropFootprint } from '@gb/scene'
 import { METRICS, type Interior } from '@gb/world'
 import * as THREE from 'three'
