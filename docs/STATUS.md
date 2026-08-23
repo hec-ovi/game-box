@@ -59,8 +59,8 @@ Three states, and the difference matters:
 | Inventory on `i` | verified | Items tab |
 | Windows that close, one at a time | verified | Two modals could overlap; now one window, four tabs |
 | Not awful, not 90s HTML | verified | Identity landed, iterated against three real frames |
-| A map showing locations | done | The city, the plots and the player's arrow |
-| A guide to reach a quest | done | `G`: distance along the real walk plus the compass point of its first stretch |
+| A map showing locations | verified | The city, the plots and the player's arrow; indoors the arrow sits on the building's own doorstep |
+| A guide to reach a quest | verified | `G` from inside a shop: "Endicott & Daughters: 50 m, head west" against 39 m straight line, correct bearing. A `collect` step resolves place to npc to item and pins one doorstep |
 | Journal ticks steps not yet reached | done | Though `@gb/hud`'s `QuestStep` carries only `done`, so open and not-yet-reached still look alike |
 
 ## People
@@ -103,16 +103,26 @@ Three states, and the difference matters:
 
 ## Still open
 
-- Lip sync and gestures driven by conversation
-- The city cannot grow while you play: `Forge.extend` is built, tested, and called by nobody
-- `@gb/hud`'s `QuestStep` has one boolean where the engine has three states
-- `HudIntent` has no `abandon`, though `@gb/quest` and `@gb/app` both support it
+- `@gb/hud`'s `QuestStep` has one boolean where the engine has three states (with hud)
+- `HudIntent` has no `abandon`, though `@gb/quest` and `@gb/app` both support it (with hud)
+- A conversation opens with a blank panel until the player speaks first (with talk)
 - `@gb/scene`'s spawn contract says "the first door in town" and should say "the first door that opens"
 
 ## What this list is for
 
-Eight items are **open** and none of them is covered by an agent now running:
-a drivable car with passengers, controlling time and weather, growing the city
-while playing, buildings from `glb-buildings`, the map, the route guide, the
-journal tick bug, and a face that turns to you. They are small next to what has
-landed, but they are requirements he stated and they are not done.
+Open, and who has it:
+
+- **Forge, and it is the biggest one.** A room can be cut in half by its own
+  furniture. Over 121 interiors in 15 cities: 5 put a prop on the spot 1.2 m
+  inside the street door, and 8 of 365 stationed people plus 7 of 242 items sit
+  in floor the player cannot walk to. This is what "the shopkeeper is out of
+  reach" actually was.
+- Lip sync and gestures driven by conversation.
+- The city cannot grow while you play: `Forge.extend` is built, tested, and
+  called by nobody.
+- A timed quest is an invisible real-time stopwatch, and one model reply is 8 to
+  19 s of it.
+- A TV that plays something, inside the places.
+- The premise stage: a history written first, that the city and the quests are
+  then built from.
+- The creation panel where you describe what the city and the quests are about.
