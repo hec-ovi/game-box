@@ -40,7 +40,7 @@ Two more numbers that make every city read the same at street level. At the defa
 | 1 | `world` | done, `005b8f8` |
 | 2 | `quest` | done, `3c3f0a9` |
 | 3 | `forge` | done, seeded streets and the junction fix |
-| 5 | `hud` | running |
+| 5 | `hud` | done, `d38fa8f` |
 | 6, 7, 18 | `app` | running |
 | 11 | `nav` | done, 56 s to 13 ms |
 | 15 | `scribe` | running |
@@ -55,6 +55,8 @@ Two more numbers that make every city read the same at street level. At the defa
 | 13 | `forge` | folded into 3 |
 | 14 | `scene`, `kitbash` | running |
 | 19 | repo | not started |
+| clothing | `cast` | running |
+| props and prop heights | `furnish` | running |
 
 Done outside the plan: the world lit by the sky and the shadow map enabled
 (`51bf9ae`), the page reset and the stray `e` (`1641353`), walking out of
