@@ -1,6 +1,6 @@
 # @gb/quest contract
 
-contractVersion: 0.5.0
+contractVersion: 0.6.0
 
 ## Purpose
 
@@ -36,7 +36,7 @@ Quests as flows: a checked graph of steps ("talk to her, go there, take three of
 
 ## What a step line says
 
-One shape for a step wherever the interface shows it, so the objectives panel and the journal never disagree: `stepId`, `text` (the objective line), `markerLabel` and `hint` where the step has them, `optional` on side work, `count` (`{done, needed}`, only while the step wants several) and the target below. An `Objective` is that line with `questId` and `questTitle` on it; a `JournalStep` is that line with `state` on it.
+One shape for a step wherever the interface shows it, so the objectives panel and the journal never disagree: `stepId`, `text` (the objective line), `markerLabel` and `hint` where the step has them, `optional` on side work, `count` (`{done, needed}`, only while the step wants several), `choice` on a step that asks a question, and the target below. An `Objective` is that line with `questId` and `questTitle` on it; a `JournalStep` is that line with `state` on it.
 
 ## The journal
 
@@ -63,7 +63,28 @@ A step names its target in whatever field its kind uses, and the objective carri
 | `deliver` | `npcId` (who it goes to), `itemId`, `alternates` |
 | `stash` | `place` (the interior it goes in), `anchorId`, `itemId`, `alternates` |
 | `escort` | `npcId` (who walks with you), `place` (where to) |
-| `choice`, `join`, `any-of`, `complete`, `fail` | nothing: they point at no one and nowhere |
+| `choice` | nowhere in the world, but `choice`: the question and the roads out of it, below |
+| `join`, `any-of`, `complete`, `fail` | nothing: they point at no one and nowhere |
+
+## Making a choice
+
+A `choice` is the one step the player finishes by answering a question instead of going somewhere or fetching something, so the line carries the decision itself:
+
+```ts
+objective.choice // { prompt: 'Hollis is offering more than Mara did. Whose is it?',
+                 //   options: [{ key: 'keep-word', label: 'Keep your word to Mara' },
+                 //             { key: 'sell-out',  label: 'Sell it to Hollis' }] }
+```
+
+`prompt` is the question in the quest's own words, and `options` are the roads in the order the quest wrote them: `label` is the words on the button, `key` is what comes back. Answering it is one event:
+
+```ts
+log.handle({ kind: 'chose', questId, stepId, optionId: key })
+```
+
+Where a road goes is not published. The far side of a choice is the player's to find out by taking it, so an option carries its words and its key and nothing else; `text`, `markerLabel` and `hint` on the same line are the step's own, not any option's.
+
+Only a key the step published moves it. A `chose` naming anything else changes nothing and comes back empty, the way talking about the wrong subject does, so a stale panel cannot finish a decision and leave the quest with nowhere to go. Once one is taken, everything only the other roads led to becomes `dropped`.
 
 ## Giving a quest up
 
@@ -79,6 +100,7 @@ A step names its target in whatever field its kind uses, and the objective carri
 
 - `collect`, `deliver` and `stash` take `count` (default 1) over a pool of interchangeable items: the one in `itemId` plus `alternates`. That is how "three of the five crates" is written, and each item counts once.
 - A `talk` may name a `topic`. Then only a `talked` event carrying that same topic completes it, and the objective publishes the topic so the caller knows which one to send.
+- A `choice` holds the question in `prompt` and the roads in `options` (`id`, `label`, and the `next` it routes to). The line publishes the question and the roads' words and keys, so a caller can draw the decision and send back the one that was taken.
 - Any step may be `optional` (side work: the quest finishes without it, and it may be a dead end) or `hidden` (off the board until a `reveal` effect shows it).
 - `join` waits for every branch in `waitFor`. `any-of` takes the first branch in `oneOf` to finish and drops the rest. Both name steps the flow already runs through: every branch has to be reachable from the first step, and has to have the `join` or `any-of` in its own `next`. Listing a step in `waitFor` or `oneOf` does not wire it into the flow, so a branch that only appears there is refused as unreachable.
 
@@ -121,6 +143,7 @@ Effects: `give-item`, `take-item`, `pay`, `charge`, `reputation`, `set-flag`, `c
 - A hidden step is always revealed by something; when it is required, by something that must run before it.
 - Steps that need no player action (`join`, `any-of`, `complete`, `fail`) resolve the moment they open.
 - A journal page lists a quest's steps in document order, whatever order the player did them in.
+- A secret is published nowhere: while a hidden step waits to be revealed it is off the objectives and off the journal page, question and roads included, so nothing on screen gives away that it exists.
 - A step is `dropped` exactly when the flow can no longer walk into it from an open step. Because a flow runs forward only, nothing dropped ever comes back.
 - The runtime reads the world only through `WorldView`, and touches the player only through `@gb/play`, so it runs headless with no renderer.
 - Effects are the only way a quest changes the player: nothing is applied implicitly by an event, and neither is giving up.

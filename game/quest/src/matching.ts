@@ -33,7 +33,9 @@ export function matchStep(input: {
     case 'escort':
       return event.kind === 'arrived' && samePlace(step.place, event.place) && player.isCompanion(step.npcId) ? {} : undefined
     case 'choice':
-      return event.kind === 'chose' && event.questId === questId && event.stepId === step.id ? {} : undefined
+      if (event.kind !== 'chose' || event.questId !== questId || event.stepId !== step.id) return undefined
+      // only a road the step published: anything else would finish the step and open nothing
+      return step.options.some((option) => option.id === event.optionId) ? {} : undefined
     default:
       return undefined
   }

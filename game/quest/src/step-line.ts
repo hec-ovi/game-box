@@ -1,3 +1,4 @@
+import { choiceOf, type Choice } from './choice.ts'
 import type { Progress } from './progress.ts'
 import { countOf, isOptional, type Step } from './schema.ts'
 import { targetOf, type ObjectiveTarget } from './target.ts'
@@ -18,6 +19,8 @@ export interface StepLine extends ObjectiveTarget {
   readonly optional?: boolean
   /** How far along a step that wants several things is, for a "3/5" in the interface. */
   readonly count?: { readonly done: number; readonly needed: number }
+  /** The decision to put in front of the player, on a `choice` step and nowhere else. */
+  readonly choice?: Choice
 }
 
 export function stepLine(step: Step, progress: Progress): StepLine {
@@ -28,6 +31,7 @@ export function stepLine(step: Step, progress: Progress): StepLine {
     ...(step.markerLabel ? { markerLabel: step.markerLabel } : {}),
     ...(step.hint ? { hint: step.hint } : {}),
     ...targetOf(step),
+    ...choiceOf(step),
     ...countSoFar(step, progress),
   }
 }
