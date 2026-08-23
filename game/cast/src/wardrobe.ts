@@ -6,7 +6,7 @@ import { hash01 } from './hash.ts'
 export interface WardrobeEntry {
   readonly id: string
   readonly body: BodyKind
-  /** Where the GLB sits in the pack, e.g. `characters/male-peasant.glb`. */
+  /** Where the GLB sits in the pack, e.g. `characters/male-office.glb`. */
   readonly file: string
   /** The roles this outfit suits. */
   readonly roles: readonly string[]
