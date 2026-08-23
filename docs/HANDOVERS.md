@@ -175,6 +175,19 @@ because `follow` spawned a companion without retiring the street walker.
 | 77 | `GESTURES` holds only the standing and seated talk clips | cast | A held street walker always plays `Idle_Loop` underneath, so only the standing one ever applies outdoors. Both animation packs are on disk with 85 clips between them and 16 shipped |
 | 78 | Whether cars brake for somebody standing in the road | traffic | Decides how bad a kerbside conversation looks. The crowd reads hazards and cannot slow one |
 
+## From the save
+
+`@gb/play` now carries `where`, `tracked` and `moved`. A thing put down survives
+a reload, and cannot be in a hand and on a shelf at once: `take(itemId)` forgets
+the spot, so the app cannot fail to hold the invariant up.
+
+| # | Work | Box | Detail |
+|---|---|---|---|
+| 79 | Call `player.place(itemId, { interiorId, anchorId })` on the put-down | app | The same two ids the `stashed` event already carries. It replaces the `drop` call rather than joining it: it takes the thing out of the inventory and clears its stolen mark itself |
+| 80 | Dress a room from `player.placed()` on resume, and skip the world file's own placement for any item id it names | app | `room.leave(itemId, anchorId)` is already published by `@gb/scene`, so this is app-side only. An old save returns `[]` and the world file is the fallback as before. A save naming a room this city has not got loads; recover it with `player.place(itemId, null)`, which puts the thing back where the city file had it |
+| 81 | Place everyone in `player.companions()` beside `player.where` on resume | app | The fact of companionship is saved; only the metres were missing, and those are now derivable from the player's own place. Without it a companion resumes at their post across town and either walks the city to catch up or snaps to the player on the first frame |
+| 82 | A save written while the clock is paused opens frozen forever | app | `P` pauses by setting the rate to 0, and the rate it was running at lives in app memory rather than in the save. Reload and time never moves, the sun never sets, nothing on screen says why |
+
 ## Checked and closed
 
 About fifty handovers landed and were verified in the code rather than taken on
