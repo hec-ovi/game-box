@@ -56,6 +56,18 @@ cabin than a flat.
 Common to both: light strips are architecture, floors are polished and
 reflect them, services are exposed, plants soften.
 
+The kit itself is meant to be small:
+
+> "we can have a kind of floor, a kind of wall, and some furnish, and how they
+> fit characters, some beds, desktops, tables. from there we simply randomize"
+
+So: one floor, one wall, and a short list of furniture that a body demonstrably
+fits, then seeded placement does the rest. Fitting the body is part of the
+spec, not a later polish pass, because it is the thing that has read as broken
+on screen: seats were 7 to 15 cm too low because the fit scaled a bounding box
+whose top was the backrest, and staff stand 0.60 m off a counter their lean
+clip reaches 0.10 m in front of.
+
 ## How each of these gets built
 
 > "once we have the technique, all would be adding more space and thats it,
