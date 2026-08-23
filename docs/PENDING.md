@@ -280,6 +280,42 @@ cheaper than the scan it replaced. The same trick is available here.
 
 Box: `crowd`, reading `@gb/traffic`'s published positions.
 
+### A turn is two things, and the model returns one blob (2026-08-23, found by him)
+
+A real reply from the running game:
+
+> "The grease in this pan is singing louder than anyone in that booth. Jarl is
+> polishing a glass that's already clean because he's got nothing better to do.
+> What do you want?"
+
+Two sentences of narration and one of speech, arriving as one string and drawn
+as if she said all of it out loud. His read, and it is right: **the tool should
+carry two fields, what she does and what she says.**
+
+Why it is worth more than tidiness:
+
+- **The panel can draw them differently**, so stage direction stops masquerading
+  as dialogue.
+- **`does` is what the gesture layer has been missing.** `@gb/talk` publishes
+  `answered` (yes or no), which drives a nod or a shake and nothing else. A
+  described action is something a body could actually perform, and `@gb/cast`
+  now has 28 clips and 4 gestures to perform it with.
+- **It constrains the model usefully.** Given one field, a model narrates into
+  the dialogue. Given two, the narration has somewhere to go.
+
+Shape to settle: `does` is optional (most turns are only speech), it is prose
+rather than a closed set (a closed set of actions would be the overfitting the
+owner rejected for places), and mapping prose to a clip is a separate step that
+may simply fail and play nothing. Do not let the model name clips.
+
+Note the property-order trap this project has already been bitten by twice:
+llama emits properties in schema order, so `does` before `says` means the action
+is decided before the line is written, which is the order that makes the line
+follow the action rather than the reverse.
+
+Boxes: `talk` for the tool and the event, `hud` for drawing them apart, `app`
+for handing `does` to the gesture layer.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
