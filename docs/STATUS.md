@@ -22,7 +22,7 @@ Three states, and the difference matters:
 | Pre-made animations, never procedural walking | verified | Clip library on a canonical 65-joint skeleton |
 | Barista behind a bar, people sitting | verified | Anchors with per-anchor clips |
 | NPC companions follow you | verified | 203-cell route, worst gap 3.43 m, 0 teleports |
-| **Companions ride in the car with you** | **open** | There is no drivable car at all. Traffic drives NPC cars only. |
+| Companions ride in the car with you | done | `@gb/drive`: any car on the road can be taken, companions ride in three seats and are back on the pavement when you get out |
 
 ## The city
 
@@ -36,7 +36,7 @@ Three states, and the difference matters:
 | Bounded by mountains, exit by long roads | verified | Exit corridor is a real road in the graph |
 | Water, trees, irregular ground, open horizon | verified | 6 to 7 km landscape, 5 draws |
 | Day, night, rain | verified | Clock and weather drive sky, lamps, windows |
-| **Player can control time and weather** | **open** | The clock runs; nothing exposes it |
+| Player can control time and weather | done | `T`, `K`, `P` in the controls tab |
 | Import and export a city | verified | Browser export reopens; `contentHash` matches headless |
 | Everyone replays the same world | verified | Same seed, byte-identical, model up or down |
 | **Add houses and people to empty space later** | **open** | `Forge.extend` exists and is tested. Nothing calls it. |
@@ -59,9 +59,9 @@ Three states, and the difference matters:
 | Inventory on `i` | verified | Items tab |
 | Windows that close, one at a time | verified | Two modals could overlap; now one window, four tabs |
 | Not awful, not 90s HTML | verified | Identity landed, iterated against three real frames |
-| **A map showing locations** | **open** | The tab and its props exist. The app feeds it nothing. |
-| **A guide to reach a quest** | **open** | `@gb/nav` answers routes and waypoints. Nothing consumes them. |
-| **Journal ticks steps not yet reached** | **open** | `reporting.ts:72` uses `done: !open.has(step.id)`, so every unreached step reads done |
+| A map showing locations | done | The city, the plots and the player's arrow |
+| A guide to reach a quest | done | `G`: distance along the real walk plus the compass point of its first stretch |
+| Journal ticks steps not yet reached | done | Though `@gb/hud`'s `QuestStep` carries only `done`, so open and not-yet-reached still look alike |
 
 ## People
 
@@ -69,7 +69,7 @@ Three states, and the difference matters:
 |---|---|---|
 | Clothes not medieval | in flight | No CC0 modern wardrobe exists on our rig; recutting what we own |
 | Hair and hair colour variety | in flight | Same agent |
-| **Face turns to you when clicked** | **open** | `member.lookAt(point)` exists in `@gb/cast`. The app never calls it. |
+| Face turns to you when talked to | done | The body stops, turns, and the head leads it |
 | **Lip sync, gestures, drinking** | **open** | Gestures exist in the box; nothing drives them from conversation |
 
 ## Look
@@ -100,6 +100,14 @@ Three states, and the difference matters:
 | No yellow road markings | verified fixed |
 | Boots still read medieval | in flight |
 | Red brick and white concrete, too light | in flight |
+
+## Still open
+
+- Lip sync and gestures driven by conversation
+- The city cannot grow while you play: `Forge.extend` is built, tested, and called by nobody
+- `@gb/hud`'s `QuestStep` has one boolean where the engine has three states
+- `HudIntent` has no `abandon`, though `@gb/quest` and `@gb/app` both support it
+- `@gb/scene`'s spawn contract says "the first door in town" and should say "the first door that opens"
 
 ## What this list is for
 
