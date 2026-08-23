@@ -1,6 +1,6 @@
 # @gb/land contract
 
-contractVersion: 0.4.0
+contractVersion: 0.5.0
 
 ## Purpose
 
@@ -33,8 +33,8 @@ Builds the world the city stands in and the sky over it: kilometres of open, rol
 | `Land.terrain` | one `THREE.Mesh` named `land:terrain` | indexed, welded, vertex-coloured, every face looking up |
 | `Land.water` | one `THREE.Mesh` named `land:water`, or undefined | every pond, each drawn out to its own shoreline |
 | `Land.trees` | one `THREE.InstancedMesh` per species, `land:trees:<species>` | each tree standing on the ground at its position |
-| `Land.sky` | the skydome, named `land:sky` | Preetham daylight with clouds, centred on the camera, drawn first and never into the depth buffer |
-| `Land.stars` | `THREE.Points` named `land:stars` | 1,200 stars on a sphere around the camera, a handful bright and most of them faint, faded out before the sun reaches the horizon; the moon beside them is the sprite `land:moon-disc` |
+| `Land.sky` | the skydome, named `land:sky` | Preetham daylight with clouds by day and the galaxy, its dust and the city's glow after dark, all in one draw, centred on the camera, drawn first and never into the depth buffer |
+| `Land.stars` | `THREE.Points` named `land:stars` | 1,200 stars on a sphere around the camera, over half of them lying along the galaxy's band the dome paints behind them, a handful bright and most of them faint, a few amber and the rest blue-white, faded out before the sun reaches the horizon; the moon beside them is the sprite `land:moon-disc` |
 | `Land.sun`, `Land.moon`, `Land.skyLight` | two directional lights and a hemisphere light | the sun and the moon on opposite ends of the same arc, and the sky filling in behind them |
 | `Land.sun.castShadow` | true | the sun is the one thing in the game that casts. Its map follows the viewer `update` is given |
 | `Land.shadow` | a `SunShadow`: `spec` and `texel` | how much ground the map covers, how many pixels it has, and the metres one of them covers |
@@ -59,7 +59,7 @@ Builds the world the city stands in and the sky over it: kilometres of open, rol
 
 - `@gb/world` contract: the grid, `CELL`, `cellSize` and the world's theme and seed.
 - `@gb/kit` contract: `Rng` for determinism, `Result` for the answer.
-- `three`, and `three/addons/objects/SkyMesh.js` for the sky.
+- `three`, `three/addons/objects/SkyMesh.js` for the sky and `three/tsl` for the night it wears.
 
 ## Invariants
 
@@ -82,10 +82,13 @@ Builds the world the city stands in and the sky over it: kilometres of open, rol
 - The night sky is depth-correct. The stars and the moon are geometry at a real distance and they read the depth buffer like anything else, so a wall, a tree or someone standing in front of them hides them, and the moon comes up from behind the hills rather than over them. The skydome is the one object that ignores depth, and it may: it is a background, it draws before everything and it writes nothing back.
 - The sky rides with the camera. The dome, the stars and the moon are centred on the last viewer `update` was given, in all three axes, because a sky is at infinity and the observer stands in the middle of it. Constellations hold their bearings across a six kilometre walk and the horizon stays at eye level up a hill, and the sky costs the far plane the same thing wherever the player is. The dome is scaled by its own diagonal, so its eight corners land on the reach rather than 1.73 times past it; the stars sit at 0.96 of the reach and the moon at 0.92. The two lights stay on the town, because a directional light is a direction and its position says nothing.
 - The far plane is set by the air, not by the size of the map. `FogExp2` leaves `exp(-(density * metres)^2)` of a surface, and `cameraFar` is the distance where that is a hundredth: less than one step of colour, so nothing it cuts can be seen. 6.7 km on the temperate theme, 9.8 km in the clear desert air of the arid one, 3.9 km in maritime haze. The sky is hung just inside it, which is what puts the moon behind the last ridge you can still make out.
+- The night sky is painted, never downloaded, and it rides on the dome rather than on an object of its own. A 384 by 192 equirectangular sheet carries the galaxy, its dust lanes and the grain of the stars too faint to draw one at a time in its colour, and the city's glow in its alpha; the dome reads it by the direction being looked at and adds it to the Preetham sky, so the whole night sky costs the frame one texture read and no extra draw. Both fade with the hour, on different schedules: cloud puts the galaxy out and makes the glow stronger, because an overcast night over a town is brighter than a clear one. What colour the glow is belongs to the theme, not to the sheet: sodium at the rooftops going cold as it thins out overhead.
+- The sheet is seamless because it is a function of the direction, not a picture. Every texel is `f(dir)` through noise built over the sphere, so the two edges are the same direction and agree, and every texel of the top row is straight up. That is the whole reason it is painted here rather than generated as an image: an equirectangular sky from an image model has to be cut to wrap and pinched at the poles, and both show. It carries no mip chain either, because nothing on it is finer than three texels, which also removes the seam a mip picks where the wrap makes the texture coordinate jump a whole turn.
+- The glow dies below the horizon as well as above it. Nothing under the horizon is ever seen, and a lower half left glowing would light the whole scene from underneath through the prefiltered dome.
 - The moon is generated, never downloaded: maria, a limb that darkens towards the edge, a faint halo and a phase, painted once from the seed into a 128 px texture carried on two triangles that face the camera. The phase belongs to the world, not to the hour, because this box is handed a time of day and no date.
 - Night is dim, not black. Moonlight plus a lifted blue ambient leaves it about five times darker than noon (5.3 light units at noon against 1.1 at midnight, on the temperate theme). Cloud takes less off the moon than off the sun, so a wet night stays walkable.
 - Rain is a box of streaks that travels with the viewer. Drops keep world positions and wrap when they leave the box, so walking moves you through the rain instead of dragging it along, and no drop is ever drawn outside the volume.
-- Same seed, same landscape, always. Every random choice comes from a `@gb/kit` `Rng` forked per feature (`relief`, `scatter`, `water`, `trees`, `stars`, `rain`), so retuning the woods cannot move the hills. The moon forks again under `stars`, so retuning it cannot move them either.
+- Same seed, same landscape, always. Every random choice comes from a `@gb/kit` `Rng` forked per feature (`relief`, `scatter`, `water`, `trees`, `stars`, `rain`), so retuning the woods cannot move the hills. Under `stars` the moon forks again, and so does `galaxy`, which decides where the band lies and paints the sheet: the band and the stars strung along it agree, and retuning either cannot move the other.
 - This box holds no clock. It remembers the last time and weather it was told and renders them; whoever owns the clock calls `setTime`.
 - Objects only. No renderer, no camera, no frame loop, which is why the whole box is tested in Node with no canvas.
 - The sky is a node material, which is what `WebGPURenderer` needs and what its WebGL2 backend compiles for itself. Everything else is ordinary three.js: mesh, instanced mesh, points and line segments, which render the same on both backends. Rain is stepped on the CPU for the same reason.
@@ -100,7 +103,7 @@ Measured on three towns, at the default detail:
 | 89x89 cells, arid | 159,568 tris | 2,200 trees, 61,600 tris | 2 | 5 | 75 ms |
 | 51x51 cells, maritime | 131,990 tris | 4,000 trees, 93,400 tris | 7 | 5 | 78 ms |
 
-The land is 6 to 7 km across and it is still five draws: the terrain, the water, the sky and one instanced mesh per tree species. Night adds two (1,200 stars in one `Points` draw and a two triangle moon sprite carrying a 64 KB face it paints at build time), rain adds one. The sun's shadow map redraws the woods and nothing else of the landscape: one or two draws, 60,000 to 93,000 triangles, `cost.shadowDraws`.
+The land is 6 to 7 km across and it is still five draws: the terrain, the water, the sky and one instanced mesh per tree species. Night adds two (1,200 stars in one `Points` draw and a two triangle moon sprite carrying a 64 KB face it paints at build time), rain adds one. The galaxy and the city's glow add none: they are a 288 KB sheet read inside the dome's own draw, painted once at build for a fixed 25 ms whatever the size of the town. The sun's shadow map redraws the woods and nothing else of the landscape: one or two draws, 60,000 to 93,000 triangles, `cost.shadowDraws`.
 
 Ground resolution is 6 m quads for the first half kilometre out of town, 24 m to about 1.8 km, then 96 m to the horizon. `detail: 'low'` doubles all three, which is a quarter of the geometry (35,300 tris) and a 28 ms build.
 
@@ -165,7 +168,7 @@ Wet ground is not this box: `land.wetness` is published for whoever owns the str
 
 A theme is one record in `src/theme.ts` and nothing else. Copy an existing one, give it an id and the words that should pick it out of a world's theme text, then set:
 
-- `sky`: how high the sun stands at midday (which is what makes a place northern or southern), the four Preetham numbers, and how much cloud there is in clear weather.
+- `sky`: how high the sun stands at midday (which is what makes a place northern or southern), the four Preetham numbers, how much cloud there is in clear weather, and the night sky: how bright the galaxy is, how much light the city throws back up at the horizon, and the two colours that glow runs through. Dry clear air wants a strong galaxy and a weak glow; sea haze the other way round.
 - `light`: sun colour high and low, moon colour and strength, sky and bounce colours and ambient strength by day and again at night, the haze colour by day and at night, and how thick the air is per metre. The night numbers are where you tune how dark night gets.
 - `relief`: metres, measured outward from the built area. How far the open ground runs and the little it lifts across it, then where the ring climbs, how high, how wide its top is, how far it takes to come down and what it settles to. Then three sizes of rolling laid over all of it, each an amplitude and a wavelength: keep the amplitude under about a twentieth of the wavelength or the open ground stops being walkable.
 - `ground`: the colours the terrain is painted with, and the heights and the slope they change at.

@@ -21,6 +21,12 @@ export interface LandTheme {
     readonly cloudDensity: number
     readonly cloudScale: number
     readonly cloudElevation: number
+    /** How bright the galaxy is painted on the night sky, and how much light the city throws back up at the horizon. */
+    readonly milkyWay: number
+    readonly cityGlow: number
+    /** The two colours that glow runs through: the sodium at the rooftops, and the cast it leaves higher up. */
+    readonly glowLow: number
+    readonly glowHigh: number
   }
 
   readonly light: {
@@ -126,6 +132,10 @@ const TEMPERATE: LandTheme = {
     cloudDensity: 0.45,
     cloudScale: 0.00018,
     cloudElevation: 0.5,
+    milkyWay: 1,
+    cityGlow: 1,
+    glowLow: 0xff9a6a,
+    glowHigh: 0x2a7f9c,
   },
   light: {
     sun: 0xfff1d8,
@@ -204,6 +214,10 @@ const ARID: LandTheme = {
     cloudDensity: 0.25,
     cloudScale: 0.00012,
     cloudElevation: 0.7,
+    milkyWay: 1.35,
+    cityGlow: 0.6,
+    glowLow: 0xffb184,
+    glowHigh: 0x2a5f86,
   },
   light: {
     sun: 0xffe9bd,
@@ -282,6 +296,10 @@ const MARITIME: LandTheme = {
     cloudDensity: 0.8,
     cloudScale: 0.00026,
     cloudElevation: 0.35,
+    milkyWay: 0.5,
+    cityGlow: 1.25,
+    glowLow: 0xffb894,
+    glowHigh: 0x3b7b92,
   },
   light: {
     sun: 0xcfd8e0,

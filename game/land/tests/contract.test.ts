@@ -636,6 +636,66 @@ describe('time of day', () => {
     expect(position.version).toBe(version)
     expect(land.trees.map((wood) => wood.geometry)).toEqual(trees)
   })
+
+  it('moves without a single step you could see, all the way round the clock', async () => {
+    const land = landOf(await town())
+    const sunward = new THREE.Vector3()
+    const moonward = new THREE.Vector3()
+    const disc = land.root.getObjectByName('land:moon-disc')!
+    const moonDisc = new THREE.Vector3()
+
+    // the playthrough's default rate is 240 game seconds a real second, so an
+    // hour passes in fifteen; at 60 frames a second that is this much of an
+    // hour a frame. Anything the sky steps by between two of these is a snap
+    // somebody watching a sunset will see.
+    const FRAME = 1 / 900
+    const reading = (hours: number) => {
+      land.setTime(hours)
+      return {
+        sun: sunward.copy(land.sun.position).sub(land.sun.target.position).normalize().clone(),
+        moon: moonward.copy(land.moon.position).sub(land.moon.target.position).normalize().clone(),
+        disc: moonDisc.copy(disc.position).normalize().clone(),
+        sunLight: land.sun.intensity,
+        moonLight: land.moon.intensity,
+        ambient: land.skyLight.intensity,
+        haze: land.fog.color.clone(),
+        density: land.fog.density,
+        // the painted galaxy and the city's glow fade on this same number, so
+        // holding it steady holds them
+        night: (land.stars.material as THREE.PointsMaterial).opacity,
+      }
+    }
+
+    let previous = reading(0)
+    const worst = { sun: 0, moon: 0, disc: 0, sunLight: 0, moonLight: 0, ambient: 0, haze: 0, density: 0, night: 0 }
+    for (let hours = FRAME; hours <= 24; hours += FRAME) {
+      const now = reading(hours)
+      worst.sun = Math.max(worst.sun, THREE.MathUtils.radToDeg(previous.sun.angleTo(now.sun)))
+      worst.moon = Math.max(worst.moon, THREE.MathUtils.radToDeg(previous.moon.angleTo(now.moon)))
+      worst.disc = Math.max(worst.disc, THREE.MathUtils.radToDeg(previous.disc.angleTo(now.disc)))
+      worst.sunLight = Math.max(worst.sunLight, Math.abs(now.sunLight - previous.sunLight))
+      worst.moonLight = Math.max(worst.moonLight, Math.abs(now.moonLight - previous.moonLight))
+      worst.ambient = Math.max(worst.ambient, Math.abs(now.ambient - previous.ambient))
+      worst.density = Math.max(worst.density, Math.abs(now.density - previous.density))
+      worst.night = Math.max(worst.night, Math.abs(now.night - previous.night))
+      for (const channel of ['r', 'g', 'b'] as const) {
+        worst.haze = Math.max(worst.haze, Math.abs(now.haze[channel] - previous.haze[channel]))
+      }
+      previous = now
+    }
+
+    // a twentieth of a degree of sky a frame, which is a tenth of the sun's own
+    // width, and a hundredth of a light unit
+    expect(worst.sun).toBeLessThan(0.05)
+    expect(worst.moon).toBeLessThan(0.05)
+    expect(worst.disc).toBeLessThan(0.05)
+    expect(worst.sunLight).toBeLessThan(0.01)
+    expect(worst.moonLight).toBeLessThan(0.01)
+    expect(worst.ambient).toBeLessThan(0.01)
+    expect(worst.haze).toBeLessThan(0.005)
+    expect(worst.density).toBeLessThan(1e-6)
+    expect(worst.night).toBeLessThan(0.005)
+  })
 })
 
 describe('weather', () => {

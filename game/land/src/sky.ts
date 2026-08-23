@@ -1,8 +1,10 @@
 import type { Rng } from '@gb/kit'
 import * as THREE from 'three'
 import { SkyMesh } from 'three/addons/objects/SkyMesh.js'
+import { acos, atan, cameraPosition, clamp, Fn, mix, normalize, positionWorld, smoothstep, texture, uniform, vec2, vec4 } from 'three/tsl'
 import { smoothstep01 } from './height.ts'
 import { buildMoon } from './moon.ts'
+import { galacticPole, paintNightSky } from './nightsky.ts'
 import { SunShadow, type ShadowSpec } from './shadow.ts'
 import { buildStars } from './stars.ts'
 import type { LandTheme } from './theme.ts'
@@ -21,6 +23,17 @@ const DOME = 0.98
 /** The grey a storm pulls the haze and the light towards. */
 const STORM = new THREE.Color(0x8b96a0)
 const COLD = new THREE.Color(0xb9c7d4)
+
+/**
+ * Sky radiance the galaxy and the city's glow are worth at their strongest.
+ *
+ * Both are added to the Preetham sky, whose own night term is about 0.004, and
+ * both are read through the tone map at the exposure the app holds the dark at.
+ */
+const STARLIGHT = 0.32
+const CITYLIGHT = 0.22
+/** How high the city's glow has taken the sky's colour by, as a sine of the angle. */
+const GLOW_HEIGHT = 0.22
 
 /**
  * Sky, sun, moon and haze, driven by a time of day and a weather.
@@ -57,6 +70,9 @@ export class Atmosphere {
   readonly #moonward = new THREE.Vector3()
   readonly #moonReach: number
   readonly #shadow: SunShadow
+  /** How much of the painted night sky is showing: the galaxy, and the city's glow under it. */
+  readonly #starlight = uniform(0)
+  readonly #cityLight = uniform(0)
   readonly #warm: THREE.Color
   readonly #day: { sun: THREE.Color; sky: THREE.Color; bounce: THREE.Color; haze: THREE.Color }
   readonly #night: { sky: THREE.Color; bounce: THREE.Color; haze: THREE.Color }
@@ -98,7 +114,13 @@ export class Atmosphere {
     this.sky.cloudScale.value = theme.sky.cloudScale
     this.sky.cloudElevation.value = theme.sky.cloudElevation
 
-    this.stars = buildStars(radius * 0.96, rng)
+    // the galaxy's own fork, so the sheet and the points that lie along it
+    // agree without either one drawing from where the stars are placed
+    const galaxy = rng.fork('galaxy')
+    const pole = galacticPole(galaxy)
+    this.#wearNightSky(paintNightSky(pole, galaxy))
+
+    this.stars = buildStars(radius * 0.96, pole, rng)
     this.stars.position.copy(this.#eye)
     this.#moonReach = radius * 0.92
     // forked after the stars are hung, so retuning the moon cannot move them
@@ -212,11 +234,44 @@ export class Atmosphere {
     this.fog.density = theme.light.density * look.fog * (1.25 - 0.25 * day)
 
     // stars go out as the sun comes up to the horizon, before the sky itself brightens
-    const showNight = (1 - smoothstep01((this.#sunward.y + 0.22) / 0.24)) * (1 - cloud * 0.85)
+    const dark = 1 - smoothstep01((this.#sunward.y + 0.22) / 0.24)
+    const showNight = dark * (1 - cloud * 0.85)
+    this.#starlight.value = STARLIGHT * showNight * theme.sky.milkyWay
+    // cloud hides the galaxy and reflects the city, so the glow goes the other
+    // way: an overcast night over a town is brighter than a clear one
+    this.#cityLight.value = CITYLIGHT * dark * theme.sky.cityGlow * (1 + cloud * 1.1)
     this.stars.rotation.y = (this.#time / 24) * Math.PI * 2
     setFade(this.stars.material as THREE.PointsMaterial, showNight, this.stars)
     this.moonDisc.position.copy(this.#moonward).multiplyScalar(this.#moonReach).add(this.#eye)
     setFade(this.moonDisc.material, showNight, this.moonDisc)
+  }
+
+  /**
+   * Hang the painted night sky on the dome itself rather than on an object of
+   * its own: it rides in the draw and the shader that are already there, so the
+   * galaxy and the city's glow cost the frame a texture read and nothing else,
+   * and the environment prefiltered off this dome finally has something in it
+   * after dark.
+   *
+   * The sheet is read by the direction being looked at, the same direction the
+   * Preetham sky underneath is a function of.
+   */
+  #wearNightSky(painted: THREE.DataTexture): void {
+    const material = this.sky.material
+    // SkyMesh's own shader: the daylight sky and its cloud, which it hands out
+    // as a `vec4` its declared type is too wide to say
+    const daylight = material.colorNode as unknown as ReturnType<typeof vec4>
+    const low = uniform(new THREE.Color(this.#theme.sky.glowLow))
+    const high = uniform(new THREE.Color(this.#theme.sky.glowHigh))
+    material.colorNode = Fn(() => {
+      const look = normalize(positionWorld.sub(cameraPosition))
+      const u = atan(look.z, look.x).mul(1 / (Math.PI * 2)).add(0.5)
+      const v = acos(clamp(look.y, -1, 1)).mul(1 / Math.PI)
+      const night = texture(painted, vec2(u, v))
+      // sodium at the rooftops going cold as it thins out overhead
+      const glow = mix(low, high, smoothstep(0, GLOW_HEIGHT, look.y)).mul(night.a).mul(this.#cityLight)
+      return vec4(daylight.rgb.add(night.rgb.mul(this.#starlight)).add(glow), 1)
+    })()
   }
 }
 
