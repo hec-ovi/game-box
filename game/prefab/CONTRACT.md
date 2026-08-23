@@ -1,10 +1,10 @@
 # @gb/prefab contract
 
-contractVersion: 0.3.0
+contractVersion: 0.4.0
 
 ## Purpose
 
-Dresses a plot with a whole building out of one committed pack: the footprint it was given, the height its storeys ask for, its entrance on the wall the door faces, and a front that reads as the kind of place it is. Its windows are cut out of the wall in the shader and look into photographed rooms that light up after dark, and the commercial fronts carry lit screens over the street. Every building in the city is drawn with one material, so a town of any size is one draw.
+Dresses a plot with the whole building its world file names, out of one committed pack, and picks one when the file names none: the footprint it was given, the height its storeys ask for, its entrance on the wall the door faces, lit if you can walk in, and a front that reads as the kind of place it is. Its windows are cut out of the wall in the shader and look into photographed rooms that light up after dark, and the commercial fronts carry lit screens over the street. Every building in the city is drawn with one material, so a town of any size is one draw.
 
 ## Inputs
 
@@ -18,7 +18,9 @@ Dresses a plot with a whole building out of one committed pack: the footprint it
 | `new WallScreens(screens, finishes)` | the screen strip as a `DataArrayTexture`, the same list of finishes | |
 | `windowsOn(finish)`, `glassShareOf(kind)` | a finish name, a `WindowKind` | |
 | `Catalogue.parse(value)` | [pack/buildings.json](pack/buildings.json) | any untrusted JSON |
+| `Catalogue.read(manifest)` | the same file's own bytes | any untrusted bytes. The hash it takes of them is the pack's identity |
 | `catalogue.design(plot, size)` | as `building` | |
+| `designFor(catalogue, plot, size)` | a `Catalogue` and as `building` | |
 | `catalogue.covers(demand)` | any list of `Bucket`s | |
 | `bucketOf(plot, size)` | as `building` | |
 | `orient(geometry, turns, mirror, rooms?)` | a pack geometry, 0 to 3 quarter turns, whole pictures to slide the rooms along | |
@@ -27,12 +29,14 @@ Dresses a plot with a whole building out of one committed pack: the footprint it
 
 | Param | Schema | Postconditions |
 |---|---|---|
-| `building(plot, size)` | `THREE.Object3D` | origin at the centre of its base, facing north unturned; one mesh on the one prefab material, plus the signs the dressing behind would have hung. A plot the catalogue has no shape for comes back from `rest` untouched |
+| `building(plot, size)` | `THREE.Object3D` | origin at the centre of its base, facing north unturned; one mesh on the one prefab material, plus the signs the dressing behind would have hung. The model is the one `plot.design` names, or the pick when it names none, and a plot with an interior wears the entrance you can walk through. A plot the catalogue has no shape for, and a pin this pack cannot honour, come back from `rest` untouched |
 | `loadPrefab(night)` | `Library` | the pack, checked against its own manifest |
 | `Library.geometry(id)` | `THREE.BufferGeometry` | the model in its own frame, door on the south wall, one metre to one unit |
 | `Library.material` | `THREE.Material` | the single material every prefab building in the city is drawn with, named `MATERIAL_NAME` |
 | `Catalogue.models` | `ModelSpec[]` | every model in the pack, sorted by id |
-| `catalogue.design(plot, size)` | `{ model, mirror, rooms }`, or undefined | which building this plot gets, which way round, and where along the wall its rooms start. Undefined means the catalogue has nothing this shape |
+| `catalogue.design(plot, size)` | `{ model, mirror, rooms }`, or undefined | which building this plot gets, which way round, and where along the wall its rooms start. Undefined means the catalogue has nothing this shape. This is the pick, which is what a world file records |
+| `designFor(catalogue, plot, size)` | the same | what the plot is actually drawn with: `plot.design` if it carries one, the pick if not, undefined if the pin cannot be honoured |
+| `catalogue.identity` | a `@gb/world` `AssetPackRef` | pack, version, and the sha256 of the manifest, for the `world.catalogues()` a city is pinned against. No hash when the catalogue came from a parsed value rather than bytes |
 | `catalogue.bucket(bucket)` | `ModelSpec[]` | every model of that shape, in id order |
 | `catalogue.covers(demand)` | `{ ok: true }` or `{ ok: false, missing }` | which shapes the catalogue has no building for |
 | `catalogue.kindsCovered()` | `BuildingKind[]` | every trade some look claims |
@@ -43,6 +47,8 @@ Dresses a plot with a whole building out of one committed pack: the footprint it
 | `turnsFor(facing)` | 0 to 3 | quarter turns that put a south door on that wall |
 | `prefabMaterial(atlas, night)` | `THREE.Material` | the material, for anyone building a library by hand |
 | `SCREEN`, `SCREEN_PICTURES`, `SCREEN_SIZE`, `DISPLAY_FINISH` | how a screen is built, the pictures it draws from, their size, and the finish a panel wears | |
+| `DOOR_FINISH`, `OPEN_DOOR_FINISH` | two finish names | the entrance of a building nobody can walk into, and of one you can |
+| `PACK_MANIFEST` | a URL | the committed manifest, for a headless caller that needs the pack's identity without a renderer |
 | `PROUD`, `HEIGHT_TOLERANCE`, `GLOW`, `LAYER_ATTRIBUTE`, `MATERIAL_NAME` | metres, a multiplier and two names | how far trim may reach past the plot, how exact a wall has to be, how hard a lit face burns, and the two names the pack is written with |
 
 ## Errors (closed set)
@@ -57,7 +63,7 @@ A plot the catalogue has no shape for is not an error: `building` hands it to th
 
 - `@gb/scene` contract: the `Dressing` seam this implements, and `storeyHeight`.
 - `@gb/kitbash` contract: `CityNight`, so one clock lights the prefabs and the kit together, and `SIGN`, which names the material every sign in the city is drawn with.
-- `@gb/world` contract: `Plot`, `BUILDING_KINDS`.
+- `@gb/world` contract: `Plot`, `BUILDING_KINDS`, `AssetPackRef` and `PlotDesign` (the pin a plot carries), and `plot.interiorId`, which is exactly the set of doors that open.
 - `@gb/kit` contract: `Rng` for the pick, `contract` for the manifest.
 - `three`, `three/webgpu` and `three/tsl`: the building material is a node material, which is what `WebGPURenderer` needs and what its WebGL2 backend compiles for itself.
 - The art: [pack/](pack/), built offline from the looks in [looks/](looks/) by `tools/build-buildings.ts` through the repo owner's own `glb-buildings` CLI (MIT). The producer is not a dependency of the game: it is shelled out to from `tools/`, and nothing it uses reaches the runtime.
@@ -67,14 +73,44 @@ A plot the catalogue has no shape for is not an error: `building` hands it to th
 Six committed files, and they are the whole art supply.
 
 - `pack/buildings.glb`, 3.1 MB: 512 models, one mesh each, all on one material, welded, quantized and meshopt-packed.
-- `pack/buildings-colour.png` and `pack/buildings-emissive.png`, 222 kB and 5 kB: fifteen 256 px layers stacked into a strip each, the surface a face is painted and the part of it that glows.
-- `pack/buildings-rooms.png`, 319 kB: twelve 256 px rooms in the same shape, the pictures every window in the city looks into.
-- `pack/buildings-screens.png`, 57 kB: six 256 px pictures in the same shape, what the lit panels on the walls carry.
-- `pack/buildings.json`, 159 kB: the manifest. Pack id, version, the producer commit, the sha256 of all five binaries, what each atlas layer paints, and one entry per model: its shape, the trades it suits, its triangle count and where its door is.
+- `pack/buildings-colour.png` and `pack/buildings-emissive.png`, 300 kB and 11 kB: sixteen 256 px layers stacked into a strip each, the surface a face is painted and the part of it that glows.
+- `pack/buildings-rooms.png`, 558 kB: twelve 256 px rooms in the same shape, the pictures every window in the city looks into.
+- `pack/buildings-screens.png`, 315 kB: six 256 px pictures in the same shape, what the lit panels on the walls carry.
+- `pack/buildings.json`, 159 kB: the manifest. Pack id, version, the producer commit, the sha256 of all five binaries, what each atlas layer paints, and one entry per model: its shape, the trades it suits, its triangle count and where its door is. Its own sha256, taken over these bytes, is the pack's identity, and it covers the other five through the hashes it lists.
 
 A strip's rows already sit in the order an array texture wants them, so the runtime decodes one image and hands the bytes straight to the GPU with no copying in between.
 
+Every picture is stored losslessly. sharp turns palette quantisation on the moment `effort` is set, and a palette is 256 colours for a whole strip, so adding one finish re-quantised every other finish and moved the pixels of every wall in the city. It costs about half a megabyte of download over the whole pack and nothing on the GPU, where a layer is uncompressed whatever the file was.
+
 It is bytes, not a recipe. Rebuilding it on another machine is a new version, never a no-op, because the producer and its dependencies decide the exact numbers; on one machine it is byte for byte reproducible, and the build tool proves that by hashing what it wrote.
+
+## What a world file names, and what this box picks
+
+A city is generated once and added to later, and everything in it that was there
+before has to come back the same. The catalogue lives in code, so the pick is a
+function of the pack: grow the pack and the same plot gets a different building.
+That is what a `plot.design` is for.
+
+- **A plot with a `design` is drawn from it and nothing else.** `design.model`,
+  `design.mirror` and `design.rooms` are read straight out of the world file.
+  Nothing is picked, no `Rng` is touched, and the shape of the plot is not even
+  consulted. Same file, same street, in this version of the art and every later
+  one.
+- **A plot without one is picked for, exactly as before.** That is every city
+  exported before the pin existed, and they render as they always did.
+- **A pin this pack cannot honour falls back to the dressing behind.** Three
+  ways it happens: `design.pack` names a catalogue that is not this one, the
+  pack has been grown and no longer holds that model, or the shape is not one
+  this catalogue covers. All three draw a kit building, and none of them picks
+  a different prefab. A kit building on a prefab street reads as a fallback; a
+  quietly substituted model reads as the city the file describes, which is the
+  failure worth being loud about.
+
+Writing the pin is the job of whoever holds both the world and the catalogue,
+because the generator never sees the art. It is two calls: `catalogue.identity`
+into `world.recordCatalogues`, then `catalogue.design(plot, size)` into
+`world.recordDesign` for every plot, in that order, since a design has to name
+a catalogue the city has already recorded.
 
 ## What a wall wears
 
@@ -111,7 +147,8 @@ A door is the surface a player stands closest to, and since only about one build
 - **It is symmetric on purpose.** Half the plots in a city draw their model mirrored, and a single leaf with its handle on one side would swap hands with the building. A pair reads the same both ways round. It also covers the range the looks ask for, 1.4 m to 2.6 m wide, where one leaf at the top of that range is a cupboard door.
 - **The lobby is what you see.** The glazing ramps from dark at the head to lit at the sill, so the light reads as coming from inside rather than painted on. Everything else on the leaf is dark against it: a pull is a bar in silhouette, which is what a pull is at night.
 - **The reveals wear the frame.** The producer wraps the leftmost twenty-fifth of the picture round the four edges of the plate, so the frame is drawn wider than that and an edge comes out frame-coloured rather than carrying a slice of glass.
-- **Nothing on it says whether it opens.** The pack is baked before the forge exists, so it cannot know. Making an openable door read differently needs one flag from `@gb/forge`: a `plot.opens` on `@gb/world`'s `Plot`, set in the same pass that decides which plots get interiors. With it this box would carry a second door layer (0.7 MB) and pick between the two in `orient`, which already rewrites a copy of the geometry per plot, so the choice would cost nothing beyond the layer.
+- **The door you can use has its lights on.** The pack carries the entrance twice, on two layers: the same frame, the same leaves, the same pulls, with the lobby a lit warm surface rather than dark glass, the fanlight and the threshold burning about three times as hard, and the reader's three marks green instead of cool white. Most of the city does not open, so what has to carry from across the street is light on the pavement, and it has to carry by day as well, when nothing in the city glows, which is why the lit lobby is a lighter surface and not only a stronger glow.
+- **Which one a building wears comes from `@gb/world` and nowhere else.** `plot.interiorId` is exactly the set of doors that open, checked in both directions by that box, so there is no second field to disagree with. The dressing moves the plot's door faces onto the lit layer on the copy of the geometry `orient` has already made for it: no geometry, no draw, no second material, and a plot without an interior is untouched. Nothing is ever baked onto the lit layer, so growing the pack cannot put a lobby light on a building that has no way in.
 
 ## The screens on the walls
 
@@ -154,9 +191,12 @@ Run it with `node tools/build-buildings.ts`. It needs `glb-buildings` beside the
 
 - One world unit is one metre. A model is baked at its plot's exact footprint and height and is never scaled, so its windows are the size they were drawn.
 - A building is exactly as tall as the city says its plot is. Only lit trim reaches past that, and only by `PROUD` (0.2 m): a neon tube and the bracket it stands on, sideways at the shopfront and upwards at the parapet. Plots in a block abut, so a building already shares its relief with the one next door; `@gb/kitbash` reaches 5 cm with its window trim and 8 cm with a flat sign, and this is the same arrangement one step louder. Nothing hangs out over the street the way a kit blade sign does.
-- **Same seed, same city, forever, whether or not a model is running.** The pick is a pure function of the plot and the committed pack: an `Rng` on the plot's own id, kind and style, forked per feature, drawing from no shared stream. Nothing on this path but the world file, the pack and three.js. Not the language model, not the sidecar, not the producer, not `@gltf-transform`.
+- **Same seed, same city, forever, whether or not a model is running.** The pick is a pure function of the plot and the committed pack: an `Rng` on the plot's own id, kind and style, forked per feature, drawing from no shared stream, so dressing one plot can never move another. Nothing on this path but the world file, the pack and three.js. Not the language model, not the sidecar, not the producer, not `@gltf-transform`.
 - The pick chooses from members sorted by id, so what order the manifest happens to list them in can never reach a street.
-- Growing the catalogue re-skins the buildings in the shapes it touches. The pack carries a version and a hash and is committed, which is what makes that a reviewed change rather than a surprise. A world file names nothing here, so nothing in a shared file can disagree with what it draws.
+- **A pinned plot is drawn from its pin, and growing the catalogue moves nothing.** `plot.design` is read, never re-derived: no pick, no `Rng`, no look at the plot's shape. A city pinned against one version of the pack draws the same 123 buildings against a pack with a whole new look in it, where picking again moves 53 of them. A plot with no pin is picked for exactly as before, so every city exported before the pin renders as it always did.
+- **A pin that cannot be honoured falls back; it never picks again.** Another pack's name, a model this copy no longer holds, or a shape the catalogue does not cover all hand the plot to the dressing behind. A kit building on a prefab street reads as a fallback, and a substituted prefab reads as the city the file describes, which is the failure worth being loud about.
+- **What a pack is called is a fact about its bytes.** `catalogue.identity` is the pack name, its version and the sha256 of the manifest as read, so a reader comparing packs is comparing what it actually loaded. The manifest names the hash of all five binaries, so that one string covers the whole pack.
+- Every picture the pack ships is stored losslessly, so adding a finish leaves every other finish pixel for pixel where it was. A palette is shared by the whole strip, and a shared palette makes one new door a change to every wall in the city.
 - Every model declares which trades it suits, and the pick filters on that before it draws. Where nothing in a shape claims the trade, the whole shape answers, so coverage stays provable and a chapel is never left bare.
 - The catalogue covers every shape the forge can cut up to four storeys: four street frontages by four depths by four storey counts, sixty-four shapes, eight looks in each. A taller plot, a cell size that is not 2 m, or a footprint outside that range is handed to the dressing behind, which is why `@gb/kitbash` stays load-bearing.
 - Turning a model onto its plot is a swap and a sign flip, never a sine, so the same model lands on the same coordinates on every machine. Mirroring happens in the model's own frame before the turn, so the door stays put and only the facade swaps hands, and every triangle is wound back so it still faces out.
@@ -204,19 +244,43 @@ Measured back to back on the same fallback, standing across the street from a th
 
 **A screen costs 12 triangles where it hangs and 0.35 MB where its picture is stored.** The finish itself is one more layer in each of the two facade strips, 0.70 MB paid once for the whole city; each picture is 0.35 MB with its mips. Six of them plus the housing is 2.8 MB, and the panels are 6.8 triangles on an average building, which is what takes it from 217 to 223.
 
-That is where the budget now stands. A layer is 0.35 MB with its mips; the walls are 30 of them (10.5 MB) and the pictures are 18 (6.3 MB), so the buildings still pay more for their surfaces than for what is behind and on them. Six screens is where it stopped: twelve would draw level with the walls, and a seventh screen buys less than a seventh room did, because a screen is cropped differently by every panel it lands on and a room is not.
+That is where the budget now stands. A layer is 0.35 MB with its mips; the wall finishes are 32 of them (11.2 MB) and the pictures are 18 (6.3 MB), so the buildings still pay more for their surfaces than for what is behind and on them. Six screens is where it stopped: twelve would draw level with the walls, and a seventh screen buys less than a seventh room did, because a screen is cropped differently by every panel it lands on and a room is not.
+
+### What the door you can walk through costs
+
+**0.70 MB resident, and nothing else.** It is one more layer in each of the two facade strips, which takes the pack from 16.8 MB over 48 layers to 17.5 MB over 50, and the scene's resident texture from 69.1 MB to 69.8 MB over the same 33 textures. No geometry, no draw call, no second material, no triangle: the swap rewrites one vertex attribute on the copy of the geometry `orient` already makes for that plot, which is a pass over a few hundred numbers once, when the building is built. On the download it is about 5 kB of PNG.
+
+The pack's own bytes went from 3.83 MB to 4.34 MB in the same change, and the extra half megabyte is storing every picture losslessly rather than at 256 colours, not the door.
 
 ## Standing it up
 
 ```ts
 const library = loadKit(gltf.scenes, world.theme)
 const kit = new KitDressing(library, new Greybox())
-const dressing = new PrefabDressing(await loadPrefab(library.night), kit)
-scene.add(buildCity(world, dressing).root)
+const prefab = await loadPrefab(library.night)
+scene.add(buildCity(world, new PrefabDressing(prefab, kit)).root)
 scene.add(kit.streetlights(world))
 // every frame, or whenever the hour changes: one call moves both
 kit.setTime(player.clock.hour + player.clock.minute / 60)
 ```
+
+Once, when a city is made, whoever holds both the world and the catalogue writes
+the design into the file. The catalogue first, because a design has to name one
+the city has recorded:
+
+```ts
+const catalogue = prefab.catalogue // headless: await Catalogue.read(await readFile(PACK_MANIFEST))
+world.recordCatalogues([catalogue.identity])
+for (const plot of world.plots()) {
+  const size = { width: plot.rect.w * world.cellSize, depth: plot.rect.h * world.cellSize }
+  const design = catalogue.design(plot, size)
+  if (design) world.recordDesign(plot.id, { pack: catalogue.pack, ...design })
+}
+```
+
+The size is the one `@gb/scene` hands `building`, and it has to be, or the pin
+names a model of a different shape than the plot it stands on. `@gb/bundle`
+takes the same `catalogue.identity` as its `requires`.
 
 ## How to modify this blackbox safely
 
@@ -224,6 +288,8 @@ Adding a look is a new file in `looks/` and a rebuild; it grows every shape at o
 
 How a window is laid out and how deep the room behind it runs are the two `WindowKind`s at the top of `src/interior.ts`, and `tools/walls.ts` reads the same two, so a change to a grid moves the picture with it and a rebuild is needed. How bright a room burns, how dark its side walls are and what colours it is lit in are the constants beside them, and none of those needs a rebuild. Adding or replacing a room is a new prompt in `rooms/prompts/`, one image through the Grok route in `tools/textures/README.md`, `node tools/draw-rooms.ts <folder of raw images>` to crop and size it, an entry in `ROOM_PICTURES` in `src/rooms.ts` with its bank, and a rebuild.
 
-What an entrance looks like is `DOOR`, `DOOR_TONES` and `DOOR_GLOW` in `tools/walls.ts`, and a rebuild; both it and the screen housing are painted rectangle by rectangle with `Picture` in `tools/paint.ts`, which also holds the one conversion between what a glow map stores and what the runtime multiplies it back by. A screen is three places and they do not overlap: what a panel is made of and how the lamp grid behaves are `SCREEN` and the constants beside it in `src/display.ts`, which needs no rebuild; what the pictures show is the compositions in `tools/screens.ts`, which does; and where a screen goes is `BOARD`, `BANNER` and `displays()` in `tools/stack.ts` plus the `displays` list in a look, which does. Swapping the drawn compositions for photographs is a change to `tools/screens.ts` alone: it stacks whatever it is given, the way `tools/rooms.ts` stacks the committed room pictures.
+What an entrance looks like is `DOOR`, `DOOR_TONES` and `ENTRANCES` in `tools/walls.ts`, and a rebuild; `ENTRANCES` is what tells the two doors apart, and adding a third would be a name in `LAYERS` and a picture beside them. Both the doors and the screen housing are painted rectangle by rectangle with `Picture` in `tools/paint.ts`, which also holds the one conversion between what a glow map stores and what the runtime multiplies it back by. A screen is three places and they do not overlap: what a panel is made of and how the lamp grid behaves are `SCREEN` and the constants beside it in `src/display.ts`, which needs no rebuild; what the pictures show is the compositions in `tools/screens.ts`, which does; and where a screen goes is `BOARD`, `BANNER` and `displays()` in `tools/stack.ts` plus the `displays` list in a look, which does. Swapping the drawn compositions for photographs is a change to `tools/screens.ts` alone: it stacks whatever it is given, the way `tools/rooms.ts` stacks the committed room pictures.
 
-The pack's six files are committed art: never hand-edit them, because the manifest's hash is what the loader checks. Run `pnpm --filter @gb/prefab test`.
+A new finish goes at the **end** of `LAYERS` in `tools/layers.ts`. The layer index rides on the vertices of every model in the pack, so a finish inserted anywhere else renumbers the whole mesh; appended, the mesh comes out of a rebuild byte for byte identical and only the two strips and the manifest change. How every picture is written is `PNG` in `tools/paint.ts`, and it is lossless on purpose: turn palette quantisation back on and one new finish moves the pixels of every other one.
+
+The pack's six files are committed art: never hand-edit them, because the manifest's hash is what the loader checks. Rebuild with `node tools/build-buildings.ts`, which is byte for byte reproducible on one machine, and bump `VERSION` in it whenever the bytes change. Run `pnpm --filter @gb/prefab test`.

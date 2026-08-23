@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import sharp from 'sharp'
 import { ROOM_PICTURES, ROOM_SIZE } from '../src/rooms.ts'
+import { PNG } from './paint.ts'
 
 /**
  * The room pictures, stacked into the strip the pack ships.
@@ -19,7 +20,7 @@ export async function buildRooms(folder = resolve(import.meta.dirname, '../rooms
   }
 
   const strip = await sharp(Buffer.concat(tiles), { raw: { width: ROOM_SIZE, height: ROOM_SIZE * tiles.length, channels: 4 } })
-    .png({ compressionLevel: 9, effort: 10 })
+    .png(PNG)
     .toBuffer()
   return { strip, layers: tiles.length }
 }

@@ -4,6 +4,7 @@ import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer'
 import type { Bucket } from '../src/bucket.ts'
 import { heightOf } from '../src/bucket.ts'
 import { HEIGHT_TOLERANCE, PROUD } from '../src/fit.ts'
+import { DOOR_FINISH } from '../src/entrance.ts'
 import { layerFor, LAYER_OF } from './layers.ts'
 import { NEONS, type Family } from './look.ts'
 
@@ -201,7 +202,7 @@ function measure(baked: Baked, id: string, bucket: Bucket, height: number): void
  * anywhere else would be turned to face a neighbour.
  */
 function doorFacesTheStreet(baked: Baked, bucket: Bucket): boolean {
-  const door = LAYER_OF.get('door')!
+  const door = LAYER_OF.get(DOOR_FINISH)!
   let back = Infinity
   let seen = false
   for (let i = 0; i < baked.layer.length; i++) {

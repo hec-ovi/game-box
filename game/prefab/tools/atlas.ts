@@ -1,11 +1,12 @@
 import type { Material } from '@gltf-transform/core'
 import type { EmissiveStrength } from '@gltf-transform/extensions'
 import sharp from 'sharp'
+import { DOOR_FINISH, OPEN_DOOR_FINISH } from '../src/entrance.ts'
 import { DISPLAY_FINISH } from '../src/screens.ts'
 import { io } from './intake.ts'
 import { COLOUR_SIZE, EMISSIVE_SIZE, GLOW_BAKE, LAYERS } from './layers.ts'
 import { FAMILIES, NEONS, type Family } from './look.ts'
-import { decode, encode, type Tile } from './paint.ts'
+import { decode, encode, PNG, type Tile } from './paint.ts'
 import { housingTile } from './screens.ts'
 import { doorTile } from './walls.ts'
 
@@ -49,10 +50,10 @@ export function swatchVerbs(project: string): string[][] {
  * the shader is a plain texture fetch and the pack carries exactly what it
  * draws.
  *
- * Most finishes come off a swatch the producer built. Two are drawn in this
- * repo instead: an entrance, which is the surface a player stands closest to,
- * and the housing a screen sits in, which is a dark field the shader lays the
- * picture and the lamp grid over.
+ * Most finishes come off a swatch the producer built. Three are drawn in this
+ * repo instead: the two entrances, which are the surfaces a player stands
+ * closest to, and the housing a screen sits in, which is a dark field the
+ * shader lays the picture and the lamp grid over.
  */
 export async function buildAtlas(swatches: ReadonlyMap<Family, string>): Promise<Atlas> {
   const finishes = new Map<string, Layer>()
@@ -65,9 +66,11 @@ export async function buildAtlas(swatches: ReadonlyMap<Family, string>): Promise
       for (const neon of NEONS) finishes.set(`neon:${neon}`, await tileOf(materials.get(`neon:${neon}`)))
     }
   }
-  // the two the producer has no picture worth taking: an entrance is drawn here
-  // and a screen is a housing with a picture of its own laid over it
-  finishes.set('door', await drawn(await doorTile()))
+  // the ones the producer has no picture worth taking: the two entrances, drawn
+  // here because a door is the surface a player stands closest to, and the
+  // housing a screen sits in, which is a dark field with a picture laid over it
+  finishes.set(DOOR_FINISH, await drawn(await doorTile('plain')))
+  finishes.set(OPEN_DOOR_FINISH, await drawn(await doorTile('open')))
   finishes.set(DISPLAY_FINISH, await drawn(await housingTile(COLOUR_SIZE)))
 
   const missing = LAYERS.filter((name) => !finishes.has(name))
@@ -133,7 +136,7 @@ async function paint(image: Uint8Array | null | undefined, size: number, factor:
 async function strip(tiles: readonly Buffer[], size: number): Promise<Buffer> {
   const stacked = Buffer.concat(tiles as Buffer[])
   return await sharp(stacked, { raw: { width: size, height: size * tiles.length, channels: 4 } })
-    .png({ compressionLevel: 9, effort: 10 })
+    .png(PNG)
     .toBuffer()
 }
 

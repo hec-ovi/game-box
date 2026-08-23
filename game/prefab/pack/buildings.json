@@ -1,28 +1,28 @@
 {
   "pack": "gb-buildings",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "sha256": "4b3c283c7d00e3206b8180593e37fda7dee26c02f13f8e9010a422b1f21ac010",
   "producer": "glb-buildings@6e05c32",
   "atlas": {
     "colour": {
       "size": 256,
-      "layers": 15,
-      "sha256": "981511c2ac5ced3d4e92eaea62de3012e73ede317fcc275baec19f7f5c9ee60d"
+      "layers": 16,
+      "sha256": "1f33cd25285027d19afc4a5f42b058b51af26257c164815a28962f3295e87f5d"
     },
     "emissive": {
       "size": 256,
-      "layers": 15,
-      "sha256": "5043df0d35ece00e43d082147fbc05b9a25f6fa894ed3fac5fc390ea84462a0c"
+      "layers": 16,
+      "sha256": "71ddd4af99c378f3a396a95c971da7594c5267ab4692cde6fd27b599bf6dfd17"
     },
     "rooms": {
       "size": 256,
       "layers": 12,
-      "sha256": "8e9d04240ef5ecb1a676bcd19d65bf93290b0a1c4d41a5f1242cba8ae00e2526"
+      "sha256": "012b032d930e0dc20f6a3b00b7956ab9b81346cd6e52e2a257ef70a0dccb30fa"
     },
     "screens": {
       "size": 256,
       "layers": 6,
-      "sha256": "3c4c788399aed29d38001d09f714ef12b3a9f9ef0a78988aa8e72a728bf9241d"
+      "sha256": "67b5e22cc5ffe6ba686725a0889d5585670e41d885dbd20195c98d9ce8cda5f6"
     },
     "finishes": [
       "a:facade",
@@ -39,7 +39,8 @@
       "neon:cyan",
       "neon:teal",
       "neon:magenta",
-      "neon:amber"
+      "neon:amber",
+      "door:open"
     ]
   },
   "models": [

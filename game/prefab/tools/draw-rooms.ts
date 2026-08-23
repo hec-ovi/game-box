@@ -18,6 +18,7 @@ import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import sharp from 'sharp'
 import { ROOM_PICTURES, ROOM_SIZE } from '../src/rooms.ts'
+import { PNG } from './paint.ts'
 
 /** A row or column this dark and this flat is border, not room. */
 const BORDER = { bright: 0.16, spread: 0.055, most: 0.3 }
@@ -32,7 +33,7 @@ for (const name of ROOM_PICTURES) {
   await sharp(raw)
     .extract(box)
     .resize(ROOM_SIZE, ROOM_SIZE, { fit: 'fill', kernel: 'lanczos3' })
-    .png({ compressionLevel: 9, effort: 10 })
+    .png(PNG)
     .toFile(join(to, `${name}.png`))
   console.log(`${name}: ${info.width}x${info.height} -> ${box.width}x${box.height} at ${box.left},${box.top}`)
 }

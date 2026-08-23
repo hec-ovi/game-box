@@ -1,7 +1,8 @@
 import { contract, Rng, type SchemaViolation } from '@gb/kit'
-import { BUILDING_KINDS, type BuildingKind, type Plot } from '@gb/world'
+import { BUILDING_KINDS, type AssetPackRef, type BuildingKind, type Plot } from '@gb/world'
 import { z } from 'zod'
 import { bucketKey, bucketOf, type Bucket } from './bucket.ts'
+import { sha256 } from './digest.ts'
 
 /**
  * How many places along a wall a plot's rooms can start. Enough that a street
@@ -84,16 +85,26 @@ export class InvalidCatalogue extends Error {
 export class Catalogue {
   readonly pack: string
   readonly version: string
+  /** SHA-256 of the mesh file. What the loader checks the committed bytes against. */
   readonly sha256: string
+  /**
+   * What this pack is, as a world file records it. The hash is the manifest's
+   * own, which covers the five binaries through the hashes it lists, so one
+   * string answers "is the reader's art the art this city was drawn with".
+   * There is no hash when the manifest was handed over as a parsed value
+   * rather than as bytes, which is the honest answer: nothing was read.
+   */
+  readonly identity: AssetPackRef
   readonly atlas: CatalogueDoc['atlas']
   readonly models: readonly ModelSpec[]
   readonly #byId: ReadonlyMap<string, ModelSpec>
   readonly #byBucket: ReadonlyMap<string, readonly ModelSpec[]>
 
-  private constructor(doc: CatalogueDoc) {
+  private constructor(doc: CatalogueDoc, manifest?: string) {
     this.pack = doc.pack
     this.version = doc.version
     this.sha256 = doc.sha256
+    this.identity = manifest ? { pack: doc.pack, version: doc.version, sha256: manifest } : { pack: doc.pack, version: doc.version }
     this.atlas = doc.atlas
     // sorted by id, so the order the manifest happens to list them in can never
     // reach a street
@@ -115,6 +126,26 @@ export class Catalogue {
     const parsed = catalogueContract.parse(value)
     if (!parsed.ok) throw new InvalidCatalogue(parsed.error)
     return new Catalogue(parsed.value)
+  }
+
+  /**
+   * The same, off the manifest's own bytes, so the catalogue can say which pack
+   * it is. Whoever pins a city's plots writes `identity` into the world file
+   * beside them.
+   */
+  static async read(manifest: ArrayBuffer | Uint8Array): Promise<Catalogue> {
+    // copied into a plain buffer so the digest takes it whatever the caller
+    // read the file with, and so nothing can edit it under the hash
+    const bytes: Uint8Array<ArrayBuffer> = manifest instanceof Uint8Array ? Uint8Array.from(manifest) : new Uint8Array(manifest)
+    let document: unknown
+    try {
+      document = JSON.parse(new TextDecoder().decode(bytes))
+    } catch (cause) {
+      throw new InvalidCatalogue([{ path: '', message: `not JSON: ${(cause as Error).message}` }])
+    }
+    const parsed = catalogueContract.parse(document)
+    if (!parsed.ok) throw new InvalidCatalogue(parsed.error)
+    return new Catalogue(parsed.value, await sha256(bytes))
   }
 
   model(id: string): ModelSpec | undefined {

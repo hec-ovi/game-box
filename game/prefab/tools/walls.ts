@@ -178,21 +178,60 @@ const DOOR_TONES = {
   reader: [17, 18, 21],
 } as const satisfies Record<string, Rgb>
 
-/** What burns on a door after dark: the lobby behind the glass, the light under it and the reader. */
-const DOOR_GLOW = { transom: 0.1, lobby: 0.22, threshold: 0.32, reader: 1.2 } as const
-
-/** Warm inside, cool on the reader: a lobby is tungsten and a card reader is not. */
+/** Warm inside, cool on a locked reader and green on one that will let you in. */
 const LOBBY: Rgb = [255, 219, 170]
 const READER: Rgb = [140, 240, 255]
+const ADMITS: Rgb = [126, 255, 178]
 
-export async function doorTile(): Promise<Tile> {
+/**
+ * What tells the two entrances apart: the lobby behind the glass, how hard it
+ * burns after dark, and what colour the reader's marks are.
+ *
+ * Everything else is the same door. A city of pavement-level doors that all
+ * differ would read as noise, so the one you can walk through is the one with
+ * its lights on: a lobby you can see into, a pool of light on the pavement in
+ * front of it, and a reader that says it will admit you. It has to carry by day
+ * as well, when nothing in the city glows, so the lit lobby is a lighter warm
+ * surface and not only a stronger glow.
+ */
+interface Entrance {
+  /** The lobby behind the glass, at the head of the pane and at the sill. */
+  readonly glass: { readonly top: Rgb; readonly low: Rgb }
+  /** The threshold plate at the pavement. */
+  readonly sill: Rgb
+  /** After dark: the fanlight, the lobby, the light thrown on the pavement, the reader's marks. */
+  readonly glow: { readonly transom: number; readonly lobby: number; readonly threshold: number; readonly reader: number }
+  readonly mark: Rgb
+}
+
+const ENTRANCES = {
+  /** Seven buildings in eight: a dark lobby behind the glass and a cool reader. */
+  plain: {
+    glass: { top: DOOR_TONES.glassTop, low: DOOR_TONES.glassLow },
+    sill: DOOR_TONES.sill,
+    glow: { transom: 0.1, lobby: 0.22, threshold: 0.32, reader: 1.2 },
+    mark: READER,
+  },
+  /** The one that opens: the lobby lights are on and the reader is green. */
+  open: {
+    glass: { top: [30, 27, 22], low: [116, 101, 78] },
+    sill: [92, 84, 70],
+    glow: { transom: 0.36, lobby: 0.82, threshold: 0.98, reader: 1.5 },
+    mark: ADMITS,
+  },
+} as const satisfies Record<string, Entrance>
+
+export type EntranceKind = keyof typeof ENTRANCES
+
+export async function doorTile(kind: EntranceKind = 'plain'): Promise<Tile> {
+  const entrance: Entrance = ENTRANCES[kind]
   const picture = new Picture(SIZE, 'door')
   const middle = 0.5
 
   picture.paint({ x0: 0, y0: 0, x1: 1, y1: 1 }, { colour: DOOR_TONES.frame, grain: 1.6 })
   picture.paint(
     { x0: DOOR.frame, y0: DOOR.frame, x1: 1 - DOOR.frame, y1: DOOR.transom },
-    { colour: DOOR_TONES.glassTop, to: DOOR_TONES.glassLow, glow: DOOR_GLOW.transom * 0.7, glowTo: DOOR_GLOW.transom, tint: LOBBY },
+    { colour: entrance.glass.top, to: entrance.glass.low, glow: entrance.glow.transom * 0.7, glowTo: entrance.glow.transom, tint: LOBBY },
   )
   picture.paint({ x0: DOOR.frame, y0: DOOR.transom, x1: 1 - DOOR.frame, y1: 1 - DOOR.frame }, { colour: DOOR_TONES.leaf, grain: 1.2 })
 
@@ -202,7 +241,7 @@ export async function doorTile(): Promise<Tile> {
   ]) {
     picture.paint(
       { ...leaf, y0: DOOR.glass.top, y1: DOOR.glass.low },
-      { colour: DOOR_TONES.glassTop, to: DOOR_TONES.glassLow, glow: 0, glowTo: DOOR_GLOW.lobby, tint: LOBBY },
+      { colour: entrance.glass.top, to: entrance.glass.low, glow: 0, glowTo: entrance.glow.lobby, tint: LOBBY },
     )
     picture.paint({ ...leaf, y0: DOOR.rail.top, y1: DOOR.rail.low }, { colour: DOOR_TONES.rail, grain: 1 })
     picture.paint({ ...leaf, y0: DOOR.kick.top, y1: DOOR.kick.low }, { colour: DOOR_TONES.kick, grain: 1.4 })
@@ -215,11 +254,14 @@ export async function doorTile(): Promise<Tile> {
     picture.paint({ x0: Math.min(near, far), y0: DOOR.pull.top, x1: Math.max(near, far), y1: DOOR.pull.low }, { colour: DOOR_TONES.pull, grain: 3 })
   }
 
-  picture.paint({ x0: DOOR.frame, y0: DOOR.sill, x1: 1 - DOOR.frame, y1: 1 }, { colour: DOOR_TONES.sill, glow: DOOR_GLOW.threshold, tint: LOBBY })
+  picture.paint({ x0: DOOR.frame, y0: DOOR.sill, x1: 1 - DOOR.frame, y1: 1 }, { colour: entrance.sill, glow: entrance.glow.threshold, tint: LOBBY })
   picture.paint(DOOR.call, { colour: DOOR_TONES.reader })
   for (let mark = 0; mark < 3; mark++) {
     const y = DOOR.call.y0 + 0.022 + mark * 0.032
-    picture.paint({ x0: DOOR.call.x0 + 0.014, y0: y, x1: DOOR.call.x1 - 0.014, y1: y + 0.012 }, { colour: DOOR_TONES.reader, glow: DOOR_GLOW.reader, tint: READER })
+    picture.paint(
+      { x0: DOOR.call.x0 + 0.014, y0: y, x1: DOOR.call.x1 - 0.014, y1: y + 0.012 },
+      { colour: DOOR_TONES.reader, glow: entrance.glow.reader, tint: entrance.mark },
+    )
   }
 
   return await picture.tile()

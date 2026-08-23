@@ -1,7 +1,7 @@
 import { Rng } from '@gb/kit'
 import sharp from 'sharp'
 import { SCREEN_PICTURES, SCREEN_SIZE } from '../src/screens.ts'
-import { encode, Picture, type Rgb, type Tile } from './paint.ts'
+import { encode, Picture, PNG, type Rgb, type Tile } from './paint.ts'
 
 /**
  * What the screens on the walls show, and the housing they sit in.
@@ -131,7 +131,7 @@ export async function buildScreens(): Promise<Screens> {
   }
 
   const strip = await sharp(Buffer.concat(tiles), { raw: { width: SCREEN_SIZE, height: SCREEN_SIZE * tiles.length, channels: 4 } })
-    .png({ compressionLevel: 9, effort: 10 })
+    .png(PNG)
     .toBuffer()
   return { strip, layers: tiles.length }
 }

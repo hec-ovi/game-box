@@ -6,6 +6,8 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { bucketKey, bucketOf, everyBucket } from '../src/bucket.ts'
 import { Catalogue } from '../src/catalogue.ts'
+import { sha256 } from '../src/digest.ts'
+import { DOOR_FINISH, OPEN_DOOR_FINISH } from '../src/entrance.ts'
 import { windowsOn } from '../src/interior.ts'
 import { ROOM_BANKS, ROOM_PICTURES, ROOM_SIZE } from '../src/rooms.ts'
 import { DISPLAY_FINISH, SCREEN_PICTURES, SCREEN_SIZE } from '../src/screens.ts'
@@ -13,7 +15,8 @@ import { io } from '../tools/intake.ts'
 import { verifyPack } from '../tools/verify.ts'
 
 const pack = new URL('../pack/', import.meta.url)
-const manifest = JSON.parse(readFileSync(new URL('buildings.json', pack), 'utf8')) as unknown
+const document = new Uint8Array(readFileSync(new URL('buildings.json', pack)))
+const manifest = JSON.parse(new TextDecoder().decode(document)) as unknown
 const mesh = new Uint8Array(readFileSync(new URL('buildings.glb', pack)))
 const strip = new Uint8Array(readFileSync(new URL('buildings-rooms.png', pack)))
 const screens = new Uint8Array(readFileSync(new URL('buildings-screens.png', pack)))
@@ -42,6 +45,36 @@ describe('the shipped pack', () => {
     expect(catalogue.atlas.finishes.filter((finish) => windowsOn(finish))).toEqual(['a:facade', 'b:facade', 'c:facade', 'd:facade', 'glass'])
     expect(catalogue.atlas.finishes).toContain(DISPLAY_FINISH)
     expect(windowsOn(DISPLAY_FINISH)).toBeUndefined()
+    for (const finish of [DOOR_FINISH, OPEN_DOOR_FINISH]) {
+      expect(catalogue.atlas.finishes).toContain(finish)
+      expect(windowsOn(finish)).toBeUndefined()
+    }
+  })
+
+  it('says which pack it is, hashing the manifest that names every file in it', async () => {
+    const read = await Catalogue.read(document)
+    expect(read.identity).toEqual({ pack: read.pack, version: read.version, sha256: await sha256(document) })
+    // the manifest's own hash, not the mesh's: the manifest carries the hash of
+    // all five binaries, so one string answers whether a reader's art is the
+    // art the city was drawn with, and a rebuilt atlas alone changes it
+    expect(read.identity.sha256).not.toBe(read.sha256)
+  })
+
+  it('bakes nothing onto the entrance you can walk through, because the runtime is what puts a plot there', async () => {
+    const doc = await io.readBinary(mesh)
+    const plain = catalogue.atlas.finishes.indexOf(DOOR_FINISH)
+    const opens = catalogue.atlas.finishes.indexOf(OPEN_DOOR_FINISH)
+    let doors = 0
+    let baked = 0
+    for (const primitive of doc.getRoot().listMeshes().flatMap((one) => one.listPrimitives())) {
+      const layers = primitive.getAttribute('_LAYER')!
+      for (let i = 0; i < layers.getCount(); i++) {
+        const wearing = Math.round(layers.getScalar(i))
+        if (wearing === plain) doors++
+        if (wearing === opens) baked++
+      }
+    }
+    expect({ doors: doors > 0, baked }).toEqual({ doors: true, baked: 0 })
   })
 
   it('lays every screen panel out inside one picture, so a plot picks one screen for the whole of it', async () => {

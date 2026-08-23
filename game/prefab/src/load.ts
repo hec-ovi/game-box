@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
 import { Catalogue } from './catalogue.ts'
+import { sha256 } from './digest.ts'
 import { Library } from './library.ts'
 import type { PrefabAtlas } from './material.ts'
 
@@ -19,12 +20,19 @@ export class PackChanged extends Error {
 }
 
 /**
+ * The manifest, for anyone who needs the pack's identity without a renderer:
+ * a headless caller reads these bytes off disk and hands them to
+ * `Catalogue.read`.
+ */
+export const PACK_MANIFEST = new URL('../pack/buildings.json', import.meta.url)
+
+/**
  * The pack's six files, as URLs the bundler can see. They are written out one
  * by one rather than built from a name, because a bundler only follows a
  * literal.
  */
 const PACK = {
-  manifest: new URL('../pack/buildings.json', import.meta.url),
+  manifest: PACK_MANIFEST,
   mesh: new URL('../pack/buildings.glb', import.meta.url),
   colour: new URL('../pack/buildings-colour.png', import.meta.url),
   emissive: new URL('../pack/buildings-emissive.png', import.meta.url),
@@ -41,7 +49,7 @@ const PACK = {
  */
 export async function loadPrefab(night: CityNight): Promise<Library> {
   const [manifest, mesh, colour, emissive, rooms, screens] = await Promise.all([
-    fetch(PACK.manifest).then((response) => response.json()),
+    bytes(PACK.manifest),
     bytes(PACK.mesh),
     bytes(PACK.colour),
     bytes(PACK.emissive),
@@ -49,7 +57,7 @@ export async function loadPrefab(night: CityNight): Promise<Library> {
     bytes(PACK.screens),
   ])
 
-  const catalogue = Catalogue.parse(manifest)
+  const catalogue = await Catalogue.read(manifest)
   await check('mesh', mesh, catalogue.sha256)
   await check('colour atlas', colour, catalogue.atlas.colour.sha256)
   await check('glow atlas', emissive, catalogue.atlas.emissive.sha256)
@@ -80,11 +88,6 @@ async function bytes(url: URL): Promise<ArrayBuffer> {
 async function check(file: string, data: ArrayBuffer, expected: string): Promise<void> {
   const found = await sha256(data)
   if (found !== expected) throw new PackChanged(file, expected, found)
-}
-
-async function sha256(data: ArrayBuffer): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', data)
-  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
 /**

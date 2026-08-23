@@ -2,8 +2,10 @@ import { SIGN } from '@gb/kitbash'
 import type { Dressing } from '@gb/scene'
 import type { AnchorKind, CellKind, FurnitureProp, Item, Npc, Plot } from '@gb/world'
 import * as THREE from 'three'
+import { Entrances } from './entrance.ts'
 import type { Library } from './library.ts'
 import { orient, turnsFor } from './orient.ts'
+import { designFor } from './pin.ts'
 
 export interface BuildingSize {
   readonly width: number
@@ -12,10 +14,15 @@ export interface BuildingSize {
 }
 
 /**
- * Dresses a plot with the building the catalogue gives it, out of one packed
- * library on one material. A plot the catalogue has no shape for is handed
- * straight to the dressing behind, so a footprint nobody baked is a kit
- * building rather than a hole in the street.
+ * Dresses a plot with the building its world file pins it to, or the one the
+ * catalogue picks when nothing is written down. A plot the catalogue has no
+ * shape for, and a pin this copy of the pack cannot honour, are handed straight
+ * to the dressing behind, so a footprint nobody baked is a kit building rather
+ * than a hole in the street.
+ *
+ * A plot with an interior gets the entrance you can walk through. It is the
+ * same building on the same layer count: one attribute rewritten on the copy
+ * this plot already owns.
  *
  * Signage stays where it was written. `@gb/kitbash` puts every sign in the city
  * on one material; this lifts those meshes off the kit's building and hangs
@@ -25,18 +32,23 @@ export interface BuildingSize {
 export class PrefabDressing implements Dressing {
   readonly #library: Library
   readonly #rest: Dressing
+  readonly #entrances: Entrances
 
   constructor(library: Library, rest: Dressing) {
     this.#library = library
     this.#rest = rest
+    this.#entrances = new Entrances(library.catalogue.atlas.finishes)
   }
 
   building(plot: Plot, size: BuildingSize): THREE.Object3D {
-    const design = this.#library.catalogue.design(plot, size)
+    const design = designFor(this.#library.catalogue, plot, size)
     const geometry = design ? this.#library.geometry(design.model) : undefined
     if (!design || !geometry) return this.#rest.building(plot, size)
 
-    const mesh = new THREE.Mesh(orient(geometry, turnsFor(plot.entrance.facing), design.mirror, design.rooms), this.#library.material)
+    const turned = orient(geometry, turnsFor(plot.entrance.facing), design.mirror, design.rooms)
+    if (plot.interiorId !== undefined) this.#entrances.open(turned)
+
+    const mesh = new THREE.Mesh(turned, this.#library.material)
     mesh.name = `${plot.id}:${design.model}`
     mesh.castShadow = true
     mesh.receiveShadow = true

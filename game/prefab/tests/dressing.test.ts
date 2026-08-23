@@ -5,7 +5,7 @@ import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { PrefabDressing } from '../src/dressing.ts'
 import { PROUD } from '../src/fit.ts'
-import { catalogueOf, libraryOf, plotOf } from './support.ts'
+import { FINISHES, catalogueOf, libraryOf, plotOf } from './support.ts'
 
 const catalogue = catalogueOf()
 const dressing = new PrefabDressing(libraryOf(catalogue), new Greybox())
@@ -19,6 +19,14 @@ function doorAt(object: THREE.Object3D): THREE.Vector3 {
   const layer = mesh.geometry.getAttribute('_layer')
   for (let i = 0; i < position.count; i++) if (layer.getX(i) === 1) box.expandByPoint(point.fromBufferAttribute(position as THREE.BufferAttribute, i))
   return box.getCenter(new THREE.Vector3())
+}
+
+/** Every finish the building ended up wearing, by name. */
+function finishesOn(object: THREE.Object3D): string[] {
+  const layer = (object.children[0] as THREE.Mesh).geometry.getAttribute('_layer')
+  const seen = new Set<number>()
+  for (let i = 0; i < layer.count; i++) seen.add(Math.round(layer.getX(i)))
+  return [...seen].sort((a, b) => a - b).map((index) => FINISHES[index]!)
 }
 
 describe('dressing a plot', () => {
@@ -45,6 +53,12 @@ describe('dressing a plot', () => {
     expect(box.min.x).toBeGreaterThanOrEqual(-4 - PROUD)
     expect(box.max.z).toBeLessThanOrEqual(6 + PROUD)
     expect(box.min.z).toBeGreaterThanOrEqual(-6 - PROUD)
+  })
+
+  it('gives a plot you can walk into the entrance you can walk through, and leaves every other door plain', () => {
+    const size = { width: 8, depth: 12, height: 7.2 }
+    expect(finishesOn(dressing.building(plotOf(), size))).toEqual(['a:facade', 'door'])
+    expect(finishesOn(dressing.building(plotOf({ interiorId: 'interior_0001' }), size))).toEqual(['a:facade', 'door:open'])
   })
 
   it('hands a shape it has no model for to the dressing behind', () => {

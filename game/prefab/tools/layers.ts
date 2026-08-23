@@ -1,3 +1,4 @@
+import { DOOR_FINISH, OPEN_DOOR_FINISH } from '../src/entrance.ts'
 import { DISPLAY_FINISH } from '../src/screens.ts'
 import { FAMILIES, NEONS, type Family, type Neon } from './look.ts'
 
@@ -7,17 +8,24 @@ import { FAMILIES, NEONS, type Family, type Neon } from './look.ts'
  * layer of its own lets the sampler wrap one without bleeding into the picture
  * next door.
  *
- * The door, the glazing and the screen housing are shared across the four
+ * The doors, the glazing and the screen housing are shared across the four
  * families, because a door is a door; the wall and the base are what makes one
  * family look unlike another, and the tubes are the four colours `docs/LOOK.md`
  * settles on.
+ *
+ * The lit entrance is last, and nothing is ever baked onto it: no look asks for
+ * it and `layerFor` cannot reach it. The runtime moves a plot's door onto it
+ * when the world says that plot has an interior. Last, because a layer index
+ * rides on the vertices of every model in the pack, so a finish added anywhere
+ * else would renumber the whole mesh.
  */
 export const LAYERS: readonly string[] = [
   ...FAMILIES.flatMap((family) => [`${family}:facade`, `${family}:base`]),
-  'door',
+  DOOR_FINISH,
   DISPLAY_FINISH,
   'glass',
   ...NEONS.map((neon) => `neon:${neon}`),
+  OPEN_DOOR_FINISH,
 ]
 
 export const LAYER_OF: ReadonlyMap<string, number> = new Map(LAYERS.map((name, index) => [name, index]))
@@ -63,7 +71,7 @@ function finish(material: string, family: Family): string {
   // exactly where a composed element goes. The pack's base finish is that same
   // plain heavy wall at the same tile, so the two are one layer
   if (material === 'base' || material === 'concrete' || material === 'roof' || material === 'wall') return `${family}:base`
-  if (material === 'door') return 'door'
+  if (material === 'door') return DOOR_FINISH
   if (material === 'screen') return DISPLAY_FINISH
   if (material === 'glass-band') return 'glass'
   if (material.startsWith('neon:')) {

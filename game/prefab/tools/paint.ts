@@ -13,6 +13,18 @@ import { GLOW } from '../src/pack.ts'
  * numbers.
  */
 
+/**
+ * How every picture in the pack is written: lossless truecolour.
+ *
+ * sharp turns palette quantisation on as soon as `effort` is set, and a palette
+ * is 256 colours for a whole strip, so adding one finish re-quantises every
+ * other finish and moves the pixels of every wall in the city by a level or
+ * two. The pack is the art and is stored exactly. It costs about 5% of the
+ * pack's bytes and nothing at all on the GPU, where a layer is uncompressed
+ * either way.
+ */
+export const PNG = { compressionLevel: 9, palette: false } as const
+
 export type Rgb = readonly [number, number, number]
 
 /** One finish's two pictures: the surface, and the part of it that burns. */
@@ -131,7 +143,7 @@ export class Picture {
 /** A picture at the pack's own compression, from raw RGBA. */
 export async function png(pixels: Uint8ClampedArray | Buffer, width: number, height = width): Promise<Buffer> {
   const bytes = pixels instanceof Buffer ? pixels : Buffer.from(pixels.buffer, 0, width * height * 4)
-  return await sharp(bytes, { raw: { width, height, channels: 4 } }).png({ compressionLevel: 9, effort: 10 }).toBuffer()
+  return await sharp(bytes, { raw: { width, height, channels: 4 } }).png(PNG).toBuffer()
 }
 
 function lerp(from: Rgb, to: Rgb, at: number): Rgb {

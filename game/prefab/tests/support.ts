@@ -2,9 +2,17 @@ import * as THREE from 'three'
 import { CityNight } from '@gb/kitbash'
 import type { Plot } from '@gb/world'
 import { Catalogue, type CatalogueDoc } from '../src/catalogue.ts'
+import { DOOR_FINISH, OPEN_DOOR_FINISH } from '../src/entrance.ts'
 import { Library } from '../src/library.ts'
 import type { PrefabAtlas } from '../src/material.ts'
 import { LAYER_ATTRIBUTE } from '../src/pack.ts'
+
+/**
+ * What the fixture pack paints, in the order the strips stack it. The door
+ * plate the test buildings carry is layer 1, and the entrance you can walk
+ * through is last, exactly as the shipped pack stacks them.
+ */
+export const FINISHES: readonly string[] = ['a:facade', DOOR_FINISH, 'glass', OPEN_DOOR_FINISH]
 
 /** A catalogue with two looks on one shape, so a pick has something to choose between. */
 export function catalogueOf(over: Partial<CatalogueDoc> = {}): Catalogue {
@@ -14,11 +22,11 @@ export function catalogueOf(over: Partial<CatalogueDoc> = {}): Catalogue {
     sha256: 'a'.repeat(64),
     producer: 'test',
     atlas: {
-      colour: { size: 4, layers: 2, sha256: 'b'.repeat(64) },
-      emissive: { size: 4, layers: 2, sha256: 'c'.repeat(64) },
+      colour: { size: 4, layers: FINISHES.length, sha256: 'b'.repeat(64) },
+      emissive: { size: 4, layers: FINISHES.length, sha256: 'c'.repeat(64) },
       rooms: { size: 4, layers: 2, sha256: 'd'.repeat(64) },
       screens: { size: 4, layers: 2, sha256: 'e'.repeat(64) },
-      finishes: ['a:facade', 'glass'],
+      finishes: [...FINISHES],
     },
     models: [
       { id: 'shop-8x12x2', look: 'shop', front: 8, depth: 12, storeys: 2, kinds: ['shop', 'cafe'], triangles: 12, door: { along: 0 } },
@@ -48,8 +56,9 @@ export function libraryOf(catalogue: Catalogue): Library {
 }
 
 export function atlasOf(): PrefabAtlas {
-  const pixels = () => new THREE.DataArrayTexture(new Uint8Array(4 * 4 * 2 * 4).fill(128), 4, 4, 2)
-  return { colour: pixels(), emissive: pixels(), rooms: pixels(), screens: pixels(), finishes: ['a:facade', 'glass'] }
+  const layers = FINISHES.length
+  const pixels = () => new THREE.DataArrayTexture(new Uint8Array(4 * 4 * layers * 4).fill(128), 4, 4, layers)
+  return { colour: pixels(), emissive: pixels(), rooms: pixels(), screens: pixels(), finishes: [...FINISHES] }
 }
 
 export function plotOf(over: Partial<Plot> = {}): Plot {
