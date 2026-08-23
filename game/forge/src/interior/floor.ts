@@ -10,7 +10,8 @@ export const FOOTING = 0.2
 /** How far someone reaches from open floor onto a seat or a bed. */
 export const REACH = 0.8
 
-const RADIUS = METRICS.player.radius
+/** How wide a walking body is: the walk grid stays this far off anything solid. */
+export const BODY_RADIUS = METRICS.player.radius
 
 interface Solid {
   readonly box: Box
@@ -130,8 +131,8 @@ export class Floor {
     if (this.#labels) return this.#labels
     this.#cols = Math.max(1, Math.floor(this.bounds.w / CELL))
     this.#rows = Math.max(1, Math.floor(this.bounds.h / CELL))
-    const walk = inset(this.bounds, RADIUS)
-    const blocked = this.#solids.filter((solid) => solid.blocks).map((solid) => inset(solid.box, -RADIUS))
+    const walk = inset(this.bounds, BODY_RADIUS)
+    const blocked = this.#solids.filter((solid) => solid.blocks).map((solid) => inset(solid.box, -BODY_RADIUS))
     const labels = new Int32Array(this.#cols * this.#rows).fill(-1)
 
     for (let y = 0; y < this.#rows; y++) {

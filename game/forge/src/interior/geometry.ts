@@ -86,6 +86,30 @@ export function boxAt(centre: Vec, size: { readonly w: number; readonly d: numbe
   return { x: round(centre.x - w / 2), y: round(centre.y - h / 2), w: round(w), h: round(h) }
 }
 
+/** A piece as it stands on the floor: `w` across its front, `d` front to back. */
+export interface Extent {
+  readonly w: number
+  readonly d: number
+}
+
+/** How far the face of a piece is from its centre, along a heading. */
+export function faceReach(size: Extent, rot: number, heading: number): number {
+  const a = ((heading - rot) * Math.PI) / 180
+  const along = Math.abs(Math.cos(a))
+  const across = Math.abs(Math.sin(a))
+  return Math.min(along > 1e-9 ? size.d / 2 / along : Infinity, across > 1e-9 ? size.w / 2 / across : Infinity)
+}
+
+/** Metres from a point to the nearest face of a piece standing at `centre`; zero inside it. */
+export function gapToPiece(point: Vec, centre: Vec, size: Extent, rot: number): number {
+  const a = (rot * Math.PI) / 180
+  const dx = point.x - centre.x
+  const dy = point.y - centre.y
+  const along = dx * Math.sin(a) - dy * Math.cos(a)
+  const across = dx * Math.cos(a) + dy * Math.sin(a)
+  return Math.hypot(Math.max(0, Math.abs(across) - size.w / 2), Math.max(0, Math.abs(along) - size.d / 2))
+}
+
 export function inset(box: Box, margin: number): Box {
   return {
     x: box.x + margin,

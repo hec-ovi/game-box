@@ -1,11 +1,13 @@
 import { headingTo, inward, norm, shrinkFrom, step, type Side } from '../geometry.ts'
+import { specOf } from '../props.ts'
 import type { RoomPlan } from '../room-plan.ts'
-import { cornerPiece, counterRun, standAt, tableField, wallRow } from './pieces.ts'
+import { standoff } from '../stance.ts'
+import { cornerPiece, servePost, standAt, tableField, wallRow } from './pieces.ts'
 
 /** A room you wait in: a desk to report to, chairs along the wall. */
 export function waitingRoom(plan: RoomPlan): void {
   plan.crowdLimit = 3
-  benchRow(plan, 3, reception(plan))
+  benchRow(plan, 3, servePost(plan))
   cornerPiece(plan, 'plant')
 }
 
@@ -22,7 +24,7 @@ export function treatmentRoom(plan: RoomPlan): void {
   const side = plan.openSides()[0]
   if (side) {
     const sink = plan.againstWall('sink', side, { prefer: 'ends', approach: 0.6 })
-    if (sink) standAt(plan, sink, 'stand', 0.5)
+    if (sink) standAt(plan, sink, 'stand')
   }
   cornerPiece(plan, 'cabinet')
 }
@@ -30,7 +32,7 @@ export function treatmentRoom(plan: RoomPlan): void {
 /** A hotel lobby: a reception desk, somewhere to sit, a plant. */
 export function lobby(plan: RoomPlan): void {
   plan.crowdLimit = 3
-  const desk = reception(plan)
+  const desk = servePost(plan)
   const side = plan.openSides().find((open) => open !== desk)
   if (side) {
     const sofa = plan.againstWall('sofa', side, { prefer: 'centre', approach: 0.9 })
@@ -43,7 +45,7 @@ export function lobby(plan: RoomPlan): void {
 /** A concourse: a ticket desk, rows of benches, somebody keeping an eye on it. */
 export function concourse(plan: RoomPlan): void {
   plan.crowdLimit = 4
-  benchRow(plan, 4, reception(plan))
+  benchRow(plan, 4, servePost(plan))
   const door = plan.doors[0]
   if (door) {
     const across = headingTo(door.pos, plan.centre)
@@ -59,7 +61,8 @@ export function nave(plan: RoomPlan): void {
   const altar = plan.againstWall('table', front, { prefer: 'centre', approach: 1.2 })
   const outwards = inward(front)
   if (altar) {
-    const spot = step(altar.pos, outwards, 0.8)
+    // in front of the altar, facing the pews rather than the wall behind it
+    const spot = step(altar.pos, outwards, specOf(altar.prop).d / 2 + standoff('stand'))
     plan.post('stand', spot, step(spot, outwards, 2), altar.id)
   }
   let pews = 0
@@ -71,14 +74,6 @@ export function nave(plan: RoomPlan): void {
     plan.anchor('sit', pew.pos, pew.rot, pew.id)
   }
   cornerPiece(plan, 'lamp')
-}
-
-/** A counter somebody staffs, and the wall it ended up on. */
-function reception(plan: RoomPlan): Side | undefined {
-  for (const side of [plan.backSide(), ...plan.openSides()]) {
-    if (counterRun(plan, side, { prop: 'counter', serve: 'serve' }).length) return side
-  }
-  return undefined
 }
 
 /** Chairs against a wall, all facing the room, away from the counter. */

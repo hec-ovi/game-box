@@ -30,7 +30,7 @@ describe('Forge', () => {
     // every town has its bar, whatever the theme says
     expect(world.plotsOfKind('bar').length).toBeGreaterThanOrEqual(1)
 
-    // every bar has somebody behind the counter, and every shop somebody at the till
+    // every bar has somebody behind the counter, and every shop somebody at the counter
     for (const bar of world.plotsOfKind('bar')) {
       expect(world.npcsIn(bar.id).some((n) => n.role === 'bartender')).toBe(true)
     }

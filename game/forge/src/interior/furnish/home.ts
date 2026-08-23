@@ -23,7 +23,7 @@ export function kitchen(plan: RoomPlan): void {
   plan.againstWall('sink', side, { prefer: 'any', approach: 0.7 })
   plan.againstWall('fridge', side, { prefer: 'ends', approach: 0.7 })
   plan.againstWall('counter', opposite(side), { prefer: 'any', approach: 0.7 })
-  if (stove) standAt(plan, stove, 'cook', 0.55)
+  if (stove) standAt(plan, stove, 'cook')
 }
 
 /** A bedroom: the bed with its head to the wall, a wardrobe out of its way. */

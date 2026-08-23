@@ -1,6 +1,6 @@
 # @gb/forge contract
 
-contractVersion: 0.5.0
+contractVersion: 0.6.0
 
 ## Purpose
 
@@ -41,9 +41,12 @@ A narrator writing an unusable quest is not an error: those quests are dropped a
 - An interior is planned in that order: rooms, then doors, then furniture, then the places people stand. The entry room touches the wall the street door is in; every other room hangs off it rather than off another room, so nobody walks through a bedroom to reach the kitchen.
 - One door from the street, one door between rooms, and every room reachable from the street door.
 - Furniture never lands in a doorway (1.2 m across the opening, a metre either side of the wall), never overlaps another piece, and never seals off a door or a place somebody stands. Every piece is tested against the free floor before it lands, so a building that is too small simply holds less.
-- Every anchor is somewhere a person can get to: open floor for anyone standing, their own seat or bed for anyone sitting or sleeping, and never inside somebody else's furniture or in a doorway. Anyone working faces what they work at: staff behind their counter, a cook at the stove, a browser at the case, a seat drawn up to its table.
+- Every anchor is somewhere a person can get to, and close enough to do the job. Anyone sitting or sleeping is inside their own seat or bed; nobody stands in a doorway, inside somebody else's furniture, or on floor cut off from the doors. Anyone working faces what they work at: staff behind their counter, a cook at the stove, a browser at the case, a seat drawn up to its table.
+- How close a body stands is the reach of what it is doing, not the width of a walking body. Hands on a surface (serving, cooking, working a bench) means 0.15 m of floor between the body and the face of the piece, because the standing clips put the hands 0.02 to 0.13 m in front of the body at about 1.03 m up: further back and the forearms rest on air. Facing a piece without touching it (a browser at a case, somebody at a sink or an altar) means 0.3 m. The bands live in `src/interior/stance.ts` and nowhere else, and every anchor is measured against them in the tests, in metres, off the piece's own footprint.
+- Standing that close is standing inside the skirt the walk grid keeps clear round anything solid. A body may be inside the skirt of the one piece it is working at, never another's, and still has to have walkable floor within a step of its back, so the place it stands is a place it could have walked to.
+- A piece that belongs on a counter top is not put on the floor. Furniture carries a floor position and nothing else, so a till or a coffee machine would stand on the floor beside the counter; `PROP_SPECS` marks those and the planner leaves them out until furniture can say what it stands on.
 - The interior varies with the seed and stays identical for the same one: an entrance hall or none, service rooms across the back or down one side, counters on either hand, furniture swept along the walls until it fits.
-- Each kind of building is recognisable from the inside: a bar has a counter you can walk behind with stools along it, a shop a till and cases to browse, a house a sofa facing a screen and a bed against a wall.
+- Each kind of building is recognisable from the inside: a bar has a counter you can walk behind with stools along it, a shop a counter you queue at and cases to browse, a house a sofa facing a screen and a bed against a wall.
 - Same seed, same city, down to the byte. Sub-streams are forked by label off a root the generator never draws from: `streets` for the town plan, `plots` for the mix of buildings, `quests` for how much work the town has in it, then one per block, per site and per interior. A new stream is a new label, never a draw from an existing one, so adding one cannot shift what another already decided.
 - Nothing a narrator writes is trusted: quests are validated against the world and dropped if they do not hold up.
 - Every service post is staffed: a bar has a bartender, a shop has a clerk, whatever the density.
@@ -110,7 +113,7 @@ The `streets` stream is forked off the root and drawn from only in `plan.ts`. Dr
 
 `tests/fixtures/sealed-city.json` is a city this box built and sealed before the streets were seeded, quests included. It proves an already-exported city still loads and still validates. It is never regenerated: regenerating it is deleting the only proof that old files still open.
 
-Interiors live in `src/interior/`: `recipes.ts` says what rooms a building has, `rooms.ts` cuts them out of the shell, `doors.ts` hangs the doors, `room-plan.ts` is the only way furniture and anchors get placed (it holds the clearance and reachability tests), and `furnish/` has one dresser per family of building. A new building kind needs a programme in `recipes.ts`, a dresser in `furnish/`, and a role mapping in `populate.ts`, or it generates an empty shell. Prop sizes live in `src/interior/props.ts` and are what the planner keeps apart, so they have to match what the renderer draws.
+Interiors live in `src/interior/`: `recipes.ts` says what rooms a building has, `rooms.ts` cuts them out of the shell, `doors.ts` hangs the doors, `room-plan.ts` is the only way furniture and anchors get placed (it holds the clearance and reachability tests), `stance.ts` says how close a body stands to what it is working at, and `furnish/` has one dresser per family of building. A new building kind needs a programme in `recipes.ts`, a dresser in `furnish/`, and a role mapping in `populate.ts`, or it generates an empty shell. Prop sizes live in `src/interior/props.ts` and are what the planner keeps apart, so they have to match what the renderer draws; a dresser never passes its own clearance, it names the kind of anchor and `stance.ts` answers.
 
 Every generated quest is played to the end in the tests by `tests/drive.ts`, which reads nothing but `objectives()` and does what each one says, so a recipe that writes a job nobody can finish fails the suite whatever shape it is.
 

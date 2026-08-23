@@ -1,9 +1,10 @@
 import { Rng } from '@gb/kit'
-import { BUILDING_KINDS, type Anchor, type BuildingKind, type Interior, type Room } from '@gb/world'
+import { BUILDING_KINDS, type Anchor, type BuildingKind, type Furniture, type Interior, type Room } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { boxAt, dirOf, holds, inBox, overlaps, type Box, type Side, type Vec } from '../src/interior/geometry.ts'
 import { planInterior, type InteriorPlan } from '../src/interior/plan.ts'
 import { footprintOf, PROP_SPECS } from '../src/interior/props.ts'
+import { IN_FRONT, stanceOf, type Stance } from '../src/interior/stance.ts'
 import { buildTown } from './support.ts'
 
 /** The floor a doorway keeps to itself: the opening, and a metre either side of the wall. */
@@ -127,6 +128,35 @@ function step(from: Vec, rot: number, distance: number): Vec {
   return { x: from.x + dir.x * distance, y: from.y + dir.y * distance }
 }
 
+/**
+ * Metres from a spot to the nearest face of a piece, worked out here from the
+ * piece's own footprint rather than asked of the planner. Zero inside it.
+ */
+function faceGap(point: Vec, piece: Furniture): number {
+  const spec = PROP_SPECS[piece.prop]
+  const a = (piece.rot * Math.PI) / 180
+  const dx = point.x - piece.pos.x
+  const dy = point.y - piece.pos.y
+  const along = dx * Math.sin(a) - dy * Math.cos(a)
+  const across = dx * Math.cos(a) + dy * Math.sin(a)
+  return Math.hypot(Math.max(0, Math.abs(across) - spec.w / 2), Math.max(0, Math.abs(along) - spec.d / 2))
+}
+
+/** Every anchor standing at a piece, with how far it stands off that piece's face. */
+function standoffs(made: InteriorPlan): Array<{ anchor: Anchor; piece: Furniture; stance: Stance; gap: number }> {
+  const found = []
+  for (const anchor of made.anchors) {
+    if (!anchor.propId) continue
+    const piece = made.furniture.find((item) => item.id === anchor.propId)
+    if (!piece) continue
+    const gap = faceGap(anchor.pos, piece)
+    // a body sitting or sleeping is inside its own piece on purpose
+    if (gap === 0) continue
+    found.push({ anchor, piece, stance: stanceOf(anchor.kind) ?? IN_FRONT, gap })
+  }
+  return found
+}
+
 /** How far from open floor an anchor is allowed to be: on its own seat, or on the floor. */
 function reachOf(made: InteriorPlan, anchor: Anchor): number {
   const own = made.furniture.find((piece) => piece.id === anchor.propId)
@@ -226,6 +256,27 @@ describe('interior plans', () => {
     }
   })
 
+  it('stands every working body close enough to reach what it is working at', () => {
+    let checked = 0
+    for (const { kind, seed, made } of everyPlan()) {
+      for (const { anchor, piece, stance, gap } of standoffs(made)) {
+        const where = `${kind}/${seed} ${anchor.kind} at a ${piece.prop}: ${gap.toFixed(2)} m off its face`
+        expect(gap, `${where}, standing in it`).toBeGreaterThanOrEqual(stance.near - 1e-6)
+        expect(gap, `${where}, hands over the floor`).toBeLessThanOrEqual(stance.far + 1e-6)
+        checked++
+      }
+    }
+    expect(checked).toBeGreaterThan(100)
+  })
+
+  it('keeps pieces that belong on a counter off the floor', () => {
+    for (const { kind, seed, made } of everyPlan()) {
+      for (const piece of made.furniture) {
+        expect(PROP_SPECS[piece.prop].stands, `${kind}/${seed} stands a ${piece.prop} on the floor`).toBe('floor')
+      }
+    }
+  })
+
   it('gives the same interior for the same seed and a different one otherwise', () => {
     for (const kind of BUILDING_KINDS) {
       const once = JSON.stringify(plan(kind, 'repeat'))
@@ -234,6 +285,9 @@ describe('interior plans', () => {
       expect(once, `${kind} is not repeatable`).toEqual(twice)
       expect(once, `${kind} ignores its seed`).not.toEqual(other)
     }
+
+    // and the whole sweep, so nothing shared between plans can leak from one into the next
+    expect(JSON.stringify(everyPlan())).toEqual(JSON.stringify(everyPlan()))
   })
 
   it('makes each kind of building recognisable from the inside', () => {
@@ -280,6 +334,11 @@ describe('interior plans', () => {
       const walk = new Walk(made, interior.size)
       for (const anchor of made.anchors) {
         expect(walk.reaches(anchor.pos, reachOf(made, anchor)), `${interior.kind} cannot reach ${anchor.kind}`).toBe(true)
+      }
+      for (const { anchor, piece, stance, gap } of standoffs(made)) {
+        const where = `${interior.kind} ${anchor.kind} at a ${piece.prop}: ${gap.toFixed(2)} m off its face`
+        expect(gap, where).toBeGreaterThanOrEqual(stance.near - 1e-6)
+        expect(gap, where).toBeLessThanOrEqual(stance.far + 1e-6)
       }
       for (const door of made.doors) {
         for (const piece of made.furniture) {

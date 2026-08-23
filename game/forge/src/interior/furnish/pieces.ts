@@ -1,19 +1,26 @@
 import type { AnchorKind, FurnitureProp } from '@gb/world'
-import { alongWall, clamp, dirOf, inward, onWall, outward, round, step, wallBand, wallOf, type Side, type Vec } from '../geometry.ts'
+import { alongWall, clamp, faceReach, inward, onWall, outward, step, wallBand, wallOf, type Side } from '../geometry.ts'
 import { specOf } from '../props.ts'
 import type { Placed, RoomPlan } from '../room-plan.ts'
+import { standoff } from '../stance.ts'
 
 /** Floor kept behind a counter for whoever works there. */
 const STAFF_STRIP = 1.2
 
-export interface CounterOptions {
-  readonly prop: Extract<FurnitureProp, 'bar-counter' | 'counter'>
-  readonly serve: AnchorKind
+/** How far a seat is pushed in to the edge of the table it is drawn up to. */
+const DRAWN_UP = 0.1
+
+export interface ServeOptions {
+  /** The run itself. A bar walks behind a bar counter; everywhere else serves over a counter. */
+  readonly prop?: Extract<FurnitureProp, 'bar-counter' | 'counter'>
   /** Seats on the customer side, if the counter has any. */
   readonly stool?: Extract<FurnitureProp, 'bar-stool' | 'chair'>
   readonly seatKind?: AnchorKind
-  /** Something small on the end of the run: a till, a machine. */
-  readonly extra?: FurnitureProp
+}
+
+/** A counter run with the wall's choice of prop settled. */
+interface Run extends ServeOptions {
+  readonly prop: NonNullable<ServeOptions['prop']>
 }
 
 /**
@@ -21,7 +28,7 @@ export interface CounterOptions {
  * works there facing the room, and seats drawn up on the customer side. The run
  * always stops short of one corner so the strip is a place you can walk into.
  */
-export function counterRun(plan: RoomPlan, side: Side, options: CounterOptions): Placed[] {
+function counterRun(plan: RoomPlan, side: Side, options: Run): Placed[] {
   const spec = specOf(options.prop)
   const wall = wallOf(plan.bounds, side)
   const span = wall.to - wall.from
@@ -43,17 +50,11 @@ export function counterRun(plan: RoomPlan, side: Side, options: CounterOptions):
   if (!segments.length) return []
 
   if (strip > 0) plan.reserve(wallBand(wall, from - 0.1, from + run + 0.1, strip))
-  // behind the counter facing the room, or in front of it at a counter flat to the wall
+  // up against the counter: behind it facing the room, or in front of it at a counter flat to the wall
   const staffed = segments[Math.floor(segments.length / 2)]!
-  const post = onWall(wall, alongWall(wall, staffed.pos), strip > 0 ? strip / 2 : spec.d + 0.55)
-  plan.anchor(options.serve, post, strip > 0 ? inward(side) : outward(side), staffed.id)
-
-  if (options.extra) {
-    const extra = specOf(options.extra)
-    const lowEnd = from - wall.from > wall.to - (from + run)
-    const along = lowEnd ? from - 0.05 - extra.w / 2 : from + run + 0.05 + extra.w / 2
-    plan.at(options.extra, onWall(wall, along, strip + extra.d / 2), inward(side))
-  }
+  const reach = standoff('serve')
+  const post = onWall(wall, alongWall(wall, staffed.pos), strip > 0 ? strip - reach : spec.d + reach)
+  plan.anchor('serve', post, strip > 0 ? inward(side) : outward(side), staffed.id)
 
   if (options.stool && strip > 0) {
     const seat = specOf(options.stool)
@@ -69,19 +70,28 @@ export function counterRun(plan: RoomPlan, side: Side, options: CounterOptions):
   return segments
 }
 
+/** A counter somebody serves from, on the first wall that will take one, and that wall. */
+export function servePost(plan: RoomPlan, options: ServeOptions = {}): Side | undefined {
+  const run: Run = { prop: 'counter', ...options }
+  for (const side of [plan.backSide(), ...plan.openSides()]) {
+    if (counterRun(plan, side, run).length) return side
+  }
+  return undefined
+}
+
 /** How far the room runs back from one of its walls. */
 function depthFrom(plan: RoomPlan, side: Side): number {
   return side === 'north' || side === 'south' ? plan.bounds.h : plan.bounds.w
 }
 
-/** Chairs drawn up to a table, each one facing it. */
+/** Chairs drawn up to a table, each one against its edge and facing it. */
 export function seatTable(plan: RoomPlan, table: Placed, seats: number, kind: AnchorKind): number {
-  const reach = 0.85
+  const top = specOf(table.prop)
+  const seat = specOf('chair')
   let sat = 0
   for (const rot of plan.rng.shuffle([0, 90, 180, 270]).slice(0, seats)) {
-    const away = dirOf(rot)
-    const pos: Vec = { x: round(table.pos.x + away.x * reach), y: round(table.pos.y + away.y * reach) }
-    if (plan.seat('chair', pos, table.pos, kind)) sat++
+    const away = faceReach(top, table.rot, rot) + seat.d / 2 + DRAWN_UP
+    if (plan.seat('chair', step(table.pos, rot, away), table.pos, kind)) sat++
   }
   return sat
 }
@@ -140,8 +150,8 @@ export function tableField(plan: RoomPlan, options: TableFieldOptions): number {
   return placed
 }
 
-/** Where a person stands to use a piece: in front of it, facing it. */
-export function standAt(plan: RoomPlan, piece: Placed, kind: AnchorKind, gap = 0.55): boolean {
-  const front = step(piece.pos, piece.rot, specOf(piece.prop).d / 2 + gap)
+/** Where a person stands to use a piece: in front of it, facing it, as close as the work needs. */
+export function standAt(plan: RoomPlan, piece: Placed, kind: AnchorKind): boolean {
+  const front = step(piece.pos, piece.rot, specOf(piece.prop).d / 2 + standoff(kind))
   return plan.post(kind, front, piece.pos, piece.id)
 }

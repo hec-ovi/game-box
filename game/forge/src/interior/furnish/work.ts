@@ -1,6 +1,6 @@
 import { headingTo, step } from '../geometry.ts'
 import type { RoomPlan } from '../room-plan.ts'
-import { cornerPiece, counterRun, standAt, wallRow } from './pieces.ts'
+import { cornerPiece, servePost, standAt, wallRow } from './pieces.ts'
 
 /** An open office: desks in rows, all facing the same way, a chair at each. */
 export function openOffice(plan: RoomPlan): void {
@@ -31,13 +31,11 @@ export function privateOffice(plan: RoomPlan): void {
 
 /** A workshop: benches along the walls with room to work at them, crates behind. */
 export function workshopFloor(plan: RoomPlan): void {
-  for (const side of [plan.backSide(), ...plan.openSides()]) {
-    if (counterRun(plan, side, { prop: 'counter', serve: 'serve' }).length) break
-  }
+  servePost(plan)
   let benches = 0
   for (const side of plan.openSides()) {
     for (const bench of wallRow(plan, 'counter', side, 2, 1)) {
-      if (standAt(plan, bench, 'work-desk', 0.6)) benches++
+      if (standAt(plan, bench, 'work-desk')) benches++
     }
     if (benches >= 3) break
   }

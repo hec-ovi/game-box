@@ -1,6 +1,6 @@
 import type { Rng } from '@gb/kit'
 import type { Anchor, AnchorKind, Furniture, FurnitureProp, Room } from '@gb/world'
-import { Floor, FOOTING, REACH } from './floor.ts'
+import { BODY_RADIUS, Floor, FOOTING, REACH } from './floor.ts'
 import {
   boxAt,
   centreOf,
@@ -20,7 +20,7 @@ import {
   type Side,
   type Vec,
 } from './geometry.ts'
-import { footprintOf, specOf } from './props.ts'
+import { footprintOf, gapTo, specOf } from './props.ts'
 
 /** Half an interior wall: how far off a room's line anything has to stay. */
 export const WALL_CLEAR = 0.1
@@ -205,6 +205,12 @@ export class RoomPlan {
    * Marks a spot where somebody stands and does something. An anchor stands on
    * open floor, unless it is on its own seat or bed, and it is refused when it
    * lands inside somebody else's furniture or on floor cut off from the doors.
+   *
+   * Standing at a piece means standing against it, closer than the walk grid
+   * keeps a walking body: that is what puts a bartender's hands on the counter
+   * rather than over the floor in front of it. So a body working at a piece is
+   * allowed inside the skirt of that one piece, and no other, and still has to
+   * have real floor within a step of its back.
    */
   anchor(kind: AnchorKind, pos: Vec, rot: number, propId?: string): boolean {
     if (!inBox(this.floor.bounds, pos)) return false
@@ -213,15 +219,16 @@ export class RoomPlan {
     const crowd = CROWD.includes(kind)
     if (crowd && this.#crowd >= this.crowdLimit) return false
 
-    let own: Box | undefined
+    let own: Furniture | undefined
     for (const piece of this.#furniture) {
-      const box = footprintOf(piece)
-      if (piece.id === propId) own = box
-      else if (inBox(box, pos)) return false
+      if (piece.id === propId) own = piece
+      else if (inBox(footprintOf(piece), pos)) return false
     }
 
-    const seat = own && inBox(own, pos) ? own : undefined
-    const reach = seat ? REACH + Math.hypot(seat.w, seat.h) / 2 : FOOTING
+    const ownBox = own ? footprintOf(own) : undefined
+    const seat = ownBox && inBox(ownBox, pos) ? ownBox : undefined
+    const skirt = own && !seat ? Math.max(0, BODY_RADIUS - gapTo(own, pos)) : 0
+    const reach = seat ? REACH + Math.hypot(seat.w, seat.h) / 2 : FOOTING + skirt
     const footing = this.floor.footing(pos, reach, this.#waypoints)
     if (!footing) return false
 
