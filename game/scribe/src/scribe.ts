@@ -3,6 +3,9 @@ import { OfflineNarrator } from '@gb/forge'
 import { Sidecar } from '@gb/sidecar'
 import type { BuildingKind, ItemArchetype, NpcRole } from '@gb/world'
 import { Asker, type ScribeProblem } from './asker.ts'
+import { InstanceWriter, type Instance, type InstanceRequest } from './instance.ts'
+import { PlaceNamer, type PlaceRequest } from './place-names.ts'
+import { Progress, type ProgressPort } from './progress.ts'
 import { bullets, prompt } from './prompts.ts'
 import { QuestWriter } from './quests.ts'
 import { NameRegistry } from './registry.ts'
@@ -27,6 +30,8 @@ export interface ScribeOptions {
   readonly concurrency?: number
   /** Stops every call this narrator has not finished. */
   readonly signal?: AbortSignal | undefined
+  /** Where to show how far the build has got. Nothing here reads it back. */
+  readonly progress?: ProgressPort
 }
 
 /**
@@ -41,8 +46,10 @@ export class Scribe implements Narrator {
   #fallback: Narrator
   #registry = new NameRegistry()
   #waves: Waves
+  #progress: Progress
   #seed: string
   #problems: ScribeProblem[] = []
+  #characters = new Map<string, string>()
 
   constructor(options: ScribeOptions = {}) {
     const sidecar = options.sidecar ?? new Sidecar()
@@ -54,6 +61,7 @@ export class Scribe implements Narrator {
     this.#questions = new Asker({ sidecar, attempts, timeoutMs: QUEST_MS, signal: options.signal, record })
     this.#fallback = options.fallback ?? new OfflineNarrator(options.seed ?? 'scribe')
     this.#waves = new Waves(options.concurrency)
+    this.#progress = new Progress(options.progress)
     this.#seed = options.seed ?? 'scribe'
   }
 
@@ -63,9 +71,11 @@ export class Scribe implements Narrator {
 
   async nameCity(input: { theme: string; seed: string }): Promise<string> {
     this.#seed = input.seed
+    this.#progress.start('city', 1, 'naming the city')
     const answer = await this.#descriptive.ask(NAME_CITY, prompt('name-city', input))
     const name = answer?.name ?? (await this.#fallback.nameCity(input))
     this.#registry.nameCity(name)
+    this.#progress.finished(name)
     return name
   }
 
@@ -77,6 +87,48 @@ export class Scribe implements Narrator {
     const name = answer?.name ?? (await this.#fallback.namePlace(input))
     this.#registry.add(name)
     return name
+  }
+
+  /**
+   * The same names, asked for all at once.
+   *
+   * Most of a city is frontage, so most of a model build's calls are signs over
+   * closed doors, and they have nothing to do with each other. The names come
+   * back in the order they were asked for, and which of two calls keeps a name
+   * they both wanted is settled by index rather than by which one landed first.
+   */
+  async namePlaces(requests: readonly PlaceRequest[]): Promise<string[]> {
+    return new PlaceNamer({
+      asker: this.#descriptive,
+      waves: this.#waves,
+      fallback: this.#fallback,
+      registry: this.#registry,
+      progress: this.#progress,
+    }).write(requests)
+  }
+
+  /**
+   * One call per place: what the place is, everybody in it and everything lying
+   * about, decided together.
+   *
+   * Each call is shown its own building and nothing else, so a whole city's
+   * places can be written at the same time, and the people in one of them read
+   * like people who work together rather than three strangers who were
+   * described one at a time.
+   */
+  async writeInstances(requests: readonly InstanceRequest[]): Promise<Instance[]> {
+    const written = await new InstanceWriter({
+      asker: this.#descriptive,
+      waves: this.#waves,
+      fallback: this.#fallback,
+      registry: this.#registry,
+      progress: this.#progress,
+      seed: this.#seed,
+    }).write(requests)
+    for (const instance of written) {
+      if (instance.character) this.#characters.set(instance.name, instance.character)
+    }
+    return written
   }
 
   async describeNpc(input: {
@@ -115,7 +167,9 @@ export class Scribe implements Narrator {
       asker: this.#questions,
       waves: this.#waves,
       fallback: this.#fallback,
+      progress: this.#progress,
       seed: this.#seed,
+      characters: this.#characters,
     }).write(input)
   }
 

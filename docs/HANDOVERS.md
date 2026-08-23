@@ -22,7 +22,7 @@ is done and the check confirms it.
 
 | # | Handover | From | To | What to do |
 |---|---|---|---|---|
-| 1 | Place `lean` anchors: 0.44 m out from the wall face, rot 180/0/270/90 per wall, 0.79 x 0.76 m clear, no `propId` | cast | forge | `lean` appears nowhere in `game/forge/src` |
+| ~~1~~ | done: 73 lean anchors, 29 propped people on a 10x10 town. Place `lean` anchors: 0.44 m out from the wall face, rot 180/0/270/90 per wall, 0.79 x 0.76 m clear, no `propId` | cast | forge | `lean` appears nowhere in `game/forge/src` |
 | 2 | `dressing.room(interior)`, `built.root.add(room.decor)` | furnish | app | in flight |
 | 3 | One shared prop spec (cells, contact, `onSurface`) with no renderer dependency | furnish, forge | world + forge + furnish | forge cannot import furnish without putting `three` in the headless generator |
 | 4 | `Promise.all` over `namePlace` and `describeNpc`/`describeItem`, reassembled by index | scribe | forge | `forge.ts:161/225/250` await one at a time |
@@ -51,6 +51,8 @@ is done and the check confirms it.
 | 35 | A car is placed on a sidewalk cell on the current forge layout | scene-batch agent | traffic | its own test catches it |
 | 36 | Root `package.json` carries `pnpm.onlyBuiltDependencies`, which pnpm no longer reads and warns about on every run | scene-batch agent | repo | |
 | 37 | Never hand a userland `undici` dispatcher to the built-in fetch: Node 24.19 bundles undici 7.29, a userland 7 Agent works, an 8 Agent is rejected outright | sidecar | repo | pinning `^7` works today and breaks on the Node that bundles 8 |
+
+| 38 | Cast's rotation table gives `rot 270` for the west wall under "90 faces -x"; forge's `dirOf` has 90 facing **+x**. The physical facing is right because forge used its own `inward(side)`, but the two write-ups are mirrored on the east-west axis and one is wrong | forge | cast + forge | an east-west mirror already cost this project real time once; settle which convention is the true one and correct the other document |
 
 ## Checked and closed
 

@@ -7,12 +7,19 @@ Give this quest the id {{questId}} and the kind {{questKind}}.
 
 ## The corner of the city it happens in
 
-Everyone here and everything lying around, by id:
+This errand starts at {{home}}. Here is that place and the ones around it, with
+everyone in them and everything lying about, by id, and the walk from
+{{home}}'s door:
 
 {{places}}
 
 Use only the ids above. An id you invent throws the whole quest away. Pick the
 giver from the people above and put their id in `giverNpcId`.
+
+The metres are the walk between two doors. Most of these places are within
+shouting distance of each other, so an errand that sends the player a few
+hundred metres is a walk across town: say so in the objective, and let the
+difficulty and the pay carry it.
 
 ## How a quest is put together
 

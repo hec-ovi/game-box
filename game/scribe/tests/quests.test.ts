@@ -38,6 +38,20 @@ const BOROUGH: WorldSummary = {
   })),
 }
 
+/** A city strung out along one road, so which places are near which is a fact and not a feeling. */
+const STREET: WorldSummary = {
+  cityName: 'Cold Harbour',
+  theme: 'port',
+  places: Array.from({ length: 20 }, (_, i) => ({
+    plotId: `plot_${String(i + 1).padStart(4, '0')}`,
+    kind: 'shop' as const,
+    name: `Place ${i + 1}`,
+    door: { x: i * 60, z: 0 },
+    npcs: [{ npcId: `npc_${String(i + 1).padStart(4, '0')}`, name: `Person ${i + 1}`, role: 'clerk' as const }],
+    items: [{ itemId: `item_${String(i + 1).padStart(4, '0')}`, name: `Thing ${i + 1}` }],
+  })),
+}
+
 const VIEW = {
   hasNpc: (id: string) => id === 'npc_0001' || id === 'npc_0002',
   hasPlot: (id: string) => id === 'plot_0001' || id === 'plot_0002',
@@ -235,6 +249,54 @@ describe('writing quests', () => {
       expect(call.user, 'a quest with nobody to ask cannot be written').toMatch(/npc_\d{4}/)
       expect(call.user, 'a quest with nothing to fetch cannot be written').toMatch(/item_\d{4}/)
     }
+  })
+
+  it('sets each quest in one neighbourhood, and says how far apart its doors are', async () => {
+    const { sent, sidecar } = fakeModel((call) => draft(idIn(call)))
+    await new Scribe({ sidecar, seed: 'harbour', concurrency: 1 }).writeQuests({ summary: STREET, sideQuests: 3 })
+
+    for (const call of sent) {
+      const home = /- (Place \d+), a shop \(plot_\d{4}\)\. The errand starts here\./.exec(call.user)![1]!
+      const at = (name: string) => Number(/\d+/.exec(name)![0])
+      const listed = [...call.user.matchAll(/- (Place \d+), a shop/g)].map((match) => at(match[1]!))
+      const away = listed.map((one) => Math.abs(one - at(home))).sort((a, b) => a - b)
+
+      // eight places out of twenty, and all but the one that crosses town are
+      // the home's own neighbours: a shuffle of the city would not be
+      expect(listed).toHaveLength(8)
+      expect(away.slice(0, 7).at(-1)).toBeLessThanOrEqual(8)
+      // and the walk between two doors is in the prompt, in metres
+      expect(call.user).toMatch(new RegExp(`\\d+ m from ${home}`))
+    }
+  })
+
+  it('tells the quest writer what the instance pass said each place is', async () => {
+    const { sent, sidecar } = fakeModel((call) =>
+      call.toolName === 'write_instance'
+        ? {
+            name: 'The Anchor',
+            character: 'A bar the harbour crews drink in before the early tide.',
+            people: [
+              {
+                postId: 'anchor_0001',
+                given: 'Mara',
+                family: `${/\^\[([A-Z])/.exec(String(((call.parameters as Record<string, Record<string, Record<string, Record<string, Record<string, Record<string, unknown>>>>>>)['properties']!)['people']!['items']!['properties']!['family']!['pattern']))![1]}oss`,
+                personality: 'Watches the door more than the glasses.',
+                knowledge: ['The tide is late.', 'Rook has not been in.'],
+              },
+            ],
+            things: [],
+          }
+        : draft(idIn(call)),
+    )
+    const scribe = new Scribe({ sidecar, seed: 'harbour', concurrency: 1 })
+
+    await scribe.writeInstances([
+      { kind: 'bar', theme: 'port', rooms: ['main'], posts: [{ postId: 'anchor_0001', role: 'bartender' }], things: [] },
+    ])
+    await scribe.writeQuests({ summary: CITY, sideQuests: 0 })
+
+    expect(sent.at(-1)!.user).toContain('what it is: A bar the harbour crews drink in before the early tide.')
   })
 
   it('refuses a step that points somewhere the summary cannot name', async () => {

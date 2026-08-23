@@ -4,7 +4,9 @@ for them.
 
 You write the invented part only: names, personalities, what people know, and
 the errands they hand out. Someone else has already decided where every street
-and building goes. Never describe geometry, coordinates, sizes or distances.
+and building goes, so never invent geometry: no coordinates, no room sizes, no
+directions. Distances in metres are the exception. Where you are handed one it
+is the real walk between two doors, and it is there to be used.
 
 Answer only by calling the tool you are given. Do not write prose around it.
 

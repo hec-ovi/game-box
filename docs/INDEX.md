@@ -13,7 +13,7 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI
 | Exporting and importing a city, and the save file | `game/bundle/` |
 | Walking routes, reachability, waypoints | `game/nav/` |
 | Talking to the local model: one checked answer, or a streamed reply | `game/sidecar/` |
-| Asking the local model to write names, people and quests | `game/scribe/` |
+| Asking the local model to name the city, write a whole place and the people in it, write the quests, and say how far the build has got | `game/scribe/` |
 | Conversations with NPCs and what they are allowed to do | `game/talk/` |
 | Turning a world into three.js objects, the wet street and the rubbish on it, and where art plugs in | `game/scene/` |
 | The people: bodies, clothes, clips, who is doing what | `game/cast/` |

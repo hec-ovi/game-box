@@ -6,7 +6,6 @@
 export class NameRegistry {
   #cityName = ''
   #names: string[] = []
-  #titles: string[] = []
 
   get cityName(): string {
     return this.#cityName
@@ -22,17 +21,13 @@ export class NameRegistry {
     if (trimmed && !this.#names.includes(trimmed)) this.#names.push(trimmed)
   }
 
-  addTitle(title: string): void {
-    const trimmed = title.trim()
-    if (trimmed && !this.#titles.includes(trimmed)) this.#titles.push(trimmed)
+  /** Whether this city has already spent this name on somebody or something else. */
+  taken(name: string): boolean {
+    return this.#names.includes(name.trim())
   }
 
   /** The names most recently spent, oldest first. A whole city is too long to put in a prompt. */
   names(limit = 40): readonly string[] {
     return this.#names.slice(-limit)
-  }
-
-  titles(limit = 20): readonly string[] {
-    return this.#titles.slice(-limit)
   }
 }

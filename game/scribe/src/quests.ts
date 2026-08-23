@@ -1,9 +1,11 @@
 import type { Narrator, WorldSummary } from '@gb/forge'
 import { sealQuest, validateQuest } from '@gb/quest'
 import type { Asker, Violation } from './asker.ts'
+import { describeSlice, Neighbourhood } from './neighbourhood.ts'
+import type { Progress } from './progress.ts'
 import { bullets, prompt } from './prompts.ts'
 import { rewardBands } from './reward-bands.ts'
-import { CitySummary, describePlaces, type SummaryView } from './summary.ts'
+import { CitySummary, type SummaryView } from './summary.ts'
 import { WRITE_QUEST, type QuestDraft } from './tools.ts'
 import type { Waves } from './waves.ts'
 
@@ -19,7 +21,10 @@ export interface QuestWriterOptions {
   readonly asker: Asker
   readonly waves: Waves
   readonly fallback: Narrator
+  readonly progress: Progress
   readonly seed: string
+  /** What the instance pass said each place is, by name, for the places this quest is set among. */
+  readonly characters: ReadonlyMap<string, string>
 }
 
 /**
@@ -37,14 +42,18 @@ export class QuestWriter {
   #asker: Asker
   #waves: Waves
   #fallback: Narrator
+  #progress: Progress
   #seed: string
+  #characters: ReadonlyMap<string, string>
   #offline?: Promise<readonly unknown[]>
 
   constructor(options: QuestWriterOptions) {
     this.#asker = options.asker
     this.#waves = options.waves
     this.#fallback = options.fallback
+    this.#progress = options.progress
     this.#seed = options.seed
+    this.#characters = options.characters
   }
 
   async write(input: { summary: WorldSummary; sideQuests: number }): Promise<unknown[]> {
@@ -54,17 +63,23 @@ export class QuestWriter {
     const view = city.view()
     const total = Math.max(1, input.sideQuests + 1)
     const slots = Array.from({ length: total }, (_, index) => index)
+    const corners = new Neighbourhood(city.peopled(), this.#seed)
+    this.#progress.start('quests', total, `${total} to write`)
 
     const written = await this.#waves.run<number, Written | undefined>(slots, async (_, index, earlier) => {
       const id = questId(index)
       const draft = await this.#asker.ask(
         WRITE_QUEST,
-        this.#brief(city, index, total, earlier),
+        this.#brief(city, corners, index, total, earlier),
         (value) => problemsWith(value, id, view),
       )
-      if (draft) return { quest: sealQuest(draft), title: draft.title }
+      if (draft) {
+        this.#progress.finished(draft.title)
+        return { quest: sealQuest(draft), title: draft.title }
+      }
 
       const spare = (await this.#offlineQuests(input)).find((quest) => fieldOf(quest, 'id') === id)
+      this.#progress.finished(spare ? fieldOf(spare, 'title') : 'nothing this time')
       return spare ? { quest: spare, title: fieldOf(spare, 'title') } : undefined
     })
 
@@ -73,6 +88,7 @@ export class QuestWriter {
 
   #brief(
     city: CitySummary,
+    corners: Neighbourhood,
     index: number,
     total: number,
     earlier: readonly (Written | undefined)[],
@@ -81,13 +97,15 @@ export class QuestWriter {
       index === 0
         ? prompt('quest-role-main')
         : prompt('quest-role-side', { sideIndex: index, sideTotal: total - 1 })
+    const slice = corners.for(index, PLACES_PER_QUEST)
     return prompt('write-quest', {
       cityName: city.cityName,
       theme: city.theme,
       questId: questId(index),
       questKind: index === 0 ? 'main' : 'side',
       questRole: role,
-      places: describePlaces(city.neighbourhood(this.#seed, index, PLACES_PER_QUEST)),
+      home: slice.home.name,
+      places: describeSlice(slice, this.#characters),
       rewardBands: rewardBands(),
       usedTitles: bullets(
         earlier.flatMap((entry) => (entry?.title ? [entry.title] : [])),
