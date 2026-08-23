@@ -18,7 +18,7 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI
 | Turning a world into three.js objects, and where art plugs in | `game/scene/` |
 | The people: bodies, clothes, clips, who is doing what | `game/cast/` |
 | Buildings that look like buildings, their lit windows, their neon signs and the street lamps, from the city kit | `game/kitbash/` |
-| Inside a building: furniture, floors and walls | `game/furnish/` |
+| Inside a building: furniture generated from parameters, floors and walls | `game/furnish/` |
 | Sky, sun and moon, terrain, water, trees, rain | `game/land/` |
 | Pedestrians walking the streets | `game/crowd/` |
 | Cars driving the roads | `game/traffic/` |
@@ -56,6 +56,7 @@ game/forge, game/quest, game/world, game/sidecar <- game/scribe
 game/world, game/quest, game/play, game/sidecar <- game/talk
 game/world <- game/nav, game/scene, game/traffic
 game/scene, game/kit <- game/kitbash
+game/scene, game/world, game/kit <- game/furnish
 game/scene <- game/cast
 game/cast, game/nav <- game/crowd
 game/quest <- game/hud

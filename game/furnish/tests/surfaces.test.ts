@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import type { NodeMaterial } from 'three/webgpu'
 import { describe, expect, it } from 'vitest'
 import {
+  FURNISH_STYLES,
   FurnishDressing,
   FurnishLibrary,
   SURFACE_LOOKS,
@@ -18,9 +19,11 @@ import {
  * A pack's worth of surfaces without the pack. What is in the images makes no
  * difference to how big they are laid, which is what these tests measure.
  */
+const maps = SURFACE_TEXTURE_IDS.map((id) => [id, { map: new THREE.Texture(), normal: new THREE.Texture() }] as const)
+const surfaced = new FurnishLibrary('surfaces', new SurfaceLibrary(new Map(maps)))
+
 function dressing(): FurnishDressing {
-  const maps = SURFACE_TEXTURE_IDS.map((id) => [id, { map: new THREE.Texture(), normal: new THREE.Texture() }] as const)
-  return new FurnishDressing(new FurnishLibrary(new Map(), new Map(), new SurfaceLibrary(new Map(maps))))
+  return new FurnishDressing(surfaced)
 }
 
 /** A wall the way @gb/scene builds one: a box, standing on the floor, somewhere in the room. */
@@ -100,8 +103,10 @@ describe('interior surfaces', () => {
 
   it('tiles at the real-world size the table gives for the image on it', () => {
     for (const part of SURFACE_PARTS) {
-      const metres = SURFACE_TEXTURES[SURFACE_LOOKS[part].map].metres
-      expect(tilingOf(dressing().surface(part))?.metres, part).toBe(metres)
+      for (const style of FURNISH_STYLES) {
+        const metres = SURFACE_TEXTURES[SURFACE_LOOKS[style][part].map].metres
+        expect(tilingOf(new FurnishDressing(surfaced, undefined, style).surface(part))?.metres, part).toBe(metres)
+      }
     }
   })
 

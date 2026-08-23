@@ -217,6 +217,9 @@ importers:
 
   game/furnish:
     dependencies:
+      '@gb/kit':
+        specifier: workspace:*
+        version: link:../kit
       '@gb/scene':
         specifier: workspace:*
         version: link:../scene

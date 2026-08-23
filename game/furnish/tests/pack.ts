@@ -15,7 +15,7 @@ const globals = globalThis as Record<string, unknown>
 globals.self ??= globalThis
 globals.createImageBitmap ??= async () => ({ width: 1, height: 1, close() {} })
 
-/** The shipped pack, loaded the way game/app loads it: meshopt-compressed glb, quantized attributes and all. */
+/** The shipped pack, loaded the way game/app loads it. */
 export async function loadPackedFurnish(): Promise<FurnishLibrary> {
   const bytes = readFileSync(KIT_FILE)
   const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer

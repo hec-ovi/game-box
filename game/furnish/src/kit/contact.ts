@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import type { ContactKind } from '../catalog/props.ts'
+import type { ContactKind } from '../catalog/specs.ts'
 
 /** How level a face has to be before a body could rest on it: within about ten degrees of flat. */
 const UPWARD = 0.985
@@ -68,8 +68,9 @@ function platesOf(geometries: readonly THREE.BufferGeometry[]): Plate[] {
       const normal = one.subVectors(b, a).cross(two.subVectors(c, a))
       const area = normal.length() / 2
       if (area < 1e-7 || normal.y / (2 * area) < UPWARD) continue
-      // a millimetre either way is the same plate, whatever the file's precision
-      const y = Math.round(((a.y + b.y + c.y) / 3) * 1000) / 1000
+      // ten microns either way is the same plate: that is float32's own precision,
+      // not a tolerance, because the geometry was drawn to the number in the first place
+      const y = Math.round(((a.y + b.y + c.y) / 3) * 1e5) / 1e5
       areas.set(y, (areas.get(y) ?? 0) + area)
     }
   }

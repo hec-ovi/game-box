@@ -9,10 +9,10 @@
   "scripts": {
     "test": "vitest run",
     "build:kit": "node tools/build-kit.ts",
-    "catalog": "node tools/print-catalog.ts",
     "cost": "node tools/print-cost.ts"
   },
   "dependencies": {
+    "@gb/kit": "workspace:*",
     "@gb/scene": "workspace:*",
     "@gb/world": "workspace:*",
     "three": "^0.185.1"

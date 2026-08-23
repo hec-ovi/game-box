@@ -43,7 +43,7 @@
       "license": "CC0-1.0",
       "attribution": null,
       "redistributable": true,
-      "take": "Street level: shopfronts, cornices, fire escapes, rooftop plant, street furniture."
+      "take": "Street level: shopfronts, cornices, fire escapes, rooftop plant, street furniture. Its concrete and marble also tile the inside of a building."
     },
     {
       "id": "kaykit-animations",
@@ -88,30 +88,6 @@
       "attribution": null,
       "redistributable": true,
       "take": "Road pieces, kerbs, crossings, street furniture."
-    },
-    {
-      "id": "kenney-furniture",
-      "name": "Furniture Kit",
-      "author": "Kenney",
-      "page": "https://kenney.nl/assets/furniture-kit",
-      "download": "https://kenney.nl/media/pages/assets/furniture-kit/440e0608a4-1677580847/kenney_furniture-kit.zip",
-      "file": null,
-      "license": "CC0-1.0",
-      "attribution": "Kenney, www.kenney.nl (asked for, not required)",
-      "redistributable": true,
-      "take": "The inside of a modern building: kitchen, bathroom, bedroom, living room, office."
-    },
-    {
-      "id": "kenney-mini-market",
-      "name": "Mini Market",
-      "author": "Kenney",
-      "page": "https://kenney.nl/assets/mini-market",
-      "download": "https://kenney.nl/media/pages/assets/mini-market/463f38da51-1729865423/kenney_mini-market.zip",
-      "file": null,
-      "license": "CC0-1.0",
-      "attribution": "Kenney, www.kenney.nl (asked for, not required)",
-      "redistributable": true,
-      "take": "The shop floor: till, shelving, chilled and produce displays."
     }
   ]
 }

@@ -1,103 +1,61 @@
-import type { FurnitureProp } from '@gb/world'
-import * as THREE from 'three'
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
-import { PIECES, yawOf, type PieceId } from '../catalog/pieces.ts'
-import { PROP_ART, type PropArt } from '../catalog/props.ts'
+import { FURNITURE_PROPS, type FurnitureProp } from '@gb/world'
+import type * as THREE from 'three'
+import { PROP_SPECS, footprintOf } from '../catalog/specs.ts'
+import { Solid } from '../build/solid.ts'
+import { BUILDERS } from '../props/index.ts'
+import { FURNISH_STYLES, type FurnishStyle } from '../style/palette.ts'
+import { variantOf } from '../style/variant.ts'
 import { contactHeight } from './contact.ts'
-import { fitScale } from './fit.ts'
 
-/** One material's worth of one prop, ready to draw. */
-export interface Part {
-  readonly material: string
+/** One prop in one language, ready to draw. */
+export interface Built {
   readonly geometry: THREE.BufferGeometry
+  /** Metres off the floor of the surface a body meets, measured off what was built. */
+  readonly contact: number | undefined
+  readonly triangles: number
 }
 
-/** One prop as the library holds it: its geometry, and where a body meets it. */
-export interface Built {
-  readonly parts: Part[]
-  /** Metres off the floor of the surface a body sits, lies or works on. Nothing for a prop nobody uses. */
-  readonly contact: number | undefined
+/** How a prop and a language are keyed together. */
+export function keyOf(style: FurnishStyle, prop: FurnitureProp): string {
+  return `${style}/${prop}`
 }
 
 /**
- * Turns the source models into the furniture the game places: each prop turned
- * to face north, scaled into the box the room planner keeps clear for it and
- * onto the height a body expects, its origin moved to the centre of its base,
- * and everything on one material welded into one mesh.
+ * Builds the whole catalog, both languages, from one seed.
  *
- * All of that happens once, when the pack loads. Placing a chair afterwards is
- * a new `Mesh` over geometry that is already the right size and the right way
- * round.
+ * Every prop is built once and shared: a room of six chairs is six objects over
+ * one buffer, so memory does not grow with how much furniture a town has. The
+ * variation is per prop kind rather than per instance, which is what keeps that
+ * true and is also what a real room looks like: the chairs match.
  */
-export function buildProps(pieces: ReadonlyMap<PieceId, readonly Part[]>): Map<FurnitureProp, Built> {
-  const props = new Map<FurnitureProp, Built>()
-  for (const [prop, art] of Object.entries(PROP_ART) as [FurnitureProp, PropArt][]) {
-    const built = buildProp(art, pieces)
-    if (built) props.set(prop, built)
+export function buildCatalog(seed: string): Map<string, Built> {
+  const catalog = new Map<string, Built>()
+  for (const style of FURNISH_STYLES) {
+    for (const prop of FURNITURE_PROPS) catalog.set(keyOf(style, prop), buildProp(style, prop, seed))
   }
-  return props
+  return catalog
 }
 
-function buildProp(art: PropArt, pieces: ReadonlyMap<PieceId, readonly Part[]>): Built | undefined {
-  const placed: Part[] = []
-  for (const part of art.parts) {
-    const source = pieces.get(part.piece)
-    if (!source) return undefined
-    const [x, y, z] = part.at ?? [0, 0, 0]
-    for (const piece of source) {
-      placed.push({ material: piece.material, geometry: piece.geometry.clone().translate(x, y, z) })
-    }
+function buildProp(style: FurnishStyle, prop: FurnitureProp, seed: string): Built {
+  const spec = PROP_SPECS[prop]
+  const { width, depth } = footprintOf(prop)
+  const solid = new Solid()
+
+  BUILDERS[prop]({
+    solid,
+    variant: variantOf(style, prop, seed),
+    width,
+    depth,
+    contact: spec.contact?.height ?? 0,
+    staff: spec.staffContact ?? 0,
+    height: spec.height ?? 0,
+  })
+
+  const geometry = solid.geometry()
+  geometry.name = keyOf(style, prop)
+  return {
+    geometry,
+    contact: spec.contact && contactHeight([geometry], spec.contact.kind),
+    triangles: solid.triangles,
   }
-  if (!placed.length) return undefined
-
-  // face north first: the box the prop has to fit is measured across its front
-  const turn = new THREE.Matrix4().makeRotationY(yawOf(PIECES[art.parts[0]!.piece].front))
-  for (const part of placed) part.geometry.applyMatrix4(turn)
-
-  const geometries = placed.map((part) => part.geometry)
-  const size = bounds(placed).getSize(new THREE.Vector3())
-  const scale = fitScale(size, art, art.contact && contactHeight(geometries, art.contact.kind))
-  const fit = new THREE.Matrix4().makeScale(scale.x, scale.y, scale.z)
-  for (const part of placed) part.geometry.applyMatrix4(fit)
-
-  // origin at the centre of the base, so placing it on the floor cannot sink it
-  const box = bounds(placed)
-  const centre = box.getCenter(new THREE.Vector3())
-  const rebase = new THREE.Matrix4().makeTranslation(-centre.x, -box.min.y, -centre.z)
-  for (const part of placed) part.geometry.applyMatrix4(rebase)
-
-  const parts = weld(placed)
-  return { parts, contact: art.contact && contactHeight(parts.map((part) => part.geometry), art.contact.kind) }
-}
-
-/** Everything on one material as one buffer: a prop is as many draws as it has materials. */
-function weld(parts: readonly Part[]): Part[] {
-  const buckets = new Map<string, THREE.BufferGeometry[]>()
-  for (const part of parts) {
-    const bucket = buckets.get(part.material)
-    if (bucket) bucket.push(part.geometry)
-    else buckets.set(part.material, [part.geometry])
-  }
-
-  const welded: Part[] = []
-  for (const [material, geometries] of buckets) {
-    if (geometries.length === 1) {
-      welded.push({ material, geometry: geometries[0]! })
-      continue
-    }
-    const merged = mergeGeometries(geometries)
-    if (!merged) throw new Error(`furnish: geometry on ${material} would not weld`)
-    for (const geometry of geometries) geometry.dispose()
-    welded.push({ material, geometry: merged })
-  }
-  return welded
-}
-
-function bounds(parts: readonly Part[]): THREE.Box3 {
-  const box = new THREE.Box3()
-  for (const part of parts) {
-    part.geometry.computeBoundingBox()
-    box.union(part.geometry.boundingBox!)
-  }
-  return box
 }

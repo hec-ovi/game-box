@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { MeshStandardNodeMaterial } from 'three/webgpu'
+import type { FurnishStyle } from '../style/palette.ts'
 import { SURFACE_LOOKS, SURFACE_TEXTURES, type SurfaceLook, type SurfacePart, type SurfaceTextureId } from './surfaces.ts'
 import { MetreTiling } from './tiling.ts'
 
@@ -11,10 +12,11 @@ export interface SurfaceMaps {
 
 /**
  * The floor, the walls and the ceiling, built once out of the pack's tiling
- * images. Every room in town shares them: an interior is three materials, not
- * three per building. Each one carries the density its image is drawn at, so
- * the size of the room it lands in makes no difference to the size of the
- * stones in it.
+ * images, in each of the two interior languages. Every room in town shares
+ * them: an interior is three materials, not three per building, and the two
+ * languages read off the same two images. Each one carries the density its
+ * image is drawn at, so the size of the room it lands in makes no difference to
+ * the size of the stones in it.
  */
 export class SurfaceLibrary {
   readonly #maps: ReadonlyMap<SurfaceTextureId, SurfaceMaps>
@@ -28,8 +30,8 @@ export class SurfaceLibrary {
     this.#maps = maps
   }
 
-  material(part: SurfacePart): THREE.Material {
-    const look = SURFACE_LOOKS[part]
+  material(part: SurfacePart, style: FurnishStyle): THREE.Material {
+    const look = SURFACE_LOOKS[style][part]
     let material = this.#materials.get(look)
     if (!material) {
       material = this.#build(look)

@@ -1,12 +1,19 @@
-/** @gb/furnish: the inside of a building, in real art. See CONTRACT.md. */
+/** @gb/furnish: the inside of a building, generated from parameters. See CONTRACT.md. */
 export { FurnishDressing } from './dressing.ts'
-export { PIECES, PIECE_IDS, yawOf, type Face, type Pack, type Piece, type PieceId } from './catalog/pieces.ts'
-export { PROP_ART, piecesUsed, type Contact, type ContactKind, type PropArt, type PropPart } from './catalog/props.ts'
-export { FurnishIncomplete } from './kit/error.ts'
+export { CELL, metresOf, type Cells, type Footprint } from './catalog/cells.ts'
+export {
+  PROP_SPECS,
+  footprintOf,
+  type Contact,
+  type ContactKind,
+  type PropSpec,
+} from './catalog/specs.ts'
 export { FurnishLibrary } from './kit/library.ts'
-export { loadFurnish } from './kit/load.ts'
-export { placeholderFurnish } from './kit/placeholder.ts'
-export { type Built, type Part } from './kit/build.ts'
+export { DEFAULT_SEED, furnishKit, loadFurnish } from './kit/load.ts'
+export { type Built } from './kit/build.ts'
+export { FURNISH_STYLES, PALETTES, type FurnishStyle, type Palette } from './style/palette.ts'
+export { SOLID_MATERIAL } from './style/material.ts'
+export { type Variant, variantOf } from './style/variant.ts'
 export { SurfaceLibrary, type SurfaceMaps } from './surfaces/library.ts'
 export { MetreTiling, tilingOf } from './surfaces/tiling.ts'
 export {

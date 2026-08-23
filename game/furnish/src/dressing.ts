@@ -1,32 +1,48 @@
 import { Greybox, type Dressing } from '@gb/scene'
 import type { AnchorKind, CellKind, FurnitureProp, Item, Npc, Plot } from '@gb/world'
 import * as THREE from 'three'
-import type { Part } from './kit/build.ts'
 import type { FurnishLibrary } from './kit/library.ts'
+import type { FurnishStyle } from './style/palette.ts'
 import type { SurfacePart } from './surfaces/surfaces.ts'
 
 /**
- * The inside of a building dressed in the two KayKit packs: furniture that is
- * furniture, and a floor and walls that tile at real-world size. Everything
- * else - the buildings, the people, the ground outside - goes straight to the
- * dressing behind it.
+ * The inside of a building in one of the two interior languages: furniture
+ * generated to the cells the planner claimed and the heights a body reaches
+ * for, on a floor and walls that tile at real-world size.
+ *
+ * Everything else, the buildings, the people, the ground outside, goes straight
+ * to the dressing behind it.
+ *
+ * A dressing speaks one language. `as` hands back a sibling in the other over
+ * the same library, so an app that knows which building it is entering pays
+ * nothing for the second language: one library, one material, two dressings.
  */
 export class FurnishDressing implements Dressing {
   readonly #kit: FurnishLibrary
   readonly #rest: Dressing
+  readonly style: FurnishStyle
 
-  constructor(kit: FurnishLibrary, rest: Dressing = new Greybox()) {
+  constructor(kit: FurnishLibrary, rest: Dressing = new Greybox(), style: FurnishStyle = 'corpo') {
     this.#kit = kit
     this.#rest = rest
+    this.style = style
+  }
+
+  /** The same furniture in the other language. */
+  as(style: FurnishStyle): FurnishDressing {
+    return style === this.style ? this : new FurnishDressing(this.#kit, this.#rest, style)
   }
 
   prop(prop: FurnitureProp): THREE.Object3D {
-    const parts = this.#kit.parts(prop)
-    return parts ? this.#object(parts, prop) : this.#rest.prop(prop)
+    const mesh = new THREE.Mesh(this.#kit.geometry(prop, this.style), this.#kit.material)
+    mesh.name = prop
+    mesh.castShadow = true
+    mesh.receiveShadow = true
+    return mesh
   }
 
   surface(part: SurfacePart): THREE.Material {
-    return this.#kit.surfaces?.material(part) ?? this.#rest.surface(part)
+    return this.#kit.surfaces?.material(part, this.style) ?? this.#rest.surface(part)
   }
 
   building(plot: Plot, size: { width: number; depth: number; height: number }): THREE.Object3D {
@@ -43,27 +59,5 @@ export class FurnishDressing implements Dressing {
 
   ground(kind: CellKind): THREE.Material {
     return this.#rest.ground(kind)
-  }
-
-  /**
-   * A new object over shared geometry: the art is loaded once and a room of
-   * twenty pieces costs twenty draws, not twenty loads. The geometry already
-   * has its origin at the centre of its base and its front looking north, so
-   * there is nothing to place here.
-   */
-  #object(parts: readonly Part[], name: string): THREE.Object3D {
-    const meshes = parts.map((part) => {
-      const mesh = new THREE.Mesh(part.geometry, this.#kit.material(part.material))
-      mesh.name = name
-      mesh.castShadow = true
-      mesh.receiveShadow = true
-      return mesh
-    })
-    if (meshes.length === 1) return meshes[0]!
-
-    const group = new THREE.Group()
-    group.name = name
-    for (const mesh of meshes) group.add(mesh)
-    return group
   }
 }
