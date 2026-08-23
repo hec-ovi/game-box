@@ -161,6 +161,32 @@ So a brief is separate fields for separate consumers, not one text box. And the
 two that cannot be honoured should say so in the interface rather than be
 silently dropped, which is the failure this project has spent a day removing.
 
+### No way out of a game, and no way to see the others (2026-08-23, found by him)
+
+> "it redirects me and i can not exit a game, there is not even a button to quit
+> a game or see other game instances"
+
+Three holes, one shape: the boot panel is a **front door with no way back to it**.
+
+1. **No quit.** Once a city is running there is no control that returns to the
+   panel. Escape leaves a conversation, and nothing leaves the game.
+2. **No library.** A player has no list of the cities they have made or been
+   sent, no way to switch between them, and no way to delete one. Saves are
+   keyed per world (`game-box.save.world_0001`), so the data to list them exists
+   and nothing reads it as a list.
+3. **The URL is rewritten after generating**, which is what he means by
+   redirected: the brief is written into the address bar so a refresh replays
+   the same city. Right behaviour, wrong feel, because it also means the address
+   he typed is gone and there is no visible way back.
+
+This is the other half of the creation panel already on this list. A player
+needs: quit to the panel, a list of worlds with the one they were last in marked,
+open, and remove. It belongs to `@gb/app` (boot and session) plus `@gb/hud` for
+the control that starts it.
+
+Worth doing before any more generation features: a city you cannot leave is a
+city you can only see once per tab.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
