@@ -149,6 +149,36 @@ describe('terrain', () => {
     expect(covered.size).toBe(world.grid.count('mountain'))
   })
 
+  it('meets the city at exactly zero, so the pavement kerb has something to close against', async () => {
+    const world = await town()
+    const land = landOf(world)
+    const position = land.terrain.geometry.getAttribute('position')
+    const cell = world.cellSize
+
+    // the cells sharing one corner of the lattice: a verge corner the town touches is a seam
+    const kindsAt = (x: number, z: number): Set<CellKind> => {
+      const kinds = new Set<CellKind>()
+      for (const dx of [-1, 0]) {
+        for (const dz of [-1, 0]) {
+          const kind = world.grid.at(Math.round(x / cell) + dx, Math.round(z / cell) + dz)
+          if (kind) kinds.add(kind)
+        }
+      }
+      return kinds
+    }
+
+    const seams: number[] = []
+    for (let vertex = 0; vertex < position.count; vertex++) {
+      const kinds = kindsAt(position.getX(vertex), position.getZ(vertex))
+      if (!kinds.has('mountain')) continue
+      if (kinds.has('sidewalk') || kinds.has('park')) seams.push(position.getY(vertex))
+    }
+
+    // the town really does hand this land a verge to close
+    expect(seams.length).toBeGreaterThan(60)
+    expect(seams.filter((height) => height !== 0)).toEqual([])
+  })
+
   it('is one welded mesh, wound to be seen from above', async () => {
     const world = await town()
     const land = landOf(world)

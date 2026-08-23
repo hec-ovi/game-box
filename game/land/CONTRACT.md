@@ -1,6 +1,6 @@
 # @gb/land contract
 
-contractVersion: 0.5.0
+contractVersion: 0.5.1
 
 ## Purpose
 
@@ -65,6 +65,7 @@ Builds the world the city stands in and the sky over it: kilometres of open, rol
 
 - One world unit is one metre, Y up. Nothing here reads a size that is not the world's `cellSize` or a number in the theme.
 - The grid's `mountain` cells are not where the mountains are. They are the verge: the strip between the last pavement and the open ground, flat, walkable, and covered here because the city's own ground stops at them. The high ground is a function of distance from the built area and does not begin for well over a kilometre.
+- Every verge corner the city touches is at exactly zero, the height of the roadway, and `@gb/scene` kerbs the pavement that meets it down to zero. That is one number the two boxes agree on: a verge laid anywhere else, or a kerb dropped to anything else, opens a gap around the whole outer ring that the player can see under. Only the far outer edge of the verge lifts at all, and there it takes the open ground's own line so the two cannot part company, which is under a centimetre.
 - The city's ground belongs to `@gb/scene`. Terrain is laid on the verge and outside the map, and on nothing else: no face, no tree and no water ever lands on a street, a pavement, a park or a plot.
 - The land is flat at zero on every open cell and for two metres around it, and the roads out are graded for 120 m past the edge of the map, so leaving town is never uphill into a wall.
 - `heightAt` reads the very surface the mesh is built from, not an approximation of it: the same lattice, the same quad, the same one of its two triangles. Measured against raycasts of the finished mesh the two agree to under a hundredth of a millimetre, so a player placed on the answer stands exactly on what they can see.
@@ -160,7 +161,7 @@ The land carries its own daylight, so the scene needs no other lights, and `scen
 
 For the sun's shadow the renderer needs `shadowMap.enabled = true` and a filter (`PCFSoftShadowMap` is what the near field is tuned for), and it has to be driven from `renderer.setAnimationLoop`: that is where `WebGPURenderer` advances the node frame the shadow map is redrawn on, so a loop that calls `render` from its own `requestAnimationFrame` draws the map once and then leaves it frozen where the player stood.
 
-`@gb/scene` still builds its own block of mountains per cell, which this replaces; hide `city.root.getObjectByName('mountains')`. Going inside a building, hide `land.root` with the rest of the outside and stop calling `update`.
+`@gb/scene` builds a stand-in ring of blocks over the verge for a city standing with no landscape around it, which this replaces; hide `city.root.getObjectByName('mountains')`. Going inside a building, hide `land.root` with the rest of the outside and stop calling `update`.
 
 Wet ground is not this box: `land.wetness` is published for whoever owns the street and the buildings to read, 0 dry to 1 soaked.
 
