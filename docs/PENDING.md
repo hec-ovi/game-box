@@ -664,6 +664,41 @@ Boxes: `talk` for the sessions and the memory, `forge` for the reason and the
 life at generation, `crowd` for a walker's destination and errand, `play` for
 what persists.
 
+### A quest sends you to somebody who is not there (2026-08-23, found by him)
+
+He was sent to find a person and the room was empty.
+
+**This is a gap in the completability number, not just a bug.** `@gb/forge`'s
+harness reports 444 of 444 quests completable, and that is honest as far as it
+goes: it credits only through the events a real player can produce. But it runs
+headless, where nobody leaves their post. In the running game `@gb/app` sends up
+to **a third of a town out walking** at any moment, so a step naming one of them
+points at an empty room. The harness cannot see that, which is why a green number
+and a broken errand coexist.
+
+Three ways it could be answered, and the choice matters:
+
+1. **Quest targets stay put.** The simplest: a person who is the target of an
+   open step is not eligible to go out. `@gb/app` already owns who is out
+   (`Street.residents()`, which honours "nobody is the last person out of a
+   room"), so adding "and nobody with a job waiting on them" is one rule in a
+   place that already has two.
+2. **The guide points at where they actually are.** More alive, and it fits the
+   walkers-going-somewhere design above: the marker tracks the person rather than
+   their post, and finding them in the street is part of the errand.
+3. **They come back.** A person with somebody waiting returns to their post.
+
+1 is the safe fix and 2 is the better game. They are not exclusive: 1 now, 2 when
+walkers have destinations worth following.
+
+**And the harness should learn about it either way**, or this class of fault will
+keep passing. It should drive at least one playthrough with people leaving their
+posts the way the running game does, so "completable" means completable in a
+living city rather than a static one.
+
+Boxes: `app` for who goes out, `forge` for the harness, `hud` and `app` for the
+marker if 2 is taken.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
