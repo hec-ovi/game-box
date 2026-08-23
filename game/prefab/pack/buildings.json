@@ -1,19 +1,40 @@
 {
   "pack": "gb-buildings",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "sha256": "35db9bb20e901a027606af4a062f0610c04eeea2524379af6aeb2b8599d93105",
   "producer": "glb-buildings@6e05c32",
   "atlas": {
     "colour": {
       "size": 256,
       "layers": 14,
-      "sha256": "1da9afffa3990e70bd513bdb26e6f84eca9fc09df5d722d61e5bca1570122402"
+      "sha256": "46013d121e01f8bbfd1eb39bbb929c011f5001a54170310ead64a1c1660e86a5"
     },
     "emissive": {
       "size": 256,
       "layers": 14,
-      "sha256": "689914627a88653cb955ca33dbaf07ed4e8c3284439a768f51ade210ca3a4043"
-    }
+      "sha256": "2f1659484920c9c99e7a991917d7f321b41ce321d74dfed7b670032f32d8a673"
+    },
+    "rooms": {
+      "size": 256,
+      "layers": 12,
+      "sha256": "8e9d04240ef5ecb1a676bcd19d65bf93290b0a1c4d41a5f1242cba8ae00e2526"
+    },
+    "finishes": [
+      "a:facade",
+      "a:base",
+      "b:facade",
+      "b:base",
+      "c:facade",
+      "c:base",
+      "d:facade",
+      "d:base",
+      "door",
+      "glass",
+      "neon:cyan",
+      "neon:teal",
+      "neon:magenta",
+      "neon:amber"
+    ]
   },
   "models": [
     {

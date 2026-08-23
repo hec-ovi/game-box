@@ -36,7 +36,7 @@ export class PrefabDressing implements Dressing {
     const geometry = design ? this.#library.geometry(design.model) : undefined
     if (!design || !geometry) return this.#rest.building(plot, size)
 
-    const mesh = new THREE.Mesh(orient(geometry, turnsFor(plot.entrance.facing), design.mirror), this.#library.material)
+    const mesh = new THREE.Mesh(orient(geometry, turnsFor(plot.entrance.facing), design.mirror, design.rooms), this.#library.material)
     mesh.name = `${plot.id}:${design.model}`
     mesh.castShadow = true
     mesh.receiveShadow = true

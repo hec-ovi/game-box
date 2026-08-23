@@ -17,16 +17,18 @@ import { everyBucket, type Bucket } from '../src/bucket.ts'
 import type { CatalogueDoc, ModelSpec } from '../src/catalogue.ts'
 import { buildAtlas, swatchVerbs } from './atlas.ts'
 import { intake, type Baked } from './intake.ts'
+import { ROOM_SIZE } from '../src/rooms.ts'
 import { COLOUR_SIZE, EMISSIVE_SIZE, LAYERS } from './layers.ts'
 import { FAMILIES, loadLooks, type Family, type Look } from './look.ts'
 import { Producer } from './producer.ts'
+import { buildRooms } from './rooms.ts'
 import { drawTextures } from './textures.ts'
 import { verbsFor } from './stack.ts'
 import { verifyPack } from './verify.ts'
 import { writePack } from './write.ts'
 
 const PACK = 'gb-buildings'
-const VERSION = '1.0.0'
+const VERSION = '1.1.0'
 
 const args = process.argv.slice(2)
 const jobs = Math.max(1, Number(flag('--jobs') ?? 8))
@@ -49,7 +51,11 @@ try {
     swatches.set(family, built.file)
   }
   const atlas = await buildAtlas(swatches)
-  console.log(`atlas: ${atlas.layers} layers, ${(atlas.colour.length / 1024) | 0} kB colour, ${(atlas.emissive.length / 1024) | 0} kB glow`)
+  const rooms = await buildRooms()
+  console.log(
+    `atlas: ${atlas.layers} layers, ${(atlas.colour.length / 1024) | 0} kB colour, ${(atlas.emissive.length / 1024) | 0} kB glow, ` +
+      `${rooms.layers} rooms, ${(rooms.strip.length / 1024) | 0} kB`,
+  )
 
   const started = Date.now()
   const jobsList = looks.flatMap((look) => buckets.map((bucket) => ({ look, bucket })))
@@ -77,6 +83,8 @@ try {
     atlas: {
       colour: { size: COLOUR_SIZE, layers: LAYERS.length, sha256: createHash('sha256').update(atlas.colour).digest('hex') },
       emissive: { size: EMISSIVE_SIZE, layers: LAYERS.length, sha256: createHash('sha256').update(atlas.emissive).digest('hex') },
+      rooms: { size: ROOM_SIZE, layers: rooms.layers, sha256: createHash('sha256').update(rooms.strip).digest('hex') },
+      finishes: [...LAYERS],
     },
     models,
   }
@@ -85,6 +93,7 @@ try {
   await writeFile(join(out, 'buildings.glb'), mesh)
   await writeFile(join(out, 'buildings-colour.png'), atlas.colour)
   await writeFile(join(out, 'buildings-emissive.png'), atlas.emissive)
+  await writeFile(join(out, 'buildings-rooms.png'), rooms.strip)
   await writeFile(join(out, 'buildings.json'), `${JSON.stringify(manifest, null, 2)}\n`)
 
   const triangles = models.reduce((sum, model) => sum + model.triangles, 0)
@@ -92,7 +101,7 @@ try {
   console.log(
     [
       `${models.length} models, ${triangles} triangles (${Math.round(triangles / models.length)} each), ${trimmed} parts trimmed above the plot`,
-      `mesh ${(mesh.length / 1024).toFixed(0)} kB, colour ${(atlas.colour.length / 1024).toFixed(0)} kB, glow ${(atlas.emissive.length / 1024).toFixed(0)} kB`,
+      `mesh ${(mesh.length / 1024).toFixed(0)} kB, colour ${(atlas.colour.length / 1024).toFixed(0)} kB, glow ${(atlas.emissive.length / 1024).toFixed(0)} kB, rooms ${(rooms.strip.length / 1024).toFixed(0)} kB`,
       `built in ${seconds.toFixed(0)}s`,
       `sha256 ${manifest.sha256}`,
     ].join('\n'),

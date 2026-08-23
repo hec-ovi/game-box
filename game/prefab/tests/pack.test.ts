@@ -6,17 +6,32 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { bucketKey, bucketOf, everyBucket } from '../src/bucket.ts'
 import { Catalogue } from '../src/catalogue.ts'
+import { windowsOn } from '../src/interior.ts'
+import { ROOM_BANKS, ROOM_PICTURES, ROOM_SIZE } from '../src/rooms.ts'
 import { io } from '../tools/intake.ts'
 import { verifyPack } from '../tools/verify.ts'
 
 const pack = new URL('../pack/', import.meta.url)
 const manifest = JSON.parse(readFileSync(new URL('buildings.json', pack), 'utf8')) as unknown
 const mesh = new Uint8Array(readFileSync(new URL('buildings.glb', pack)))
+const strip = new Uint8Array(readFileSync(new URL('buildings-rooms.png', pack)))
 const catalogue = Catalogue.parse(manifest)
 
 describe('the shipped pack', () => {
   it('is the file its manifest describes', () => {
     expect(createHash('sha256').update(mesh).digest('hex')).toBe(catalogue.sha256)
+  })
+
+  it('carries the rooms its manifest describes, one layer per committed picture', () => {
+    expect(createHash('sha256').update(strip).digest('hex')).toBe(catalogue.atlas.rooms.sha256)
+    expect(catalogue.atlas.rooms.layers).toBe(ROOM_PICTURES.length)
+    expect(catalogue.atlas.rooms.size).toBe(ROOM_SIZE)
+    for (const bank of Object.values(ROOM_BANKS)) expect(bank.first + bank.count).toBeLessThanOrEqual(ROOM_PICTURES.length)
+  })
+
+  it('names what every layer paints, and which of them have windows in them', () => {
+    expect(catalogue.atlas.finishes).toHaveLength(catalogue.atlas.colour.layers)
+    expect(catalogue.atlas.finishes.filter((finish) => windowsOn(finish))).toEqual(['a:facade', 'b:facade', 'c:facade', 'd:facade', 'glass'])
   })
 
   it('holds every model the manifest names, at the triangle count it claims', async () => {

@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { GRID, facadeTile, shopfrontTile } from './windows.ts'
+import { GRID, facadeTile, shopfrontTile } from './walls.ts'
 import { FAMILIES, type Family } from './look.ts'
 import type { Producer } from './producer.ts'
 

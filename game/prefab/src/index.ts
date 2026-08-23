@@ -5,6 +5,8 @@ export { Catalogue, CatalogueSchema, InvalidCatalogue, type CatalogueDoc, type D
 export { PrefabDressing, type BuildingSize } from './dressing.ts'
 export { Library, LibraryIncomplete, type LibrarySpec } from './library.ts'
 export { loadPrefab, PackChanged } from './load.ts'
+export { FACADE, InteriorWindows, ROOM, SHOPFRONT, glassShareOf, windowsOn, type Glazing, type WindowKind } from './interior.ts'
 export { GLOW, prefabMaterial, type PrefabAtlas } from './material.ts'
+export { ROOM_BANKS, ROOM_PICTURES, ROOM_SIZE, type Bank } from './rooms.ts'
 export { LAYER_ATTRIBUTE, MATERIAL_NAME } from './pack.ts'
 export { orient, turnsFor } from './orient.ts'

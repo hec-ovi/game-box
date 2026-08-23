@@ -46,6 +46,13 @@ describe('the catalogue', () => {
     expect([...shops].sort()).toEqual(['shop-8x12x2', 'works-8x12x2'])
   })
 
+  it('starts two plots on one model at different rooms', () => {
+    const catalogue = catalogueOf()
+    const rooms = Array.from({ length: 40 }, (_, i) => catalogue.design(plotOf({ id: `plot_${i}`, kind: 'house' }), { width: 8, depth: 12 }))
+    expect(new Set(rooms.map((design) => design?.model))).toEqual(new Set(['home-8x12x2']))
+    expect(new Set(rooms.map((design) => design?.rooms)).size).toBeGreaterThan(8)
+  })
+
   it('says nothing for a shape it does not hold, so the kit can answer', () => {
     expect(catalogueOf().design(plotOf({ storeys: 9 }), { width: 8, depth: 12 })).toBeUndefined()
     expect(catalogueOf().design(plotOf(), { width: 30, depth: 12 })).toBeUndefined()

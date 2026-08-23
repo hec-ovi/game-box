@@ -3,6 +3,7 @@ import { CityNight } from '@gb/kitbash'
 import type { Plot } from '@gb/world'
 import { Catalogue, type CatalogueDoc } from '../src/catalogue.ts'
 import { Library } from '../src/library.ts'
+import type { PrefabAtlas } from '../src/material.ts'
 import { LAYER_ATTRIBUTE } from '../src/pack.ts'
 
 /** A catalogue with two looks on one shape, so a pick has something to choose between. */
@@ -15,6 +16,8 @@ export function catalogueOf(over: Partial<CatalogueDoc> = {}): Catalogue {
     atlas: {
       colour: { size: 4, layers: 2, sha256: 'b'.repeat(64) },
       emissive: { size: 4, layers: 2, sha256: 'c'.repeat(64) },
+      rooms: { size: 4, layers: 2, sha256: 'd'.repeat(64) },
+      finishes: ['a:facade', 'glass'],
     },
     models: [
       { id: 'shop-8x12x2', look: 'shop', front: 8, depth: 12, storeys: 2, kinds: ['shop', 'cafe'], triangles: 12, door: { along: 0 } },
@@ -43,9 +46,9 @@ export function libraryOf(catalogue: Catalogue): Library {
   return Library.of({ catalogue, scenes: scene, atlas: atlasOf(), night: new CityNight() })
 }
 
-export function atlasOf(): { colour: THREE.DataArrayTexture; emissive: THREE.DataArrayTexture } {
+export function atlasOf(): PrefabAtlas {
   const pixels = () => new THREE.DataArrayTexture(new Uint8Array(4 * 4 * 2 * 4).fill(128), 4, 4, 2)
-  return { colour: pixels(), emissive: pixels() }
+  return { colour: pixels(), emissive: pixels(), rooms: pixels(), finishes: ['a:facade', 'glass'] }
 }
 
 export function plotOf(over: Partial<Plot> = {}): Plot {

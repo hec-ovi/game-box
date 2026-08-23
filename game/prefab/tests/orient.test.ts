@@ -51,6 +51,18 @@ describe('turning a model onto its plot', () => {
     expect(outward(orient(geometry, 3, true))).toBe(triangles)
   })
 
+  it('slides the rooms along the wall by whole pictures, and moves nothing else', () => {
+    const plain = orient(geometry, 0, false)
+    const slid = orient(geometry, 0, false, 7)
+    const before = plain.getAttribute('uv').array as Float32Array
+    const after = slid.getAttribute('uv').array as Float32Array
+    for (let i = 0; i < before.length; i += 2) {
+      expect(after[i]).toBe(before[i]! + 7)
+      expect(after[i + 1]).toBe(before[i + 1])
+    }
+    expect([...(slid.getAttribute('position').array as Float32Array)]).toEqual([...(plain.getAttribute('position').array as Float32Array)])
+  })
+
   it('moves nothing off a whole number, because every turn is a swap and a sign', () => {
     const before = orient(geometry, 0, false).getAttribute('position').array as Float32Array
     const after = orient(geometry, 2, false).getAttribute('position').array as Float32Array

@@ -3,6 +3,13 @@ import { BUILDING_KINDS, type BuildingKind, type Plot } from '@gb/world'
 import { z } from 'zod'
 import { bucketKey, bucketOf, type Bucket } from './bucket.ts'
 
+/**
+ * How many places along a wall a plot's rooms can start. Enough that a street
+ * of one model is a street of different rooms, small enough that the uv stays
+ * far inside what a float carries a picture's worth of precision over.
+ */
+const ROOM_SHIFTS = 48
+
 const ModelSchema = z.object({
   /** `<look>-<front>x<depth>x<storeys>`. */
   id: z.string().min(1),
@@ -17,6 +24,13 @@ const ModelSchema = z.object({
   door: z.object({ along: z.number() }),
 })
 
+/** One stacked array texture the pack ships: how big a layer is, how many, and the bytes it has to be. */
+const StripSchema = z.object({
+  size: z.number().int().positive(),
+  layers: z.number().int().positive(),
+  sha256: z.string().regex(/^[0-9a-f]{64}$/),
+})
+
 export const CatalogueSchema = z.object({
   pack: z.string().min(1),
   version: z.string().min(1),
@@ -24,8 +38,12 @@ export const CatalogueSchema = z.object({
   sha256: z.string().regex(/^[0-9a-f]{64}$/),
   producer: z.string().min(1),
   atlas: z.object({
-    colour: z.object({ size: z.number().int().positive(), layers: z.number().int().positive(), sha256: z.string().regex(/^[0-9a-f]{64}$/) }),
-    emissive: z.object({ size: z.number().int().positive(), layers: z.number().int().positive(), sha256: z.string().regex(/^[0-9a-f]{64}$/) }),
+    colour: StripSchema,
+    emissive: StripSchema,
+    /** The rooms every window in the city looks into. */
+    rooms: StripSchema,
+    /** What each layer of the two facade strips paints, in order. The runtime reads which of them have windows off this. */
+    finishes: z.array(z.string().min(1)).min(1),
   }),
   models: z.array(ModelSchema).min(1),
 })
@@ -35,10 +53,12 @@ export type CatalogueDoc = z.infer<typeof CatalogueSchema>
 
 const catalogueContract = contract('prefab-catalogue', CatalogueSchema)
 
-/** Which model a plot gets, and whether it is drawn the other way round. */
+/** Which model a plot gets, whether it is drawn the other way round, and where its rooms start. */
 export interface Design {
   readonly model: string
   readonly mirror: boolean
+  /** Whole wall pictures to slide the uv along, so two plots on one model do not share their rooms. */
+  readonly rooms: number
 }
 
 export interface Uncovered {
@@ -126,6 +146,7 @@ export class Catalogue {
     return {
       model: rng.fork('model').pick(candidates).id,
       mirror: rng.fork('mirror').chance(0.5),
+      rooms: rng.fork('rooms').int(0, ROOM_SHIFTS),
     }
   }
 

@@ -28,6 +28,7 @@ const PACK = {
   mesh: new URL('../pack/buildings.glb', import.meta.url),
   colour: new URL('../pack/buildings-colour.png', import.meta.url),
   emissive: new URL('../pack/buildings-emissive.png', import.meta.url),
+  rooms: new URL('../pack/buildings-rooms.png', import.meta.url),
 } as const
 
 /**
@@ -38,22 +39,28 @@ const PACK = {
  * different city than the one the seed says.
  */
 export async function loadPrefab(night: CityNight): Promise<Library> {
-  const [manifest, mesh, colour, emissive] = await Promise.all([
+  const [manifest, mesh, colour, emissive, rooms] = await Promise.all([
     fetch(PACK.manifest).then((response) => response.json()),
     bytes(PACK.mesh),
     bytes(PACK.colour),
     bytes(PACK.emissive),
+    bytes(PACK.rooms),
   ])
 
   const catalogue = Catalogue.parse(manifest)
   await check('mesh', mesh, catalogue.sha256)
   await check('colour atlas', colour, catalogue.atlas.colour.sha256)
   await check('glow atlas', emissive, catalogue.atlas.emissive.sha256)
+  await check('room atlas', rooms, catalogue.atlas.rooms.sha256)
 
   const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(mesh, '')
   const atlas: PrefabAtlas = {
-    colour: await arrayTexture(colour, catalogue.atlas.colour.size, catalogue.atlas.colour.layers, THREE.SRGBColorSpace),
-    emissive: await arrayTexture(emissive, catalogue.atlas.emissive.size, catalogue.atlas.emissive.layers, THREE.SRGBColorSpace),
+    colour: await arrayTexture(colour, catalogue.atlas.colour, THREE.RepeatWrapping),
+    emissive: await arrayTexture(emissive, catalogue.atlas.emissive, THREE.RepeatWrapping),
+    // a room is read at a clamped uv, so wrapping one would fetch the far side
+    // of the picture along the edge a ray leaves the box at
+    rooms: await arrayTexture(rooms, catalogue.atlas.rooms, THREE.ClampToEdgeWrapping),
+    finishes: catalogue.atlas.finishes,
   }
   return Library.of({ catalogue, scenes: gltf.scenes, atlas, night })
 }
@@ -79,7 +86,8 @@ async function sha256(data: ArrayBuffer): Promise<string> {
  * is one image to decode and its rows already sit in the order an array texture
  * wants them, so this is a decode and a read with no copying in between.
  */
-async function arrayTexture(png: ArrayBuffer, size: number, layers: number, colorSpace: THREE.ColorSpace): Promise<THREE.DataArrayTexture> {
+async function arrayTexture(png: ArrayBuffer, strip: { size: number; layers: number }, wrap: THREE.Wrapping): Promise<THREE.DataArrayTexture> {
+  const { size, layers } = strip
   const bitmap = await createImageBitmap(new Blob([png], { type: 'image/png' }))
   const canvas = new OffscreenCanvas(size, size * layers)
   const context = canvas.getContext('2d', { willReadFrequently: true })
@@ -89,9 +97,9 @@ async function arrayTexture(png: ArrayBuffer, size: number, layers: number, colo
 
   const pixels = context.getImageData(0, 0, size, size * layers).data
   const texture = new THREE.DataArrayTexture(new Uint8Array(pixels.buffer), size, size, layers)
-  texture.colorSpace = colorSpace
-  texture.wrapS = THREE.RepeatWrapping
-  texture.wrapT = THREE.RepeatWrapping
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.wrapS = wrap
+  texture.wrapT = wrap
   texture.minFilter = THREE.LinearMipmapLinearFilter
   texture.magFilter = THREE.LinearFilter
   texture.generateMipmaps = true

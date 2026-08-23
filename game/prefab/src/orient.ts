@@ -16,17 +16,24 @@ export function turnsFor(facing: Facing): 0 | 1 | 2 | 3 {
 }
 
 /**
- * A model turned onto its plot, and mirrored if its design says so.
+ * A model turned onto its plot, mirrored if its design says so, and with its
+ * rooms slid along.
  *
  * Every number here is a swap or a sign flip, never a sine, so the same model
  * lands on the same coordinates on every machine and the city a seed builds is
  * the same city everywhere. Mirroring happens in the model's own frame, before
  * the turn, so the door stays where it was and only the facade swaps hands.
+ *
+ * `rooms` is how many whole pictures to slide the wall's uv along. The pictures
+ * tile, so the wall looks identical; what moves is which bay of the wall each
+ * fragment thinks it is in, and that is what the shader hashes the room out of.
+ * Without it two plots that drew the same model would look into the same rooms.
  */
-export function orient(geometry: THREE.BufferGeometry, turns: 0 | 1 | 2 | 3, mirror: boolean): THREE.BufferGeometry {
+export function orient(geometry: THREE.BufferGeometry, turns: 0 | 1 | 2 | 3, mirror: boolean, rooms = 0): THREE.BufferGeometry {
   const out = geometry.clone()
   spin(out.getAttribute('position').array as Float32Array, turns, mirror)
   spin(out.getAttribute('normal').array as Float32Array, turns, mirror)
+  if (rooms !== 0) slide(out.getAttribute('uv').array as Float32Array, rooms)
   if (mirror) unwind(out)
   out.computeBoundingBox()
   out.computeBoundingSphere()
@@ -55,6 +62,11 @@ function spin(values: Float32Array, turns: 0 | 1 | 2 | 3, mirror: boolean): void
         values[i] = x
     }
   }
+}
+
+/** Whole pictures along the wall. Whole, because half of one would move the picture too. */
+function slide(uvs: Float32Array, by: number): void {
+  for (let i = 0; i < uvs.length; i += 2) uvs[i] = uvs[i]! + by
 }
 
 /** A mirror turns every triangle inside out, so every triangle is wound back. */
