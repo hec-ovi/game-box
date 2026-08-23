@@ -8,7 +8,7 @@
  * one frame every few seconds across a whole cycle.
  *
  *   node game/furnish/tools/print-screen.ts
- *   node game/furnish/tools/print-screen.ts ~/Pictures/Screenshots/screens.png
+ *   node game/furnish/tools/print-screen.ts screens.png
  */
 import { deflateSync } from 'node:zlib'
 import { writeFileSync } from 'node:fs'
