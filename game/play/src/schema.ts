@@ -13,6 +13,16 @@ export const ClockSchema = z.object({
   weather: z.enum(WEATHERS),
 })
 
+export const WhereSchema = z.object({
+  /** Metres along the city's own axes, or the room's own when `interiorId` is set. */
+  x: z.number(),
+  z: z.number(),
+  /** Which way the player faces, in radians. Read back wound into one turn. */
+  heading: z.number(),
+  /** The interior they are standing in. Absent outdoors, because then the metres are the city's. */
+  interiorId: z.string().min(1).optional(),
+})
+
 export const PlayerStateSchema = z.object({
   format: z.literal('game-box.player'),
   schemaVersion: z.literal(1),
@@ -31,8 +41,13 @@ export const PlayerStateSchema = z.object({
   companions: z.array(z.string().min(1)),
   /** Time of day, which day it is, and the weather. Absent in saves written before clocks. */
   clock: ClockSchema.optional(),
+  /** Where the player stood when the save was written. Absent in saves written before places. */
+  where: WhereSchema.optional(),
+  /** The quest the player chose to follow. Absent when they are following none. */
+  tracked: z.string().min(1).optional(),
 })
 
 export const playerContract = contract('player-state', PlayerStateSchema)
 export type PlayerStateDoc = z.infer<typeof PlayerStateSchema>
 export type ClockDoc = z.infer<typeof ClockSchema>
+export type WhereDoc = z.infer<typeof WhereSchema>

@@ -8,7 +8,7 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI
 |---|---|
 | The city: grid, plots, interiors, NPCs, items, and what a sound world means | `game/world/` |
 | Quests: the flow schema, what makes one playable, how it advances | `game/quest/` |
-| The playthrough: inventory, money, flags, reputation, companions, the clock and the weather | `game/play/` |
+| The playthrough: inventory, money, flags, reputation, companions, where the player is standing, the job they are following, the clock and the weather | `game/play/` |
 | Generating a city: streets, plots, interiors, people, quests | `game/forge/` |
 | Exporting and importing a city, and the save file | `game/bundle/` |
 | Walking routes, reachability, waypoints | `game/nav/` |

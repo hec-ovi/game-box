@@ -1,6 +1,7 @@
 import { err, ok, type Result, type SchemaViolation } from '@gb/kit'
 import { GameClock } from './clock.ts'
-import { playerContract, type PlayerStateDoc } from './schema.ts'
+import { playerContract, type PlayerStateDoc, type WhereDoc } from './schema.ts'
+import { placeOf } from './where.ts'
 
 export type PlayError =
   | { readonly code: 'invalid-save'; readonly violations: readonly SchemaViolation[] }
@@ -21,9 +22,10 @@ export class PlayerState {
   #clock: GameClock
 
   private constructor(doc: PlayerStateDoc) {
-    const { clock, ...rest } = doc
+    const { clock, where, ...rest } = doc
     this.#doc = rest
     this.#clock = GameClock.from(clock)
+    if (where) this.setWhere(where)
   }
 
   static create(worldId: string, startingMoney = 0): PlayerState {
@@ -57,6 +59,38 @@ export class PlayerState {
   /** What time it is, which day it is, and the weather. Saved and restored with the rest. */
   get clock(): GameClock {
     return this.#clock
+  }
+
+  /** Where the player was standing last, if anywhere: a new playthrough has nowhere yet. */
+  get where(): WhereDoc | undefined {
+    const place = this.#doc.where
+    return place ? { ...place } : undefined
+  }
+
+  /**
+   * Remember where the player is standing. Indoors, name the interior: the
+   * metres are then the room's own and mean nothing out in the city. A place
+   * whose numbers are not real leaves the last one standing.
+   */
+  setWhere(where: WhereDoc): void {
+    const place = placeOf(where)
+    if (place) this.#doc.where = place
+  }
+
+  /**
+   * The quest the player chose to follow. Just a name to this box: it can be one
+   * that has since been finished, given up or never existed here, and the caller
+   * that knows the quests decides what to do about that.
+   */
+  get tracked(): string | undefined {
+    return this.#doc.tracked
+  }
+
+  /** Follow a quest, or nothing to follow none. */
+  setTracked(questId: string | null | undefined): void {
+    const id = questId?.trim()
+    if (id) this.#doc.tracked = id
+    else delete this.#doc.tracked
   }
 
   get money(): number {
@@ -135,6 +169,8 @@ export class PlayerState {
   }
 
   toJSON(): PlayerStateDoc {
-    return { ...this.#doc, clock: this.#clock.toJSON() }
+    const doc: PlayerStateDoc = { ...this.#doc, clock: this.#clock.toJSON() }
+    if (this.#doc.where) doc.where = { ...this.#doc.where }
+    return doc
   }
 }

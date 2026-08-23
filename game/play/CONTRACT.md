@@ -1,10 +1,10 @@
 # @gb/play contract
 
-contractVersion: 0.2.0
+contractVersion: 0.3.0
 
 ## Purpose
 
-The playthrough: what the player carries, what they stole, what they can afford, what they have been told, who is walking with them, and what time it is.
+The playthrough: what the player carries, what they stole, what they can afford, what they have been told, who is walking with them, where they are standing, which job they are following, and what time it is.
 
 ## Inputs
 
@@ -13,6 +13,8 @@ The playthrough: what the player carries, what they stole, what they can afford,
 | `PlayerState.create(worldId, startingMoney?)` | ids as strings | money is a whole number, zero or more |
 | `PlayerState.load(value, worldId)` | [schema/player-state.json](schema/player-state.json) | the save's `worldId` matches the world being played |
 | mutations: `take`, `drop`, `earn`, `spend`, `setFlag`, `adjustReputation`, `addCompanion`, `removeCompanion` | ids and whole numbers | see errors |
+| `setWhere(where)` | `{ x, z, heading, interiorId? }`, metres and radians | numbers that are not real leave the last place standing |
+| `setTracked(questId)` | a quest id, or `null` / nothing for none | the id is a name, not a lookup |
 | `clock.advance(realSeconds)` | real seconds since the last frame | a negative or non-finite step does nothing |
 | `clock.setRate(gameSecondsPerRealSecond)` | 0 to 86400 | 0 is paused |
 | `clock.setTime(hour, minute?)` | whole 0-23 and 0-59 | leaves the day alone |
@@ -25,12 +27,40 @@ The playthrough: what the player carries, what they stole, what they can afford,
 |---|---|---|
 | `toJSON()` | [schema/player-state.json](schema/player-state.json) | a complete save for this world, clock included |
 | queries: `has`, `isStolen`, `inventory`, `money`, `flag`, `reputation`, `companions`, `isCompanion` | plain values | unknown flags read `false`, unknown factions read `0` |
+| `where` | `{ x, z, heading, interiorId? }` or nothing | a copy, so writing to it changes no state; the heading is inside one turn |
+| `tracked` | a quest id or nothing | whatever was last followed, resolved against nothing |
 | `clock` | a `GameClock` | the playthrough's own clock, saved and restored with it |
 | `clock.day`, `clock.hour`, `clock.minute`, `clock.secondsOfDay` | numbers | day counts from 1; `secondsOfDay` is fractional, the rest are whole |
 | `clock.rate`, `clock.weather` | a number, one of `WEATHERS` | what was last set |
 | `clock.isDark` | boolean | true from 20:00 up to 05:59, whatever the weather |
 | `clock.phase`, `clock.reading` | one of `DAY_PHASES`, a plain sentence fragment | `reading` is the phase in words ("late evening", "just before dawn"), written to go in front of a language model |
 | `clock.totalSeconds` | whole seconds | game seconds since day 1 at 00:00; this is the number the `clock` game event carries |
+
+## Where the player is standing
+
+```ts
+player.setWhere({ x: 41.5, z: -12.25, heading: 2.1 })                             // out in the city
+player.setWhere({ x: 2.5, z: 3, heading: 0.5, interiorId: 'interior_0007' })      // inside a room
+player.where // { x: 2.5, z: 3, heading: 0.5, interiorId: 'interior_0007' }
+```
+
+`x` and `z` are metres and `heading` is radians. Name `interiorId` whenever the
+player is indoors, because a room is measured in its own metres from its own
+corner: the same three numbers with the id missing put them somewhere out in the
+city instead. Outdoors, leave it out.
+
+A new playthrough has nowhere yet, and so does a save written before this box
+remembered places: `where` reads nothing and the game puts the player wherever it
+starts them. Write it as often as you like; it is four numbers.
+
+## The quest being followed
+
+`tracked` is the quest the player chose to follow, the one the objectives panel
+and the map pins are pointed at. To this box it is a name and nothing else: it is
+never looked up, so a save can carry a quest that has since been finished, given
+up, or that this city never had, and it still loads. The caller holds the quest
+set, so the caller decides what a name it cannot find means, and clears it with
+`setTracked(null)`.
 
 ## Time of day
 
@@ -90,7 +120,10 @@ From `GameClock`, each leaving the clock exactly as it was:
 - A save is only ever loaded against the world it was made in, so ids cannot silently point at different things.
 - The clock only ever reads a time that exists: `secondsOfDay` stays under a day and the overflow becomes days, so running past midnight lands on the next day at the right hour.
 - A rate of 0 freezes every reading, including `totalSeconds`.
-- A save written before clocks existed has no `clock` and loads at the default: day 1, 08:00, clear, `DEFAULT_RATE`.
+- A save written before clocks existed has no `clock` and loads at the default: day 1, 08:00, clear, `DEFAULT_RATE`. A save written before places has no `where` and no `tracked`, and loads with neither.
+- A remembered place is always one a save can be written from and read back: a place carrying a number that is not real is refused at the door rather than stored, so a single bad frame cannot cost the playthrough.
+- A heading is read back as a direction inside one turn, whatever angle was reported; an angle already inside one turn is read back exactly as it was reported.
+- A tracked quest id is stored, never resolved. This box holds no quests to check it against.
 - This box knows nothing about quests, dialogue or geometry, and nothing about rendering: it holds state, does arithmetic, and answers questions. The sky is drawn elsewhere from what `clock.weather` and `clock.hour` say.
 
 ## How to modify this blackbox safely
