@@ -6,9 +6,9 @@ import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import { Sidecar, type ConverseEvent } from '../src/index.ts'
 
-/** The sidecar's own published request schema, read from its box. */
+/** The sidecar's own published request schema, read from the service that serves it. */
 const validateChatRequest = new Ajv2020({ strict: false }).compile(
-  JSON.parse(readFileSync(join(import.meta.dirname, '..', '..', '..', 'api', 'schema', 'chat-request.json'), 'utf8')),
+  JSON.parse(readFileSync(join(import.meta.dirname, '..', '..', '..', 'host', 'schema', 'api', 'chat-request.json'), 'utf8')),
 )
 
 const Name = contract('name_city', z.object({ name: z.string().min(2) }))
