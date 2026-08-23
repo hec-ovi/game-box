@@ -132,6 +132,13 @@ Rows 51 and 47 are closed in forge; rows 59 and 60 are closed in hud.
 |---|---|---|---|
 | 65 | `game/app/tests/contract.test.ts:634` asserts the glass at `x = 10.1`; it is now **9.2** | app | "Beside them" follows the anchor's own facing (45 cm to their right) instead of world +x. Same 0.45 m, one constant. Caused by scene's fix and the only break outside its folder |
 
+## From the choice pass
+
+| # | Work | Box | Detail |
+|---|---|---|---|
+| 66 | Never announce or render a `step-opened` change whose `hidden` is true | app | `objectives()` and `journal()` filter hidden steps; the change stream cannot, because the app has to know the step is on the board. The flag is there so the caller stays quiet. Switching to `journal()` alone does not close the spoiler if app announces changes |
+| 67 | `drive.ts` emits `chose` from the quest document rather than from a published objective | forge | The objective now publishes the option keys, so the harness can answer with the same list a player is shown |
+
 ## Checked and closed
 
 About fifty handovers landed and were verified in the code rather than taken on
