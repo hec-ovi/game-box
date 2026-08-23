@@ -1,5 +1,6 @@
 import { METRICS, type AnchorKind, type BuildingKind, type CellKind, type FurnitureProp, type Item, type Npc, type Plot } from '@gb/world'
 import * as THREE from 'three'
+import { PAINT_COLOUR, type MarkingPaint } from './markings.ts'
 
 /**
  * Where art plugs in. The scene builder decides where everything goes and how
@@ -19,6 +20,8 @@ export interface Dressing {
   ground(kind: CellKind): THREE.Material
   /** Interior floor, walls and ceiling. */
   surface(part: 'floor' | 'wall' | 'ceiling'): THREE.Material
+  /** Road paint. Left out, the street gets a plain white and yellow. */
+  marking?(paint: MarkingPaint): THREE.Material
 }
 
 const PALETTE: Record<CellKind, number> = {
@@ -148,6 +151,10 @@ export class Greybox implements Dressing {
 
   surface(part: 'floor' | 'wall' | 'ceiling'): THREE.Material {
     return this.#material(part === 'floor' ? 0x6a6258 : part === 'wall' ? 0xb0a99c : 0x8f8a80)
+  }
+
+  marking(paint: MarkingPaint): THREE.Material {
+    return this.#material(PAINT_COLOUR[paint])
   }
 
   /** A slab on the face the entrance is on, so you can see where to go in. */

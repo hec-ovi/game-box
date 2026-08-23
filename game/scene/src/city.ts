@@ -2,6 +2,9 @@ import { METRICS, cellCentre, type World } from '@gb/world'
 import * as THREE from 'three'
 import type { Dressing } from './dressing.ts'
 import { GROUND_KINDS, groundMesh, mountainMesh } from './ground.ts'
+import { markingMeshes } from './marking-mesh.ts'
+import { planMarkings, type Marking } from './markings.ts'
+import { RoadNetwork } from './roads.ts'
 
 export interface CityBuild {
   readonly root: THREE.Group
@@ -11,6 +14,8 @@ export interface CityBuild {
   readonly doorsteps: ReadonlyMap<string, THREE.Vector3>
   /** Where the player starts: on the pavement, facing the first door in town. */
   readonly spawn: { x: number; z: number; heading: number }
+  /** Every rectangle of paint on the streets, in metres. */
+  readonly markings: readonly Marking[]
 }
 
 /**
@@ -28,6 +33,9 @@ export function buildCity(world: World, dressing: Dressing): CityBuild {
   }
   const mountains = mountainMesh(world, dressing)
   if (mountains) root.add(mountains)
+
+  const markings = planMarkings(new RoadNetwork(world).links())
+  for (const mesh of markingMeshes(markings, dressing)) root.add(mesh)
 
   const buildings = new Map<string, THREE.Object3D>()
   const doorsteps = new Map<string, THREE.Vector3>()
@@ -49,7 +57,7 @@ export function buildCity(world: World, dressing: Dressing): CityBuild {
     doorsteps.set(plot.id, new THREE.Vector3(doorstep.x, 0, doorstep.z))
   }
 
-  return { root, buildings, doorsteps, spawn: spawnAt(world, doorsteps) }
+  return { root, buildings, doorsteps, spawn: spawnAt(world, doorsteps), markings }
 }
 
 /** A step back from the first doorstep, looking at it. */
