@@ -2,6 +2,8 @@
 export { validateQuest, checkFlow, type QuestError } from './validate.ts'
 export type { QuestProblem } from './problem.ts'
 export { QuestLog, type Change, type FailReason, type Objective, type RuntimeError } from './runtime.ts'
+export type { JournalEntry, JournalStep, StepState } from './journal.ts'
+export type { StepLine } from './step-line.ts'
 export type { ObjectiveTarget } from './target.ts'
 export { questProgressContract, type QuestProgressDoc, type QuestStatus } from './progress.ts'
 export { gameEventContract, type GameEvent } from './events.ts'

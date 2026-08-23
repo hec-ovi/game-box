@@ -1,6 +1,6 @@
 # @gb/quest contract
 
-contractVersion: 0.4.0
+contractVersion: 0.5.0
 
 ## Purpose
 
@@ -28,10 +28,28 @@ Quests as flows: a checked graph of steps ("talk to her, go there, take three of
 | `checkReward` | `SchemaViolation[]` | empty means the pay fits the difficulty; each entry names the field to fix |
 | `rewardFor` | a `Reward` | inside the band for that difficulty |
 | `QuestLog.handle` / `start` / `abandon` | `Change[]` | `quest-started`, `step-opened`, `step-revealed`, `step-progress`, `step-done`, `step-abandoned`, `quest-abandoned`, `quest-complete`, `quest-failed`; empty when nothing moved |
-| `QuestLog.objectives()` | `Objective[]` | one line per open step the player can see: its text, `markerLabel`, `hint`, `optional`, `count` (`{done, needed}`, only while the step wants several) and the target below |
+| `QuestLog.objectives()` | `Objective[]` | one line per open step the player can see: `questId`, `questTitle` and the step line below |
+| `QuestLog.journal()` | `JournalEntry[]` | one page per quest the player has taken: `questId`, `questTitle`, `status` and its steps in the order the quest was written, each a step line plus its `state` |
 | `QuestLog.offeredBy(npcId)` | `QuestDoc[]` | unstarted quests from that giver whose `requires` the player already meets |
 | `QuestLog.isQuestItem(itemId)` | boolean | true while a live quest still needs that item |
 | `QuestLog.toJSON()` | [schema/quest-progress.json](schema/quest-progress.json) | resumes to exactly the same open steps, counts, secrets and dropped branches |
+
+## What a step line says
+
+One shape for a step wherever the interface shows it, so the objectives panel and the journal never disagree: `stepId`, `text` (the objective line), `markerLabel` and `hint` where the step has them, `optional` on side work, `count` (`{done, needed}`, only while the step wants several) and the target below. An `Objective` is that line with `questId` and `questTitle` on it; a `JournalStep` is that line with `state` on it.
+
+## The journal
+
+`journal()` is the quests tab. One page per quest the player has taken, and none for a quest nobody has been offered yet, so the list never gives away work that has not come up. The steps on a page are in the order the quest was written, never the order the player got through them, so a journal reads top to bottom the way the quest was authored.
+
+| `state` | Where the step stands |
+|---|---|
+| `upcoming` | the flow has not reached it, and can still walk into it |
+| `open` | the one the player is on |
+| `done` | finished |
+| `dropped` | a branch nobody took: the flow can no longer reach it |
+
+A quest splits at a `choice` and at an `any-of`. Picking an option drops everything only the other options led to; one branch winning an `any-of` drops its rivals. Whatever a finished or failed quest never reached is dropped as well. A secret stays off the page until something reveals it, then it appears in the place it was written.
 
 ## What an objective points at
 
@@ -102,6 +120,8 @@ Effects: `give-item`, `take-item`, `pay`, `charge`, `reputation`, `set-flag`, `c
 - Optional work never gates the quest: a `complete` step is always reachable without entering an optional step, and no join or any-of waits on one.
 - A hidden step is always revealed by something; when it is required, by something that must run before it.
 - Steps that need no player action (`join`, `any-of`, `complete`, `fail`) resolve the moment they open.
+- A journal page lists a quest's steps in document order, whatever order the player did them in.
+- A step is `dropped` exactly when the flow can no longer walk into it from an open step. Because a flow runs forward only, nothing dropped ever comes back.
 - The runtime reads the world only through `WorldView`, and touches the player only through `@gb/play`, so it runs headless with no renderer.
 - Effects are the only way a quest changes the player: nothing is applied implicitly by an event, and neither is giving up.
 - Being a quest item is a binding from a live quest, not a property of the thing, so the same ledger can be untouchable in one playthrough and ordinary loot in another. Shipped RPGs bind it the same way, per quest rather than per item.

@@ -3,10 +3,11 @@ import type { PlayerState } from '@gb/play'
 import { applyEffects, meets, payReward, unmet } from './apply.ts'
 import { gameEventContract, type GameEvent } from './events.ts'
 import { Flow } from './graph.ts'
+import { QuestJournal, type JournalEntry } from './journal.ts'
 import { matchStep, triggersFailure } from './matching.ts'
-import { freshProgress, questProgressContract, restoreProgress, storeProgress, type Progress, type QuestProgressDoc, type QuestStatus } from './progress.ts'
-import { countOf, isHiddenStep, isOptional, itemPool, type Condition, type QuestDoc, type Reward, type Step } from './schema.ts'
-import { targetOf, type ObjectiveTarget } from './target.ts'
+import { freshProgress, isSecret, questProgressContract, restoreProgress, storeProgress, type Progress, type QuestProgressDoc, type QuestStatus } from './progress.ts'
+import { countOf, itemPool, type Condition, type QuestDoc, type Reward, type Step } from './schema.ts'
+import { stepLine, type StepLine } from './step-line.ts'
 
 export type RuntimeError =
   | { readonly code: 'unknown-quest'; readonly questId: string }
@@ -38,19 +39,9 @@ export type Change =
   | { readonly kind: 'quest-failed'; readonly questId: string; readonly reason: FailReason }
 
 /** One line of what to do now, and everything a marker or a route needs to point at it. */
-export interface Objective extends ObjectiveTarget {
+export interface Objective extends StepLine {
   readonly questId: string
   readonly questTitle: string
-  readonly stepId: string
-  readonly text: string
-  /** Short label for the world marker, when the objective line is too long for it. */
-  readonly markerLabel?: string
-  /** A nudge to show if the player stalls. */
-  readonly hint?: string
-  /** Side work: the quest finishes without it. Absent means it is required. */
-  readonly optional?: boolean
-  /** How far along a step that wants several things is, for a "3/5" in the interface. */
-  readonly count?: { readonly done: number; readonly needed: number }
 }
 
 /**
@@ -179,7 +170,7 @@ export class QuestLog {
     return false
   }
 
-  /** What the HUD and the journal show right now. Hidden steps stay out until they are revealed. */
+  /** What is on the board right now: one line per open step. Hidden steps stay out until they are revealed. */
   objectives(): readonly Objective[] {
     const out: Objective[] = []
     for (const quest of this.#quests.values()) {
@@ -187,21 +178,27 @@ export class QuestLog {
       if (progress.status !== 'active') continue
       for (const stepId of progress.open) {
         const step = this.#flow(quest).step(stepId)
-        if (!step || this.#isHidden(progress, step)) continue
-        out.push({
-          questId: quest.id,
-          questTitle: quest.title,
-          stepId: step.id,
-          text: step.objective,
-          ...(isOptional(step) ? { optional: true } : {}),
-          ...(step.markerLabel ? { markerLabel: step.markerLabel } : {}),
-          ...(step.hint ? { hint: step.hint } : {}),
-          ...targetOf(step),
-          ...this.#countProgress(progress, step),
-        })
+        if (!step || isSecret(step, progress)) continue
+        out.push({ questId: quest.id, questTitle: quest.title, ...stepLine(step, progress) })
       }
     }
     return out
+  }
+
+  /**
+   * The journal: one page per quest the player has taken, each listing its
+   * steps in the order the quest was written, each step saying where it stands.
+   * Quests nobody has taken have no page, so the list never gives away work the
+   * player has not been offered.
+   */
+  journal(): readonly JournalEntry[] {
+    const pages: JournalEntry[] = []
+    for (const quest of this.#quests.values()) {
+      const progress = this.#progress.get(quest.id)!
+      if (progress.status === 'unstarted') continue
+      pages.push(new QuestJournal(quest, this.#flow(quest), progress).entry())
+    }
+    return pages
   }
 
   toJSON(): QuestProgressDoc {
@@ -287,7 +284,7 @@ export class QuestLog {
         questId: quest.id,
         stepId: step.id,
         objective: step.objective,
-        hidden: this.#isHidden(progress, step),
+        hidden: isSecret(step, progress),
       })
 
       if (step.kind === 'join' || step.kind === 'any-of' || step.kind === 'complete' || step.kind === 'fail') {
@@ -332,15 +329,5 @@ export class QuestLog {
     progress.status = 'failed'
     progress.open.clear()
     changes.push({ kind: 'quest-failed', questId: quest.id, reason })
-  }
-
-  #isHidden(progress: Progress, step: Step): boolean {
-    return isHiddenStep(step) && !progress.revealed.has(step.id)
-  }
-
-  #countProgress(progress: Progress, step: Step): { count?: { done: number; needed: number } } {
-    const needed = countOf(step)
-    if (needed <= 1) return {}
-    return { count: { done: progress.credited.get(step.id)?.size ?? 0, needed } }
   }
 }

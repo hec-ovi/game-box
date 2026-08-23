@@ -1,5 +1,6 @@
 import { contract } from '@gb/kit'
 import { z } from 'zod'
+import { isHiddenStep, type Step } from './schema.ts'
 
 export const QuestProgressSchema = z.object({
   format: z.literal('game-box.quest-progress'),
@@ -74,4 +75,9 @@ export function storeProgress(progress: Progress): QuestProgressDoc['quests'][st
     abandoned: [...progress.abandoned],
     startedAt: progress.startedAt,
   }
+}
+
+/** A hidden step nothing has revealed yet: it may be on the board, but the player has not been told about it. */
+export function isSecret(step: Step, progress: Progress): boolean {
+  return isHiddenStep(step) && !progress.revealed.has(step.id)
 }
