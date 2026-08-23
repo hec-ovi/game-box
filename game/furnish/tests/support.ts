@@ -82,17 +82,33 @@ export function backwardsMass(object: THREE.Object3D): number {
   return total ? z / total : 0
 }
 
-/** A town with a bar in it, built the way the game builds one. */
+/**
+ * A town built the way the game builds one.
+ *
+ * Three blocks a side, not one. A town only opens a fraction of its doors, so
+ * a 1x1 sample is three interiors: too few to hold a catalog against, and thin
+ * enough that a tuning change in `@gb/forge` moves the sample instead of
+ * finding a fault here.
+ */
 export async function town(seed = 'furnish'): Promise<World> {
   const built = await new Forge(new OfflineNarrator(seed)).build({
     theme: 'old harbour town',
     seed,
-    blocksX: 1,
-    blocksY: 1,
+    blocksX: 3,
+    blocksY: 3,
     blockCells: 14,
   })
   if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 400))
   return built.value.world
+}
+
+/** Seeds a test that has to see the catalog exercised samples over, rather than one town. */
+export const TOWN_SEEDS = ['furnish', 'furnish-2', 'furnish-3'] as const
+
+/** Every interior of several towns: what a coverage test reads, so one seed's mix cannot pass for the game's. */
+export async function interiorsAcrossTowns(): Promise<Interior[]> {
+  const worlds = await Promise.all(TOWN_SEEDS.map((seed) => town(seed)))
+  return worlds.flatMap((world) => [...world.interiors()])
 }
 
 /** The busiest interior in a town: the most furniture in one room. */

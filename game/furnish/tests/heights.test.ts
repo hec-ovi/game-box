@@ -2,7 +2,7 @@ import { METRICS, type AnchorKind, type FurnitureProp } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { FURNISH_STYLES, PROP_SPECS } from '../src/index.ts'
-import { contactOf, dressingIn, plates, town } from './support.ts'
+import { contactOf, dressingIn, interiorsAcrossTowns, plates } from './support.ts'
 
 /**
  * The height promise, and the reason furniture is generated at all.
@@ -23,9 +23,8 @@ const EXACT = 5
 
 /** Every prop some anchor in a real town puts a body against, and what it puts them there to do. */
 async function touched(): Promise<Map<FurnitureProp, Set<AnchorKind>>> {
-  const world = await town()
   const found = new Map<FurnitureProp, Set<AnchorKind>>()
-  for (const interior of world.interiors()) {
+  for (const interior of await interiorsAcrossTowns()) {
     const props = new Map(interior.furniture.map((piece) => [piece.id, piece.prop]))
     for (const anchor of interior.anchors) {
       const prop = anchor.propId === undefined ? undefined : props.get(anchor.propId)
@@ -39,7 +38,7 @@ async function touched(): Promise<Map<FurnitureProp, Set<AnchorKind>>> {
 describe('the height a body meets', () => {
   it('is declared for every prop a real town sits, sleeps, serves or works at', async () => {
     const used = await touched()
-    expect(used.size).toBeGreaterThan(4)
+    expect(used.size).toBeGreaterThan(7)
 
     for (const [prop, kinds] of used) {
       expect(PROP_SPECS[prop].contact, `${prop}, where somebody ${[...kinds].join(' and ')}s`).toBeDefined()
