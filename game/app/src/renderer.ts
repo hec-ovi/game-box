@@ -68,13 +68,18 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
       // prefilter the sky on its own: the city reflecting itself would cost far
       // more and look worse
       holder.add(sky)
-      const next = horizon.fromScene(holder)
+      // into the same target every time, so `scene.environment` is the same
+      // texture object it was last hour. Given a new one, three rebuilds the
+      // shader of every object in the scene, because the environment's node is
+      // part of each render object's cache key: measured on this machine's
+      // WebGL2 fallback, that is a 200 ms stall on the frame after the hour
+      // turns, four times a real minute at the default clock rate. Filtering
+      // the dome itself is 1.4 ms.
+      reflected = horizon.fromScene(holder, 0, 0.1, 100, reflected ? { renderTarget: reflected } : {})
       sky.position.copy(rode)
       parent?.add(sky)
 
-      reflected?.dispose()
-      reflected = next
-      scene.environment = next.texture
+      scene.environment = reflected.texture
     },
     indoors(on) {
       if (!roomLight) {
