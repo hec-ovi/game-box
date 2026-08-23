@@ -583,9 +583,9 @@ describe('Conversation.moves and choose', () => {
     const { conversation, key } = setup({}, { carries: true })
 
     expect(conversation.moves()).toEqual([
-      { key: 'give_quest#quest_0001', label: 'Take the job: The Ledger' },
-      { key: `hand_over#${key.id}`, label: 'Ask for the brass cellar key' },
-      { key: 'end_talk', label: 'Say goodbye' },
+      { key: 'give_quest#quest_0001', action: 'give_quest', label: 'Take the job: The Ledger' },
+      { key: `hand_over#${key.id}`, action: 'hand_over', label: 'Ask for the brass cellar key' },
+      { key: 'end_talk', action: 'end_talk', label: 'Say goodbye' },
     ])
     for (const move of conversation.moves()) expect(move.label).not.toMatch(/[a-z]+_\d{4}/)
   })

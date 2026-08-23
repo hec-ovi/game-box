@@ -1,6 +1,6 @@
 # @gb/talk contract
 
-contractVersion: 0.4.0
+contractVersion: 0.4.1
 
 ## Purpose
 
@@ -21,7 +21,7 @@ Conversations with the people in the city: one track writes what they say, anoth
 | `open` | `{ conversation, changes }` | walking up to someone is a `talked` event, so a step that already asked for it completes here |
 | `say` | a stream of `TalkEvent` | `said` pieces as they are spoken, `did` for the action taken, `changed` for every quest change it caused, `over` when it ends |
 | `available()` | the action names legal right now | what the UI can promise before a word is said |
-| `moves()` | every legal move as `{ key, label }` | `label` is what the player clicks, in their own words and with no id in it; `key` names the move and what it is about, never its place in the list |
+| `moves()` | every legal move as `{ key, action, label }` | `label` is what the player clicks, in their own words and with no id in it; `action` is its `ActionName`, so a caller can filter or group without reading the key; `key` names the move and what it is about, never its place in the list |
 | `choose` | a stream of `TalkEvent` | the same shape `say` gives: the spoken line, `did`, `changed`, `over` |
 
 ## Talking to someone counts when it counts

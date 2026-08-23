@@ -1,4 +1,4 @@
-import type { Move } from './moves.ts'
+import type { ActionName, Move } from './moves.ts'
 import { PROMPTS } from './prompts.generated.ts'
 import { fill, keyed } from './text.ts'
 
@@ -7,12 +7,14 @@ const WORDING = keyed(PROMPTS.picks)
 /** One move as the player sees it: words to click, and the key that names it back. */
 export interface TalkMove {
   readonly key: string
+  /** What kind of move it is, so a caller can filter or group without reading the key. */
+  readonly action: ActionName
   readonly label: string
 }
 
 /** This turn's moves in the player's own words, in the order the NPC weighs them. */
 export function picks(moves: readonly Move[]): readonly TalkMove[] {
-  return moves.map((move) => ({ key: keyFor(move), label: pickLabel(move) }))
+  return moves.map((move) => ({ key: keyFor(move), action: move.action, label: pickLabel(move) }))
 }
 
 /** The move a key stands for, or nothing when it is not legal any more. */
