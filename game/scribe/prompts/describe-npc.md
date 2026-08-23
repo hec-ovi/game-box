@@ -5,8 +5,12 @@ Theme: {{theme}}
 Place: {{placeName}}, a {{placeKind}}
 Their role there: {{role}}
 
-Give them a name, how they behave when a stranger walks in, and the things they
-know.
+Give them a name, the way they behave when a stranger walks in, and the things
+they know.
+
+For the behaviour, take the one habit somebody would notice from the doorway and
+say what it looks like. It is what the player meets, not a life story and not a
+list of adjectives.
 
 What they know is what they could have overheard or noticed from this spot: who
 owes what, who was in last night, what is late, what is broken, what the weather
