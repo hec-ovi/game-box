@@ -13,6 +13,7 @@ const EMPTY: HudState = {
   controls: [],
   window: null,
   notices: [],
+  hadQuest: false,
 }
 
 /** How long a notice takes to fade once its time is up. */
@@ -54,6 +55,7 @@ export class HudStore {
       ...(patch.map !== undefined ? { map: patch.map ?? undefined } : {}),
       ...(patch.controls ? { controls: patch.controls } : {}),
       ...(patch.window !== undefined ? { window: patch.window } : {}),
+      hadQuest: before.hadQuest || hasWork(patch),
     }
     this.#onChange()
   }
@@ -112,20 +114,30 @@ export class HudStore {
   }
 }
 
+/**
+ * Whether this push proves the player has work in hand. It never goes back:
+ * an empty board after a finished job is a lull, not a fresh start.
+ */
+function hasWork(patch: HudPatch): boolean {
+  return (patch.objectives?.length ?? 0) > 0 || (patch.quests?.length ?? 0) > 0
+}
+
 function mergeTalk(current: TalkState | undefined, patch: TalkPatch | null): TalkState | undefined {
   if (patch === null) return undefined
 
   const fresh = patch.speaker !== undefined && patch.speaker !== current?.speaker
   if (!fresh && !current) throw new HudError('no-conversation')
 
-  const blank: TalkState = { speaker: patch.speaker ?? '', you: '', reply: '', acted: [], moves: [], pending: false }
+  const blank: TalkState = { speaker: patch.speaker ?? '', you: '', reply: '', acted: '', moves: [], pending: false }
   const base: TalkState = fresh || !current ? blank : current
   const reply = (patch.reply ?? base.reply) + (patch.replyChunk ?? '')
   return {
     speaker: patch.speaker ?? base.speaker,
     you: base.you,
     reply,
-    acted: patch.acted ? [...base.acted, patch.acted] : base.acted,
+    // One turn, one line: what the speaker did is replaced each time it is sent
+    // and taken off with `null`, so it never reads as a list of old turns.
+    acted: patch.acted !== undefined ? (patch.acted ?? '') : base.acted,
     moves: patch.moves ?? base.moves,
     // A menu arriving is the turn being over, so what is on it is live again.
     pending: patch.moves === undefined && base.pending,

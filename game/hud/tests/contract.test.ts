@@ -99,6 +99,19 @@ describe('objectives', () => {
     expect(getByText(screen, 'Collect crates').closest('li')?.dataset.optional).toBeUndefined()
   })
 
+  it('tells a player who has never had work from one between jobs', () => {
+    const { hud, screen } = mount()
+    getByText(screen, 'Nothing yet. Find someone to talk to.')
+
+    // Finishing the only open step is a lull, not a fresh start, and the panel
+    // that says otherwise reads as if the last hour of play never happened.
+    hud.show({ objectives: [objective({ text: 'Talk to Mara' })] })
+    hud.show({ objectives: [] })
+
+    expect(queryByText(screen, 'Nothing yet. Find someone to talk to.')).toBeNull()
+    getByText(screen, 'No step open right now. Ask around for the next job.')
+  })
+
   it('scrolls inside its corner rather than running off the screen', () => {
     const { screen } = mount()
     for (const selector of ['.gb-objectives', '.gb-purse']) {
@@ -249,6 +262,21 @@ describe('conversation', () => {
     expect(reply.textContent).toBe('The crate is at the docks.')
     expect(getByText(screen, 'The crate is at the docks.')).toBe(reply)
     getByText(screen, 'gave you a job')
+  })
+
+  it('carries what the speaker did this turn, and only this turn', () => {
+    const { hud, screen } = mount()
+    hud.show({ talk: { speaker: 'Mara Quill', acted: 'gave you a job' } })
+    getByText(screen, 'gave you a job')
+
+    // A line that piled up would read as a list of turns the player has left
+    // behind, inside a panel where everything else is the turn in front of them.
+    hud.show({ talk: { acted: 'took the ledger' } })
+    expect(queryByText(screen, 'gave you a job')).toBeNull()
+    getByText(screen, 'took the ledger')
+
+    hud.show({ talk: { acted: null } })
+    expect(queryByText(screen, 'took the ledger')).toBeNull()
   })
 })
 
@@ -527,6 +555,56 @@ describe('the quests tab', () => {
 
     await user.click(getByRole(screen, 'button', { name: 'Stop following Salt and Lamp Oil' }))
     expect(intents).toContainEqual({ kind: 'track', questId: null })
+  })
+
+  it('reads a step not reached yet apart from the one open now', () => {
+    const { hud, screen } = mount()
+    hud.show({
+      window: 'quests',
+      quests: [
+        {
+          questId: 'q1',
+          title: 'The Copper Wheel',
+          steps: [
+            { stepId: 's1', text: 'Talk to Mara', state: 'done' },
+            { stepId: 's2', text: 'Carry the crate to the docks', state: 'open' },
+            { stepId: 's3', text: 'Come back for the pay', state: 'upcoming' },
+            { stepId: 's4', text: 'Sign the ledger', done: true },
+          ],
+        },
+      ],
+    })
+
+    // Work the player cannot start yet, drawn like work they can, sends them
+    // across town for a step that is not on the board.
+    const panel = getByRole(screen, 'dialog', { name: 'Quests' })
+    const state = (text: string): string | undefined => getByText(panel, text).closest('li')?.className
+    expect(state('Talk to Mara')).toBe('gb-step-done')
+    expect(state('Carry the crate to the docks')).toBe('gb-step-open')
+    expect(state('Come back for the pay')).toBe('gb-step-upcoming')
+    // and the shorter shape reads the same as it always did
+    expect(state('Sign the ledger')).toBe('gb-step-done')
+  })
+
+  it('asks a second time before it gives a quest up', async () => {
+    const user = userEvent.setup()
+    const { hud, screen, intents } = mount()
+    hud.show({ quests: QUESTS, window: 'quests' })
+
+    // One stray click, or one Enter on a button the player tabbed onto, would
+    // otherwise cost them the quest and everything they had done towards it.
+    await user.click(getByRole(screen, 'button', { name: 'Give up The Copper Wheel' }))
+    expect(intents.filter((intent) => intent.kind === 'abandon')).toEqual([])
+
+    await user.click(getByRole(screen, 'button', { name: 'Confirm giving up The Copper Wheel' }))
+    expect(intents).toContainEqual({ kind: 'abandon', questId: 'q1' })
+    getByRole(screen, 'button', { name: 'Give up The Copper Wheel' })
+
+    // Walking off the question answers it: the next click starts again.
+    await user.click(getByRole(screen, 'button', { name: 'Give up The Copper Wheel' }))
+    await user.click(getByRole(screen, 'button', { name: 'Give up Salt and Lamp Oil' }))
+    getByRole(screen, 'button', { name: 'Give up The Copper Wheel' })
+    expect(intents.filter((intent) => intent.kind === 'abandon')).toHaveLength(1)
   })
 })
 

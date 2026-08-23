@@ -1,12 +1,11 @@
 import type { Objective } from '@gb/quest'
 import { HUD_KEYS } from '../controls.ts'
 import { el } from '../dom.ts'
+import { noObjectives } from '../phrase.ts'
 import { otherQuests, stepsOf, trackedQuest } from '../tracked.ts'
 import type { HudState } from '../types.ts'
 import { MoreLine } from './more.ts'
 import type { Surface } from './surface.ts'
-
-const NOTHING = 'Nothing yet. Find someone to talk to.'
 
 /**
  * What the player is meant to be doing right now: the quest they are following
@@ -33,12 +32,14 @@ export class ObjectivesSurface implements Surface {
     const tracked = trackedQuest(state)
     const steps = stepsOf(state, tracked)
     const rest = otherQuests(state, tracked)
-    const key = `${rest}#${steps.map(signature).join('|')}`
+    const key = `${rest}#${state.hadQuest}#${steps.map(signature).join('|')}`
     if (key === this.#key) return
     this.#key = key
 
     this.#quest.textContent = steps[0]?.questTitle ?? ''
-    this.#list.replaceChildren(...(steps.length ? steps.map((step) => this.#line(step)) : [empty()]))
+    this.#list.replaceChildren(
+      ...(steps.length ? steps.map((step) => this.#line(step)) : [el('li', 'gb-empty', noObjectives(state.hadQuest))]),
+    )
     this.#more.set(rest > 0 ? `${rest} more quest${rest === 1 ? '' : 's'}` : null)
     this.#done = new Map(steps.flatMap((step) => (step.count ? [[id(step), step.count.done] as const] : [])))
   }
@@ -59,10 +60,6 @@ export class ObjectivesSurface implements Surface {
     if (step.hint) item.append(el('span', 'gb-hint', step.hint))
     return item
   }
-}
-
-function empty(): HTMLLIElement {
-  return el('li', 'gb-empty', NOTHING)
 }
 
 function id(step: Objective): string {

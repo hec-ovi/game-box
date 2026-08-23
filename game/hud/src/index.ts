@@ -20,6 +20,7 @@ export type {
   Prompt,
   QuestEntry,
   QuestStep,
+  QuestStepState,
   Reward,
   TalkMove,
   TalkPatch,

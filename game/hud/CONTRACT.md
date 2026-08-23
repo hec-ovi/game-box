@@ -1,6 +1,6 @@
 # @gb/hud contract
 
-contractVersion: 0.4.0
+contractVersion: 0.5.0
 
 ## Purpose
 
@@ -13,7 +13,7 @@ The game pushes state, the hud draws it. There is one store behind the whole int
 ```ts
 import { Hud } from '@gb/hud'
 
-const hud = new Hud(document.body, { onIntent: (intent) => { /* say, talk-closed, typing, window, track */ } })
+const hud = new Hud(document.body, { onIntent: (intent) => { /* say, talk-closed, typing, window, track, abandon */ } })
 hud.show({ objectives: log.objectives(), money: player.money(), prompt: { key: 'E', text: target.label } })
 hud.show({ quests: log.active(), trackedQuestId: 'q1' })
 hud.show({ map: { width, height, plots, marks } })
@@ -33,9 +33,9 @@ hud.announce({ kind: 'quest-complete', title: quest.title, reward: { money: 40 }
 | `patch.trackedQuestId` | `string \| null` | the quest the objectives panel follows; unset means the first quest with an open step |
 | `patch.prompt` | `{ key, text }` | text without the key: "Go into The Copper Wheel" |
 | `patch.money`, `patch.carrying` | a whole number, `Carried[]` | `quest: true` marks an item a live quest wants |
-| `patch.talk` | [TalkPatch](src/types.ts) | a new `speaker` starts a fresh panel; `replyChunk` appends a piece of the reply |
+| `patch.talk` | [TalkPatch](src/types.ts) | a new `speaker` starts a fresh panel; `replyChunk` appends a piece of the reply; `acted` is the line for this turn and `null` takes it off |
 | `patch.talk.moves` | [TalkMove](src/types.ts)`[]` | what the player can do this turn, as `{ key, label }` in plain words. Replaces the menu; an empty list draws none |
-| `patch.quests` | [QuestEntry](src/types.ts)`[]` | active quests with their steps and which are done, for the quests tab |
+| `patch.quests` | [QuestEntry](src/types.ts)`[]` | active quests with their steps for the quests tab, each step `upcoming`, `open` or `done` |
 | `patch.map` | [MapView](src/types.ts) | the city in grid cells: size, plot rects, and marks for the player and the places to head for |
 | `patch.controls` | [ControlHint](src/types.ts)`[]` | the game's own keys for the controls tab: `{ keys, text, group? }`, replaces the whole list |
 | `patch.window` | `'quests' \| 'map' \| 'items' \| 'controls' \| null` | opens that face of the window, or shuts it |
@@ -45,7 +45,7 @@ hud.announce({ kind: 'quest-complete', title: quest.title, reward: { money: 40 }
 
 | Param | Type | Postconditions |
 |---|---|---|
-| `handlers.onIntent` | [HudIntent](src/types.ts) | `say` with the trimmed line, `choose` with the `key` of the move clicked, `talk-closed`, `typing` on every change of it, `window` with the face it moved to, `track` with the quest the player chose to follow |
+| `handlers.onIntent` | [HudIntent](src/types.ts) | `say` with the trimmed line, `choose` with the `key` of the move clicked, `talk-closed`, `typing` on every change of it, `window` with the face it moved to, `track` with the quest the player chose to follow, `abandon` with the quest they gave up |
 | `hud.typing` | boolean | true while the conversation holds the keyboard, which is when the game must let its keys go |
 | `hud.destroy()` | void | the interface leaves the page, the key listener goes, every timer is cleared |
 | `HUD_KEYS` | `{ quests, map, items, controls, close, send, pick }` | the keys the interface claims, so the game can bind around them |
@@ -78,12 +78,18 @@ The window is one shell with four faces behind a tab strip. Each face is handed 
 
 | Tab | Draws from | Emits |
 |---|---|---|
-| Quests | `quests`, `trackedQuestId` | `track` |
+| Quests | `quests`, `trackedQuestId` | `track`, `abandon` |
 | Map | `map`, `objectives`, `trackedQuestId` | nothing |
 | Items | `money`, `carrying` | nothing |
 | Controls | `controls` | nothing |
 
-The objectives panel shows the tracked quest and its open steps, a count as "2/5" where a step wants more than one, a tag on optional work, and one line for how many other quests are running. The purse shows the coin count and the first four things in hand, quest items first, and one line for the rest. The map draws the survey when the game has one and lists the places the tracked quest points at either way. Items lists everything in hand with quest items first. Controls lists the game's keys, then the interface's.
+The objectives panel shows the tracked quest and its open steps, a count as "2/5" where a step wants more than one, a tag on optional work, and one line for how many other quests are running. With nothing on it, it says which kind of nothing: a player who has never held a quest is pointed at somebody to talk to, one between jobs is told there is no step open. The journal reads the same two ways. The purse shows the coin count and the first four things in hand, quest items first, and one line for the rest. The map draws the survey when the game has one and lists the places the tracked quest points at either way. Items lists everything in hand with quest items first. Controls lists the game's keys, then the interface's.
+
+## The journal
+
+A step reads three ways: `done`, `open` now, or `upcoming`, which is work the flow has not reached. Only the open one is drawn at full weight, so a list of steps says what to do next rather than what exists. The game says which with `state`; a step carrying `done: true` alone is done, and one carrying neither is open.
+
+Giving a quest up sits beside Follow and asks twice. The first click turns the button into the question, the second reports `abandon` and the button goes back to how it was. Looking away answers no. The hud takes nothing off the board itself: the quest stays on screen until the game pushes the list without it.
 
 ## The look
 
@@ -138,6 +144,8 @@ Thrown as `HudError` with a `code`:
 - The conversation, the window, the scrim behind it and the bar take the pointer; the rest of the interface lets clicks through to the scene.
 - Announcements come in two sizes. A quest starting, finishing or failing is `major`: large, on the accent, 5.2 seconds. Everything else is `minor`: small, quiet, 2.6 seconds. Four at once is the most on screen; older ones go first.
 - A money change of zero announces nothing, so a quest that pays in goods does not flash an empty line.
+- What the speaker did is one line about the turn in front of the player: sending it again replaces it and `null` takes it away, so it never piles up inside one conversation.
+- Nothing the player cannot undo happens on one click. Giving up a quest asks a second time, and leaving the button answers no.
 - What just changed says so: the reticle opens and goes brass while something is in reach, a coin count flashes the way it moved, and a step count flashes when it climbs.
 - Everything a mouse can do, the keyboard can do.
 - Square corners: no `border-radius` in the stylesheet.

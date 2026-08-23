@@ -24,10 +24,19 @@ export interface ControlHint {
   readonly group?: string
 }
 
+/** Where a step stands: not reached yet, open now, or finished. */
+export type QuestStepState = 'upcoming' | 'open' | 'done'
+
+/**
+ * One step of a quest in the journal. `state` is what the engine says it is;
+ * `done` is the short form, where `true` reads as `state: 'done'` and anything
+ * else as a step the player can work on now.
+ */
 export interface QuestStep {
   readonly stepId: string
   readonly text: string
-  readonly done: boolean
+  readonly state?: QuestStepState
+  readonly done?: boolean
 }
 
 /** One quest as the quests tab lists it: its title and how far each step got. */
@@ -87,8 +96,8 @@ export interface TalkState {
   /** The player's last line, typed or picked, so the exchange reads as one. */
   readonly you: string
   readonly reply: string
-  /** What the speaker just did, oldest first: "gave you a job". */
-  readonly acted: readonly string[]
+  /** What the speaker did this turn: "gave you a job". Empty when they did nothing. */
+  readonly acted: string
   /** The moves that are legal this turn. Empty draws no menu at all. */
   readonly moves: readonly TalkMove[]
   /** Between the player answering and the next menu arriving, the menu is quiet. */
@@ -105,8 +114,8 @@ export interface TalkPatch {
   readonly reply?: string
   /** Append a piece of the reply as it is spoken. */
   readonly replyChunk?: string
-  /** Add a line to what the speaker just did. */
-  readonly acted?: string
+  /** What the speaker did this turn. Replaces the line; `null` takes it away. */
+  readonly acted?: string | null
   /** The moves legal right now, in the order they read. Replaces the menu. */
   readonly moves?: readonly TalkMove[]
 }
@@ -145,6 +154,7 @@ export type HudIntent =
   | { readonly kind: 'typing'; readonly typing: boolean }
   | { readonly kind: 'window'; readonly window: HudWindowName | null }
   | { readonly kind: 'track'; readonly questId: string | null }
+  | { readonly kind: 'abandon'; readonly questId: string }
 
 export interface HudHandlers {
   onIntent(intent: HudIntent): void
@@ -188,4 +198,6 @@ export interface HudState {
   readonly controls: readonly ControlHint[]
   readonly window: HudWindowName | null
   readonly notices: readonly LiveNotice[]
+  /** True once the player has held a quest, so an empty panel reads right. */
+  readonly hadQuest: boolean
 }

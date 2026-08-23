@@ -38,6 +38,19 @@ export function dwell(notice: Notice): number {
   return DWELL[MAJOR.has(notice.kind) ? 'major' : 'minor']
 }
 
+/**
+ * The objectives panel with nothing on it. A player who has never taken work
+ * needs to be pointed at somebody; one between jobs already knows how it works.
+ */
+export function noObjectives(hadQuest: boolean): string {
+  return hadQuest ? 'No step open right now. Ask around for the next job.' : 'Nothing yet. Find someone to talk to.'
+}
+
+/** The journal with no quest under way, read the same two ways. */
+export function noQuests(hadQuest: boolean): string {
+  return hadQuest ? 'Nothing under way. Ask around for the next job.' : 'No quests yet. Find someone with work.'
+}
+
 function reward(value: Reward | undefined): string | undefined {
   if (!value) return undefined
   const parts: string[] = []

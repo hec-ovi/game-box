@@ -22,8 +22,8 @@ export const TABS = `
   text-transform: none;
   color: var(--gb-ink);
 }
-.gb-track {
-  flex: none;
+.gb-quest-acts { display: flex; flex: none; gap: var(--gb-s1); }
+.gb-quest-acts button {
   padding: 3px var(--gb-s2);
   border: 1px solid var(--gb-edge);
   background: transparent;
@@ -38,8 +38,15 @@ export const TABS = `
 }
 .gb-track:hover { border-color: var(--gb-accent); color: var(--gb-accent); }
 .gb-track[aria-pressed='true'] { border-color: var(--gb-accent); background: var(--gb-accent); color: var(--gb-accent-ink); }
+/* Giving up costs the player their progress, so it is warned rather than brass. */
+.gb-give-up:hover { border-color: var(--gb-warn); color: var(--gb-warn); }
+.gb-give-up[data-armed='true'] { border-color: var(--gb-warn); background: var(--gb-warn); color: var(--gb-ink); }
 .gb-quest-entry li { display: flex; gap: var(--gb-s2); padding: 2px 0; }
 .gb-quest-entry .gb-mark { width: 12px; flex: none; color: var(--gb-accent); text-align: center; }
+/* Three states, three weights: what to do now is loud, what is coming is quiet. */
+.gb-quest-entry .gb-step-open { color: var(--gb-ink); }
+.gb-quest-entry .gb-step-upcoming { color: var(--gb-dim); }
+.gb-quest-entry .gb-step-upcoming .gb-mark { color: var(--gb-faint); }
 .gb-quest-entry .gb-step-done { color: var(--gb-faint); }
 .gb-quest-entry .gb-step-done .gb-what { text-decoration: line-through; }
 
