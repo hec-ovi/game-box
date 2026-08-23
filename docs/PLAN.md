@@ -46,7 +46,7 @@ Two more numbers that make every city read the same at street level. At the defa
 | 15 | `scribe` | running |
 | 16 | `sidecar` | done, `f82e6a6` |
 | 17 | `talk` | done, `0822ed7` |
-| shadows | `land` | running |
+| shadows | `land` | done, sun casts at 9.77 cm per texel |
 | cars | `traffic` | done, `9620356` |
 | 4 | `forge` | running |
 | 8, 9 | `app` | waits for 6 |
