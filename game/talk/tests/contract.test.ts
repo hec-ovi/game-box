@@ -104,6 +104,27 @@ function heardOutQuest(mara: string, ledger: string, copy?: string): QuestDoc {
   } as QuestDoc
 }
 
+/** Mara's job opens with a subject the player has to raise with her by name. */
+function topicQuest(mara: string, ledger: string, copy?: string): QuestDoc {
+  return {
+    ...ledgerQuest(mara, ledger, copy),
+    startStepId: 'step_0000',
+    steps: [
+      {
+        id: 'step_0000',
+        kind: 'talk',
+        npcId: mara,
+        topic: 'the missing shipment',
+        objective: 'Ask Mara Cole about the missing shipment',
+        next: ['step_0001'],
+        requires: [],
+        effects: [],
+      },
+      ...ledgerQuest(mara, ledger, copy).steps,
+    ],
+  } as QuestDoc
+}
+
 /** Mara wants the ledger brought to her, or the copy of it that reads the same. */
 function ledgerQuest(mara: string, ledger: string, copy = 'item_9999'): QuestDoc {
   return {
@@ -127,29 +148,38 @@ function ledgerQuest(mara: string, ledger: string, copy = 'item_9999'): QuestDoc
 interface Script {
   /** What the voice track says, in the pieces it streams. */
   readonly text?: string | readonly string[]
-  /** What the action track answers when it is shown the menu. */
-  readonly pick?: string | number
+  /** The line off the menu the action track calls the tool with. 1 is nothing but talk. */
+  readonly pick?: number
+  /** The action track answers with words instead of making the call it was told to make. */
+  readonly prose?: string
   /** No sidecar at all. */
   readonly fail?: boolean
 }
 
-/** A model with two tracks: a line it speaks, and the number it picks off the menu. */
+interface ToolCall {
+  readonly name: string
+  readonly parameters: Record<string, unknown>
+}
+
+/** A model with two tracks: a line it speaks, and the call it makes off the menu. */
 function speaker(script: Script) {
   const voice: Array<{ system: string; messages: Array<{ role: string; content: string }> }> = []
-  const decisions: Array<{ system: string; user: string }> = []
+  const decisions: Array<{ system: string; user: string; forced: string; tool: ToolCall }> = []
 
   const fetch = (async (_url: string, init: RequestInit) => {
     if (script.fail) throw new TypeError('fetch failed')
     const body = JSON.parse(String(init.body)) as {
       messages: Array<{ role: string; content: string }>
-      tools?: unknown[]
+      tools?: Array<{ function: ToolCall }>
+      tool_choice?: { function: { name: string } }
     }
     const system = body.messages[0]!.content
     const last = body.messages[body.messages.length - 1]!.content
 
-    if (last.includes('Which number?')) {
-      decisions.push({ system, user: last })
-      return stream([String(script.pick ?? 1)])
+    if (body.tool_choice) {
+      const tool = body.tools![0]!.function
+      decisions.push({ system, user: last, forced: body.tool_choice.function.name, tool })
+      return script.prose === undefined ? called(tool.name, script.pick ?? 1) : spoke(script.prose)
     }
     voice.push({ system, messages: body.messages })
     const said = script.text === undefined ? [] : typeof script.text === 'string' ? [script.text] : [...script.text]
@@ -157,6 +187,22 @@ function speaker(script: Script) {
   }) as unknown as typeof globalThis.fetch
 
   return { voice, decisions, fetch, sidecar: new Sidecar({ base: 'http://127.0.0.1:8976', fetch }) }
+
+  /** The forced call, made: the answer arrives as arguments, never as text. */
+  function called(name: string, option: number): Response {
+    const call = { id: 'call_0', type: 'function', function: { name, arguments: JSON.stringify({ option }) } }
+    return answer({ role: 'assistant', content: null, tool_calls: [call] }, 'tool_calls')
+  }
+
+  /** The model talks its way out of the call it was told to make. */
+  function spoke(content: string): Response {
+    return answer({ role: 'assistant', content }, 'stop')
+  }
+
+  function answer(message: unknown, finish: string): Response {
+    const payload = { id: 'x', object: 'chat.completion', created: 0, model: 'm', choices: [{ index: 0, message, finish_reason: finish }] }
+    return new Response(JSON.stringify(payload), { headers: { 'content-type': 'application/json' } })
+  }
 
   function stream(pieces: readonly string[]): Response {
     const chunks = [...pieces.map((piece) => chunk({ content: piece })), chunk({}, 'stop')]
@@ -180,8 +226,8 @@ function cutIn(at: 'request' | 'first-token' | 'decision') {
   const model = speaker({ text: 'Fetch me the ledger.', pick: 2 })
 
   const fetch = (async (url: string, init: RequestInit) => {
-    const body = JSON.parse(String(init.body)) as { messages: Array<{ content: string }> }
-    const deciding = body.messages[body.messages.length - 1]!.content.includes('Which number?')
+    const body = JSON.parse(String(init.body)) as { tool_choice?: unknown }
+    const deciding = body.tool_choice !== undefined
 
     if (at === 'request' || (at === 'decision' && deciding)) {
       stop.abort()
@@ -220,12 +266,14 @@ function said(events: readonly TalkEvent[]): string {
     .join('')
 }
 
+const QUESTS = { plain: ledgerQuest, 'heard-out': heardOutQuest, topic: topicQuest }
+
 function setup(
   script: Script,
-  options: { carries?: boolean; heardOut?: boolean; sidecar?: Sidecar; signal?: AbortSignal } = {},
+  options: { carries?: boolean; quest?: keyof typeof QUESTS; sidecar?: Sidecar; signal?: AbortSignal } = {},
 ) {
   const fixture = bar(options)
-  const write = options.heardOut ? heardOutQuest : ledgerQuest
+  const write = QUESTS[options.quest ?? 'plain']
   const quest = write(fixture.mara.id, fixture.ledger.id, fixture.copy.id)
   const validated = validateQuest(quest, {
     hasNpc: (id) => fixture.world.hasNpc(id),
@@ -365,13 +413,7 @@ describe('Conversation', () => {
       expect.objectContaining({ kind: 'did' }),
     )
     expect(player.money).toBe(0)
-
-    // and prose instead of a number is not an action either
-    const prose = setup({ pick: 'give them the job, obviously' })
-    expect(await collect(prose.conversation.say('anything going?'))).not.toContainEqual(
-      expect.objectContaining({ kind: 'did' }),
-    )
-    expect(prose.log.status('quest_0001')).toBe('unstarted')
+    expect(log.status('quest_0001')).toBe('active')
   })
 
   it('never says an id out loud, even when the model writes one', async () => {
@@ -469,13 +511,51 @@ describe('Conversation', () => {
     expect(conversation.isOpen).toBe(true)
   })
   it('credits the talk step with the turn that hands the job over, not the turn before it', async () => {
-    const { conversation, log } = setup({ text: 'Fetch me the ledger.', pick: 2 }, { heardOut: true })
+    const { conversation, log } = setup({ text: 'Fetch me the ledger.', pick: 2 }, { quest: 'heard-out' })
     expect(log.objectives()).toEqual([])
 
     const events = await collect(conversation.say('anything going?'))
     expect(events).toContainEqual({ kind: 'did', action: 'give_quest', detail: 'quest_0001' })
     expect(events.some((e) => e.kind === 'changed' && e.change.kind === 'step-done' && e.change.stepId === 'step_0000')).toBe(true)
     expect(log.objectives().map((o) => o.text)).toEqual(['Take the ledger'])
+  })
+
+  it('credits a step that names a subject when the player puts them to it, and not before', async () => {
+    const { conversation, log } = setup({ fail: true }, { quest: 'topic' })
+
+    // taking the job opens the step that names the subject; talking has not raised it
+    await collect(conversation.say('evening'))
+    await collect(conversation.say('yes'))
+    expect(log.objectives().map((o) => o.text)).toEqual(['Ask Mara Cole about the missing shipment'])
+
+    // so the subject is a move of its own, in the player's own words
+    const ask = conversation.moves().find((move) => move.action === 'ask_about')!
+    expect(ask.label).toBe('Ask about the missing shipment')
+
+    const events = await collect(conversation.choose(ask.key))
+    expect(events).toContainEqual({ kind: 'did', action: 'ask_about', detail: 'the missing shipment' })
+    expect(said(events)).toContain('the missing shipment')
+    expect(log.objectives().map((o) => o.text)).toEqual(['Take the ledger'])
+  })
+
+  it('does not credit the subject for a conversation that only wandered onto it', async () => {
+    const spoken = 'The missing shipment? Everyone in Cold Harbour is asking about the missing shipment.'
+    const { conversation, model, log, world, player, mara } = setup({ text: spoken, pick: 1 }, { quest: 'topic' })
+    log.start('quest_0001')
+    const objective = ['Ask Mara Cole about the missing shipment']
+    expect(log.objectives().map((o) => o.text)).toEqual(objective)
+
+    // the subject is on the menu and she does not take it, however much she says about it
+    const events = await collect(conversation.say('quiet night'))
+    expect(model.decisions[0]!.system).toContain('tell them what you know about the missing shipment')
+    expect(events.some((event) => event.kind === 'did')).toBe(false)
+    expect(log.objectives().map((o) => o.text)).toEqual(objective)
+
+    // and walking up to her again is talking to her, which is not raising it either
+    const again = Conversation.open({ world, log, player, sidecar: speaker({}).sidecar, npcId: mara.id })
+    if (!again.ok) throw new Error('did not open')
+    expect(again.value.changes).toEqual([])
+    expect(log.objectives().map((o) => o.text)).toEqual(objective)
   })
 
   it('offers the delivery to the person it is owed to, and to nobody else', async () => {
@@ -515,12 +595,38 @@ describe('Conversation', () => {
     expect(brief).not.toMatch(/[a-z]+_\d{4}/)
   })
 
-  it('leaves the decision to the player when the action call comes back with nothing', async () => {
-    const { conversation, log } = setup({ text: 'Aye, could be.', pick: '' })
+  it('asks for the action as a call the model has to make, with the menu for a schema', async () => {
+    const { conversation, model } = setup({ text: 'Aye.' })
+    await collect(conversation.say('anything going?'))
 
-    const events = await collect(conversation.say('yes, I will do it'))
-    expect(events).toContainEqual({ kind: 'did', action: 'give_quest', detail: 'quest_0001' })
-    expect(log.status('quest_0001')).toBe('active')
+    const asked = model.decisions[0]!
+    expect(asked.forced).toBe(asked.tool.name)
+    // nothing but talk, the job, and the goodbye: an answer off that list cannot come back
+    expect(asked.tool.parameters).toMatchObject({
+      type: 'object',
+      required: ['option'],
+      properties: { option: { type: 'integer', minimum: 1, maximum: 3 } },
+    })
+  })
+
+  it("leaves the turn to the player's own words when the action call answers with none of them", async () => {
+    // words instead of the call it was told to make
+    const prose = setup({ text: 'Aye, could be.', prose: 'give them the job, obviously' })
+    expect(await collect(prose.conversation.say('yes, I will do it'))).toContainEqual({
+      kind: 'did',
+      action: 'give_quest',
+      detail: 'quest_0001',
+    })
+    expect(prose.log.status('quest_0001')).toBe('active')
+
+    // and a number that is not a line on the menu is no more of an answer than prose is
+    const off = setup({ text: 'Aye, could be.', pick: 9 })
+    expect(await collect(off.conversation.say('yes, I will do it'))).toContainEqual({
+      kind: 'did',
+      action: 'give_quest',
+      detail: 'quest_0001',
+    })
+    expect(off.log.status('quest_0001')).toBe('active')
   })
 
   it('takes plain English for an answer with no model running', async () => {
@@ -594,7 +700,7 @@ describe('Conversation', () => {
   })
 
   it('says the job in its own words instead of reading the screen text out', async () => {
-    const { conversation, mara } = setup({ fail: true }, { heardOut: true })
+    const { conversation, mara } = setup({ fail: true }, { quest: 'heard-out' })
 
     const offer = said(await collect(conversation.say('evening')))
     const taken = said(await collect(conversation.say('yes')))

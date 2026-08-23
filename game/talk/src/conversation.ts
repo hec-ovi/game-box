@@ -8,7 +8,7 @@ import { Credit } from './credit.ts'
 import { Decider } from './decide.ts'
 import type { Opening, TalkError, TalkEvent, Turn } from './events.ts'
 import { Greeting } from './greeting.ts'
-import { legalMoves, type ActionName, type Move, type Situation } from './moves.ts'
+import { legalMoves, topicOf, type ActionName, type Move, type Situation } from './moves.ts'
 import { Performer } from './perform.ts'
 import { pickByKey, pickLabel, picks, type TalkMove } from './picks.ts'
 import { Script } from './script.ts'
@@ -168,8 +168,9 @@ export class Conversation {
       signal: this.#signal,
     })
     if (this.#cut) return
-    const answered = chosen.ok && chosen.value.answered
-    yield* this.#act(answered ? chosen.value.move : this.#script.decide(playerText, moves))
+    // A call that never came back with a line off the menu is not a decision to
+    // do nothing: the player's own words decide, the way they do with no model.
+    yield* this.#act(chosen.ok ? chosen.value : this.#script.decide(playerText, moves))
   }
 
   /** The player pulled the plug: the turn stops where it is and nothing is decided. */
@@ -192,8 +193,10 @@ export class Conversation {
         yield event
       }
       // Handing the job over is what opens "go and hear them out": credit it here,
-      // while the player is still stood in front of the person who said it.
-      for (const change of this.#credit.earned()) yield { kind: 'changed', change }
+      // while the player is still stood in front of the person who said it. A
+      // move that put them to a subject carries it, and credits the steps that
+      // were waiting on that subject and no others.
+      for (const change of this.#credit.earned(topicOf(move))) yield { kind: 'changed', change }
     }
     if (!this.#open) yield { kind: 'over' }
   }

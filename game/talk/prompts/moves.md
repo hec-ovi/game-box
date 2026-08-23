@@ -1,6 +1,7 @@
 # How each move is offered to the decider. Plain words only: no ids, ever.
 nothing: nothing but talk
 give_quest: hand them the job: {{title}} ({{summary}})
+ask_about: tell them what you know about {{topic}}
 take_delivery: take the {{item}} they are holding out
 hand_over: give them the {{item}}
 follow_player: get up and walk with them

@@ -22,7 +22,7 @@ export class Script {
   #situation: Situation
   #listener = new Listener()
   #offered = false
-  #fact = 0
+  #told = 0
 
   constructor(situation: Situation) {
     this.#situation = situation
@@ -48,6 +48,11 @@ export class Script {
         const quest = this.#quest(move.id)
         const ask = quest ? firstAsk(quest) : ''
         return ask ? fill(LINES.taken!, { ask }) : LINES['taken-plain']!
+      }
+      case 'ask_about': {
+        const topic = move.subject ?? ''
+        const fact = this.#fact()
+        return fact ? fill(LINES.told!, { topic, fact }) : fill(LINES['told-quiet']!, { topic })
       }
       case 'take_delivery':
         return LINES.delivered!
@@ -97,10 +102,18 @@ export class Script {
 
   /** Something they know, said the way it would be said across a counter. */
   #hearsay(): string {
+    const turn = this.#told
+    const fact = this.#fact()
+    if (!fact || !HEARSAY.length) return LINES.quiet!
+    return fill(HEARSAY[turn % HEARSAY.length]!, { fact })
+  }
+
+  /** The next thing they know, punctuated to sit in a line. Empty when they know nothing. */
+  #fact(): string {
     const knowledge = this.#situation.world.npc(this.#situation.npcId)?.knowledge ?? []
-    if (!knowledge.length || !HEARSAY.length) return LINES.quiet!
-    const turn = this.#fact++
-    return fill(HEARSAY[turn % HEARSAY.length]!, { fact: sentence(knowledge[turn % knowledge.length]!) })
+    if (!knowledge.length) return ''
+    const turn = this.#told++
+    return sentence(knowledge[turn % knowledge.length]!)
   }
 
   #quest(questId: string | undefined): QuestDoc | undefined {

@@ -21,6 +21,10 @@ const WEIGH: Record<ActionName, (heard: Hearing, move: Move) => number> = {
     if (heard.names(move.subject)) return 4
     return heard.has('pointing') ? 3 : 0
   },
+  ask_about: (heard, move) => {
+    if (heard.has('refuse') || !heard.names(move.subject)) return 0
+    return heard.hasAny(['asking', 'request']) ? 4 : 0
+  },
   take_delivery: (heard, move) => {
     if (heard.has('refuse')) return 0
     if (heard.has('offering')) return 5

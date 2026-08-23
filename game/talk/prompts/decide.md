@@ -9,4 +9,4 @@ Almost every exchange is 1. Pick another number only when this exchange plainly
 ended in {{name}} doing it: they said as much out loud, or the other person
 asked and they went along with it.
 {{rules}}
-Answer with the number alone.
+Report it with the tool, giving that number.

@@ -5,6 +5,8 @@ pay: {{money}} coin for it, once it's done.
 pay-none: No coin in it, but you'd be doing me a turn.
 taken: Good. {{ask}} Come back to me when it's done.
 taken-plain: Good. Come back to me when it's done.
+told: {{topic}}, then. {{fact}}
+told-quiet: {{topic}}, then. I've nothing on that you'd not already know.
 awaiting: You're carrying what I'm owed. I'll take it whenever you're ready.
 delivered: That's the one. We're square.
 handed: Here. Don't lose it.

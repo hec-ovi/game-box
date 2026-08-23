@@ -1,6 +1,6 @@
 # @gb/talk contract
 
-contractVersion: 0.6.0
+contractVersion: 0.7.0
 
 ## Purpose
 
@@ -18,7 +18,7 @@ Conversations with the people in the city: they speak first off the game's own d
 
 | Param | Schema | Postconditions |
 |---|---|---|
-| `open` | `{ conversation, changes, opening }` | walking up to someone is a `talked` event, so a step that already asked for it completes here |
+| `open` | `{ conversation, changes, opening }` | walking up to someone is a `talked` event, so a step that already asked for it completes here; a step that names a subject waits to be asked |
 | `opening` | `{ line, moves }` | what they say before the player has said anything, and the moves that were legal when they said it. Always a line, never a model call |
 | `say` | a stream of `TalkEvent` | `said` pieces as they are spoken, `did` for the action taken, `changed` for every quest change it caused, `over` when it ends |
 | `available()` | the action names legal right now | what the UI can promise before a word is said |
@@ -28,6 +28,8 @@ Conversations with the people in the city: they speak first off the game's own d
 ## Talking to someone counts when it counts
 
 A `talked` event fires when the conversation opens, and again after anything the NPC does. The second one is what makes a generated job playable: those quests open with "go and hear them out", and the step that says so is opened by the giver handing the job over, one moment after the greeting. Credited only on the way in, the objective would read as an errand to go and find the person the player is stood in front of. Credited again after the move, the objective the player sees is the first thing they still have to do.
+
+A step that names a subject is a different promise. A `talk` step may carry a `topic`, and `@gb/quest` credits one only for a `talked` event carrying that same subject, so being stood in front of the person is not enough. The subject is a move of its own: `ask_about`, on the menu for as long as a step is waiting to hear it raised with this person, written the way the player would click it ("Ask about the missing shipment"). **The step is credited when that move is taken, and at no other time**: clicked, picked off the same menu by the action track, or asked for in words plain enough for the offline reader to be sure of. A conversation that wanders onto the subject credits nothing, however much either side says about it, because a reply is not a decision: guessing at one either takes work off the board the player never did or refuses work they did. Walking up to somebody credits the steps that name no subject, and only those.
 
 ## They speak first
 
@@ -41,7 +43,7 @@ The line goes into the transcript as their turn, so the model answers on top of 
 
 The voice goes first and only speaks. It is given the character, what they know and what is going on, and no tools, no ids and no decision to weigh up, so the first words come back fast and stream out as they arrive.
 
-The action track then decides, once. Every move that was legal when the turn began is written out as a numbered menu in plain words, with "nothing but talk" as number 1, and the model answers with a single number at temperature 0. One turn is at most one action, and nothing is the usual answer: an answer that is not a number on the menu is nothing. A turn that comes back with no answer at all is not a decision to do nothing; the player's own words decide it instead.
+The action track then decides, once. Every move that was legal when the turn began is written out as a numbered menu in plain words, with "nothing but talk" as number 1, and the model answers by making a call it is given no choice about making, at temperature 0. The parameters of that call are the menu: one line number, checked against the number of lines before it gets back here. There is no text to parse and no answer off the list to interpret. One turn is at most one action, and nothing is the usual answer. A call that comes back any other way (prose instead of the call, a number the menu has not got, nothing running at all) has not answered it, and the player's own words decide the turn instead.
 
 Ids never appear in either track. The menu says "the job: The Ledger", not a quest id, and the number maps back to the id on this side of the boundary.
 
@@ -65,11 +67,11 @@ What they want from the player is read off the moves they may make and the targe
 
 ## Actions (closed set)
 
-`give_quest`, `take_delivery`, `hand_over`, `follow_player`, `stop_following`, `end_talk`. There are no others, and each is on the menu only while it is legal.
+`give_quest`, `ask_about`, `take_delivery`, `hand_over`, `follow_player`, `stop_following`, `end_talk`. There are no others, and each is on the menu only while it is legal. `ask_about` is legal while a step is waiting to hear its subject raised with this person, and carries that subject; with no model running it is answered out of what the world file says they know.
 
 ## With no sidecar
 
-Not an error, and not a dead end. Both tracks fall back to the data the game already holds, and a job can be offered, agreed to, delivered and paid for with no model running anywhere. If only the action call fails, or comes back empty, the spoken line still streams and the player's words decide.
+Not an error, and not a dead end. Both tracks fall back to the data the game already holds, and a job can be offered, agreed to, delivered and paid for with no model running anywhere. If only the action call fails, or comes back with nothing off the menu, the spoken line still streams and the player's words decide.
 
 The player's words are read against the menu rather than against a keyword list. What was said is broken into phrases, longest first, so "maybe later" is a refusal and never a goodbye; then every move that is legal this turn is weighed against what was heard, and the best of them is taken if it is clear enough. Asking for the job and asking for the thing on the counter come apart the way they do in speech: "give me the job" takes the work, "give me the ledger" takes the ledger, and "give me a drink" gets an honest "you've lost me" because there is no drink on the menu. Two moves that fit equally well go to whichever is higher on the menu. Nothing below the bar acts at all, so the player is never handed something they did not ask for.
 
@@ -77,17 +79,21 @@ The spoken side is terse but never reads stored text out as it is stored: a fact
 
 ## Errors (closed set)
 
-- `unknown-npc`: nobody by that id lives here. No conversation is opened.
+- `unknown-npc`: nobody by that id lives here. No conversation is opened. The only error handed back to a caller.
+- `action-unanswered`: the forced action call came back with no line off the menu: nothing running, a refusal, a timeout, prose instead of the call, or a number the menu has not got. The box settles it instead of returning it: the words already spoken stand, and the player's own words decide the action exactly as they do with no sidecar. Never a silent "they did nothing", and never the first line of the menu by default.
 
 ## Dependencies
 
 - `@gb/kit`, `@gb/world`, `@gb/quest`, `@gb/play`, `@gb/sidecar` contracts.
+- `zod`: the schema the action call is forced against.
 
 ## Invariants
 
 - An NPC can only do what the live state allows. The menu is built from that state, so offering a quest that is not theirs or taking an item the player is not carrying is not something they can pick, and every move is checked again before it is carried out.
 - No id, and nothing else a clerk would say, reaches the spoken line: the voice track is never given one, and the stream is scrubbed on the way out in case the model invents one.
 - Every action goes through the box that owns the state: quests through `@gb/quest`, inventory, money and companions through `@gb/play`. This box changes nothing itself.
+- Every action an NPC takes off a spoken turn is a call the model was forced to make against a schema built from this turn's menu. No action is ever read out of prose, and a call that fails is a failure, not a quiet no.
+- A step that names a subject is credited by the move that raises it and by nothing else.
 - What an NPC knows of the world is what the world file says they know, plus what they could see from where they are standing and what the clock reads. The prompt says so and lists it; nothing else about the city is in their context.
 - What the NPC is told about the situation is read off the same moves they may pick, so the two cannot drift apart.
 - Clicking and typing are one conversation: a picked move goes into the transcript as the player's turn, so a typed turn after it answers with the click in mind.
@@ -99,4 +105,4 @@ The spoken side is terse but never reads stored text out as it is stored: a fact
 
 ## How to modify this blackbox safely
 
-A new action is a name in `ACTIONS`, a rule in `legalMoves` for when it is offered and which ids it may carry, its wording in `prompts/moves.md` and `prompts/picks.md`, how the player would ask for it in `prompts/hearing.md`, how it is weighed in `listen.ts`, what it says in `prompts/offline.md`, how it is nudged at in `prompts/hook.md`, and a branch in `Performer`. A move that the decider keeps misreading can take a line in `prompts/rules.md`, which is added to the menu prompt only while that move is on it. The opening line is drawn pool by pool from `prompts/greeting.md`: the hour, the standing band, the spot they keep, the sky, the room. The rest of the wording lives in `prompts/npc.md`, `situation*.md`, `surroundings.md` and `standing.md`, and every prompt is bundled by `pnpm --filter @gb/talk run generate`. Run `pnpm --filter @gb/talk test`.
+The forced call's name, wording and parameter live in `prompts/decide-tool.md`; its schema is built from the menu in `decide.ts`. A new action is a name in `ACTIONS`, a rule in `legalMoves` for when it is offered and which ids it may carry, its wording in `prompts/moves.md` and `prompts/picks.md`, how the player would ask for it in `prompts/hearing.md`, how it is weighed in `listen.ts`, what it says in `prompts/offline.md`, how it is nudged at in `prompts/hook.md`, and a branch in `Performer`. A move that the decider keeps misreading can take a line in `prompts/rules.md`, which is added to the menu prompt only while that move is on it. The opening line is drawn pool by pool from `prompts/greeting.md`: the hour, the standing band, the spot they keep, the sky, the room. The rest of the wording lives in `prompts/npc.md`, `situation*.md`, `surroundings.md` and `standing.md`, and every prompt is bundled by `pnpm --filter @gb/talk run generate`. Run `pnpm --filter @gb/talk test`.

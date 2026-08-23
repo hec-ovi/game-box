@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "test": "vitest run",
     "generate": "node --experimental-strip-types tools/bundle-prompts.ts"
@@ -13,6 +15,7 @@
     "@gb/play": "workspace:*",
     "@gb/quest": "workspace:*",
     "@gb/sidecar": "workspace:*",
-    "@gb/world": "workspace:*"
+    "@gb/world": "workspace:*",
+    "zod": "^4.4.3"
   }
 }

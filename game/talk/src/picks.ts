@@ -25,7 +25,7 @@ export function pickByKey(moves: readonly Move[], key: string): Move | undefined
 /** What the player clicked, kept as the player's turn in the transcript. */
 export function pickLabel(move: Move): string {
   const subject = move.subject ?? ''
-  return fill(WORDING[move.action]!, { title: subject, item: subject })
+  return fill(WORDING[move.action]!, { title: subject, item: subject, topic: subject })
 }
 
 /**

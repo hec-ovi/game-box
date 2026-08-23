@@ -51,6 +51,8 @@ export class Wants {
       if (objective.itemId) {
         if (owed.has(objective.itemId)) continue
         lines.push(fill(LINES.owed!, { item: this.#itemName(objective.itemId) }))
+      } else if (objective.topic) {
+        lines.push(fill(LINES.asked!, { topic: objective.topic }))
       } else if (objective.place) {
         lines.push(fill(LINES.escorting!, { place: this.#placeName(objective.place) }))
       } else {

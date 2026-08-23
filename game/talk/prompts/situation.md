@@ -3,6 +3,7 @@ quest: you have work you would hand to the right person: {{title}}, {{pay}}. Wha
 quest-unpaid: you have work you would hand to the right person, with no coin in it: {{title}}. What it is: {{summary}}
 pay: {{money}} coin in it
 first: What you would have them do first: {{ask}}
+asked: they want to hear what you know about {{topic}}
 delivery: they are carrying the {{item}} you are owed; if you want it off them, ask for it in your own words
 owed: they are meant to bring you the {{item}} and have not got it on them yet
 awaited: they came here to hear you out, and that is what this is

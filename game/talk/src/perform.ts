@@ -1,6 +1,6 @@
 import type { Change } from '@gb/quest'
 import type { TalkEvent } from './events.ts'
-import type { Move, Situation } from './moves.ts'
+import { topicsFor, type Move, type Situation } from './moves.ts'
 
 /**
  * Carries a move out through the box that owns the state it changes: quests
@@ -29,6 +29,14 @@ export class Performer {
         const started = log.start(questId)
         events.push({ kind: 'did', action: move.action, detail: questId })
         if (started.ok) record(started.value)
+        break
+      }
+      case 'ask_about': {
+        const topic = move.id ?? ''
+        if (!topicsFor(log, npcId).includes(topic)) return []
+        // Saying it is the whole of it: the step it credits is handled by Credit,
+        // which is what turns being put to a subject into a quest event.
+        events.push({ kind: 'did', action: move.action, detail: topic })
         break
       }
       case 'take_delivery': {

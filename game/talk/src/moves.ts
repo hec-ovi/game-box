@@ -5,7 +5,15 @@ import { PROMPTS } from './prompts.generated.ts'
 import { fill, keyed } from './text.ts'
 
 /** Everything an NPC is ever able to do in a conversation. */
-export const ACTIONS = ['give_quest', 'take_delivery', 'hand_over', 'follow_player', 'stop_following', 'end_talk'] as const
+export const ACTIONS = [
+  'give_quest',
+  'ask_about',
+  'take_delivery',
+  'hand_over',
+  'follow_player',
+  'stop_following',
+  'end_talk',
+] as const
 export type ActionName = (typeof ACTIONS)[number]
 
 export interface Situation {
@@ -18,7 +26,7 @@ export interface Situation {
 /** One thing this NPC could do this turn, and the plain words it is offered in. */
 export interface Move {
   readonly action: ActionName
-  /** The quest or item it names, fixed when the turn began. Never shown to the model. */
+  /** The quest, item or subject it names, fixed when the turn began. Never shown to the model. */
   readonly id?: string
   /** What it is about, named the way a person would name it: a job title, a thing on the counter. */
   readonly subject?: string
@@ -36,6 +44,12 @@ const WORDING = keyed(PROMPTS.moves)
 export function legalMoves(situation: Situation): readonly Move[] {
   const { world, log, player, npcId } = situation
   const moves: Move[] = []
+
+  // The subject a step is waiting to hear raised comes first: it is what the
+  // player was sent here to do, so it is the move the greeting nudges at.
+  for (const topic of topicsFor(log, npcId)) {
+    moves.push({ action: 'ask_about', id: topic, subject: topic, line: fill(WORDING.ask_about!, { topic }) })
+  }
 
   for (const quest of log.offeredBy(npcId)) {
     moves.push({
@@ -75,6 +89,25 @@ export function menu(moves: readonly Move[]): string {
 /** The move behind a number. Anything outside the menu, one included, is doing nothing. */
 export function picked(moves: readonly Move[], number: number): Move | undefined {
   return moves[number - 2]
+}
+
+/** The subject a move is about, for the moves that are about one. */
+export function topicOf(move: Move): string | undefined {
+  return move.action === 'ask_about' ? move.id : undefined
+}
+
+/**
+ * The subjects an open step wants raised with this NPC. A talk step that names
+ * a topic is only credited by a `talked` event carrying it, so standing in
+ * front of the person is not enough: it takes a move of its own, and this is
+ * the list of them.
+ */
+export function topicsFor(log: QuestLog, npcId: string): readonly string[] {
+  const topics = new Set<string>()
+  for (const objective of log.objectives()) {
+    if (objective.npcId === npcId && objective.topic) topics.add(objective.topic)
+  }
+  return [...topics]
 }
 
 /**
