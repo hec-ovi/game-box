@@ -32,9 +32,18 @@ export class Conversation {
   #performer: Performer
   #history: Turn[] = []
   #open = true
+  #signal: AbortSignal | undefined
 
-  private constructor(input: { world: World; log: QuestLog; player: PlayerState; sidecar: Sidecar; npcId: string }) {
+  private constructor(input: {
+    world: World
+    log: QuestLog
+    player: PlayerState
+    sidecar: Sidecar
+    npcId: string
+    signal?: AbortSignal | undefined
+  }) {
     this.#situation = { world: input.world, log: input.log, player: input.player, npcId: input.npcId }
+    this.#signal = input.signal
     this.#brief = new Brief(this.#situation)
     this.#greeting = new Greeting(this.#situation)
     this.#voice = new Voice(input.sidecar)
@@ -46,6 +55,10 @@ export class Conversation {
   /**
    * Walking up to someone is itself an event: a quest step that already asked
    * the player to talk to them completes here.
+   *
+   * `signal` is the player's way out. It rides on every model call this
+   * conversation makes, so a turn can be cut short before the first word of the
+   * reply arrives.
    */
   static open(input: {
     world: World
@@ -53,6 +66,7 @@ export class Conversation {
     player: PlayerState
     sidecar: Sidecar
     npcId: string
+    signal?: AbortSignal | undefined
   }): Result<{ conversation: Conversation; changes: readonly Change[] }, TalkError> {
     if (!input.world.hasNpc(input.npcId)) return err({ code: 'unknown-npc', npcId: input.npcId })
     const conversation = new Conversation(input)
@@ -100,12 +114,18 @@ export class Conversation {
 
   /** Say something to them. Their reply arrives in pieces, their actions as they take them. */
   async *say(playerText: string): AsyncGenerator<TalkEvent> {
+    if (this.#cut) return
     this.#history.push({ role: 'user', content: playerText })
     const moves = legalMoves(this.#situation)
 
-    const spoken = await this.#voice.speak({ system: this.#brief.voice(moves), history: this.#history })
+    const spoken = await this.#voice.speak({
+      system: this.#brief.voice(moves),
+      history: this.#history,
+      signal: this.#signal,
+    })
     if (!spoken.ok) {
-      yield* this.#unattended(playerText, moves)
+      // Cut short is the player's own decision, so nothing stands in for the reply.
+      if (spoken.error.code !== 'aborted') yield* this.#unattended(playerText, moves)
       return
     }
 
@@ -114,21 +134,30 @@ export class Conversation {
       line += piece
       yield { kind: 'said', text: piece }
     }
+    if (line.trim()) this.#history.push({ role: 'assistant', content: line })
+    // Cut off mid-reply: the turn ends on the words that got through, and nothing is done.
+    if (this.#cut) return
     // A reply that broke off before a word of it arrived is no reply at all.
     if (!line.trim()) {
       yield* this.#unattended(playerText, moves)
       return
     }
-    this.#history.push({ role: 'assistant', content: line })
 
     const chosen = await this.#decider.choose({
       npcName: this.#brief.npcName,
       city: this.#brief.city,
       moves,
       transcript: this.#brief.transcript(this.#history),
+      signal: this.#signal,
     })
+    if (this.#cut) return
     const answered = chosen.ok && chosen.value.answered
     yield* this.#act(answered ? chosen.value.move : this.#script.decide(playerText, moves))
+  }
+
+  /** The player pulled the plug: the turn stops where it is and nothing is decided. */
+  get #cut(): boolean {
+    return this.#signal?.aborted === true
   }
 
   /** No sidecar: the quest data speaks and the player's own words decide. */

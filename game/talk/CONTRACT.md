@@ -1,6 +1,6 @@
 # @gb/talk contract
 
-contractVersion: 0.4.1
+contractVersion: 0.5.0
 
 ## Purpose
 
@@ -10,7 +10,7 @@ Conversations with the people in the city: one track writes what they say, anoth
 
 | Param | Schema | Preconditions |
 |---|---|---|
-| `Conversation.open({ world, log, player, sidecar, npcId })` | a `@gb/world` `World`, `@gb/quest` `QuestLog`, `@gb/play` `PlayerState`, `@gb/sidecar` `Sidecar` | the NPC is in the world |
+| `Conversation.open({ world, log, player, sidecar, npcId, signal? })` | a `@gb/world` `World`, `@gb/quest` `QuestLog`, `@gb/play` `PlayerState`, `@gb/sidecar` `Sidecar`, and the player's own `AbortSignal` | the NPC is in the world |
 | `say(text)` | what the player said | |
 | `choose(key)` | the `key` of a move read off `moves()` | none: a key that is not legal now is a no-op |
 
@@ -41,6 +41,12 @@ Ids never appear in either track. The menu says "the job: The Ledger", not a que
 `moves()` is the same menu the decider is given, written from the player's side: "Take the job: The Ledger" where the decider reads "hand them the job". `choose(key)` builds that menu again from live state and matches the key against it. A move that has stopped being legal between the click and the menu it was drawn from does nothing at all, not something else, and the caller reads `moves()` again.
 
 A picked move costs no model call: the line the NPC says is the one the quest data already holds, so the same key in the same state plays the same way every time.
+
+## Cutting a turn short
+
+`signal` is the player's way out, and it rides on every model call the conversation makes. Abort it and the turn stops where it is: the words that already arrived stand, no action is decided, nothing is done, and no scripted line stands in for the reply the player did not wait for. Nothing comes back as an error, the stream just ends.
+
+The signal belongs to the conversation, not to one turn, so once it has fired later turns say nothing either. Clicking a move still plays, because it asks nothing of a model.
 
 ## What the character is told
 
@@ -78,6 +84,7 @@ The spoken side is terse but never reads stored text out as it is stored: a fact
 - Clicking and typing are one conversation: a picked move goes into the transcript as the player's turn, so a typed turn after it answers with the click in mind.
 - With no model reachable, the same words in the same state give the same conversation every time, down to the line.
 - The reply streams, so speech can start before the sentence is finished.
+- A turn the player cut short changes nothing: no quest moves, no item, no money, no companion.
 
 ## How to modify this blackbox safely
 

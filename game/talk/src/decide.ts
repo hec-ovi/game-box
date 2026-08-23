@@ -31,8 +31,10 @@ export class Decider {
     city: string
     moves: readonly Move[]
     transcript: string
+    signal?: AbortSignal | undefined
   }): Promise<Result<Decision, SidecarError>> {
     const stream = await this.#sidecar.converse({
+      signal: input.signal,
       system: fill(PROMPTS.decide, {
         name: input.npcName,
         city: input.city,

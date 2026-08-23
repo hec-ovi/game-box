@@ -15,8 +15,12 @@ export class Voice {
     this.#sidecar = sidecar
   }
 
-  async speak(input: { system: string; history: readonly Turn[] }): Promise<Result<AsyncIterable<string>, SidecarError>> {
-    const stream = await this.#sidecar.converse({ system: input.system, messages: input.history })
+  async speak(input: {
+    system: string
+    history: readonly Turn[]
+    signal?: AbortSignal | undefined
+  }): Promise<Result<AsyncIterable<string>, SidecarError>> {
+    const stream = await this.#sidecar.converse({ system: input.system, messages: input.history, signal: input.signal })
     if (!stream.ok) return stream
     return ok(spoken(stream.value))
   }

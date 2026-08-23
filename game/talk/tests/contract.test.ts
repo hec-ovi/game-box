@@ -156,7 +156,7 @@ function speaker(script: Script) {
     return stream(said)
   }) as unknown as typeof globalThis.fetch
 
-  return { voice, decisions, sidecar: new Sidecar({ base: 'http://127.0.0.1:8976', fetch }) }
+  return { voice, decisions, fetch, sidecar: new Sidecar({ base: 'http://127.0.0.1:8976', fetch }) }
 
   function stream(pieces: readonly string[]): Response {
     const chunks = [...pieces.map((piece) => chunk({ content: piece })), chunk({}, 'stop')]
@@ -167,6 +167,44 @@ function speaker(script: Script) {
   function chunk(delta: unknown, finish: string | null = null) {
     return { id: 'x', object: 'chat.completion.chunk', created: 0, model: 'm', choices: [{ index: 0, delta, finish_reason: finish }] }
   }
+}
+
+/**
+ * A model the player cuts in on, and the moment they do it: while the request
+ * is going out, while the reply is still being thought about, or once it has
+ * been spoken and only the action is left to decide. Until then the model
+ * answers in full, so a turn that is not cut short hands the job over.
+ */
+function cutIn(at: 'request' | 'first-token' | 'decision') {
+  const stop = new AbortController()
+  const model = speaker({ text: 'Fetch me the ledger.', pick: 2 })
+
+  const fetch = (async (url: string, init: RequestInit) => {
+    const body = JSON.parse(String(init.body)) as { messages: Array<{ content: string }> }
+    const deciding = body.messages[body.messages.length - 1]!.content.includes('Which number?')
+
+    if (at === 'request' || (at === 'decision' && deciding)) {
+      stop.abort()
+      // a real fetch rejects the moment the signal it was handed fires
+      if (init.signal?.aborted) throw new Error('the request was aborted')
+    }
+    if (at === 'first-token' && !deciding) {
+      return new Response(quiet(stop), { headers: { 'content-type': 'text/event-stream' } })
+    }
+    return model.fetch(url, init)
+  }) as unknown as typeof globalThis.fetch
+
+  return { stop, decisions: model.decisions, sidecar: new Sidecar({ base: 'http://127.0.0.1:8976', fetch }) }
+}
+
+/** Headers came back and then nothing: the player cuts in and the reply dies with the call. */
+function quiet(stop: AbortController): ReadableStream<Uint8Array> {
+  return new ReadableStream({
+    pull(controller) {
+      stop.abort()
+      controller.error(new Error('the reply broke off'))
+    },
+  })
 }
 
 async function collect(stream: AsyncGenerator<TalkEvent>): Promise<TalkEvent[]> {
@@ -182,7 +220,10 @@ function said(events: readonly TalkEvent[]): string {
     .join('')
 }
 
-function setup(script: Script, options: { carries?: boolean; heardOut?: boolean; sidecar?: Sidecar } = {}) {
+function setup(
+  script: Script,
+  options: { carries?: boolean; heardOut?: boolean; sidecar?: Sidecar; signal?: AbortSignal } = {},
+) {
   const fixture = bar(options)
   const write = options.heardOut ? heardOutQuest : ledgerQuest
   const quest = write(fixture.mara.id, fixture.ledger.id, fixture.copy.id)
@@ -204,6 +245,7 @@ function setup(script: Script, options: { carries?: boolean; heardOut?: boolean;
     player,
     sidecar: options.sidecar ?? model.sidecar,
     npcId: fixture.mara.id,
+    signal: options.signal,
   })
   if (!opened.ok) throw new Error('conversation did not open')
   return { ...fixture, player, log, model, ...opened.value }
@@ -641,5 +683,34 @@ describe('Conversation.moves and choose', () => {
 
     await collect(conversation.say('where do I start?'))
     expect(model.voice[0]!.messages).toContainEqual({ role: 'user', content: 'Take the job: The Ledger' })
+  })
+})
+
+describe('cutting a turn short', () => {
+  it("stops on the player's signal, however far the turn had got", async () => {
+    for (const at of ['request', 'first-token', 'decision'] as const) {
+      const model = cutIn(at)
+      const { conversation, log } = setup({}, { sidecar: model.sidecar, signal: model.stop.signal })
+
+      // words that would take the job outright with nobody listening for the signal
+      const events = await collect(conversation.say('give me the job'))
+
+      // whatever got through stands; nothing is decided in the player's place
+      expect(said(events), at).toBe(at === 'decision' ? 'Fetch me the ledger.' : '')
+      // and the calls stop where the player stopped them: no answer off the menu ever lands
+      expect(model.decisions, at).toEqual([])
+      expect(events.some((event) => event.kind === 'did'), at).toBe(false)
+      expect(log.status('quest_0001'), at).toBe('unstarted')
+      expect(conversation.isOpen, at).toBe(true)
+    }
+  })
+
+  it('says nothing more once the player has cut in', async () => {
+    const model = cutIn('request')
+    const { conversation } = setup({}, { sidecar: model.sidecar, signal: model.stop.signal })
+
+    await collect(conversation.say('give me the job'))
+    expect(await collect(conversation.say('still there?'))).toEqual([])
+    expect(conversation.history()).toEqual([{ role: 'user', content: 'give me the job' }])
   })
 })
