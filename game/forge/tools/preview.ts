@@ -15,5 +15,11 @@ for (const p of world.plots().slice(0, 10)) {
   const people = world.npcsIn(p.id).map((n) => `${n.name} (${n.role})`).join(', ')
   console.log(`  ${p.kind.padEnd(10)} ${p.name.padEnd(24)} ${p.storeys}st  ${p.rect.w * 2}x${p.rect.h * 2}m  ${people}`)
 }
-console.log('\nquest:', quests[0]?.title)
+console.log('\nquests:')
+for (const q of quests) {
+  const gate = q.requires?.map((r) => (r.kind === 'flag' ? r.flag : r.kind)).join(', ')
+  console.log(`  ${q.kind.padEnd(4)} ${(q.difficulty ?? '').padEnd(8)} ${String(q.reward.money).padStart(4)}  ${q.title}${gate ? `  [needs ${gate}]` : ''}`)
+  console.log(`       ${q.steps.map((s) => s.kind).join(' > ')}`)
+}
+console.log(`\nthe first job, step by step: ${quests[0]?.title ?? '(none)'}`)
 for (const s of quests[0]?.steps ?? []) console.log(`   ${s.kind.padEnd(9)} ${s.objective}`)

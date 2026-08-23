@@ -20,8 +20,17 @@ export interface WorldSummary {
     readonly interiorId?: string
     readonly kind: BuildingKind
     readonly name: string
+    /** Where its street door is, in metres: how far a job makes the player walk. */
+    readonly door?: { readonly x: number; readonly z: number }
+    /** A surface inside it something can be left on, when it has one. */
+    readonly stashAnchorId?: string
     readonly npcs: ReadonlyArray<{ readonly npcId: string; readonly name: string; readonly role: NpcRole }>
-    readonly items: ReadonlyArray<{ readonly itemId: string; readonly name: string; readonly ownerNpcId?: string }>
+    readonly items: ReadonlyArray<{
+      readonly itemId: string
+      readonly name: string
+      readonly archetype?: ItemArchetype
+      readonly ownerNpcId?: string
+    }>
   }>
 }
 

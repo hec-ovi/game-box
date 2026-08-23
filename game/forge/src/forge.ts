@@ -2,6 +2,7 @@ import { err, ok, Rng, type Result, type SchemaViolation } from '@gb/kit'
 import { validateQuest, type QuestDoc, type QuestProblem } from '@gb/quest'
 import {
   BODY_KINDS,
+  cellCentre,
   METRICS,
   questView,
   World,
@@ -23,6 +24,9 @@ import { layRoads } from './layout/roads.ts'
 import { paintStreets } from './layout/streets.ts'
 import type { Narrator, WorldSummary } from './narrator.ts'
 import { bulkOf, itemsFor, occupancy, roleFor, surfacesOf } from './populate.ts'
+import { questDemand } from './quests/demand.ts'
+import { flavourOf } from './theme/flavour.ts'
+import { kindWeights, stapleKinds } from './theme/plot-mix.ts'
 
 export type ForgeError =
   | { readonly code: 'invalid-brief'; readonly violations: readonly SchemaViolation[] }
@@ -35,28 +39,7 @@ export interface ForgeResult {
   readonly rejected: ReadonlyArray<{ readonly index: number; readonly problems: readonly QuestProblem[] }>
 }
 
-/** What a town is made of, before anything is named. */
-const KIND_WEIGHTS: ReadonlyArray<readonly [BuildingKind, number]> = [
-  ['house', 10],
-  ['apartment', 3],
-  ['shop', 3],
-  ['office', 2],
-  ['bar', 2],
-  ['cafe', 2],
-  ['workshop', 2],
-  ['warehouse', 1],
-  ['restaurant', 1],
-  ['clinic', 1],
-  ['hotel', 1],
-  ['market', 1],
-  ['chapel', 1],
-  ['station', 1],
-]
-
 const GENERATOR_VERSION = '0.1.0'
-
-/** Every town gets at least one of these, whatever the dice say. */
-const STAPLES: readonly BuildingKind[] = ['bar', 'shop']
 
 /**
  * Builds a city from a brief: streets and plots by arithmetic, names and people
@@ -98,7 +81,7 @@ export class Forge {
     const problems = world.check()
     if (problems.length) return err({ code: 'unsound-world', problems })
 
-    const { quests, rejected } = await this.#writeQuests(world, brief)
+    const { quests, rejected } = await this.#writeQuests(world, rng.fork('quests'))
     return ok({ world, quests, rejected })
   }
 
@@ -111,7 +94,7 @@ export class Forge {
     for (let i = 0; i < count; i++) {
       const site = this.#freeSite(world, rng)
       if (!site) break
-      const kind = rng.weighted(KIND_WEIGHTS)
+      const kind = rng.weighted(kindWeights(flavourOf(world.theme), rng.fork(`extend/mix/${i}`)))
       const plot = await this.#raiseOne(world, site, kind, world.theme, 2, rng.fork(`extend/${i}`))
       if (plot) added.push(plot)
     }
@@ -121,15 +104,28 @@ export class Forge {
     return ok(added)
   }
 
-  /** Puts buildings on the blocks, leaving gaps for the city to grow into later. */
+  /**
+   * Puts buildings on the blocks, leaving gaps for the city to grow into later.
+   * What kind of town it is decides the mix, the seed moves it around, and the
+   * few places the town is known for are dropped on seeded sites before the
+   * rest is rolled.
+   */
   async #raise(world: World, brief: Brief, blocks: readonly { x: number; y: number; w: number; h: number }[], rng: Rng): Promise<void> {
     const sites = blocks.flatMap((block, index) => sitesInBlock(block, rng.fork(`block/${index}`)))
-    const staples = [...STAPLES]
+    const mix = rng.fork('plots')
+    const flavour = flavourOf(brief.theme)
+    const weights = kindWeights(flavour, mix)
+    const wanted = stapleKinds(flavour, mix)
+    const spots = mix.shuffle(sites.map((_, index) => index)).slice(0, wanted.length)
+    const staples = new Map(spots.map((site, order) => [site, wanted[order]!]))
 
     for (const [index, site] of sites.entries()) {
       const siteRng = rng.fork(`site/${index}`)
-      if (staples.length === 0 && !siteRng.chance(brief.density)) continue
-      const kind = staples.shift() ?? siteRng.weighted(KIND_WEIGHTS)
+      // both draws happen either way, so whether a site is a staple cannot shift the rest
+      const built = siteRng.chance(brief.density)
+      const rolled = siteRng.weighted(weights)
+      const kind = staples.get(index) ?? (built ? rolled : undefined)
+      if (!kind) continue
       await this.#raiseOne(world, site, kind, brief.theme, brief.maxStoreys, siteRng)
     }
   }
@@ -226,8 +222,9 @@ export class Forge {
     }
   }
 
-  async #writeQuests(world: World, brief: Brief): Promise<{ quests: QuestDoc[]; rejected: ForgeResult['rejected'] }> {
-    const raw = await this.#narrator.writeQuests({ summary: summarise(world), sideQuests: Math.max(2, brief.blocksX * brief.blocksY) })
+  async #writeQuests(world: World, rng: Rng): Promise<{ quests: QuestDoc[]; rejected: ForgeResult['rejected'] }> {
+    const summary = summarise(world)
+    const raw = await this.#narrator.writeQuests({ summary, sideQuests: questDemand(summary, rng) })
     const quests: QuestDoc[] = []
     const rejected: Array<{ index: number; problems: readonly QuestProblem[] }> = []
 
@@ -277,7 +274,11 @@ function violationsOf(error: WorldError): readonly SchemaViolation[] {
   return [{ path: '(root)', message: error.message }]
 }
 
-/** The abstract world a quest writer reads: places, who is in them, what is there. */
+/**
+ * The abstract world a quest writer reads: places, who is in them, what is
+ * there, where its door is and what a thing can be left on. No coordinates
+ * beyond the door, because that is all a quest ever needs to measure a walk.
+ */
 export function summarise(world: World): WorldSummary {
   return {
     cityName: world.name,
@@ -292,13 +293,21 @@ export function summarise(world: World): WorldSummary {
             .map((p) => world.item(p.itemId))
             .filter((item): item is Item => item !== undefined)
         : []
+      const surface = interior ? surfacesOf(interior.anchors)[0] : undefined
       return {
         plotId: plot.id,
         ...(interior ? { interiorId: interior.id } : {}),
         kind: plot.kind,
         name: plot.name,
+        door: cellCentre(plot.entrance.cell.x, plot.entrance.cell.y, world.cellSize),
+        ...(surface ? { stashAnchorId: surface.id } : {}),
         npcs: npcs.map((n) => ({ npcId: n.id, name: n.name, role: n.role })),
-        items: items.map((i) => ({ itemId: i.id, name: i.name, ...(i.ownerNpcId ? { ownerNpcId: i.ownerNpcId } : {}) })),
+        items: items.map((i) => ({
+          itemId: i.id,
+          name: i.name,
+          archetype: i.archetype,
+          ...(i.ownerNpcId ? { ownerNpcId: i.ownerNpcId } : {}),
+        })),
       }
     }),
   }

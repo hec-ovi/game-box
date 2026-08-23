@@ -4,6 +4,7 @@ import { QuestLog, validateQuest, type QuestDoc } from '@gb/quest'
 import { questView, World, type WorldDoc } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { Forge, OfflineNarrator, summarise } from '../src/index.ts'
+import { playThrough } from './drive.ts'
 import { buildTown } from './support.ts'
 
 /** A city this box built and sealed before the streets were reseeded. Never regenerated. */
@@ -26,9 +27,8 @@ describe('Forge', () => {
     expect(world.items().length).toBeGreaterThan(5)
     expect(world.interiors().length).toBe(world.plots().length)
 
-    // the staples every town gets
+    // every town has its bar, whatever the theme says
     expect(world.plotsOfKind('bar').length).toBeGreaterThanOrEqual(1)
-    expect(world.plotsOfKind('shop').length).toBeGreaterThanOrEqual(1)
 
     // every bar has somebody behind the counter, and every shop somebody at the till
     for (const bar of world.plotsOfKind('bar')) {
@@ -76,27 +76,7 @@ describe('Forge', () => {
     const log = QuestLog.create(quests, player)
     expect(log.start(quest.id).ok).toBe(true)
 
-    for (const step of quest.steps) {
-      switch (step.kind) {
-        case 'talk':
-          log.handle({ kind: 'talked', npcId: step.npcId })
-          break
-        case 'goto':
-          log.handle({ kind: 'arrived', place: step.place })
-          break
-        case 'collect':
-          player.take(step.itemId, { stolen: step.allowSteal })
-          log.handle({ kind: 'acquired', itemId: step.itemId, stolen: step.allowSteal })
-          break
-        case 'deliver':
-          log.handle({ kind: 'gave', itemId: step.itemId, npcId: step.toNpcId })
-          break
-        default:
-          break
-      }
-    }
-
-    expect(log.status(quest.id)).toBe('complete')
+    expect(playThrough(quest, log, player)).toBe('complete')
     expect(player.money).toBeGreaterThan(0)
   })
 

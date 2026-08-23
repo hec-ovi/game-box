@@ -1,6 +1,6 @@
 # @gb/forge contract
 
-contractVersion: 0.4.0
+contractVersion: 0.5.0
 
 ## Purpose
 
@@ -20,7 +20,7 @@ Builds a whole city from one brief: streets, plots, interiors, the people standi
 |---|---|---|
 | `build` | `{ world, quests, rejected }` | `world.check()` is empty; every quest passed `@gb/quest` validation; `rejected` lists the ones that did not, with why. The world carries the street grid, the plots and the road graph, roads out included |
 | `extend` | plot ids added | nothing already in the world changed |
-| `summarise(world)` | `WorldSummary` | the abstract world a quest writer reads: places, who is in them, what is there |
+| `summarise(world)` | `WorldSummary` | the abstract world a quest writer reads: places, who is in them, what is there, where each street door stands in metres, and a surface inside each place something can be left on |
 
 ## Errors (closed set)
 
@@ -44,11 +44,31 @@ A narrator writing an unusable quest is not an error: those quests are dropped a
 - Every anchor is somewhere a person can get to: open floor for anyone standing, their own seat or bed for anyone sitting or sleeping, and never inside somebody else's furniture or in a doorway. Anyone working faces what they work at: staff behind their counter, a cook at the stove, a browser at the case, a seat drawn up to its table.
 - The interior varies with the seed and stays identical for the same one: an entrance hall or none, service rooms across the back or down one side, counters on either hand, furniture swept along the walls until it fits.
 - Each kind of building is recognisable from the inside: a bar has a counter you can walk behind with stools along it, a shop a till and cases to browse, a house a sofa facing a screen and a bed against a wall.
-- Same seed, same city, down to the byte. Sub-streams are forked by label off a root the generator never draws from: `streets` for the town plan, then one per block, per site and per interior. A new stream is a new label, never a draw from an existing one, so adding one cannot shift what another already decided.
+- Same seed, same city, down to the byte. Sub-streams are forked by label off a root the generator never draws from: `streets` for the town plan, `plots` for the mix of buildings, `quests` for how much work the town has in it, then one per block, per site and per interior. A new stream is a new label, never a draw from an existing one, so adding one cannot shift what another already decided.
 - Nothing a narrator writes is trusted: quests are validated against the world and dropped if they do not hold up.
 - Every service post is staffed: a bar has a bartender, a shop has a clerk, whatever the density.
+- Nobody in a town shares a name, a personality or a script: names, habits and what a person knows come from a vocabulary the theme picks, not from one template.
 - Buildings leave gaps. `extend` fills them, and never moves anything already placed.
 - The roadway is `METRICS.street.roadwayCells` wide, from `@gb/world`, so the width a car drives and the width the city is laid with are one number. Cells are 2 m, pavements 1 cell, the mountain ring 4; rooms and furniture are sized in metres from the same `METRICS`.
+
+### What a town is made of
+
+The theme is read as one of seven kinds of town (frontier, coastal, industrial, neon, alpine, agrarian, or plain when it names none of them), and that kind decides the place, not just the words on the sign.
+
+- **The mix.** Every building kind has a base weight, the theme multiplies it (a neon city stacks apartments and offices, a mining town spreads houses and chapels), and the seed swings each kind up or down and drops up to two kinds the town turns out not to have at all. Housing is never dropped and never swung below what the theme asks for, because a town is mostly where people live.
+- **The staples.** Every town has a bar, wherever the dice fall: one place everybody passes through, which is also where the main line starts. One to three more places the theme is known for go up alongside it, drawn from that theme's own set, and all of them stand on seeded sites rather than the first sites in the list.
+- **The people.** Names, habits and what somebody knows are drawn from the theme's vocabulary: a shared core plus the words that flavour uses, so two towns under one theme are not the same cast twice.
+
+### The quests
+
+A town's work is written by recipes over the people and things it actually holds, never one template. What the seed and the theme decide:
+
+- **How much work there is.** Not the block count: how many people are standing in shops and front rooms, how much is lying about to be carried, and how busy a town of this kind is.
+- **A main line, and what it is for.** A generated town has no story, but it has a social order, and the main line is the way into it. One to four jobs come from the town's busiest staffed place, from the same person each time, and each one finished raises a standing flag. Side work waits on those flags, so a player is offered a handful of jobs on the first morning and the rest of the town opens as they earn their place.
+- **The recipes.** Fetch one thing across town; gather several of a kind and count them out; carry a parcel two people want and choose who gets it; walk somebody home; do a job with something else worth picking up on the way; hear about what else is in a building from the right person; lift something and beat the clock with it; put something somewhere it will not be found; two halves of one job in either order. Each one says whether the town can serve it and how likely it is here, so a town without anything worth stealing never writes a theft.
+- **What it pays.** `rewardFor(difficulty)` from `@gb/quest`, with the difficulty read off the work: metres walked door to door, steps, whether it is a theft, whether it is timed, whether somebody has to be kept safe, and how much has to be carried. Inside its band a job is paid for where it sits, so a fetch across a hundred blocks is not paid the same as one next door, and a step that pays on top of the reward is kept inside what the band allows.
+- **Nobody is sent back to the person they are standing in front of.** A quest never opens with a `talk` step aimed at its own giver; the conversation that hands the job out is the conversation.
+- **Timers are game seconds.** A time limit is measured against the clock `@gb/play` runs, at its default rate, and is always longer than the walk the job asks for.
 
 ### The town plan
 
@@ -80,6 +100,10 @@ The city sits in a valley ringed with mountains, and `brief.exits` says how many
 
 The `Narrator` interface is the seam for a language model: implement it elsewhere and pass it in; `OfflineNarrator` stays as the offline default and the reference shape.
 
+What a theme means lives in `src/theme/`: `flavour.ts` reads the theme text, `plot-mix.ts` turns it into building weights and staples, `words.ts` holds the vocabulary a town names itself from. `src/narrator/` is what the offline narrator says: `places.ts` for signs, `knowledge.ts` for people.
+
+Quest writing is `src/quests/`: `cast.ts` is the town as a writer uses it (who can give work, who will walk with you, what nothing else has claimed, how far apart two doors are), `difficulty.ts` turns the work into a band and its pay, `pace.ts` turns metres into game seconds, `write.ts` plans the main line and the side work, and `recipes/` holds one recipe per file behind `recipes/recipe.ts`. A new recipe is a new file, a new entry in `recipes/index.ts`, and a `weight` that returns zero when the town cannot serve it. Recipes hand back drafts; `write.ts` puts them through `questDraftContract` and `sealQuest`, and a draft the door refuses is handed on unsealed so the forge reports it rather than hiding it.
+
 The layout is five files under `src/layout/`: `bands.ts` is the grid arithmetic every other one reads, `plan.ts` decides the whole town from one `Rng` and touches nothing, `streets.ts` paints that plan onto the grid, `exits.ts` plans and paints the roads out, and `roads.ts` builds the graph. Deciding and painting are apart on purpose: the plan is the only place a street number comes from, and it can be read and measured without a world.
 
 The `streets` stream is forked off the root and drawn from only in `plan.ts`. Draw from it anywhere else, or add a draw before it, and every seed lays out a different town.
@@ -87,5 +111,7 @@ The `streets` stream is forked off the root and drawn from only in `plan.ts`. Dr
 `tests/fixtures/sealed-city.json` is a city this box built and sealed before the streets were seeded, quests included. It proves an already-exported city still loads and still validates. It is never regenerated: regenerating it is deleting the only proof that old files still open.
 
 Interiors live in `src/interior/`: `recipes.ts` says what rooms a building has, `rooms.ts` cuts them out of the shell, `doors.ts` hangs the doors, `room-plan.ts` is the only way furniture and anchors get placed (it holds the clearance and reachability tests), and `furnish/` has one dresser per family of building. A new building kind needs a programme in `recipes.ts`, a dresser in `furnish/`, and a role mapping in `populate.ts`, or it generates an empty shell. Prop sizes live in `src/interior/props.ts` and are what the planner keeps apart, so they have to match what the renderer draws.
+
+Every generated quest is played to the end in the tests by `tests/drive.ts`, which reads nothing but `objectives()` and does what each one says, so a recipe that writes a job nobody can finish fails the suite whatever shape it is.
 
 Run `pnpm --filter @gb/forge test`, and regenerate `schema/brief.json` with `pnpm --filter @gb/forge run generate` when the brief changes. `pnpm --filter @gb/forge run preview [seed]` prints a town; `pnpm --filter @gb/forge run plans [seed]` draws one interior per building kind as a floor plan, which is the fastest way to see whether a change reads.
