@@ -13,6 +13,14 @@ export const REACH = 0.8
 /** How wide a walking body is: the walk grid stays this far off anything solid. */
 export const BODY_RADIUS = METRICS.player.radius
 
+/**
+ * Slack on top of the body before a gap counts as a way through. A path found
+ * on a 0.1 m grid can be a rounding, and an aisle you have to be a rounding
+ * wide to walk down is not an aisle: one row of tables would seal a room in
+ * half and the plan would call it connected.
+ */
+const AISLE = 0.1
+
 interface Solid {
   readonly box: Box
   readonly blocks: boolean
@@ -23,7 +31,8 @@ interface Solid {
  * and whether a person can still walk between the places that matter.
  *
  * Walking is tested on a grid of the room with every blocking piece grown by the
- * player's radius, so a gap only counts when a body actually fits through it.
+ * player's radius and half a cell, so a gap only counts when a body actually
+ * fits down it with something to spare rather than to the last rounding.
  */
 export class Floor {
   readonly bounds: Box
@@ -132,7 +141,11 @@ export class Floor {
     this.#cols = Math.max(1, Math.floor(this.bounds.w / CELL))
     this.#rows = Math.max(1, Math.floor(this.bounds.h / CELL))
     const walk = inset(this.bounds, BODY_RADIUS)
-    const blocked = this.#solids.filter((solid) => solid.blocks).map((solid) => inset(solid.box, -BODY_RADIUS))
+    // half a cell on top of the body: a cell is blocked when the grown piece
+    // reaches into it at all, not only when it covers its centre, so a way
+    // through has to be wider than the grid can measure rather than exactly as
+    // wide as the rounding allows
+    const blocked = this.#solids.filter((solid) => solid.blocks).map((solid) => inset(solid.box, -(BODY_RADIUS + CELL / 2)))
     const labels = new Int32Array(this.#cols * this.#rows).fill(-1)
 
     for (let y = 0; y < this.#rows; y++) {

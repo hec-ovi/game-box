@@ -1,6 +1,6 @@
 # @gb/forge contract
 
-contractVersion: 0.15.0
+contractVersion: 0.16.0
 
 ## Purpose
 
@@ -43,7 +43,9 @@ A narrator writing an unusable quest is not an error: those quests are dropped a
 - **A sign over a door nobody opens is written here.** Four buildings in five are frontage, and asking a language model to name each of them is four calls in five of a build spent on a string the player reads off the street. `src/narrator/signs.ts` writes those from the theme's own vocabulary, the same words the offline narrator uses; the narrator names only the places it writes whole. Two facades can end up under the same sign, as two pubs in one town can.
 - An interior is planned in that order: rooms, then doors, then furniture, then the places people stand. The entry room touches the wall the street door is in; every other room hangs off it rather than off another room, so nobody walks through a bedroom to reach the kitchen.
 - One door from the street, one door between rooms, and every room reachable from the street door.
-- Furniture never lands in a doorway (1.2 m across the opening, a metre either side of the wall), never overlaps another piece, and never seals off a door or a place somebody stands. Every piece is tested against the free floor before it lands, so a building that is too small simply holds less.
+- Furniture never lands in a doorway, never overlaps another piece, and never seals off a door or a place somebody stands. Every piece is tested against the free floor before it lands, so a building that is too small simply holds less.
+- **A doorway keeps 1.2 m across the opening and a metre either side of the wall, and the street door keeps 1.6 m inside it.** Somebody walking in off the street is put down a stride into the room and has to land on floor, not in a chair, so the band inside that one door is deeper than the band an inside door keeps for people passing through.
+- **Everything in a room except a rug is something a body walks round**, a chair and a bar stool included: a seat is half a metre of furniture the player collides with. A row of tables with chairs drawn up to them leaves 0.45 m gaps, which is not a gap a 0.7 m body fits through, so the walk test has to see the chairs or it will call a room connected that is sealed in half. A way through is measured with every piece grown by the player's radius and half a grid cell, so an aisle has to be wider than the grid's own rounding rather than exactly as wide as it.
 - Every anchor is somewhere a person can get to, and close enough to do the job. Anyone sitting or sleeping is on their own seat or bed; nobody stands in a doorway, inside somebody else's furniture, or on floor cut off from the doors. Anyone working faces what they work at: staff behind their counter, a cook at the stove, a browser at the case, a seat drawn up to its table.
 - How close a body stands is the reach of what it is doing, not the width of a walking body. Hands on a surface (serving, cooking, working a bench) means 0.15 m of floor between the body and the face of the piece, because the standing clips put the hands 0.02 to 0.13 m in front of the body at about 1.03 m up: further back and the forearms rest on air. Facing a piece without touching it (a browser at a case, somebody at a sink or an altar) means 0.3 m. The bands live in `src/interior/stance.ts` and nowhere else, and every anchor is measured against them in the tests, in metres, off the piece's own footprint.
 - Standing that close is standing inside the skirt the walk grid keeps clear round anything solid. A body may be inside the skirt of the one piece it is working at, never another's, and still has to have walkable floor within a step of its back, so the place it stands is a place it could have walked to.
@@ -109,11 +111,11 @@ What the sizes cost, on one seed with the offline narrator. Another seed moves t
 
 | blocks | grid | avenues | buildings | open | people | quests | build | world file |
 |---|---|---|---|---|---|---|---|---|
-| 2x2 | 67x71 | 2 | 29 | 6 | 20 | 4 | 0.16 s | 0.04 MB |
-| 5x5 | 145x145 | 2 | 170 | 19 | 61 | 11 | 0.13 s | 0.16 MB |
-| 10x10 | 269x259 | 4 | 619 | 68 | 217 | 26 | 0.23 s | 0.55 MB |
-| 20x20 | 517x509 | 7 | 2,413 | 263 | 780 | 82 | 1.0 s | 2.10 MB |
-| 32x32 | 807x805 | 11 | 5,909 | 645 | 2,026 | 192 | 2.6 s | 5.26 MB |
+| 2x2 | 67x71 | 2 | 29 | 6 | 19 | 4 | 0.08 s | 0.04 MB |
+| 5x5 | 145x145 | 2 | 170 | 19 | 60 | 11 | 0.07 s | 0.15 MB |
+| 10x10 | 269x259 | 4 | 619 | 68 | 209 | 26 | 0.14 s | 0.53 MB |
+| 20x20 | 517x509 | 7 | 2,413 | 263 | 772 | 82 | 0.57 s | 2.04 MB |
+| 32x32 | 807x805 | 11 | 5,909 | 645 | 1,967 | 192 | 1.45 s | 5.08 MB |
 
 Avenues are counted across and down together. About 0.4 ms and 0.9 KB a building, flat, all the way up: a building that does not open is a footprint, an entrance and a name, and an interior is nearly everything a city costs to build and to carry. Nothing in the generator degrades before the grid wall; what runs out first is the player. A 20x20 city is 1,034 m corner to corner, a twelve-minute walk at 1.4 m/s; 32x32 is 1.6 km, nineteen minutes, and it is the largest town the default block size fits inside the grid. Somewhere past twenty blocks a side, a city stops being a place you cross on foot and starts being a place you live in one part of.
 

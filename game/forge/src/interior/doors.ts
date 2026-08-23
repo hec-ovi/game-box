@@ -20,6 +20,14 @@ type Door = Interior['doors'][number]
 const ZONE_WIDTH = 1.2
 const ZONE_DEPTH = 2
 
+/**
+ * How much clear floor the street door keeps on the inside. Somebody who walks
+ * in off the street is put down a stride in and has to be standing on floor, so
+ * this is that stride plus the body that arrives on it, and it is deeper than
+ * the band an inside door keeps for people passing through.
+ */
+export const DOORSTEP = 1.6
+
 /** How far inside a room you stand once you are through the door. */
 const INNER = 0.6
 
@@ -51,7 +59,8 @@ export function hangDoors(rooms: readonly Room[], entrance: Side, mint: Mint, rn
   points.get(entry.id)!.push({
     pos,
     inner: onWall(wall, at, INNER),
-    zone: boxAt(pos, { w: ZONE_WIDTH, d: ZONE_DEPTH }, inward),
+    // deeper inside than out: the far side of this wall is the street
+    zone: boxAt(onWall(wall, at, (DOORSTEP - ZONE_DEPTH / 2) / 2), { w: ZONE_WIDTH, d: ZONE_DEPTH / 2 + DOORSTEP }, inward),
   })
 
   const depth = new Map([[entry.id, 0]])

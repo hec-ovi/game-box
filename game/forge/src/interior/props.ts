@@ -6,7 +6,7 @@ export interface PropSpec extends Extent {
   readonly w: number
   /** Metres from its front to its back. */
   readonly d: number
-  /** Whether a person has to walk around it. Seats and rugs do not stop anyone. */
+  /** Whether a person has to walk around it. A rug does not stop anyone; a chair does. */
   readonly blocks: boolean
   /**
    * What the piece stands on. A till and a coffee machine sit on a counter top,
@@ -25,13 +25,13 @@ const onCounter = (w: number, d: number): PropSpec => ({ w, d, blocks: false, st
  */
 export const PROP_SPECS: Record<FurnitureProp, PropSpec> = {
   'bar-counter': floor(1.5, 0.6, true),
-  'bar-stool': floor(0.45, 0.45, false),
+  'bar-stool': floor(0.45, 0.45, true),
   table: floor(1.6, 0.9, true),
-  chair: floor(0.5, 0.5, false),
+  chair: floor(0.5, 0.5, true),
   sofa: floor(2, 0.85, true),
   bed: floor(1.2, 2, true),
   desk: floor(1.4, 0.7, true),
-  'office-chair': floor(0.6, 0.6, false),
+  'office-chair': floor(0.6, 0.6, true),
   shelf: floor(1, 0.4, true),
   cabinet: floor(0.9, 0.45, true),
   wardrobe: floor(1.2, 0.6, true),
