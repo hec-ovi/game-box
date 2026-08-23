@@ -120,6 +120,55 @@ describe('PlayerState', () => {
     if (stale.ok) expect(stale.value.tracked).toBe('quest_gone')
   })
 
+  it('leaves a thing on a surface, takes it back, and leaves it somewhere else', () => {
+    const player = PlayerState.create('world_0001')
+    player.take('item_0001', { stolen: true })
+
+    const strongbox = { interiorId: 'interior_0003', anchorId: 'anchor_0012' }
+    player.place('item_0001', strongbox)
+    expect(player.has('item_0001')).toBe(false)
+    expect(player.isStolen('item_0001')).toBe(false)
+    expect(player.placedAt('item_0001')).toEqual(strongbox)
+
+    const left = reload(player)
+    expect(left.placed()).toEqual([{ itemId: 'item_0001', ...strongbox }])
+
+    // picked back up: it is in hand, so it is standing on nothing
+    left.take('item_0001')
+    expect(left.placedAt('item_0001')).toBeUndefined()
+    expect(reload(left).placed()).toEqual([])
+
+    const shelf = { interiorId: 'interior_0009', anchorId: 'anchor_0044' }
+    left.place('item_0001', shelf)
+    expect(reload(left).placed()).toEqual([{ itemId: 'item_0001', ...shelf }])
+  })
+
+  it('opens a save naming a room this city lost, or a thing in two places at once', () => {
+    const lost = { interiorId: 'interior_9999', anchorId: 'anchor_9999' }
+    const saved = {
+      ...saveOf(PlayerState.create('world_0001')),
+      inventory: ['item_0002'],
+      moved: [
+        { itemId: 'item_0001', ...lost },
+        { itemId: 'item_0002', interiorId: 'interior_0003', anchorId: 'anchor_0012' },
+      ],
+    }
+
+    const loaded = PlayerState.load(saved, 'world_0001')
+    expect(loaded.ok).toBe(true)
+    if (!loaded.ok) return
+    const player = loaded.value
+
+    // the thing in hand is not also standing on a shelf
+    expect(player.placedAt('item_0002')).toBeUndefined()
+    // a room this city has not got is kept, for whoever knows the city to settle
+    expect(player.placedAt('item_0001')).toEqual(lost)
+
+    player.place('item_0001', null)
+    expect(player.placed()).toEqual([])
+    expect(reload(player).placed()).toEqual([])
+  })
+
   it('opens a save written before places were remembered', () => {
     const old = {
       format: 'game-box.player',
@@ -139,6 +188,7 @@ describe('PlayerState', () => {
     expect(loaded.value.money).toBe(12)
     expect(loaded.value.where).toBeUndefined()
     expect(loaded.value.tracked).toBeUndefined()
+    expect(loaded.value.placed()).toEqual([])
   })
 })
 

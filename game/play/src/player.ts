@@ -1,6 +1,13 @@
 import { err, ok, type Result, type SchemaViolation } from '@gb/kit'
 import { GameClock } from './clock.ts'
-import { playerContract, type PlayerStateDoc, type WhereDoc } from './schema.ts'
+import { MovedItems } from './moved.ts'
+import {
+  playerContract,
+  type PlacedItemDoc,
+  type PlayerStateDoc,
+  type SpotDoc,
+  type WhereDoc,
+} from './schema.ts'
 import { placeOf } from './where.ts'
 
 export type PlayError =
@@ -20,11 +27,15 @@ export const DEFAULT_FACTION = 'town'
 export class PlayerState {
   #doc: PlayerStateDoc
   #clock: GameClock
+  #moved: MovedItems
 
   private constructor(doc: PlayerStateDoc) {
-    const { clock, where, ...rest } = doc
+    const { clock, where, moved, ...rest } = doc
     this.#doc = rest
     this.#clock = GameClock.from(clock)
+    this.#moved = MovedItems.from(moved)
+    // a thing in hand is not also on a shelf, whatever a hand-made save says
+    for (const itemId of this.#doc.inventory) this.#moved.clear(itemId)
     if (where) this.setWhere(where)
   }
 
@@ -128,6 +139,31 @@ export class PlayerState {
   take(itemId: string, options: { stolen?: boolean } = {}): void {
     if (!this.has(itemId)) this.#doc.inventory.push(itemId)
     if (options.stolen && !this.isStolen(itemId)) this.#doc.stolen.push(itemId)
+    this.#moved.clear(itemId)
+  }
+
+  /** Where that thing is standing now, if the player carried it off and left it somewhere. */
+  placedAt(itemId: string): SpotDoc | undefined {
+    return this.#moved.at(itemId)
+  }
+
+  /** Everything the player has left somewhere, so a room can be dressed with it again. */
+  placed(): readonly PlacedItemDoc[] {
+    return this.#moved.list()
+  }
+
+  /**
+   * Leave a thing on a surface, or `null` to forget one that is standing
+   * nowhere this city has. Leaving something is putting it down, so it goes out
+   * of the inventory and loses its stolen mark, exactly as dropping it does.
+   */
+  place(itemId: string, at: SpotDoc | null): void {
+    if (!at) {
+      this.#moved.clear(itemId)
+      return
+    }
+    // leaving it is dropping it; it is nothing to fix here if it was never in hand
+    if (this.#moved.put(itemId, at)) this.drop(itemId)
   }
 
   drop(itemId: string): Result<void, PlayError> {
@@ -171,6 +207,7 @@ export class PlayerState {
   toJSON(): PlayerStateDoc {
     const doc: PlayerStateDoc = { ...this.#doc, clock: this.#clock.toJSON() }
     if (this.#doc.where) doc.where = { ...this.#doc.where }
+    if (this.#moved.any) doc.moved = this.#moved.toJSON()
     return doc
   }
 }

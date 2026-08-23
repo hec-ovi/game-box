@@ -23,6 +23,18 @@ export const WhereSchema = z.object({
   interiorId: z.string().min(1).optional(),
 })
 
+export const SpotSchema = z.object({
+  /** The interior the surface stands in. */
+  interiorId: z.string().min(1),
+  /** The surface inside it, an anchor of that interior. */
+  anchorId: z.string().min(1),
+})
+
+export const PlacedItemSchema = z.object({
+  itemId: z.string().min(1),
+  ...SpotSchema.shape,
+})
+
 export const PlayerStateSchema = z.object({
   format: z.literal('game-box.player'),
   schemaVersion: z.literal(1),
@@ -45,9 +57,13 @@ export const PlayerStateSchema = z.object({
   where: WhereSchema.optional(),
   /** The quest the player chose to follow. Absent when they are following none. */
   tracked: z.string().min(1).optional(),
+  /** Things the player carried off and left somewhere the city did not put them. */
+  moved: z.array(PlacedItemSchema).optional(),
 })
 
 export const playerContract = contract('player-state', PlayerStateSchema)
 export type PlayerStateDoc = z.infer<typeof PlayerStateSchema>
 export type ClockDoc = z.infer<typeof ClockSchema>
 export type WhereDoc = z.infer<typeof WhereSchema>
+export type SpotDoc = z.infer<typeof SpotSchema>
+export type PlacedItemDoc = z.infer<typeof PlacedItemSchema>

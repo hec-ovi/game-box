@@ -1,10 +1,10 @@
 # @gb/play contract
 
-contractVersion: 0.3.0
+contractVersion: 0.4.0
 
 ## Purpose
 
-The playthrough: what the player carries, what they stole, what they can afford, what they have been told, who is walking with them, where they are standing, which job they are following, and what time it is.
+The playthrough: what the player carries, what they stole, what they left standing somewhere, what they can afford, what they have been told, who is walking with them, where they are standing, which job they are following, and what time it is.
 
 ## Inputs
 
@@ -15,6 +15,7 @@ The playthrough: what the player carries, what they stole, what they can afford,
 | mutations: `take`, `drop`, `earn`, `spend`, `setFlag`, `adjustReputation`, `addCompanion`, `removeCompanion` | ids and whole numbers | see errors |
 | `setWhere(where)` | `{ x, z, heading, interiorId? }`, metres and radians | numbers that are not real leave the last place standing |
 | `setTracked(questId)` | a quest id, or `null` / nothing for none | the id is a name, not a lookup |
+| `place(itemId, at)` | `{ interiorId, anchorId }`, or `null` to forget | the ids are names, not lookups |
 | `clock.advance(realSeconds)` | real seconds since the last frame | a negative or non-finite step does nothing |
 | `clock.setRate(gameSecondsPerRealSecond)` | 0 to 86400 | 0 is paused |
 | `clock.setTime(hour, minute?)` | whole 0-23 and 0-59 | leaves the day alone |
@@ -29,6 +30,8 @@ The playthrough: what the player carries, what they stole, what they can afford,
 | queries: `has`, `isStolen`, `inventory`, `money`, `flag`, `reputation`, `companions`, `isCompanion` | plain values | unknown flags read `false`, unknown factions read `0` |
 | `where` | `{ x, z, heading, interiorId? }` or nothing | a copy, so writing to it changes no state; the heading is inside one turn |
 | `tracked` | a quest id or nothing | whatever was last followed, resolved against nothing |
+| `placedAt(itemId)` | `{ interiorId, anchorId }` or nothing | where the player left that thing |
+| `placed()` | `[{ itemId, interiorId, anchorId }]` | everything they left somewhere, each thing once |
 | `clock` | a `GameClock` | the playthrough's own clock, saved and restored with it |
 | `clock.day`, `clock.hour`, `clock.minute`, `clock.secondsOfDay` | numbers | day counts from 1; `secondsOfDay` is fractional, the rest are whole |
 | `clock.rate`, `clock.weather` | a number, one of `WEATHERS` | what was last set |
@@ -52,6 +55,31 @@ city instead. Outdoors, leave it out.
 A new playthrough has nowhere yet, and so does a save written before this box
 remembered places: `where` reads nothing and the game puts the player wherever it
 starts them. Write it as often as you like; it is four numbers.
+
+## Things left somewhere
+
+The city file says where everything started. This says which of those answers is
+out of date, and it is the only record of it: without it a thing left on a
+strongbox is back on the shelf it was generated on after a reload, and can be
+picked up a second time.
+
+```ts
+player.place('item_0001', { interiorId: 'interior_0003', anchorId: 'anchor_0012' })
+player.placedAt('item_0001') // { interiorId: 'interior_0003', anchorId: 'anchor_0012' }
+player.placed()              // [{ itemId: 'item_0001', interiorId: 'interior_0003', anchorId: 'anchor_0012' }]
+```
+
+Leaving something is putting it down, so `place` takes it out of the inventory
+and clears its stolen mark, the same as `drop`. Picking it back up is `take`,
+which forgets the spot: nothing else to call, and no way for a save to claim a
+thing is in a hand and on a shelf at once.
+
+The interior and the anchor are names here, checked for being names and nothing
+more, so this box needs no world to hold them. A save can therefore carry a spot
+this city has not got, from a room that was never in it: it loads, and
+`placedAt` answers with what it was told. Whoever knows the city settles it, and
+`place(itemId, null)` forgets the entry, which puts the thing back wherever the
+city file had it rather than leaving it standing nowhere.
 
 ## The quest being followed
 
@@ -120,10 +148,12 @@ From `GameClock`, each leaving the clock exactly as it was:
 - A save is only ever loaded against the world it was made in, so ids cannot silently point at different things.
 - The clock only ever reads a time that exists: `secondsOfDay` stays under a day and the overflow becomes days, so running past midnight lands on the next day at the right hour.
 - A rate of 0 freezes every reading, including `totalSeconds`.
-- A save written before clocks existed has no `clock` and loads at the default: day 1, 08:00, clear, `DEFAULT_RATE`. A save written before places has no `where` and no `tracked`, and loads with neither.
+- A save written before clocks existed has no `clock` and loads at the default: day 1, 08:00, clear, `DEFAULT_RATE`. A save written before places has no `where`, no `tracked` and no `moved`, and loads with nothing left anywhere.
 - A remembered place is always one a save can be written from and read back: a place carrying a number that is not real is refused at the door rather than stored, so a single bad frame cannot cost the playthrough.
 - A heading is read back as a direction inside one turn, whatever angle was reported; an angle already inside one turn is read back exactly as it was reported.
-- A tracked quest id is stored, never resolved. This box holds no quests to check it against.
+- A tracked quest id is stored, never resolved. This box holds no quests to check it against. The same goes for the room and the surface a thing was left on.
+- A thing is in the inventory or standing somewhere, never both: taking it forgets its spot, leaving it takes it out of the inventory, and a save that claims both loads with the thing in hand.
+- A thing has one spot: leaving it somewhere else moves it rather than copying it.
 - This box knows nothing about quests, dialogue or geometry, and nothing about rendering: it holds state, does arithmetic, and answers questions. The sky is drawn elsewhere from what `clock.weather` and `clock.hour` say.
 
 ## How to modify this blackbox safely
