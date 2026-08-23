@@ -113,6 +113,15 @@ is closed. What they leave:
 | 61 | Push `opening.line` and `opening.moves` when a conversation opens | app | `game/app/src/talking.ts`, around the `Conversation.open` call at line 70. Talk's half of row 48 is done and costs 0.007 ms; until app pushes it the panel is still blank |
 | 62 | Read `log.journal()` instead of walking `toJSON()`'s `open[]` and `done[]` | app | `game/app/src/reporting.ts`. hud's field is `title`, quest publishes `questTitle`, so the mapper renames until row 60 lands. Drop `dropped` steps until row 59 lands. `game/bundle` keeps using `toJSON()` for the save file, which is what it is for |
 
+## From the narrator fan-out
+
+Rows 51 and 47 are closed in forge; rows 59 and 60 are closed in hud.
+
+| # | Work | Box | Detail |
+|---|---|---|---|
+| 63 | `Scribe.namePlaces` has no caller | scribe | A facade no longer costs a model call, so the plural naming method is dead. Also `InstanceRequest`, `InstancePost` and `InstanceStock` now carry an `index` (the caller's own numbering, so an offline narrator can reproduce its draws); scribe still compiles without it |
+| 64 | Forge plans a 1.6x0.9 table, furnish draws 1.0x1.0 | forge + furnish | Still open, deliberately. Forge over-reserves, which is the safe direction. It needs the two boxes to agree one number, not a change in either alone |
+
 ## Checked and closed
 
 About fifty handovers landed and were verified in the code rather than taken on
