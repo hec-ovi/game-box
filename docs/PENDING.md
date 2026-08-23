@@ -1007,8 +1007,25 @@ What would actually fix it, in order of value:
    should have names that sound like it. The premise is now in the world file and
    the composer does not read it.
 
-Boxes: `forge` for the composer and the uniqueness rule, `scribe` for the example
-leak.
+**And he wants more than uniqueness:** "something REALLY special for each, not
+like random jargon." That rules out fixing this by recombining a bigger word
+list. A name that is special has to know something about the place.
+
+**The cost objection is weaker than it looks, and I had it wrong.** The 5,558
+facade calls were expensive because each was a **separate round trip**, not
+because of tokens: a name is about five tokens, so naming every building in a
+twenty-block city is on the order of 16k tokens of output. That fits in a handful
+of batched calls. And batching is already proven here — the whole open-place set
+now goes out in one call instead of one each, which is what took 376 s to 92 s.
+
+So the shape is: **ask the model for the names, in batches, with the premise in
+front of it**, rather than composing them locally. Give it the town's history,
+the trade of each building and the street it stands on, and take back a list.
+Keep the local composer as the offline path, where recombination is honest
+because there is nothing better available.
+
+Boxes: `forge` for the composer and the uniqueness rule, `scribe` for the batched
+naming and the example leak.
 
 ### Running right now
 
