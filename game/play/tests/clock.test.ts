@@ -10,18 +10,20 @@ describe('GameClock', () => {
     expect(clock.day).toBe(1)
     expect(clock.hour).toBe(8)
 
-    // one real minute at the default rate is four game hours
-    clock.advance(60)
+    // written against the rate rather than a tuning of it, so retuning the
+    // clock does not send somebody editing arithmetic in a test
+    const realSecondsPerGameHour = 3_600 / DEFAULT_RATE
+
+    clock.advance(realSecondsPerGameHour * 4)
     expect(clock.day).toBe(1)
     expect(clock.hour).toBe(12)
 
-    // and one real hour is ten game days on top of that
-    clock.advance(3600)
+    clock.advance((SECONDS_PER_DAY / DEFAULT_RATE) * 10)
     expect(clock.day).toBe(11)
     expect(clock.hour).toBe(12)
 
     expect(clock.setTime(23, 59).ok).toBe(true)
-    clock.advance(1)
+    clock.advance(realSecondsPerGameHour)
     expect(clock.day).toBe(12)
     expect(clock.hour).toBe(0)
   })

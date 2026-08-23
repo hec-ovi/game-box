@@ -7,11 +7,13 @@ export const SECONDS_PER_DAY = 86_400
 export const HOURS_PER_DAY = 24
 
 /**
- * Game seconds per real second. At 240 a whole day passes in six real minutes,
- * so an hour of game time takes fifteen seconds and a player meets dawn, noon
- * and midnight inside one short session instead of one real day.
+ * Game seconds per real second. At 24 a whole day passes in one real hour, so an
+ * hour of game time takes two and a half real minutes: long enough to walk
+ * across town, do a job and come back without the light changing under you,
+ * and short enough that a session still sees the hour turn. `T` skips ahead for
+ * anyone who wants dawn now.
  */
-export const DEFAULT_RATE = 240
+export const DEFAULT_RATE = 24
 
 /** A day per real second is as fast as the clock goes; past that a frame skips whole days. */
 export const MAX_RATE = SECONDS_PER_DAY
