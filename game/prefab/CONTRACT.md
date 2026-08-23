@@ -141,24 +141,25 @@ Run it with `node tools/build-buildings.ts`. It needs `glb-buildings` beside the
 
 ## What it costs
 
-Measured in Chrome on the WebGL2 fallback at 1568 by 764, standing in a street canyon of a 4 block city (174 plots, 4 by 4 blocks, density 1, 21:30, wet), against the same city dressed in the Downtown kit alone. The last column is the same pack with painted windows, before the rooms went in:
+Measured in Chrome on the WebGL2 fallback at 1568 by 764, standing in a street of a 4 block city (174 plots, 4 by 4 blocks, density 1, 21:30, wet), against the same city dressed in the Downtown kit alone. The last column is the same pack with painted windows, before the rooms went in:
 
 | | the kit | the pack | painted windows |
 |---|---|---|---|
-| batches the buildings draw in | 6 | 1, plus the shared sign batch | 1 |
-| triangles in the building buffers | 1,434,828 | 37,848 | 37,848 |
-| building vertex buffers | 86.8 MB | 2.7 MB | 2.7 MB |
-| triangles submitted at the camera | 862,297 | 94,681 | 94,681 |
-| draw calls at the camera | 41 | 51 | 51 |
-| textures the buildings add | none of its own | 13.8 MB | 9.8 MB |
+| batches the buildings draw in | 5 | 1, plus the shared sign batch | 1 |
+| triangles in the building buffers | 2,209,476 | 37,848 | 37,848 |
+| the scene's vertex and index buffers | 141.9 MB | 5.8 MB | 5.8 MB |
+| triangles submitted at the camera | 1,524,999 | 94,681 | 94,681 |
+| draw calls at the camera | 55 | 51 | 51 |
+| textures resident | 119.6 MB over 50 | 66.3 MB over 32 | 62.1 MB over 31 |
+| textures the buildings bring | none of their own | 13.8 MB | 9.8 MB |
 
-The rooms cost **4.0 MB of texture and nothing else**: no draw, no triangle, no vertex attribute, no batch. Twelve 256 px layers with their mips, on top of the two 14-layer strips the facades already carried. That is the ceiling worth holding: a room layer is 0.35 MB with its mips, so two dozen rooms would be 8.4 MB and the buildings would be paying more for their interiors than for their walls.
+The rooms cost **4.0 MB of texture and nothing else**: no draw, no triangle, no vertex attribute, no batch, and the mesh file did not change a byte. Twelve 256 px layers with their mips, on top of the two 14-layer strips the facades already carried. That is the ceiling worth holding: a room layer is 0.35 MB with its mips, so two dozen rooms would be 8.4 MB and the buildings would be paying more for their interiors than for their walls.
 
-A prefab building is 217 triangles against a kit building's 9,300, and more than half of those 217 are the neon tubes. The kit stays loaded for the ground, the street surfaces, the lamps, the signage and any plot the catalogue has no shape for, so its 0.77 MB pack and its textures are still resident: the pack **adds** 13.8 MB of texture and **removes** 84 MB of vertex buffer.
+A prefab building is 217 triangles against a kit building's 12,700, and more than half of those 217 are the neon tubes. The kit stays loaded for the ground, the street surfaces, the lamps, the signage and any plot the catalogue has no shape for, but its wall materials are never drawn, so the resident texture comes down even though the pack brings 13.8 MB of its own.
 
 The shader bill is one branch on every prefab fragment and, on the fragments that are glass, about thirty instructions and one texture fetch. Everything a facade used to be is still one fetch of the wall picture.
 
-The frame at that camera is the same to within noise in all three, because at this many buildings the frame is the post chain and the street lamps rather than the walls. What changes is what the number does as the city grows: the buildings stop being the thing that grows.
+The frame at that camera is the same to within noise in the last two columns, because at this many buildings the frame is the post chain and the street lamps rather than the walls. What changes is what the number does as the city grows: the buildings stop being the thing that grows.
 
 ## Standing it up
 
