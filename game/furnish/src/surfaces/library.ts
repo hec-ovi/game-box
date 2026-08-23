@@ -1,8 +1,9 @@
 import * as THREE from 'three'
-import { float, texture, vec3 } from 'three/tsl'
+import { float, pmremTexture, texture, vec3 } from 'three/tsl'
 import { MeshStandardNodeMaterial } from 'three/webgpu'
-import type { FurnishStyle } from '../style/palette.ts'
+import { FURNISH_STYLES, type FurnishStyle } from '../style/palette.ts'
 import { patternNodes, planeMetres } from './pattern.ts'
+import { roomProbe } from './probe.ts'
 import { SURFACE_TEXTURES, lookOf, type SurfaceLook, type SurfacePart } from './surfaces.ts'
 import type { SurfaceTextureId } from './surfaces.ts'
 import { MetreTiling } from './tiling.ts'
@@ -29,6 +30,7 @@ const JOINT_SOFT = 0.004
 export class SurfaceLibrary {
   readonly #maps: ReadonlyMap<SurfaceTextureId, SurfaceMaps>
   readonly #materials = new Map<SurfaceLook, THREE.Material>()
+  readonly #probes = new Map<FurnishStyle, THREE.DataTexture>()
 
   constructor(maps: ReadonlyMap<SurfaceTextureId, SurfaceMaps>) {
     for (const surface of maps.values()) {
@@ -36,6 +38,7 @@ export class SurfaceLibrary {
       repeating(surface.normal)
     }
     this.#maps = maps
+    for (const style of FURNISH_STYLES) this.#probes.set(style, roomProbe(style))
   }
 
   /** One part of a room in one language, in the pattern and finish `choice` picks. */
@@ -43,21 +46,27 @@ export class SurfaceLibrary {
     const look = lookOf(style, part, choice)
     let material = this.#materials.get(look)
     if (!material) {
-      material = this.#build(look)
+      material = this.#build(look, style)
       this.#materials.set(look, material)
     }
     return material
   }
 
+  /** What a room in that language has to reflect: its own light, as one small picture. */
+  probe(style: FurnishStyle): THREE.DataTexture {
+    return this.#probes.get(style)!
+  }
+
   dispose(): void {
     for (const material of this.#materials.values()) material.dispose()
+    for (const probe of this.#probes.values()) probe.dispose()
     for (const surface of this.#maps.values()) {
       surface.map.dispose()
       surface.normal?.dispose()
     }
   }
 
-  #build(look: SurfaceLook): THREE.Material {
+  #build(look: SurfaceLook, style: FurnishStyle): THREE.Material {
     const maps = this.#maps.get(look.map)
     const material = new MeshStandardNodeMaterial({
       name: look.name,
@@ -67,6 +76,9 @@ export class SurfaceLibrary {
     if (look.normalScale !== undefined) material.normalScale.setScalar(look.normalScale)
     new MetreTiling(SURFACE_TEXTURES[look.map].metres).apply(material)
     paint(material, look, maps?.map, SURFACE_TEXTURES[look.map].grain)
+    // the room's own light, so a polished floor has something to give back:
+    // `scene.environment` indoors is the night sky and would leave it a hole
+    material.envNode = pmremTexture(this.#probes.get(style)!)
     if (maps) MAPS.set(material, maps)
     return material
   }

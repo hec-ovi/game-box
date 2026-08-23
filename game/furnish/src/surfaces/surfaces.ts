@@ -14,12 +14,12 @@
  * big they are laid is in metres (`tiling.ts`), so a 3 m wall and a 12 m wall
  * show the same grain.
  *
- * No interior surface is metal. A metal with nothing to reflect is black, and
- * indoors there is nothing: `scene.environment` is the prefiltered night sky
- * and the light strips in the room are emissive geometry no probe has seen. So
- * a near-black glossy floor is drawn as a dark colour at a low roughness, which
- * still catches the room's own light, rather than as a mirror that comes out a
- * hole in the floor.
+ * No interior surface is metal: a dark colour at a low roughness catches the
+ * room's own light, where a mirror indoors would come out a hole in the floor.
+ * What it catches is `probe.ts`, one small picture per language painted from
+ * that language's surfaces and the colour its strips emit, because
+ * `scene.environment` after dark is the night sky and the strips in a room are
+ * emissive geometry nothing else has ever seen.
  *
  * Each part is a short pool rather than one entry, and an interior draws one
  * from its own seed, so no two rooms in a town are the same room. The pools are
