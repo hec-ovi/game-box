@@ -134,3 +134,20 @@ retuned separately, which is what keeps the generation flexible.
 
 What this buys, beyond the look: no asset licence to chase, deterministic from
 a seed, and one shared material, so the whole room batches.
+
+## Most buildings do not open
+
+> "Let's try to restrict how many buildings and houses have interiors. I do not
+> want the whole city able to shine a door and enter the instance. Only very
+> specific locations. So most of the buildings should be fake with doors and
+> windows and everything, but you cannot go inside. So we do not saturate the
+> whole game."
+
+A handful of places in a town open. The rest are buildings with doors, windows,
+signs and names, and no way in. Which ones open is seeded and scales with the
+city, and it is decided in the same pass that writes the quests, because a
+quest that sends you through a door that does not open is unplayable.
+
+Measured before the change: 251 distinct interiors across 252 plots, so at
+twenty blocks a side that was 2,493 generated interiors nobody would open.
+Interiors are most of a world file's bytes and most of its generation time.
