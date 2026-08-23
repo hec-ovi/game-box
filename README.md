@@ -65,14 +65,19 @@ http://localhost:5180/?seed=gulch&theme=dusty+western+town
 **The sidecar, answering from a stand-in.** A small Node service on `127.0.0.1:8976` that speaks the OpenAI chat shape. With no upstream set it answers from a built-in stand-in, which is how the model path gets exercised without a model.
 
 ```
-node --experimental-strip-types host/src/main.ts
+pnpm -C host dev        # reads .env at the repo root
 ```
 
 **The sidecar, in front of a real model.** Point it at any OpenAI-compatible server. A local llama-server is what this is developed against, but nothing is specific to it.
 
+Set `GAME_BOX_LLM_UPSTREAM` in `.env` at the repo root and run the same command. A URL points it at a local server; the word `openrouter` points it at OpenRouter and attaches `OPENROUTER_API_KEY`. A URL is always called unauthenticated, so a key cannot reach a server it does not belong to.
+
 ```
-GAME_BOX_LLM_UPSTREAM=http://127.0.0.1:8080 node --experimental-strip-types host/src/main.ts
+GAME_BOX_LLM_UPSTREAM=http://127.0.0.1:8080     # a local model
+GAME_BOX_LLM_UPSTREAM=openrouter                # a hosted one
 ```
+
+`pnpm -C host start` runs it without reading `.env`, for when the variables are already exported.
 
 **The sidecar, in front of a hosted model.** The same sidecar, routed through OpenRouter to `stealth/ox-alpha` instead of a machine of your own. The key is read from the environment, sent only to OpenRouter, and never written to a tracked file: copy `.env.example` to `.env` and fill it in.
 

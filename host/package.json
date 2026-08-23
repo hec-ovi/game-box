@@ -12,6 +12,7 @@
   },
   "scripts": {
     "start": "node --experimental-strip-types src/main.ts",
+    "dev": "node --experimental-strip-types --env-file=../.env src/main.ts",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "generate": "node --experimental-strip-types tools/emit-schema.ts",
     "typecheck": "tsc --noEmit"
