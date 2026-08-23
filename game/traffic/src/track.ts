@@ -1,3 +1,4 @@
+import type { RoadSegment } from '@gb/world'
 import type { Car } from './car.ts'
 import type { Path, Point } from './geometry.ts'
 
@@ -34,6 +35,8 @@ export abstract class Track {
 /** The stretch of one road segment between two junctions, in one direction. */
 export class Lane extends Track {
   readonly segmentId: string
+  /** What kind of road this is a lane of, which is how the way out of town is known. */
+  readonly kind: RoadSegment['kind']
   readonly fromNode: string
   readonly toNode: string
   readonly direction: Point
@@ -43,12 +46,14 @@ export class Lane extends Track {
     path: Path,
     speedLimit: number,
     segmentId: string,
+    kind: RoadSegment['kind'],
     fromNode: string,
     toNode: string,
     direction: Point,
   ) {
     super(id, path, speedLimit)
     this.segmentId = segmentId
+    this.kind = kind
     this.fromNode = fromNode
     this.toNode = toNode
     this.direction = direction

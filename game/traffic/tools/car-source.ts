@@ -1,16 +1,19 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { Box3, Group, Matrix4, Mesh, MeshStandardMaterial, Vector3, type Color, type Material } from 'three'
+import { Box3, Group, Matrix4, Mesh, Vector3, type Material } from 'three'
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { MTLLoader } from 'three/addons/loaders/MTLLoader.js'
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js'
 import { CAR_FOOTPRINT, CAR_PARTS, partName, type CarPart } from '../src/pack-layout.ts'
 import type { CarModel } from '../src/settings.ts'
+import { bakeSurfaces, crease, packMaterial } from './car-shading.ts'
+import { underbody } from './car-underbody.ts'
 
 /**
  * Turns one car of the Quaternius pack (an .obj and its .mtl) into the node the
  * game drives: sized to the footprint the simulation reserves, sitting on the
  * road at y = 0, centred on its own middle, nose down +Z, each wheel on a pivot
- * at its axle so it can be spun and steered.
+ * at its axle so it can be spun and steered, shaded, and closed underneath.
  */
 
 /** Which source object is which, by the names Quaternius gave them. */
@@ -19,15 +22,6 @@ const PART_OF: ReadonlyArray<readonly [string, CarPart]> = [
   ['FrontRightWheel', CAR_PARTS.frontRight],
   ['BackWheels', CAR_PARTS.rear],
 ]
-
-/** Surface per material name. The pack has no textures, only flat colours. */
-const FINISH: Record<string, { roughness: number; metalness: number }> = {
-  default: { roughness: 0.55, metalness: 0.1 },
-  Windows: { roughness: 0.12, metalness: 0.5 },
-}
-
-/** Lamps carry their own colour, so they read at dusk without a light on them. */
-const GLOW = 0.35
 
 export interface CarBuild {
   readonly node: Group
@@ -55,43 +49,52 @@ export function buildCar(model: CarModel, directory: string): CarBuild {
   const place = new Matrix4()
     .makeTranslation(-centre.x * scale, -whole.min.y * scale, -centre.z * scale)
     .multiply(new Matrix4().makeScale(scale, scale, scale))
+  for (const mesh of meshes) mesh.geometry.applyMatrix4(place)
 
+  const body = meshes.find((mesh) => !PART_OF.some(([name]) => mesh.name.includes(name)))
+  if (!body) throw new Error(`${model}: no body mesh`)
+  facesForward(model, body)
+
+  const material = packMaterial()
   const node = new Group()
   node.name = model
-  const wheels = new Map<CarPart, Vector3>()
+  const wheels = new Map<CarPart, Box3>()
   for (const mesh of meshes) {
-    mesh.geometry.applyMatrix4(place)
-    // every face in the pack is flat shaded, so the normals say nothing the
-    // triangles do not. Dropping them lets the corners weld and the renderer
-    // shade flat, which is the look these models were built for.
-    mesh.geometry.deleteAttribute('normal')
+    crease(mesh.geometry)
+    bakeSurfaces(mesh, material)
     mesh.geometry.computeBoundingBox()
-    mesh.material = restyle(mesh.material)
     const part = PART_OF.find(([source]) => mesh.name.includes(source))
     if (!part) {
       mesh.name = partName(model, CAR_PARTS.body)
       node.add(mesh)
       continue
     }
-    wheels.set(part[1], pivot(mesh, partName(model, part[1]), node))
+    wheels.set(part[1], mesh.geometry.boundingBox!.clone())
+    pivot(mesh, partName(model, part[1]), node)
   }
   for (const [, part] of PART_OF) {
     if (!wheels.has(part)) throw new Error(`${model}: the source has no ${part}`)
   }
 
-  const body = node.getObjectByName(partName(model, CAR_PARTS.body))
-  if (!(body instanceof Mesh)) throw new Error(`${model}: no body mesh`)
-  facesForward(model, body)
-
   const front = wheels.get(CAR_PARTS.frontLeft)!
-  const wheel = node.getObjectByName(partName(model, CAR_PARTS.frontLeft))!.children[0] as Mesh
-  const height = wheel.geometry.boundingBox!.getSize(new Vector3()).y
+  const rear = wheels.get(CAR_PARTS.rear)!
+  const wheelRadius = front.getSize(new Vector3()).y / 2
+  const frontZ = front.getCenter(new Vector3()).z
+  const rearZ = rear.getCenter(new Vector3()).z
+  body.geometry = mergeGeometries([
+    body.geometry,
+    // just inside the wheels, so the box fills the arches without ever showing
+    // past them however low you crouch
+    underbody({ halfWidth: front.min.x + 0.03, frontZ, rearZ, wheelRadius }),
+  ])!
+  body.geometry.computeBoundingBox()
+
   return {
     node,
     scale,
     size: { length: size.z * scale, width: size.x * scale, height: size.y * scale },
-    wheelRadius: height / 2,
-    wheelBase: front.z - wheels.get(CAR_PARTS.rear)!.z,
+    wheelRadius,
+    wheelBase: frontZ - rearZ,
   }
 }
 
@@ -101,8 +104,8 @@ function load(model: CarModel, directory: string): Group {
   return new OBJLoader().setMaterials(materials).parse(readFileSync(join(directory, `${model}.obj`), 'utf8'))
 }
 
-/** Moves a wheel's mesh onto a pivot at its axle, and reports where that axle is. */
-function pivot(mesh: Mesh, name: string, node: Group): Vector3 {
+/** Moves a wheel's mesh onto a pivot at its axle. */
+function pivot(mesh: Mesh, name: string, node: Group): void {
   const axle = mesh.geometry.boundingBox!.getCenter(new Vector3())
   mesh.geometry.translate(-axle.x, -axle.y, -axle.z)
   mesh.geometry.computeBoundingBox()
@@ -112,13 +115,13 @@ function pivot(mesh: Mesh, name: string, node: Group): Vector3 {
   hub.position.copy(axle)
   hub.add(mesh)
   node.add(hub)
-  return axle
 }
 
 /**
  * The one claim the whole box rests on: `heading` is `rotation.y` for a model
  * whose nose points down +Z. The lamps say which end is which, so this checks
- * them rather than trusting the file.
+ * them rather than trusting the file. It runs while the mesh still wears the
+ * pack's own materials, which is the only place their names are written down.
  */
 function facesForward(model: CarModel, body: Mesh): void {
   const head = zRangeOf(body, 'Headlights')
@@ -131,7 +134,7 @@ function facesForward(model: CarModel, body: Mesh): void {
 
 /** Where the triangles wearing one material sit along Z. */
 function zRangeOf(mesh: Mesh, material: string): { min: number; max: number } | undefined {
-  const worn = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+  const worn: Material[] = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
   const position = mesh.geometry.getAttribute('position')
   const index = mesh.geometry.index
   let min = Number.POSITIVE_INFINITY
@@ -145,18 +148,4 @@ function zRangeOf(mesh: Mesh, material: string): { min: number; max: number } | 
     }
   }
   return min <= max ? { min, max } : undefined
-}
-
-/** MTL gives Phong; glTF wants PBR. Same colours, told the way the format says. */
-function restyle(material: Material | Material[]): Material | Material[] {
-  if (Array.isArray(material)) return material.map((one) => restyle(one) as Material)
-  const finish = FINISH[material.name] ?? FINISH['default']!
-  const standard = new MeshStandardMaterial({ name: material.name, ...finish })
-  const colour = (material as { color?: Color }).color
-  if (colour) standard.color.copy(colour)
-  if (material.name.endsWith('Lights')) {
-    standard.emissive.copy(standard.color)
-    standard.emissiveIntensity = GLOW
-  }
-  return standard
 }

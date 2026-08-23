@@ -1,7 +1,8 @@
-import { Box3, Object3D, Vector3 } from 'three'
+import { Box3, Mesh, Object3D, Vector3, type Material } from 'three'
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import type { CarBodies, CarBody, CarSpawn } from './bodies.ts'
+import { CarPaint } from './car-paint.ts'
 import { CarPackError } from './errors.ts'
 import { CAR_PARTS, partName, type CarPart } from './pack-layout.ts'
 import { CAR_MODELS, type CarModel } from './settings.ts'
@@ -46,13 +47,16 @@ interface Template {
  */
 export class CarPack implements CarBodies {
   readonly root: Object3D
+  /** The one material every car in the pack wears. Hand it the hour and the lamps come on. */
+  readonly paint: CarPaint
   readonly #templates: Map<CarModel, Template>
   readonly #free = new Map<CarModel, Object3D[]>()
   readonly #live = new Map<CarBody, Driven>()
 
-  private constructor(root: Object3D, templates: Map<CarModel, Template>) {
+  private constructor(root: Object3D, templates: Map<CarModel, Template>, paint: CarPaint) {
     this.root = root
     this.#templates = templates
+    this.paint = paint
   }
 
   /** Fetches the pack and reads it. `url` is where the app serves `cars.glb` from. */
@@ -68,9 +72,19 @@ export class CarPack implements CarBodies {
     const gltf = await loader.parseAsync(bytes, '').catch((cause: unknown) => {
       throw new CarPackError('unreadable-pack', 'cars.glb', String(cause))
     })
+    const paint = new CarPaint()
+    dress(gltf.scene, paint)
     const templates = new Map<CarModel, Template>()
     for (const model of CAR_MODELS) templates.set(model, measure(model, gltf.scene.getObjectByName(model)))
-    return new CarPack(root, templates)
+    return new CarPack(root, templates, paint)
+  }
+
+  /**
+   * The hour of day, so the lamps know whether to be lit. Whoever owns the
+   * clock calls this; the pack holds none. Two numbers, however many cars.
+   */
+  setTime(hours: number): void {
+    this.paint.setTime(hours)
   }
 
   /** Bodies parked for reuse. Grows to the busiest street the player has seen, then stops. */
@@ -133,6 +147,23 @@ export class CarPack implements CarBodies {
       car.heading = rotation.y
     }
   }
+}
+
+/**
+ * Puts the pack's own material on every car and lets them into the shadow map.
+ * The file ships flat glTF materials so any viewer can open it; what the game
+ * draws is one `CarPaint` for the lot.
+ */
+function dress(scene: Object3D, paint: CarPaint): void {
+  const spent = new Set<Material>()
+  scene.traverse((node) => {
+    if (!(node instanceof Mesh)) return
+    for (const worn of Array.isArray(node.material) ? node.material : [node.material]) spent.add(worn)
+    node.material = paint.material
+    node.castShadow = true
+    node.receiveShadow = true
+  })
+  for (const worn of spent) worn.dispose()
 }
 
 function clone(model: CarModel, template: Template): Object3D {

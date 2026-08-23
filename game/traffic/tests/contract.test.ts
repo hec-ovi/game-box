@@ -25,6 +25,34 @@ function corners(car: CarView): Array<{ x: number; z: number }> {
   return points
 }
 
+/**
+ * One car driven until the road under it runs out, with the player following it
+ * so it is never out of sight. Answers where it ended up.
+ */
+function drive(world: World) {
+  const traffic = open(world, { maxCars: 1 })
+  const town = { x: 40, z: 10 }
+  traffic.populate(town)
+  const first = traffic.cars()[0]
+  if (!first) throw new Error('no car spawned')
+  let watch = { x: first.x, z: first.z }
+  for (let frame = 0; frame < 3000; frame++) {
+    traffic.update(1 / 60, watch)
+    const car = traffic.cars().find((other) => other.id === first.id)
+    if (!car) break
+    watch = { x: car.x, z: car.z }
+  }
+  const car = traffic.cars().find((other) => other.id === first.id)
+  const cell = (v: number) => Math.floor(v / world.cellSize)
+  return {
+    traffic,
+    car,
+    watch,
+    beyond: car ? world.grid.at(cell(car.x), cell(car.z)) === undefined : false,
+    cell: car ? world.grid.at(cell(car.x), cell(car.z)) : undefined,
+  }
+}
+
 describe('Traffic', () => {
   it('refuses a city it cannot drive', () => {
     const roadless = World.create({ name: 'Nowhere', theme: 'test', seed: 's', width: 20, height: 20 })
@@ -110,16 +138,33 @@ describe('Traffic', () => {
     expect(crossings).toBeGreaterThan(0)
   })
 
-  it('retires a car that drives off the end of the graph', () => {
-    const world = lattice({ across: 2, down: 1, span: 40 })
-    const traffic = open(world, { maxCars: 1 })
-    traffic.populate({ x: 40, z: 10 })
-    const first = traffic.cars()[0]
-    expect(first).toBeDefined()
+  it('runs a car off the map at the end of the road out of town, and off no other dead end', () => {
+    const outOfTown = drive(lattice({ across: 2, down: 1, span: 40, kind: 'exit' }))
+    const deadEnd = drive(lattice({ across: 2, down: 1, span: 40 }))
 
-    for (let frame = 0; frame < 3000; frame++) traffic.update(1 / 60, { x: 40, z: 10 })
-    expect(traffic.cars().some((car) => car.id === first!.id)).toBe(false)
-    expect(traffic.count).toBeLessThanOrEqual(1)
+    // the exit road carries on past the last junction and off the edge of the map
+    expect(outOfTown.car).toBeDefined()
+    expect(outOfTown.beyond, 'the road out stopped inside the map').toBe(true)
+
+    // any other dead end is a dead end: the car stops on the road it is on
+    expect(deadEnd.car).toBeDefined()
+    expect(deadEnd.beyond, 'a car left the city off a street').toBe(false)
+    expect(deadEnd.cell, 'a car left the roadway').toBe('street')
+  })
+
+  it('takes a car that has run out of road only once the player cannot see it go', () => {
+    const world = lattice({ across: 2, down: 1, span: 40, kind: 'exit' })
+    const { traffic, car, watch } = drive(world)
+    expect(car, 'a car was taken away in front of the player').toBeDefined()
+
+    // twelve seconds standing still, still watched: it stays
+    for (let frame = 0; frame < 900; frame++) traffic.update(1 / 60, watch)
+    expect(traffic.cars().some((other) => other.id === car!.id)).toBe(true)
+
+    // the player turns back into town, and only then is it taken off the road
+    const town = { x: 40, z: 10 }
+    for (let frame = 0; frame < 900; frame++) traffic.update(1 / 60, town)
+    expect(traffic.cars().some((other) => other.id === car!.id)).toBe(false)
   })
 
   it('gives the same traffic for the same seed, and different traffic for another', () => {
@@ -159,7 +204,9 @@ describe('Traffic', () => {
       expect(object.position.y).toBe(0.2)
       expect(object.rotation.y).toBeCloseTo(car.heading, 6)
     }
-    for (let frame = 0; frame < 2400; frame++) traffic.update(1 / 60, { x: 40, z: 10 })
+    // walk out of the neighbourhood: what was driving in it is handed back
+    const away = { x: 40, z: 900 }
+    for (let frame = 0; frame < 600; frame++) traffic.update(1 / 60, away)
     expect(released).toBeGreaterThan(0)
     expect(live.size).toBe(traffic.count)
   })

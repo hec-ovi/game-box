@@ -1,8 +1,8 @@
 import type { Car } from './car.ts'
-import type { Lane, Link, Track } from './track.ts'
+import type { Track } from './track.ts'
 
 /** Put a car on a track, keeping the list ordered with the furthest along first. */
-export function join(track: Lane | Link, car: Car): void {
+export function join(track: Track, car: Car): void {
   const at = track.cars.findIndex((other) => other.s < car.s)
   if (at === -1) track.cars.push(car)
   else track.cars.splice(at, 0, car)

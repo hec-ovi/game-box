@@ -104,7 +104,7 @@ function cut(
   const side = rightOf(along)
   const start = offsetBy(offsetBy(from, along, half), side, offset)
   const end = offsetBy(offsetBy(to, along, -half), side, offset)
-  return new Lane(id, Path.straight(start, end), limit, segment.id, fromNode, toNode, along)
+  return new Lane(id, Path.straight(start, end), limit, segment.id, segment.kind, fromNode, toNode, along)
 }
 
 /** Every entry to a junction is joined to every exit but the one it came from. */

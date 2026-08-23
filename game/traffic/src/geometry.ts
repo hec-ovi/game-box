@@ -97,6 +97,30 @@ export class Path {
     return { x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t }
   }
 
+  /**
+   * Where a point falls on this path: how far along, and how far off to the
+   * side. This is how somebody standing in the street becomes a distance a
+   * driver can brake against.
+   */
+  nearestTo(p: Point): { s: number; off: number } {
+    let bestS = 0
+    let bestOff = Number.POSITIVE_INFINITY
+    for (let i = 0; i < this.points.length - 1; i++) {
+      const a = this.points[i]!
+      const b = this.points[i + 1]!
+      const dx = b.x - a.x
+      const dz = b.z - a.z
+      const span = dx * dx + dz * dz
+      const t = span === 0 ? 0 : Math.min(1, Math.max(0, ((p.x - a.x) * dx + (p.z - a.z) * dz) / span))
+      const off = Math.hypot(p.x - (a.x + dx * t), p.z - (a.z + dz * t))
+      if (off < bestOff) {
+        bestOff = off
+        bestS = this.#upto[i]! + t * Math.sqrt(span)
+      }
+    }
+    return { s: bestS, off: bestOff }
+  }
+
   directionAt(s: number): Point {
     const i = this.#pieceAt(s)
     return direction(this.points[i]!, this.points[i + 1]!)

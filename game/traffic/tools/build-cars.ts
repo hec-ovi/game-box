@@ -44,9 +44,13 @@ await writeGlb(scene, working)
 // spelled out rather than `optimize`, which joins meshes and flattens the graph;
 // this pack is only useful while every car and every wheel is still its own node
 run('dedup', working, working)
-// OBJ is triangle soup: welding turns 62k loose corners back into shared vertices
+// OBJ is triangle soup: welding turns the loose corners back into shared
+// vertices, and now that the normals are real it only welds where the surface
+// really is continuous, so the creases survive
 run('weld', working, working)
-run('prune', working, working)
+// the colour attribute carries the surface as well as the colour, and nothing
+// in the material says so, so prune must be told to leave the vertices alone
+run('prune', working, working, '--keep-attributes', 'true')
 run('meshopt', working, output, '--level', 'high')
 rmSync(working)
 

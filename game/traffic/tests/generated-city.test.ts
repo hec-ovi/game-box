@@ -1,12 +1,14 @@
 import { Forge, OfflineNarrator } from '@gb/forge'
 import { expect, it } from 'vitest'
+import { SPEED_LIMIT } from '../src/settings.ts'
 import { Traffic } from '../src/index.ts'
 
 /**
  * The other tests build their own streets. This one drives what the generator
  * paints. It allows roadway or pavement rather than roadway alone, because the
  * generator lays each pavement band across the roadway it crosses, so a
- * junction approach in a generated city has pavement cells in the middle of it.
+ * junction approach in a generated city has pavement cells in the middle of it,
+ * and it allows a car to be off the grid altogether once it is on the road out.
  */
 it('drives a city straight out of the generator', async () => {
   const forge = new Forge(new OfflineNarrator('traffic'))
@@ -23,11 +25,15 @@ it('drives a city straight out of the generator', async () => {
   expect(traffic.count).toBeGreaterThan(10)
 
   const cell = (v: number) => Math.floor(v / world.cellSize)
+  let leftTown = 0
   for (let frame = 0; frame < 900; frame++) {
     traffic.update(1 / 60, focus)
     for (const car of traffic.cars()) {
-      expect(['street', 'sidewalk']).toContain(world.grid.at(cell(car.x), cell(car.z)))
-      expect(car.speed).toBeLessThanOrEqual(9.5) // the 8.5 m/s street limit, plus the boldest driver's margin
+      const on = world.grid.at(cell(car.x), cell(car.z))
+      if (on === undefined) leftTown++ // past the edge of the map, on the road out
+      else expect(['street', 'sidewalk']).toContain(on)
+      expect(car.speed).toBeLessThanOrEqual(SPEED_LIMIT.exit)
     }
   }
+  expect(leftTown, 'nobody drove out of town').toBeGreaterThan(0)
 })

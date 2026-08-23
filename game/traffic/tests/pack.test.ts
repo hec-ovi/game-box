@@ -1,7 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { Box3, Mesh, Object3D, Vector3, type Material } from 'three'
+import { Box3, Matrix3, Mesh, Object3D, Triangle, Vector3 } from 'three'
 import { beforeAll, describe, expect, it } from 'vitest'
+import { CAR_SURFACES } from '../src/pack-layout.ts'
 import { CARS_FILE, CAR_FOOTPRINT, CAR_MODELS, CAR_PARTS, CarPack, partName, Traffic, type CarModel } from '../src/index.ts'
 import { lattice } from './city.ts'
 
@@ -19,14 +20,79 @@ let pack: CarPack
 /** World bounds of anything hanging in the scene. */
 const boundsOf = (object: Object3D): Box3 => new Box3().setFromObject(object)
 
-/** The part of a car painted with one of the pack's materials, headlights included. */
-function partWearing(car: Object3D, material: string): Object3D {
-  let match: Object3D | undefined
+/** Every mesh of a car, in the order the pack hangs them. */
+function meshesOf(car: Object3D): Mesh[] {
+  const found: Mesh[] = []
   car.traverse((node) => {
-    if (node instanceof Mesh && (node.material as Material).name === material) match = node
+    if (node instanceof Mesh) found.push(node)
   })
-  if (!match) throw new Error(`no ${material} on ${car.name}`)
-  return match
+  return found
+}
+
+/**
+ * Where a car's lamps are, in world space. The pack carries no material names
+ * any more: a vertex says which surface it is and what colour, so a near-white
+ * lamp is a head lamp and a red one is a tail lamp. The police car's roof
+ * beacons are neither and are left out of both.
+ */
+function lampsOf(car: Object3D): { head: Vector3; tail: Vector3 } {
+  car.updateMatrixWorld(true)
+  const head = new Vector3()
+  const tail = new Vector3()
+  let heads = 0
+  let tails = 0
+  const at = new Vector3()
+  for (const mesh of meshesOf(car)) {
+    const colour = mesh.geometry.getAttribute('color')
+    const position = mesh.geometry.getAttribute('position')
+    for (let i = 0; i < colour.count; i++) {
+      if (Math.round(colour.getW(i) * 255) !== CAR_SURFACES.lamp) continue
+      at.fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld)
+      if (colour.getX(i) > 0.8) {
+        head.add(at)
+        heads++
+      } else if (colour.getX(i) > colour.getY(i) * 2) {
+        tail.add(at)
+        tails++
+      }
+    }
+  }
+  if (!heads || !tails) throw new Error(`${car.name}: ${heads} head lamp and ${tails} tail lamp vertices`)
+  return { head: head.divideScalar(heads), tail: tail.divideScalar(tails) }
+}
+
+/**
+ * The share of vertices whose normal is not the flat normal of their own
+ * triangle. Flat art scores near zero; smoothed panels score a third and up.
+ * The pack is quantized, so both are read in world space where they agree.
+ */
+function shadedSmoothly(mesh: Mesh): number {
+  mesh.updateWorldMatrix(true, false)
+  const toWorld = mesh.matrixWorld
+  const forNormals = new Matrix3().getNormalMatrix(toWorld)
+  const geometry = mesh.geometry
+  const position = geometry.getAttribute('position')
+  const normal = geometry.getAttribute('normal')
+  const index = geometry.index
+  const count = index ? index.count : position.count
+  const face = new Triangle()
+  const flat = new Vector3()
+  const vertex = new Vector3()
+  let rounded = 0
+  for (let i = 0; i < count; i += 3) {
+    const abc = [0, 1, 2].map((k) => (index ? index.getX(i + k) : i + k))
+    face.set(
+      new Vector3().fromBufferAttribute(position, abc[0]!).applyMatrix4(toWorld),
+      new Vector3().fromBufferAttribute(position, abc[1]!).applyMatrix4(toWorld),
+      new Vector3().fromBufferAttribute(position, abc[2]!).applyMatrix4(toWorld),
+    )
+    face.getNormal(flat)
+    for (const v of abc) {
+      vertex.fromBufferAttribute(normal, v!).applyMatrix3(forNormals).normalize()
+      if (vertex.dot(flat) < Math.cos(0.09)) rounded++ // more than five degrees off flat
+    }
+  }
+  return rounded / count
 }
 
 describe.skipIf(!built)('the shipped cars', () => {
@@ -55,21 +121,72 @@ describe.skipIf(!built)('the shipped cars', () => {
   it('points its nose down +Z, which is what heading means', () => {
     for (const model of CAR_MODELS) {
       const car = pack.acquire({ id: 'car_nose', model }) as Object3D
-      const lamps = () => boundsOf(partWearing(car, 'Headlights')).getCenter(new Vector3())
 
-      car.updateMatrixWorld(true)
-      expect(lamps().z, `${model} headlights`).toBeGreaterThan(1)
+      const still = lampsOf(car)
+      expect(still.head.z, `${model} head lamps`).toBeGreaterThan(1)
+      expect(still.tail.z, `${model} tail lamps`).toBeLessThan(0)
+      expect(still.head.z - still.tail.z, `${model} lamps at opposite ends`).toBeGreaterThan(2)
 
       // heading is rotation.y, so a car heading east has its lamps to the east
       car.rotation.y = Math.PI / 2
-      car.updateMatrixWorld(true)
-      const east = lamps()
+      const east = lampsOf(car).head
       expect(east.x, `${model} facing east`).toBeGreaterThan(1)
       expect(east.z, `${model} facing east`).toBeCloseTo(0, 1)
 
       car.rotation.y = 0
       pack.release(car, { id: 'car_nose', model })
     }
+  })
+
+  it('carries normals that round the panels off instead of shading every face flat', () => {
+    for (const model of CAR_MODELS) {
+      const car = pack.acquire({ id: 'car_shade', model }) as Object3D
+      for (const mesh of meshesOf(car)) {
+        expect(mesh.geometry.getAttribute('normal'), `${model} normals`).toBeDefined()
+      }
+      // a flat-shaded pack scores zero here: every vertex normal is its own face's
+      const body = meshesOf(car)[0]!
+      expect(shadedSmoothly(body), `${model} smooth share`).toBeGreaterThan(0.25)
+      pack.release(car, { id: 'car_shade', model })
+    }
+  })
+
+  it('is one material and four draws a car, with every surface on the vertices', () => {
+    const surfaces = new Set<number>()
+    for (const model of CAR_MODELS) {
+      const car = pack.acquire({ id: 'car_draws', model }) as Object3D
+      const meshes = meshesOf(car)
+      expect(meshes.length, `${model} draws`).toBe(4) // a body and three wheels
+      for (const mesh of meshes) {
+        expect(mesh.material, `${model} shares the pack material`).toBe(pack.paint.material)
+        const colour = mesh.geometry.getAttribute('color')
+        expect(colour.itemSize, `${model} vertex colour`).toBe(4)
+        for (let i = 0; i < colour.count; i++) surfaces.add(Math.round(colour.getW(i) * 255))
+      }
+      pack.release(car, { id: 'car_draws', model })
+    }
+    expect([...surfaces].sort()).toEqual(Object.values(CAR_SURFACES).sort())
+  })
+
+  it('is closed underneath, so the wheel arches are not holes', () => {
+    for (const model of CAR_MODELS) {
+      const car = pack.acquire({ id: 'car_under', model }) as Object3D
+      const body = meshesOf(car)[0]!
+      // the shell's own sill stops 11 to 22 cm up; what is under the car reaches the road
+      expect(boundsOf(body).min.y, `${model} underbody`).toBeLessThan(0.05)
+      pack.release(car, { id: 'car_under', model })
+    }
+  })
+
+  it('lights its lamps after dark and puts them out by day', () => {
+    pack.setTime(13)
+    expect(pack.paint.lamps).toBe(0)
+    pack.setTime(22)
+    expect(pack.paint.lamps).toBe(1)
+    pack.setTime(4)
+    expect(pack.paint.lamps).toBe(1)
+    pack.setTime(12)
+    expect(pack.paint.lamps).toBe(0)
   })
 
   it('rolls its wheels by how far the car moved, and steers the front pair', () => {

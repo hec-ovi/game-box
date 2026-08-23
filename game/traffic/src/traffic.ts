@@ -3,11 +3,13 @@ import { METRICS, type World } from '@gb/world'
 import type { Car, CarView } from './car.ts'
 import type { TrafficError } from './errors.ts'
 import { distance, type Point } from './geometry.ts'
+import { Hazards } from './hazards.ts'
 import { CITY_DRIVING, idmAcceleration } from './idm.ts'
 import { JunctionControl } from './junctions.ts'
 import { LaneGraph } from './lane-graph.ts'
 import { ahead, join, leave } from './queue.ts'
-import { withDefaults, type Settings, type TrafficOptions } from './settings.ts'
+import { Runoffs } from './runoff.ts'
+import { RUNOFF, withDefaults, type Settings, type TrafficOptions } from './settings.ts'
 import { Spawner } from './spawner.ts'
 import { Lane, Link } from './track.ts'
 
@@ -33,6 +35,8 @@ export class Traffic {
   readonly graph: LaneGraph
   readonly #settings: Settings
   readonly #junctions: JunctionControl
+  readonly #runoffs: Runoffs
+  readonly #hazards: Hazards
   readonly #spawner: Spawner
   readonly #cars: Car[] = []
   /** How many cars this road network can hold: the option, held to what the roads carry. */
@@ -48,8 +52,10 @@ export class Traffic {
     this.#settings = settings
     const road = graph.lanes.reduce((total, lane) => total + lane.length, 0)
     this.#capacity = Math.max(1, Math.min(settings.maxCars, Math.floor(road / ROAD_PER_CAR)))
-    this.#junctions = new JunctionControl(CAR_LENGTH + CITY_DRIVING.minGap)
-    this.#spawner = new Spawner(graph, settings, CAR_LENGTH)
+    this.#runoffs = new Runoffs(graph, RUNOFF)
+    this.#hazards = new Hazards(settings.obstacles)
+    this.#junctions = new JunctionControl(CAR_LENGTH + CITY_DRIVING.minGap, this.#hazards)
+    this.#spawner = new Spawner(graph, settings, this.#hazards, CAR_LENGTH)
   }
 
   static fromWorld(world: World, options: TrafficOptions = {}): Result<Traffic, TrafficError> {
@@ -74,6 +80,7 @@ export class Traffic {
   /** Fill the streets around a point in one go, for the moment a city opens. */
   populate(focus: Point): void {
     this.#focus = focus
+    this.#hazards.refresh([], focus, this.#settings.despawnRadius)
     while (this.#cars.length < this.#capacity) {
       if (!this.#add(focus)) return
     }
@@ -90,6 +97,7 @@ export class Traffic {
     this.#frame++
 
     const due = this.#collectDue()
+    this.#hazards.refresh(due, focus, this.#settings.despawnRadius)
     for (const car of due) this.#approach(car)
     this.#junctions.settle()
     for (const car of due) car.accel = this.#decide(car)
@@ -124,7 +132,7 @@ export class Traffic {
     if (car.remaining > reach) return
     if (!car.next) {
       const links = this.graph.linksFrom(car.track)
-      if (links.length === 0) return // the graph ends here: it drives off and is retired
+      if (links.length === 0) return // the graph ends here: it runs off the map, or stops
       car.next = this.#pickLink(links, car)
     }
     // only the car at the head of the queue takes the junction, so a held
@@ -139,6 +147,12 @@ export class Traffic {
   #decide(car: Car): number {
     const lead = this.#leader(car)
     let accel = idmAcceleration(CITY_DRIVING, car.speed, car.desiredSpeed, lead.gap, car.speed - lead.speed)
+    // somebody in the road is the car in front that never moves off: same
+    // model, zero speed, so the braking is the braking a driver already does
+    const person = this.#hazards.gapFor(car)
+    if (person < Number.POSITIVE_INFINITY) {
+      accel = Math.min(accel, idmAcceleration(CITY_DRIVING, car.speed, car.desiredSpeed, person, car.speed))
+    }
     if (car.track instanceof Lane && car.next && car.holds !== car.next.junctionId) {
       const toStop = car.remaining - STOP_BUFFER
       const stopping = idmAcceleration(CITY_DRIVING, car.speed, car.desiredSpeed, toStop, car.speed)
@@ -168,7 +182,7 @@ export class Traffic {
     car.place()
   }
 
-  /** Hand a car on to the next piece of road, or hold it at the line. */
+  /** Hand a car on to the next piece of road, or hold it where the road stops. */
   #cross(car: Car): void {
     while (car.s >= car.track.length) {
       if (car.track instanceof Link) {
@@ -181,10 +195,16 @@ export class Traffic {
         this.#junctions.release(car)
         continue
       }
+      if (!(car.track instanceof Lane)) {
+        // the end of the run off the map: it waits here for `#retire`
+        car.s = car.track.length
+        car.speed = 0
+        return
+      }
       const lane = car.track
       const link = car.next
-      if (!link || car.holds !== link.junctionId) {
-        if (!link && this.graph.linksFrom(lane).length === 0) return // driven off the graph
+      const into = link && car.holds === link.junctionId ? link : this.#runoffs.after(lane)
+      if (!into) {
         car.s = lane.length
         car.speed = 0
         return
@@ -192,19 +212,23 @@ export class Traffic {
       const over = car.s - lane.length
       leave(lane, car)
       car.s = over
-      join(link, car)
+      join(into, car)
     }
   }
 
+  /**
+   * Take away everything that has no business on the road any more: too far to
+   * matter, or standing still somewhere the player cannot see it go. A car that
+   * has run out of road counts as standing still, so the end of the map is the
+   * jam rule and nothing else.
+   */
   #retire(focus: Point): void {
     const { despawnRadius, nearRadius } = this.#settings
     for (let i = this.#cars.length - 1; i >= 0; i--) {
       const car = this.#cars[i]!
       const away = distance(car, focus)
-      const gone =
-        car.track instanceof Lane && car.s >= car.track.length && this.graph.linksFrom(car.track).length === 0
       const jammed = car.stalled > PATIENCE && away > nearRadius
-      if (!gone && !jammed && away <= despawnRadius) continue
+      if (!jammed && away <= despawnRadius) continue
       leave(car.track, car)
       this.#junctions.release(car)
       if (car.body && this.#settings.bodies) {

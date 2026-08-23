@@ -1,5 +1,6 @@
-import type { RoadSegment } from '@gb/world'
+import { METRICS, type RoadSegment } from '@gb/world'
 import type { CarBodies } from './bodies.ts'
+import type { Obstacles } from './obstacles.ts'
 
 /**
  * The Quaternius Realistic Car Pack, by file name, with how common each one is
@@ -28,6 +29,13 @@ export const SPEED_LIMIT: Record<RoadSegment['kind'], number> = {
 /** Nobody swings through a junction at speed. */
 export const TURN_SPEED = 4
 
+/**
+ * How far past the last junction the road out of town carries a car. `@gb/land`
+ * grades the roads out for 120 m beyond the edge of the map, so that is how far
+ * there is to drive before the ground stops being a road.
+ */
+export const RUNOFF = 120
+
 export interface TrafficOptions {
   /** Defaults to the world seed, so one city always gets the same traffic. */
   readonly seed?: string
@@ -45,12 +53,14 @@ export interface TrafficOptions {
   readonly farStride?: number
   /** Longest step a car integrates in one go, seconds. */
   readonly maxStep?: number
-  /** Roadway width in metres. Defaults to three grid cells, 6 m on a 2 m grid. */
+  /** Roadway width in metres. Defaults to `METRICS.street.roadwayCells`, 6 m on a 2 m grid. */
   readonly roadway?: number
   /** Height the model sits at, metres. */
   readonly rideHeight?: number
   /** Where three.js objects come from. Left out, the traffic runs without a scene. */
   readonly bodies?: CarBodies
+  /** Who is standing in the road. Left out, cars have only each other to avoid. */
+  readonly obstacles?: Obstacles
 }
 
 export interface Settings {
@@ -65,6 +75,7 @@ export interface Settings {
   readonly roadway: number
   readonly rideHeight: number
   readonly bodies: CarBodies | undefined
+  readonly obstacles: Obstacles | undefined
 }
 
 export function withDefaults(options: TrafficOptions, seed: string, cellSize: number): Settings {
@@ -78,8 +89,9 @@ export function withDefaults(options: TrafficOptions, seed: string, cellSize: nu
     nearRadius: options.nearRadius ?? 60,
     farStride: Math.max(1, Math.round(options.farStride ?? 3)),
     maxStep: options.maxStep ?? 0.1,
-    roadway: options.roadway ?? cellSize * 3,
+    roadway: options.roadway ?? cellSize * METRICS.street.roadwayCells,
     rideHeight: options.rideHeight ?? 0,
     bodies: options.bodies,
+    obstacles: options.obstacles,
   }
 }

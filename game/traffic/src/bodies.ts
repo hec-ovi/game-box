@@ -2,8 +2,8 @@ import type { CarModel } from './settings.ts'
 
 /**
  * The part of a scene object traffic writes to. A three.js `Object3D` satisfies
- * this, and so does a plain object in a test, which is why this box never
- * imports a loader or a renderer.
+ * this, and so does a plain object in a test, which is why the simulation never
+ * touches three.js. `CarPack` is the implementation that draws the shipped art.
  */
 export interface CarBody {
   position: { x: number; y: number; z: number }

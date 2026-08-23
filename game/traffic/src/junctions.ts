@@ -1,5 +1,6 @@
 import type { Car } from './car.ts'
 import { rightOf } from './geometry.ts'
+import type { Hazards } from './hazards.ts'
 
 /**
  * Who may cross. One car is in a junction at a time: it takes the junction as
@@ -13,9 +14,11 @@ export class JunctionControl {
   readonly #waiting = new Map<string, Car[]>()
   /** Room a car needs on the far side before it is let in, metres. */
   readonly #exitRoom: number
+  readonly #hazards: Hazards
 
-  constructor(exitRoom: number) {
+  constructor(exitRoom: number, hazards: Hazards) {
     this.#exitRoom = exitRoom
+    this.#hazards = hazards
   }
 
   occupant(junctionId: string): Car | undefined {
@@ -61,12 +64,16 @@ export class JunctionControl {
     car.claimedAt = 0
   }
 
-  /** Never enter a junction you cannot leave: the lane out has to have room. */
+  /**
+   * Never enter a junction you cannot leave: the lane out has to have room, and
+   * somebody standing in its mouth takes that room the same as a queue does.
+   */
   #hasRoom(car: Car): boolean {
     const exit = car.next?.to
     if (!exit) return false
     const last = exit.last
-    return last === undefined || last.s > this.#exitRoom
+    if (last !== undefined && last.s <= this.#exitRoom) return false
+    return this.#hazards.clearFor(exit, 0, this.#exitRoom)
   }
 }
 

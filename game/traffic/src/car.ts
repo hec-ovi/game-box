@@ -2,7 +2,7 @@ import type { Rng } from '@gb/kit'
 import type { CarBody } from './bodies.ts'
 import { headingOf } from './geometry.ts'
 import type { CarModel } from './settings.ts'
-import type { Lane, Link } from './track.ts'
+import type { Lane, Link, Track } from './track.ts'
 
 /** What a car looks like from outside the box: where it is and how fast. */
 export interface CarView {
@@ -32,7 +32,7 @@ export class Car implements CarView {
   /** Its own stream, forked from the traffic seed, for the turns it takes. */
   readonly rng: Rng
 
-  track: Lane | Link
+  track: Track
   s: number
   speed = 0
   /** The way through the next junction, chosen on approach. */
