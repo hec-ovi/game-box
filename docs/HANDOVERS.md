@@ -156,6 +156,8 @@ the first open topic on every `talked` event) fails both of its tests.
 | 71 | `JournalEntry` has no `kind`, so nothing marks the main line | quest, then hud | Forge generates it correctly. App cannot add it without reintroducing the hand mapper it just deleted |
 | 72 | A `complete` step is a journal line reading like a task | quest or forge | `journal()` lists every step in document order. Either the journal filters flow-control steps as a rule, or forge's recipes are writing task-sounding text into a `complete` objective |
 
+| 73 | An openable door looks the same as a door that never opens | world + forge, then prefab | Prefab can carry a second door layer (0.7 MB) and pick between them inside `orient`, which already rewrites the geometry per plot, so the choice costs nothing beyond the layer. It needs one flag: `plot.opens` on `@gb/world`'s `Plot`, set in the same forge pass that decides which plots get interiors. With most buildings shut, a door you can actually use should read as one from the pavement |
+
 ## Checked and closed
 
 About fifty handovers landed and were verified in the code rather than taken on
