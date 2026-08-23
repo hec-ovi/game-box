@@ -18,11 +18,14 @@ export class FurnishLibrary {
   readonly #material: THREE.Material
   /** Interior floor, walls and ceiling, when the pack carries their textures. */
   readonly surfaces: SurfaceLibrary | undefined
+  /** The town's seed: what the furniture, the walls and the surfaces are all drawn from. */
+  readonly seed: string
 
   constructor(seed: string, surfaces?: SurfaceLibrary) {
     this.#props = buildCatalog(seed)
     this.#material = solidMaterial()
     this.surfaces = surfaces
+    this.seed = seed
   }
 
   /** One prop's geometry in one language. Shared: two chairs are one buffer. */
@@ -50,6 +53,19 @@ export class FurnishLibrary {
   /** The second working surface, for a piece worked from both sides. */
   staffContact(prop: FurnitureProp): number | undefined {
     return PROP_SPECS[prop].staffContact
+  }
+
+  /**
+   * How tall a piece stands, measured off the triangles that were built rather
+   * than off what it declares: the top of a chair is its backrest. This is what
+   * a wall bay is tested against before it is allowed to stand off the wall in
+   * front of one.
+   */
+  heightOf(prop: FurnitureProp, style: FurnishStyle): number {
+    const geometry = this.#props.get(keyOf(style, prop))?.geometry
+    if (!geometry) return 0
+    geometry.computeBoundingBox()
+    return geometry.boundingBox?.max.y ?? 0
   }
 
   /** Triangles in one prop, both languages counted separately. */

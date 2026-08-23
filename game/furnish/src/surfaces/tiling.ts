@@ -1,6 +1,7 @@
 import * as THREE from 'three'
-import { normalWorldGeometry, positionWorld, replaceDefaultUV, vec2 } from 'three/tsl'
+import { replaceDefaultUV } from 'three/tsl'
 import type { NodeMaterial } from 'three/webgpu'
+import { planeMetres } from './pattern.ts'
 
 /**
  * How big a texture is on an interior surface: one tile of the image every
@@ -57,14 +58,7 @@ export class MetreTiling {
 
   /** The same arithmetic as `uv`, for the GPU. */
   #node() {
-    const face = normalWorldGeometry.abs()
-    const flat = face.y.greaterThan(face.x.max(face.z))
-    const alongX = face.x.greaterThan(face.z)
-    const planar = flat.select(
-      positionWorld.xz,
-      alongX.select(vec2(positionWorld.z, positionWorld.y), vec2(positionWorld.x, positionWorld.y)),
-    )
-    return planar.mul(this.perMetre)
+    return planeMetres().mul(this.perMetre)
   }
 }
 

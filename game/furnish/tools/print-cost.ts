@@ -1,8 +1,9 @@
 /**
  * Prints what a furnished room costs against the greybox it replaces: draws,
  * triangles and materials, per room of a generated town, in both interior
- * languages. Also the build time and the memory of the catalog itself. The
- * numbers in CONTRACT.md come from here.
+ * languages, with and without the bays its walls are made of. Also the build
+ * time and the memory of the catalog itself. The numbers in CONTRACT.md come
+ * from here.
  *
  * Run: node game/furnish/tools/print-cost.ts
  */
@@ -46,21 +47,30 @@ const corpo = new FurnishDressing(kit, undefined, 'corpo')
 const home = corpo.as('home')
 const greybox = new Greybox()
 
-console.log('a whole room, shell included. Every piece of furniture in it is one mesh on one material.\n')
-console.log(`${'room'.padEnd(12)}${'pieces'.padStart(6)}   ${'corpo'.padEnd(30)}${'home'.padEnd(30)}greybox`)
+console.log('a whole room, shell included. Every piece of furniture in it is one mesh on one material,')
+console.log('and every bay of every wall of the whole interior is one more.\n')
+console.log(
+  `${'room'.padEnd(12)}${'pieces'.padStart(6)}${'bays'.padStart(6)}   ` +
+    `${'corpo'.padEnd(30)}${'corpo + walls'.padEnd(30)}${'home + walls'.padEnd(30)}greybox`,
+)
 for (const interior of [...world.interiors()].sort((a, b) => b.furniture.length - a.furniture.length)) {
   const kind = world.plot(interior.plotId)?.kind ?? '?'
+  const bays = corpo.room(interior).bays.length
   console.log(
-    `${kind.padEnd(12)}${String(interior.furniture.length).padStart(4)}   ` +
-      `${cost(interior.id, corpo).padEnd(30)}${cost(interior.id, home).padEnd(30)}${cost(interior.id, greybox)}`,
+    `${kind.padEnd(12)}${String(interior.furniture.length).padStart(4)}${String(bays).padStart(6)}   ` +
+      `${cost(interior.id, corpo, false).padEnd(30)}${cost(interior.id, corpo, true).padEnd(30)}` +
+      `${cost(interior.id, home, true).padEnd(30)}${cost(interior.id, greybox, false)}`,
   )
 }
 
-function cost(id: string, dressing: Dressing): string {
+function cost(id: string, dressing: Dressing, walls: boolean): string {
   const interior = world.interior(id)!
-  const room = buildInterior(world, interior, dressing)
+  const room = dressing instanceof FurnishDressing ? dressing.room(interior) : undefined
+  const shell = buildInterior(world, interior, room?.dressing ?? dressing)
+  if (walls && room) shell.root.add(room.decor)
+
   const meshes: THREE.Mesh[] = []
-  room.root.traverse((child) => {
+  shell.root.traverse((child) => {
     if (child instanceof THREE.Mesh) meshes.push(child)
   })
   const tris = meshes.reduce((total, mesh) => total + (mesh.geometry.getIndex()?.count ?? 0) / 3, 0)

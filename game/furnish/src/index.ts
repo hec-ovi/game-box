@@ -1,5 +1,6 @@
 /** @gb/furnish: the inside of a building, generated from parameters. See CONTRACT.md. */
 export { FurnishDressing } from './dressing.ts'
+export { FurnishRoom } from './room.ts'
 export { CELL, metresOf, type Cells, type Footprint } from './catalog/cells.ts'
 export {
   PROP_SPECS,
@@ -14,13 +15,26 @@ export { type Built } from './kit/build.ts'
 export { FURNISH_STYLES, PALETTES, type FurnishStyle, type Palette } from './style/palette.ts'
 export { SOLID_MATERIAL } from './style/material.ts'
 export { type Variant, variantOf } from './style/variant.ts'
-export { SurfaceLibrary, type SurfaceMaps } from './surfaces/library.ts'
+export {
+  BAY_SPECS,
+  BAY_TASTE,
+  WALL,
+  WALL_CONTACTS,
+  type BayKind,
+  type BaySpec,
+} from './walls/bays.ts'
+export { type PlacedBay } from './walls/build.ts'
+export { SIDES, type Side } from './walls/runs.ts'
+export { SurfaceLibrary, mapsOf, type SurfaceMaps } from './surfaces/library.ts'
+export { surfaceChoices, type SurfaceChoices } from './surfaces/choose.ts'
+export { type Pattern, type PatternKind } from './surfaces/pattern.ts'
 export { MetreTiling, tilingOf } from './surfaces/tiling.ts'
 export {
   SURFACE_LOOKS,
   SURFACE_PARTS,
   SURFACE_TEXTURES,
   SURFACE_TEXTURE_IDS,
+  lookOf,
   type SurfaceLook,
   type SurfacePart,
   type SurfaceTexture,

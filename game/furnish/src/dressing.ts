@@ -1,8 +1,10 @@
 import { Greybox, type Dressing } from '@gb/scene'
-import type { AnchorKind, CellKind, FurnitureProp, Item, Npc, Plot } from '@gb/world'
+import type { AnchorKind, CellKind, FurnitureProp, Interior, Item, Npc, Plot } from '@gb/world'
 import * as THREE from 'three'
 import type { FurnishLibrary } from './kit/library.ts'
+import { FurnishRoom } from './room.ts'
 import type { FurnishStyle } from './style/palette.ts'
+import { FIRST_CHOICES, surfaceChoices, type SurfaceChoices } from './surfaces/choose.ts'
 import type { SurfacePart } from './surfaces/surfaces.ts'
 
 /**
@@ -16,21 +18,41 @@ import type { SurfacePart } from './surfaces/surfaces.ts'
  * A dressing speaks one language. `as` hands back a sibling in the other over
  * the same library, so an app that knows which building it is entering pays
  * nothing for the second language: one library, one material, two dressings.
+ * `room` hands back a sibling bound to one interior, whose floor, walls and
+ * ceiling are that interior's own, plus the bays its walls are made of.
  */
 export class FurnishDressing implements Dressing {
   readonly #kit: FurnishLibrary
   readonly #rest: Dressing
+  readonly #choices: SurfaceChoices
   readonly style: FurnishStyle
 
-  constructor(kit: FurnishLibrary, rest: Dressing = new Greybox(), style: FurnishStyle = 'corpo') {
+  constructor(
+    kit: FurnishLibrary,
+    rest: Dressing = new Greybox(),
+    style: FurnishStyle = 'corpo',
+    choices: SurfaceChoices = FIRST_CHOICES,
+  ) {
     this.#kit = kit
     this.#rest = rest
+    this.#choices = choices
     this.style = style
   }
 
   /** The same furniture in the other language. */
   as(style: FurnishStyle): FurnishDressing {
-    return style === this.style ? this : new FurnishDressing(this.#kit, this.#rest, style)
+    return style === this.style ? this : new FurnishDressing(this.#kit, this.#rest, style, this.#choices)
+  }
+
+  /** This interior's own room: its surfaces, and the bays its walls are made of. */
+  room(interior: Interior): FurnishRoom {
+    const bound = new FurnishDressing(
+      this.#kit,
+      this.#rest,
+      this.style,
+      surfaceChoices(this.#kit.seed, this.style, interior.id),
+    )
+    return new FurnishRoom(this.#kit, bound, this.style, interior)
   }
 
   prop(prop: FurnitureProp): THREE.Object3D {
@@ -42,7 +64,7 @@ export class FurnishDressing implements Dressing {
   }
 
   surface(part: SurfacePart): THREE.Material {
-    return this.#kit.surfaces?.material(part, this.style) ?? this.#rest.surface(part)
+    return this.#kit.surfaces?.material(part, this.style, this.#choices[part]) ?? this.#rest.surface(part)
   }
 
   building(plot: Plot, size: { width: number; depth: number; height: number }): THREE.Object3D {

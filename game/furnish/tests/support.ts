@@ -1,7 +1,14 @@
 import { Forge, OfflineNarrator } from '@gb/forge'
 import type { Interior, World } from '@gb/world'
 import * as THREE from 'three'
-import { FurnishDressing, furnishKit, type FurnishStyle } from '../src/index.ts'
+import {
+  FurnishDressing,
+  FurnishLibrary,
+  SURFACE_TEXTURE_IDS,
+  SurfaceLibrary,
+  furnishKit,
+  type FurnishStyle,
+} from '../src/index.ts'
 
 export function meshesOf(object: THREE.Object3D): THREE.Mesh[] {
   const found: THREE.Mesh[] = []
@@ -28,6 +35,20 @@ const kit = furnishKit()
 
 export function dressingIn(style: FurnishStyle): FurnishDressing {
   return new FurnishDressing(kit, undefined, style)
+}
+
+/**
+ * The same catalog with a pack's worth of surfaces behind it. What is in the
+ * images makes no difference to which one a room is given, which is what the
+ * tests that use this measure.
+ */
+const surfaced = new FurnishLibrary(
+  'surfaces',
+  new SurfaceLibrary(new Map(SURFACE_TEXTURE_IDS.map((id) => [id, { map: new THREE.Texture(), normal: undefined }]))),
+)
+
+export function surfacedDressing(style: FurnishStyle): FurnishDressing {
+  return new FurnishDressing(surfaced, undefined, style)
 }
 
 /**

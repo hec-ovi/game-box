@@ -1,10 +1,9 @@
 /**
- * Assembles the interior pack: the tiling floor and wall images a room is
- * built out of, one per node, under the name the loader looks for.
+ * Assembles the interior pack: the two grain images a room is built out of, one
+ * per node, under the name the loader looks for.
  *
  * The furniture is not in here. It is generated from parameters at load time,
- * so the only art an interior needs is the two surfaces, and they come from the
- * Downtown kit, the same textures the street outside is made of.
+ * so the only art an interior needs is those two images.
  *
  * Called by tools/build-kit.ts.
  */
@@ -21,16 +20,24 @@ export const TEXTURE_DIRECTORY =
 /** Textures we generated ourselves, which is why they ship inside a world file. */
 const GENERATED = join(ROOT, 'assets/gen')
 
-/** Which image each interior surface is made of, and where that image comes from. */
+/**
+ * Which image each interior surface is made of, and where that image comes
+ * from. Both are stochastic grain and nothing else: the pattern a floor or a
+ * wall is laid in is arithmetic in the shader, so no image here carries
+ * structure that would jog where the tile is cut.
+ */
 const SOURCES: Record<SurfaceTextureId, { colour: string; normal?: string; from?: string }> = {
-  // the kit's stone slabs: four to a tile, which is a half-metre flagged floor
-  flagstone: { colour: 'T_MarbleFloor_BaseColor', normal: 'T_MarbleFloor_Normal' },
-  // and its concrete, which is the corpo wall and lid
+  // the Downtown kit's concrete, which is the corpo wall, floor and lid
   plaster: { colour: 'T_Concrete_BaseColor', normal: 'T_Concrete_Normal' },
   // ours: see tools/textures/README.md. Colour only, and it wants no relief at
   // all, because a moulded panel is smooth and that is the whole point of it
   panel: { colour: 'wall-plastic-home-tile', from: GENERATED },
 }
+
+/** Where each surface's colour image is on disk, for anything that wants to measure it. */
+export const SOURCE_IMAGES: Record<SurfaceTextureId, string> = Object.fromEntries(
+  SURFACE_TEXTURE_IDS.map((id) => [id, join(SOURCES[id].from ?? TEXTURE_DIRECTORY, `${SOURCES[id].colour}.png`)]),
+) as Record<SurfaceTextureId, string>
 
 const REPEAT = TextureInfo.WrapMode['REPEAT']!
 

@@ -6,11 +6,12 @@ import {
   FURNISH_STYLES,
   FurnishDressing,
   FurnishLibrary,
-  SURFACE_LOOKS,
   SURFACE_PARTS,
   SURFACE_TEXTURE_IDS,
   SURFACE_TEXTURES,
   SurfaceLibrary,
+  lookOf,
+  mapsOf,
   tilingOf,
   type SurfacePart,
 } from '../src/index.ts'
@@ -104,7 +105,7 @@ describe('interior surfaces', () => {
   it('tiles at the real-world size the table gives for the image on it', () => {
     for (const part of SURFACE_PARTS) {
       for (const style of FURNISH_STYLES) {
-        const metres = SURFACE_TEXTURES[SURFACE_LOOKS[style][part].map].metres
+        const metres = SURFACE_TEXTURES[lookOf(style, part).map].metres
         expect(tilingOf(new FurnishDressing(surfaced, undefined, style).surface(part))?.metres, part).toBe(metres)
       }
     }
@@ -117,8 +118,9 @@ describe('interior surfaces', () => {
       // the game draws with WebGPURenderer: a uv it cannot see is a texture blown up to the wall
       expect(material.isNodeMaterial, part).toBe(true)
       expect(material.contextNode, part).toBeTruthy()
-      expect(material.map?.wrapS, part).toBe(THREE.RepeatWrapping)
-      expect(material.map?.wrapT, part).toBe(THREE.RepeatWrapping)
+      expect(material.colorNode, part).toBeTruthy()
+      expect(mapsOf(material)?.map.wrapS, part).toBe(THREE.RepeatWrapping)
+      expect(mapsOf(material)?.map.wrapT, part).toBe(THREE.RepeatWrapping)
     }
   })
 })
