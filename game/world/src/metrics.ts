@@ -1,3 +1,5 @@
+import { ROAD_WIDTHS } from './roads.ts'
+
 /**
  * Real-world proportions, in metres. Everything the generator places is sized
  * from these, so a street feels like a street when you stand in it.
@@ -7,12 +9,14 @@ export const METRICS = {
   /** Side of one grid cell. Streets, sidewalks and plots are whole cells. */
   cellSize: 2,
 
+  /** Every class of road at its own width, in whole cells. */
+  road: ROAD_WIDTHS,
+
   street: {
-    /** Cells across the roadway, kerb to kerb: 3 cells, 6 m, both directions. */
-    roadwayCells: 3,
-    /** Going: read `roadwayCells`. */
-    laneCells: 2,
+    /** How far a pavement stands above the roadway it is kerbed against. */
     curbHeight: 0.15,
+    /** The street class's roadway, the same number as `road.street.roadwayCells`. */
+    roadwayCells: ROAD_WIDTHS.street.roadwayCells,
   },
 
   building: {

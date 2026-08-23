@@ -4,6 +4,7 @@ export { type CitySpec } from './model/city-spec.ts'
 export { questView, type QuestView } from './quest-view.ts'
 export { Grid, CELL, type CellKind, type Rect } from './grid.ts'
 export { METRICS, cellCentre, type Metrics } from './metrics.ts'
+export { ROAD_WIDTHS, WIDEST_ROADWAY_CELLS, type RoadWidth } from './roads.ts'
 export { checkIntegrity, type IntegrityProblem } from './integrity.ts'
 export {
   worldContract,
@@ -29,6 +30,7 @@ export {
   FURNITURE_PROPS,
   BODY_KINDS,
   FACINGS,
+  ROAD_KINDS,
   ENTERABLE_KINDS,
   type BuildingKind,
   type RoomKind,
@@ -38,4 +40,5 @@ export {
   type FurnitureProp,
   type BodyKind,
   type Facing,
+  type RoadKind,
 } from './model/vocabulary.ts'

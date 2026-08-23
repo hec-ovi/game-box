@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { METRICS, questView, World, type Interior, type Item, type Npc, type Placement } from '../src/index.ts'
+import {
+  METRICS,
+  questView,
+  ROAD_KINDS,
+  WIDEST_ROADWAY_CELLS,
+  World,
+  type Interior,
+  type Item,
+  type Npc,
+  type Placement,
+} from '../src/index.ts'
 
 /** A two-street hamlet with one bar, its interior, its bartender and a bottle. */
 function hamlet() {
@@ -206,6 +216,45 @@ describe('World', () => {
     } else {
       throw new Error('expected inconsistent-world')
     }
+  })
+})
+
+describe('road widths', () => {
+  it('gives every class of road its own width, and takes one of each into a document', () => {
+    const world = World.create({ name: 'Wide', theme: 'test', seed: 'roads', width: 40, height: 40 })
+    const nodes = ROAD_KINDS.map((_, i) => ({ id: world.mintId('node'), cell: { x: 4 + i * 8, y: 8 } }))
+    world.addRoad(
+      nodes,
+      ROAD_KINDS.map((kind, i) => ({
+        id: world.mintId('road'),
+        from: nodes[i]!.id,
+        to: nodes[(i + 1) % nodes.length]!.id,
+        kind,
+        lanes: METRICS.road[kind].lanes,
+      })),
+    )
+    const reloaded = World.load(JSON.parse(JSON.stringify(world.toJSON())))
+    expect(reloaded.ok).toBe(true)
+    if (!reloaded.ok) return
+    expect(reloaded.value.toJSON().roads.segments.map((s) => s.kind)).toEqual([...ROAD_KINDS])
+
+    // a street is not an avenue is not the road out: three classes, three widths
+    const widths = ROAD_KINDS.map((kind) => METRICS.road[kind].roadwayCells)
+    expect(new Set(widths).size).toBe(ROAD_KINDS.length)
+    expect(METRICS.road.avenue.roadwayCells).toBeGreaterThan(METRICS.road.street.roadwayCells)
+    expect(METRICS.road.avenue.lanes).toBe(4)
+  })
+
+  it('keeps every roadway an odd number of cells, so a centreline is a line of cell centres', () => {
+    // a junction node sits on a cell, and a car drives the middle of its half of
+    // the road: an even roadway puts both half a cell out
+    for (const kind of ROAD_KINDS) {
+      const { roadwayCells, pavementCells } = METRICS.road[kind]
+      expect(roadwayCells % 2, kind).toBe(1)
+      expect(pavementCells, kind).toBeGreaterThan(0)
+    }
+    expect(WIDEST_ROADWAY_CELLS).toBe(Math.max(...ROAD_KINDS.map((kind) => METRICS.road[kind].roadwayCells)))
+    expect(METRICS.street.roadwayCells).toBe(METRICS.road.street.roadwayCells)
   })
 })
 

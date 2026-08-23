@@ -130,6 +130,13 @@ export const BODY_KINDS = ['male', 'female'] as const
 
 export const FACINGS = ['north', 'east', 'south', 'west'] as const
 
+/**
+ * The classes of road a city is laid with. Each one is a different width, in
+ * `METRICS.road`: a street is the ordinary one, an avenue is the spine the
+ * streets hang off, and an exit is the road that leaves the valley.
+ */
+export const ROAD_KINDS = ['street', 'avenue', 'exit'] as const
+
 export type BuildingKind = (typeof BUILDING_KINDS)[number]
 export type RoomKind = (typeof ROOM_KINDS)[number]
 export type AnchorKind = (typeof ANCHOR_KINDS)[number]
@@ -138,6 +145,7 @@ export type ItemArchetype = (typeof ITEM_ARCHETYPES)[number]
 export type FurnitureProp = (typeof FURNITURE_PROPS)[number]
 export type BodyKind = (typeof BODY_KINDS)[number]
 export type Facing = (typeof FACINGS)[number]
+export type RoadKind = (typeof ROAD_KINDS)[number]
 
 /** Which building kinds a player can walk into. */
 export const ENTERABLE_KINDS: readonly BuildingKind[] = [

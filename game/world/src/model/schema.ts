@@ -9,6 +9,7 @@ import {
   FURNITURE_PROPS,
   ITEM_ARCHETYPES,
   NPC_ROLES,
+  ROAD_KINDS,
   ROOM_KINDS,
 } from './vocabulary.ts'
 
@@ -104,7 +105,7 @@ export const RoadSegmentSchema = z.object({
   id: id('road'),
   from: id('node'),
   to: id('node'),
-  kind: z.enum(['street', 'avenue', 'exit']),
+  kind: z.enum(ROAD_KINDS),
   lanes: z.number().int().min(1).max(4),
 })
 
