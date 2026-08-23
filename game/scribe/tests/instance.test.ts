@@ -161,6 +161,23 @@ describe('writing a place and its people in one call', () => {
     expect(runs[0]!.written).toEqual(runs[1]!.written)
   })
 
+  it('never carries the whole city into one call, however many places have been written', async () => {
+    // every place and everybody in it named after its own post, so nothing
+    // here is ever asked twice and the list is the only thing that grows
+    const { sent, sidecar } = fakeModel((call) =>
+      answer(call, { name: `The ${shellOf(call).posts[0]} House`, given: shellOf(call).posts[0]! }),
+    )
+    await new Scribe({ sidecar, seed: 'harbour', concurrency: 4 }).writeInstances(places(60))
+
+    // 60 places is 180 names spent; a prompt that grows with the city costs
+    // more on every call than the one before it
+    expect(sent).toHaveLength(60)
+    const names = (call: Sent) =>
+      (call.user.split('## Names already spoken for in this city')[1]!.match(/^- /gm) ?? []).length
+    expect(names(sent.at(-1)!)).toBeLessThanOrEqual(40)
+    expect(names(sent.at(-1)!)).toBeGreaterThan(0)
+  })
+
   it('leaves a place the model will not write to the offline narrator, with every post still filled', async () => {
     const { sent, sidecar } = fakeModel(['no-call'])
     const scribe = new Scribe({ sidecar, seed: 'harbour', attempts: 1 })

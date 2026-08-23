@@ -3,7 +3,7 @@ import { sealQuest, validateQuest } from '@gb/quest'
 import type { Asker, Violation } from './asker.ts'
 import { describeSlice, Neighbourhood } from './neighbourhood.ts'
 import type { Progress } from './progress.ts'
-import { bullets, prompt } from './prompts.ts'
+import { bullets, lastFew, prompt } from './prompts.ts'
 import { rewardBands } from './reward-bands.ts'
 import { CitySummary, type SummaryView } from './summary.ts'
 import { WRITE_QUEST, type QuestDraft } from './tools.ts'
@@ -108,7 +108,7 @@ export class QuestWriter {
       places: describeSlice(slice, this.#characters),
       rewardBands: rewardBands(),
       usedTitles: bullets(
-        earlier.flatMap((entry) => (entry?.title ? [entry.title] : [])),
+        lastFew(earlier.flatMap((entry) => (entry?.title ? [entry.title] : []))),
         'None yet.',
       ),
     })

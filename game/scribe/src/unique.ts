@@ -1,3 +1,4 @@
+import { lastFew } from './prompts.ts'
 import type { NameRegistry } from './registry.ts'
 import type { Waves } from './waves.ts'
 
@@ -38,7 +39,7 @@ export class UniqueNames<Request, Answer> {
   async write(requests: readonly Request[]): Promise<Answer[]> {
     const spent = this.#registry.names()
     const first = await this.#waves.run<Request, Answer | undefined>(requests, (request, index, earlier) =>
-      this.#pass.ask(request, index, [...spent, ...earlier.flatMap((answer) => this.#namesOf(answer))]),
+      this.#pass.ask(request, index, lastFew([...spent, ...earlier.flatMap((answer) => this.#namesOf(answer))])),
     )
 
     const settled: Array<Answer | undefined> = requests.map((_, index) => this.#keep(first[index]))
