@@ -1,14 +1,16 @@
 import { Greybox, type Dressing } from '@gb/scene'
-import type { AnchorKind, CellKind, FurnitureProp, Item, Npc, Plot } from '@gb/world'
+import type { AnchorKind, CellKind, FurnitureProp, Item, Npc, Plot, World } from '@gb/world'
 import * as THREE from 'three'
 import { assemble } from './assemble.ts'
-import { planBuilding, type BuildingSize } from './build/plan.ts'
+import { planBuilding, type BuildingSize } from './compose/plan.ts'
 import type { KitLibrary } from './kit/library.ts'
+import { buildStreetLamps } from './street/lamps.ts'
 
 /**
- * The city dressed in the Downtown kit. It answers for buildings and for the
- * ground they stand on, and hands everything else to the dressing behind it,
- * because the kit is a street kit: it has no furniture and no people in it.
+ * The city dressed in the Downtown kit. It answers for buildings, for the
+ * ground they stand on and for the lamps along the kerb, and hands everything
+ * else to the dressing behind it, because the kit is a street kit: it has no
+ * furniture and no people in it.
  */
 export class KitDressing implements Dressing {
   readonly #kit: KitLibrary
@@ -31,6 +33,23 @@ export class KitDressing implements Dressing {
     door.rotation.y = plan.door.rotationY
     building.add(door)
     return building
+  }
+
+  /**
+   * Every street lamp in the city, ready to add beside the city root. Two
+   * draws: the posts instanced, every halo in one additive buffer.
+   */
+  streetlights(world: World, spacing?: number): THREE.Object3D {
+    return buildStreetLamps(world, this.#kit, spacing)
+  }
+
+  /**
+   * Moves the city to an hour of the day: which windows are lit, how brightly
+   * they burn, and whether the lamps are on. Two uniform writes, however much
+   * of the city is standing. This box holds no clock; call it from whoever does.
+   */
+  setTime(hours: number): void {
+    this.#kit.night.setTime(hours)
   }
 
   prop(prop: FurnitureProp): THREE.Object3D {

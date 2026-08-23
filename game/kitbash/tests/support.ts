@@ -36,14 +36,22 @@ export function trianglesOf(object: THREE.Object3D): number {
   return meshesOf(object).reduce((total, mesh) => total + (mesh.geometry.getIndex()?.count ?? 0) / 3, 0)
 }
 
-/** Every vertex of every mesh, mixed into one number: two buildings match or they do not. */
+/**
+ * Every vertex attribute of every mesh, mixed into one number: two buildings
+ * match or they do not. Rooms ride on the panes as attributes, so this catches
+ * a window that would light up differently as well as one in the wrong place.
+ */
 export function fingerprint(object: THREE.Object3D): string {
   let hash = 0x811c9dc5
+  const fold = (value: number): void => { hash = Math.imul(hash ^ value, 0x01000193) }
+  const foldText = (text: string): void => { for (const character of text) fold(character.charCodeAt(0)) }
+
   for (const mesh of meshesOf(object).sort((a, b) => a.name.localeCompare(b.name))) {
-    for (const character of mesh.name) hash = Math.imul(hash ^ character.charCodeAt(0), 0x01000193)
-    const position = mesh.geometry.getAttribute('position').array as ArrayLike<number>
-    for (let i = 0; i < position.length; i++) {
-      hash = Math.imul(hash ^ Math.round(position[i]! * 1000), 0x01000193)
+    foldText(mesh.name)
+    for (const name of Object.keys(mesh.geometry.attributes).sort()) {
+      foldText(name)
+      const values = mesh.geometry.getAttribute(name).array as ArrayLike<number>
+      for (let i = 0; i < values.length; i++) fold(Math.round(values[i]! * 1000))
     }
   }
   return (hash >>> 0).toString(16)

@@ -5,7 +5,7 @@
  *
  * A wall piece is authored with its outer face on z = 0, its body running back
  * into negative z, its width centred on x and its base on y = 0. Every rule in
- * build/ depends on that, so a piece that breaks it does not belong here. The
+ * compose/ depends on that, so a piece that breaks it does not belong here. The
  * few millimetres some pieces reach past z = 0 are window and trim relief, and
  * they are why a finished building is a little larger than its plot.
  */
@@ -56,6 +56,24 @@ export type PieceId = keyof typeof PIECES
 export const PIECE_IDS = Object.keys(PIECES) as PieceId[]
 
 /**
+ * The kit's own name for a window pane. It is the hook everything about
+ * windows hangs on: a piece is glazed if it carries this material, and the pane
+ * is the surface the room behind it is drawn on.
+ */
+export const GLASS = 'MI_Glass'
+
+/**
+ * The flat grey plane the kit paints behind its windows. The pane draws a real
+ * room now, so the plane is never seen and never packed into a building.
+ */
+export const FAKE_INTERIOR = 'MI_FakeInterior'
+
+/** Whether a piece has glass in it, and so whether it looks into a room. */
+export function isGlazed(id: PieceId): boolean {
+  return (PIECES[id].materials as readonly string[]).includes(GLASS)
+}
+
+/**
  * Every material name in the kit's own files: the draw-call ceiling for one
  * merged building. The pack folds names sharing a texture set together, so a
  * building out of `assets/dist/downtown-kit.glb` draws with fewer than these.
@@ -77,8 +95,8 @@ export const MODULE = { width: 2, height: 3, band: 1 } as const
  * characters an animation path would choke on, so a Blender name like
  * `Trim_FirstFloor_Window.001` arrives without its dot.
  */
-export function nodeNamesOf(id: PieceId): string[] {
-  const piece: Piece = PIECES[id]
-  const authored = piece.node ?? id
+export function nodeNamesOf(id: string): string[] {
+  const piece = (PIECES as Record<string, Piece | undefined>)[id]
+  const authored = piece?.node ?? id
   return [...new Set([authored, authored.replace(/[[\].:/]/g, ''), id])]
 }

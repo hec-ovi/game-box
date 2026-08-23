@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import { BUILDING_KINDS, METRICS } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { KitDressing, PIECES, PIECE_IDS, RELIEF } from '../src/index.ts'
+import { FURNITURE, FURNITURE_IDS, KitDressing, LAMP_LENS, LAMP_POST, PIECES, PIECE_IDS, RELIEF, type FurnitureId, type PieceId } from '../src/index.ts'
 import { KIT_FILE, loadPackedKit } from './pack.ts'
 import { boundsOf, meshesOf, plotOf, sizeOf, trianglesOf } from './support.ts'
 
@@ -68,16 +68,32 @@ describe.skipIf(!packed)('the shipped kit', () => {
   })
 
   it('holds every piece at the bounds the catalog measured', () => {
-    for (const id of PIECE_IDS) {
+    const measured = (id: PieceId | FurnitureId): THREE.Box3 => {
       const bounds = new THREE.Box3()
       for (const part of kit!.parts(id)) {
         part.geometry.computeBoundingBox()
         bounds.union(part.geometry.boundingBox!)
       }
+      return bounds
+    }
+
+    for (const id of PIECE_IDS) {
+      const bounds = measured(id)
       for (const axis of [0, 1, 2] as const) {
         expect(bounds.min.getComponent(axis), `${id} min ${'xyz'[axis]}`).toBeCloseTo(PIECES[id].min[axis], 2)
         expect(bounds.max.getComponent(axis), `${id} max ${'xyz'[axis]}`).toBeCloseTo(PIECES[id].max[axis], 2)
       }
+    }
+
+    // the lamp comes from a second pack through a second tool, so it is worth
+    // its own line: it has to stand on the pavement at street-lamp height
+    for (const id of FURNITURE_IDS) {
+      const bounds = measured(id)
+      for (const axis of [0, 1, 2] as const) {
+        expect(bounds.min.getComponent(axis), `${id} min ${'xyz'[axis]}`).toBeCloseTo(FURNITURE[id].min[axis], 2)
+        expect(bounds.max.getComponent(axis), `${id} max ${'xyz'[axis]}`).toBeCloseTo(FURNITURE[id].max[axis], 2)
+      }
+      expect(kit!.parts(id).map((part) => part.material).sort()).toEqual([LAMP_LENS, LAMP_POST])
     }
   })
 })

@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { FURNITURE_IDS, type FurnitureId } from '../catalog/furniture.ts'
 import { nodeNamesOf, PIECE_IDS, type PieceId } from '../catalog/pieces.ts'
 import { loadGround } from '../ground/load.ts'
 import { KitIncomplete } from './error.ts'
@@ -16,16 +17,17 @@ import { KitLibrary, type KitPart } from './library.ts'
  * is brought to one shape on the way through, so any two of them weld.
  *
  * Materials are shared by name across pieces, so the whole city ends up drawing
- * with the handful the kit actually has. The pack's tiling ground surfaces come
- * out of the same scene, when it has them.
+ * with the handful the kit actually has. The pack's tiling ground surfaces and
+ * its street furniture come out of the same scene, when it has them: the wall
+ * pieces are the only ones a kit has to carry.
  */
 export function loadKit(scenes: THREE.Object3D | readonly THREE.Object3D[]): KitLibrary {
   const roots = Array.isArray(scenes) ? scenes : [scenes as THREE.Object3D]
   for (const root of roots) root.updateMatrixWorld(true)
-  const parts = new Map<PieceId, KitPart[]>()
+  const parts = new Map<PieceId | FurnitureId, KitPart[]>()
   const materials = new Map<string, THREE.Material>()
 
-  for (const id of PIECE_IDS) {
+  for (const id of [...PIECE_IDS, ...FURNITURE_IDS]) {
     const node = find(roots, nodeNamesOf(id))
     if (!node) continue
     const found: KitPart[] = []

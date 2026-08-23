@@ -50,6 +50,9 @@ importers:
       '@gb/forge':
         specifier: workspace:*
         version: link:../forge
+      '@gb/furnish':
+        specifier: workspace:*
+        version: link:../furnish
       '@gb/hud':
         specifier: workspace:*
         version: link:../hud
@@ -246,6 +249,9 @@ importers:
 
   game/kitbash:
     dependencies:
+      '@gb/kit':
+        specifier: workspace:*
+        version: link:../kit
       '@gb/scene':
         specifier: workspace:*
         version: link:../scene

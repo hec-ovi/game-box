@@ -1,9 +1,10 @@
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
-import type { PieceId } from './catalog/pieces.ts'
-import type { Placement } from './build/plan.ts'
+import { FAKE_INTERIOR, GLASS, type PieceId } from './catalog/pieces.ts'
+import type { Placement } from './compose/plan.ts'
 import { KitUnmergeable } from './kit/error.ts'
 import type { KitLibrary } from './kit/library.ts'
+import { bakeRoom } from './night/room.ts'
 
 /** Everything on one material, and which pieces put it there. */
 interface Bucket {
@@ -15,6 +16,10 @@ interface Bucket {
  * Bakes a plan into one object. Every piece that shares a material is welded
  * into a single mesh, so a building of two hundred kit pieces costs as many
  * draws as the kit has materials on it, not as many as it has pieces.
+ *
+ * Panes carry the room they look into as they go by, which is what lets one
+ * glass material draw a different interior behind every window without a draw
+ * or a triangle of its own.
  */
 export function assemble(placements: readonly Placement[], library: KitLibrary, name: string): THREE.Group {
   const buckets = new Map<string, Bucket>()
@@ -31,7 +36,13 @@ export function assemble(placements: readonly Placement[], library: KitLibrary, 
       scale.set(placement.scale[0], placement.scale[1], placement.scale[2]),
     )
     for (const part of library.parts(placement.piece)) {
+      // the kit paints a flat plane behind its glass; the pane draws a real
+      // room now, so the plane is never seen and never packed
+      if (part.material === FAKE_INTERIOR) continue
+
       const geometry = part.geometry.clone().applyMatrix4(matrix)
+      if (part.material === GLASS && placement.room) bakeRoom(geometry, placement.room)
+
       const bucket = buckets.get(part.material)
       if (bucket) {
         bucket.geometries.push(geometry)
