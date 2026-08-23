@@ -1,7 +1,9 @@
 import type { KitDressing } from '@gb/kitbash'
 import { buildLand, type Land } from '@gb/land'
 import type { PlayerState } from '@gb/play'
+import type { CityBuild } from '@gb/scene'
 import type { World } from '@gb/world'
+import { darkness } from './night.ts'
 import type { Stage } from './renderer.ts'
 import type { Ground } from './solids.ts'
 
@@ -69,9 +71,15 @@ export class Sky {
    * Follow the playthrough clock. Lit windows follow it indoors too, because
    * they are seen through the doorway; the sky only moves while it is in view.
    */
-  follow(seconds: number, clock: Reading, outdoors: boolean): void {
+  follow(seconds: number, clock: Reading, outdoors: boolean, city?: CityBuild): void {
     const hours = clock.hour + clock.minute / 60
     this.#kit?.setTime(hours)
+    // the street reads both: how wet it is, and how much of what it reflects
+    // is lit. Both are one uniform, so they are written every frame.
+    if (city) {
+      city.night = darkness(hours)
+      if (this.#land) city.wetness = this.#land.wetness
+    }
     // the frame is developed for the hour whether or not the sky is in view:
     // indoors the grade holds itself at the room's own light
     this.#stage.grade(hours)

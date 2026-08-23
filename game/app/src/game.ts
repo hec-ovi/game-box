@@ -212,7 +212,7 @@ export class Game {
     const clock = this.#player.clock
     clock.advance(seconds)
     this.#log.handle({ kind: 'clock', seconds: clock.totalSeconds })
-    this.#sky.follow(seconds, clock, this.#buildings.outdoors)
+    this.#sky.follow(seconds, clock, this.#buildings.outdoors, this.#city)
     this.#street.setTime(clock)
 
     this.#body.update(seconds)
