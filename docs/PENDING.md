@@ -70,6 +70,35 @@ Regenerated and pushed.
 Everything else: 954 of 959 green, `tsc --noEmit` clean, isolation clean across
 22 boxes and 712 files.
 
+### OpenRouter: verified working, two things to settle (2026-08-23, 19:40)
+
+The endpoint is live. `stealth/ox-alpha` served a reply in 1.26 s at zero cost,
+key authenticating, provider Stealth. The 404 that came first was an account
+data-policy setting, not our code: every model returned it, and
+https://openrouter.ai/settings/privacy cleared it.
+
+Two probes did not pass and neither is settled:
+
+- **A forced tool call came back empty.** `tool_choice` naming the function
+  returned `content: null` with no `tool_calls` array. The owner says the model
+  does support tool calls, so the probe was probably wrong, not the model:
+  likely candidates are needing `stream: true` (the whole pipeline streams),
+  the reasoning field carrying the call, or a shape difference from
+  llama-server. **This is the first thing to check next session**, because every
+  generated thing in the project is a forced tool call whose parameters are the
+  validating contract's JSON Schema. Nothing works through OpenRouter until it
+  does.
+- **`seed` plus `temperature: 0` did not reproduce.** Three identical requests
+  gave three different answers. So the hosted path is not automatically the
+  easy answer to determinism, and the honest fallback stands: `Bundle.resume`
+  tolerating a regenerated city rather than clearing the save.
+
+`.env` exists at the repo root, gitignored, holding `OPENROUTER_API_KEY`,
+`GAME_BOX_LLM_UPSTREAM` and `GAME_BOX_PORT`. Nothing loads it yet: the host
+reads `process.env` directly, so it needs exporting or Node 22's `--env-file`.
+The agent wiring OpenRouter into `host/` has that plus keeping the key out of
+every error path.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
