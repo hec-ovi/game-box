@@ -33,6 +33,33 @@ Two more numbers that make every city read the same at street level. At the defa
 4. Seeded quest recipes instead of one template (task 4).
 5. Wider name and knowledge vocabulary offline: 550 NPCs currently share 163 names and 4 knowledge templates, and every patron in a city says the same sentence.
 
+## Progress
+
+| Task | Box | State |
+|---|---|---|
+| 1 | `world` | done, `005b8f8` |
+| 2 | `quest` | done, `3c3f0a9` |
+| 3 | `forge` | running |
+| 5 | `hud` | running |
+| 6, 7, 18 | `app` | running |
+| 11 | `nav` | running |
+| 15 | `scribe` | running |
+| 16 | `sidecar` | done, `f82e6a6` |
+| 17 | `talk` | running |
+| shadows | `land` | running |
+| cars | `traffic` | running |
+| 4 | `forge` | waits for 3 |
+| 8, 9 | `app` | waits for 6 |
+| 10 | `crowd` | waits for 9 |
+| 12 | `cli` | waits for 11 |
+| 13 | `forge` | folded into 3 |
+| 14 | `scene`, `kitbash` | not started, biggest scale win |
+| 19 | repo | not started |
+
+Done outside the plan: the world lit by the sky and the shadow map enabled
+(`51bf9ae`), the page reset and the stray `e` (`1641353`), walking out of
+anything standing in you, six boxes that could not run their own tests.
+
 ## 3. The work
 
 Each task is one box and one agent. Sizes assume that agent reads the contract, writes the tests, and updates `CONTRACT.md` and `docs/INDEX.md` in the same commit.
