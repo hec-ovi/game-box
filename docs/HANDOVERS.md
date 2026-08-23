@@ -80,6 +80,18 @@ pinned and routed from indoors and out, and `?sidecar=` surviving a refresh.
 | 52 | One flat car cap for a whole city | scene+traffic+crowd agent | app | `game/app/src/street.ts:118` passes `maxCars: 12` for the entire town. A four-lane avenue holds twice the cars a street does, so the number that made a street look right leaves an avenue empty. It wants to scale with the lane network, not with the city |
 | 53 | `@gb/hud`'s `QuestStep` widening breaks `game/app/tests/contract.test.ts` under `tsc -p game/app` | scene agent, then confirmed live | app | `done` becomes optional, and the app fixture types it as required. This is the migration the hud agent owes; it lands with hud's report, not separately |
 
+## From the panel
+
+Rows 49 and 50 landed in `@gb/hud`, along with the journal's third step state
+and the abandon control. What they leave for their callers:
+
+| # | Work | Box | Detail |
+|---|---|---|---|
+| 54 | Push `acted` per turn | app | `acted` is now the line for the turn in front of the player: sending it replaces, `acted: null` clears, omitting keeps. Push it when `@gb/talk` emits `did`. The assertion at `game/app/tests/contract.test.ts:1132` that app never sends `acted` goes with it |
+| 55 | Send `state` on each `QuestStep` | app | `'upcoming' \| 'open' \| 'done'`. `done` still reads, so nothing breaks until app moves |
+| 56 | Bind `Game.abandon` to `HudIntent.abandon` | app | The hud asks twice on its own; do not add a second confirm. After `QuestLog.abandon`, push `quests` without that quest, the hud drops nothing itself |
+| 57 | Publish a per-quest step list carrying each step's state | quest | The three states are derivable today only by walking `QuestLog.toJSON()`'s `open[]` and `done[]` against the quest doc's step order. Publishing it saves every caller that walk and stops them disagreeing |
+
 ## Checked and closed
 
 About fifty handovers landed and were verified in the code rather than taken on
