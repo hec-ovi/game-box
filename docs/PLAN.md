@@ -50,7 +50,7 @@ Two more numbers that make every city read the same at street level. At the defa
 | cars | `traffic` | done, `9620356` |
 | 4 | `forge` | running |
 | 8, 9 | `app` | waits for 6 |
-| 10 | `crowd` | running, plus a crossing regression forge uncovered |
+| 10 | `crowd` | done, `6786e6d` |
 | 12 | `cli` | done, `08a3066` |
 | 13 | `forge` | folded into 3 |
 | 14 | `scene`, `kitbash` | done, 1,069 draws to 46 |
@@ -82,7 +82,7 @@ Each task is one box and one agent. Sizes assume that agent reads the contract, 
 6. **`@gb/app` (structure).** Split `game.ts` (570 lines, next largest src file in the repo is 374) into targeting, interaction, the building stage, conversation, companions and HUD reporting, and add the missing `src/index.ts` that `package.json` already claims. Pure refactor. 1 d. No deps. **Tasks 6 to 10 are the same box and run in sequence, not in parallel.**
 7. **`@gb/app` (boot, new city, export).** One panel from the first frame: theme, seed, blocks, Generate, and Export. Kills the measured 11.2 s cold and 4.7 s warm white screen with no text, moves city creation out of the URL bar, and stops throwing away the packed document `main.ts:48` already builds. `Bundle.pack` and the WebCrypto `contentHash` work in the browser today. 1 d. Depends on 5, 6.
 8. **`@gb/app` (guide, map data, inventory).** Feed the HUD map tab the grid and plot rects, wire `i`, and route to the tracked objective with `nav.pathToDoor` plus `waypoints`, which `@gb/nav` already answers and nothing consumes. Re-request pointer lock when the last window closes. 1 d. Depends on 5, 6, 2.
-9. **`@gb/app` (companions).** Bridge `did: follow_player` and quest `companion-join` to `crowd.follow`, so an NPC who agrees in dialogue actually walks (today they only get a HUD line, and because `#showIndoors` never runs the NPC is duplicated: one behind the counter, one walking with you). Pass city coordinates, not interior-local ones, when recruiting indoors (measured: recruiting at interior 3.56, 1.20 puts the companion on a mountain cell 26.6 m away). Make crowd walkers resolvable as talk targets: `world.npc(walker.id)` resolves for 0 of 6 walkers because the crowd names them `walker_N` and the world names them `npc_900000+`, so there are zero talk targets in the street. 1 d. Depends on 6.
+9. **`@gb/app` (companions).** Bridge `did: follow_player` and quest `companion-join` to `crowd.follow`, so an NPC who agrees in dialogue actually walks (today they only get a HUD line, and because `#showIndoors` never runs the NPC is duplicated: one behind the counter, one walking with you). Pass city coordinates, not interior-local ones, when recruiting indoors (measured: recruiting at interior 3.56, 1.20 puts the companion on a mountain cell 26.6 m away). Make crowd walkers resolvable as talk targets. (Fixed in `crowd` since: walkers carry real `Npc` ids and `Crowd.person(id)` resolves them, so the app needs one line, not a redesign.) 1 d. Depends on 6.
 10. **`@gb/crowd`.** Stop the follower teleporting onto the player's face out of town (measured: 5 teleports on a 159 m walk east, each landing 0.00 m from the player at y=0 while the ground is at -0.42 to -5.36 m). Take walkability and foot height from a ground source the app can point at `@gb/land` outside the grid, and make `Escort.#spotFor` fail to a hold rather than to the player's own position. 1 d. Depends on 9.
 
 **Phase 3, size and the model.**
