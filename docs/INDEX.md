@@ -27,7 +27,7 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI
 | The interface: objectives, prompts, the conversation and the moves you can click in it, announcements, the quests, map, items and controls window, and how it all looks | `game/hud/` |
 | Determinism, ids, results, boundary validation | `game/kit/` |
 | The running game: the panel you make a city in or open one somebody sent you from, renderer, frame loop, first-person body, the car it drives, the map and the route guide, taking a thing and leaving it where a job wants it, the keys for the hour and the weather, wiring, and how the night is graded | `game/app/` |
-| The `gb` command: build, inspect, check a city | `game/cli/` |
+| The `gb` command: build a city and pin it to the art it was drawn from, inspect it, check it | `game/cli/` |
 
 ## Sidecar
 
@@ -64,6 +64,7 @@ game/scene, game/world, game/kit <- game/furnish
 game/scene <- game/cast
 game/cast, game/nav <- game/crowd
 game/quest <- game/hud
+game/forge, game/scribe, game/bundle, game/nav, game/world, game/prefab <- game/cli
 everything  <- game/app
 ```
 

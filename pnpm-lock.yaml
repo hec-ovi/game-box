@@ -170,6 +170,9 @@ importers:
       '@gb/play':
         specifier: workspace:*
         version: link:../play
+      '@gb/prefab':
+        specifier: workspace:*
+        version: link:../prefab
       '@gb/quest':
         specifier: workspace:*
         version: link:../quest

@@ -7,13 +7,14 @@
   "bin": { "gb": "./src/bin.ts" },
   "scripts": {
     "test": "vitest run",
-    "gb": "node --experimental-strip-types src/bin.ts"
+    "gb": "node --experimental-transform-types src/bin.ts"
   },
   "dependencies": {
     "@gb/bundle": "workspace:*",
     "@gb/forge": "workspace:*",
     "@gb/nav": "workspace:*",
     "@gb/play": "workspace:*",
+    "@gb/prefab": "workspace:*",
     "@gb/quest": "workspace:*",
     "@gb/scribe": "workspace:*",
     "@gb/world": "workspace:*"

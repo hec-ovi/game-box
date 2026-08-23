@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env -S node --experimental-transform-types
 /** The terminal entry point. Everything it does lives in run(). */
 import { run } from './index.ts'
 

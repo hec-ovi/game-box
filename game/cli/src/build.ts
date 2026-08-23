@@ -3,6 +3,7 @@ import { Bundle } from '@gb/bundle'
 import { Forge, OfflineNarrator, type Narrator } from '@gb/forge'
 import { Scribe } from '@gb/scribe'
 import type { BuildArgs, Io } from './index.ts'
+import { pinDesigns } from './pins.ts'
 
 /** Generate a city and write it out as one bundle file. */
 export async function build(args: BuildArgs, io: Io): Promise<number> {
@@ -30,7 +31,17 @@ export async function build(args: BuildArgs, io: Io): Promise<number> {
   }
 
   const { world, quests, rejected } = built.value
-  const bundle = await Bundle.pack(world, quests, { generator: 'gb build' })
+
+  // pin the city to the art it was designed against before it is sealed: the
+  // hash covers the pins, and a file written without them is re-skinned by
+  // whoever opens it against a newer pack
+  const pins = await pinDesigns(world)
+  if (pins.state === 'half') {
+    io.err(`cannot pin the city to its art: ${pins.why}`)
+    return 1
+  }
+  const requires = pins.state === 'pinned' ? [pins.pack] : []
+  const bundle = await Bundle.pack(world, quests, { generator: 'gb build', requires })
 
   // read it back the way the game will: writing a file nobody can open is a
   // worse failure than not writing one, and it used to be reported as success
@@ -49,6 +60,11 @@ export async function build(args: BuildArgs, io: Io): Promise<number> {
   for (const bad of rejected) {
     io.out(`    quest ${bad.index} rejected: ${bad.problems[0]?.message ?? 'unknown'}`)
   }
+  io.out(
+    pins.state === 'pinned'
+      ? `  designed against ${pins.pack.pack} ${pins.pack.version}, ${pins.plots} of ${world.plots().length} buildings pinned`
+      : `  no buildings pinned, so the file names no art: ${pins.why}`,
+  )
   if (scribe?.problems().length) {
     io.out(`  ${scribe.problems().length} model calls fell back to the offline narrator`)
   }
