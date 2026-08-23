@@ -87,10 +87,16 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
       horizon ??= new PMREMGenerator(renderer)
       const holder = new THREE.Scene()
       const parent = sky.parent
+      // the dome rides on the player and the camera that prefilters it sits at
+      // the origin, so taken where it stands the whole sky comes out skewed by
+      // however far the player has walked
+      const rode = sky.position.clone()
+      sky.position.set(0, 0, 0)
       // prefilter the sky on its own: the city reflecting itself would cost far
       // more and look worse
       holder.add(sky)
       const next = horizon.fromScene(holder)
+      sky.position.copy(rode)
       parent?.add(sky)
 
       reflected?.dispose()

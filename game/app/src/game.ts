@@ -19,6 +19,7 @@ import { Conditions } from './conditions.ts'
 import { CONTROLS } from './controls.ts'
 import { Guide } from './guide.ts'
 import { Interaction } from './interaction.ts'
+import type { RoomArt } from './pack.ts'
 import { marked } from './places.ts'
 import { Player } from './player.ts'
 import { createStage, type Stage } from './renderer.ts'
@@ -32,6 +33,8 @@ import { pick, Targeting, type Target } from './targets.ts'
 
 export interface GameOptions {
   dressing: Dressing
+  /** An interior's own floor, walls and wall bays. Without it, rooms stay flat. */
+  room?: RoomArt
   cast?: Cast
   kit?: KitDressing
   cars?: ArrayBuffer
@@ -81,6 +84,7 @@ export class Game {
     log: QuestLog
     sidecar: Sidecar
     dressing: Dressing
+    room?: RoomArt
     session?: Session
     cast?: Cast
     kit?: KitDressing
@@ -129,6 +133,7 @@ export class Game {
     this.#buildings = new Buildings({
       world: this.#world,
       dressing: input.dressing,
+      ...(input.room ? { room: input.room } : {}),
       stage: this.#stage,
       body: this.#body,
       city: this.#city,
@@ -245,6 +250,7 @@ export class Game {
         log,
         sidecar: options.sidecar ?? new Sidecar(),
         dressing: options.dressing,
+        ...(options.room ? { room: options.room } : {}),
         ...(session ? { session } : {}),
         ...(options.cast ? { cast: options.cast } : {}),
         ...(options.kit ? { kit: options.kit } : {}),
@@ -301,6 +307,9 @@ export class Game {
   /** What the player did in the interface. */
   intent(intent: HudIntent): void {
     if (intent.kind === 'say') void this.#talking.say(intent.text)
+    // the same answer given by clicking instead of typing: the key is the
+    // conversation's own, and goes straight back to it
+    if (intent.kind === 'choose') void this.#talking.choose(intent.key)
     if (intent.kind === 'typing') this.#body.setTyping(intent.typing)
     if (intent.kind === 'talk-closed') this.#talking.end()
     // the interface holds no state of its own, so the quest it was told to

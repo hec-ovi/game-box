@@ -3,28 +3,58 @@ import { FurnishDressing, loadFurnish } from '@gb/furnish'
 import { KitDressing, loadKit, type CityNight } from '@gb/kitbash'
 import { PrefabDressing, loadPrefab } from '@gb/prefab'
 import { Greybox, type Dressing } from '@gb/scene'
+import type { Interior } from '@gb/world'
+import type * as THREE from 'three'
 import { guarded } from './guarded.ts'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
 
 /**
- * Loads the shipped art. Dressing is a chain: the cast answers for people, the
- * kit answers for buildings, and the greybox answers for whatever is left. Any
- * link that will not load drops out, so a missing download is a duller city
- * rather than a blank screen.
+ * An interior's own room: the dressing that paints it and the wall bays to add
+ * to what came back. Each interior draws its own floor, walls and ceiling from
+ * its id, so the shop is not the same room as the flat above it.
  */
-export async function loadDressing(
-  theme: string,
-  base = '',
-): Promise<{ dressing: Dressing; cast?: Cast; kit?: KitDressing }> {
+export type RoomArt = (interior: Interior) => { dressing: Dressing; decor: THREE.Object3D }
+
+/** What the art pack answers for, and what is left of it when a piece is missing. */
+export interface ArtPack {
+  dressing: Dressing
+  room?: RoomArt
+  cast?: Cast
+  kit?: KitDressing
+}
+
+/**
+ * Loads the shipped art. Dressing is a chain: the cast answers for people, the
+ * furniture answers for the inside of a building, the kit answers for the
+ * outside, and the greybox answers for whatever is left. Any link that will not
+ * load drops out, so a missing download is a duller city rather than a blank
+ * screen.
+ */
+export async function loadDressing(theme: string, base = ''): Promise<ArtPack> {
   const buildings = await loadBuildings(base, theme)
   const kit = buildings?.kit
-  const behind = await loadInteriors(base, buildings?.front ?? new Greybox())
+  const outside = buildings?.front ?? new Greybox()
+  const furnish = await loadInteriors(base, outside)
   const cast = await loadPeople(base)
-  if (!cast) return { dressing: guarded(behind), ...(kit ? { kit } : {}) }
+  if (cast) cast.theme = theme
 
-  cast.theme = theme
-  return { dressing: guarded(new CastDressing(cast, behind)), cast, ...(kit ? { kit } : {}) }
+  // the people go outside the furniture in the chain, so a room built for one
+  // interior still has the cast answering for whoever is standing in it
+  const chain = (inside: Dressing): Dressing => guarded(cast ? new CastDressing(cast, inside) : inside)
+  const room: RoomArt | undefined = furnish
+    ? (interior) => {
+        const dressed = furnish.room(interior)
+        return { dressing: chain(dressed.dressing), decor: dressed.decor }
+      }
+    : undefined
+
+  return {
+    dressing: chain(furnish ?? outside),
+    ...(room ? { room } : {}),
+    ...(cast ? { cast } : {}),
+    ...(kit ? { kit } : {}),
+  }
 }
 
 async function loadPeople(base: string): Promise<Cast | undefined> {
@@ -43,13 +73,13 @@ async function loadPeople(base: string): Promise<Cast | undefined> {
 }
 
 /** Furniture, floors and walls. Behind it, whatever answers for the outside. */
-async function loadInteriors(base: string, behind: Dressing): Promise<Dressing> {
+async function loadInteriors(base: string, behind: Dressing): Promise<FurnishDressing | undefined> {
   try {
     const gltf = await read(`${base}/interior-kit.glb`)
     return new FurnishDressing(loadFurnish(gltf.scenes), behind)
   } catch (cause) {
     console.warn(`no interior kit (${String(cause)}); rooms stay grey`)
-    return behind
+    return undefined
   }
 }
 

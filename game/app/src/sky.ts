@@ -20,6 +20,8 @@ export class Sky {
   #kit: KitDressing | undefined
   #land: Land | undefined
   #reflectedHour = -1
+  #reflectedAzimuth = 0
+  #reflectedGlow = 1
   #weather: Reading['weather'] | undefined
 
   constructor(world: World, stage: Stage, options: { hour: number; kit?: KitDressing }) {
@@ -72,7 +74,10 @@ export class Sky {
    * they are seen through the doorway; the sky only moves while it is in view.
    */
   follow(seconds: number, clock: Reading, outdoors: boolean, city?: CityBuild): void {
-    const hours = clock.hour + clock.minute / 60
+    // whole hours and whole minutes only move once a game minute, which at the
+    // default rate is four times a second: the sun would hop two thirds of its
+    // own width each kick, and the gradient, the fog and the stars with it
+    const hours = clock.secondsOfDay / 3600
     this.#kit?.setTime(hours)
     // the street reads both: how wet it is, and how much of what it reflects
     // is lit. Both are one uniform, so they are written every frame.
@@ -87,6 +92,7 @@ export class Sky {
 
     this.#land.setTime(hours)
     if (clock.hour !== this.#reflectedHour) this.#reflect(clock.hour)
+    this.#carry()
     if (clock.weather !== this.#weather) {
       this.#weather = clock.weather
       this.#land.setWeather(clock.weather)
@@ -96,13 +102,42 @@ export class Sky {
 
   /**
    * Take the light off the sky, so a window has something to reflect and a wall
-   * in shade is not flat. Prefiltering costs about 20 ms, so it happens when
-   * the hour turns rather than every frame: the sky does not change faster
-   * than that.
+   * in shade is not flat. Prefiltering costs about 20 ms against a 2.5 ms frame,
+   * so it happens when the hour turns and not oftener.
    */
   #reflect(hour: number): void {
     if (!this.#land) return
     this.#reflectedHour = hour
     this.#stage.reflect(this.#land.sky)
+    this.#reflectedAzimuth = azimuth(this.#land.sun.position)
+    this.#reflectedGlow = glow(this.#land)
   }
+
+  /**
+   * Between rebuilds the map is moved rather than remade. Held still for a whole
+   * game hour while the dome overhead keeps turning, it falls an hour behind and
+   * catches up in one frame: crossing 06:00 the sun in the reflection triples in
+   * a single frame. Turning the map with the sun and riding the sky's own
+   * brightness ramp carries that across the hour for nothing, because the sky's
+   * pattern is very nearly rigid about the vertical.
+   */
+  #carry(): void {
+    if (!this.#land) return
+    const scene = this.#stage.scene
+    scene.environmentRotation.y = azimuth(this.#land.sun.position) - this.#reflectedAzimuth
+    scene.environmentIntensity = glow(this.#land) / this.#reflectedGlow
+  }
+}
+
+/** Where the sun stands round the compass, in radians. */
+function azimuth(at: { x: number; z: number }): number {
+  return Math.atan2(at.x, at.z)
+}
+
+/**
+ * How much light the sky is putting out, sun and moon together. The floor keeps
+ * the darkest minute of the night from dividing the reflection to nothing.
+ */
+function glow(land: Land): number {
+  return Math.max(land.sun.intensity + land.moon.intensity, 0.02)
 }

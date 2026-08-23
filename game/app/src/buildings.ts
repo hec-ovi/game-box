@@ -4,6 +4,7 @@ import { alsoBlockedBy } from './bodies.ts'
 import type { Player } from './player.ts'
 import type { Stage } from './renderer.ts'
 import type { Sky } from './sky.ts'
+import type { RoomArt } from './pack.ts'
 import { furnishedSolid } from './solids.ts'
 import type { Street } from './street.ts'
 import type { Vec2 } from './walk.ts'
@@ -22,6 +23,7 @@ export type Arrival = { plotId: string } | { interiorId: string }
 export class Buildings {
   #world: World
   #dressing: Dressing
+  #room: RoomArt | undefined
   #stage: Stage
   #body: Player
   #city: CityBuild
@@ -38,6 +40,7 @@ export class Buildings {
   constructor(input: {
     world: World
     dressing: Dressing
+    room?: RoomArt
     stage: Stage
     body: Player
     city: CityBuild
@@ -50,6 +53,7 @@ export class Buildings {
   }) {
     this.#world = input.world
     this.#dressing = input.dressing
+    this.#room = input.room
     this.#stage = input.stage
     this.#body = input.body
     this.#city = input.city
@@ -81,7 +85,12 @@ export class Buildings {
 
     let built = this.#built.get(interior.id)
     if (!built) {
-      built = buildInterior(this.#world, interior, this.#dressing)
+      // the shell is `@gb/scene`'s and the bays standing on its walls are the
+      // furniture's, so a room is built with its own dressing and then handed
+      // the run of bays that goes with it
+      const room = this.#room?.(interior)
+      built = buildInterior(this.#world, interior, room?.dressing ?? this.#dressing)
+      if (room) built.root.add(room.decor)
       this.#built.set(interior.id, built)
     }
 

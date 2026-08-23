@@ -21,7 +21,11 @@ import { marked, type Marked } from '../src/places.ts'
 import { Reporting } from '../src/reporting.ts'
 import { atAnOpenDoor } from '../src/spawn.ts'
 import { Body, CROUCH_EYE, JUMP_SPEED } from '../src/stance.ts'
+import { Sidecar } from '@gb/sidecar'
+import { Conversation, type TalkMove } from '@gb/talk'
+import type { Player } from '../src/player.ts'
 import { Street } from '../src/street.ts'
+import { Talking } from '../src/talking.ts'
 import { Targeting } from '../src/targets.ts'
 import { CLOSE_FOV, WIDE_FOV, Zoom } from '../src/zoom.ts'
 
@@ -791,5 +795,154 @@ describe('where the player starts', () => {
     const elsewhere = { x: 3, z: 4, heading: 1 }
     const shutOnly = { plots: () => [shut], cellSize: 2 } as unknown as World
     expect(atAnOpenDoor(shutOnly, { doorsteps: new Map(), spawn: elsewhere } as unknown as CityBuild)).toEqual(elsewhere)
+  })
+})
+
+describe('a conversation you can click through', () => {
+  /** Offered, agreed to, delivered and paid for, all of it clickable. */
+  const errand = (() => {
+    const doc = {
+      format: 'game-box.quest',
+      schemaVersion: 1,
+      id: 'quest_0002',
+      kind: 'side',
+      title: 'The Ledger',
+      summary: 'Iris wants her ledger back off the shelf.',
+      giverNpcId: 'npc_0001',
+      difficulty: 'small',
+      startStepId: 'step_0001',
+      reward: rewardFor('small'),
+      steps: [
+        { id: 'step_0001', objective: 'Hear Iris out', kind: 'talk', npcId: 'npc_0001', next: ['step_0002'] },
+        { id: 'step_0002', objective: 'Find the ledger', kind: 'collect', itemId: 'item_0001', next: ['step_0003'] },
+        { id: 'step_0003', objective: 'Take it to Iris', kind: 'deliver', toNpcId: 'npc_0001', itemId: 'item_0001', next: ['step_0004'] },
+        { id: 'step_0004', objective: 'Done', kind: 'complete' },
+      ],
+    }
+    const anything = { hasNpc: () => true, hasPlot: () => true, hasInterior: () => true, hasItem: () => true, hasAnchor: () => true }
+    const checked = validateQuest(doc, anything)
+    if (!checked.ok) throw new Error(JSON.stringify(checked.error))
+    return checked.value
+  })()
+
+  /** A town with somebody in it and a ledger on a shelf. */
+  function bar() {
+    const world = town()
+    const npc = world.addNpc({
+      id: 'npc_0001',
+      name: 'Iris Vane',
+      role: 'bartender',
+      appearance: { base: 'female', variant: 3 },
+      personality: 'Dry, and busy.',
+      knowledge: ['The bar shuts at two.'],
+    })
+    const item = world.addItem(
+      { id: 'item_0001', name: 'the ledger', description: 'A cloth-bound book of debts.', archetype: 'ledger', value: 5, bulk: 'pocket' },
+      { at: 'ground', itemId: 'item_0001', cell: { x: 6, y: 2 } },
+    )
+    if (!npc.ok) throw new Error(JSON.stringify(npc.error))
+    if (!item.ok) throw new Error(JSON.stringify(item.error))
+    return { world, npcId: 'npc_0001', itemId: 'item_0001' }
+  }
+
+  /** Everything the game pushes at the interface, and nothing else. */
+  function panel() {
+    const pushed: HudPatch[] = []
+    const hud = { show: (patch: HudPatch) => void pushed.push(patch), announce: () => {} } as unknown as Hud
+    return { pushed, hud }
+  }
+
+  function chatting() {
+    const { world, npcId, itemId } = bar()
+    const player = PlayerState.create(world.id)
+    const log = QuestLog.create([errand], player)
+    const { pushed, hud } = panel()
+    let reached = 0
+    const talking = new Talking({
+      world,
+      log,
+      player,
+      // nothing is listening on the sidecar, so neither track can reach a model
+      sidecar: new Sidecar({
+        fetch: () => {
+          reached += 1
+          return Promise.reject(new Error('nothing listening'))
+        },
+      }),
+      hud,
+      body: { setTyping: () => {} } as unknown as Player,
+      attending: { hold: () => {}, release: () => {} } as unknown as Attending,
+      report: new Reporting({ world, log, player, hud }),
+    })
+    // the game pushes `@gb/talk`'s own moves, which carry the action the
+    // interface has no use for and this test reads
+    const menu = () =>
+      ([...pushed].reverse().find((patch) => patch.talk?.moves)?.talk?.moves ?? []) as readonly TalkMove[]
+    const spoken = () => pushed.map((patch) => patch.talk?.replyChunk ?? '').join('')
+    const noted = () => pushed.flatMap((patch) => (patch.talk?.acted ? [patch.talk.acted] : []))
+    return { world, npcId, itemId, player, log, talking, pushed, menu, spoken, noted, reached: () => reached }
+  }
+
+  it('offers what the NPC will allow, and leaves walking away to the controls that already do it', async () => {
+    const { npcId, world, player, log, talking, menu } = chatting()
+    await talking.start(npcId)
+
+    expect(menu().map((move) => move.action)).toEqual(['give_quest'])
+    expect(menu()[0]!.label).not.toMatch(/quest_|npc_|item_/)
+
+    // the conversation itself does offer a goodbye; the panel already has two
+    const raw = Conversation.open({ world, log, player, sidecar: new Sidecar(), npcId })
+    expect(raw.ok && raw.value.conversation.moves().map((move) => move.action)).toContain('end_talk')
+  })
+
+  it('takes the job on a click, with a line spoken and no model asked for it', async () => {
+    const { npcId, log, talking, menu, spoken, noted, reached } = chatting()
+    await talking.start(npcId)
+    const taken = menu()[0]!
+    const before = reached()
+
+    await talking.choose(taken.key)
+
+    // the point of the menu: the move is taken without asking anything
+    expect(reached()).toBe(before)
+
+    expect(log.status('quest_0002')).toBe('active')
+    expect(spoken().length).toBeGreaterThan(0)
+    expect(noted()).toEqual(['gave you a job'])
+    // and the move it just used is off the menu it publishes at the end
+    expect(menu().map((move) => move.action)).not.toContain('give_quest')
+  })
+
+  it('carries the whole job through by clicking, and pays for it', async () => {
+    const { npcId, itemId, player, log, talking, menu, noted } = chatting()
+    await talking.start(npcId)
+    await talking.choose(menu()[0]!.key)
+
+    // the player finds the ledger and comes back
+    player.take(itemId)
+    log.handle({ kind: 'acquired', itemId })
+    talking.end()
+    await talking.start(npcId)
+
+    const handing = menu().find((move) => move.action === 'take_delivery')!
+    expect(handing).toBeDefined()
+    await talking.choose(handing.key)
+
+    expect(log.status('quest_0002')).toBe('complete')
+    expect(player.money).toBeGreaterThan(0)
+    expect(noted()).toEqual(['gave you a job', 'took what you were carrying'])
+  })
+
+  it('still takes a typed line, which does go looking for a model, and ends on a menu', async () => {
+    const { npcId, talking, pushed, spoken, reached } = chatting()
+    await talking.start(npcId)
+    pushed.length = 0
+    const before = reached()
+
+    await talking.say('what have you got for me?')
+
+    expect(reached()).toBeGreaterThan(before)
+    expect(spoken().length).toBeGreaterThan(0)
+    expect(pushed.at(-1)!.talk!.moves).toBeDefined()
   })
 })

@@ -140,6 +140,7 @@ export class Boot {
         sidecar: this.#sidecar,
         dressing: art.dressing,
         save: localSaves(city.bundle.world.id),
+        ...(art.room ? { room: art.room } : {}),
         ...(art.cast ? { cast: art.cast } : {}),
         ...(art.kit ? { kit: art.kit } : {}),
         ...(cars ? { cars } : {}),
