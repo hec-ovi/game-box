@@ -1,10 +1,22 @@
 {
   "id": "tower-a",
   "family": "a",
-  "note": "a lit glazing band over a plain base, chamfered so the top edge catches the street light",
-  "kinds": ["apartment", "office", "hotel", "house", "clinic"],
-  "door": { "wide": 1.8, "tall": 2.4 },
+  "note": "a lit glazing band over a plain base, a lit board across the parapet, chamfered so the top edge catches the street light",
+  "kinds": [
+    "apartment",
+    "office",
+    "hotel",
+    "house",
+    "clinic"
+  ],
+  "door": {
+    "wide": 1.8,
+    "tall": 2.4
+  },
   "glass": "body",
+  "displays": [
+    "board"
+  ],
   "crown": "teal",
   "chamfer": 0.2
 }

@@ -1,7 +1,7 @@
 {
   "id": "corpo-a",
   "family": "a",
-  "note": "a dark corporate slab: a deep entrance bay, two cyan seams up the front and a lit parapet stepped back off the street",
+  "note": "a dark corporate slab: a deep entrance bay, a lit board over the parapet, a banner beside the door, two cyan seams up the front and a lit parapet stepped back off the street",
   "kinds": [
     "office",
     "hotel",
@@ -22,6 +22,10 @@
     "colour": "cyan",
     "thickness": 0.08
   },
+  "displays": [
+    "board",
+    "banner"
+  ],
   "crown": "cyan",
   "setback": 0.8
 }

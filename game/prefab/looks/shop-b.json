@@ -1,7 +1,7 @@
 {
   "id": "shop-b",
   "family": "b",
-  "note": "a shopfront: a wide door, a fascia band over it and three magenta tubes across the frontage",
+  "note": "a shopfront: a wide door, a lit banner beside it, a fascia band over it and three magenta tubes across the frontage",
   "kinds": [
     "shop",
     "market",
@@ -22,5 +22,8 @@
     "colour": "magenta",
     "thickness": 0.08
   },
+  "displays": [
+    "banner"
+  ],
   "crown": "magenta"
 }

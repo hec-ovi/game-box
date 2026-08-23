@@ -14,7 +14,7 @@
  * column is both dark and flat, which is what a blank border is and what a room
  * never is.
  */
-import { readFile, writeFile } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import sharp from 'sharp'
 import { ROOM_PICTURES, ROOM_SIZE } from '../src/rooms.ts'

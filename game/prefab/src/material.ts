@@ -1,17 +1,11 @@
-import { CityNight } from '@gb/kitbash'
+import type { CityNight } from '@gb/kitbash'
 import type * as THREE from 'three'
 import { float, mix, texture, uv } from 'three/tsl'
 import { MeshStandardNodeMaterial } from 'three/webgpu'
+import { SCREEN, WallScreens } from './display.ts'
 import { InteriorWindows, ROOM } from './interior.ts'
 import { layerIndex } from './layer.ts'
-import { MATERIAL_NAME } from './pack.ts'
-
-/**
- * How hard a lit face burns after dark. The pack stores glow at half strength
- * so a neon tube and a lit window fit one 8-bit map; this puts it back and
- * leaves a little over for the bloom pass to catch.
- */
-export const GLOW = 2.6
+import { GLOW, MATERIAL_NAME } from './pack.ts'
 
 /** Roughness and metalness of a prefab wall: coated, dark, not a mirror. */
 const SURFACE = { roughness: 0.68, metalness: 0.05 } as const
@@ -23,6 +17,8 @@ export interface PrefabAtlas {
   readonly emissive: THREE.DataArrayTexture
   /** The rooms a window looks into, one per layer. */
   readonly rooms: THREE.DataArrayTexture
+  /** The pictures the screens on the walls carry, one per layer. */
+  readonly screens: THREE.DataArrayTexture
   /** What each layer of the two facade textures paints, in order. */
   readonly finishes: readonly string[]
 }
@@ -39,23 +35,30 @@ export interface PrefabAtlas {
  *
  * The windows are not in the picture. `InteriorWindows` cuts them out of the
  * wall arithmetically and draws the room behind each one, so a facade has depth
- * through it from the pavement instead of a lit rectangle.
+ * through it from the pavement instead of a lit rectangle. `WallScreens` does
+ * the same for the panels: the housing, the lamp grid and the line of light
+ * round a board are all arithmetic over one picture.
  *
- * Nothing glows in daylight. The rooms and the neon are the night level times
- * what is behind the glass, so at noon a facade is a dark wall with dim rooms
- * in it and after dark it is the light in the street.
+ * The two never meet. A layer either has windows in it or it is a screen, so a
+ * fragment pays for one of them and a wall fragment pays for neither beyond the
+ * comparison that says so.
+ *
+ * Nothing glows in daylight. The rooms, the screens and the neon are the night
+ * level times what is behind the glass, so at noon a facade is a dark wall with
+ * dim rooms in it and after dark it is the light in the street.
  */
 export function prefabMaterial(atlas: PrefabAtlas, night: CityNight): THREE.Material {
   const layer = layerIndex()
   const wall = texture(atlas.colour, uv()).depth(layer)
   const burning = texture(atlas.emissive, uv()).depth(layer).rgb.mul(float(GLOW))
-  const { light, share } = new InteriorWindows(atlas.rooms, night, atlas.finishes).glazing()
+  const room = new InteriorWindows(atlas.rooms, night, atlas.finishes).glazing()
+  const panel = new WallScreens(atlas.screens, atlas.finishes).panel()
 
   const material = new MeshStandardNodeMaterial()
   material.name = MATERIAL_NAME
-  material.colorNode = mix(wall.rgb, light.mul(float(ROOM.albedo)), share)
-  material.emissiveNode = mix(burning, light.mul(float(ROOM.glow)), share).mul(night.level)
-  material.roughnessNode = mix(float(SURFACE.roughness), float(ROOM.roughness), share)
+  material.colorNode = mix(mix(wall.rgb, room.light.mul(float(ROOM.albedo)), room.share), panel.light.mul(float(SCREEN.albedo)), panel.share)
+  material.emissiveNode = mix(mix(burning, room.light.mul(float(ROOM.glow)), room.share), panel.light.mul(float(SCREEN.glow)), panel.share).mul(night.level)
+  material.roughnessNode = mix(mix(float(SURFACE.roughness), float(ROOM.roughness), room.share), float(SCREEN.roughness), panel.share)
   material.metalnessNode = float(SURFACE.metalness)
   return material
 }

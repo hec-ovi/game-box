@@ -11,6 +11,15 @@ export const NEONS = ['cyan', 'teal', 'magenta', 'amber'] as const
 export type Neon = (typeof NEONS)[number]
 
 /**
+ * The two lit screens a look can carry. A `board` is the wide one across the
+ * top storey, read from across the street; a `banner` is the tall one beside
+ * the entrance, read from the pavement. Both are panels on the producer's own
+ * cell grid, so they claim their cells and nothing can land on top of them.
+ */
+export const DISPLAYS = ['board', 'banner'] as const
+export type Display = (typeof DISPLAYS)[number]
+
+/**
  * One authored look: how a building of this kind is dressed, said without any
  * reference to how big it is. The builder replays it at every footprint the
  * city actually cuts, which is what makes twelve pages of authoring into a
@@ -36,6 +45,8 @@ export interface Look {
     readonly colour: Neon
     readonly thickness: number
   }
+  /** Lit screens on the front: a board across the parapet storey, a banner beside the door. */
+  readonly displays?: readonly Display[]
   /** A tube round the top edge. */
   readonly crown?: Neon
   /** Metres the top section steps in from the street. */
@@ -62,6 +73,7 @@ function check(look: Look, file: string): Look {
   if (look.kinds.length === 0) fail('a look has to say which trades it suits')
   for (const kind of look.kinds) if (!BUILDING_KINDS.includes(kind)) fail(`${kind} is not a building kind`)
   if (look.crown && !NEONS.includes(look.crown)) fail(`${look.crown} is not one of ${NEONS.join(', ')}`)
+  for (const display of look.displays ?? []) if (!DISPLAYS.includes(display)) fail(`${display} is not one of ${DISPLAYS.join(', ')}`)
   if (look.lines && !NEONS.includes(look.lines.colour)) fail(`${look.lines.colour} is not one of ${NEONS.join(', ')}`)
   if (look.door.tall > 3) fail('a door taller than 3 m does not fit the shortest ground floor')
   return look

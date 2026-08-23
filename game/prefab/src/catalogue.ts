@@ -42,6 +42,8 @@ export const CatalogueSchema = z.object({
     emissive: StripSchema,
     /** The rooms every window in the city looks into. */
     rooms: StripSchema,
+    /** The pictures every screen in the city carries. */
+    screens: StripSchema,
     /** What each layer of the two facade strips paints, in order. The runtime reads which of them have windows off this. */
     finishes: z.array(z.string().min(1)).min(1),
   }),

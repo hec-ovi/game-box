@@ -19,7 +19,7 @@ export class PackChanged extends Error {
 }
 
 /**
- * The pack's four files, as URLs the bundler can see. They are written out one
+ * The pack's six files, as URLs the bundler can see. They are written out one
  * by one rather than built from a name, because a bundler only follows a
  * literal.
  */
@@ -29,6 +29,7 @@ const PACK = {
   colour: new URL('../pack/buildings-colour.png', import.meta.url),
   emissive: new URL('../pack/buildings-emissive.png', import.meta.url),
   rooms: new URL('../pack/buildings-rooms.png', import.meta.url),
+  screens: new URL('../pack/buildings-screens.png', import.meta.url),
 } as const
 
 /**
@@ -39,12 +40,13 @@ const PACK = {
  * different city than the one the seed says.
  */
 export async function loadPrefab(night: CityNight): Promise<Library> {
-  const [manifest, mesh, colour, emissive, rooms] = await Promise.all([
+  const [manifest, mesh, colour, emissive, rooms, screens] = await Promise.all([
     fetch(PACK.manifest).then((response) => response.json()),
     bytes(PACK.mesh),
     bytes(PACK.colour),
     bytes(PACK.emissive),
     bytes(PACK.rooms),
+    bytes(PACK.screens),
   ])
 
   const catalogue = Catalogue.parse(manifest)
@@ -52,6 +54,7 @@ export async function loadPrefab(night: CityNight): Promise<Library> {
   await check('colour atlas', colour, catalogue.atlas.colour.sha256)
   await check('glow atlas', emissive, catalogue.atlas.emissive.sha256)
   await check('room atlas', rooms, catalogue.atlas.rooms.sha256)
+  await check('screen atlas', screens, catalogue.atlas.screens.sha256)
 
   const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(mesh, '')
   const atlas: PrefabAtlas = {
@@ -60,6 +63,9 @@ export async function loadPrefab(night: CityNight): Promise<Library> {
     // a room is read at a clamped uv, so wrapping one would fetch the far side
     // of the picture along the edge a ray leaves the box at
     rooms: await arrayTexture(rooms, catalogue.atlas.rooms, THREE.ClampToEdgeWrapping),
+    // a screen is read at a clamped uv too: the picture is cropped onto the
+    // panel, so wrapping one would fold its far side back over its own edge
+    screens: await arrayTexture(screens, catalogue.atlas.screens, THREE.ClampToEdgeWrapping),
     finishes: catalogue.atlas.finishes,
   }
   return Library.of({ catalogue, scenes: gltf.scenes, atlas, night })

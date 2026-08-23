@@ -1,3 +1,4 @@
+import { DISPLAY_FINISH } from '../src/screens.ts'
 import { FAMILIES, NEONS, type Family, type Neon } from './look.ts'
 
 /**
@@ -6,13 +7,15 @@ import { FAMILIES, NEONS, type Family, type Neon } from './look.ts'
  * layer of its own lets the sampler wrap one without bleeding into the picture
  * next door.
  *
- * The door and the glazing are shared across the four families, because a door
- * is a door; the wall and the base are what makes one family look unlike
- * another, and the tubes are the four colours `docs/LOOK.md` settles on.
+ * The door, the glazing and the screen housing are shared across the four
+ * families, because a door is a door; the wall and the base are what makes one
+ * family look unlike another, and the tubes are the four colours `docs/LOOK.md`
+ * settles on.
  */
 export const LAYERS: readonly string[] = [
   ...FAMILIES.flatMap((family) => [`${family}:facade`, `${family}:base`]),
   'door',
+  DISPLAY_FINISH,
   'glass',
   ...NEONS.map((neon) => `neon:${neon}`),
 ]
@@ -43,8 +46,8 @@ export class UnknownFinish extends Error {
 
 /**
  * Which layer a producer material lands on. The set is closed on purpose: a
- * look that reaches for a balcony, a screen, a pipe or a mast fails the build
- * here rather than costing the city a second material.
+ * look that reaches for a balcony, a pipe or a mast fails the build here rather
+ * than costing the city a second material.
  */
 export function layerFor(material: string, family: Family): number {
   const name = finish(material, family)
@@ -55,8 +58,13 @@ export function layerFor(material: string, family: Family): number {
 
 function finish(material: string, family: Family): string {
   if (material === 'facade') return `${family}:facade`
-  if (material === 'base' || material === 'concrete' || material === 'roof') return `${family}:base`
+  // a band somebody has composed on wears the producer's plain wall rather than
+  // the bay-and-floor picture, because a window drawn in the middle of a bay is
+  // exactly where a composed element goes. The pack's base finish is that same
+  // plain heavy wall at the same tile, so the two are one layer
+  if (material === 'base' || material === 'concrete' || material === 'roof' || material === 'wall') return `${family}:base`
   if (material === 'door') return 'door'
+  if (material === 'screen') return DISPLAY_FINISH
   if (material === 'glass-band') return 'glass'
   if (material.startsWith('neon:')) {
     const colour = material.slice('neon:'.length) as Neon

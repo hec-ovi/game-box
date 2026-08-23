@@ -6,12 +6,9 @@ import {
   abs,
   cameraPosition,
   clamp,
-  dFdx,
-  dFdy,
   float,
   floor,
   fract,
-  fwidth,
   hash,
   max,
   min,
@@ -32,6 +29,7 @@ import {
 import type { Node } from 'three/webgpu'
 import { layerIndex } from './layer.ts'
 import { ROOM_BANKS, ROOM_SIZE } from './rooms.ts'
+import { surfaceFrame } from './surface.ts'
 
 /**
  * What is behind the glass, drawn in the fragment shader.
@@ -192,14 +190,10 @@ export class InteriorWindows {
     const tints = uniformArray<'vec3'>(TINTS.map(([r, g, b]) => new THREE.Vector3(r, g, b)), 'vec3')
 
     this.#glazing = Fn(() => {
-      // the surface's own derivatives, read before the branch: a quad that
-      // straddles two layers takes both sides of it, and a derivative read
-      // inside flow like that is not defined
-      const dpx = dFdx(positionWorld)
-      const dpy = dFdy(positionWorld)
-      const duvx = dFdx(uv())
-      const duvy = dFdy(uv())
-      const spread = fwidth(uv())
+      // how much wall a unit of uv covers here, read off the surface itself
+      // and read before the branch, which is where a derivative has to be taken
+      const frame = surfaceFrame()
+      const spread = frame.spread
 
       const layer = layerIndex()
       const bay = shape.element(layer)
@@ -217,15 +211,12 @@ export class InteriorWindows {
         const at = cell.sub(id)
         const aa = spread.mul(grid).add(1e-5)
 
-        // how many metres a unit of uv covers, straight off the surface, so a
-        // bay is the size it really is however the producer stretched the
-        // picture onto that wall and whichever way round the building is
-        const det = duvx.x.mul(duvy.y).sub(duvx.y.mul(duvy.x))
-        const safe = select(det.greaterThanEqual(0), max(det, 1e-12), min(det, -1e-12))
-        const along = dpx.mul(duvy.y).sub(dpy.mul(duvx.y)).div(safe)
-        const down = dpy.mul(duvx.x).sub(dpx.mul(duvy.x)).div(safe)
-        const wide = along.length().div(bay.x)
-        const tall = down.length().div(bay.y)
+        // a bay is the size it really is however the producer stretched the
+        // picture onto that wall, and whichever way round the building is
+        const along = frame.along
+        const down = frame.down
+        const wide = frame.wide.div(bay.x)
+        const tall = frame.tall.div(bay.y)
 
         // the opening and the mullions across it, cut arithmetically and
         // feathered by how much of the picture one pixel covers: at a distance

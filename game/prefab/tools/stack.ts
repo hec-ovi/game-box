@@ -11,6 +11,12 @@ export interface Stack {
 
 const STOREY = 3.2
 
+/** The board on the parapet storey: how much of that face it takes, and the rows it stands on. */
+const BOARD = { share: 0.78, low: 4, high: 28, least: 3 } as const
+
+/** The banner beside the entrance: the column it starts at, how wide, and the rows it stands on. */
+const BANNER = { left: 3, wide: 12, low: 2, high: 25 } as const
+
 /**
  * The bands one building stands on, chosen so the stack adds up to the exact
  * height `@gb/scene` puts the plot at and every band is a real storey.
@@ -57,6 +63,7 @@ export function verbsFor(look: Look, bucket: Bucket, project: string): string[][
 
   verbs.push(['set-band', 'crown', '--tier', 'light', '--height', metres(stack.crown), '--clutter', '0', ...setback(look)])
   verbs.push(['put', 'door', '--row', '1', '--wide', metres(look.door.wide), '--tall', metres(look.door.tall), '--section', 'ground', '--side', 'S'])
+  verbs.push(...displays(look, bucket, stack))
 
   // a band over the shopfront: clear of the door under it, clear of the corners
   // either side, and left off entirely on a ground floor with no room for it
@@ -88,6 +95,42 @@ export function verbsFor(look: Look, bucket: Bucket, project: string): string[][
   if (look.crown) verbs.push(['crown', 'crown', '--colour', look.crown])
   verbs.push(['build'])
   return verbs
+}
+
+/**
+ * Where a look's lit screens land, in the producer's own 10 cm cells.
+ *
+ * A board goes across the parapet storey, wide and high enough to be read from
+ * the far pavement, which is what every reference puts over a street. A banner
+ * stands beside the entrance at the left margin, clear of the door in the
+ * middle of the face, clear of the fascia band above it and clear of the neon
+ * runs, which sit in the middle third.
+ *
+ * Both are left off where the band they belong on has no room: a one storey
+ * building has a 0.8 m parapet, and a board squeezed into that is a stripe.
+ *
+ * A board is measured against the parapet's own face, not the plot's frontage,
+ * because a look that steps its top storey back off the street has that much
+ * less wall to hang one on.
+ */
+function displays(look: Look, bucket: Bucket, stack: Stack): string[][] {
+  const wants = look.displays ?? []
+  const verbs: string[][] = []
+
+  if (wants.includes('board') && stack.crown >= BOARD.least) {
+    const parapet = Math.round((bucket.front - (look.setback ?? 0) * 2) * 10)
+    const wide = Math.round(parapet * BOARD.share)
+    const left = Math.round((parapet - wide) / 2)
+    verbs.push(panel(left, BOARD.low, left + wide - 1, BOARD.high, 'crown'))
+  }
+  if (wants.includes('banner') && Math.round(stack.ground * 10) - 3 > BANNER.high && Math.round(look.door.tall * 10) + 3 > BANNER.high) {
+    verbs.push(panel(BANNER.left, BANNER.low, BANNER.left + BANNER.wide - 1, BANNER.high, 'ground'))
+  }
+  return verbs
+}
+
+function panel(from: number, low: number, to: number, high: number, section: string): string[] {
+  return ['put', 'panel', `${from},${low}`, `${to},${high}`, '--section', section, '--side', 'S', '--material', 'screen']
 }
 
 /** A lit shop window at street level, which is what a night street is read by. */

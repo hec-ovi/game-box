@@ -1,12 +1,16 @@
 import type { Material } from '@gltf-transform/core'
 import type { EmissiveStrength } from '@gltf-transform/extensions'
 import sharp from 'sharp'
+import { DISPLAY_FINISH } from '../src/screens.ts'
 import { io } from './intake.ts'
 import { COLOUR_SIZE, EMISSIVE_SIZE, GLOW_BAKE, LAYERS } from './layers.ts'
 import { FAMILIES, NEONS, type Family } from './look.ts'
+import { decode, encode, type Tile } from './paint.ts'
+import { housingTile } from './screens.ts'
+import { doorTile } from './walls.ts'
 
-/** One finish's two pictures, before they are stacked into a strip. */
-interface Tile {
+/** One finish's two layers, as the raw pixels a strip is stacked out of. */
+interface Layer {
   readonly colour: Buffer
   readonly emissive: Buffer
 }
@@ -17,7 +21,11 @@ export interface Atlas {
   readonly layers: number
 }
 
-/** The verbs that build one family's swatch: every finish the pack has a layer for, on one model. */
+/**
+ * The verbs that build one family's swatch: every finish the pack takes off the
+ * producer, on one model. The entrance and the screen housing are not among
+ * them; both are drawn in this repo and laid straight into the strip.
+ */
 export function swatchVerbs(project: string): string[][] {
   return [
     ['new', project, '--style', 'cyber', '--width', '12.00', '--depth', '12.00', '--floors', '4'],
@@ -25,7 +33,6 @@ export function swatchVerbs(project: string): string[][] {
     ['set-band', 'body', '--tier', 'flat', '--floors', '1', '--height', '3.20'],
     ['add-band', 'glow', '--kind', 'custom', '--tier', 'flat', '--template', 'bulk-glass', '--floors', '1', '--height', '3.20', '--after', 'body'],
     ['set-band', 'crown', '--tier', 'light', '--height', '3.20', '--clutter', '0'],
-    ['put', 'door', '--row', '1', '--wide', '2.00', '--tall', '2.40', '--section', 'ground', '--side', 'S'],
     ['put', 'panel', '2,26', '117,33', '--section', 'ground', '--side', 'S'],
     ['line', 'ground', '--side', 'S', '--count', '3', '--spacing', '3.00', '--colours', 'teal,magenta,amber', '--thickness', '0.08'],
     ['crown', 'crown', '--colour', 'cyan'],
@@ -41,19 +48,27 @@ export function swatchVerbs(project: string): string[][] {
  * copying in between. Colour and glow are folded in here, in linear light, so
  * the shader is a plain texture fetch and the pack carries exactly what it
  * draws.
+ *
+ * Most finishes come off a swatch the producer built. Two are drawn in this
+ * repo instead: an entrance, which is the surface a player stands closest to,
+ * and the housing a screen sits in, which is a dark field the shader lays the
+ * picture and the lamp grid over.
  */
 export async function buildAtlas(swatches: ReadonlyMap<Family, string>): Promise<Atlas> {
-  const finishes = new Map<string, Tile>()
+  const finishes = new Map<string, Layer>()
   for (const family of FAMILIES) {
     const materials = await materialsOf(swatches.get(family)!)
     finishes.set(`${family}:facade`, await tileOf(materials.get('facade')))
     finishes.set(`${family}:base`, await tileOf(materials.get('base')))
     if (family === FAMILIES[0]) {
-      finishes.set('door', await tileOf(materials.get('door')))
       finishes.set('glass', await tileOf(materials.get('glass-band')))
       for (const neon of NEONS) finishes.set(`neon:${neon}`, await tileOf(materials.get(`neon:${neon}`)))
     }
   }
+  // the two the producer has no picture worth taking: an entrance is drawn here
+  // and a screen is a housing with a picture of its own laid over it
+  finishes.set('door', await drawn(await doorTile()))
+  finishes.set(DISPLAY_FINISH, await drawn(await housingTile(COLOUR_SIZE)))
 
   const missing = LAYERS.filter((name) => !finishes.has(name))
   if (missing.length) throw new Error(`the swatches carry no ${missing.join(', ')}`)
@@ -70,8 +85,18 @@ async function materialsOf(file: string): Promise<Map<string, Material>> {
   return new Map(doc.getRoot().listMaterials().map((material) => [material.getName(), material]))
 }
 
+/** A picture drawn in this repo, taken to the two sizes the pack stores. */
+async function drawn(tile: Tile): Promise<Layer> {
+  return { colour: await raw(tile.colour, COLOUR_SIZE), emissive: await raw(tile.emissive, EMISSIVE_SIZE) }
+}
+
+/** Any image, decoded at the size a layer is stored at. */
+async function raw(image: Uint8Array, size: number): Promise<Buffer> {
+  return await sharp(Buffer.from(image)).resize(size, size, { fit: 'fill', kernel: 'lanczos3' }).ensureAlpha().raw().toBuffer()
+}
+
 /** One finish, taken to the two sizes the pack stores and folded into linear light. */
-async function tileOf(material: Material | undefined): Promise<Tile> {
+async function tileOf(material: Material | undefined): Promise<Layer> {
   if (!material) throw new Error('a swatch is missing a finish the pack needs')
   const strength = material.getExtension<EmissiveStrength>('KHR_materials_emissive_strength')?.getEmissiveStrength() ?? 1
   const base = material.getBaseColorFactor()
@@ -93,9 +118,7 @@ async function tileOf(material: Material | undefined): Promise<Tile> {
  * linear light, which is where glTF says a factor and a picture meet.
  */
 async function paint(image: Uint8Array | null | undefined, size: number, factor: [number, number, number]): Promise<Buffer> {
-  const pixels = image
-    ? await sharp(Buffer.from(image)).resize(size, size, { fit: 'fill', kernel: 'lanczos3' }).ensureAlpha().raw().toBuffer()
-    : Buffer.alloc(size * size * 4, 255)
+  const pixels = image ? await raw(image, size) : Buffer.alloc(size * size * 4, 255)
 
   for (let at = 0; at < pixels.length; at += 4) {
     for (let channel = 0; channel < 3; channel++) {
@@ -114,14 +137,3 @@ async function strip(tiles: readonly Buffer[], size: number): Promise<Buffer> {
     .toBuffer()
 }
 
-/** sRGB byte to linear, and back, clamped. The GPU does the same on the way in. */
-function decode(byte: number): number {
-  const value = byte / 255
-  return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
-}
-
-function encode(linear: number): number {
-  const clamped = Math.min(1, Math.max(0, linear))
-  const value = clamped <= 0.0031308 ? clamped * 12.92 : 1.055 * clamped ** (1 / 2.4) - 0.055
-  return Math.round(value * 255)
-}

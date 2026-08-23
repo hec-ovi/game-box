@@ -17,6 +17,7 @@ export function catalogueOf(over: Partial<CatalogueDoc> = {}): Catalogue {
       colour: { size: 4, layers: 2, sha256: 'b'.repeat(64) },
       emissive: { size: 4, layers: 2, sha256: 'c'.repeat(64) },
       rooms: { size: 4, layers: 2, sha256: 'd'.repeat(64) },
+      screens: { size: 4, layers: 2, sha256: 'e'.repeat(64) },
       finishes: ['a:facade', 'glass'],
     },
     models: [
@@ -48,7 +49,7 @@ export function libraryOf(catalogue: Catalogue): Library {
 
 export function atlasOf(): PrefabAtlas {
   const pixels = () => new THREE.DataArrayTexture(new Uint8Array(4 * 4 * 2 * 4).fill(128), 4, 4, 2)
-  return { colour: pixels(), emissive: pixels(), rooms: pixels(), finishes: ['a:facade', 'glass'] }
+  return { colour: pixels(), emissive: pixels(), rooms: pixels(), screens: pixels(), finishes: ['a:facade', 'glass'] }
 }
 
 export function plotOf(over: Partial<Plot> = {}): Plot {

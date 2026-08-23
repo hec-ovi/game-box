@@ -1,10 +1,10 @@
 import { Rng } from '@gb/kit'
-import sharp from 'sharp'
 import { FACADE, SHOPFRONT, type WindowKind } from '../src/interior.ts'
+import { Picture, png, type Rgb, type Tile } from './paint.ts'
 
 /**
- * The picture a wall wears: the surround a window is cut out of, and nothing
- * else.
+ * The pictures a wall wears: the surround a window is cut out of, and the
+ * entrance in it.
  *
  * The windows themselves are not here. A mullion is three centimetres across
  * and a wall picture is about twenty pixels to the metre, so a drawn one would
@@ -26,8 +26,6 @@ const SIZE = 256
 /** Bays across and floors down each picture holds. What the producer is told, and what the shader reads. */
 export const GRID = { facade: FACADE.grid, shopfront: SHOPFRONT.grid } as const
 
-type Rgb = readonly [number, number, number]
-
 /** What one family is built out of: the panel, the joint in it and the reveal a window sits in. */
 interface Tone {
   readonly panel: Rgb
@@ -48,11 +46,6 @@ const TONES: Record<string, Tone> = {
   b: { panel: [23, 19, 18], joint: [17, 14, 13], reveal: [12, 10, 10], slab: [28, 23, 21] },
   c: { panel: [21, 21, 20], joint: [16, 16, 15], reveal: [12, 12, 12], slab: [27, 27, 25] },
   d: { panel: [15, 18, 21], joint: [11, 13, 16], reveal: [8, 10, 12], slab: [20, 23, 27] },
-}
-
-export interface Tile {
-  readonly colour: Buffer
-  readonly emissive: Buffer
 }
 
 /** One family's wall above the street: piers, spandrels and the reveals between them. */
@@ -106,7 +99,7 @@ async function surface(kind: WindowKind, tone: Tone, seed: string): Promise<Tile
 
   const dark = new Uint8ClampedArray(SIZE * SIZE * 4)
   for (let at = 3; at < dark.length; at += 4) dark[at] = 255
-  return { colour: await png(pixels), emissive: await png(dark) }
+  return { colour: await png(pixels, SIZE), emissive: await png(dark, SIZE) }
 }
 
 function fill(pixels: Uint8ClampedArray, x: number, y: number, wide: number, tall: number, rgb: Rgb, rng: Rng): void {
@@ -133,8 +126,101 @@ function lift(rgb: Rgb, by: number): Rgb {
   return [Math.round(rgb[0] * by), Math.round(rgb[1] * by), Math.round(rgb[2] * by)]
 }
 
-async function png(pixels: Uint8ClampedArray): Promise<Buffer> {
-  return await sharp(Buffer.from(pixels.buffer), { raw: { width: SIZE, height: SIZE, channels: 4 } })
-    .png({ compressionLevel: 9, effort: 10 })
-    .toBuffer()
+/**
+ * The entrance, drawn on the one leaf the producer builds.
+ *
+ * A door is the surface a player stands closest to and, since only about one
+ * building in eight opens, most of them are a door nobody will ever use and
+ * still the nearest thing to the pavement. So it is drawn the way the pier and
+ * the spandrel are: rectangles in shares of the leaf, which the producer
+ * stretches over whatever door the look asked for.
+ *
+ * It is a pair of glazed leaves, and it is symmetric on purpose. A model is
+ * mirrored onto half the plots in the city and a single leaf with its handle on
+ * one side would swap hands with the building; a meeting stile down the middle
+ * with a pull either side reads the same both ways round. The whole set of
+ * doors the looks ask for runs 1.4 m to 2.6 m wide, and a pair covers that
+ * range where one leaf would look like a cupboard at the top of it.
+ *
+ * The left twenty-fifth of the picture is the strip the producer wraps round
+ * the reveals of the plate, so the frame is drawn wider than that and the
+ * reveals come out frame-coloured rather than carrying a slice of glass.
+ */
+const DOOR = {
+  /** The frame all round, wider than the 0.04 the reveals wear. */
+  frame: 0.055,
+  /** The lit fanlight over the leaves. */
+  transom: 0.215,
+  /** Half the meeting stile, either side of the middle. */
+  meeting: 0.013,
+  /** The upright at the outer edge of each leaf. */
+  stile: 0.05,
+  glass: { top: 0.265, low: 0.715 },
+  rail: { top: 0.715, low: 0.775 },
+  kick: { top: 0.885, low: 0.945 },
+  sill: 0.955,
+  /** The pull: how far in from the meeting stile, how wide, and how far down the leaf it runs. */
+  pull: { off: 0.045, wide: 0.016, top: 0.44, low: 0.63 },
+  /** The entry panel on the frame: a reader and its three lit marks. */
+  call: { x0: 0.062, x1: 0.128, y0: 0.34, y1: 0.47 },
+} as const
+
+const DOOR_TONES = {
+  frame: [30, 32, 36],
+  leaf: [23, 25, 29],
+  meeting: [14, 15, 18],
+  glassTop: [10, 16, 19],
+  glassLow: [24, 37, 41],
+  rail: [38, 41, 45],
+  kick: [44, 47, 51],
+  sill: [52, 54, 58],
+  pull: [126, 134, 142],
+  reader: [17, 18, 21],
+} as const satisfies Record<string, Rgb>
+
+/** What burns on a door after dark: the lobby behind the glass, the light under it and the reader. */
+const DOOR_GLOW = { transom: 0.1, lobby: 0.22, threshold: 0.32, reader: 1.2 } as const
+
+/** Warm inside, cool on the reader: a lobby is tungsten and a card reader is not. */
+const LOBBY: Rgb = [255, 219, 170]
+const READER: Rgb = [140, 240, 255]
+
+export async function doorTile(): Promise<Tile> {
+  const picture = new Picture(SIZE, 'door')
+  const middle = 0.5
+
+  picture.paint({ x0: 0, y0: 0, x1: 1, y1: 1 }, { colour: DOOR_TONES.frame, grain: 1.6 })
+  picture.paint(
+    { x0: DOOR.frame, y0: DOOR.frame, x1: 1 - DOOR.frame, y1: DOOR.transom },
+    { colour: DOOR_TONES.glassTop, to: DOOR_TONES.glassLow, glow: DOOR_GLOW.transom * 0.7, glowTo: DOOR_GLOW.transom, tint: LOBBY },
+  )
+  picture.paint({ x0: DOOR.frame, y0: DOOR.transom, x1: 1 - DOOR.frame, y1: 1 - DOOR.frame }, { colour: DOOR_TONES.leaf, grain: 1.2 })
+
+  for (const leaf of [
+    { x0: DOOR.frame + DOOR.stile, x1: middle - DOOR.meeting - DOOR.stile * 0.6 },
+    { x0: middle + DOOR.meeting + DOOR.stile * 0.6, x1: 1 - DOOR.frame - DOOR.stile },
+  ]) {
+    picture.paint(
+      { ...leaf, y0: DOOR.glass.top, y1: DOOR.glass.low },
+      { colour: DOOR_TONES.glassTop, to: DOOR_TONES.glassLow, glow: 0, glowTo: DOOR_GLOW.lobby, tint: LOBBY },
+    )
+    picture.paint({ ...leaf, y0: DOOR.rail.top, y1: DOOR.rail.low }, { colour: DOOR_TONES.rail, grain: 1 })
+    picture.paint({ ...leaf, y0: DOOR.kick.top, y1: DOOR.kick.low }, { colour: DOOR_TONES.kick, grain: 1.4 })
+  }
+
+  picture.paint({ x0: middle - DOOR.meeting, y0: DOOR.transom, x1: middle + DOOR.meeting, y1: 1 - DOOR.frame }, { colour: DOOR_TONES.meeting })
+  for (const side of [-1, 1]) {
+    const near = middle + side * (DOOR.meeting + DOOR.pull.off)
+    const far = near + side * DOOR.pull.wide
+    picture.paint({ x0: Math.min(near, far), y0: DOOR.pull.top, x1: Math.max(near, far), y1: DOOR.pull.low }, { colour: DOOR_TONES.pull, grain: 3 })
+  }
+
+  picture.paint({ x0: DOOR.frame, y0: DOOR.sill, x1: 1 - DOOR.frame, y1: 1 }, { colour: DOOR_TONES.sill, glow: DOOR_GLOW.threshold, tint: LOBBY })
+  picture.paint(DOOR.call, { colour: DOOR_TONES.reader })
+  for (let mark = 0; mark < 3; mark++) {
+    const y = DOOR.call.y0 + 0.022 + mark * 0.032
+    picture.paint({ x0: DOOR.call.x0 + 0.014, y0: y, x1: DOOR.call.x1 - 0.014, y1: y + 0.012 }, { colour: DOOR_TONES.reader, glow: DOOR_GLOW.reader, tint: READER })
+  }
+
+  return await picture.tile()
 }

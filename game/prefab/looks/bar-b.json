@@ -1,7 +1,7 @@
 {
   "id": "bar-b",
   "family": "b",
-  "note": "a narrow lit front, amber the whole way up, with the top storey glazed",
+  "note": "a narrow lit front, amber the whole way up, a lit banner by the door and the top storey glazed",
   "kinds": [
     "bar",
     "restaurant",
@@ -23,5 +23,8 @@
     "colour": "amber",
     "thickness": 0.1
   },
+  "displays": [
+    "banner"
+  ],
   "crown": "amber"
 }
