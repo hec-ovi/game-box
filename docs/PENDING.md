@@ -9,17 +9,20 @@ Everything known to be unfinished, by box. Delete a line when it is done.
 | Stars paint over walls, cars and people | `land` | `transparent: true` puts them in the transparent pass, drawn after all opaque geometry, and `depthTest: false` makes them ignore what is in front. Same cause for the moon. |
 | The moon is a plain white ball | `land` | `MeshBasicMaterial` at `0xdde5f2`, no texture, no glow, 12x8 sphere. |
 | A pavement strip runs down open ground with no road beside it | `forge` or `scene`, to be pinned | Sidewalk cells laid where nothing adjoins them. |
-| Furniture has no collision indoors | `scene` publishes footprints, `app` consumes | Sizes live in `forge/src/interior/props.ts`, private, so `app` cannot reach them and a copy would drift from what is drawn. |
-| Interior wall textures scaled far too large | `furnish` | Tile density is not tied to metres, so one tile covers most of a wall. |
-| Too many cars and too many people on screen | `crowd`, `traffic` | Density is set inside each box; no parameter reaches them from the app. |
+| An NPC in front of you still crowds your step | `crowd` | Personal space is tighter now, but walkers do not steer around the player: the crowd is fed cars as hazards and never the player. |
 | NPC clothing is medieval | `cast` | The only clothing we ship is Quaternius Modular Character Outfits **Fantasy**: Peasant and Ranger, two genders. |
+
+## Traps found, worth knowing
+
+- **`material.onBeforeCompile` does nothing under `WebGPURenderer`**, on either backend. It fails silently, so a material looks untouched rather than broken. Use `contextNode` with TSL instead. Only `furnish` had it; it is fixed.
+- **The root `.gitignore` `build/` rule swallows any `src/build/` folder.** It had kept part of `kitbash` out of the repo entirely. Anchoring `/build/`, `/dist/` and `/target/` at the root is the general fix and nobody owns it yet.
+- **`@gb/kit`'s `Rng.int(min, max)` is half-open** and the contract does not say so. One word would save the next caller an off-by-one.
 
 ## Features asked for, not started
 
 | What | Box | Note |
 |---|---|---|
-| Road markings, kerb detail, street dressing | `scene` | The "yellow things". Crossings, lane lines, stop bars. |
-| Lit windows at night, street lamp glow in one draw | `kitbash` | In progress. |
+| Interior surfaces should carry metre UVs | `scene` | Ground meshes already do; interiors get 0-to-1 planes, which is why furnish needs a shader rule at all. `Dressing.surface(part)` passes no size. |
 | Theme-appropriate props indoors | `furnish` | Fantasy Props MegaKit and Dungeon Pack are wrong for a modern city. |
 | NPC daily routines | `crowd` | People go somewhere for a reason at a given hour. |
 | Head turns to the player on click | `cast` | Asked for early; lip sync and gestures after. |
@@ -34,6 +37,10 @@ Everything known to be unfinished, by box. Delete a line when it is done.
 - **Per-draw cost is the budget, not draw count.** SynthCity holds thousands of draws because each is one mesh, one shared material, ~400 triangles. Our GLB buildings are 13 to 18 meshes and 11 to 15 materials each, which is the thing to fix. `join()` and `palette()` from gltf-transform collapse a building to one mesh and one material at build time; both are already installed.
 - **Fog carries the horizon.** SynthCity's far plane is 1000 with fog eating the rest. Its aerial scale is out of reach for us and does not need to be matched.
 - **No CC0 modern wardrobe exists on our rig.** 24 candidates checked, zero usable: every pack is either a different skeleton (62 joints against our 65, incompatible spine and finger topology), a fused mesh with clothing painted on, or not redistributable. The fallback is to cut the fantasy hardware off the four outfits we own and repaint the atlases.
+
+## Decided, not built
+
+- **AI buildings**: the full costed plan is in [PLAN-buildings.md](PLAN-buildings.md). Twelve looks authored offline, replayed into ~48 models, one packed `buildings.glb`, three fields per plot in the world file. Step zero is a five-minute measurement of material slots per building, because every draw-call figure rests on it.
 
 ## Blocked or waiting
 
