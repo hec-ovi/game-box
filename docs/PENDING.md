@@ -21,7 +21,6 @@ Concretely, in order:
 | What | Box | Diagnosis |
 |---|---|---|
 | A pavement strip runs down open ground with no road beside it | `forge` or `scene`, to be pinned | Sidewalk cells laid where nothing adjoins them. |
-| Sky has a hole toward the box corners, worse the further you walk out | `land` | The dome is a box pinned to the town centre; its corners sit at 1.73x radius against a far plane of 1.2x. In progress. |
 | An NPC in front of you still crowds your step | `crowd` | Personal space is tighter now, but walkers do not steer around the player: the crowd is fed cars as hazards and never the player. |
 | NPC clothing is medieval | `cast` | The only clothing we ship is Quaternius Modular Character Outfits **Fantasy**: Peasant and Ranger, two genders. |
 
@@ -31,6 +30,7 @@ Concretely, in order:
 - **The root `.gitignore` `build/` rule swallows any `src/build/` folder.** It had kept part of `kitbash` out of the repo entirely. Anchoring `/build/`, `/dist/` and `/target/` at the root is the general fix and nobody owns it yet.
 - **New files written by an agent do not get committed** if it is told to stage explicit paths. Seventeen source files across cast, play and traffic were left untracked and a fresh clone could not build. Brief agents to run `git status --untracked-files=all` before finishing.
 - **`THREE.Points` draws as single device pixels on a real WebGPU adapter.** r185 maps `Points` to `point-list` topology, which has no point size. Fine on the WebGL2 fallback this machine uses, so the stars are only at risk if we ever run on true WebGPU; the cure is `Points2` / `InstancedPointsNodeMaterial`.
+- **A far plane does not buy depth precision.** Resolution at distance is `(d^2/n)(1 - n/f)/2^bits`; once far is much larger than near, moving far changes almost nothing. The near plane is the lever.
 - **`@gb/kit`'s `Rng.int(min, max)` is half-open** and the contract does not say so. One word would save the next caller an off-by-one.
 
 ## Features asked for, not started
