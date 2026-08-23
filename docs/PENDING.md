@@ -491,6 +491,34 @@ What to check, in order:
 Boxes: `kitbash` owns the sign and its words, `prefab` owns the facade and its
 cell claiming. The fix likely belongs where the claiming already works.
 
+### Interiors seen from the street: too deep, and too few (2026-08-23, his read)
+
+Two reports and he connected them, plausibly: "generate more variety of places
+the assets i mean, the interiors, and they are too distant the inside, so maybe
+if we fix that, we also fix that repeated wall issue".
+
+**Check the depth first, because it may be the whole thing.** A room behind glass
+is parallax raymarched into a box, and the box's depth decides whether a room
+reads as near or far. Set too deep, every window looks down a tunnel: you see
+less of the room's own picture and more of the same dark side walls, which makes
+fourteen distinct rooms read as one repeated wall. That is exactly the pair of
+symptoms he describes, from one number.
+
+So: measure what the depth is against what a room actually is (a 3 to 5 m deep
+shop floor, not a corridor), fix it, and **then** judge whether variety is still
+short. Generating more rooms first would be paying for pictures that the depth is
+hiding.
+
+If variety is still short after that, it is cheap: the pack went 12 rooms to 14
+today and `draw-rooms` now takes whatever raw images it is pointed at, so one new
+room lands alone. Each is 0.35 MB against a 200 to 300 MB ceiling at 72 MB, and
+`docs/textures/IMAGES.md` has the working prompt and the two corrections that
+matter (the "straight through its window" clause makes the model draw a window
+frame around the room; use "camera perpendicular to the far wall so the room
+fills the whole frame edge to edge").
+
+Box: `prefab`.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
