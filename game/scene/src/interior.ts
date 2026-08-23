@@ -1,9 +1,11 @@
 import { METRICS, type AnchorKind, type Interior, type World } from '@gb/world'
 import * as THREE from 'three'
+import { blockersOf } from './blockers.ts'
+import { DOOR_GAP } from './doorway.ts'
 import type { Dressing } from './dressing.ts'
+import type { PropFootprint } from './footprint.ts'
 
 const CEILING_HEIGHT = METRICS.building.groundFloorHeight
-const DOOR_GAP = METRICS.building.doorWidth + 0.2
 
 /**
  * A stored heading as a three.js yaw. The world writes compass degrees, 0
@@ -25,6 +27,8 @@ export interface InteriorBuild {
   readonly people: ReadonlyMap<string, THREE.Object3D>
   /** What is lying about in here, by item id. */
   readonly pickups: ReadonlyMap<string, THREE.Object3D>
+  /** The furniture the player cannot walk through, as rectangles on the floor in these same coordinates. */
+  readonly blockers: readonly PropFootprint[]
   /** Where the player appears when they come in, and where they leave from. */
   readonly entrance: THREE.Vector3
   /** The way into the room from that door, so entering faces the room. */
@@ -110,7 +114,7 @@ export function buildInterior(world: World, interior: Interior, dressing: Dressi
   inward.y = 0
   inward.normalize()
 
-  return { root, anchors, props, people, pickups, entrance, inward }
+  return { root, anchors, props, people, pickups, blockers: blockersOf(interior, props), entrance, inward }
 }
 
 /** Four walls around a room, split wherever a door sits on them. */

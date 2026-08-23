@@ -1,7 +1,8 @@
-import { cellCentre, FACINGS, World, type Anchor, type Facing, type Furniture, type Interior, type Npc, type Plot } from '@gb/world'
+import { FACINGS, World, type Anchor, type Facing, type Furniture, type Npc, type Plot } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { buildCity, buildInterior, Greybox } from '../src/index.ts'
+import { bar } from './bar.ts'
 
 /** The compass the world stores headings in: 0 north, 90 east, clockwise seen from above. */
 const COMPASS = [
@@ -29,42 +30,6 @@ function frontOf(object: THREE.Object3D): THREE.Vector3 {
   return new THREE.Vector3(0, 0, -1).applyQuaternion(object.getWorldQuaternion(new THREE.Quaternion()))
 }
 
-function bar(plotId: string, furniture: Furniture[], anchors: Anchor[]): Interior {
-  return {
-    id: 'interior_1',
-    plotId,
-    kind: 'bar',
-    size: { w: 8, h: 8 },
-    rooms: [{ id: 'room_1', kind: 'main', name: 'Bar', rect: { x: 0, y: 0, w: 8, h: 8 } }],
-    doors: [{ id: 'door_1', from: 'outside', to: 'room_1', pos: { x: 4, y: 0 }, rot: 180, locked: false }],
-    furniture,
-    anchors,
-  }
-}
-
-/** A world with one bar in it, and whatever is standing about inside. */
-function town(furniture: Furniture[], anchors: Anchor[], npcs: Npc[] = []): { world: World; interior: Interior } {
-  const world = World.create({ name: 'Facing', theme: 'test', seed: 'facing', width: 12, height: 12 })
-  const plot = world.addPlot({
-    kind: 'bar',
-    name: 'The Anchor',
-    rect: { x: 4, y: 4, w: 3, h: 3 },
-    entrance: { cell: { x: 5, y: 3 }, facing: 'north' },
-    storeys: 1,
-    style: 'plain',
-  })
-  if (!plot.ok) throw new Error(plot.error.code)
-
-  const interior = bar(plot.value.id, furniture, anchors)
-  const added = world.addInterior(interior)
-  if (!added.ok) throw new Error(added.error.code)
-  for (const npc of npcs) {
-    const put = world.addNpc(npc)
-    if (!put.ok) throw new Error(put.error.code)
-  }
-  return { world, interior }
-}
-
 /** One plot in the middle of town, its door on the side named, and the pavement cell in front of it. */
 function plotFacing(facing: Facing): { world: World; plot: Plot } {
   const world = World.create({ name: 'Facing', theme: 'test', seed: facing, width: 12, height: 12 })
@@ -87,7 +52,7 @@ describe('which way things point', () => {
       pos: { x: 2 + index, y: 4 },
       rot: point.heading,
     }))
-    const { world, interior } = town(furniture, [])
+    const { world, interior } = bar(furniture, [])
     const build = buildInterior(world, interior, new Greybox())
 
     for (const [index, point] of COMPASS.entries()) {
@@ -104,7 +69,7 @@ describe('which way things point', () => {
       pos: { x: 2 + index, y: 4 },
       rot: point.heading,
     }))
-    const { world, interior } = town([], anchors)
+    const { world, interior } = bar([], anchors)
     const build = buildInterior(world, interior, new Greybox())
 
     for (const [index, point] of COMPASS.entries()) {
@@ -126,7 +91,7 @@ describe('which way things point', () => {
       personality: 'Pours and listens.',
       knowledge: [],
     }
-    const { world, interior } = town([counter], [serving], [bartender])
+    const { world, interior } = bar([counter], [serving], [bartender])
     const build = buildInterior(world, interior, new Greybox())
 
     const toCounter = new THREE.Vector3(counter.pos.x - serving.pos.x, 0, counter.pos.y - serving.pos.y).normalize()

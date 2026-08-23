@@ -1,20 +1,8 @@
-import { Forge, OfflineNarrator } from '@gb/forge'
-import { METRICS, type World } from '@gb/world'
+import { METRICS } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { buildCity, buildInterior, Greybox, storeyHeight } from '../src/index.ts'
-
-async function town(): Promise<World> {
-  const built = await new Forge(new OfflineNarrator('scene')).build({
-    theme: 'quiet coastal town',
-    seed: 'scene',
-    blocksX: 1,
-    blocksY: 1,
-    blockCells: 14,
-  })
-  if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 400))
-  return built.value.world
-}
+import { town } from './town.ts'
 
 function boundsOf(object: THREE.Object3D): THREE.Box3 {
   return new THREE.Box3().setFromObject(object)
