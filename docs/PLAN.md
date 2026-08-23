@@ -45,7 +45,7 @@ Two more numbers that make every city read the same at street level. At the defa
 | 11 | `nav` | done, 56 s to 13 ms |
 | 15 | `scribe` | running |
 | 16 | `sidecar` | done, `f82e6a6` |
-| 17 | `talk` | running |
+| 17 | `talk` | done, `0822ed7` |
 | shadows | `land` | running |
 | cars | `traffic` | running |
 | 4 | `forge` | running |
