@@ -401,6 +401,38 @@ On 4, the parts exist: `@gb/quest`'s journal carries `kind` per quest and each
 step's target, and `@gb/app` already resolves a step to a doorstep for the guide
 and the arrow. So the map is reading less than the game already knows.
 
+### Night arrives in one step (2026-08-23, found by him, twice)
+
+"night happens all at once, very aggressive". He reported the same thing earlier
+as "the sky moves by snaps", so this is confirmed rather than a first sighting.
+
+**The cause is that the sky is updated on the hour turn, not continuously.**
+That is the same code path as the freeze: `Stage.reflect` refilters and the light
+is reset when the hour changes, so the whole world's lighting moves in one-hour
+jumps. Between jumps nothing changes at all.
+
+**Slowing the clock today makes this more visible, not less.** The jumps are the
+same size; they are now two and a half real minutes apart instead of fifteen
+seconds, so each one reads as a light switch rather than as a flicker. That is a
+consequence of the clock change and it is on me to say so.
+
+The fix is to make the light continuous and keep the expensive part occasional:
+
+- **Sun and moon direction, colour and intensity should move every frame**, off
+  the fractional hour rather than the whole one. That is arithmetic and costs
+  nothing.
+- **The environment prefilter can stay occasional.** It is 1.4 ms and it is the
+  part that must not run per frame. `scene.environmentIntensity` and
+  `scene.environmentRotation` are cheap and can carry the drift between filters,
+  which is what they are for.
+- Check what else is stepped on the hour: lamps coming on, window lights, the
+  street's wetness and night factors, the crowd's day and night behaviour. If
+  any of those switch on the same edge, they all snap together and that is why
+  it reads as aggressive rather than as dusk.
+
+Boxes: `app` (the stage and the clock wiring), `land` (sun, moon, sky), possibly
+`scene` and `kitbash` for anything else keyed to the hour.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
