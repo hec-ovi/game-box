@@ -9,6 +9,7 @@ import { errorBody } from './api/errors.ts'
 import { health } from './api/health.ts'
 import { RealtimeSession } from './api/realtime.ts'
 import { readBody } from './http/body.ts'
+import { corsHeaders, type Headers } from './http/cors.ts'
 import { openStream, send } from './http/sse.ts'
 import { Connection } from './ws/connection.ts'
 import { accept } from './ws/handshake.ts'
@@ -39,28 +40,36 @@ export function listen(port: number, host = '127.0.0.1'): Promise<{ server: Serv
 
 async function route(request: IncomingMessage, response: ServerResponse): Promise<void> {
   const path = pathOf(request.url)
+  const cors = corsHeaders(request.headers.origin)
+
+  // the browser asks before it sends; answer it here rather than in every route
+  if (request.method === 'OPTIONS') {
+    response.writeHead(204, { ...cors, 'content-length': 0 })
+    return response.end()
+  }
+
   if (path === HEALTH_PATH) {
-    if (request.method !== 'GET') return refuse(response, 405, 'method not allowed')
-    return json(response, 200, health())
+    if (request.method !== 'GET') return refuse(response, 405, 'method not allowed', cors)
+    return json(response, 200, health(), cors)
   }
   if (path === CHAT_PATH) {
-    if (request.method !== 'POST') return refuse(response, 405, 'method not allowed')
-    return completions(request, response)
+    if (request.method !== 'POST') return refuse(response, 405, 'method not allowed', cors)
+    return completions(request, response, cors)
   }
   if (path === REALTIME_PATH) {
-    return refuse(response, 400, 'this endpoint is a websocket: send an upgrade request')
+    return refuse(response, 400, 'this endpoint is a websocket: send an upgrade request', cors)
   }
-  return refuse(response, 404, `no such endpoint: ${path}`)
+  return refuse(response, 404, `no such endpoint: ${path}`, cors)
 }
 
-async function completions(request: IncomingMessage, response: ServerResponse): Promise<void> {
+async function completions(request: IncomingMessage, response: ServerResponse, cors: Headers): Promise<void> {
   const body = await readBody(request)
-  if (!body.ok) return refuse(response, 413, 'request body is too large')
+  if (!body.ok) return refuse(response, 413, 'request body is too large', cors)
 
   const result = await chat(body.value)
-  if (result.kind === 'json') return json(response, result.status, result.body)
+  if (result.kind === 'json') return json(response, result.status, result.body, cors)
 
-  openStream(response)
+  openStream(response, cors)
   for await (const chunk of result.chunks) {
     if (response.destroyed) return
     await send(response, JSON.stringify(chunk))
@@ -89,15 +98,16 @@ function pathOf(url: string | undefined): string {
   return query === -1 ? raw : raw.slice(0, query)
 }
 
-function json(response: ServerResponse, status: number, body: unknown): void {
+function json(response: ServerResponse, status: number, body: unknown, cors: Headers = {}): void {
   const payload = JSON.stringify(body)
   response.writeHead(status, {
+    ...cors,
     'content-type': 'application/json',
     'content-length': Buffer.byteLength(payload),
   })
   response.end(payload)
 }
 
-function refuse(response: ServerResponse, status: number, message: string): void {
-  json(response, status, errorBody(message, status >= 500 ? 'server_error' : 'invalid_request_error'))
+function refuse(response: ServerResponse, status: number, message: string, cors: Headers = {}): void {
+  json(response, status, errorBody(message, status >= 500 ? 'server_error' : 'invalid_request_error'), cors)
 }

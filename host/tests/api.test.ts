@@ -185,3 +185,28 @@ describe('/v1/realtime', () => {
     socket.close()
   })
 })
+
+describe('a browser calling from the game page', () => {
+  it('is allowed through the preflight and on the answer', async () => {
+    const origin = 'http://localhost:5180'
+
+    const preflight = await fetch(`${host.base}/v1/chat/completions`, {
+      method: 'OPTIONS',
+      headers: { origin, 'access-control-request-method': 'POST' },
+    })
+    assert.equal(preflight.status, 204)
+    assert.equal(preflight.headers.get('access-control-allow-origin'), origin)
+    assert.match(preflight.headers.get('access-control-allow-methods') ?? '', /POST/)
+    assert.match(preflight.headers.get('access-control-allow-headers') ?? '', /content-type/)
+
+    const answered = await fetch(`${host.base}/health`, { headers: { origin } })
+    assert.equal(answered.headers.get('access-control-allow-origin'), origin)
+    assert.equal(answered.headers.get('vary'), 'origin')
+  })
+
+  it('does not answer a page from the open internet', async () => {
+    const answered = await fetch(`${host.base}/health`, { headers: { origin: 'https://example.com' } })
+    assert.equal(answered.status, 200)
+    assert.equal(answered.headers.get('access-control-allow-origin'), null)
+  })
+})

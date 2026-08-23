@@ -2,8 +2,9 @@ import { once } from 'node:events'
 import type { ServerResponse } from 'node:http'
 
 /** Server-sent events: one `data:` line per payload, then a blank line. */
-export function openStream(response: ServerResponse): void {
+export function openStream(response: ServerResponse, headers: Record<string, string> = {}): void {
   response.writeHead(200, {
+    ...headers,
     'content-type': 'text/event-stream',
     'cache-control': 'no-cache',
     connection: 'keep-alive',
