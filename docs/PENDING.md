@@ -551,6 +551,42 @@ Worth checking before deciding this is an interior bug.
 Boxes: `furnish` for the probe, `app` and `scene` for the fill, `kitbash` if it
 becomes real lights.
 
+### Daylight is flat and cartoonish (2026-08-23, `daylight_cartoonish.png`)
+
+Night reads well; day does not. In the shot: pale grey-blue everywhere, no
+shadows on the pavement, buildings and ground at nearly the same value, the
+generated facade pictures not reading at all, and the kit's pale brick beside
+them. It looks untextured and unlit.
+
+**The cause is almost certainly that everything was tuned for night.**
+`docs/LOOK.md` is a night document, every material decision this project has
+made was judged under neon, and the facade sampler divides each picture by its
+own mean and multiplies in linear against a near-black target. Point that at a
+daylit sky and the differences compress to one value, which is exactly what the
+shot shows.
+
+What to check, in order:
+
+1. **Is the sun casting at all?** No shadow is visible anywhere. The shadow map
+   was enabled and measured at 2.49 ms, so it exists; whether it is on in
+   daylight, and whether the sun has any intensity above the horizon, is the
+   first question and the cheapest.
+2. **The grade and exposure.** There is a cold night grade. Is there a day one,
+   or does the night grade run all the time? A grade built for neon on black
+   will flatten a lit scene.
+3. **The facade contrast.** Those walls should be showing the generated
+   cladding. If the divide-by-mean normalisation is calibrated for a dark target,
+   daylight may be pushing the result past where the grain survives.
+4. **Whether day is worth having at all.** Honest question rather than a
+   rhetorical one: the game is cyberpunk at night, the whole asset set is built
+   for it, and the clock passes through noon every real hour. Either day gets its
+   own treatment, or the day-night range gets narrowed so the city stays in the
+   hours it was designed for. Deciding that first would save tuning something
+   nobody should see.
+
+Boxes: `app` for the grade and exposure, `land` for the sun and sky, `prefab`
+for how the facades hold up under it.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
