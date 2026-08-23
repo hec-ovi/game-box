@@ -1,5 +1,4 @@
 import * as THREE from 'three'
-import { FURNITURE, FURNITURE_IDS, LAMP_LENS, LAMP_POST, type FurnitureId } from '../catalog/furniture.ts'
 import { PIECES, PIECE_IDS, type PieceId } from '../catalog/pieces.ts'
 import { canonical } from './geometry.ts'
 import { DEFAULT_THEME, KitLibrary, type KitPart } from './library.ts'
@@ -16,12 +15,7 @@ const COLOURS: Record<string, number> = {
   MI_FakeInterior: 0x2a2724,
   MI_Glass: 0x35505c,
   MI_Asphalt: 0x3a3a3e,
-  [LAMP_POST]: 0x24352a,
-  [LAMP_LENS]: 0xffb84a,
 }
-
-/** How much of a lamp's height the lantern takes, in the stand-in. */
-const LANTERN = 0.55
 
 /**
  * The catalog as plain boxes at the measured sizes. It is what the tests build
@@ -29,7 +23,7 @@ const LANTERN = 0.55
  * the same composition, the same footprint, no art.
  */
 export function placeholderKit(theme = DEFAULT_THEME): KitLibrary {
-  const parts = new Map<PieceId | FurnitureId, KitPart[]>()
+  const parts = new Map<PieceId, KitPart[]>()
   const materials = new Map<string, THREE.Material>()
   const material = (name: string): THREE.Material => {
     let found = materials.get(name)
@@ -46,19 +40,6 @@ export function placeholderKit(theme = DEFAULT_THEME): KitLibrary {
       return { material: name, geometry: boxOf(PIECES[id]) }
     }))
   }
-  // the lamp stands in as a post with a lantern on top of it, so the stand-in
-  // glows at the height the real one does
-  for (const id of FURNITURE_IDS) {
-    const { min, max } = FURNITURE[id]
-    const [shaft, sill] = [max[0] * 0.35, max[1] - LANTERN]
-    parts.set(id, [
-      { material: LAMP_POST, geometry: boxOf({ min: [-shaft, 0, -shaft], max: [shaft, sill, shaft] }) },
-      { material: LAMP_LENS, geometry: boxOf({ min: [min[0], sill, min[2]], max: [max[0], max[1], max[2]] }) },
-    ])
-    material(LAMP_POST)
-    material(LAMP_LENS)
-  }
-
   return new KitLibrary(parts, materials, undefined, theme)
 }
 

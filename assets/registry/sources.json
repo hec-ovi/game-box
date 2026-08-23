@@ -79,17 +79,6 @@
       "take": "The traffic and the car the player drives."
     },
     {
-      "id": "quaternius-street",
-      "name": "Low Poly Modular Street",
-      "author": "Quaternius",
-      "page": "https://quaternius.itch.io/lowpoly-modular-street",
-      "file": null,
-      "license": "CC0-1.0",
-      "attribution": null,
-      "redistributable": true,
-      "take": "Road pieces, kerbs, crossings, street furniture."
-    },
-    {
       "id": "glb-buildings",
       "name": "glb-buildings",
       "author": "Hector Oviedo",

@@ -1,4 +1,3 @@
-import { LAMP_LENS, LAMP_POST } from '../catalog/furniture.ts'
 import { FAKE_INTERIOR, GLASS } from '../catalog/pieces.ts'
 import type { Flavour } from './flavour.ts'
 
@@ -26,8 +25,8 @@ export interface Tone {
   readonly sheen: number
 }
 
-/** Materials that are somebody else's: the window shader, the lamp, the plane behind the glass. */
-export const UNTONED: readonly string[] = [GLASS, FAKE_INTERIOR, LAMP_POST, LAMP_LENS]
+/** Materials that are somebody else's: the window shader and the plane behind the glass. */
+export const UNTONED: readonly string[] = [GLASS, FAKE_INTERIOR]
 
 const tone = (brick: number, pale: number, trim: number, dark: number, green: number, concrete: number, inside: number, asphalt: number, grime: number, sheen: number): Tone => ({
   tint: {

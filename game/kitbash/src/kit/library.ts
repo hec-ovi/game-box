@@ -1,5 +1,4 @@
 import * as THREE from 'three'
-import type { FurnitureId } from '../catalog/furniture.ts'
 import { GLASS, PIECES, type PieceId } from '../catalog/pieces.ts'
 import type { GroundLibrary } from '../ground/library.ts'
 import { flavourOf } from '../look/flavour.ts'
@@ -45,7 +44,7 @@ export class KitLibrary {
   readonly #atlas: THREE.DataTexture
   readonly #sign: THREE.Material
 
-  constructor(parts: Map<PieceId | FurnitureId, KitPart[]>, materials: Map<string, THREE.Material>, ground?: GroundLibrary, theme = DEFAULT_THEME) {
+  constructor(parts: Map<PieceId, KitPart[]>, materials: Map<string, THREE.Material>, ground?: GroundLibrary, theme = DEFAULT_THEME) {
     this.#parts = parts
     this.#raw = materials
     this.#grime = grimeTexture()
@@ -61,13 +60,8 @@ export class KitLibrary {
     return (Object.keys(PIECES) as PieceId[]).filter((id) => !parts.has(id))
   }
 
-  parts(piece: PieceId | FurnitureId): readonly KitPart[] {
+  parts(piece: PieceId): readonly KitPart[] {
     return this.#parts.get(piece) ?? []
-  }
-
-  /** Whether the pack carries a piece of street furniture. Without it, none of them is drawn. */
-  has(piece: FurnitureId): boolean {
-    return (this.#parts.get(piece)?.length ?? 0) > 0
   }
 
   material(name: string): THREE.Material {

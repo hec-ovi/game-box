@@ -4,7 +4,7 @@ import { cellCentre, type World } from '@gb/world'
 export interface LampSpot {
   readonly x: number
   readonly z: number
-  /** Radians about +Y: the lamp's back is to the buildings. */
+  /** Radians about +Y. A lamp is drawn with its arm reaching +Z, and this turns +Z onto the road. */
   readonly rotationY: number
 }
 

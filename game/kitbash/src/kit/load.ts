@@ -1,5 +1,4 @@
 import * as THREE from 'three'
-import { FURNITURE_IDS, type FurnitureId } from '../catalog/furniture.ts'
 import { nodeNamesOf, PIECE_IDS, type PieceId } from '../catalog/pieces.ts'
 import { loadGround } from '../ground/load.ts'
 import { flavourOf } from '../look/flavour.ts'
@@ -27,10 +26,10 @@ import { DEFAULT_THEME, KitLibrary, type KitPart } from './library.ts'
 export function loadKit(scenes: THREE.Object3D | readonly THREE.Object3D[], theme = DEFAULT_THEME): KitLibrary {
   const roots = Array.isArray(scenes) ? scenes : [scenes as THREE.Object3D]
   for (const root of roots) root.updateMatrixWorld(true)
-  const parts = new Map<PieceId | FurnitureId, KitPart[]>()
+  const parts = new Map<PieceId, KitPart[]>()
   const materials = new Map<string, THREE.Material>()
 
-  for (const id of [...PIECE_IDS, ...FURNITURE_IDS]) {
+  for (const id of PIECE_IDS) {
     const node = find(roots, nodeNamesOf(id))
     if (!node) continue
     const found: KitPart[] = []
