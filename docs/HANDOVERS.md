@@ -101,6 +101,18 @@ each, one shared material, no draw added.
 |---|---|---|---|---|
 | 58 | Every pickup is placed at a constant y = 0.9 whatever it stands on | furnish | scene | `buildInterior`. In a generated bar an item on a `serve` anchor at a `bar-counter` (customer rail 1.10) lands 20 cm **inside** the counter; one on a `sit-drink` anchor at a stool (0.75) floats 15 cm. Every item's lowest triangle is now at zero and `FurnishLibrary.contact(prop)` publishes each piece's drawn top, so the height is there to be read |
 
+## From the journal and the greeting
+
+`@gb/quest` publishes `QuestLog.journal()`, and `@gb/talk` speaks first. Row 57
+is closed. What they leave:
+
+| # | Work | Box | Detail |
+|---|---|---|---|
+| 59 | There is a fourth step state, `dropped` | hud | A step on a branch nobody took: the far side of a `choice`, and the rivals an `any-of` beat. `QuestStepState` has three. Either render it or declare hud never receives one; until then app throws those steps away and a quest that split reads as if the untaken side never existed |
+| 60 | `QuestEntry.title` against `Objective.questTitle` and `JournalEntry.questTitle` | hud | Two names for one string across one boundary, renamed by hand at every caller |
+| 61 | Push `opening.line` and `opening.moves` when a conversation opens | app | `game/app/src/talking.ts`, around the `Conversation.open` call at line 70. Talk's half of row 48 is done and costs 0.007 ms; until app pushes it the panel is still blank |
+| 62 | Read `log.journal()` instead of walking `toJSON()`'s `open[]` and `done[]` | app | `game/app/src/reporting.ts`. hud's field is `title`, quest publishes `questTitle`, so the mapper renames until row 60 lands. Drop `dropped` steps until row 59 lands. `game/bundle` keeps using `toJSON()` for the save file, which is what it is for |
+
 ## Checked and closed
 
 About fifty handovers landed and were verified in the code rather than taken on
