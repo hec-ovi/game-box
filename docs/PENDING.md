@@ -1139,6 +1139,47 @@ right now, so there is no companion to bring in.
 Boxes: `app` for placing them, `crowd` for a body away from the street, `scene`
 or `furnish` if a room must publish where a visitor can stand.
 
+### The dialogue does not answer the question (2026-08-23, his example)
+
+Real exchange from the running game. He asked: **"Dov Ferro? how are you"**
+
+> "I'm the one holding the wood while you ask. Wren's grinding coffee and Osric's
+> counting coins that aren't his, so the morning is exactly what it's supposed to
+> be. I don't know who you are and I don't care, but since you're standing here,
+> I'm still here."
+
+His verdict: "super long sentence, no context and i got headache of just reading,
+have no sense at all."
+
+**Six faults in one reply, and the prompt causes most of them:**
+
+1. **It does not answer.** He asked how they are. Nothing in the reply is an
+   answer to that.
+2. **It does not confirm the name.** He asked "Dov Ferro?" and got nothing.
+3. **Far too long.** Three sentences of prose to a two-word question. `npc.md`
+   says "two or three sentences is a conversation", which licenses this
+   regardless of what was asked.
+4. **Mannered.** "I'm the one holding the wood while you ask" is straining. The
+   instruction "say something only you could say" is producing performance
+   instead of speech.
+5. **Pointless name-drops.** Wren and Osric mean nothing to the player. The
+   instruction to answer "out of this room and the hour" is what puts them there.
+6. **No relationship.** "I don't know who you are and I don't care" from someone
+   who may have spoken to the player before, which is the per-character memory
+   gap.
+
+**The fix is not more instructions, it is fewer and better aimed.** The current
+prompt optimises for flavour and never mentions answering. A reply should answer
+first and be in character second, and length should follow the question: a
+two-word question gets a short answer. Worth trying an explicit rule that the
+first clause responds to what was actually said, and cutting "say something only
+you could say" entirely to see what it was really buying.
+
+This is the strongest single piece of evidence for the end-to-end prompt pass
+above, and this exchange should be the test case it is judged against.
+
+Box: `talk`.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
