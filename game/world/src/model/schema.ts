@@ -2,6 +2,7 @@ import { contract } from '@gb/kit'
 import { z } from 'zod'
 import { METRICS } from '../metrics.ts'
 import { AssetPackRefSchema, MAX_CATALOGUES, PlotDesignSchema } from './design.ts'
+import { PremiseSchema } from './premise.ts'
 import {
   ANCHOR_KINDS,
   BODY_KINDS,
@@ -160,6 +161,8 @@ export const WorldSchema = z.object({
   cellSize: z.number().positive().max(16),
   /** The art catalogues this city was designed against. Absent means it records none. */
   catalogues: z.array(AssetPackRefSchema).max(MAX_CATALOGUES).optional(),
+  /** The history the city was built against. Absent means nobody wrote one. */
+  premise: PremiseSchema.optional(),
   grid: z.object({
     width: z.number().int().min(4).max(1024),
     height: z.number().int().min(4).max(1024),

@@ -29,17 +29,43 @@ export const METRICS = {
   },
 
   /**
+   * How far a body reaches in each stance, measured off the shipped clips
+   * (`assets/dist/anims.glb`) skinned onto all twelve dressed characters with
+   * the root on the floor. A surface a body works at has to sit between the
+   * underside of its palms and its wrists, or the hands float over it.
+   * `@gb/cast`'s pose tests are where the measurement is taken; a reauthored
+   * clip moves these numbers and the furniture heights below with them.
+   */
+  reach: {
+    /** On the feet at a surface: `serve`, `work-bench`, `cook`. */
+    standing: { palm: 0.972, wrist: 1.041 },
+    /** Sat at a desk, leaning in: `work-desk`. */
+    seated: { palm: 0.72, wrist: 0.787 },
+    /** Sat down with the soles on the floor: the underside a pad has to hold. */
+    seatContact: 0.423,
+    /** How far a pad may be above `seatContact` before a body floats on it. */
+    padGive: 0.03,
+  },
+
+  /**
    * Where a body meets a piece of furniture: the surface it sits, sleeps or
-   * works on. The art is built to these heights and the clips reach for them,
-   * so a seat is one number rather than one per box.
+   * works on. The art is built to these heights, so a seat is one number rather
+   * than one per box. Each one a body reaches for is held to `reach` above; the
+   * two that carry no stance say so.
    */
   furniture: {
+    /** The customer's rail, where a drink stands. Nobody's hands go on it. */
     barCounterHeight: 1.1,
-    /** A counter you are served over. */
+    /** A counter you are served over, and the shelf the staff work from behind a bar. */
     serviceCounterHeight: 1.0,
-    /** A kitchen or workshop run you stand at. */
-    worktopHeight: 0.9,
+    /**
+     * A kitchen or workshop run you stand at. The same number as a service
+     * counter because one standing clip serves both: it is a run a body works
+     * at, and there is no lower standing pose on this rig.
+     */
+    worktopHeight: 1.0,
     tableHeight: 0.75,
+    /** A bar stool's pad, set for the bar it stands at. No clip sits this high. */
     stoolHeight: 0.75,
     /** Where a sitting body's hips land. */
     seatHeight: 0.45,

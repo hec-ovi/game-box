@@ -4,6 +4,7 @@ import { checkIntegrity, type IntegrityProblem } from './integrity.ts'
 import { METRICS, cellCentre } from './metrics.ts'
 import { citySpecContract, type CitySpec } from './model/city-spec.ts'
 import { catalogueListContract, plotDesignContract, type AssetPackRef, type PlotDesign } from './model/design.ts'
+import type { Premise } from './model/premise.ts'
 import { worldContract, type Interior, type Item, type Npc, type Placement, type Plot, type WorldDoc } from './model/schema.ts'
 import type { BuildingKind, Facing } from './model/vocabulary.ts'
 
@@ -85,6 +86,15 @@ export class World {
 
   get cellSize(): number {
     return this.#doc.cellSize
+  }
+
+  /**
+   * The history this city was built against, or nothing when it was founded
+   * without one. It is written at founding and never rewritten, so a city that
+   * is grown later is grown against the same story it started from.
+   */
+  premise(): Premise | undefined {
+    return this.#doc.premise
   }
 
   get grid(): Grid {
@@ -310,6 +320,7 @@ function blankCity(spec: CitySpec): WorldDoc {
     seed: spec.seed,
     generator: spec.generator ?? { name: 'unset', version: '0' },
     cellSize: spec.cellSize ?? METRICS.cellSize,
+    ...(spec.premise ? { premise: spec.premise } : {}),
     grid: {
       width: spec.width,
       height: spec.height,

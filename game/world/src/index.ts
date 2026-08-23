@@ -22,6 +22,7 @@ export {
   type RoadSegment,
 } from './model/schema.ts'
 export { MAX_CATALOGUES, type AssetPackRef, type PlotDesign } from './model/design.ts'
+export { PremiseSchema, premiseContract, type Premise } from './model/premise.ts'
 export {
   BUILDING_KINDS,
   ROOM_KINDS,
@@ -32,7 +33,6 @@ export {
   BODY_KINDS,
   FACINGS,
   ROAD_KINDS,
-  ENTERABLE_KINDS,
   type BuildingKind,
   type RoomKind,
   type AnchorKind,

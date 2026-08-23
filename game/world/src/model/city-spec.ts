@@ -15,6 +15,8 @@ export const CitySpecSchema = z.object({
   cellSize: WorldSchema.shape.cellSize.optional(),
   /** Which generator is about to fill it, so a regeneration can match it. */
   generator: WorldSchema.shape.generator.optional(),
+  /** The history it is being built against, when somebody wrote one. */
+  premise: WorldSchema.shape.premise,
 })
 
 export const citySpecContract = contract('city-spec', CitySpecSchema)

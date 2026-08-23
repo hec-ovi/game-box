@@ -146,20 +146,3 @@ export type FurnitureProp = (typeof FURNITURE_PROPS)[number]
 export type BodyKind = (typeof BODY_KINDS)[number]
 export type Facing = (typeof FACINGS)[number]
 export type RoadKind = (typeof ROAD_KINDS)[number]
-
-/** Which building kinds a player can walk into. */
-export const ENTERABLE_KINDS: readonly BuildingKind[] = [
-  'house',
-  'apartment',
-  'bar',
-  'cafe',
-  'restaurant',
-  'shop',
-  'market',
-  'office',
-  'workshop',
-  'clinic',
-  'hotel',
-  'station',
-  'chapel',
-]

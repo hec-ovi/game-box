@@ -9,6 +9,7 @@ import {
   type Item,
   type Npc,
   type Placement,
+  type Premise,
 } from '../src/index.ts'
 
 /** A two-street hamlet with one bar, its interior, its bartender and a bottle. */
@@ -404,5 +405,84 @@ describe('what a city was designed against', () => {
     } else {
       throw new Error('expected inconsistent-world')
     }
+  })
+})
+
+describe('the history a city was built against', () => {
+  const premise: Premise = {
+    livesOn: 'The stack of fabrication floors under the ring road.',
+    happened: 'A coolant line let go and took the night shift with it.',
+    stake: 'Who pays to restart the line, and who gets the floor space if nobody does.',
+    sides: [
+      { name: 'Halvorsen Fabrication', wants: 'the floors back on shift by winter' },
+      { name: 'The night-shift widows', wants: 'the line named and the coolant contract torn up' },
+    ],
+    common: ['Nobody works the fourth floor any more.'],
+    build: { moreOf: ['workshop'], fewerOf: ['office'], mustHave: ['clinic'] },
+  }
+
+  it('keeps the history in the file, so a city that is grown later is grown against it', () => {
+    const made = World.found({ name: 'Halvorsen', theme: 'industrial', seed: 'p1', width: 16, height: 16, premise })
+    expect(made.ok).toBe(true)
+    if (!made.ok) return
+    expect(made.value.premise()).toEqual(premise)
+
+    const reloaded = World.load(JSON.parse(JSON.stringify(made.value.toJSON())))
+    expect(reloaded.ok).toBe(true)
+    if (!reloaded.ok) return
+    expect(reloaded.value.premise()).toEqual(premise)
+    expect(reloaded.value.check()).toEqual([])
+  })
+
+  it('leaves a city founded without one alone', () => {
+    const made = World.found({ name: 'Nowhere', theme: 'plain', seed: 'p2', width: 16, height: 16 })
+    expect(made.ok).toBe(true)
+    if (!made.ok) return
+    expect(made.value.premise()).toBeUndefined()
+    expect('premise' in made.value.toJSON()).toBe(false)
+  })
+
+  it('refuses a history that names a building the game cannot put up', () => {
+    const spec = { name: 'Halvorsen', theme: 'industrial', seed: 'p3', width: 16, height: 16 }
+    const made = World.found({ ...spec, premise: { ...premise, build: { ...premise.build, mustHave: ['spaceport'] } } as never })
+    expect(made.ok).toBe(false)
+    if (made.ok || made.error.code !== 'invalid-document') throw new Error('expected invalid-document')
+    expect(made.error.violations.map((v) => v.path).join(' ')).toContain('mustHave')
+  })
+
+  it('refuses a town with only one side to its argument, whichever door it comes through', () => {
+    const oneSided = { ...premise, sides: [premise.sides[0]!] }
+    const made = World.found({ name: 'Halvorsen', theme: 'industrial', seed: 'p4', width: 16, height: 16, premise: oneSided as never })
+    expect(made.ok).toBe(false)
+
+    const doc = JSON.parse(JSON.stringify(World.create({ name: 'H', theme: 't', seed: 'p5', width: 16, height: 16 }).toJSON()))
+    doc.premise = oneSided
+    const loaded = World.load(doc)
+    expect(loaded.ok).toBe(false)
+    if (loaded.ok || loaded.error.code !== 'invalid-document') throw new Error('expected invalid-document')
+    expect(loaded.error.violations.map((v) => v.path).join(' ')).toContain('premise.sides')
+  })
+})
+
+describe('the heights a body is animated against', () => {
+  const { reach, furniture } = METRICS
+
+  it('puts every surface a body works at inside the reach of the stance that works there', () => {
+    // a cook's hands rode 7 cm over a 0.9 m hob because nothing measured the
+    // number against the clip that reaches for it
+    const standing = [furniture.serviceCounterHeight, furniture.worktopHeight]
+    for (const height of standing) {
+      expect(height, `standing work surface ${height}`).toBeGreaterThanOrEqual(reach.standing.palm)
+      expect(height, `standing work surface ${height}`).toBeLessThanOrEqual(reach.standing.wrist)
+    }
+    expect(furniture.tableHeight).toBeGreaterThanOrEqual(reach.seated.palm)
+    expect(furniture.tableHeight).toBeLessThanOrEqual(reach.seated.wrist)
+  })
+
+  it('puts a seat pad under the body that sits on it, not above it', () => {
+    // a pad above the body's own underside leaves it floating; below it, the
+    // pad gives, which is what a cushion does
+    expect(furniture.seatHeight).toBeGreaterThanOrEqual(reach.seatContact)
+    expect(furniture.seatHeight - reach.seatContact).toBeLessThanOrEqual(reach.padGive)
   })
 })
