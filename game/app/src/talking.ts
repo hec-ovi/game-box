@@ -9,13 +9,14 @@ import type { Player } from './player.ts'
 import type { Reporting } from './reporting.ts'
 
 /**
- * What the player reads once the speaker has actually done something. It is
- * announced rather than written into the conversation panel, because the panel
- * keeps every line it is given for as long as the conversation lasts, and "gave
- * you a job" sitting under the next reply reads as a second job.
+ * What the player reads once the speaker has actually done something. It is the
+ * line for the turn in front of them: the panel replaces it on the next turn
+ * and clears it when a turn does nothing, so it cannot pile up under a reply
+ * and read as a second job.
  */
 const DONE: Record<ActionName, string> = {
   give_quest: 'gave you a job',
+  ask_about: 'told you what they know',
   take_delivery: 'took what you were carrying',
   hand_over: 'handed something over',
   follow_player: 'is coming with you',
@@ -81,7 +82,10 @@ export class Talking {
     this.#speaker = this.#world.npc(npcId)?.name ?? 'Someone'
     this.#attending.hold(npcId)
     this.#report.report({ ok: true, value: opened.value.changes })
-    this.#hud.show({ talk: { speaker: this.#speaker, moves: this.#menu(conversation) } })
+    // they speak first: the line is built off the game's own data and costs no
+    // model call, so the panel has words in it the instant it appears
+    const opening = opened.value.opening
+    this.#hud.show({ talk: { speaker: this.#speaker, reply: opening.line, moves: this.#clickable(opening.moves) } })
   }
 
   /** Send a line to whoever the player is talking to and play back the reply. */
@@ -111,20 +115,22 @@ export class Talking {
 
   /** One turn, however the player gave it: the reply, then the next menu. */
   async #turn(conversation: Conversation, stream: AsyncGenerator<TalkEvent>): Promise<void> {
-    this.#hud.show({ talk: { reply: '' } })
+    // a fresh turn starts with nothing said and nothing done: what the speaker
+    // did last time belongs to last time, and `null` is what takes it off
+    this.#hud.show({ talk: { reply: '', acted: null } })
     for await (const event of stream) {
       // walking away has to be enough to stop a model that is still thinking.
       // Breaking out of the stream is what releases the call.
       if (this.#open !== conversation) break
       if (event.kind === 'said') this.#hud.show({ talk: { replyChunk: event.text } })
-      if (event.kind === 'did') this.#report.note(`${this.#speaker} ${DONE[event.action]}`)
+      if (event.kind === 'did') this.#hud.show({ talk: { acted: `${this.#speaker} ${DONE[event.action]}` } })
       if (event.kind === 'changed') this.#report.announce(event.change)
       if (event.kind === 'over') this.end()
     }
     this.#report.refresh()
     // Every turn ends by publishing the menu again, even an empty one: that is
     // what tells the interface the turn is over and its buttons are live.
-    if (this.#open === conversation) this.#hud.show({ talk: { moves: this.#menu(conversation) } })
+    if (this.#open === conversation) this.#hud.show({ talk: { moves: this.#clickable(conversation.moves()) } })
   }
 
   /**
@@ -133,7 +139,7 @@ export class Talking {
    * and the key itself, so a menu whose one entry is "Say goodbye" would be a
    * row of noise on every idle chat.
    */
-  #menu(conversation: Conversation): readonly TalkMove[] {
-    return conversation.moves().filter((move) => move.action !== 'end_talk')
+  #clickable(moves: readonly TalkMove[]): readonly TalkMove[] {
+    return moves.filter((move) => move.action !== 'end_talk')
   }
 }

@@ -9,6 +9,7 @@ import type { Conditions } from './conditions.ts'
 import type { Guide } from './guide.ts'
 import type { Player } from './player.ts'
 import type { Reporting } from './reporting.ts'
+import type { Stashing } from './stashing.ts'
 import type { Talking } from './talking.ts'
 import type { Target } from './targets.ts'
 
@@ -26,6 +27,7 @@ export class Interaction {
   #hud: Hud
   #body: Player
   #buildings: Buildings
+  #stashing: Stashing
   #talking: Talking
   #companions: Companions
   #driving: Driving
@@ -43,6 +45,7 @@ export class Interaction {
     hud: Hud
     body: Player
     buildings: Buildings
+    stashing: Stashing
     talking: Talking
     companions: Companions
     driving: Driving
@@ -58,6 +61,7 @@ export class Interaction {
     this.#hud = input.hud
     this.#body = input.body
     this.#buildings = input.buildings
+    this.#stashing = input.stashing
     this.#talking = input.talking
     this.#companions = input.companions
     this.#driving = input.driving
@@ -129,6 +133,9 @@ export class Interaction {
         break
       case 'take':
         this.#take(target.id)
+        break
+      case 'stash':
+        this.#stashing.leave(target.id)
         break
       case 'drive':
         this.#driving.act()

@@ -2,14 +2,15 @@ import type { Driving } from '@gb/drive'
 import type { CityBuild } from '@gb/scene'
 import { METRICS, type World } from '@gb/world'
 import type { Buildings } from './buildings.ts'
+import type { Stashing } from './stashing.ts'
 import type { Street } from './street.ts'
 import type { Vec2 } from './walk.ts'
 
-export type TargetKind = 'enter' | 'leave' | 'talk' | 'take' | 'drive'
+export type TargetKind = 'enter' | 'leave' | 'talk' | 'take' | 'stash' | 'drive'
 
 export interface Target {
   readonly kind: TargetKind
-  /** The plot, npc or item this points at. */
+  /** The plot, npc, item or anchor this points at. */
   readonly id: string
   /** What the prompt says, without the key. */
   readonly label: string
@@ -47,13 +48,15 @@ export class Targeting {
   #world: World
   #city: CityBuild
   #buildings: Buildings
+  #stashing: Stashing
   #street: Street
   #driving: Driving
 
-  constructor(input: { world: World; city: CityBuild; buildings: Buildings; street: Street; driving: Driving }) {
+  constructor(input: { world: World; city: CityBuild; buildings: Buildings; stashing: Stashing; street: Street; driving: Driving }) {
     this.#world = input.world
     this.#city = input.city
     this.#buildings = input.buildings
+    this.#stashing = input.stashing
     this.#street = input.street
     this.#driving = input.driving
   }
@@ -101,6 +104,11 @@ export class Targeting {
       if (item && object.parent) {
         targets.push({ kind: 'take', id: itemId, label: `Take the ${item.name.toLowerCase()}`, at: { x: object.position.x, z: object.position.z } })
       }
+    }
+    // and the surfaces a job wants something left on, which are only here while
+    // the player is carrying the thing it asked for
+    for (const spot of this.#stashing.spots()) {
+      targets.push({ kind: 'stash', id: spot.anchorId, label: `Leave the ${spot.itemName.toLowerCase()} here`, at: spot.at })
     }
     return targets
   }

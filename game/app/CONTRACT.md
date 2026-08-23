@@ -1,6 +1,6 @@
 # @gb/app contract
 
-contractVersion: 0.6.0
+contractVersion: 0.7.0
 
 ## Purpose
 
@@ -21,7 +21,7 @@ The game you can play: the panel you make a city in, the renderer, the frame loo
 | Param | Schema | Postconditions |
 |---|---|---|
 | the running game | | walk, look, go into buildings, talk, take, carry, deliver |
-| the controls | | mouse looks, WASD walks and drives, shift runs, C held crouches, space jumps, E acts on what is in reach, left click on somebody asks them along, right button held looks closer, G says the way to the tracked quest, T turns the time of day, K the weather, P holds the clock, N opens the panel, Escape leaves a conversation |
+| the controls | | mouse looks, WASD walks and drives, shift runs, C held crouches, space jumps, E acts on what is in reach (a door, a person, a thing to pick up, a surface a job wants it left on, a car), left click on somebody asks them along, right button held looks closer, G says the way to the tracked quest, T turns the time of day, K the weather, P holds the clock, N opens the panel, Escape leaves a conversation |
 | a generated city | a sealed `@gb/bundle` document | byte for byte what the same brief builds anywhere else |
 | Export | a `.gbworld.json` file | the document the game is playing, so what is kept is what was played |
 | `Game.tick(seconds)` | | advances and draws one frame by hand, for when the browser suspends the loop |
@@ -50,13 +50,16 @@ None at the boundary. A city that will not build and a file that will not open a
 - **The way in is only ever offered for a building that opens.** Seven in eight have no interior, and a prompt on one of those is a lie the player walks into.
 - Looking closer narrows the field of view and slows the mouse by the same amount, so the same hand movement covers the same distance on screen however far in you are.
 - The floor has height: the pavement stands a kerb above the road, and walking onto it steps up rather than clipping through. Crouching and standing ease between heights for the same reason.
+- **How many cars a town carries is counted in lanes, not in towns.** One flat number was tuned when every road was one lane each way; an avenue carries four and the road out four, so the same total spread over twice the tarmac left the wide roads empty. It is one car per 110 metres of lane, read off `@gb/traffic`'s own lane graph, which is what the flat number came to on the size of town it was judged on: that town is unchanged and a bigger one gets cars in proportion to the road it has.
 - Boxes that must not know about each other are joined here and only here: the crowd is told what is driving, traffic is told who is walking, both are told the hour so headlamps and lit windows agree with the sky, and none of them imports another.
 - **The people on the street are the city's own residents, and only some of them.** Anybody the player passes can be named and talked to. Nobody is the last person out of a room, so every building that opens still has somebody standing in it, and at most a third of the town is out at once, so a bar keeps its regulars rather than its bartender alone. Who is out is read off the roster in the city's own order, so the same town sends the same people out every time and somebody found at their post is there on the next visit. Anybody the city stationed nowhere is always out, because there is nowhere to look for them.
 - **Somebody who is out walking is not also standing behind their own counter, and the crosshair knows it.** One answer says who is standing in the room, and it settles all three things at once: whose body is drawn, who the prompt may offer, and who the player cannot walk through. That matters because the prompt is scored on how square something is to the aim over how far away it is, so anybody counted as present takes the prompt off whatever is on the counter beside them. Who is out is read once on the way through the door, because the street stops while the player is inside.
-- **What the speaker actually did is announced, not written into the conversation.** The panel keeps every line it is given for as long as the conversation lasts, so "gave you a job" written into it sits under the next turn's reply and reads as a second job. It goes out as a passing note with the speaker's name on it, at the moment it happens.
+- **What the speaker did is the line for the turn in front of the player.** It goes into the conversation panel with their name on it, and every turn opens by taking the last one's line off, so "gave you a job" is never left standing under the next reply where it reads as a second job.
+- **A conversation opens with them already talking.** `@gb/talk` builds the first line and the first menu off the game's own data with no model call, and both go up with the panel, so the player never reads an empty box while a model thinks.
 - **A conversation can be held by clicking as well as by typing.** `@gb/talk` says which moves are legal this turn, and they go to `@gb/hud` as a menu in plain words. A click comes back as that move's own key and goes straight to the conversation, which carries it out with no model call; typing goes the way it always did. Walking away is left off the menu, because the panel already ends a conversation two ways the player can see. Every turn ends by publishing the menu again, even an empty one, which is what tells the interface its buttons are live.
 - **Whoever is being talked to turns to the player and looks them in the eye**, and goes back to what they were doing when the conversation ends. A pedestrian stops mid-route, comes round, and walks the rest of their route afterwards; a companion stops keeping up and catches up again; somebody at their post in a room stays on their post and turns only as far as their head cannot reach, so a shopkeeper never swings their back to their own counter. The turn eases rather than snapping, and the head leads it. It happens on the conversation opening, not on being looked at: a pedestrian who stopped every time the crosshair crossed them would bring the pavement to a halt.
 - A companion who followed the player into a building is waiting by the door when they come out, rather than where they were standing when the door closed.
+- **A thing is put down where a job asked for it.** A `stash` step names the room and the surface, and the room was built with a spot standing at that surface, so leaving something is walking up to it and pressing the same key that picks things up. The spot is only offered while the job is asking and the thing is in the player's hands, and it is worked out again at the moment the key goes down, so a prompt that has gone stale does nothing rather than something else.
 - **The player can drive.** Any car on the road can be taken: `E` on a car within reach gets in, and `E` behind the wheel gets out. The companions ride, and are back on the pavement beside the car when the player gets out. While driving, the first person body is ridden rather than walked: the eye is put where the seat is every frame and the view turns with the car, so the mouse still looks around inside one that is cornering.
 - **The car the player left is solid to walk into and something the traffic brakes for**, joined here the same way the crowd and the traffic are: `@gb/drive` and `@gb/traffic` never see each other.
 - The player is stopped by people and by cars, not only by walls. Both move every frame, so what is solid is asked fresh rather than baked, and a car is treated as the long thing it is rather than as a circle.
@@ -78,7 +81,9 @@ None at the boundary. A city that will not build and a file that will not open a
 - **The quest being followed is one that is still running.** A job that has been handed in is not what the map pins or the guide walks to: the pins fall back to the first quest with an open step, the same way the objectives panel does, so the panel and the plan never disagree.
 - **Only the places the quest points at are named on the plan.** Nine hundred labels on one map is not a map.
 - **The way somewhere is the walk, not the line.** `G` asks `@gb/nav` for the route from where the player is standing, and answers with the distance along it and the compass point of its first stretch: "The Copper Wheel: 140 m, head north-east". The map is north up, so the two read together. Nowhere to walk to says so rather than pointing through a building, and a step that points at nobody and nowhere says that about the step rather than telling a player who is following a quest to go and find one.
-- **A step is ticked in the journal when the quest log says it is done**, and never because the player has not reached it yet.
+- **The quests tab is the quest log's own journal page, pushed as it stands.** Nothing here decides what a journal says: the page carries where every step stands, what it wants and how far along it is, and a step the player has not been told about is not on it, because the engine leaves it off. Walking the progress by hand instead is what listed a secret from the moment the quest was taken.
+- **Giving a job up costs one report.** `@gb/hud` asks a second time on its own before it says so, so nothing here confirms it again; the quest log takes the job off and the list goes back without it, because the interface removes nothing itself.
+- **A fork in a job is answered by its own key.** The question and the roads out of it are the quest's words, drawn by the interface; what comes back is the key of the road the player took, handed straight to the quest log, and the page and the objectives go back out with it.
 - **The hour and the weather are the player's to turn.** `T` walks the time of day round dawn, midday, sundown and midnight, `K` walks the weather round clear, overcast and rain, and `P` holds the clock and lets it run again at the rate it was running at. Every one of them is a call into `@gb/play`, which owns what a reading means, and the sky follows because it reads the same clock every frame. Time only ever goes forward: a jump that wraps past midnight is tomorrow, so skipping to dawn runs a quest's timer down rather than winding it back.
 - The interface is not in the chain. `@gb/hud` is DOM over the canvas, so the glow and the tint stop at the canvas edge and a panel is never bloomed.
 - Half a game never sits on the page. A city that will not draw takes its stage and its interface back off before the panel says so, and the city itself can still be exported.
@@ -128,7 +133,9 @@ One responsibility each. `boot/` is everything before there is a game; the rest 
 | `street.ts` | the crowd, the traffic and what each has to look out for |
 | `buildings.ts` | going in and coming out |
 | `targets.ts` | what can be acted on, and which one is in reach |
-| `interaction.ts` | what the player did and what it does |
+| `stashing.ts` | where a thing in hand can be left, and leaving it there |
+| `interaction.ts` | what the player did with the keys and the mouse |
+| `intents.ts` | what the player did in the interface, carried to whoever owns it |
 | `talking.ts` | a conversation on screen: the reply, and the moves the player can click |
 | `attending.ts` | whoever is being talked to, turned to face the player |
 | `companions.ts` | who is walking with the player |

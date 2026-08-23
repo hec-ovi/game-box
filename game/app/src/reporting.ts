@@ -1,4 +1,4 @@
-import type { Carried, Hud, QuestEntry } from '@gb/hud'
+import type { Carried, Hud } from '@gb/hud'
 import type { PlayerState } from '@gb/play'
 import type { Change, Objective, QuestLog } from '@gb/quest'
 import type { World } from '@gb/world'
@@ -75,29 +75,11 @@ export class Reporting {
       name: this.#world.item(id)?.name ?? id,
       quest: this.#log.isQuestItem(id),
     }))
-    this.#hud.show({ objectives: this.#log.objectives(), money: this.#player.money, carrying, quests: this.#quests() })
+    // the quests tab is the quest log's own journal page, pushed as it stands.
+    // Walking the progress by hand instead is what dropped `state`, `optional`
+    // and `count` on the floor and listed a secret from the moment the quest
+    // was taken: a page carries what the engine kept, secrets and all.
+    this.#hud.show({ objectives: this.#log.objectives(), money: this.#player.money, carrying, quests: this.#log.journal() })
     this.#changed()
-  }
-
-  /**
-   * Every quest under way, with the steps behind and ahead of the player. A
-   * step is ticked when the quest log says it is finished: everything else is
-   * either open now or still ahead, and neither of those is done.
-   */
-  #quests(): QuestEntry[] {
-    const progress = this.#log.toJSON().quests
-    return this.#log
-      .quests()
-      .filter((quest) => this.#log.status(quest.id) === 'active')
-      .map((quest) => {
-        const done = new Set(progress[quest.id]?.done ?? [])
-        return {
-          questId: quest.id,
-          title: quest.title,
-          steps: quest.steps
-            .filter((step) => step.kind !== 'complete' && step.kind !== 'fail' && step.kind !== 'join')
-            .map((step) => ({ stepId: step.id, text: step.objective, done: done.has(step.id) })),
-        }
-      })
   }
 }

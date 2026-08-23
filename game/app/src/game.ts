@@ -18,6 +18,7 @@ import { Companions } from './companions.ts'
 import { Conditions } from './conditions.ts'
 import { CONTROLS } from './controls.ts'
 import { Guide } from './guide.ts'
+import { Intents } from './intents.ts'
 import { Interaction } from './interaction.ts'
 import type { RoomArt } from './pack.ts'
 import { marked } from './places.ts'
@@ -27,6 +28,7 @@ import { Reporting } from './reporting.ts'
 import { Session, type SaveStore } from './session.ts'
 import { atAnOpenDoor } from './spawn.ts'
 import { Sky } from './sky.ts'
+import { Stashing } from './stashing.ts'
 import { Street } from './street.ts'
 import { Talking } from './talking.ts'
 import { pick, Targeting, type Target } from './targets.ts'
@@ -63,12 +65,14 @@ export class Game {
   #street: Street
   #buildings: Buildings
   #companions: Companions
+  #stashing: Stashing
   #driving: Driving
   #attending: Attending
   #talking: Talking
   #report: Reporting
   #chart: Chart
   #targeting: Targeting
+  #intents: Intents
   #interaction: Interaction
   #cast: Cast | undefined
   #riderCast: SceneCast | undefined
@@ -153,6 +157,16 @@ export class Game {
       note: (text) => this.#report.note(text),
     })
 
+    // a job that says to leave something somewhere: the surface it names is a
+    // spot in the room, so putting it down is the same key as taking it
+    this.#stashing = new Stashing({
+      world: this.#world,
+      log: this.#log,
+      player: this.#player,
+      buildings: this.#buildings,
+      report: this.#report,
+    })
+
     if (input.cast) {
       const walkers = new THREE.Group()
       walkers.name = 'crowd'
@@ -210,8 +224,18 @@ export class Game {
       world: this.#world,
       city: this.#city,
       buildings: this.#buildings,
+      stashing: this.#stashing,
       street: this.#street,
       driving: this.#driving,
+    })
+
+    this.#intents = new Intents({
+      log: this.#log,
+      talking: this.#talking,
+      report: this.#report,
+      body: this.#body,
+      chart: this.#chart,
+      releasePointer: () => document.exitPointerLock(),
     })
 
     this.#interaction = new Interaction({
@@ -222,6 +246,7 @@ export class Game {
       hud: this.#hud,
       body: this.#body,
       buildings: this.#buildings,
+      stashing: this.#stashing,
       talking: this.#talking,
       companions: this.#companions,
       driving: this.#driving,
@@ -309,23 +334,7 @@ export class Game {
 
   /** What the player did in the interface. */
   intent(intent: HudIntent): void {
-    if (intent.kind === 'say') void this.#talking.say(intent.text)
-    // the same answer given by clicking instead of typing: the key is the
-    // conversation's own, and goes straight back to it
-    if (intent.kind === 'choose') void this.#talking.choose(intent.key)
-    if (intent.kind === 'typing') this.#body.setTyping(intent.typing)
-    if (intent.kind === 'talk-closed') this.#talking.end()
-    // the interface holds no state of its own, so the quest it was told to
-    // follow is echoed straight back to it
-    if (intent.kind === 'track') this.#report.track(intent.questId)
-    // the map is measured while it is being read and at no other time
-    if (intent.kind === 'window') this.#chart.open = intent.window === 'map'
-    // giving up on a job: `@gb/hud` shows the control once it has somewhere to
-    // send it, and this is where it lands
-    const kind: string = intent.kind
-    if (kind === 'abandon') this.abandon((intent as unknown as { questId: string }).questId)
-    // a window the player has to click needs the pointer back; walking carries on
-    if (intent.kind === 'window' && intent.window !== null) document.exitPointerLock()
+    this.#intents.handle(intent)
   }
 
   /**
@@ -334,11 +343,6 @@ export class Game {
    */
   handOverKeys(away: boolean): void {
     this.#body.setTyping(away)
-  }
-
-  /** Give up on a job. The quest log decides what that costs. */
-  abandon(questId: string): void {
-    this.#report.report(this.#log.abandon(questId))
   }
 
   /** Write the playthrough down now, whatever it is doing. */

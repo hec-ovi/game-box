@@ -1,21 +1,27 @@
 // @vitest-environment jsdom
 import type { Driving } from '@gb/drive'
-import type { Hud } from '@gb/hud'
+import type { Hud, HudPatch, Notice } from '@gb/hud'
 import { PlayerState } from '@gb/play'
-import type { QuestLog } from '@gb/quest'
-import type { World } from '@gb/world'
+import { QuestLog, rewardFor, validateQuest } from '@gb/quest'
+import { Greybox, type CityBuild } from '@gb/scene'
+import { World } from '@gb/world'
 import userEvent from '@testing-library/user-event'
 import * as THREE from 'three'
 import { afterEach, describe, expect, it } from 'vitest'
-import type { Buildings } from '../src/buildings.ts'
+import { Buildings } from '../src/buildings.ts'
 import type { Companions } from '../src/companions.ts'
 import { Conditions } from '../src/conditions.ts'
 import type { Guide } from '../src/guide.ts'
 import { Interaction } from '../src/interaction.ts'
 import { Player } from '../src/player.ts'
-import type { Reporting } from '../src/reporting.ts'
+import type { Stage } from '../src/renderer.ts'
+import { Reporting } from '../src/reporting.ts'
+import type { Sky } from '../src/sky.ts'
+import { Stashing } from '../src/stashing.ts'
+import type { Street } from '../src/street.ts'
 import type { Talking } from '../src/talking.ts'
-import type { Target } from '../src/targets.ts'
+import { pick, Targeting, type Target } from '../src/targets.ts'
+import type { Vec2 } from '../src/walk.ts'
 
 const nowhere = () => false
 let close: Array<() => void> = []
@@ -100,12 +106,13 @@ describe('the keys the player presses', () => {
       hud: { typing: input.typing ?? false } as Hud,
       body: new Player(camera, element, nowhere),
       buildings: {} as Buildings,
+      stashing: {} as Stashing,
       talking: { active: false } as Talking,
       companions: {} as Companions,
       driving: { act: () => void got++ } as unknown as Driving,
       guide: { say: () => 'The Copper Wheel: 40 m, head east' } as Guide,
       conditions: new Conditions(clock),
-      report: { note: (text: string) => void notes.push(text) } as Reporting,
+      report: { note: (text: string) => void notes.push(text) } as unknown as Reporting,
       aimed: () => input.aimed,
     })
     close.push(() => interaction.dispose())
@@ -145,5 +152,209 @@ describe('the keys the player presses', () => {
     expect(keys.got()).toBe(0)
     expect(keys.notes).toEqual([])
     expect(keys.clock.hour).toBe(8)
+  })
+})
+
+/**
+ * A bar with the ledger lying on one end of the counter and a strongbox at the
+ * other, and the job of moving it from one to the other. The world puts the
+ * ledger 45 cm to its anchor's own right, which facing south is west of it.
+ */
+function withALedger() {
+  const world = World.create({ name: 'Fordwater', theme: 'plain', seed: 'stash', width: 24, height: 14 })
+  const plot = world.addPlot({
+    kind: 'bar',
+    name: 'The Copper Wheel',
+    rect: { x: 1, y: 2, w: 8, h: 4 },
+    entrance: { cell: { x: 5, y: 6 }, facing: 'south' },
+    storeys: 1,
+    style: 'brick',
+  })
+  if (!plot.ok) throw new Error(JSON.stringify(plot.error))
+
+  const inside = world.addInterior({
+    id: 'interior_0001',
+    plotId: plot.value.id,
+    kind: 'bar',
+    size: { w: 14, h: 8 },
+    rooms: [{ id: 'room_0001', kind: 'main', name: 'The bar', rect: { x: 0, y: 0, w: 14, h: 8 } }],
+    doors: [{ id: 'door_0001', from: 'outside', to: 'room_0001', pos: { x: 7, y: 8 }, rot: 0, locked: false }],
+    furniture: [],
+    anchors: [
+      { id: 'anchor_0001', kind: 'serve', roomId: 'room_0001', pos: { x: 3, y: 3 }, rot: 180 },
+      { id: 'anchor_0002', kind: 'serve', roomId: 'room_0001', pos: { x: 11, y: 3 }, rot: 180 },
+    ],
+  })
+  if (!inside.ok) throw new Error(JSON.stringify(inside.error))
+
+  const ledger = world.addItem(
+    { id: 'item_0001', name: 'Ledger', description: 'A cloth-bound book of debts.', archetype: 'ledger', value: 5, bulk: 'pocket' },
+    { at: 'anchor', itemId: 'item_0001', interiorId: 'interior_0001', anchorId: 'anchor_0001' },
+  )
+  if (!ledger.ok) throw new Error(JSON.stringify(ledger.error))
+  return { world, plotId: plot.value.id }
+}
+
+/** Take the ledger off one end of the counter and leave it at the other. */
+function tidyingUp() {
+  const doc = {
+    format: 'game-box.quest',
+    schemaVersion: 1,
+    id: 'quest_0001',
+    kind: 'main',
+    title: 'Out of sight',
+    summary: 'The ledger should not be lying where the licensing man can read it.',
+    giverNpcId: 'npc_0001',
+    difficulty: 'small',
+    startStepId: 'step_0001',
+    reward: rewardFor('small'),
+    steps: [
+      { id: 'step_0001', objective: 'Pick the ledger up', kind: 'collect', itemId: 'item_0001', next: ['step_0002'] },
+      {
+        id: 'step_0002',
+        objective: 'Put it in the strongbox',
+        kind: 'stash',
+        itemId: 'item_0001',
+        interiorId: 'interior_0001',
+        anchorId: 'anchor_0002',
+        next: ['step_0003'],
+      },
+      { id: 'step_0003', objective: 'Done', kind: 'complete' },
+    ],
+  }
+  const anything = { hasNpc: () => true, hasPlot: () => true, hasInterior: () => true, hasItem: () => true, hasAnchor: () => true }
+  const checked = validateQuest(doc, anything)
+  if (!checked.ok) throw new Error(JSON.stringify(checked.error))
+  return checked.value
+}
+
+/**
+ * The bar, walked into, with the real key handler bound to it: nothing here
+ * reports a quest event of its own, so the only way the job moves is the player
+ * pressing the key on something that is actually in front of them.
+ */
+function inTheBar() {
+  const { world, plotId } = withALedger()
+  const player = PlayerState.create(world.id)
+  const log = QuestLog.create([tidyingUp()], player)
+  log.start('quest_0001')
+
+  const patches: HudPatch[] = []
+  const notices: Notice[] = []
+  const hud = {
+    typing: false,
+    show: (patch: HudPatch) => void patches.push(patch),
+    announce: (notice: Notice) => void notices.push(notice),
+  } as unknown as Hud
+
+  const city = { doorsteps: new Map([[plotId, { x: 11, z: 13 }]]) } as unknown as CityBuild
+  const street = { solid: () => () => false, floor: () => () => 0, walkers: () => [] } as unknown as Street
+  const buildings = new Buildings({
+    world,
+    dressing: new Greybox(),
+    stage: { show: () => {}, indoors: () => {} } as unknown as Stage,
+    body: { setSolid: () => {}, setGround: () => {}, placeAt: () => {}, position: { x: 11, z: 13 } } as unknown as Player,
+    city,
+    sky: { visible: true } as unknown as Sky,
+    street,
+    announce: () => {},
+    arrived: () => {},
+    cameOut: () => {},
+    away: () => [],
+  })
+  buildings.enter(plotId)
+
+  const report = new Reporting({ world, log, player, hud })
+  const stashing = new Stashing({ world, log, player, buildings, report })
+  const driving = { aboard: false, target: () => undefined, act: () => {} } as unknown as Driving
+  const targeting = new Targeting({ world, city, buildings, stashing, street, driving })
+
+  const { camera, element } = stage()
+  // where the player is standing and which way they are looking, so the key
+  // acts on whatever the crosshair is actually on
+  let standing: { at: Vec2; heading: number } = { at: { x: 7, z: 6 }, heading: 0 }
+  const interaction = new Interaction({
+    element,
+    world,
+    player,
+    log,
+    hud,
+    body: new Player(camera, element, nowhere),
+    buildings,
+    stashing,
+    talking: { active: false } as Talking,
+    companions: {} as Companions,
+    driving,
+    guide: { say: () => undefined } as unknown as Guide,
+    conditions: new Conditions(player.clock),
+    report,
+    aimed: () => pick(standing.at, standing.heading, targeting.list()),
+  })
+  close.push(() => interaction.dispose())
+
+  return {
+    log,
+    player,
+    patches,
+    targeting,
+    user: userEvent.setup(),
+    /** Walk up to something and look at it. North is the way the counter is. */
+    standAt: (at: Vec2) => void (standing = { at, heading: 0 }),
+    prompt: () => pick(standing.at, standing.heading, targeting.list())?.label,
+  }
+}
+
+describe('putting a thing down', () => {
+  // the counter runs along the north wall: stand a step south of each end
+  const byTheLedger = { x: 2.55, z: 4.2 }
+  const byTheStrongbox = { x: 11, z: 4.2 }
+
+  it('finishes a job that says to leave something somewhere, with no key but the one that takes it', async () => {
+    const bar = inTheBar()
+
+    bar.standAt(byTheLedger)
+    expect(bar.prompt()).toBe('Take the ledger')
+    await bar.user.keyboard('e')
+    expect(bar.player.inventory()).toEqual(['item_0001'])
+
+    // and now, and only now, the far end of the counter is somewhere to put it
+    bar.standAt(byTheStrongbox)
+    expect(bar.prompt()).toBe('Leave the ledger here')
+    await bar.user.keyboard('e')
+
+    expect(bar.player.inventory()).toEqual([])
+    expect(bar.log.status('quest_0001')).toBe('complete')
+  })
+
+  it('offers nowhere to leave anything until a job asks for it and the thing is in hand', async () => {
+    const bar = inTheBar()
+    bar.standAt(byTheStrongbox)
+
+    // empty-handed the strongbox is not a prompt at all: a put-down that
+    // appears with nothing to put down is a key that does nothing
+    expect(bar.targeting.list().filter((target) => target.kind === 'stash')).toEqual([])
+    expect(bar.prompt()).toBeUndefined()
+
+    bar.standAt(byTheLedger)
+    await bar.user.keyboard('e')
+    bar.standAt(byTheStrongbox)
+    expect(bar.prompt()).toBe('Leave the ledger here')
+
+    // and it goes again the moment the thing is out of their hands
+    bar.player.drop('item_0001')
+    expect(bar.prompt()).toBeUndefined()
+  })
+
+  it('leaves it where the job asked and not at the first surface in the room', async () => {
+    const bar = inTheBar()
+    bar.standAt(byTheLedger)
+    await bar.user.keyboard('e')
+
+    // the shelf it was lying on is not the shelf it belongs on, and putting it
+    // back where it came from must not credit the step
+    expect(bar.prompt()).toBeUndefined()
+    await bar.user.keyboard('e')
+    expect(bar.player.inventory()).toEqual(['item_0001'])
+    expect(bar.log.status('quest_0001')).toBe('active')
   })
 })

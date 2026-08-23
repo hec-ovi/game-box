@@ -16,10 +16,12 @@ import { Buildings } from '../src/buildings.ts'
 import { Chart } from '../src/chart.ts'
 import { Conditions } from '../src/conditions.ts'
 import { Guide } from '../src/guide.ts'
+import { Intents } from '../src/intents.ts'
 import { DAY, darkness, lookAt, NIGHT } from '../src/night.ts'
 import { marked, type Marked } from '../src/places.ts'
 import { Reporting } from '../src/reporting.ts'
 import { atAnOpenDoor } from '../src/spawn.ts'
+import { Stashing } from '../src/stashing.ts'
 import { Body, CROUCH_EYE, JUMP_SPEED } from '../src/stance.ts'
 import { Sidecar } from '@gb/sidecar'
 import { Conversation, type TalkMove } from '@gb/talk'
@@ -518,13 +520,19 @@ function heading(plotId: string, label?: string): Objective {
 /** The interface, as this box sees it: a hud that records what it was pushed. */
 function screenful() {
   const pushed: HudPatch[] = []
-  return { pushed, hud: { show: (patch: HudPatch) => void pushed.push(patch) } as unknown as Hud }
+  const announced: Notice[] = []
+  const hud = {
+    show: (patch: HudPatch) => void pushed.push(patch),
+    announce: (notice: Notice) => void announced.push(notice),
+  } as unknown as Hud
+  return { pushed, announced, hud }
 }
 
 /**
  * A bar with a counter along the north wall: two people behind it and a panel of
- * stained glass lying between them, at the distances the browser playthrough
- * measured (the glass at x=10.10, the nearest person at x=9.65, 0.45 m apart).
+ * stained glass lying beside the nearest of them, 0.45 m to that person's own
+ * right. They keep the anchor at x=9.65 facing south, so their right is west
+ * and the glass lands at x=9.20.
  */
 function anchorage(): { world: World; plotId: string; doorstep: Vec2 } {
   const world = World.create({ name: 'Anchorage', theme: 'plain', seed: 'reach', width: 24, height: 14 })
@@ -598,12 +606,15 @@ function walkIn(away: () => string[]): { buildings: Buildings; targeting: Target
   })
   buildings.enter(plotId)
   const driving = { aboard: false, target: () => undefined } as unknown as Driving
-  return { buildings, targeting: new Targeting({ world, city, buildings, street, driving }), world }
+  const player = PlayerState.create(world.id)
+  const log = QuestLog.create([], player)
+  const stashing = new Stashing({ world, log, player, buildings, report: new Reporting({ world, log, player, hud: screenful().hud }) })
+  return { buildings, targeting: new Targeting({ world, city, buildings, stashing, street, driving }), world }
 }
 
 describe('what is in reach inside a room', () => {
   // right in front of the counter, looking north at it: the person is dead
-  // ahead and the glass is the 0.45 m off it that the counter puts it
+  // ahead and the glass is the 0.45 m to their side that the counter puts it
   const at = { x: 9.65, z: 4.2 }
   const north = 0
 
@@ -631,7 +642,7 @@ describe('what is in reach inside a room', () => {
     // and the glass is now the thing in reach, from the one spot that could
     // never select it while a body nobody can see was standing on it
     const glass = listed.find((target) => target.kind === 'take')!
-    expect(Math.round(glass.at.x * 100) / 100).toBe(10.1)
+    expect(Math.round(glass.at.x * 100) / 100).toBe(9.2)
     expect(pick(at, north, listed)?.label).toBe('Take the stained glass')
   })
 
@@ -821,7 +832,11 @@ describe('the hour and the weather', () => {
 describe('the journal', () => {
   const quest = sealed()
 
-  /** A four step job: talk, walk, talk, done. */
+  /**
+   * A job with a secret in it, the shape the generator's tip-off recipe writes:
+   * Iris tells you where to look, which is the only thing that puts the safe on
+   * the page at all, and the work she actually pays for is two of the crates.
+   */
   function sealed() {
     const doc = {
       format: 'game-box.quest',
@@ -829,15 +844,22 @@ describe('the journal', () => {
       id: 'quest_0001',
       kind: 'side',
       title: 'The delivery',
-      summary: 'Iris wants a word, then wants you at the bar.',
+      summary: 'Iris wants a word, then wants two of the crates.',
       giverNpcId: 'npc_0001',
       difficulty: 'small',
       startStepId: 'step_0001',
       reward: rewardFor('small'),
       steps: [
-        { id: 'step_0001', objective: 'Talk to Iris', kind: 'talk', npcId: 'npc_0001', next: ['step_0002'] },
-        { id: 'step_0002', objective: 'Get to the bar', kind: 'goto', place: { plotId: 'plot_0001' }, next: ['step_0003'] },
-        { id: 'step_0003', objective: 'Tell Iris it is done', kind: 'talk', npcId: 'npc_0001', next: ['step_0004'] },
+        {
+          id: 'step_0001',
+          objective: 'Talk to Iris',
+          kind: 'talk',
+          npcId: 'npc_0001',
+          next: ['step_0002', 'step_0003'],
+          effects: [{ kind: 'reveal', stepId: 'step_0002' }],
+        },
+        { id: 'step_0002', objective: 'Look behind the bar', kind: 'goto', place: { plotId: 'plot_0001' }, hidden: true, optional: true },
+        { id: 'step_0003', objective: 'Find two crates', kind: 'collect', itemId: 'item_0001', alternates: ['item_0002'], count: 2, next: ['step_0004'] },
         { id: 'step_0004', objective: 'Finished', kind: 'complete' },
       ],
     }
@@ -847,35 +869,176 @@ describe('the journal', () => {
     return checked.value
   }
 
-  function journal(): { steps: () => readonly { text: string; done: boolean }[]; log: QuestLog } {
+  function journal() {
     const { pushed, hud } = screenful()
     const player = PlayerState.create('world_0001')
     const log = QuestLog.create([quest], player)
     const report = new Reporting({ world: town(), log, player, hud })
-    return {
-      log,
-      steps: () => {
-        report.refresh()
-        return pushed[pushed.length - 1]!.quests![0]!.steps
-      },
+    const page = () => {
+      report.refresh()
+      return pushed[pushed.length - 1]!.quests![0]!
     }
+    const collect = (itemId: string) => {
+      player.take(itemId)
+      log.handle({ kind: 'acquired', itemId })
+    }
+    return { log, player, page, collect }
   }
 
-  it('ticks nothing on a job just taken, however many steps are still ahead', () => {
-    const { log, steps } = journal()
+  it('keeps a secret off the page until something reveals it', () => {
+    const { log, page } = journal()
     log.start('quest_0001')
 
-    const listed = steps()
-    expect(listed.map((step) => step.text)).toEqual(['Talk to Iris', 'Get to the bar', 'Tell Iris it is done'])
-    expect(listed.filter((step) => step.done)).toEqual([])
+    // the safe is on the quest from the moment it is taken. Listing it then is
+    // the journal giving away its own secret before anybody has said a word
+    expect(page().steps.map((step) => step.text)).toEqual(['Talk to Iris', 'Find two crates', 'Finished'])
+
+    log.handle({ kind: 'talked', npcId: 'npc_0001' })
+    expect(page().steps.map((step) => step.text)).toContain('Look behind the bar')
   })
 
-  it('ticks a step once it is actually done, and leaves the ones ahead alone', () => {
-    const { log, steps } = journal()
+  it('says where every step stands, not just whether it is finished', () => {
+    const { log, page } = journal()
+    log.start('quest_0001')
+    expect(page().steps.map((step) => step.state)).toEqual(['open', 'upcoming', 'upcoming'])
+
+    log.handle({ kind: 'talked', npcId: 'npc_0001' })
+    // done behind, open now, and still ahead: three states, and the two that
+    // are not done do not read the same
+    expect(page().steps.map((step) => [step.stepId, step.state])).toEqual([
+      ['step_0001', 'done'],
+      ['step_0002', 'open'],
+      ['step_0003', 'open'],
+      ['step_0004', 'upcoming'],
+    ])
+  })
+
+  it('hands the engine\'s page over as it stands, so nothing on it is dropped on the way', () => {
+    const { log, page, collect } = journal()
     log.start('quest_0001')
     log.handle({ kind: 'talked', npcId: 'npc_0001' })
+    collect('item_0001')
 
-    expect(steps().map((step) => step.done)).toEqual([true, false, false])
+    // hand-building the tab is what lost `state`, `optional`, `count` and the
+    // secrets. There is no mapper: whatever the engine writes on a page is what
+    // the interface is handed, including anything it learns to write later
+    expect([page()]).toEqual(log.journal())
+    expect(page().steps.find((step) => step.stepId === 'step_0003')).toMatchObject({ count: { done: 1, needed: 2 } })
+  })
+
+  it('keeps a branch nobody took on the page rather than reading it as work still open', () => {
+    const { log, page, collect } = journal()
+    log.start('quest_0001')
+    log.handle({ kind: 'talked', npcId: 'npc_0001' })
+    collect('item_0001')
+    collect('item_0002')
+    expect(log.status('quest_0001')).toBe('complete')
+
+    // the safe was never opened and never will be. Left off the page the split
+    // reads as if it never happened; left on without a state it reads as a job
+    expect(page().steps.find((step) => step.stepId === 'step_0002')!.state).toBe('dropped')
+    expect(page().steps.filter((step) => step.state === 'open')).toEqual([])
+  })
+})
+
+describe('what the player did in the interface', () => {
+  /**
+   * A job with a fork in it: hear her out, then decide whose it is. Each road
+   * has its own errand, and only one of them is ever walked.
+   */
+  const forked = (() => {
+    const doc = {
+      format: 'game-box.quest',
+      schemaVersion: 1,
+      id: 'quest_0001',
+      kind: 'main',
+      title: 'Whose ledger',
+      summary: 'Two people want the same book.',
+      giverNpcId: 'npc_0001',
+      difficulty: 'small',
+      startStepId: 'step_0001',
+      reward: rewardFor('small'),
+      steps: [
+        { id: 'step_0001', objective: 'Hear Mara out', kind: 'talk', npcId: 'npc_0001', next: ['step_0002'] },
+        {
+          id: 'step_0002',
+          objective: 'Decide whose it is',
+          kind: 'choice',
+          prompt: 'Hollis is offering more than Mara did. Whose is it?',
+          options: [
+            { id: 'keep-word', label: 'Keep your word to Mara', next: 'step_0003' },
+            { id: 'sell-out', label: 'Sell it to Hollis', next: 'step_0004' },
+          ],
+        },
+        { id: 'step_0003', objective: 'Take it back to Mara', kind: 'goto', place: { plotId: 'plot_0001' }, next: ['step_0005'] },
+        { id: 'step_0004', objective: 'Take it to Hollis', kind: 'goto', place: { plotId: 'plot_0002' }, next: ['step_0005'] },
+        { id: 'step_0005', objective: 'Done', kind: 'complete' },
+      ],
+    }
+    const anything = { hasNpc: () => true, hasPlot: () => true, hasInterior: () => true, hasItem: () => true, hasAnchor: () => true }
+    const checked = validateQuest(doc, anything)
+    if (!checked.ok) throw new Error(JSON.stringify(checked.error))
+    return checked.value
+  })()
+
+  /** The interface reporting what the player did, wired to the boxes that own it. */
+  function reported() {
+    const { pushed, hud } = screenful()
+    const player = PlayerState.create('world_0001')
+    const log = QuestLog.create([forked], player)
+    const report = new Reporting({ world: town(), log, player, hud })
+    let released = 0
+    const intents = new Intents({
+      log,
+      report,
+      talking: { say: async () => {}, choose: async () => {}, end: () => {} } as unknown as Talking,
+      body: { setTyping: () => {} } as unknown as Player,
+      chart: { open: false } as unknown as Chart,
+      releasePointer: () => void released++,
+    })
+    const page = () => pushed[pushed.length - 1]!.quests
+    // the way a job actually starts: somebody offers it and what changed is
+    // reported, which is what puts the page on screen in the first place
+    const start = () => report.report(log.start('quest_0001'))
+    return { log, intents, page, start, released: () => released }
+  }
+
+  it('takes the road the player picked and closes the one they did not', () => {
+    const { log, intents, page, start } = reported()
+    start()
+    log.handle({ kind: 'talked', npcId: 'npc_0001' })
+
+    const asking = log.objectives().find((objective) => objective.choice)!
+    expect(asking.choice!.options.map((option) => option.key)).toEqual(['keep-word', 'sell-out'])
+
+    intents.handle({ kind: 'decide', questId: asking.questId, stepId: asking.stepId, optionId: 'sell-out' })
+
+    const steps = new Map(page()![0]!.steps.map((step) => [step.stepId, step.state]))
+    expect(steps.get('step_0002')).toBe('done')
+    expect(steps.get('step_0004')).toBe('open')
+    // the road not taken is on the page and can never be work again
+    expect(steps.get('step_0003')).toBe('dropped')
+  })
+
+  it('gives a job up on the one report, because the interface already asked twice', () => {
+    const { log, intents, page, start } = reported()
+    start()
+    expect(page()).toHaveLength(1)
+
+    intents.handle({ kind: 'abandon', questId: 'quest_0001' })
+
+    expect(log.status('quest_0001')).toBe('unstarted')
+    // the hud takes nothing off the board itself: the list goes back without it
+    expect(page()).toEqual([])
+  })
+
+  it('hands the pointer back for a window the player has to click, and takes it again when it shuts', () => {
+    const { intents, released } = reported()
+    intents.handle({ kind: 'window', window: 'quests' })
+    expect(released()).toBe(1)
+
+    intents.handle({ kind: 'window', window: null })
+    expect(released()).toBe(1)
   })
 })
 
@@ -943,8 +1106,11 @@ describe('what is in reach out in the street', () => {
   /** A car sitting in the road, the way `@gb/drive` offers one. */
   const wheel = { kind: 'drive' as const, id: 'car_3', label: 'Get in the taxi', at: { x: 8, z: 20 } }
 
+  // out in the street there is nothing to put anything down on
+  const nowhereToLeaveIt = { spots: () => [] } as unknown as Stashing
+
   function targeting(driving: Partial<Driving>) {
-    return new Targeting({ world, city, buildings: outside, street: empty, driving: driving as Driving })
+    return new Targeting({ world, city, buildings: outside, stashing: nowhereToLeaveIt, street: empty, driving: driving as Driving })
   }
 
   it('offers a door only for a building that opens', () => {
@@ -958,6 +1124,41 @@ describe('what is in reach out in the street', () => {
 
     const driving = targeting({ aboard: true, target: () => ({ ...wheel, label: 'Get out' }) }).list()
     expect(driving.map((target) => target.label)).toEqual(['Get out'])
+  })
+})
+
+describe('how many cars a town is worth', () => {
+  /** One road across the town, at whatever class and lane count it is laid at. */
+  function oneRoad(kind: 'street' | 'avenue', lanes: number): Street {
+    const world = World.create({ name: 'Fordwater', theme: 'plain', seed: 'cars', width: 60, height: 8 })
+    world.addRoad(
+      [
+        { id: 'node_0001', cell: { x: 2, y: 4 } },
+        { id: 'node_0002', cell: { x: 57, y: 4 } },
+      ],
+      [{ id: 'road_0001', from: 'node_0001', to: 'node_0002', kind, lanes }],
+    )
+    return new Street({ world, nav: {} as CityNav, playerOutdoors: () => undefined })
+  }
+
+  it('gives a four lane avenue twice the cars of the street it replaced', () => {
+    // the flat number this replaces was picked when every road was one lane
+    // each way, so widening a road used to spread the same cars thinner
+    const street = oneRoad('street', 2).carsWorthOf()
+    const avenue = oneRoad('avenue', 4).carsWorthOf()
+
+    expect(street).toBeGreaterThan(0)
+    expect(avenue).toBe(street * 2)
+  })
+
+  it('counts the lanes and not the size of the town', () => {
+    const wide = new Street({
+      world: World.create({ name: 'Fordwater', theme: 'plain', seed: 'cars', width: 200, height: 200 }),
+      nav: {} as CityNav,
+      playerOutdoors: () => undefined,
+    })
+    // a big empty map with no roads on it is worth no cars at all
+    expect(wide.carsWorthOf()).toBe(0)
   })
 })
 
@@ -1058,22 +1259,11 @@ describe('a conversation you can click through', () => {
     return { world, npcId: 'npc_0001', itemId: 'item_0001' }
   }
 
-  /** Everything the game pushes at the interface, and nothing else. */
-  function panel() {
-    const pushed: HudPatch[] = []
-    const announced: Notice[] = []
-    const hud = {
-      show: (patch: HudPatch) => void pushed.push(patch),
-      announce: (notice: Notice) => void announced.push(notice),
-    } as unknown as Hud
-    return { pushed, announced, hud }
-  }
-
   function chatting() {
     const { world, npcId, itemId } = bar()
     const player = PlayerState.create(world.id)
     const log = QuestLog.create([errand], player)
-    const { pushed, announced, hud } = panel()
+    const { pushed, announced, hud } = screenful()
     let reached = 0
     const talking = new Talking({
       world,
@@ -1096,11 +1286,25 @@ describe('a conversation you can click through', () => {
     const menu = () =>
       ([...pushed].reverse().find((patch) => patch.talk?.moves)?.talk?.moves ?? []) as readonly TalkMove[]
     const spoken = () => pushed.map((patch) => patch.talk?.replyChunk ?? '').join('')
-    // what the speaker actually did is announced: the conversation panel keeps
-    // every line it is given, so a line written into it outlives its own turn
-    const noted = () => announced.flatMap((notice) => (notice.kind === 'note' ? [notice.text] : []))
-    return { world, npcId, itemId, player, log, talking, pushed, announced, menu, spoken, noted, reached: () => reached }
+    // what the speaker did is one line about the turn in front of the player:
+    // it replaces on the next turn and `null` takes it off, so it cannot pile
+    // up inside one conversation the way an appended line would
+    const acted = () => pushed.flatMap((patch) => (patch.talk?.acted !== undefined ? [patch.talk.acted] : []))
+    return { world, npcId, itemId, player, log, talking, pushed, announced, menu, spoken, acted, reached: () => reached }
   }
+
+  it('opens with the speaker already talking, before the player has said anything', async () => {
+    const { npcId, talking, pushed, reached } = chatting()
+    await talking.start(npcId)
+
+    // the panel appears the moment the key is pressed; nineteen seconds of an
+    // empty box while a model thinks is worse than the line the box already has
+    const opened = pushed.find((patch) => patch.talk?.speaker !== undefined)!.talk!
+    expect(opened.speaker).toBe('Iris Vane')
+    expect(opened.reply!.length).toBeGreaterThan(0)
+    expect(opened.moves!.length).toBeGreaterThan(0)
+    expect(reached()).toBe(0)
+  })
 
   it('offers what the NPC will allow, and leaves walking away to the controls that already do it', async () => {
     const { npcId, world, player, log, talking, menu } = chatting()
@@ -1115,7 +1319,7 @@ describe('a conversation you can click through', () => {
   })
 
   it('takes the job on a click, with a line spoken and no model asked for it', async () => {
-    const { npcId, log, talking, menu, spoken, noted, pushed, reached } = chatting()
+    const { npcId, log, talking, menu, spoken, acted, reached } = chatting()
     await talking.start(npcId)
     const taken = menu()[0]!
     const before = reached()
@@ -1127,15 +1331,15 @@ describe('a conversation you can click through', () => {
 
     expect(log.status('quest_0002')).toBe('active')
     expect(spoken().length).toBeGreaterThan(0)
-    expect(noted()).toEqual(['Iris Vane gave you a job'])
-    // and never into the panel, where it would sit under the next reply
-    expect(pushed.some((patch) => patch.talk?.acted !== undefined)).toBe(false)
+    // what she did is the line for this turn, in the panel the player is
+    // reading, and the turn opened by clearing whatever the last one left
+    expect(acted()).toEqual([null, 'Iris Vane gave you a job'])
     // and the move it just used is off the menu it publishes at the end
     expect(menu().map((move) => move.action)).not.toContain('give_quest')
   })
 
   it('carries the whole job through by clicking, and pays for it', async () => {
-    const { npcId, itemId, player, log, talking, menu, noted } = chatting()
+    const { npcId, itemId, player, log, talking, menu, acted } = chatting()
     await talking.start(npcId)
     await talking.choose(menu()[0]!.key)
 
@@ -1151,7 +1355,8 @@ describe('a conversation you can click through', () => {
 
     expect(log.status('quest_0002')).toBe('complete')
     expect(player.money).toBeGreaterThan(0)
-    expect(noted()).toEqual(['Iris Vane gave you a job', 'Iris Vane took what you were carrying'])
+    // a second panel, so the first turn's line is not still standing under it
+    expect(acted().at(-1)).toBe('Iris Vane took what you were carrying')
   })
 
   it('still takes a typed line, which does go looking for a model, and ends on a menu', async () => {

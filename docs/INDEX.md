@@ -18,7 +18,7 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI
 | Turning a world into three.js objects, the wet street and the rubbish on it, what the things in a room stand on, and where art plugs in | `game/scene/` |
 | The people: bodies, clothes, clips, who is doing what | `game/cast/` |
 | Buildings that look like buildings, their lit windows, their neon signs, the street lamps drawn from code and the ground they all stand on, from the city kit | `game/kitbash/` |
-| Whole buildings out of the committed pack the model authored offline, which one a plot gets, and the rooms you see through their windows | `game/prefab/` |
+| Whole buildings out of the committed pack the model authored offline, which one a plot gets, the rooms you see through their windows, their entrances and the lit screens on their walls | `game/prefab/` |
 | Inside a building: furniture generated from parameters, the things you pick up off it, walls made of bays (panels, lit niches, shelves, grilles, strips, windows), and floors laid in a pattern and a finish | `game/furnish/` |
 | Sky, sun and moon, terrain, water, trees, rain | `game/land/` |
 | Pedestrians walking the streets | `game/crowd/` |
@@ -26,7 +26,7 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI
 | The car the player drives: getting in, the handling, who rides with them | `game/drive/` |
 | The interface: objectives, prompts, the conversation and the moves you can click in it, announcements, the quests, map, items and controls window, and how it all looks | `game/hud/` |
 | Determinism, ids, results, boundary validation | `game/kit/` |
-| The running game: the panel you make a city in, renderer, frame loop, first-person body, the car it drives, the map and the route guide, the keys for the hour and the weather, wiring, and how the night is graded | `game/app/` |
+| The running game: the panel you make a city in, renderer, frame loop, first-person body, the car it drives, the map and the route guide, taking a thing and leaving it where a job wants it, the keys for the hour and the weather, wiring, and how the night is graded | `game/app/` |
 | The `gb` command: build, inspect, check a city | `game/cli/` |
 
 ## Sidecar

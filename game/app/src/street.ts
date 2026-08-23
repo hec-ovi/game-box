@@ -1,6 +1,6 @@
 import { Crowd, type Attention, type CrowdCast } from '@gb/crowd'
 import type { CityNav } from '@gb/nav'
-import { CarPack, Traffic } from '@gb/traffic'
+import { CarPack, LaneGraph, Traffic } from '@gb/traffic'
 import { METRICS, type Npc, type World } from '@gb/world'
 import * as THREE from 'three'
 import { alsoBlockedBy, PERSON_CLEAR, type Rolling } from './bodies.ts'
@@ -13,6 +13,16 @@ import type { Solid, Vec2 } from './walk.ts'
  * itself onto the street has nobody behind any counter in it.
  */
 const OUT_TODAY = 1 / 3
+
+/**
+ * Metres of lane per car. One flat number for a whole town was picked when
+ * every road was one lane each way; an avenue now carries four and the road out
+ * six, so the same total spreads over twice the tarmac and the wide roads read
+ * empty. Counting lane rather than town keeps a street as busy as it was and
+ * gives the extra lanes their own cars. 110 m is what the number it replaces
+ * came to on the size of town it was judged on.
+ */
+const LANE_PER_CAR = 110
 
 /** The player's own car: solid to walk into, and something traffic brakes for. */
 export interface PlayerCar {
@@ -115,7 +125,7 @@ export class Street {
 
     try {
       const bodies = await CarPack.parse(cars, parked)
-      const made = Traffic.fromWorld(this.#world, { bodies, obstacles: this.obstacles(), maxCars: 12 })
+      const made = Traffic.fromWorld(this.#world, { bodies, obstacles: this.obstacles(), maxCars: this.carsWorthOf() })
       if (!made.ok) {
         console.warn(`no traffic (${made.error.code}); the roads stay empty`)
         return
@@ -126,6 +136,21 @@ export class Street {
     } catch (cause) {
       console.warn(`no cars (${String(cause)}); the roads stay empty`)
     }
+  }
+
+  /**
+   * How many cars this town's roads are worth: its own lanes, at one car per
+   * `LANE_PER_CAR` metres of them. `@gb/traffic` holds its own floor of one car
+   * per 40 m on top of this, so a short network cannot be flooded either way.
+   */
+  carsWorthOf(): number {
+    const graph = LaneGraph.build(this.#world.toJSON().roads, {
+      cellSize: METRICS.cellSize,
+      carLength: METRICS.vehicle.carLength,
+    })
+    if (!graph.ok) return 0
+    const metres = graph.value.lanes.reduce((lane, each) => lane + each.length, 0)
+    return Math.round(metres / LANE_PER_CAR)
   }
 
   /** The car the player drives, once there is one. A `@gb/drive` `Driving` is one. */
