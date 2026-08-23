@@ -587,6 +587,33 @@ What to check, in order:
 Boxes: `app` for the grade and exposure, `land` for the sun and sky, `prefab`
 for how the facades hold up under it.
 
+### A phone idle with no phone (2026-08-23, `broken_hands_phone.png`)
+
+An NPC stands with one arm raised to the ear, fingers curled round nothing, the
+wrist at an angle that reads as broken. The clip is `Idle_TalkingPhone_Loop`: it
+is posed to hold a phone, and nothing is in the hand.
+
+It is not rare. That clip is on the `stand` shelf and was added to `guard`
+today, and `Idle_WallPhone_Loop` and `Sitting_Phone_Loop` were added to `lean`
+and `sit` in the same pass. So a meaningful share of standing, leaning and
+seated NPCs are miming a call with an empty hand.
+
+Two honest fixes, and the choice is `@gb/cast`'s:
+
+1. **Put a phone in the hand.** `@gb/furnish` already builds a `phone` item
+   (75x155x10 mm, lit screen, earpiece slot) as one of the 25 archetypes, and
+   `@gb/cast` already parents things to the rig. A prop attached to the hand bone
+   for the length of the clip is the honest version and it makes the pose read.
+2. **Drop the phone clips from the shelves** until something can hold one. Fewer
+   idles is better than a broken one, and today's pass widened those shelves from
+   one clip to three or four, so there is room to lose one.
+
+The same question applies to any clip posed around an object: check whether
+`Idle_WallSmoke_Loop` has the same fault, and whether the drink clips added today
+put a hand where a glass should be with nothing in it.
+
+Box: `cast`, with `furnish` if a real phone is attached.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
