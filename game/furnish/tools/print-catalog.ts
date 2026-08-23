@@ -1,14 +1,15 @@
 /**
  * Prints what the catalog does to the source art: the size of every model, the
- * evidence for which way it faces, and the box each prop ends up in.
+ * evidence for which way it faces, the surfaces a body could meet on it, and
+ * the box each prop ends up in.
  *
  * Run: node game/furnish/tools/print-catalog.ts
  */
 import type { FurnitureProp } from '@gb/world'
 import { PIECES, PIECE_IDS, yawOf } from '../src/catalog/pieces.ts'
-import { PROP_ART } from '../src/catalog/props.ts'
+import { PROP_ART, type PropArt } from '../src/catalog/props.ts'
 import { faceStretch, fitScale } from '../src/kit/fit.ts'
-import { frontOn, measurePiece, type Measured } from './measure.ts'
+import { frontOn, measurePiece, type Flat, type Measured } from './measure.ts'
 
 const measured = new Map(PIECE_IDS.map((id) => [id, measurePiece(id)] as const))
 
@@ -18,21 +19,23 @@ for (const id of PIECE_IDS) {
   const size = sizeOf(piece)
   const read = [frontOn(piece, 'x'), frontOn(piece, 'z')].map((sign, at) => `${sign ?? '?'}${at ? 'z' : 'x'}`)
   console.log(
-    `${id.padEnd(26)} ${PIECES[id].pack.padEnd(10)} ${fixed(size)}  ${String(piece.triangles).padStart(5)} tris  ` +
-      `front ${PIECES[id].front}  measured ${read.join(' ')}  ${piece.materials.join(',')}`,
+    `${id.padEnd(22)} ${PIECES[id].pack.padEnd(7)} ${fixed(size)}  ${String(piece.triangles).padStart(5)} tris  ` +
+      `front ${PIECES[id].front}  measured ${read.join(' ')}  ` +
+      `flats ${piece.flats.slice(0, 3).map((flat) => `${flat.y.toFixed(3)}(${flat.area.toFixed(3)})`).join(' ')}`,
   )
 }
 
 console.log('\nprops (metres)\n')
-for (const [prop, art] of Object.entries(PROP_ART) as [FurnitureProp, (typeof PROP_ART)[FurnitureProp]][]) {
-  const source = union(art.parts.map((part) => ({ piece: measured.get(part.piece)!, at: part.at })))
+for (const [prop, art] of Object.entries(PROP_ART) as [FurnitureProp, PropArt][]) {
+  const parts = art.parts.map((part) => ({ piece: measured.get(part.piece)!, at: part.at }))
+  const source = union(parts)
   const turned = turn(source, yawOf(PIECES[art.parts[0]!.piece].front))
-  const scale = fitScale(turned, art)
+  const scale = fitScale(turned, art, art.contact && contactOf(parts, art.contact.kind))
   const built = { x: turned.x * scale.x, y: turned.y * scale.y, z: turned.z * scale.z }
   console.log(
     `${prop.padEnd(16)} ${art.parts.map((part) => part.piece).join(' + ').padEnd(34)} ` +
       `${fixed(built)}  face x${faceStretch(scale).toFixed(2)}  depth x${(scale.z / scale.y).toFixed(2)}  ` +
-      `${art.parts.reduce((total, part) => total + measured.get(part.piece)!.triangles, 0)} tris`,
+      `${art.contact ? `${art.contact.kind} at ${art.contact.height} m` : ''}`,
   )
 }
 
@@ -42,11 +45,30 @@ interface Size {
   z: number
 }
 
+interface Placed {
+  piece: Measured
+  at: readonly [number, number, number] | undefined
+}
+
 function sizeOf(piece: Measured): Size {
   return { x: piece.max[0] - piece.min[0], y: piece.max[1] - piece.min[1], z: piece.max[2] - piece.min[2] }
 }
 
-function union(parts: readonly { piece: Measured; at: readonly [number, number, number] | undefined }[]): Size {
+/** The same choice `src/kit/contact.ts` makes, on the numbers the source files give. */
+function contactOf(parts: readonly Placed[], kind: 'work' | 'rest'): number | undefined {
+  const base = Math.min(...parts.map(({ piece, at = [0, 0, 0] }) => piece.min[1] + at[1]))
+  const flats: Flat[] = parts
+    .flatMap(({ piece, at = [0, 0, 0] }) => piece.flats.map((flat) => ({ y: flat.y + piece.min[1] + at[1], area: flat.area })))
+    .sort((one, two) => two.area - one.area)
+  if (!flats.length) return undefined
+  if (kind === 'rest') return flats[0]!.y - base
+
+  const size = union(parts)
+  const wide = flats.filter((flat) => flat.area >= 0.25 * size.x * size.z)
+  return Math.max(...(wide.length ? wide : flats).map((flat) => flat.y)) - base
+}
+
+function union(parts: readonly Placed[]): Size {
   const min = [Infinity, Infinity, Infinity]
   const max = [-Infinity, -Infinity, -Infinity]
   for (const { piece, at = [0, 0, 0] } of parts) {

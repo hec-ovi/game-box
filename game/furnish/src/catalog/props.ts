@@ -1,17 +1,20 @@
 /**
- * What each piece of furniture the generator can place is made of, and the box
- * it has to end up in.
+ * What each piece of furniture the generator can place is made of, the box it
+ * has to end up in, and where the surface a body meets it lands.
  *
  * `w` and `d` are the floor the room planner keeps clear for a piece, so the
  * art is scaled to fill that footprint and never more: a chair that overhangs
- * its own square ends up inside the table. `h` is given where the height is
- * part of what the thing is (a counter you lean on, a table you eat at, a stool
- * that reaches the bar); left out, the art keeps its own proportions and stands
- * as tall as it comes.
+ * its own square ends up inside the table.
  *
- * The kit is medieval, the vocabulary is a modern town, so some entries are
- * stand-ins and say so. Nothing here is a guess at a shape: every prop is a
- * model of the right silhouette, scaled, never a barrel pretending to be a bed.
+ * Then a piece is sized up one of three ways, and only one of them:
+ *
+ * - `contact`, when somebody sits, lies, leans or works at it. The surface
+ *   their body meets is measured off the model and landed on that height, so a
+ *   bartender's forearms are on the counter and a diner's weight is on the
+ *   seat. This is the number that matters and the one the tests measure.
+ * - `h`, when nobody touches it but the height is part of what it is: a
+ *   wardrobe is two metres, a shelf run is 1.8.
+ * - neither, and the model keeps its own proportions.
  */
 import { METRICS, type FurnitureProp } from '@gb/world'
 import type { PieceId } from './pieces.ts'
@@ -19,8 +22,25 @@ import type { PieceId } from './pieces.ts'
 /** One source model in a prop, and where it sits in the piece's own units. */
 export interface PropPart {
   readonly piece: PieceId
-  /** Offset in the source model's units. Stacking one cupboard on another is the only use so far. */
+  /** Offset in the source model's units. Stacking boxes is what this is for. */
   readonly at?: readonly [number, number, number]
+}
+
+/**
+ * Which surface of a piece a body meets.
+ *
+ * `work` is the highest level plate wide enough to lean or work on: a counter
+ * top, a desk, a hob, the worktop beside a sink. `rest` is the widest one: a
+ * seat, a mattress. Both are read off the geometry, never off the bounding
+ * box, because the top of a chair is its backrest and the top of a bed is its
+ * headboard.
+ */
+export type ContactKind = 'work' | 'rest'
+
+export interface Contact {
+  readonly kind: ContactKind
+  /** Metres off the floor the surface has to land at. */
+  readonly height: number
 }
 
 export interface PropArt {
@@ -29,55 +49,73 @@ export interface PropArt {
   readonly w: number
   /** Metres front to back. */
   readonly d: number
-  /** Metres tall, when the height is load-bearing. */
+  /** Metres tall, for a piece nobody touches whose height still matters. */
   readonly h?: number
+  /** The surface a body meets, for a piece somebody uses. */
+  readonly contact?: Contact
 }
 
 const { barCounterHeight, tableHeight, stoolHeight } = METRICS.furniture
 
-/** A cupboard on a cupboard: the only thing in either kit that stands as tall as a wardrobe. */
-const TALL_CUPBOARD: readonly PropPart[] = [{ piece: 'cabinet_small' }, { piece: 'cabinet_small', at: [0, 1, 0] }]
+/**
+ * Heights `METRICS.furniture` does not carry yet, measured against the clips
+ * `@gb/cast` plays on the anchors that use them. Every one of them belongs in
+ * `@gb/world` beside the three that are there; until it takes them, this is
+ * the only place they are written.
+ */
+/** A seated body's hips land 9 cm over the seat, and the sitting clip puts them at 0.54. */
+const SEAT_HEIGHT = 0.45
+/** A retail counter you are served over, and a workshop bench you work at. */
+const COUNTER_HEIGHT = 1
+/** A kitchen worktop: the hob, and the run beside the sink. */
+const WORKTOP_HEIGHT = 0.9
+/** The top of a made single bed. */
+const MATTRESS_HEIGHT = 0.5
 
-/** Neither kit has a bookcase: three of the kit's shelf boards, one above the other, are the shelving. */
-const SHELF_RUN: readonly PropPart[] = [
-  { piece: 'shelf_B_small' },
-  { piece: 'shelf_B_small', at: [0, 0.55, 0] },
-  { piece: 'shelf_B_small', at: [0, 1.1, 0] },
+const seat = (height = SEAT_HEIGHT): Contact => ({ kind: 'rest', height })
+const worktop = (height: number): Contact => ({ kind: 'work', height })
+
+/** Two boxes deep, two across and two high: a stack of stock in a back room. */
+const BOX_STACK: readonly PropPart[] = [
+  { piece: 'cardboardBoxClosed', at: [-0.11, 0, -0.11] },
+  { piece: 'cardboardBoxClosed', at: [0.11, 0, -0.11] },
+  { piece: 'cardboardBoxClosed', at: [-0.11, 0, 0.11] },
+  { piece: 'cardboardBoxClosed', at: [0.11, 0, 0.11] },
+  { piece: 'cardboardBoxClosed', at: [-0.11, 0.28, 0] },
+  { piece: 'cardboardBoxClosed', at: [0.11, 0.28, 0] },
+]
+
+/** A pair of floor-standing speakers: where the music comes from. */
+const SPEAKER_PAIR: readonly PropPart[] = [
+  { piece: 'speaker', at: [-0.09, 0, 0] },
+  { piece: 'speaker', at: [0.09, 0, 0] },
 ]
 
 export const PROP_ART: Record<FurnitureProp, PropArt> = {
-  // the bar is a sideboard: a solid front to the room, a top at leaning height
-  'bar-counter': { parts: [{ piece: 'cabinet_medium' }], w: 1.5, h: barCounterHeight, d: 0.6 },
-  'bar-stool': { parts: [{ piece: 'chair_stool_wood' }], w: 0.45, h: stoolHeight, d: 0.45 },
-  table: { parts: [{ piece: 'table_small' }], w: 1, h: tableHeight, d: 1 },
-  chair: { parts: [{ piece: 'chair_A_wood' }], w: 0.5, h: 0.9, d: 0.5 },
-  sofa: { parts: [{ piece: 'couch' }], w: 2, d: 0.85 },
-  bed: { parts: [{ piece: 'bed_single_A' }], w: 1.2, d: 2 },
-  desk: { parts: [{ piece: 'cabinet_medium' }], w: 1.4, h: tableHeight, d: 0.7 },
-  'office-chair': { parts: [{ piece: 'chair_B' }], w: 0.6, h: 0.95, d: 0.6 },
-  shelf: { parts: SHELF_RUN, w: 1, h: 1.8, d: 0.4 },
-  cabinet: { parts: [{ piece: 'cabinet_small' }], w: 0.9, h: 1.2, d: 0.45 },
-  wardrobe: { parts: TALL_CUPBOARD, w: 1.2, h: 2, d: 0.6 },
-  // no fridge in a medieval kit: a larder cupboard stands where the kitchen wants one
-  fridge: { parts: TALL_CUPBOARD, w: 0.7, h: 1.8, d: 0.7 },
-  // and no stove: a dressed stone block is the range
-  stove: { parts: [{ piece: 'floor_foundation_allsides' }], w: 0.7, h: 0.9, d: 0.65 },
-  // and no sink: a water barrel
-  sink: { parts: [{ piece: 'barrel_small' }], w: 0.6, h: 0.9, d: 0.55 },
-  counter: { parts: [{ piece: 'cabinet_medium' }], w: 1.5, h: 0.95, d: 0.6 },
-  // the till is a small strongbox
-  register: { parts: [{ piece: 'chest' }], w: 0.4, h: 0.3, d: 0.35 },
-  'display-case': { parts: [{ piece: 'shelf_B_small_decorated' }], w: 1.2, h: 1.1, d: 0.6 },
-  'crate-stack': { parts: [{ piece: 'crates_stacked' }], w: 0.9, h: 1.2, d: 0.9 },
-  plant: { parts: [{ piece: 'cactus_medium_A' }], w: 0.5, d: 0.5 },
-  lamp: { parts: [{ piece: 'lamp_standing' }], w: 0.35, h: 1.5, d: 0.35 },
-  rug: { parts: [{ piece: 'rug_rectangle_A' }], w: 2, d: 1.5 },
-  // a framed panel where the screen goes
-  tv: { parts: [{ piece: 'pictureframe_small_B' }], w: 1, h: 0.65, d: 0.25 },
-  // a small keg on the cafe counter
-  'coffee-machine': { parts: [{ piece: 'keg' }], w: 0.6, h: 0.6, d: 0.5 },
-  // a carved cabinet in the corner where the music would be
-  jukebox: { parts: [{ piece: 'cabinet_small_decorated' }], w: 0.8, h: 1.5, d: 0.5 },
+  'bar-counter': { parts: [{ piece: 'kitchenBar' }], w: 1.5, d: 0.6, contact: worktop(barCounterHeight) },
+  'bar-stool': { parts: [{ piece: 'stoolBar' }], w: 0.45, d: 0.45, contact: seat(stoolHeight) },
+  table: { parts: [{ piece: 'tableCoffeeSquare' }], w: 1, d: 1, contact: worktop(tableHeight) },
+  chair: { parts: [{ piece: 'chairModernCushion' }], w: 0.5, d: 0.5, contact: seat() },
+  sofa: { parts: [{ piece: 'loungeSofa' }], w: 2, d: 0.85, contact: seat() },
+  bed: { parts: [{ piece: 'bedSingle' }], w: 1.2, d: 2, contact: seat(MATTRESS_HEIGHT) },
+  desk: { parts: [{ piece: 'desk' }], w: 1.4, d: 0.7, contact: worktop(tableHeight) },
+  'office-chair': { parts: [{ piece: 'chairDesk' }], w: 0.6, d: 0.6, contact: seat() },
+  shelf: { parts: [{ piece: 'bookcaseOpen' }], w: 1, h: 1.8, d: 0.4 },
+  cabinet: { parts: [{ piece: 'bookcaseClosedWide' }], w: 0.9, h: 1.2, d: 0.45 },
+  wardrobe: { parts: [{ piece: 'bookcaseClosedDoors' }], w: 1.2, h: 2, d: 0.6 },
+  fridge: { parts: [{ piece: 'kitchenFridgeLarge' }], w: 0.7, h: 1.8, d: 0.7 },
+  stove: { parts: [{ piece: 'kitchenStove' }], w: 0.7, d: 0.65, contact: worktop(WORKTOP_HEIGHT) },
+  sink: { parts: [{ piece: 'kitchenSink' }], w: 0.6, d: 0.55, contact: worktop(WORKTOP_HEIGHT) },
+  counter: { parts: [{ piece: 'kitchenCabinet' }], w: 1.5, d: 0.6, contact: worktop(COUNTER_HEIGHT) },
+  register: { parts: [{ piece: 'cash-register' }], w: 0.4, h: 0.3, d: 0.35 },
+  'display-case': { parts: [{ piece: 'freezers-standing' }], w: 1.2, h: 1.5, d: 0.6 },
+  'crate-stack': { parts: BOX_STACK, w: 0.9, h: 1.2, d: 0.9 },
+  plant: { parts: [{ piece: 'pottedPlant' }], w: 0.5, d: 0.5 },
+  lamp: { parts: [{ piece: 'lampSquareFloor' }], w: 0.35, h: 1.5, d: 0.35 },
+  rug: { parts: [{ piece: 'rugRectangle' }], w: 2, d: 1.5 },
+  tv: { parts: [{ piece: 'televisionModern' }], w: 1, h: 0.65, d: 0.25 },
+  'coffee-machine': { parts: [{ piece: 'kitchenCoffeeMachine' }], w: 0.6, h: 0.6, d: 0.5 },
+  jukebox: { parts: SPEAKER_PAIR, w: 0.8, h: 1.5, d: 0.5 },
 }
 
 /** Every source piece some prop is made of. */

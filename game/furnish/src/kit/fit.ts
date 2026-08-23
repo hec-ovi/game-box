@@ -8,22 +8,29 @@ export interface Size {
 
 /**
  * What to multiply a source model by so it ends up in the box the room planner
- * kept clear for it.
+ * kept clear for it, with the surface a body meets where the body expects it.
  *
  * The footprint is a hard edge: `w` and `d` are the floor nothing else may
- * stand on, so both horizontal axes are scaled to fill it exactly. Height is
- * either given, because a counter has to be counter height, or taken as the
- * average of the two horizontal scales, which leaves the model's own
- * proportions alone.
+ * stand on, so both horizontal axes are scaled to fill it exactly.
  *
- * The kits are chunkier than a real room, so filling a shallow footprint means
- * squeezing a piece in depth. That is the axis a player never sees: furniture
- * stands against a wall and is read from the front.
+ * The vertical is whichever of three the piece asks for. A piece somebody uses
+ * is scaled by its contact surface, so the seat lands at seat height and the
+ * counter at counter height however tall the rest of the model happens to be. A
+ * piece nobody touches takes the height it names, or keeps its own proportions.
+ *
+ * `contactAt` is where that surface sits in the source, off the model's base,
+ * as `contact.ts` measured it.
  */
-export function fitScale(source: Size, art: PropArt): Size {
+export function fitScale(source: Size, art: PropArt, contactAt?: number): Size {
   const x = art.w / extent(source.x)
   const z = art.d / extent(source.z)
-  return { x, y: art.h === undefined ? (x + z) / 2 : art.h / extent(source.y), z }
+  return { x, y: heightScale(source, art, contactAt) ?? (x + z) / 2, z }
+}
+
+function heightScale(source: Size, art: PropArt, contactAt: number | undefined): number | undefined {
+  if (art.contact && contactAt !== undefined) return art.contact.height / extent(contactAt)
+  if (art.h !== undefined) return art.h / extent(source.y)
+  return undefined
 }
 
 /** How much the front face of a piece is stretched: what the distortion actually looks like. */

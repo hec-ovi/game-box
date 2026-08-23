@@ -2,17 +2,17 @@
  * The source models this box builds furniture out of, and which way each one
  * faces in its own file.
  *
- * Both KayKit packs are authored about twice life size, and a wall shelf or a
- * picture frame is drawn around its own centre rather than standing on the
- * floor, so all the catalog needs from a piece is its name and its front: the
- * size and where it sits are read off the geometry when the pack loads.
+ * Both packs are Kenney's, drawn about half life size on a shared grid, so all
+ * the catalog needs from a piece is its name and its front: the size and where
+ * it sits are read off the geometry when the pack loads.
  *
  * `front` is measured, not assumed: `tools/measure.ts` reads the triangles and
- * `node game/furnish/tools/print-catalog.ts` prints the evidence. Both packs
- * came back the same way, front on +z, and a test fails if a piece stops
- * agreeing with the catalog.
+ * `node game/furnish/tools/print-catalog.ts` prints the evidence. A test fails
+ * if a piece stops agreeing with the catalog.
  */
-export type Pack = 'furniture' | 'dungeon'
+
+/** `home` is Kenney's Furniture Kit, `shop` its Mini Market. */
+export type Pack = 'home' | 'shop'
 
 /** A horizontal face of a piece, the way `tools/measure.ts` names them. */
 export type Face = '+x' | '-x' | '+z' | '-z'
@@ -26,29 +26,33 @@ export interface Piece {
 }
 
 export const PIECES = {
-  // KayKit Furniture Bits
-  bed_single_A: { pack: 'furniture', front: '+z', note: 'headboard at the back, foot at the front' },
-  cabinet_medium: { pack: 'furniture', front: '+z', note: 'a two-door sideboard: the bar and shop counters' },
-  cabinet_small: { pack: 'furniture', front: '+z' },
-  cabinet_small_decorated: { pack: 'furniture', front: '+z', note: 'a carved cabinet with clutter on top' },
-  cactus_medium_A: { pack: 'furniture', front: '+z', note: 'a potted plant' },
-  chair_A_wood: { pack: 'furniture', front: '+z' },
-  chair_B: { pack: 'furniture', front: '+z' },
-  chair_stool_wood: { pack: 'furniture', front: '+z' },
-  couch: { pack: 'furniture', front: '+z' },
-  lamp_standing: { pack: 'furniture', front: '+z' },
-  pictureframe_small_B: { pack: 'furniture', front: '+z', note: 'a framed panel' },
-  rug_rectangle_A: { pack: 'furniture', front: '+z' },
-  shelf_B_small: { pack: 'furniture', front: '+z', note: 'one shelf board on brackets; three of them make the shelving' },
-  shelf_B_small_decorated: { pack: 'furniture', front: '+z', note: 'a shelf with pots on it' },
-  table_small: { pack: 'furniture', front: '+z' },
+  // Kenney Furniture Kit
+  bedSingle: { pack: 'home', front: '+z', note: 'headboard at the back, duvet turned down at the front' },
+  bookcaseClosedDoors: { pack: 'home', front: '+z', note: 'a tall cupboard with doors: the wardrobe' },
+  bookcaseClosedWide: { pack: 'home', front: '+z', note: 'a low wide cupboard: the sideboard' },
+  bookcaseOpen: { pack: 'home', front: '+z', note: 'open shelving' },
+  cardboardBoxClosed: { pack: 'home', front: '+z', note: 'a taped stock box; three of them make the stack' },
+  chairDesk: { pack: 'home', front: '+z', note: 'a swivel chair on castors' },
+  chairModernCushion: { pack: 'home', front: '+z' },
+  desk: { pack: 'home', front: '+z' },
+  kitchenBar: { pack: 'home', front: '+z', note: 'a counter with an overhang to sit at: the bar' },
+  kitchenCabinet: { pack: 'home', front: '+z', note: 'a base unit with a worktop: the service counter' },
+  kitchenCoffeeMachine: { pack: 'home', front: '+z' },
+  kitchenFridgeLarge: { pack: 'home', front: '+z' },
+  kitchenSink: { pack: 'home', front: '+z' },
+  kitchenStove: { pack: 'home', front: '+z' },
+  lampSquareFloor: { pack: 'home', front: '+z', note: 'a standing lamp' },
+  loungeSofa: { pack: 'home', front: '+z' },
+  pottedPlant: { pack: 'home', front: '+z' },
+  rugRectangle: { pack: 'home', front: '+z' },
+  speaker: { pack: 'home', front: '+z', note: 'a floor-standing speaker: the music in a bar' },
+  stoolBar: { pack: 'home', front: '+z' },
+  tableCoffeeSquare: { pack: 'home', front: '+z', note: 'a square cafe table' },
+  televisionModern: { pack: 'home', front: '+z', note: 'a flat screen on a stand' },
 
-  // KayKit Dungeon Pack
-  barrel_small: { pack: 'dungeon', front: '+z' },
-  chest: { pack: 'dungeon', front: '+z', note: 'lock and hinges on the front' },
-  crates_stacked: { pack: 'dungeon', front: '+z' },
-  floor_foundation_allsides: { pack: 'dungeon', front: '+z', note: 'a dressed stone block' },
-  keg: { pack: 'dungeon', front: '+z' },
+  // Kenney Mini Market
+  'cash-register': { pack: 'shop', front: '-z', note: 'the till' },
+  'freezers-standing': { pack: 'shop', front: '+z', note: 'an upright chilled cabinet: the display case' },
 } as const satisfies Record<string, Piece>
 
 export type PieceId = keyof typeof PIECES

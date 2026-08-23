@@ -50,9 +50,9 @@ export interface SurfaceLook {
 }
 
 export const SURFACE_LOOKS: Record<SurfacePart, SurfaceLook> = {
-  // the kit's warm stone, browned down: a worn floor rather than a lobby
-  floor: { name: 'surface:floor', map: 'flagstone', colour: 0xa08a6c, roughness: 0.9 },
-  wall: { name: 'surface:wall', map: 'plaster', colour: 0xe8d7bd, roughness: 0.95, normalScale: 0.6 },
+  // the kit's stone, cooled to a grey tile: a shop or a flat, not a tavern
+  floor: { name: 'surface:floor', map: 'flagstone', colour: 0x9c9a95, roughness: 0.85 },
+  wall: { name: 'surface:wall', map: 'plaster', colour: 0xd8d5cd, roughness: 0.95, normalScale: 0.6 },
   // the ceiling is the same plaster in shadow, so a room has a lid rather than a lightbox
-  ceiling: { name: 'surface:ceiling', map: 'plaster', colour: 0x9a9186, roughness: 1, normalScale: 0.4 },
+  ceiling: { name: 'surface:ceiling', map: 'plaster', colour: 0x9a9a97, roughness: 1, normalScale: 0.4 },
 }

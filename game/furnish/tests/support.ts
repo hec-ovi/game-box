@@ -63,3 +63,41 @@ export function busiest(world: World): Interior {
   if (!found) throw new Error('the town has no interiors')
   return found
 }
+
+/** One level upward-looking surface of a built prop: how high it is and how much of it there is. */
+export interface Plate {
+  readonly y: number
+  readonly area: number
+}
+
+/**
+ * Every height a built prop has level surface at, measured off the triangles
+ * the renderer would draw. Written here rather than taken from `src/` on
+ * purpose: a test that asks the box how tall its own surface is proves only
+ * that it can read its own bookkeeping.
+ */
+export function plates(object: THREE.Object3D): Plate[] {
+  const areas = new Map<number, number>()
+  object.updateMatrixWorld(true)
+  for (const mesh of meshesOf(object)) {
+    const position = mesh.geometry.getAttribute('position')
+    const index = mesh.geometry.getIndex()
+    const count = index ? index.count : position.count
+    for (let at = 0; at + 2 < count; at += 3) {
+      const corners = [0, 1, 2].map((offset) =>
+        new THREE.Vector3()
+          .fromBufferAttribute(position, index ? index.getX(at + offset) : at + offset)
+          .applyMatrix4(mesh.matrixWorld),
+      ) as [THREE.Vector3, THREE.Vector3, THREE.Vector3]
+      const normal = new THREE.Vector3()
+        .subVectors(corners[1], corners[0])
+        .cross(new THREE.Vector3().subVectors(corners[2], corners[0]))
+      const area = normal.length() / 2
+      // a face is level enough to rest on within about ten degrees of flat
+      if (area < 1e-7 || normal.y / (2 * area) < 0.985) continue
+      const y = Math.round(((corners[0].y + corners[1].y + corners[2].y) / 3) * 1000) / 1000
+      areas.set(y, (areas.get(y) ?? 0) + area)
+    }
+  }
+  return [...areas].map(([y, area]) => ({ y, area })).sort((one, two) => two.area - one.area)
+}

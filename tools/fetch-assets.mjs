@@ -1,6 +1,7 @@
 /**
  * Downloads the art packs listed in assets/registry/sources.json into
- * assets/src/, and records what it got.
+ * assets/src/, and records what it got. A pack with a `download` link is
+ * fetched straight; the rest come through itch.io's free-download flow.
  *
  * A pack that is not marked redistributable is refused here rather than
  * discovered later: our world files hand assets to other players, so
@@ -37,7 +38,7 @@ for (const pack of packs) {
   }
 
   try {
-    const files = await downloadFree(pack)
+    const files = pack.download ? await downloadDirect(pack) : await downloadFree(pack)
     lock[pack.id] = {
       page: pack.page,
       license: pack.license,
@@ -53,6 +54,17 @@ for (const pack of packs) {
 
 writeFileSync(LOCK, `${JSON.stringify(lock, null, 2)}\n`)
 console.log(`\nrecorded in ${LOCK}`)
+
+/** A pack that publishes a plain link (kenney.nl): fetch it and keep the name it ships under. */
+async function downloadDirect(pack) {
+  const response = await fetch(pack.download)
+  if (!response.ok) throw new Error(`${pack.download}: HTTP ${response.status}`)
+  const bytes = Buffer.from(await response.arrayBuffer())
+  const name = decodeURIComponent(new URL(pack.download).pathname.split('/').pop())
+  mkdirSync(join(OUT, pack.id), { recursive: true })
+  writeFileSync(join(OUT, pack.id, name), bytes)
+  return [{ name, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') }]
+}
 
 /** itch.io's pay-what-you-want flow: ask for the free download, then take the listed files. */
 async function downloadFree(pack) {

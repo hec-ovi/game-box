@@ -1,8 +1,8 @@
 /**
- * Measures a piece straight out of the KayKit source files: its bounds, the
- * materials on it, and the evidence for which way it faces. This is where the
- * numbers and the `front` in src/catalog/pieces.ts come from, and the test that
- * keeps them honest.
+ * Measures a piece straight out of the source packs: its bounds, the flat
+ * surfaces a body could rest on, the materials on it, and the evidence for
+ * which way it faces. This is where the numbers and the `front` in
+ * src/catalog/pieces.ts come from, and the test that keeps them honest.
  *
  * Print the table:  node game/furnish/tools/print-catalog.ts
  */
@@ -14,12 +14,17 @@ const ROOT = resolve(import.meta.dirname, '../../..')
 
 /** Where each pack lands when the assets are unpacked. */
 export const PACK_DIRECTORY: Record<Pack, string> = {
-  furniture:
-    process.env['GB_KAYKIT_FURNITURE'] ??
-    join(ROOT, 'assets/src/kaykit-furniture/extracted/KayKit_Furniture_Bits_1.0_FREE/Assets/gltf'),
-  dungeon:
-    process.env['GB_KAYKIT_DUNGEON'] ??
-    join(ROOT, 'assets/src/kaykit-dungeon/extracted/KayKit_Dungeon_Pack_1.1_FREE/Assets/gltf'),
+  home:
+    process.env['GB_KENNEY_FURNITURE'] ??
+    join(ROOT, 'assets/src/kenney-furniture/extracted/Models/GLTF format'),
+  shop:
+    process.env['GB_KENNEY_MARKET'] ??
+    join(ROOT, 'assets/src/kenney-mini-market/extracted/Models/GLB format'),
+}
+
+/** The file one piece lives in. Both packs ship .glb; the folders differ. */
+export function fileOf(id: PieceId): string {
+  return join(PACK_DIRECTORY[PIECES[id].pack], `${id}.glb`)
 }
 
 export type Point = [number, number, number]
@@ -34,6 +39,14 @@ export interface Side {
   readonly triangles: number
 }
 
+/** One upward-facing flat plate of a piece: a seat, a worktop, a mattress. */
+export interface Flat {
+  /** How high off the piece's own base it sits. */
+  readonly y: number
+  /** How much of it there is, in the piece's own square units. */
+  readonly area: number
+}
+
 export interface Measured {
   readonly node: string
   readonly min: Point
@@ -44,10 +57,12 @@ export interface Measured {
   readonly sides: Record<string, Side>
   /** Where the mass above mid height sits, as a fraction of the piece: a backrest, a headboard. */
   readonly upper: { x: number; z: number }
+  /** Every level surface that looks up, largest first. */
+  readonly flats: Flat[]
 }
 
 export function measurePiece(id: PieceId): Measured {
-  return measureFile(join(PACK_DIRECTORY[PIECES[id].pack], `${id}.gltf`))
+  return measureFile(fileOf(id))
 }
 
 /**
@@ -120,11 +135,7 @@ const COMPONENT: Record<number, { bytes: number; read: (view: DataView, at: numb
 const COMPONENTS: Record<string, number> = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 }
 
 export function measureFile(file: string): Measured {
-  const gltf = JSON.parse(readFileSync(file, 'utf8')) as Gltf
-  const directory = file.slice(0, file.lastIndexOf('/'))
-  const buffers = gltf.buffers.map((buffer) =>
-    buffer.uri ? new DataView(bytes(join(directory, decodeURIComponent(buffer.uri)))) : new DataView(new ArrayBuffer(0)),
-  )
+  const { gltf, buffers } = open(file)
 
   const triangles: Point[][] = []
   const materials: string[] = []
@@ -173,8 +184,31 @@ export function measureFile(file: string): Measured {
     triangles: triangles.length,
     sides: sidesOf(triangles, min, max),
     upper: upperMass(triangles, min, max),
+    flats: flatsOf(triangles, min[1]),
   }
 }
+
+/**
+ * The level surfaces of a piece that look up, keyed by height and largest
+ * first. A seat, a table top, a hob and a mattress are all one of these, and
+ * which one a prop means is `contact` in the catalog.
+ */
+export function flatsOf(triangles: readonly Point[][], base: number): Flat[] {
+  const areas = new Map<number, number>()
+  for (const triangle of triangles) {
+    const normal = cross(minus(triangle[1]!, triangle[0]!), minus(triangle[2]!, triangle[0]!))
+    const area = length(normal) / 2
+    if (area < 1e-7 || normal[1] / (2 * area) < UPWARD) continue
+    const y = round((triangle[0]![1] + triangle[1]![1] + triangle[2]![1]) / 3 - base)
+    areas.set(y, (areas.get(y) ?? 0) + area)
+  }
+  return [...areas]
+    .map(([y, area]) => ({ y, area: round(area) }))
+    .sort((one, two) => two.area - one.area)
+}
+
+/** How level a face has to be to hold a forearm or a body: within about ten degrees of flat. */
+const UPWARD = 0.985
 
 /** How much surface sits on each of the four vertical faces, and how finely it is cut. */
 function sidesOf(triangles: readonly Point[][], min: Point, max: Point): Record<string, Side> {
@@ -240,6 +274,42 @@ function read(gltf: Gltf, buffers: DataView[], index: number): number[][] {
   }
   return values
 }
+
+/**
+ * A .glb or a .gltf, as its JSON and its buffers. A .glb keeps its binary in a
+ * second chunk of the same file; a .gltf points at .bin files beside it.
+ */
+function open(file: string): { gltf: Gltf; buffers: DataView[] } {
+  const raw = readFileSync(file)
+  if (raw.readUInt32LE(0) !== GLB_MAGIC) {
+    const gltf = JSON.parse(raw.toString('utf8')) as Gltf
+    const directory = file.slice(0, file.lastIndexOf('/'))
+    return {
+      gltf,
+      buffers: gltf.buffers.map((buffer) =>
+        buffer.uri ? new DataView(bytes(join(directory, decodeURIComponent(buffer.uri)))) : EMPTY,
+      ),
+    }
+  }
+
+  let gltf: Gltf | undefined
+  let binary = EMPTY
+  for (let at = 12; at + 8 <= raw.byteLength; ) {
+    const length = raw.readUInt32LE(at)
+    const kind = raw.readUInt32LE(at + 4)
+    const chunk = raw.subarray(at + 8, at + 8 + length)
+    if (kind === GLB_JSON) gltf = JSON.parse(chunk.toString('utf8')) as Gltf
+    if (kind === GLB_BIN) binary = new DataView(chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength))
+    at += 8 + length + ((4 - (length % 4)) % 4)
+  }
+  if (!gltf) throw new Error(`measure: ${file} has no JSON chunk in it`)
+  return { gltf, buffers: gltf.buffers.map(() => binary) }
+}
+
+const GLB_MAGIC = 0x46546c67
+const GLB_JSON = 0x4e4f534a
+const GLB_BIN = 0x004e4942
+const EMPTY = new DataView(new ArrayBuffer(0))
 
 function bytes(file: string): ArrayBuffer {
   const read = readFileSync(file)

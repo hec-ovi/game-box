@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { PIECES, yawOf, type PieceId } from '../catalog/pieces.ts'
 import { PROP_ART, type PropArt } from '../catalog/props.ts'
+import { contactHeight } from './contact.ts'
 import { fitScale } from './fit.ts'
 
 /** One material's worth of one prop, ready to draw. */
@@ -11,18 +12,25 @@ export interface Part {
   readonly geometry: THREE.BufferGeometry
 }
 
+/** One prop as the library holds it: its geometry, and where a body meets it. */
+export interface Built {
+  readonly parts: Part[]
+  /** Metres off the floor of the surface a body sits, lies or works on. Nothing for a prop nobody uses. */
+  readonly contact: number | undefined
+}
+
 /**
  * Turns the source models into the furniture the game places: each prop turned
- * to face north, scaled into the box the room planner keeps clear for it, its
- * origin moved to the centre of its base, and everything on one material welded
- * into one mesh.
+ * to face north, scaled into the box the room planner keeps clear for it and
+ * onto the height a body expects, its origin moved to the centre of its base,
+ * and everything on one material welded into one mesh.
  *
  * All of that happens once, when the pack loads. Placing a chair afterwards is
  * a new `Mesh` over geometry that is already the right size and the right way
  * round.
  */
-export function buildProps(pieces: ReadonlyMap<PieceId, readonly Part[]>): Map<FurnitureProp, Part[]> {
-  const props = new Map<FurnitureProp, Part[]>()
+export function buildProps(pieces: ReadonlyMap<PieceId, readonly Part[]>): Map<FurnitureProp, Built> {
+  const props = new Map<FurnitureProp, Built>()
   for (const [prop, art] of Object.entries(PROP_ART) as [FurnitureProp, PropArt][]) {
     const built = buildProp(art, pieces)
     if (built) props.set(prop, built)
@@ -30,7 +38,7 @@ export function buildProps(pieces: ReadonlyMap<PieceId, readonly Part[]>): Map<F
   return props
 }
 
-function buildProp(art: PropArt, pieces: ReadonlyMap<PieceId, readonly Part[]>): Part[] | undefined {
+function buildProp(art: PropArt, pieces: ReadonlyMap<PieceId, readonly Part[]>): Built | undefined {
   const placed: Part[] = []
   for (const part of art.parts) {
     const source = pieces.get(part.piece)
@@ -46,8 +54,9 @@ function buildProp(art: PropArt, pieces: ReadonlyMap<PieceId, readonly Part[]>):
   const turn = new THREE.Matrix4().makeRotationY(yawOf(PIECES[art.parts[0]!.piece].front))
   for (const part of placed) part.geometry.applyMatrix4(turn)
 
+  const geometries = placed.map((part) => part.geometry)
   const size = bounds(placed).getSize(new THREE.Vector3())
-  const scale = fitScale(size, art)
+  const scale = fitScale(size, art, art.contact && contactHeight(geometries, art.contact.kind))
   const fit = new THREE.Matrix4().makeScale(scale.x, scale.y, scale.z)
   for (const part of placed) part.geometry.applyMatrix4(fit)
 
@@ -57,7 +66,8 @@ function buildProp(art: PropArt, pieces: ReadonlyMap<PieceId, readonly Part[]>):
   const rebase = new THREE.Matrix4().makeTranslation(-centre.x, -box.min.y, -centre.z)
   for (const part of placed) part.geometry.applyMatrix4(rebase)
 
-  return weld(placed)
+  const parts = weld(placed)
+  return { parts, contact: art.contact && contactHeight(parts.map((part) => part.geometry), art.contact.kind) }
 }
 
 /** Everything on one material as one buffer: a prop is as many draws as it has materials. */

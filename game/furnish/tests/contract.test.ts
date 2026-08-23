@@ -138,7 +138,7 @@ describe('loadFurnish', () => {
       loadFurnish(empty)
     } catch (cause) {
       expect((cause as FurnishIncomplete).code).toBe('furnish-incomplete')
-      expect((cause as FurnishIncomplete).missing).toContain('cabinet_medium')
+      expect((cause as FurnishIncomplete).missing).toContain('kitchenBar')
     }
   })
 })
