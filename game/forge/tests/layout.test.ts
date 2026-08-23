@@ -1,8 +1,9 @@
 import { Rng } from '@gb/kit'
-import type { CellKind, World } from '@gb/world'
+import { World, type CellKind } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { briefContract, Forge, MOUNTAIN_CELLS, OfflineNarrator, SIDEWALK_CELLS, STREET_CELLS } from '../src/index.ts'
-import { planStreets } from '../src/layout/plan.ts'
+import { BLOCKS_MAX } from '../src/brief.ts'
+import { MIN_BLOCK, planStreets, widestGrid } from '../src/layout/plan.ts'
 import { cutsFourWays } from '../src/layout/plots.ts'
 import { buildTown, digest } from './support.ts'
 
@@ -133,6 +134,26 @@ describe('the street plan', () => {
 
     expect(world.grid.width).toBeGreaterThanOrEqual(around(28))
     expect(world.grid.width).toBeLessThanOrEqual(around(33))
+  })
+
+  it('never plans a town bigger than the brief measured it at, up to the biggest brief there is', () => {
+    const specs = [
+      { blocksX: 3, blocksY: 3 },
+      { blocksX: 1, blocksY: 1, blockCells: 30 },
+      { blocksX: BLOCKS_MAX, blocksY: BLOCKS_MAX, blockCells: MIN_BLOCK },
+    ]
+    for (const spec of specs) {
+      for (const seed of ['ash', 'birch', 'cedar', 'dune']) {
+        const plan = planStreets(spec, new Rng(seed).fork('streets'))
+        const widest = widestGrid(spec)
+        const asked = `${spec.blocksX}x${spec.blocksY} of ${spec.blockCells ?? 'any'} on ${seed}`
+        expect(plan.size.width, asked).toBeLessThanOrEqual(widest.width)
+        expect(plan.size.height, asked).toBeLessThanOrEqual(widest.height)
+        // and what the brief allows is a grid the world will actually found
+        const found = World.found({ name: 'Edge', theme: 'plain', seed, width: plan.size.width, height: plan.size.height })
+        expect(found.ok, `${asked}: ${plan.size.width}x${plan.size.height}`).toBe(true)
+      }
+    }
   })
 
   it('refuses a brief that asks for more city than a world can hold', async () => {

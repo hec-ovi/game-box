@@ -13,7 +13,7 @@ export class GatherRun extends RecipeBase {
   override readonly leads = true
 
   weight(cast: CityCast, flavour: Flavour): number {
-    if (!cast.stocked(2).length) return 0
+    if (cast.stocked(2) === 0) return 0
     return flavour === 'agrarian' || flavour === 'coastal' ? 6 : 4
   }
 

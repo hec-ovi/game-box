@@ -9,7 +9,7 @@ export class TwoHalves extends RecipeBase {
   override readonly leads = true
 
   weight(cast: CityCast): number {
-    return cast.stocked(1).length >= 2 ? 4 : 0
+    return cast.stocked() >= 2 ? 4 : 0
   }
 
   write(cast: CityCast, rng: Rng, job: Job): Draft | undefined {
@@ -17,9 +17,8 @@ export class TwoHalves extends RecipeBase {
     if (!giver) return undefined
     const first = cast.source(rng, giver.place, 1)
     if (!first) return undefined
-    const others = cast.stocked(1).filter((place) => place.plotId !== first.plotId)
-    if (!others.length) return undefined
-    const second = rng.pick(others)
+    const second = cast.source(rng, first, 1)
+    if (!second) return undefined
 
     const one = rng.pick([...cast.free(first)])
     const two = rng.pick([...cast.free(second)])

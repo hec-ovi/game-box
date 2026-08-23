@@ -12,7 +12,7 @@ export class CourierChoice extends RecipeBase {
   override readonly leads = true
 
   weight(cast: CityCast): number {
-    return cast.stocked(1).length > 0 && cast.peopled.length >= 3 ? 4 : 0
+    return cast.stocked() > 0 && cast.peopled.length >= 3 ? 4 : 0
   }
 
   write(cast: CityCast, rng: Rng, job: Job): Draft | undefined {
@@ -20,7 +20,7 @@ export class CourierChoice extends RecipeBase {
     if (!giver) return undefined
     const source = cast.source(rng, giver.place, 1)
     if (!source) return undefined
-    const buyer = cast.anyone(rng, [giver.npc.npcId, ...source.npcs.map((npc) => npc.npcId)])
+    const buyer = cast.anyone(rng, [giver.npc.npcId, ...source.npcs.map((npc) => npc.npcId)], source)
     if (!buyer) return undefined
 
     const item = rng.pick([...cast.free(source)])

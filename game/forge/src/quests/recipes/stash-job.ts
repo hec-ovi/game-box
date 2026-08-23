@@ -9,7 +9,7 @@ export class StashJob extends RecipeBase {
   readonly name = 'stash-job'
 
   weight(cast: CityCast, flavour: Flavour): number {
-    if (!cast.stocked(1).length || !cast.places.some((place) => place.stashAnchorId)) return 0
+    if (cast.stocked() === 0 || !cast.places.some((place) => place.stashAnchorId)) return 0
     return flavour === 'neon' ? 5 : 3
   }
 
@@ -18,7 +18,7 @@ export class StashJob extends RecipeBase {
     if (!giver) return undefined
     const source = cast.source(rng, giver.place, 1)
     if (!source) return undefined
-    const hiding = cast.hidingPlace(rng, [source.plotId])
+    const hiding = cast.hidingPlace(rng, [source.plotId], source)
     if (!hiding?.stashAnchorId || !hiding.interiorId) return undefined
 
     const item = rng.pick([...cast.free(source)])

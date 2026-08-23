@@ -1,6 +1,8 @@
 import type { Rng } from '@gb/kit'
 import type { NpcRole } from '@gb/world'
 import type { WorldSummary } from '../narrator.ts'
+import { metresBetween, pickNear } from './reach.ts'
+import { Stock } from './stock.ts'
 
 export type CastPlace = WorldSummary['places'][number]
 export type CastNpc = CastPlace['npcs'][number]
@@ -10,6 +12,12 @@ export type CastItem = CastPlace['items'][number]
 export interface CastPerson {
   readonly place: CastPlace
   readonly npc: CastNpc
+}
+
+/** Something worth stealing, and the place it is sitting in. */
+export interface CastLoot {
+  readonly place: CastPlace
+  readonly item: CastItem
 }
 
 /** Roles with a post to hold: the people a town brings its problems to. */
@@ -25,43 +33,76 @@ const JOBS_PER_GIVER = 2
  * The city as a quest writer uses it: who can give work, who will walk with
  * you, what is lying about that no other quest has claimed, and how far apart
  * any two doors are. Everything it hands out is booked, so two quests never
- * send the player after the same thing.
+ * send the player after the same thing, and every pick is drawn near the place
+ * the job starts from, so a job in a big city is still a job on one street.
  */
 export class CityCast {
   readonly places: readonly CastPlace[]
-  #takenItems = new Set<string>()
+  #peopled: CastPlace[] = []
+  #givers: CastPerson[] = []
+  #walkers: CastPerson[] = []
+  #everyone: CastPerson[] = []
+  #hiding: CastPlace[] = []
+  #stock: Stock
   #jobs = new Map<string, number>()
 
   constructor(summary: WorldSummary) {
     this.places = summary.places
+    this.#stock = new Stock(summary.places)
+    for (const place of summary.places) {
+      if (place.stashAnchorId !== undefined) this.#hiding.push(place)
+      if (!place.npcs.length) continue
+      this.#peopled.push(place)
+      for (const npc of place.npcs) {
+        const person = { place, npc }
+        this.#everyone.push(person)
+        if (GIVER_ROLES.has(npc.role)) this.#givers.push(person)
+        if (WALKER_ROLES.has(npc.role)) this.#walkers.push(person)
+      }
+    }
   }
 
-  /** Places with somebody in them. */
+  /** Places with somebody in them: what the amount of work in a town is measured against. */
   get peopled(): readonly CastPlace[] {
-    return this.places.filter((place) => place.npcs.length > 0)
+    return this.#peopled
   }
 
-  /** Places holding at least this many things nobody has claimed. */
-  stocked(least = 1): readonly CastPlace[] {
-    return this.places.filter((place) => this.free(place).length >= least)
+  /**
+   * The most jobs this town can hand out before it starts promising the same
+   * thing twice: a couple per person who gives work, and one unclaimed thing
+   * for each job to be about. This is the ceiling on a town's work, and it
+   * grows with the town.
+   */
+  get capacity(): number {
+    const hands = (this.#givers.length || this.#everyone.length) * JOBS_PER_GIVER
+    return Math.min(hands, this.#stock.things)
+  }
+
+  /** How many places hold at least this many things nobody has claimed. */
+  stocked(least = 1): number {
+    return this.#stock.atLeast(least)
+  }
+
+  /** How many places hold something that belongs to somebody, unclaimed. */
+  get lootable(): number {
+    return this.#stock.owned.length
   }
 
   /** The things in a place no quest has taken yet. */
   free(place: CastPlace): readonly CastItem[] {
-    return place.items.filter((item) => !this.#takenItems.has(item.itemId))
+    return this.#stock.free(place)
   }
 
   /** Metres between two street doors: what a walk actually costs the player. */
   metres(from: CastPlace, to: CastPlace): number {
-    if (!from.door || !to.door) return 0
-    return Math.hypot(from.door.x - to.door.x, from.door.z - to.door.z)
+    return metresBetween(from, to)
   }
 
   /** The busiest staffed place in town, and the person behind its counter. */
   hub(rng: Rng): CastPerson | undefined {
-    const staffed = this.peopled.filter((place) => place.npcs.some((npc) => GIVER_ROLES.has(npc.role)))
+    const staffed = this.#peopled.filter((place) => place.npcs.some((npc) => GIVER_ROLES.has(npc.role)))
     if (!staffed.length) return this.giver(rng)
-    const most = Math.max(...staffed.map((place) => place.npcs.length))
+    const most = staffed.reduce((many, place) => Math.max(many, place.npcs.length), 0)
     const busiest = staffed.filter((place) => place.npcs.length === most)
     const place = rng.pick(busiest)
     const npc = place.npcs.find((candidate) => GIVER_ROLES.has(candidate.role)) ?? place.npcs[0]!
@@ -70,48 +111,50 @@ export class CityCast {
 
   /** Somebody who can hand out work, and has not handed out too much already. */
   giver(rng: Rng, avoid: readonly string[] = []): CastPerson | undefined {
-    const options = this.#people(
-      (npc) => GIVER_ROLES.has(npc.role) && !avoid.includes(npc.npcId) && (this.#jobs.get(npc.npcId) ?? 0) < JOBS_PER_GIVER,
-    )
-    const fallback = this.#people((npc) => !avoid.includes(npc.npcId) && (this.#jobs.get(npc.npcId) ?? 0) < JOBS_PER_GIVER)
-    const pool = options.length ? options : fallback
-    return pool.length ? rng.pick(pool) : undefined
+    const spare = (person: CastPerson) => !avoid.includes(person.npc.npcId) && (this.#jobs.get(person.npc.npcId) ?? 0) < JOBS_PER_GIVER
+    return pickNear(rng, this.#givers, placeOf, spare) ?? pickNear(rng, this.#everyone, placeOf, spare)
   }
 
-  /** Somebody with no counter to stand behind, who can be walked across town. */
-  walker(rng: Rng, avoid: readonly string[] = []): CastPerson | undefined {
-    const pool = this.#people((npc) => WALKER_ROLES.has(npc.role) && !avoid.includes(npc.npcId))
-    return pool.length ? rng.pick(pool) : undefined
+  /** Somebody with no counter to stand behind, who can be walked somewhere. */
+  walker(rng: Rng, avoid: readonly string[] = [], near?: CastPlace): CastPerson | undefined {
+    return pickNear(rng, this.#walkers, placeOf, (person) => !avoid.includes(person.npc.npcId), near)
   }
 
   /** Anybody at all, other than the people already in this quest. */
-  anyone(rng: Rng, avoid: readonly string[] = []): CastPerson | undefined {
-    const pool = this.#people((npc) => !avoid.includes(npc.npcId))
-    return pool.length ? rng.pick(pool) : undefined
+  anyone(rng: Rng, avoid: readonly string[] = [], near?: CastPlace): CastPerson | undefined {
+    return pickNear(rng, this.#everyone, placeOf, (person) => !avoid.includes(person.npc.npcId), near)
   }
 
-  /** A stocked place, weighted towards the far side of town from where you start. */
+  /** Another place with people in it, a walk from this one: somewhere to walk somebody to. */
+  elsewhere(rng: Rng, from: CastPlace): CastPlace | undefined {
+    return pickNear(rng, this.#peopled, itself, (place) => place.plotId !== from.plotId, from)
+  }
+
+  /** Somewhere with something to fetch, a walk away from where the job starts. */
   source(rng: Rng, from: CastPlace | undefined, least = 1): CastPlace | undefined {
-    const options = this.stocked(least).filter((place) => place.plotId !== from?.plotId)
-    if (!options.length) return undefined
-    if (!from) return rng.pick(options)
-    const ranked = [...options].sort((a, b) => this.metres(from, b) - this.metres(from, a))
-    return rng.chance(0.6) ? ranked[rng.int(0, Math.min(3, ranked.length))]! : rng.pick(options)
+    const spare = (place: CastPlace) => place.plotId !== from?.plotId && this.free(place).length >= least
+    return pickNear(rng, this.#stock.places, itself, spare, from)
+  }
+
+  /** Something with an owner, and where it is sitting: the only things worth lifting. */
+  loot(rng: Rng, from: CastPlace | undefined): CastLoot | undefined {
+    const spare = (place: CastPlace) => place.plotId !== from?.plotId && this.free(place).some((item) => item.ownerNpcId !== undefined)
+    const place = pickNear(rng, this.#stock.owned, itself, spare, from)
+    if (!place) return undefined
+    return { place, item: rng.pick(this.free(place).filter((item) => item.ownerNpcId !== undefined)) }
   }
 
   /** A place with a surface to leave something on. */
-  hidingPlace(rng: Rng, avoid: readonly string[] = []): CastPlace | undefined {
-    const options = this.places.filter((place) => place.stashAnchorId !== undefined && !avoid.includes(place.plotId))
-    return options.length ? rng.pick(options) : undefined
+  hidingPlace(rng: Rng, avoid: readonly string[] = [], near?: CastPlace): CastPlace | undefined {
+    return pickNear(rng, this.#hiding, itself, (place) => !avoid.includes(place.plotId), near)
   }
 
   /** Books things and people so nothing is promised to two quests at once. */
   book(items: readonly CastItem[], givers: readonly string[] = []): void {
-    for (const item of items) this.#takenItems.add(item.itemId)
+    this.#stock.take(items)
     for (const npcId of givers) this.#jobs.set(npcId, (this.#jobs.get(npcId) ?? 0) + 1)
   }
-
-  #people(wanted: (npc: CastNpc) => boolean): CastPerson[] {
-    return this.peopled.flatMap((place) => place.npcs.filter(wanted).map((npc) => ({ place, npc })))
-  }
 }
+
+const placeOf = (person: CastPerson): CastPlace => person.place
+const itself = (place: CastPlace): CastPlace => place

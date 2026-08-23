@@ -53,9 +53,22 @@ const EXIT_COUNTS: ReadonlyArray<readonly [number, number]> = [
   [4, 1],
 ]
 
-/** The widest block the planner can produce, which is what bounds the grid. */
+/**
+ * The widest block the planner can produce for a nominal size, which is what
+ * bounds the grid. The jitter applies to a size the brief named as well as to
+ * one the seed picked, so both are measured with it.
+ */
 export function widestBlock(blockCells?: number | undefined): number {
-  return blockCells ?? Math.max(...NOMINAL_BLOCKS) + JITTER
+  return nudged(Math.min(MAX_BLOCK, (blockCells ?? Math.max(...NOMINAL_BLOCKS)) + JITTER))
+}
+
+/**
+ * The most blocks a side that fits inside a grid this wide: the smallest block
+ * the planner will cut, laid end to end with a street between each pair. Ask
+ * for wider blocks than that and the grid check refuses the brief instead.
+ */
+export function mostBlocks(gridCells: number): number {
+  return Math.max(1, Math.floor((gridCells - MOUNTAIN_CELLS * 2 - BAND) / (BAND + widestBlock(MIN_BLOCK))))
 }
 
 /** The grid a spec needs at its widest, before a seed narrows it down. */
@@ -131,9 +144,12 @@ function axis(blocks: number, nominal: number, mayMerge: boolean, rng: Rng): Axi
 
 /** One block's side: the nominal, jittered, nudged up if it would face only two ways. */
 function blockSize(nominal: number, rng: Rng): number {
-  const cells = Math.max(MIN_BLOCK, Math.min(MAX_BLOCK, nominal + rng.int(-JITTER, JITTER + 1)))
-  if (cutsFourWays(cells) || !cutsFourWays(cells + 1)) return cells
-  return cells + 1
+  return nudged(Math.max(MIN_BLOCK, Math.min(MAX_BLOCK, nominal + rng.int(-JITTER, JITTER + 1))))
+}
+
+/** A block that would face only two ways is given the cell that puts doors on all four. */
+function nudged(cells: number): number {
+  return cutsFourWays(cells) || !cutsFourWays(cells + 1) ? cells : cells + 1
 }
 
 /** How many blocks are left open: about one in four at most, and never the only one. */

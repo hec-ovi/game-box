@@ -1,9 +1,16 @@
 import { contract } from '@gb/kit'
 import { z } from 'zod'
-import { MAX_BLOCK, MIN_BLOCK, widestBlock, widestGrid } from './layout/plan.ts'
+import { MAX_BLOCK, MIN_BLOCK, mostBlocks, widestBlock, widestGrid } from './layout/plan.ts'
 
 /** The widest grid `@gb/world` accepts, a side. Ask for more and nothing is built. */
 const GRID_MAX = 1024
+
+/**
+ * The most blocks a side anything can ask for. It is the grid bound expressed
+ * in blocks rather than a number of its own: how many of the smallest block
+ * fit across the widest grid. Bigger blocks hit the grid check below first.
+ */
+export const BLOCKS_MAX = mostBlocks(GRID_MAX)
 
 /** What you ask for when you want a city. Everything else is derived from it. */
 export const BriefSchema = z
@@ -12,9 +19,9 @@ export const BriefSchema = z
     theme: z.string().min(1).max(60),
     /** Same seed, same city, every time. */
     seed: z.string().min(1).max(120),
-    /** Blocks across and down. A 2x2 hamlet or a 12x12 city. */
-    blocksX: z.number().int().min(1).max(24).default(3),
-    blocksY: z.number().int().min(1).max(24).default(3),
+    /** Blocks across and down. A 2x2 hamlet, a 12x12 city, as many as the grid holds. */
+    blocksX: z.number().int().min(1).max(BLOCKS_MAX).default(3),
+    blocksY: z.number().int().min(1).max(BLOCKS_MAX).default(3),
     /** Cells per block side, before streets. Left out, the seed picks it and varies it block by block. */
     blockCells: z.number().int().min(MIN_BLOCK).max(MAX_BLOCK).optional(),
     /** How much of each block gets built on, 0 to 1. */

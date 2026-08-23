@@ -8,7 +8,7 @@ export class ErrandPlus extends RecipeBase {
   readonly name = 'errand-plus'
 
   weight(cast: CityCast): number {
-    return cast.stocked(1).length >= 2 ? 4 : 0
+    return cast.stocked() >= 2 ? 4 : 0
   }
 
   write(cast: CityCast, rng: Rng, job: Job): Draft | undefined {
@@ -16,9 +16,8 @@ export class ErrandPlus extends RecipeBase {
     if (!giver) return undefined
     const source = cast.source(rng, giver.place, 1)
     if (!source) return undefined
-    const spare = cast.stocked(1).filter((place) => place.plotId !== source.plotId)
-    if (!spare.length) return undefined
-    const aside = rng.pick(spare)
+    const aside = cast.source(rng, source, 1)
+    if (!aside) return undefined
 
     const item = rng.pick([...cast.free(source)])
     const extra = rng.pick([...cast.free(aside)])

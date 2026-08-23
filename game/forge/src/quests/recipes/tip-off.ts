@@ -8,7 +8,7 @@ export class TipOff extends RecipeBase {
   readonly name = 'tip-off'
 
   weight(cast: CityCast): number {
-    return cast.stocked(2).length > 0 && cast.peopled.length >= 3 ? 4 : 0
+    return cast.stocked(2) > 0 && cast.peopled.length >= 3 ? 4 : 0
   }
 
   write(cast: CityCast, rng: Rng, job: Job): Draft | undefined {
@@ -16,7 +16,7 @@ export class TipOff extends RecipeBase {
     if (!giver) return undefined
     const source = cast.source(rng, giver.place, 2)
     if (!source) return undefined
-    const informant = cast.anyone(rng, [giver.npc.npcId])
+    const informant = cast.anyone(rng, [giver.npc.npcId], source)
     if (!informant) return undefined
 
     const free = cast.free(source)

@@ -10,6 +10,7 @@
     "test": "vitest run",
     "preview": "node --experimental-strip-types tools/preview.ts",
     "plans": "node --experimental-strip-types tools/floorplan.ts",
+    "measure": "node --experimental-strip-types tools/measure.ts",
     "generate": "node --experimental-strip-types tools/emit-schema.ts"
   },
   "dependencies": {

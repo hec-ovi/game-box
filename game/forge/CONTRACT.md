@@ -1,6 +1,6 @@
 # @gb/forge contract
 
-contractVersion: 0.6.0
+contractVersion: 0.7.0
 
 ## Purpose
 
@@ -10,7 +10,7 @@ Builds a whole city from one brief: streets, plots, interiors, the people standi
 
 | Param | Schema | Preconditions |
 |---|---|---|
-| `Forge.build(brief)` | [schema/brief.json](schema/brief.json) | theme (60 characters) and seed are yours; blocks across and down, density and max storeys have defaults; cells per block and roads out (1 to 4) are picked from the seed if you leave them out |
+| `Forge.build(brief)` | [schema/brief.json](schema/brief.json) | theme (60 characters) and seed are yours; blocks across and down, density and max storeys have defaults; cells per block and roads out (1 to 4) are picked from the seed if you leave them out. Blocks go as high as the grid holds, below |
 | `new Forge(narrator)` | a `Narrator` | answers `nameCity`, `namePlace`, `describeNpc`, `describeItem`, `writeQuests` |
 | `Forge.extend(world, count)` | a `@gb/world` `World` | the world has empty land touching a sidewalk |
 
@@ -24,7 +24,7 @@ Builds a whole city from one brief: streets, plots, interiors, the people standi
 
 ## Errors (closed set)
 
-- `invalid-brief`: the brief failed its schema, or the city it asks for is one no world will hold (blocks times cells over 1024 a side). Nothing is built, and no world constructor throws. The size bound is not expressible in JSON Schema, so it lives in the brief's own check rather than in `schema/brief.json`.
+- `invalid-brief`: the brief failed its schema, or the city it asks for is one no world will hold (the widest grid those blocks could need is over 1024 cells a side). Nothing is built, and no world constructor throws. The size bound is not expressible in JSON Schema, so it lives in the brief's own check rather than in `schema/brief.json`.
 - `unsound-world`: the generator produced a world that fails its own integrity check. Carries the problems; this is a bug in the generator, never a bad brief.
 
 A narrator writing an unusable quest is not an error: those quests are dropped and reported in `rejected`.
@@ -66,12 +66,30 @@ The theme is read as one of seven kinds of town (frontier, coastal, industrial, 
 
 A town's work is written by recipes over the people and things it actually holds, never one template. What the seed and the theme decide:
 
-- **How much work there is.** Not the block count: how many people are standing in shops and front rooms, how much is lying about to be carried, and how busy a town of this kind is.
-- **A main line, and what it is for.** A generated town has no story, but it has a social order, and the main line is the way into it. One to four jobs come from the town's busiest staffed place, from the same person each time, and each one finished raises a standing flag. Side work waits on those flags, so a player is offered a handful of jobs on the first morning and the rest of the town opens as they earn their place.
-- **The recipes.** Fetch one thing across town; gather several of a kind and count them out; carry a parcel two people want and choose who gets it; walk somebody home; do a job with something else worth picking up on the way; hear about what else is in a building from the right person; lift something and beat the clock with it; put something somewhere it will not be found; two halves of one job in either order. Each one says whether the town can serve it and how likely it is here, so a town without anything worth stealing never writes a theft.
+- **How much work there is.** A density rather than a number: about two side jobs for every five places with somebody standing in them, moved by how busy a town of this kind is and swung up to a third either way by the seed. A street in a city has about as much going on as a street in a village, and a city has more streets, so 25 buildings come with about 13 jobs and 2,500 with about 950. Two towns of the same size do not get the same number. The only ceiling is what the town can actually book: a couple of jobs per person who gives work, and one unclaimed thing per job. Both of those grow with the town, so no city is ever told it has as little to do as a hamlet.
+- **How far a job sends you.** A job reaches into the part of town it starts in: the next street over, a few streets away, or about one in twenty, the far side of town. Those are metres, not a share of the map, so the middling job in a city is the same size of job as the middling job in a village, and only a city is big enough to hold one that crosses it. It is what makes a big city read as many neighbourhoods instead of one village with half-hour errands.
+- **How much of it is open.** About a third of a town's work is offered before the player has done anything, whatever the size, and nobody hands out more than two jobs. In a 2,500-building city that is 292 jobs standing open behind 292 different counters: one for every eight or nine buildings, and still only two in front of the player at a time.
+- **A main line, and what it is for.** A generated town has no story, but it has a social order, and the main line is the way into it. One to four jobs come from the town's busiest staffed place, from the same person each time, and each one finished raises a standing flag. Side work waits on those flags, so the first morning offers a fraction of the town and the rest of it opens as they earn their place.
+- **The recipes.** Fetch one thing from somewhere else; gather several of a kind and count them out; carry a parcel two people want and choose who gets it; walk somebody home; do a job with something else worth picking up on the way; hear about what else is in a building from the right person; lift something and beat the clock with it; put something somewhere it will not be found; two halves of one job in either order. Each one says whether the town can serve it and how likely it is here, so a town without anything worth stealing never writes a theft.
 - **What it pays.** `rewardFor(difficulty)` from `@gb/quest`, with the difficulty read off the work: metres walked door to door, steps, whether it is a theft, whether it is timed, whether somebody has to be kept safe, and how much has to be carried. Inside its band a job is paid for where it sits, so a fetch across a hundred blocks is not paid the same as one next door, and a step that pays on top of the reward is kept inside what the band allows.
 - **Nobody is sent back to the person they are standing in front of.** A quest never opens with a `talk` step aimed at its own giver; the conversation that hands the job out is the conversation.
 - **Timers are game seconds.** A time limit is measured against the clock `@gb/play` runs, at its default rate, and is always longer than the walk the job asks for.
+
+### How big a city can be
+
+Nothing here holds the number of blocks down. `@gb/world` will not hold a grid over 1024 cells a side, and the brief's block limit is that bound read in blocks: how many of the smallest block the planner cuts fit across it, which is 77. Ask for more than the grid holds at the block size you named and the brief is refused before a cell is allocated, with the grid it would have needed in the message. That is why 50 blocks of 6 cells builds and 38 blocks of the default size does not: blocks are not a size, cells are.
+
+What the sizes cost, on one seed with the offline narrator. Another seed moves the building count and the quest count by up to a third, because the plan and the appetite are both drawn:
+
+| blocks | grid | buildings | quests | build | world file |
+|---|---|---|---|---|---|
+| 2x2 | 59x57 | 25 | 13 | 0.1 s | 0.1 MB |
+| 5x5 | 127x123 | 157 | 63 | 0.4 s | 0.7 MB |
+| 10x10 | 237x233 | 625 | 244 | 1.6 s | 3.0 MB |
+| 20x20 | 457x461 | 2,493 | 956 | 8 s | 12 MB |
+| 37x37 | 849x837 | 8,055 | 3,201 | 39 s | 37 MB |
+
+About 5 ms and 4.5 KB a building, flat, all the way up. Nothing in the generator degrades before the grid wall; what runs out first is the player. A 20x20 city is 914 m corner to corner, an eleven-minute walk at 1.4 m/s; 37x37 is 1.7 km, twenty minutes; the widest grid there is, 1024 cells, would be 2 km and twenty-four. Somewhere past twenty blocks a side, a city stops being a place you cross on foot and starts being a place you live in one part of.
 
 ### The town plan
 
@@ -83,7 +101,7 @@ Two seeds are two towns to walk, not one town with the buildings shuffled. What 
 - **An open block.** Up to one block in four, and never the only one, is left unbuilt as a paved plaza or a green park. Both are painted on the grid, so nothing builds there afterwards and `@gb/nav`, `@gb/crowd` and `@gb/scene` read them as ground people walk on.
 - **The roads out**, below: how many and which walls of the valley they leave through.
 
-A brief that names `blockCells` or `exits` gets what it asks for; the jitter still varies blocks around the number it named.
+A brief that names `blockCells` or `exits` gets what it asks for; the jitter still varies blocks around the number it named, and the size check measures the jittered width, so a brief that is accepted always plans a grid the world will found.
 
 At a crossing, the roadway runs right through in both directions and the pavement keeps a corner in each quarter. That falls out of the painting order: mountains, then every pavement band, then every roadway band on top. Paint one band at a time and the last band wins the cells they share, which is how pavement ended up lying across the middle of every north-south street.
 
@@ -105,7 +123,7 @@ The `Narrator` interface is the seam for a language model: implement it elsewher
 
 What a theme means lives in `src/theme/`: `flavour.ts` reads the theme text, `plot-mix.ts` turns it into building weights and staples, `words.ts` holds the vocabulary a town names itself from. `src/narrator/` is what the offline narrator says: `places.ts` for signs, `knowledge.ts` for people.
 
-Quest writing is `src/quests/`: `cast.ts` is the town as a writer uses it (who can give work, who will walk with you, what nothing else has claimed, how far apart two doors are), `difficulty.ts` turns the work into a band and its pay, `pace.ts` turns metres into game seconds, `write.ts` plans the main line and the side work, and `recipes/` holds one recipe per file behind `recipes/recipe.ts`. A new recipe is a new file, a new entry in `recipes/index.ts`, and a `weight` that returns zero when the town cannot serve it. Recipes hand back drafts; `write.ts` puts them through `questDraftContract` and `sealQuest`, and a draft the door refuses is handed on unsealed so the forge reports it rather than hiding it.
+Quest writing is `src/quests/`: `demand.ts` says how much work the town has in it, `cast.ts` is the town as a writer uses it (who can give work, who will walk with you, what nothing else has claimed, how far apart two doors are), `stock.ts` is its ledger of what no quest has taken, `reach.ts` decides how far a job may send the player and picks by sampling rather than scanning, `difficulty.ts` turns the work into a band and its pay, `pace.ts` turns metres into game seconds, `write.ts` plans the main line and the side work, and `recipes/` holds one recipe per file behind `recipes/recipe.ts`. Nothing a recipe calls may walk the whole town: a thousand quests over three thousand places is a quadratic, which is why the ledger keeps counts and every pick is sampled. A new recipe is a new file, a new entry in `recipes/index.ts`, and a `weight` that returns zero when the town cannot serve it. Recipes hand back drafts; `write.ts` puts them through `questDraftContract` and `sealQuest`, and a draft the door refuses is handed on unsealed so the forge reports it rather than hiding it.
 
 The layout is five files under `src/layout/`: `bands.ts` is the grid arithmetic every other one reads, `plan.ts` decides the whole town from one `Rng` and touches nothing, `streets.ts` paints that plan onto the grid, `exits.ts` plans and paints the roads out, and `roads.ts` builds the graph. Deciding and painting are apart on purpose: the plan is the only place a street number comes from, and it can be read and measured without a world.
 
@@ -117,4 +135,4 @@ Interiors live in `src/interior/`: `recipes.ts` says what rooms a building has, 
 
 Every generated quest is played to the end in the tests by `tests/drive.ts`, which reads nothing but `objectives()` and does what each one says, so a recipe that writes a job nobody can finish fails the suite whatever shape it is.
 
-Run `pnpm --filter @gb/forge test`, and regenerate `schema/brief.json` with `pnpm --filter @gb/forge run generate` when the brief changes. `pnpm --filter @gb/forge run preview [seed]` prints a town; `pnpm --filter @gb/forge run plans [seed]` draws one interior per building kind as a floor plan, which is the fastest way to see whether a change reads.
+Run `pnpm --filter @gb/forge test`, and regenerate `schema/brief.json` with `pnpm --filter @gb/forge run generate` when the brief changes. `pnpm --filter @gb/forge run preview [seed]` prints a town; `pnpm --filter @gb/forge run plans [seed]` draws one interior per building kind as a floor plan, which is the fastest way to see whether a change reads; `pnpm --filter @gb/forge run measure [seed] [sizes]` prints the table above for whatever sizes you name.

@@ -23,9 +23,8 @@ export class EscortRun extends RecipeBase {
     if (!giver) return undefined
     const walker = cast.walker(rng, [giver.npc.npcId])
     if (!walker) return undefined
-    const destinations = cast.peopled.filter((place) => place.plotId !== walker.place.plotId)
-    if (!destinations.length) return undefined
-    const destination = rng.pick(destinations)
+    const destination = cast.elsewhere(rng, walker.place)
+    if (!destination) return undefined
 
     const walk = cast.metres(giver.place, walker.place) + cast.metres(walker.place, destination)
     const hurried = rng.chance(IN_A_HURRY)

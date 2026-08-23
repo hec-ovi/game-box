@@ -11,7 +11,7 @@ export class FetchRun extends RecipeBase {
   readonly name = 'fetch'
 
   weight(cast: CityCast): number {
-    return cast.stocked(1).length > 0 && cast.peopled.length >= 2 ? 6 : 0
+    return cast.stocked() > 0 && cast.peopled.length >= 2 ? 6 : 0
   }
 
   write(cast: CityCast, rng: Rng, job: Job): Draft | undefined {
