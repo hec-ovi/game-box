@@ -1180,6 +1180,58 @@ above, and this exchange should be the test case it is judged against.
 
 Box: `talk`.
 
+### A codex of what you have discovered (2026-08-23, his design)
+
+"add some sort of codex, with all the discovered places, people discovered, etc,
+and on each person, an undiscovered background history, profession, etc that is
+discovered on interaction and unblocked, also if hostile, friendly neutral, etc
+and that can change."
+
+Also from the same message, and worth recording because it corrects an earlier
+report: **characters do have some context and do know where they are.** The
+missing piece is the per-character session, not the situation entirely. Soften
+the stale-context entry accordingly when it is picked up.
+
+**What the codex is:** a record of what the player has found. Places entered,
+people met, and per person a background that is hidden until earned.
+
+What already exists and should be reused:
+
+- **A global standing** with five bands, which is what makes an NPC greet a
+  disliked player differently. That is reputation with the town.
+- **What a person knows**, written per NPC by the narrator at generation.
+- **The premise's `common`**, the facts everybody in town holds.
+
+What does not exist:
+
+- **A per-person disposition** (hostile, friendly, neutral) that moves with what
+  you do to *that person*. The global standing is not this, and conflating them
+  would lose the thing he is asking for: one barman warming to you while another
+  turns.
+- **A locked background per person**, revealed by interaction. Forge writes a
+  personality and knowledge today; neither is staged, and both go to the model
+  rather than to the player.
+- **Any record of what the player has seen.** Nothing tracks places entered or
+  people met.
+
+Design questions to settle before building, because they decide the shape:
+
+- **What unlocks a fact?** Talking once, talking about the right subject,
+  finishing their quest, or being told by somebody else. The last one is the
+  gossip question from the memory entry and they should be answered together.
+- **Does the codex show what you were told, or what is true?** A person who lies
+  is far more interesting, and it needs the codex to record the source rather
+  than the fact.
+- **Cost.** A discovered-state per person per world, in the save. Same bounded
+  storage question as per-character memory, and the same answer will serve both.
+
+This belongs in the same design pass as per-character sessions and memory: they
+are one system seen from three sides (what a person knows, what they remember of
+you, and what you have learned of them).
+
+Boxes: `play` for what is discovered, `forge` for staged backgrounds at
+generation, `talk` for what unlocks, `hud` for the codex itself.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
