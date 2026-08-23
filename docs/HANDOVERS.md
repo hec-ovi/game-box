@@ -188,6 +188,17 @@ the spot, so the app cannot fail to hold the invariant up.
 | 81 | Place everyone in `player.companions()` beside `player.where` on resume | app | The fact of companionship is saved; only the metres were missing, and those are now derivable from the player's own place. Without it a companion resumes at their post across town and either walks the city to catch up or snaps to the player on the first frame |
 | 82 | A save written while the clock is paused opens frozen forever | app | `P` pauses by setting the rate to 0, and the rate it was running at lives in app memory rather than in the save. Reload and time never moves, the sun never sets, nothing on screen says why |
 
+### Decided, so nobody reopens it
+
+**An opening line may reach a street NPC's back, and that is accepted.** The
+kerb rule means up to a couple of seconds between the hold and the person
+turning to face you. `@gb/crowd` deliberately publishes no "they have turned"
+signal and `@gb/app` deliberately does not wait for one: the defect being fixed
+was a blank panel, and a two second wait to avoid a cosmetic oddity trades a
+real fault for a smaller one. Somebody answering while they finish crossing
+reads as calling back over their shoulder. Companions are exempt from the rule
+entirely, so this only ever applies to a stranger on the pavement.
+
 ## Checked and closed
 
 About fifty handovers landed and were verified in the code rather than taken on
