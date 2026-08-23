@@ -153,3 +153,47 @@ What a pack has to guarantee, and none of it is guaranteed today:
 
 Order: the design in the world file first, because a pack built before that is
 a pack that can silently rewrite the city it is added to.
+
+## More animation clips (2026-08-23)
+
+He noticed the animation packs carry far more than we pull from them, and he is
+right: people sitting in a bar could be drinking coffee, talking, doing
+different idles, and today they are not.
+
+**The machinery is already finished.** `clipForAnchor(kind, npcId)` picks from a
+shelf of clips per anchor kind, hashed off the person's id, so the same person
+always does the same thing and a city stays identical between openings. Adding a
+clip is a name in `CLIPS_FOR_ANCHOR` plus the build tool pulling it. No code
+design, no new seam.
+
+**What we ship today, and it is thin.** Eight of the eleven anchor kinds have
+exactly one clip:
+
+| anchor | clips today |
+|---|---|
+| stand | 3 (idle, folded arms, on the phone) |
+| lean | 3 (wall, wall crossed, wall smoking) |
+| browse | 2 |
+| sit, sit-drink, serve, cook, work-desk, work-bench, sleep, guard | **1 each** |
+
+And three of the singles are the wrong clip rather than a thin one:
+
+- **`sleep` plays a seated idle.** Somebody in bed is sitting up.
+- **`sit-drink` has no drinking in it.** It is the same seated idle as `sit`.
+- **`cook` is a plain standing idle.** Nothing about a stove.
+
+Gestures are two clips, both talking, so the only thing anyone ever does over
+their base pose is talk.
+
+**Where the clips come from.** The rig is Quaternius Universal Base Characters,
+65 joints, Unreal naming (`pelvis`, `spine_01`, `clavicle_l`, `calf_l`). Any
+Quaternius Universal Animation Library pack binds with no retargeting, and
+`tools/check-rig.mjs` is the gate: same joints, same order, or the file is
+refused. Mixamo needs retargeting and is not the cheap path.
+
+**Cost.** `anims.glb` is 0.62 MB for every clip in the game, no meshes, loaded
+once and shared by everyone. It is a fixed catalogue like the textures, so more
+clips are bytes paid once and never per world.
+
+Worth doing as one pass: fix the three wrong ones, then widen the singles, then
+add gestures worth layering (drinking, checking a phone, gesturing at something).
