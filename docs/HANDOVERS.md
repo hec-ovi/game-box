@@ -152,6 +152,10 @@ the first open topic on every `talked` event) fails both of its tests.
 |---|---|---|---|
 | 69 | `Member.gesture()` has no caller, so NPCs talk with their arms still | app | Not talk's to make: talk holds no body, has no three.js and no `@gb/cast` dependency, and pulling cast in would put a renderer inside a headless box. App owns both ends already. `member.gesture(...)` on a `said` piece for `conversation.npcId`, `stopGesture()` on `over`. Two lines, nothing new needed from either contract |
 
+| 70 | A thing left somewhere is not drawn there | scene | The put-down credits and the item leaves the player's hands, and nothing appears on the surface. A `Pickup` handle's batch matrix is baked at `put()` time, and `PropSurface`/`Pickups` are not exported, so there is no published way to place an item at an anchor after the build |
+| 71 | `JournalEntry` has no `kind`, so nothing marks the main line | quest, then hud | Forge generates it correctly. App cannot add it without reintroducing the hand mapper it just deleted |
+| 72 | A `complete` step is a journal line reading like a task | quest or forge | `journal()` lists every step in document order. Either the journal filters flow-control steps as a rule, or forge's recipes are writing task-sounding text into a `complete` objective |
+
 ## Checked and closed
 
 About fifty handovers landed and were verified in the code rather than taken on
