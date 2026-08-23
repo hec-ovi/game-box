@@ -464,6 +464,33 @@ Worth remembering while fixing: every one of these is a lit thing drawn too big
 or too strong, in a game with no point lights, where the emissive pass is
 carrying the entire look on its own.
 
+### Signage is enormous and overlaps itself (2026-08-23, `overlapping_labels.png`)
+
+The worst thing on screen. At a shopfront: letters several metres tall, a
+horizontal fascia sign and a vertical blade sign occupying the same space and
+drawn through each other, and light strips crossing the letters at angles that
+match no surface. It fills the view from the pavement and nothing else is
+readable.
+
+This is the same family as the doorway entry above and probably the same cause,
+so look at them together: **things that emit are being sized without reference
+to the wall they are on.** A sign, a light column, a banner and a strip each look
+plausible alone and collide when four of them land on one shopfront.
+
+What to check, in order:
+
+1. **Absolute size.** Letter height should come from the fascia's own height, not
+   from a constant. Measure what a metre is on that wall and cap against it.
+2. **Claiming space.** The building pack already has a rule for this: on a facade
+   every element claims the cells it stands on so two can never overlap. Signage
+   appears not to go through that, which is why a blade and a fascia can share a
+   spot. That mechanism exists and is the answer.
+3. **The strips are not on any surface.** They cross letters at arbitrary angles,
+   so whatever places them is not reading the wall plane.
+
+Boxes: `kitbash` owns the sign and its words, `prefab` owns the facade and its
+cell claiming. The fix likely belongs where the claiming already works.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
