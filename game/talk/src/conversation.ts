@@ -9,6 +9,7 @@ import type { TalkError, TalkEvent, Turn } from './events.ts'
 import { Greeting } from './greet.ts'
 import { legalMoves, type ActionName, type Move, type Situation } from './moves.ts'
 import { Performer } from './perform.ts'
+import { pickByKey, pickLabel, picks, type TalkMove } from './picks.ts'
 import { Script } from './script.ts'
 import { Voice } from './voice.ts'
 
@@ -73,6 +74,28 @@ export class Conversation {
   /** What this NPC could do if they chose to, right now. */
   available(): readonly ActionName[] {
     return [...new Set(legalMoves(this.#situation).map((move) => move.action))]
+  }
+
+  /** The moves that are legal right now, in words the player can click. */
+  moves(): readonly TalkMove[] {
+    return picks(legalMoves(this.#situation))
+  }
+
+  /**
+   * The player picked a move instead of typing one. The list is built again
+   * here, so a move that has stopped being legal since it was drawn does
+   * nothing at all and the caller reads the moves again. Nothing is asked of a
+   * model: the line and the move are both the game's own.
+   */
+  async *choose(key: string): AsyncGenerator<TalkEvent> {
+    const move = pickByKey(legalMoves(this.#situation), key)
+    if (!move) return
+
+    const line = this.#script.acting(move)
+    this.#history.push({ role: 'user', content: pickLabel(move) })
+    this.#history.push({ role: 'assistant', content: line })
+    yield { kind: 'said', text: line }
+    yield* this.#act(move)
   }
 
   /** Say something to them. Their reply arrives in pieces, their actions as they take them. */

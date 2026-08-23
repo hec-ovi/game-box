@@ -2,3 +2,4 @@
 export { Conversation } from './conversation.ts'
 export type { TalkEvent, TalkError, Turn } from './events.ts'
 export { ACTIONS, type ActionName } from './moves.ts'
+export type { TalkMove } from './picks.ts'

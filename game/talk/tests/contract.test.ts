@@ -182,7 +182,7 @@ function said(events: readonly TalkEvent[]): string {
     .join('')
 }
 
-function setup(script: Script, options: { carries?: boolean; heardOut?: boolean } = {}) {
+function setup(script: Script, options: { carries?: boolean; heardOut?: boolean; sidecar?: Sidecar } = {}) {
   const fixture = bar(options)
   const write = options.heardOut ? heardOutQuest : ledgerQuest
   const quest = write(fixture.mara.id, fixture.ledger.id, fixture.copy.id)
@@ -202,7 +202,7 @@ function setup(script: Script, options: { carries?: boolean; heardOut?: boolean 
     world: fixture.world,
     log,
     player,
-    sidecar: model.sidecar,
+    sidecar: options.sidecar ?? model.sidecar,
     npcId: fixture.mara.id,
   })
   if (!opened.ok) throw new Error('conversation did not open')
@@ -575,5 +575,71 @@ describe('Conversation', () => {
     expect(first).toEqual(await play())
     // the two facts she has are not passed on the same way twice
     expect(new Set(first.slice(3, 5)).size).toBe(2)
+  })
+})
+
+describe('Conversation.moves and choose', () => {
+  it("offers every legal move in the player's own words, with no id in any of them", () => {
+    const { conversation, key } = setup({}, { carries: true })
+
+    expect(conversation.moves()).toEqual([
+      { key: 'give_quest#quest_0001', label: 'Take the job: The Ledger' },
+      { key: `hand_over#${key.id}`, label: 'Ask for the brass cellar key' },
+      { key: 'end_talk', label: 'Say goodbye' },
+    ])
+    for (const move of conversation.moves()) expect(move.label).not.toMatch(/[a-z]+_\d{4}/)
+  })
+
+  it('carries out the move that was clicked and nothing else, speaking before it acts', async () => {
+    const { conversation, log, player, key } = setup({}, { carries: true })
+
+    const events = await collect(conversation.choose(`hand_over#${key.id}`))
+    expect(events).toContainEqual({ kind: 'did', action: 'hand_over', detail: key.id })
+    expect(events.filter((e) => e.kind === 'did')).toHaveLength(1)
+    expect(player.has(key.id)).toBe(true)
+    expect(log.status('quest_0001')).toBe('unstarted')
+
+    expect(said(events)).toBe("Here. Don't lose it.")
+    expect(events.findIndex((e) => e.kind === 'said')).toBeLessThan(events.findIndex((e) => e.kind === 'did'))
+  })
+
+  it('does nothing at all with a move that has stopped being legal', async () => {
+    const { conversation, log, player, ledger } = setup({})
+    log.start('quest_0001')
+    player.take(ledger.id)
+    log.handle({ kind: 'acquired', itemId: ledger.id, stolen: true })
+    const delivery = conversation.moves().find((move) => move.key.startsWith('take_delivery'))!
+
+    // the player drops it between drawing the menu and clicking it
+    player.drop(ledger.id)
+    expect(await collect(conversation.choose(delivery.key))).toEqual([])
+    expect(conversation.history()).toEqual([])
+    expect(log.status('quest_0001')).toBe('active')
+    expect(player.money).toBe(0)
+  })
+
+  it('never reaches the sidecar', async () => {
+    const forbidden = () => {
+      throw new Error('a clicked move must run on the game data alone')
+    }
+    const { conversation, log } = setup({}, { sidecar: { ask: forbidden, converse: forbidden } as unknown as Sidecar })
+
+    expect(conversation.moves().map((move) => move.key)).toContain('give_quest#quest_0001')
+    const events = await collect(conversation.choose('give_quest#quest_0001'))
+    expect(events).toContainEqual({ kind: 'did', action: 'give_quest', detail: 'quest_0001' })
+    expect(log.status('quest_0001')).toBe('active')
+  })
+
+  it('puts a clicked turn in the transcript, so a typed turn after it knows what was clicked', async () => {
+    const { conversation, model } = setup({ text: 'Take your time.' })
+
+    await collect(conversation.choose('give_quest#quest_0001'))
+    expect(conversation.history()).toEqual([
+      { role: 'user', content: 'Take the job: The Ledger' },
+      { role: 'assistant', content: "Good. Take the ledger. Come back to me when it's done." },
+    ])
+
+    await collect(conversation.say('where do I start?'))
+    expect(model.voice[0]!.messages).toContainEqual({ role: 'user', content: 'Take the job: The Ledger' })
   })
 })

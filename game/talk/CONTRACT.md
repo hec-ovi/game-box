@@ -1,6 +1,6 @@
 # @gb/talk contract
 
-contractVersion: 0.3.0
+contractVersion: 0.4.0
 
 ## Purpose
 
@@ -12,6 +12,7 @@ Conversations with the people in the city: one track writes what they say, anoth
 |---|---|---|
 | `Conversation.open({ world, log, player, sidecar, npcId })` | a `@gb/world` `World`, `@gb/quest` `QuestLog`, `@gb/play` `PlayerState`, `@gb/sidecar` `Sidecar` | the NPC is in the world |
 | `say(text)` | what the player said | |
+| `choose(key)` | the `key` of a move read off `moves()` | none: a key that is not legal now is a no-op |
 
 ## Outputs
 
@@ -20,6 +21,8 @@ Conversations with the people in the city: one track writes what they say, anoth
 | `open` | `{ conversation, changes }` | walking up to someone is a `talked` event, so a step that already asked for it completes here |
 | `say` | a stream of `TalkEvent` | `said` pieces as they are spoken, `did` for the action taken, `changed` for every quest change it caused, `over` when it ends |
 | `available()` | the action names legal right now | what the UI can promise before a word is said |
+| `moves()` | every legal move as `{ key, label }` | `label` is what the player clicks, in their own words and with no id in it; `key` names the move and what it is about, never its place in the list |
+| `choose` | a stream of `TalkEvent` | the same shape `say` gives: the spoken line, `did`, `changed`, `over` |
 
 ## Talking to someone counts when it counts
 
@@ -32,6 +35,12 @@ The voice goes first and only speaks. It is given the character, what they know 
 The action track then decides, once. Every move that was legal when the turn began is written out as a numbered menu in plain words, with "nothing but talk" as number 1, and the model answers with a single number at temperature 0. One turn is at most one action, and nothing is the usual answer: an answer that is not a number on the menu is nothing. A turn that comes back with no answer at all is not a decision to do nothing; the player's own words decide it instead.
 
 Ids never appear in either track. The menu says "the job: The Ledger", not a quest id, and the number maps back to the id on this side of the boundary.
+
+## Clicking a move instead of typing
+
+`moves()` is the same menu the decider is given, written from the player's side: "Take the job: The Ledger" where the decider reads "hand them the job". `choose(key)` builds that menu again from live state and matches the key against it. A move that has stopped being legal between the click and the menu it was drawn from does nothing at all, not something else, and the caller reads `moves()` again.
+
+A picked move costs no model call: the line the NPC says is the one the quest data already holds, so the same key in the same state plays the same way every time.
 
 ## What the character is told
 
@@ -66,9 +75,10 @@ The spoken side is terse but never reads stored text out as it is stored: a fact
 - Every action goes through the box that owns the state: quests through `@gb/quest`, inventory, money and companions through `@gb/play`. This box changes nothing itself.
 - What an NPC knows of the world is what the world file says they know, plus what they could see from where they are standing and what the clock reads. The prompt says so and lists it; nothing else about the city is in their context.
 - What the NPC is told about the situation is read off the same moves they may pick, so the two cannot drift apart.
+- Clicking and typing are one conversation: a picked move goes into the transcript as the player's turn, so a typed turn after it answers with the click in mind.
 - With no model reachable, the same words in the same state give the same conversation every time, down to the line.
 - The reply streams, so speech can start before the sentence is finished.
 
 ## How to modify this blackbox safely
 
-A new action is a name in `ACTIONS`, a rule in `legalMoves` for when it is offered and which ids it may carry, its wording in `prompts/moves.md`, how the player would ask for it in `prompts/hearing.md`, how it is weighed in `listen.ts`, what it says in `prompts/offline.md`, and a branch in `Performer`. A move that the decider keeps misreading can take a line in `prompts/rules.md`, which is added to the menu prompt only while that move is on it. The rest of the wording lives in `prompts/npc.md`, `situation*.md`, `surroundings.md` and `standing.md`, and every prompt is bundled by `pnpm --filter @gb/talk run generate`. Run `pnpm --filter @gb/talk test`.
+A new action is a name in `ACTIONS`, a rule in `legalMoves` for when it is offered and which ids it may carry, its wording in `prompts/moves.md` and `prompts/picks.md`, how the player would ask for it in `prompts/hearing.md`, how it is weighed in `listen.ts`, what it says in `prompts/offline.md`, and a branch in `Performer`. A move that the decider keeps misreading can take a line in `prompts/rules.md`, which is added to the menu prompt only while that move is on it. The rest of the wording lives in `prompts/npc.md`, `situation*.md`, `surroundings.md` and `standing.md`, and every prompt is bundled by `pnpm --filter @gb/talk run generate`. Run `pnpm --filter @gb/talk test`.

@@ -40,21 +40,8 @@ export class Script {
     return reading.sense === 'move' ? reading.move : undefined
   }
 
-  #line(reading: Reading, moves: readonly Move[]): string {
-    switch (reading.sense) {
-      case 'move':
-        return this.#acting(reading.move)
-      case 'declined':
-        return LINES.declined!
-      case 'unclear':
-        return LINES.unclear!
-      default:
-        return this.#idle(moves)
-    }
-  }
-
-  /** What they say as they do it. */
-  #acting(move: Move): string {
+  /** What they say as they do it, straight from the data. */
+  acting(move: Move): string {
     switch (move.action) {
       case 'give_quest': {
         this.#offered = true
@@ -72,6 +59,19 @@ export class Script {
         return LINES.stopped!
       case 'end_talk':
         return LINES.farewell!
+    }
+  }
+
+  #line(reading: Reading, moves: readonly Move[]): string {
+    switch (reading.sense) {
+      case 'move':
+        return this.acting(reading.move)
+      case 'declined':
+        return LINES.declined!
+      case 'unclear':
+        return LINES.unclear!
+      default:
+        return this.#idle(moves)
     }
   }
 
