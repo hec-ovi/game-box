@@ -52,6 +52,24 @@ what a player notices.
 15. **`Game`'s constructor still has no test** without a headless seam; it has
     cost two shipped crashes. In flight.
 
+### Red when the day ended (2026-08-23, 19:05)
+
+Four tests, all one cause: `METRICS.worktopHeight` went 0.9 to 1.0 and the
+geometry drawn against it moved. `@gb/furnish` was mid-pass on exactly this when
+the day ended, so some of it may already be gone.
+
+- `game/furnish/tests/heights.test.ts` — with furnish; the assertion is also
+  unsatisfiable for a second reason (7 is now the reachable maximum).
+- `game/scene/tests/blockers.test.ts` and `pickups.test.ts` (x2) — downstream of
+  furnish's geometry. Needs a scene pass **after** furnish lands, not before.
+
+`game/bundle/tests/published-schema.test.ts` was the fifth and is fixed: the
+schema embeds `@gb/world`'s shapes and went stale when the premise field landed.
+Regenerated and pushed.
+
+Everything else: 954 of 959 green, `tsc --noEmit` clean, isolation clean across
+22 boxes and 712 files.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
