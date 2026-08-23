@@ -43,12 +43,15 @@ export const TABS = `
 .gb-give-up[data-armed='true'] { border-color: var(--gb-warn); background: var(--gb-warn); color: var(--gb-ink); }
 .gb-quest-entry li { display: flex; gap: var(--gb-s2); padding: 2px 0; }
 .gb-quest-entry .gb-mark { width: 12px; flex: none; color: var(--gb-accent); text-align: center; }
-/* Three states, three weights: what to do now is loud, what is coming is quiet. */
+/* Four states, three weights: what to do now is loud, the rest are quiet. */
 .gb-quest-entry .gb-step-open { color: var(--gb-ink); }
 .gb-quest-entry .gb-step-upcoming { color: var(--gb-dim); }
 .gb-quest-entry .gb-step-upcoming .gb-mark { color: var(--gb-faint); }
 .gb-quest-entry .gb-step-done { color: var(--gb-faint); }
 .gb-quest-entry .gb-step-done .gb-what { text-decoration: line-through; }
+.gb-quest-entry .gb-step-dropped { color: var(--gb-faint); }
+.gb-quest-entry .gb-step-dropped .gb-mark { color: var(--gb-faint); }
+.gb-quest-entry .gb-tag { flex: none; align-self: center; }
 
 /* Map: the survey, then where the tracked job points. */
 .gb-plan:not(:empty) { margin-bottom: var(--gb-s4); border: 1px solid var(--gb-edge); background: var(--gb-well); }

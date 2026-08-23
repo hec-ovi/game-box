@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { getByRole, getByText, queryByRole, queryByText, waitFor, within } from '@testing-library/dom'
 import userEvent from '@testing-library/user-event'
-import type { Objective } from '@gb/quest'
+import type { JournalEntry, Objective } from '@gb/quest'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Hud, HudError, type ControlHint, type HudIntent, type MapView, type QuestEntry } from '../src/index.ts'
 
@@ -557,7 +557,7 @@ describe('the quests tab', () => {
     expect(intents).toContainEqual({ kind: 'track', questId: null })
   })
 
-  it('reads a step not reached yet apart from the one open now', () => {
+  it('draws each of the four states a step can be in', () => {
     const { hud, screen } = mount()
     hud.show({
       window: 'quests',
@@ -569,21 +569,48 @@ describe('the quests tab', () => {
             { stepId: 's1', text: 'Talk to Mara', state: 'done' },
             { stepId: 's2', text: 'Carry the crate to the docks', state: 'open' },
             { stepId: 's3', text: 'Come back for the pay', state: 'upcoming' },
-            { stepId: 's4', text: 'Sign the ledger', done: true },
+            { stepId: 's4', text: 'Burn the ledger instead', state: 'dropped' },
+            { stepId: 's5', text: 'Sign the ledger', done: true },
           ],
         },
       ],
     })
 
     // Work the player cannot start yet, drawn like work they can, sends them
-    // across town for a step that is not on the board.
+    // across town for a step that is not on the board; and a branch the quest
+    // did not take, thrown away, hides that the story ever split.
     const panel = getByRole(screen, 'dialog', { name: 'Quests' })
     const state = (text: string): string | undefined => getByText(panel, text).closest('li')?.className
     expect(state('Talk to Mara')).toBe('gb-step-done')
     expect(state('Carry the crate to the docks')).toBe('gb-step-open')
     expect(state('Come back for the pay')).toBe('gb-step-upcoming')
+    expect(state('Burn the ledger instead')).toBe('gb-step-dropped')
+    within(getByText(panel, 'Burn the ledger instead').closest('li') as HTMLElement).getByText('Not taken')
     // and the shorter shape reads the same as it always did
     expect(state('Sign the ledger')).toBe('gb-step-done')
+  })
+
+  it('takes a journal page as the quest engine writes it', async () => {
+    const user = userEvent.setup()
+    const { hud, screen, intents } = mount()
+    // The engine's own page, `questTitle` and all, so nothing in between has to
+    // rename a field to put a quest on screen. A type error here is that
+    // mapper coming back.
+    const journal: readonly JournalEntry[] = [
+      {
+        questId: 'q1',
+        questTitle: 'The Copper Wheel',
+        status: 'active',
+        steps: [{ stepId: 's1', text: 'Talk to Mara', state: 'open' }],
+      },
+    ]
+    hud.show({ window: 'quests', quests: journal })
+
+    const panel = getByRole(screen, 'dialog', { name: 'Quests' })
+    getByText(panel, 'The Copper Wheel')
+    await user.click(getByRole(panel, 'button', { name: 'Follow The Copper Wheel' }))
+    expect(intents).toContainEqual({ kind: 'track', questId: 'q1' })
+    getByRole(panel, 'button', { name: 'Give up The Copper Wheel' })
   })
 
   it('asks a second time before it gives a quest up', async () => {

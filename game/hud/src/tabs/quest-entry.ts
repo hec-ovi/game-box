@@ -1,6 +1,6 @@
 import { el } from '../dom.ts'
 import type { HudIntent, QuestEntry } from '../types.ts'
-import { STEP_MARK, stateOf } from './step-state.ts'
+import { DROPPED_TAG, STEP_MARK, stateOf, titleOf } from './journal.ts'
 
 const FOLLOW = { on: 'Following', off: 'Follow' } as const
 const GIVE_UP = { armed: 'Give up?', idle: 'Give up' } as const
@@ -13,19 +13,21 @@ const GIVE_UP = { armed: 'Give up?', idle: 'Give up' } as const
 export class QuestEntryView {
   readonly node = el('article', 'gb-quest-entry')
   #quest: QuestEntry
+  #title: string
   #emit: (intent: HudIntent) => void
   #giveUp = button('gb-give-up')
   #armed = false
 
   constructor(quest: QuestEntry, tracked: boolean, emit: (intent: HudIntent) => void) {
     this.#quest = quest
+    this.#title = titleOf(quest)
     this.#emit = emit
     this.node.dataset.tracked = String(tracked)
 
     const acts = el('div', 'gb-quest-acts')
     acts.append(this.#follow(tracked), this.#giveUp)
     const head = el('header', 'gb-quest-head')
-    head.append(el('h3', undefined, quest.title), acts)
+    head.append(el('h3', undefined, this.#title), acts)
 
     this.#draw()
     this.#giveUp.addEventListener('click', () => this.#ask())
@@ -39,7 +41,7 @@ export class QuestEntryView {
   #follow(tracked: boolean): HTMLButtonElement {
     const node = button('gb-track')
     node.setAttribute('aria-pressed', String(tracked))
-    node.setAttribute('aria-label', `${tracked ? 'Stop following' : 'Follow'} ${this.#quest.title}`)
+    node.setAttribute('aria-label', `${tracked ? 'Stop following' : 'Follow'} ${this.#title}`)
     node.textContent = tracked ? FOLLOW.on : FOLLOW.off
     node.addEventListener('click', () => {
       this.#emit({ kind: 'track', questId: tracked ? null : this.#quest.questId })
@@ -53,6 +55,9 @@ export class QuestEntryView {
       const state = stateOf(step)
       const item = el('li', `gb-step-${state}`)
       item.append(el('span', 'gb-mark', STEP_MARK[state]), el('span', 'gb-what', step.text))
+      // A branch nobody took is part of the story, so it stays on the page and
+      // says in words that it is not work waiting to be done.
+      if (state === 'dropped') item.append(el('span', 'gb-tag', DROPPED_TAG))
       list.append(item)
     }
     return list
@@ -74,7 +79,7 @@ export class QuestEntryView {
   }
 
   #draw(): void {
-    const title = this.#quest.title
+    const title = this.#title
     this.#giveUp.dataset.armed = String(this.#armed)
     this.#giveUp.textContent = this.#armed ? GIVE_UP.armed : GIVE_UP.idle
     this.#giveUp.setAttribute('aria-label', this.#armed ? `Confirm giving up ${title}` : `Give up ${title}`)

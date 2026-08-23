@@ -1,6 +1,6 @@
 # @gb/hud contract
 
-contractVersion: 0.5.0
+contractVersion: 0.6.0
 
 ## Purpose
 
@@ -15,7 +15,7 @@ import { Hud } from '@gb/hud'
 
 const hud = new Hud(document.body, { onIntent: (intent) => { /* say, talk-closed, typing, window, track, abandon */ } })
 hud.show({ objectives: log.objectives(), money: player.money(), prompt: { key: 'E', text: target.label } })
-hud.show({ quests: log.active(), trackedQuestId: 'q1' })
+hud.show({ quests: log.journal(), trackedQuestId: 'q1' })
 hud.show({ map: { width, height, plots, marks } })
 hud.show({ controls: [{ keys: ['W', 'A', 'S', 'D'], text: 'Walk', group: 'Move' }] })
 hud.show({ talk: { speaker: npc.name, moves: conversation.moves() } })
@@ -35,7 +35,7 @@ hud.announce({ kind: 'quest-complete', title: quest.title, reward: { money: 40 }
 | `patch.money`, `patch.carrying` | a whole number, `Carried[]` | `quest: true` marks an item a live quest wants |
 | `patch.talk` | [TalkPatch](src/types.ts) | a new `speaker` starts a fresh panel; `replyChunk` appends a piece of the reply; `acted` is the line for this turn and `null` takes it off |
 | `patch.talk.moves` | [TalkMove](src/types.ts)`[]` | what the player can do this turn, as `{ key, label }` in plain words. Replaces the menu; an empty list draws none |
-| `patch.quests` | [QuestEntry](src/types.ts)`[]` | active quests with their steps for the quests tab, each step `upcoming`, `open` or `done` |
+| `patch.quests` | [QuestEntry](src/types.ts)`[]` | one page per quest for the quests tab: `@gb/quest`'s `JournalEntry[]` goes in as it comes |
 | `patch.map` | [MapView](src/types.ts) | the city in grid cells: size, plot rects, and marks for the player and the places to head for |
 | `patch.controls` | [ControlHint](src/types.ts)`[]` | the game's own keys for the controls tab: `{ keys, text, group? }`, replaces the whole list |
 | `patch.window` | `'quests' \| 'map' \| 'items' \| 'controls' \| null` | opens that face of the window, or shuts it |
@@ -87,7 +87,20 @@ The objectives panel shows the tracked quest and its open steps, a count as "2/5
 
 ## The journal
 
-A step reads three ways: `done`, `open` now, or `upcoming`, which is work the flow has not reached. Only the open one is drawn at full weight, so a list of steps says what to do next rather than what exists. The game says which with `state`; a step carrying `done: true` alone is done, and one carrying neither is open.
+A page is `@gb/quest`'s journal page as it stands: `hud.show({ quests: log.journal() })` with nothing in between. The title is read as `questTitle`, and as `title` for the shorter form the tab has always taken.
+
+A step reads four ways, the same four the engine keeps.
+
+| `state` | On screen |
+|---|---|
+| `open` | full weight, with a pointer: the step the player is on |
+| `upcoming` | quiet: work the flow has not reached |
+| `done` | faint and struck through |
+| `dropped` | faint, tagged "Not taken": a branch the quest went past |
+
+A quest that splits keeps both sides on the page. The road not taken is what says the choice was real, so a dropped step stays where it was written rather than leaving a gap. Nothing dropped can open again, so it never reads as work.
+
+The game says which with `state`; a step carrying `done: true` alone is done, and one carrying neither is open.
 
 Giving a quest up sits beside Follow and asks twice. The first click turns the button into the question, the second reports `abandon` and the button goes back to how it was. Looking away answers no. The hud takes nothing off the board itself: the quest stays on screen until the game pushes the list without it.
 
@@ -146,6 +159,7 @@ Thrown as `HudError` with a `code`:
 - A money change of zero announces nothing, so a quest that pays in goods does not flash an empty line.
 - What the speaker did is one line about the turn in front of the player: sending it again replaces it and `null` takes it away, so it never piles up inside one conversation.
 - Nothing the player cannot undo happens on one click. Giving up a quest asks a second time, and leaving the button answers no.
+- A quest page shows every step the engine kept, dropped branches included, in the order the quest was written. The journal never edits the story down to the part that happened.
 - What just changed says so: the reticle opens and goes brass while something is in reach, a coin count flashes the way it moved, and a step count flashes when it climbs.
 - Everything a mouse can do, the keyboard can do.
 - Square corners: no `border-radius` in the stylesheet.
@@ -153,7 +167,7 @@ Thrown as `HudError` with a `code`:
 
 ## Dependencies
 
-- `@gb/quest` contract (game/quest/CONTRACT.md): the `Objective` shape the objectives panel and the map read.
+- `@gb/quest` contract (game/quest/CONTRACT.md): the `Objective` shape the objectives panel and the map read, and the `JournalEntry` page the quests tab draws.
 - The DOM. No renderer, no three.js, no game state.
 
 ## How to modify this blackbox safely

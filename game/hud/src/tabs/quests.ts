@@ -3,7 +3,7 @@ import { noQuests } from '../phrase.ts'
 import { trackedQuest } from '../tracked.ts'
 import type { HudIntent, HudState, HudWindowName, QuestEntry } from '../types.ts'
 import { QuestEntryView } from './quest-entry.ts'
-import { stateOf } from './step-state.ts'
+import { stateOf, titleOf } from './journal.ts'
 import type { Tab } from './tab.ts'
 
 /**
@@ -39,5 +39,5 @@ export class QuestsTab implements Tab {
 }
 
 function signature(quest: QuestEntry): string {
-  return `${quest.questId}/${quest.title}/${quest.steps.map((s) => `${s.stepId}:${stateOf(s)}`).join(',')}`
+  return `${quest.questId}/${titleOf(quest)}/${quest.steps.map((s) => `${s.stepId}:${stateOf(s)}`).join(',')}`
 }

@@ -24,8 +24,11 @@ export interface ControlHint {
   readonly group?: string
 }
 
-/** Where a step stands: not reached yet, open now, or finished. */
-export type QuestStepState = 'upcoming' | 'open' | 'done'
+/**
+ * Where a step stands: not reached yet, open now, finished, or on a branch the
+ * quest did not take, which a flow running forward can never walk back into.
+ */
+export type QuestStepState = 'upcoming' | 'open' | 'done' | 'dropped'
 
 /**
  * One step of a quest in the journal. `state` is what the engine says it is;
@@ -39,10 +42,15 @@ export interface QuestStep {
   readonly done?: boolean
 }
 
-/** One quest as the quests tab lists it: its title and how far each step got. */
+/**
+ * One quest as the quests tab lists it: its title and how far each step got. A
+ * journal page from the quest engine is one of these as it stands, which is why
+ * the title is read under either name.
+ */
 export interface QuestEntry {
   readonly questId: string
-  readonly title: string
+  readonly questTitle?: string
+  readonly title?: string
   readonly steps: readonly QuestStep[]
 }
 
