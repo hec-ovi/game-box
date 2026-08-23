@@ -45,8 +45,13 @@ const COLOUR = {
   soaked: 0.45,
 } as const
 
-/** How much of the surface underneath the film covers up when it is bone dry. */
-const DRY_COVER = 0.72
+/**
+ * How much of the surface underneath the film covers up when it is bone dry.
+ * This was raised to 0.72 while the pavement underneath was still pale, to
+ * hide it. The dressing has since taken the pavement down to about what this
+ * film paints, so the hedge only cost the kit's flags and relief.
+ */
+const DRY_COVER = 0.62
 
 /** How much of the canyon probe a soaked mirror gives back. */
 const REFLECTION = 0.9
