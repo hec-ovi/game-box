@@ -125,6 +125,27 @@ every error path.
   Giving each look's base the same picture as its facade costs four layers
   (2.8 MB) and beats any remaining variant choice.
 
+### `theme` is a keyword bag, not a description (2026-08-23, found by him)
+
+> "theme? why theme? i want to specify what is it about, etc, if i put a long
+> prompt there will work?"
+
+No. `theme` is `z.string().min(1).max(60)` in `game/world/src/model/schema.ts`,
+so a long prompt is refused rather than truncated. Offline it is not read as a
+sentence either: `game/forge/src/theme/flavour.ts:22` splits it into words and
+matches a keyword set.
+
+What he wants already has the right consumer and is not connected to it. The
+premise writer turns what a town is about into its history, and everything
+downstream is built from that, but it currently receives only the same
+60-character theme.
+
+The shape: a **brief** in his own words, unbounded, going straight to the
+premise writer, with `theme` kept as the short keyword hint the offline author
+needs. That means a field on the world document (so a shared city remembers what
+it was asked for), a parameter on `Forge`, and a place to type it. It is the
+same gap as the creation panel, and this is the sharper version of it.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
