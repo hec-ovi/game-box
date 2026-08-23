@@ -10,26 +10,30 @@ import { hash01 } from './hash.ts'
  * So the kind picks the shelf and the person's own id picks off it, which keeps
  * a shared world file looking the same to everyone who opens it.
  *
+ * The first clip of a shelf is the plainest reading of that stance, because it
+ * is what a caller with nobody in mind gets.
+ *
  * Every name here is a clip in the shipped library, and the tests fail if one
  * goes missing, so a renamed clip is caught at build time rather than as a
  * T-posing NPC.
  */
 export const CLIPS_FOR_ANCHOR: Record<AnchorKind, readonly [string, ...string[]]> = {
   // loitering: nothing to do and nothing to lean on
-  stand: ['Idle_Loop', 'Idle_FoldArms_Loop', 'Idle_TalkingPhone_Loop'],
-  sit: ['Sitting_Idle_Loop'],
-  'sit-drink': ['Sitting_Idle_Loop'],
-  serve: ['Idle_Rail_Loop'],
-  cook: ['Idle_Loop'],
+  stand: ['Idle_Loop', 'Idle_FoldArms_Loop', 'Idle_TalkingPhone_Loop', 'Idle_Drink_Loop'],
+  sit: ['Sitting_Idle_Loop', 'Sitting_Talking_Loop', 'Sitting_Phone_Loop'],
+  'sit-drink': ['Sitting_Drink_Loop', 'Sitting_Talking_Loop', 'Sitting_Idle_Loop'],
+  // hands on the counter, and the same stance calling an order across it
+  serve: ['Idle_Rail_Loop', 'Idle_Rail_Call'],
+  cook: ['Idle_Bench_Loop', 'Farm_Watering'],
   // the two working stances are two bodies: one sits in the chair at the desk,
   // the other stands at the bench with its hands on the top
-  'work-desk': ['Sitting_Idle_Loop'],
-  'work-bench': ['Idle_Rail_Loop'],
-  sleep: ['Sitting_Idle_Loop'],
-  browse: ['Idle_Loop', 'Idle_FoldArms_Loop'],
+  'work-desk': ['Sitting_Desk_Loop', 'Sitting_Phone_Loop', 'Sitting_Idle_Loop'],
+  'work-bench': ['Idle_Rail_Loop', 'Idle_Bench_Loop'],
+  sleep: ['Sleep_Loop'],
+  browse: ['Idle_Browse_Loop', 'Idle_Loop', 'Idle_FoldArms_Loop'],
   // propped on a wall: shoulders against it, feet out in front, hands free
-  lean: ['Idle_Wall_Loop', 'Idle_WallCross_Loop', 'Idle_WallSmoke_Loop'],
-  guard: ['Idle_FoldArms_Loop'],
+  lean: ['Idle_Wall_Loop', 'Idle_WallCross_Loop', 'Idle_WallSmoke_Loop', 'Idle_WallPhone_Loop'],
+  guard: ['Idle_FoldArms_Loop', 'Idle_Loop', 'Idle_TalkingPhone_Loop'],
 }
 
 /**
@@ -63,13 +67,29 @@ export const CLIPS = {
  * pose can be one: a whole-body action such as a reach or a pick-up adds its
  * full travel on top of whatever the arms are already doing, which folds an
  * elbow through the head. Those are played on the whole body instead.
+ *
+ * `talk` and `talkSeated` are the same conversation on two bodies; the other
+ * two are answers, so anybody in a conversation can agree or refuse without
+ * leaving the stance they are in. A drink, a wave and a nod that throws a hand
+ * up are all whole-arm movements and are not here: laid over a stance that
+ * already has its hands up, they put a forearm through the head, which
+ * `tests/pose.test.ts` measures on every clip against every gesture.
  */
-export const GESTURES: readonly string[] = [CLIPS.talk, CLIPS.talkSeated]
+export const GESTURES: readonly string[] = [
+  CLIPS.talk,
+  CLIPS.talkSeated,
+  /** a nod */
+  'Idle_Yes_Loop',
+  /** a slow shake of the head */
+  'Idle_No_Loop',
+]
 
 /**
  * Every clip name the game will ever ask for. `tools/build-anims.mjs` builds
  * the pack from this list, so a clip that is not named here is not shipped.
  */
 export function clipsUsed(): string[] {
-  return [...new Set([...Object.values(CLIPS_FOR_ANCHOR).flat(), ...Object.values(CLIPS)])].sort()
+  return [
+    ...new Set([...Object.values(CLIPS_FOR_ANCHOR).flat(), ...Object.values(CLIPS), ...GESTURES]),
+  ].sort()
 }

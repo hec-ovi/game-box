@@ -118,10 +118,58 @@ describe('what a spawned person is doing', () => {
       expect(Math.abs(hands - METRICS.furniture.serviceCounterHeight), `${base}'s hands are at ${hands} m`).toBeLessThan(0.05)
       expect(jointHeight(bench.object, 'pelvis'), `${base} is not on their feet at the bench`).toBeGreaterThan(0.85)
 
-      // and the desk worker is in the chair, hips a hand over the seat
+      // and the desk worker is in the chair, hips a hand over the seat, with
+      // both hands out on a desk top rather than in their lap
       expect(jointHeight(desk.object, 'pelvis'), `${base} is not sat at the desk`).toBeLessThan(
         METRICS.furniture.seatHeight + 0.15,
       )
+      const wrists = (jointHeight(desk.object, 'hand_l') + jointHeight(desk.object, 'hand_r')) / 2
+      expect(Math.abs(wrists - METRICS.furniture.tableHeight), `${base}'s hands are at ${wrists} m`).toBeLessThan(0.05)
+    }
+  })
+
+  /**
+   * Where `@gb/forge` puts a sleep anchor, and how high the clip carries the
+   * body. The clip is authored lying on the floor of its own file and lifted
+   * onto the mattress here, the same way the sitting clip puts a body's hips at
+   * seat height, so a bed does not have to be measured twice.
+   */
+  it('lays a sleeper out along the bed at mattress height, centred on the anchor', () => {
+    const HALF = 0.98
+    const mattress = METRICS.furniture.mattressHeight
+    for (const base of BODY_KINDS) {
+      const member = cast.spawn(person({ id: `npc_sleep_${base}`, appearance: { base, variant: 1 } }), Cast.doingAt('sleep'))
+      cast.update(0.4)
+      const bounds = posedBounds(member.object)
+      const size = bounds.getSize(new THREE.Vector3())
+
+      expect(bounds.min.y, `${base} is sunk into the mattress`).toBeGreaterThan(mattress - 0.01)
+      expect(bounds.min.y, `${base} is floating over the mattress`).toBeLessThan(mattress + 0.04)
+      expect(size.y, `${base} is ${size.y.toFixed(2)} m tall, so they are sitting up in bed`).toBeLessThan(0.45)
+      // both numbers are published in CONTRACT.md and forge places the anchor
+      // off them, so neither may drift without this saying so
+      expect(Math.abs(bounds.min.z + bounds.max.z), `${base} is not centred on the anchor`).toBeLessThan(0.05)
+      expect(Math.max(-bounds.min.z, bounds.max.z), `${base} reaches past the published half length`).toBeLessThan(HALF)
+      expect(size.z / 2, `${base} is only ${size.z.toFixed(2)} m end to end`).toBeGreaterThan(HALF - 0.05)
+    }
+  })
+
+  it('gives somebody at a bar a drink to raise, not the same idle as the chair beside them', () => {
+    expect(Cast.doingAt('sit-drink'), 'a drinker is doing exactly what somebody in a chair is doing').not.toBe(
+      Cast.doingAt('sit'),
+    )
+    for (const base of BODY_KINDS) {
+      const member = cast.spawn(person({ id: `npc_drink_${base}`, appearance: { base, variant: 1 } }), Cast.doingAt('sit-drink'))
+      let lowest = Infinity
+      let highest = 0
+      for (let step = 0; step <= 30; step++) {
+        cast.update(step === 0 ? 0.001 : 0.1)
+        const hand = jointHeight(member.object, 'hand_l')
+        lowest = Math.min(lowest, hand)
+        highest = Math.max(highest, hand)
+      }
+      expect(highest - lowest, `${base}'s hand moves ${(highest - lowest).toFixed(2)} m over the whole clip`).toBeGreaterThan(0.3)
+      expect(highest, `${base} never gets the glass above the table`).toBeGreaterThan(METRICS.furniture.tableHeight + 0.25)
     }
   })
 

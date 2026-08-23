@@ -91,3 +91,24 @@ export class Skeleton {
     return world
   }
 }
+
+/** The shorter way round between two rotations, `part` of the way along. */
+export function slerp(a, b, part) {
+  let dot = a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3]
+  let to = b
+  if (dot < 0) {
+    to = [-b[0], -b[1], -b[2], -b[3]]
+    dot = -dot
+  }
+  if (dot > 0.9995) return unit(a.map((value, axis) => value + (to[axis] - value) * part))
+  const angle = Math.acos(dot)
+  const sine = Math.sin(angle)
+  const from = Math.sin((1 - part) * angle) / sine
+  const onto = Math.sin(part * angle) / sine
+  return a.map((value, axis) => value * from + to[axis] * onto)
+}
+
+function unit(q) {
+  const length = Math.hypot(...q)
+  return q.map((value) => value / length)
+}

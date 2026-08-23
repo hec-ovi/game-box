@@ -42,7 +42,44 @@ const PROPPED = {
 
 const SETTLED = { root: [0, SETTLE, 0] }
 
+/** Chin down on what the hands are doing, or on what is on the shelf. */
+const LOOKING_DOWN = { neck_01: { back: -14 }, Head: { back: -10 } }
+
 export const POSES = [
+  {
+    name: 'Idle_WallPhone_Loop',
+    from: 'Idle_TalkingPhone_Loop',
+    what: 'shoulders on the wall, phone at the ear, feet out in front',
+    // the phone clip stands in the same footprint as Idle_Loop, so the same tip works on it
+    turn: PROPPED,
+    shift: SETTLED,
+  },
+  {
+    name: 'Idle_Browse_Loop',
+    from: 'Idle_Loop',
+    what: 'on their feet, chin down, looking at what is in front of them',
+    turn: LOOKING_DOWN,
+  },
+  {
+    name: 'Idle_Bench_Loop',
+    from: 'Idle_Rail_Loop',
+    what: 'hands on the top, chin down over the work',
+    turn: LOOKING_DOWN,
+  },
+  {
+    name: 'Sitting_Desk_Loop',
+    from: 'Sitting_Idle_Loop',
+    what: 'sat, leaning in, both hands out on the desk',
+    // measured: the wrists land 0.78 m up and 0.22 m in front of the root, so
+    // the desk edge belongs under them. See CONTRACT.md.
+    turn: {
+      spine_02: { back: -14 },
+      upperarm_l: { back: 68 },
+      lowerarm_l: { back: -34 },
+      upperarm_r: { back: 68 },
+      lowerarm_r: { back: -34 },
+    },
+  },
   {
     name: 'Idle_Wall_Loop',
     from: 'Idle_FoldArms_Loop',

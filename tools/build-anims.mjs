@@ -14,6 +14,8 @@ import { dedup, prune, resample } from '@gltf-transform/functions'
 import { mkdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { clipsUsed } from '../game/cast/src/clips.ts'
+import { MotionBlender } from './anims/blend.mjs'
+import { BLENDS } from './anims/blends.mjs'
 import { PoseDeriver } from './anims/derive.mjs'
 import { ClipLibrary } from './anims/library.mjs'
 import { POSES } from './anims/poses.mjs'
@@ -30,6 +32,10 @@ const SOURCES = [
 const library = await ClipLibrary.open(SOURCES)
 library.stripArt()
 
+// blends first: a pose may be authored on top of a blended clip, never the other way round
+const blender = new MotionBlender(library.document)
+for (const blend of BLENDS) blender.blend(blend)
+
 const deriver = new PoseDeriver(library.document)
 for (const pose of POSES) deriver.derive(pose)
 
@@ -44,6 +50,6 @@ mkdirSync(OUT, { recursive: true })
 const target = join(OUT, 'anims.glb')
 const bones = await library.write(target)
 
-const authored = POSES.map((pose) => pose.name)
+const authored = [...BLENDS, ...POSES].map((clip) => clip.name).filter((name) => wanted.includes(name))
 console.log(`${wanted.length} clips (${authored.length} authored here, ${dropped} the game never plays dropped) on ${bones} bones -> ${target}`)
 console.log(wanted.join(', '))

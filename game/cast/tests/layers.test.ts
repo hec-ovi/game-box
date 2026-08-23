@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { CLIPS, type CastMember } from '../src/index.ts'
+import { CLIPS, GESTURES, type CastMember } from '../src/index.ts'
 import { loadCast, person } from './pack.ts'
 
 const cast = await loadCast()
@@ -125,6 +125,16 @@ describe('the gesture layer', () => {
     run(1)
     expect(seatedTalking.gesturing).toBeUndefined()
     expect(apart(seated, seatedTalking, 'lowerarm_r'), 'the gesture did not let go').toBeLessThan(0.01)
+  })
+
+  it('plays every gesture the table offers', () => {
+    // a gesture the pack has not got is ignored rather than thrown, so a name
+    // that never made it into the build would be a silently still NPC
+    const member = cast.spawn(person({ id: 'npc_gestures' }))
+    for (const gesture of GESTURES) {
+      member.gesture(gesture, 0)
+      expect(member.gesturing, `${gesture} is named in the table but is not in the pack`).toBe(gesture)
+    }
   })
 
   it('ignores a gesture it does not have', () => {
