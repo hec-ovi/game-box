@@ -35,21 +35,36 @@ interface Answer {
   readonly digest: string
   readonly ms: number
   readonly head: string
+  readonly failed: boolean
 }
 
-async function ask(base: string, body: Record<string, unknown>): Promise<Answer> {
+/**
+ * A hosted upstream rate-limits, and a refusal is not an answer: comparing one
+ * against a reply would report a difference that says nothing about the model.
+ * So a failed call is retried, and a trial that still could not get an answer
+ * is reported as an error rather than as a difference.
+ */
+async function ask(base: string, body: Record<string, unknown>, attempts = 4): Promise<Answer> {
   const started = Date.now()
-  const response = await fetch(`${base}/v1/chat/completions`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ messages: MESSAGES, ...body }),
-  })
-  const payload: unknown = await response.json()
-  const text = response.ok ? contentOf(payload) : `HTTP ${response.status}: ${JSON.stringify(payload)}`
+  let text = ''
+  let failed = true
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (attempt > 0) await new Promise((wake) => setTimeout(wake, 15_000 * attempt))
+    const response = await fetch(`${base}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ messages: MESSAGES, ...body }),
+    })
+    const payload: unknown = await response.json()
+    failed = !response.ok
+    text = failed ? `HTTP ${response.status}: ${JSON.stringify(payload)}` : contentOf(payload)
+    if (!failed) break
+  }
   return {
     digest: createHash('sha256').update(text).digest('hex').slice(0, 12),
     ms: Date.now() - started,
     head: text.slice(0, 72).replace(/\s+/g, ' '),
+    failed,
   }
 }
 
@@ -63,10 +78,12 @@ async function run(base: string, trial: Trial, runs: number): Promise<void> {
   const answers = trial.parallel ? await Promise.all(asks.map((a) => a())) : await inTurn(asks)
 
   const digests = answers.map((a) => a.digest)
+  const broke = answers.some((a) => a.failed)
   const same = new Set(digests).size === 1
+  const verdict = broke ? 'ERR ' : same ? 'SAME' : 'DIFF'
   const slowest = Math.max(...answers.map((a) => a.ms))
-  console.log(`${same ? 'SAME' : 'DIFF'}  ${trial.name.padEnd(38)} ${digests.join(' ')}  ${slowest} ms`)
-  if (!same) for (const answer of answers) console.log(`        ${answer.digest}  ${answer.head}`)
+  console.log(`${verdict}  ${trial.name.padEnd(38)} ${digests.join(' ')}  ${slowest} ms`)
+  if (!same || broke) for (const answer of answers) console.log(`        ${answer.digest}  ${answer.head}`)
 }
 
 async function inTurn(asks: ReadonlyArray<() => Promise<Answer>>): Promise<Answer[]> {

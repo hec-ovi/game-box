@@ -54,7 +54,7 @@ A city built this way is checked before it ships: every generated quest is drive
 
 ## The model
 
-Three ways to run, and the game is playable in all three.
+Four ways to run, and the game is playable in all four.
 
 **Nothing running.** The default. The city is written by the offline author in the browser.
 
@@ -74,13 +74,21 @@ node --experimental-strip-types host/src/main.ts
 GAME_BOX_LLM_UPSTREAM=http://127.0.0.1:8080 node --experimental-strip-types host/src/main.ts
 ```
 
+**The sidecar, in front of a hosted model.** The same sidecar, routed through OpenRouter to `stealth/ox-alpha` instead of a machine of your own. The key is read from the environment, sent only to OpenRouter, and never written to a tracked file: copy `.env.example` to `.env` and fill it in.
+
+```
+GAME_BOX_LLM_UPSTREAM=openrouter node --env-file=.env --experimental-strip-types host/src/main.ts
+```
+
+A URL is always called without credentials, so a key sitting in your environment is never handed to a server of your own.
+
 Then add `&model` to the URL, or `--model` to `gb build`, and the names, the history, the people and the quests come from the endpoint instead of the offline author.
 
 `GAME_BOX_PORT` moves the sidecar off 8976, and `?sidecar=` in the URL points the game at a different one.
 
 Everything generated comes back as a **tool call whose parameters are the JSON Schema of the contract that will validate it**, so the thing that defines the shape and the thing that checks it are the same object. Nothing a model writes is trusted: a quest is refused unless every path ends, every person and thing it names exists, and every item is in the player's hands before they are asked for it. A malformed answer is dropped and the offline author fills in, so a bad reply costs some flavour rather than the city.
 
-One thing to know before relying on a model for a shared world: nothing pins the sampler yet, so two runs with the same seed against a real endpoint do not give the same city. The offline author is reproducible today; the model path is not.
+One thing to know before relying on a model for a shared world. A request can now pin its answer with `temperature: 0` and a `seed`, and both reach the endpoint, but repeating is the endpoint's own property: `stealth/ox-alpha` answered the same pinned question three different ways when measured. The offline author is reproducible today; the model path is not yet.
 
 ## Layout
 

@@ -4,6 +4,18 @@ import { PendingCall } from './pending-call.ts'
 import { samplingOf } from './sampling.ts'
 import type { GenerateRequest, TokenEvent } from './schema.ts'
 
+/** Where an OpenAI-compatible server is, what it wants, and what it answers as. */
+export interface Upstream {
+  /** The full chat-completions URL, not a base to join onto. */
+  readonly completions: string
+  /** Sent on every request. */
+  readonly headers?: Readonly<Record<string, string>>
+  /** The model asked for when the caller names none. */
+  readonly model: string
+  /** A credential inside those headers. It never appears in an error. */
+  readonly secret?: string
+}
+
 interface Delta {
   readonly content?: unknown
   readonly tool_calls?: unknown
@@ -19,11 +31,11 @@ interface Choice {
  * ever sent: the model must finish naturally.
  */
 export async function generate(
-  base: string,
+  upstream: Upstream,
   request: GenerateRequest,
 ): Promise<Result<AsyncIterable<TokenEvent>, LlmError>> {
   const body: Record<string, unknown> = {
-    model: request.model ?? 'default',
+    model: request.model ?? upstream.model,
     messages: request.messages,
     stream: true,
     ...samplingOf(request),
@@ -33,17 +45,26 @@ export async function generate(
 
   let response: Response
   try {
-    response = await fetch(`${base}/v1/chat/completions`, {
+    response = await fetch(upstream.completions, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...upstream.headers },
       body: JSON.stringify(body),
     })
   } catch (cause) {
-    return err(upstreamFailed(String(cause)))
+    return err(failed(upstream, String(cause)))
   }
-  if (!response.ok) return err(upstreamFailed(`status ${response.status}`))
-  if (!response.body) return err(upstreamFailed('the upstream reply had no body'))
+  if (!response.ok) return err(failed(upstream, `status ${response.status}`))
+  if (!response.body) return err(failed(upstream, 'the upstream reply had no body'))
   return ok(read(response.body))
+}
+
+/**
+ * A credential must never come back out, whatever a transport error put in its
+ * message, so it is scrubbed from every failure this reports.
+ */
+function failed(upstream: Upstream, message: string): LlmError {
+  const secret = upstream.secret ?? ''
+  return upstreamFailed(secret === '' ? message : message.split(secret).join('***'))
 }
 
 /** OpenAI SSE deltas turned into token events, with tool calls reassembled. */

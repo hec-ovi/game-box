@@ -68,7 +68,7 @@ describe('an upstream engine', () => {
 
   it('is sent the tools unchanged and no output-length cap', async () => {
     await post({ ...REQUEST, temperature: 0.4 })
-    const sent = upstream.seen.at(-1)
+    const sent = upstream.seen.at(-1)?.body
 
     assert.deepEqual(sent?.tools, REQUEST.tools)
     assert.equal(sent?.tool_choice, 'auto')
@@ -82,13 +82,13 @@ describe('an upstream engine', () => {
   it('is sent the seed the caller pinned', async () => {
     await post({ ...REQUEST, seed: 20260823 })
 
-    assert.equal(upstream.seen.at(-1)?.seed, 20260823)
+    assert.equal(upstream.seen.at(-1)?.body.seed, 20260823)
   })
 
   it('is sent no seed when the caller pinned none', async () => {
     await post(REQUEST)
 
-    assert.ok(!('seed' in (upstream.seen.at(-1) ?? {})), 'the host invented a seed nobody asked for')
+    assert.ok(!('seed' in (upstream.seen.at(-1)?.body ?? {})), 'the host invented a seed nobody asked for')
   })
 
   // A broken engine answers 200 and writes the failure into the stream. Read
