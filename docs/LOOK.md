@@ -88,3 +88,21 @@ So every brief carries the same two requirements:
 
 The city already proves the shape: 1,069 draws became 46 and the frame went
 18.14 ms to 2.49 ms by making the count stop mattering.
+
+## Placing things in a room
+
+> "the important part are corners, distances, etc, think of it as a matrix of
+> spaces we use, so with a minimum, and no collisions, etc"
+
+A room is a matrix of cells, the same way the city is. A piece of furniture is
+a rectangle of cells and it claims them, so two things cannot occupy the same
+space by construction rather than by a test that might miss. Corners, minimum
+gaps and the clearance a body needs to stand or sit at a thing are properties
+of the matrix, not of each prop.
+
+This is the pattern the owner's own `glb-buildings` toolkit already uses on
+building faces: "Every face divides into 10 cm cells. A window, a door, a
+balcony, a panel or a lit screen is a rectangle of them, and each one claims
+the cells it stands on, so two can never overlap."
+
+Getting this right is what makes "from there we simply randomize" safe.
