@@ -1,3 +1,4 @@
+import type { PropFootprint } from '@gb/scene'
 import type { Interior, World } from '@gb/world'
 import { METRICS } from '@gb/world'
 import type { Solid } from './walk.ts'
@@ -70,4 +71,16 @@ export function interiorSolid(interior: Interior): Solid {
     }
     return false
   }
+}
+
+/**
+ * Inside, with the furniture in the way. The shell and the partitions come from
+ * the room plan; the furniture comes from the shapes actually drawn, so what
+ * stops you is exactly what you can see. A point test, because the body's own
+ * width is added by `blocked` sampling around it.
+ */
+export function furnishedSolid(interior: Interior, blockers: readonly PropFootprint[]): Solid {
+  const shell = interiorSolid(interior)
+  if (blockers.length === 0) return shell
+  return (x, z) => shell(x, z) || blockers.some((footprint) => footprint.contains(x, z))
 }

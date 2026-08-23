@@ -16,7 +16,7 @@ import * as THREE from 'three'
 import { alsoBlockedBy, PERSON_CLEAR } from './bodies.ts'
 import { Player } from './player.ts'
 import { createStage, type Stage } from './renderer.ts'
-import { cityGround, citySolid, interiorSolid } from './solids.ts'
+import { cityGround, citySolid, furnishedSolid } from './solids.ts'
 import { spikeGlb } from './spike-glb.ts'
 import { pick, type Target } from './targets.ts'
 
@@ -440,7 +440,7 @@ export class Game {
     this.#stage.show(built.root)
     this.#stage.indoors(true)
     if (this.#land) this.#land.root.visible = false
-    this.#body.setSolid(alsoBlockedBy(interiorSolid(interior), () => this.#peopleInHere()))
+    this.#body.setSolid(alsoBlockedBy(furnishedSolid(interior, built.blockers), () => this.#peopleInHere()))
     this.#body.setGround(() => 0)
     const step = 1.2
     this.#body.placeAt(

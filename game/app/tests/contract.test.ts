@@ -1,8 +1,10 @@
-import { METRICS } from '@gb/world'
+import { PropFootprint } from '@gb/scene'
+import { METRICS, type Interior } from '@gb/world'
+import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { blocked, slide, step } from '../src/walk.ts'
 import { alsoBlockedBy } from '../src/bodies.ts'
-import { cityGround, citySolid } from '../src/solids.ts'
+import { cityGround, citySolid, furnishedSolid } from '../src/solids.ts'
 import { Body, CROUCH_EYE, JUMP_SPEED } from '../src/stance.ts'
 import { CLOSE_FOV, WIDE_FOV, Zoom } from '../src/zoom.ts'
 
@@ -252,5 +254,53 @@ describe('leaving town', () => {
     const ground = cityGround(town, land)
     expect(ground(20, 1)).toBeCloseTo(6, 5)
     expect(ground(1, 1)).toBe(0)
+  })
+})
+
+describe('furniture indoors', () => {
+  // one room filling a 10x8 shell, no interior partitions to get in the way
+  const room = { w: 10, h: 8 }
+  const interior = {
+    id: 'int_0001',
+    size: room,
+    rooms: [{ id: 'room_0001', kind: 'main', rect: { x: 0, y: 0, w: room.w, h: room.h } }],
+    doors: [],
+    furniture: [],
+    anchors: [],
+  } as unknown as Interior
+
+  /** A table 1.2 m across and 0.8 m deep, standing in the middle of the floor. */
+  function table(x: number, z: number, rot = 0): PropFootprint {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.75, 0.8))
+    mesh.geometry.translate(0, 0.375, 0)
+    mesh.position.set(x, 0, z)
+    mesh.rotation.y = rot
+    mesh.updateMatrixWorld(true)
+    return new PropFootprint('prop_0001', 'table', mesh)
+  }
+
+  it('stops the player walking through a table', () => {
+    const solid = furnishedSolid(interior, [table(5, 4)])
+    expect(solid(5, 4)).toBe(true)
+    expect(solid(2, 2)).toBe(false)
+  })
+
+  it('still keeps the player inside the shell', () => {
+    const bare = furnishedSolid(interior, [])
+    const furnished = furnishedSolid(interior, [table(5, 4)])
+    for (const at of [furnished, bare]) {
+      expect(at(-0.5, 4)).toBe(true)
+      expect(at(5, room.h + 0.5)).toBe(true)
+    }
+  })
+
+  it('blocks along the way the table is turned, not the way the room is', () => {
+    // the long side runs across x unturned, so a quarter turn swaps which axis is wide
+    const straight = furnishedSolid(interior, [table(5, 4)])
+    const turned = furnishedSolid(interior, [table(5, 4, Math.PI / 2)])
+    expect(straight(5.5, 4)).toBe(true)
+    expect(straight(5, 4.5)).toBe(false)
+    expect(turned(5.5, 4)).toBe(false)
+    expect(turned(5, 4.5)).toBe(true)
   })
 })
