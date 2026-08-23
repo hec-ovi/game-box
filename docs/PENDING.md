@@ -20,6 +20,10 @@ Concretely, in order:
 
 | What | Box | Diagnosis |
 |---|---|---|
+| A white container frames the whole screen | unknown | Reported 2026-08-23. Not yet diagnosed. |
+| Pavement lies on top of the road at junctions | `forge` | Junctions are painted after the bands, so 51 of 54 junction arm cells are pavement sitting on the roadway, 204 m2 in the small city and 1,524 m2 at 7x7. North-south streets only, because the row pass runs last. Cars also drive through a 15 cm kerb at every junction. This is PLAN task 3 and is the screenshot he keeps sending. |
+| Street NPCs still do not talk | `app` and `crowd` | I wired passers-by as talk targets and it does not work: the crowd names its walkers `walker_N` while the world names people `npc_900000+`, so the lookup resolves for zero of six. Those pedestrians are anonymous filler, not the world's people. PLAN task 9. |
+| A car that touches you holds you in place | `app`, and `traffic` behind it | Once your centre is inside the car's rectangle every candidate position reads solid, so nothing can move you. Fixed in `walk.ts` by letting any step through that does not bury you deeper. The deeper fault is that a car should not drive onto you at all: `traffic` is given the player as an obstacle and still overlaps. |
 | You can see under the pavement where it meets the verge | `scene` and `land` disagree | `scene` treats a `mountain` cell as 24 m tall when deciding kerbs, so it draws no kerb face there; `land` now lays that cell flat at ground level. About 172 cell-edges of 15 cm gap around the outer ring, and now on the road out of town too. |
 | Cars drive out of town and vanish in plain sight | `traffic` | A car that runs out of graph is retired. The exit road now reaches the map edge, so it happens about 10 m past the last building. Traffic already defers retiring a stuck car until the player cannot see it; the same rule fits. |
 | `nav` calls a mountain cell impassable, `land` calls it walkable verge | `nav` and `land` disagree | Does not block walking out, since the corridor is street and pavement the whole way, but the two boxes describe the same cells differently. |
