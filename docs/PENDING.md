@@ -1027,6 +1027,42 @@ because there is nothing better available.
 Boxes: `forge` for the composer and the uniqueness rule, `scribe` for the batched
 naming and the example leak.
 
+### A settings menu (2026-08-23, his ask)
+
+"in settings allow to lock time, put a setting button that has the exit game,
+etc etc etc"
+
+This is the container several logged items belong in, and it fixes the
+discoverability class rather than one control at a time. Everything below already
+works and is bound to an unlabelled key that appears nowhere:
+
+| what | key today | found where |
+|---|---|---|
+| leave the game, open the panel | `N` | nowhere |
+| hold the clock | `P` | nowhere |
+| skip time forward | `T` | nowhere |
+| change the weather | `K` | nowhere |
+| the route guide | `G` | nowhere |
+
+So a settings button on the bottom bar, beside QUESTS / MAP / ITEMS / CONTROLS,
+holding at least: **lock time** (the clock hold, named as what it does rather
+than as a key), the time and weather controls, and **exit game** leading to the
+panel and its world library.
+
+Two things worth deciding while building it:
+
+- **Lock time is a real feature, not a debug key.** A player exploring a city
+  they like should be able to keep it at night, which is also the hour the whole
+  art direction was built for. Worth surfacing as a proper setting with the hour
+  shown.
+- **`CONTROLS` already exists on the bar and nothing on this list is in it.**
+  Whatever the settings menu ends up holding, the controls tab should list every
+  binding, and that is the cheap half that could land first.
+
+Supersedes the earlier exit entry, which stands only for the world library part.
+
+Boxes: `hud` for the menu and the bar, `app` for wiring exit and the clock.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
