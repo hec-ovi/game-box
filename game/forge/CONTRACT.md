@@ -81,7 +81,7 @@ The theme is read as one of seven kinds of town (frontier, coastal, industrial, 
 
 A town's work is written by recipes over the people and things it actually holds, never one template. What the seed and the theme decide:
 
-- **How much work there is.** A density rather than a number: about two side jobs for every five places with somebody standing in them, moved by how busy a town of this kind is and swung up to a third either way by the seed. It is measured against the places that open, because those are the only places a job can be about, so 29 buildings come with about 4 jobs and 2,300 with about 78. Two towns of the same size do not get the same number. The only ceiling is what the town can actually book: a couple of jobs per person who gives work, and one unclaimed thing per job. Both of those grow with the town, so no city is ever told it has as little to do as a hamlet.
+- **How much work there is.** A density rather than a number: about two side jobs for every five places with somebody standing in them, moved by how busy a town of this kind is and swung up to a third either way by the seed. It is measured against the places that open, because those are the only places a job can be about, so 29 buildings come with about 4 jobs and 2,300 with about 80. Two towns of the same size do not get the same number. The only ceiling is what the town can actually book: a couple of jobs per person who gives work, and one unclaimed thing per job. Both of those grow with the town, so no city is ever told it has as little to do as a hamlet.
 - **How far a job sends you.** A job reaches into the part of town it starts in: the next street over, a few streets away, or about one in twenty, the far side of town. Those are metres, not a share of the map, so the middling job in a city is the same size of job as the middling job in a village, and only a city is big enough to hold one that crosses it. It is what makes a big city read as many neighbourhoods instead of one village with half-hour errands.
 - **How much of it is offered.** About a third of a town's work is offered before the player has done anything, whatever the size, and nobody hands out more than two jobs, so a big city puts more jobs on the board without putting more than two in front of any one person.
 - **A main line, and what it is for.** A generated town has no story, but it has a social order, and the main line is the way into it. One to four links come from the town's busiest staffed place, and each one finished raises a standing flag. Side work waits on those flags, so the first morning offers a fraction of the town and the rest of it opens as they earn their place.
@@ -103,10 +103,10 @@ What the sizes cost, on one seed with the offline narrator. Another seed moves t
 | blocks | grid | buildings | open | people | quests | build | world file |
 |---|---|---|---|---|---|---|---|
 | 2x2 | 53x57 | 29 | 6 | 16 | 4 | 0.05 s | 0.04 MB |
-| 5x5 | 119x119 | 169 | 18 | 56 | 9 | 0.04 s | 0.14 MB |
-| 10x10 | 221x211 | 598 | 65 | 212 | 23 | 0.09 s | 0.51 MB |
-| 20x20 | 427x417 | 2,344 | 256 | 750 | 78 | 0.35 s | 1.96 MB |
-| 37x37 | 769x775 | 9,656 | 1,054 | 3,318 | 308 | 1.7 s | 8.03 MB |
+| 5x5 | 119x119 | 169 | 18 | 56 | 11 | 0.04 s | 0.14 MB |
+| 10x10 | 221x211 | 598 | 65 | 212 | 25 | 0.08 s | 0.51 MB |
+| 20x20 | 427x417 | 2,344 | 256 | 750 | 80 | 0.32 s | 1.97 MB |
+| 37x37 | 769x775 | 9,656 | 1,054 | 3,318 | 310 | 1.5 s | 8.10 MB |
 
 About 0.2 ms and 0.8 KB a building, flat, all the way up: a building that does not open is a footprint, an entrance and a name, and an interior is nearly everything a city costs to build and to carry. The same 20x20 town with every door open takes 11 s and 12.7 MB. Nothing in the generator degrades before the grid wall; what runs out first is the player. A 20x20 city is 854 m corner to corner, a ten-minute walk at 1.4 m/s; 37x37 is 1.5 km, eighteen minutes; the widest grid there is, 1024 cells, would be 2 km and twenty-four. Somewhere past twenty blocks a side, a city stops being a place you cross on foot and starts being a place you live in one part of.
 
