@@ -338,6 +338,37 @@ Worth settling while doing it, because they interact:
 
 Box: `hud`, with whatever `@gb/app` must push from the transcript.
 
+### NPCs have no context and do not know their own names (2026-08-23, found by him)
+
+The worst one from his session, and unresolved: characters answer with no
+knowledge of who they are.
+
+**The prompt is not the fault.** `game/talk/prompts/npc.md` opens
+`You are {{name}}, the {{role}} at {{place}}, in {{city}}.` and goes on to
+personality, surroundings, what they know for a fact, their standing with the
+player, and the situation. `brief.ts` reads `npc.name` and the world name. The
+template and the reader are both correct, so this is the fill, the path, or the
+speaker.
+
+Three candidates, and one question separates them. **Does the panel show the
+NPC's name above the conversation?**
+
+1. **Panel names them, they do not know it** -> the brief is being filled with
+   blanks. Check what `brief.ts` actually produces at the moment of the call.
+2. **Panel does not name them either** -> they have no profile. This is what a
+   street walker looks like: only people stationed in a building are written by
+   the narrator. Talking to a passer-by may simply have no character behind it.
+3. **The model never answered** (502, or the free-tier rate limit) and the
+   offline reader spoke instead, which has no personality to draw on. The
+   reported reply had real flavour, so this is the least likely, but the day's
+   sidecar failures make it worth ruling out.
+
+First thing to do: reproduce with a stationed NPC inside a building, model
+confirmed answering, and print the brief that goes out. Do not change anything
+before that; all three causes look identical from the outside.
+
+Box: `talk`, unless it turns out to be 2, which is `forge` and `crowd`.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
