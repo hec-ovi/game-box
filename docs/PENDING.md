@@ -743,6 +743,39 @@ and the one with no publisher behind it.
 
 Box: `app`, possibly `crowd` if an interior needs its own range rule.
 
+### Somebody spoken to should come out of their stance (2026-08-23, found by him)
+
+"when they are in the position over the table, and i speak to them they should
+stand normal and look at me, not like staging there like marionettes."
+
+Today a stationed person keeps playing their anchor clip and only the head turns
+(`Member.lookAt`), so a worker bent over a desk stays bent over the desk with
+their face rotated at you. The head-turn was built for walkers, where the body
+also stops and turns; at an anchor nothing releases the stance.
+
+What it needs: being spoken to is a **state**, not a look direction. Leave the
+stance, come to a neutral standing or seated-attentive pose facing the player,
+hold it for the conversation, and return to the stance when it ends.
+
+The clips exist. `Sitting_Enter` and `Sitting_Exit` are in the free packs and
+unused, which is exactly getting up and sitting down. `Idle_Loop` and the talking
+gestures are already shipped, and the blend tool built today can make an
+attentive variant from a stance plus a movement if a straight swap looks abrupt.
+
+Two things to get right:
+
+- **Where they stand.** Leaving a stance means leaving a measured position, and
+  this project has spent a day getting bodies onto the right spot. Coming out of
+  `work-desk` must not put somebody inside the desk, and going back must land
+  where they were.
+- **It interacts with the deferred turn already decided for street walkers.**
+  A walker finishes crossing before facing you, on purpose. Indoors there is no
+  such delay, so the two should not be made into one rule.
+
+Boxes: `cast` for the pose change, `app` for driving it off the conversation
+opening and closing, `forge` only if an anchor needs to publish where a body
+stands when it steps away.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
