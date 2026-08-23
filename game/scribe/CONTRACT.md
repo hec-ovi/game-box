@@ -65,9 +65,9 @@ Calls run in waves: `concurrency` of them go out together and all land before th
 
 ### The schema the model is handed
 
-The quest draft's own JSON Schema is 41,994 characters, most of it the same six conditions and nine effects spelled out again inside every step kind. Two passes cut it to under 11,000 before it goes on the wire, on every call:
+The quest draft's own JSON Schema is 41,994 characters, most of it the same six conditions and nine effects spelled out again inside every step kind. Two passes cut it to 10,779 before it goes on the wire, on every call:
 
-- **Narrowed** to what the model can get right. Nothing a `WorldSummary` cannot name, so `stash` steps and going into an interior are cut; and `next` is required on every step kind whose dead end the flow check refuses, because a field the schema calls optional is a field a model decoding against that schema leaves out. Everything the narrowed schema still allows, the full draft contract accepts.
+- **Narrowed** to what the model can get right, because the schema is what it decodes against and a rule that lives only in the prompt is a rule it can walk past. Nothing a `WorldSummary` cannot name, so `stash` steps and going into an interior are cut. `next` is required on every step kind whose dead end the flow check refuses, and gone from the two that end a quest. Each step is in writing order: `kind` first, so a step commits to a mechanic before it writes the sentence the player reads, then the fields that kind needs, then `next`. Everything the narrowed schema still allows, the full draft contract accepts.
 - **Written without repeats**: every subschema that appears more than once is hoisted into `$defs`. Dereference the result and the narrowed schema comes back exactly.
 
 Validation always runs against `@gb/quest`'s own contract, never against the shortened copy.
