@@ -1,6 +1,6 @@
 # @gb/kit contract
 
-contractVersion: 0.1.0
+contractVersion: 0.1.1
 
 ## Purpose
 
@@ -11,6 +11,7 @@ The four primitives every other box needs: a deterministic random stream, stable
 | Export | In | Out |
 |---|---|---|
 | `new Rng(seed)` | seed string | a stream: `float`, `int(min,max)`, `range`, `chance`, `pick`, `weighted`, `shuffle`, `fork(label)` |
+| `Rng.int(min, max)` | two whole numbers | a whole number in `[min, max)`: `max` is never drawn, so `int(0, 2)` gives 0 or 1, and `int(0, list.length)` indexes the list. `max <= min` gives `min` |
 | `Rng.fork(label)` | label string | a child stream, stable for that label no matter what the parent draws |
 | `new IdMinter(counters?)` | stored counters | `mint(kind) -> "kind_0007"`, `snapshot()` for the world file |
 | `contract(name, zodSchema)` | a Zod schema | a `Contract`: `parse -> Result`, `is`, `jsonSchema()` |
