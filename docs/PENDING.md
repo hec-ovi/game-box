@@ -2,6 +2,20 @@
 
 Everything known to be unfinished, by box. Delete a line when it is done.
 
+## What to weigh work against
+
+Flexibility and stability at scale come first. A change that makes the city
+easier to regenerate, easier to grow, or safe at fifty blocks is worth more
+than any single piece of surface detail. Polish a street lamp only when the
+street it stands on is solid.
+
+Concretely, in order:
+1. Generating a new city, with new places and new quests, has to be easy and
+   has to give a different place each time.
+2. It has to hold together as the city gets bigger.
+3. It has to export and reopen as the same world for somebody else.
+4. Then the way it looks.
+
 ## Bugs on screen
 
 | What | Box | Diagnosis |
