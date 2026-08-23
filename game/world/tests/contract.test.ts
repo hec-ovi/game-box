@@ -143,7 +143,7 @@ describe('World', () => {
     const roomId = interior.rooms[0]!.id
     const doc = JSON.parse(JSON.stringify(world.toJSON()))
     const furniture = doc.interiors[0].furniture as Array<Record<string, unknown>>
-    const till = { id: 'prop_9001', prop: 'register', roomId, pos: { x: 4, y: 6 }, rot: 0, lift: METRICS.furniture.barCounterHeight }
+    const till: Record<string, unknown> = { id: 'prop_9001', prop: 'register', roomId, pos: { x: 4, y: 6 }, rot: 0, lift: METRICS.furniture.barCounterHeight }
     furniture.push(till)
 
     const loaded = World.load(JSON.parse(JSON.stringify(doc)))
