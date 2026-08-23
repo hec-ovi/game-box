@@ -1,7 +1,9 @@
-import { METRICS, type World } from '@gb/world'
+import { METRICS, World } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { buildCity, CLEARANCE, CLUTTER, Greybox, MARKING, STEP_OVER_HEIGHT, SURFACE, type ClutterPiece, type Marking } from '../src/index.ts'
+import { PAVED_KINDS } from '../src/ground.ts'
+import { EDGE_RANGE, StreetField } from '../src/street/field.ts'
 import { bigTown, town } from './town.ts'
 
 const KERB = METRICS.street.curbHeight
@@ -52,9 +54,10 @@ describe('what is lying on the street', () => {
     const onPaint: string[] = []
     const onDoorstep: string[] = []
 
-    const paint = city.markings
-      .filter((marking) => marking.kind !== 'edge-line')
-      .map((marking) => boxOfMarking(marking, 0))
+    // what the contract says has to stay clear: the lines along the road are
+    // not on that list, because a scrap blown over one is a scrap on a road
+    const clear = new Set<Marking['kind']>(['centre-line', 'crossing', 'stop-bar'])
+    const paint = city.markings.filter((marking) => clear.has(marking.kind)).map((marking) => boxOfMarking(marking, 0))
     const doorsteps = [...city.doorsteps.values()]
 
     for (const piece of city.clutter) {
@@ -92,6 +95,33 @@ describe('what is lying on the street', () => {
     expect(tight).toEqual([])
   })
 
+  it('puts rubbish against the building line as well as in the gutter', async () => {
+    const world = await bigTown()
+    const city = buildCity(world, new Greybox())
+    const against = { building: 0, street: 0, neither: 0 }
+
+    for (const piece of city.clutter) {
+      if (piece.height <= STEP_OVER_HEIGHT) continue // litter blows anywhere; this is what is put out
+      const cellX = Math.floor(piece.x / world.cellSize)
+      const cellY = Math.floor(piece.z / world.cellSize)
+      const offX = piece.x - (cellX + 0.5) * world.cellSize
+      const offZ = piece.z - (cellY + 0.5) * world.cellSize
+      // the side of its own cell it was pushed to
+      const step = Math.abs(offX) > Math.abs(offZ) ? { x: Math.sign(offX), y: 0 } : { x: 0, y: Math.sign(offZ) }
+      const beyond = world.grid.at(cellX + step.x, cellY + step.y)
+      if (beyond === 'building') against.building++
+      else if (beyond === 'street') against.street++
+      else against.neither++
+    }
+
+    // a pavement is two cells wide, so the gutter and the building line are
+    // different cells and both of them get their band
+    expect(against.building).toBeGreaterThan(100)
+    expect(against.street).toBeGreaterThan(100)
+    // and nothing standing was left in the middle of the pavement facing nothing
+    expect(against.neither).toBeLessThan(against.building / 4)
+  })
+
   it('keeps everything that would stop you off the roadway', async () => {
     const world = await bigTown()
     const city = buildCity(world, new Greybox())
@@ -120,6 +150,35 @@ describe('what is lying on the street', () => {
       Number((KERB + SURFACE.lift + 0.004).toFixed(4)),
     ])
     for (const piece of city.clutter) expect(piece.y).toBeGreaterThan(SURFACE.lift)
+  })
+
+  it('measures the road from its own kerbs, so the gutter is where the gutter is', () => {
+    // a 10 m roadway with a 4 m pavement each side: what @gb/forge lays
+    const world = World.create({ name: 'Kerbs', theme: 'test', seed: 'kerbs', width: 20, height: 13 })
+    world.paint({ x: 0, y: 2, w: 20, h: 2 }, 'sidewalk')
+    world.paint({ x: 0, y: 4, w: 20, h: 5 }, 'street')
+    world.paint({ x: 0, y: 9, w: 20, h: 2 }, 'sidewalk')
+
+    const field = new StreetField(world, PAVED_KINDS)
+    const data = (field.texture.image as { data: Uint8Array }).data
+    const width = field.span.x
+    const furthest = { street: 0, sidewalk: 0 }
+    for (let z = 0; z < field.span.z; z++) {
+      for (let x = 0; x < width; x++) {
+        const kind = world.grid.at(Math.floor((x + 0.5) / 2), Math.floor((z + 0.5) / 2))
+        if (kind !== 'street' && kind !== 'sidewalk') continue
+        const metres = (data[(z * width + x) * 2]! / 255) * EDGE_RANGE
+        furthest[kind] = Math.max(furthest[kind], metres)
+      }
+    }
+
+    // the furthest you can get from a kerb is the crown of the road, 5 m out on
+    // a 10 m roadway, and the middle of the pavement, 2 m out on a 4 m one. Read
+    // off the whole paved surface instead and the road's own crown is 9 m
+    expect(furthest.street).toBeGreaterThan(4)
+    expect(furthest.street).toBeLessThan(6)
+    expect(furthest.sidewalk).toBeGreaterThan(1)
+    expect(furthest.sidewalk).toBeLessThan(3)
   })
 
   it('builds the same street twice from the same seed, and a different one from another', async () => {

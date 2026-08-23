@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import type { Marking } from '../markings.ts'
+import type { Marking, MarkingKind } from '../markings.ts'
 import { CLEARANCE } from './catalog.ts'
 
 /** A rectangle of street nothing may be dropped on, in metres, axis aligned. */
@@ -12,6 +12,19 @@ interface Forbidden {
 
 /** How big a bucket of the lookup grid is. Big enough that a rectangle lands in a few. */
 const BUCKET = 8
+
+/**
+ * How much room each kind of paint wants round it, or nothing where rubbish may
+ * lie over it. A line along the road is one a scrap of paper may blow across; a
+ * crossing, a stop bar and the middle of the road are not.
+ */
+const MARGIN: Record<MarkingKind, number | undefined> = {
+  'centre-line': CLEARANCE.centreLine,
+  'edge-line': undefined,
+  'lane-line': undefined,
+  crossing: CLEARANCE.crossing,
+  'stop-bar': CLEARANCE.crossing,
+}
 
 /**
  * The parts of a street that have to stay clear, whatever else the city puts on
@@ -35,7 +48,7 @@ export class KeepOut {
       })
     }
     for (const marking of markings) {
-      const margin = marking.kind === 'centre-line' ? CLEARANCE.centreLine : marking.kind === 'edge-line' ? undefined : CLEARANCE.crossing
+      const margin = MARGIN[marking.kind]
       if (margin === undefined) continue
       // at rot 0 the length runs along z; a quarter turn swaps the two
       const alongZ = Math.abs(Math.cos(marking.rot)) > 0.5

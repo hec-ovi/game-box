@@ -16,8 +16,8 @@ export interface ClutterSpec {
 /**
  * Every piece of rubbish on the street, at a real size.
  *
- * Nothing standing is deeper than `BAND.wall`, because the pavement `@gb/forge`
- * lays is one 2 m cell wide and the middle of it has to stay walkable. What is
+ * Nothing standing is deeper than `BAND.wall`, because a piece stays inside the
+ * one 2 m cell it is put in and leaves the rest of that cell walkable. What is
  * bigger than that in a real street (a skip) is long rather than deep: it sits
  * along the wall, not out into the pavement.
  */
@@ -75,14 +75,16 @@ function mapKinds<T>(of: (kind: ClutterKind) => T): Record<ClutterKind, T> {
 }
 
 /**
- * How the 2 m pavement is divided across its width, in metres. The middle is
- * never claimed by anything: it is what the player and the crowd walk down, and
- * it is wider than the 0.7 m a body needs to pass.
+ * How much of one 2 m pavement cell each band takes across its width, in
+ * metres. A pavement is two cells wide and a cell takes at most one band: the
+ * one against the building line, or the one in the gutter. So the walking lane
+ * is what both cells have left over, about 2.9 m, and it is never claimed by
+ * anything.
  */
 export const BAND = {
   /** Against the building line, where refuse is put out. */
   wall: 0.5,
-  /** The walking lane, left empty by construction. It is wider than the 0.7 m a body needs. */
+  /** What a cell that has taken a band still has left. Two of these meet in the middle of the pavement. */
   walkway: 0.94,
   /** The gutter side, where bags and cabling end up. */
   kerb: 0.46,

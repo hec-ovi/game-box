@@ -17,6 +17,10 @@ export interface RoadArm {
 export interface RoadLink {
   readonly id: string
   readonly axis: RoadAxis
+  /** Which class of road it is, straight off the graph. */
+  readonly kind: RoadSegment['kind']
+  /** How many lanes it carries, both directions together. */
+  readonly lanes: number
   /** Metres across the axis: the middle of the roadway. */
   readonly centre: number
   /** Metres: half the width of the roadway. */
@@ -35,10 +39,11 @@ const ARM_REACH = 4
 
 /**
  * The city's roads as the street painter needs them: the world's road graph
- * says which junctions are joined, and the grid under it says how wide the
- * roadway actually is and where its mouth opens. Neither on its own is enough:
- * the graph carries no width, and the grid alone cannot tell a junction from a
- * crossroads of paint.
+ * says which junctions are joined, what class each road is and how many lanes
+ * it carries, and the grid under it says how wide the roadway actually is and
+ * where its mouth opens. Neither on its own is enough: the graph carries no
+ * width, and the grid alone cannot tell a junction from a crossroads of paint,
+ * nor a four lane avenue from a wide street.
  */
 export class RoadNetwork {
   #grid: Grid
@@ -75,7 +80,15 @@ export class RoadNetwork {
     if (!ends[0] || !ends[1]) return undefined
     if (ends[1].mouth - ends[0].mouth <= 0) return undefined
 
-    return { id: segment.id, axis, centre: width.centre, half: width.half, ends: [ends[0], ends[1]] }
+    return {
+      id: segment.id,
+      axis,
+      kind: segment.kind,
+      lanes: segment.lanes,
+      centre: width.centre,
+      half: width.half,
+      ends: [ends[0], ends[1]],
+    }
   }
 
   /** The roadway across the middle of the link, where no junction widens it. */

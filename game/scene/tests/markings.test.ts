@@ -1,4 +1,4 @@
-import { METRICS, World, type CellKind } from '@gb/world'
+import { METRICS, ROAD_KINDS, World, type CellKind, type RoadSegment } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { buildCity, Greybox, MARKING, type Marking } from '../src/index.ts'
@@ -26,6 +26,30 @@ function street(): World {
 
 /** The roadway of that street, in metres: rows 4 to 6 of a 2 m grid. */
 const ROADWAY = { width: 6, centre: 11 }
+
+/**
+ * One straight road of a given class, laid at that class's own width, with a
+ * pavement run over it at one end. This is the town for the paint that depends
+ * on how many lanes a road has rather than only on how wide it is.
+ */
+function classRoad(kind: RoadSegment['kind']): { world: World; centre: number; half: number } {
+  const cell = 2
+  const rows = METRICS.road[kind].roadwayCells
+  const top = 4
+  const height = rows + top * 2
+  const world = World.create({ name: 'Wide Street', theme: 'test', seed: 'wide', width: 32, height })
+  world.paint({ x: 0, y: top, w: 32, h: rows }, 'street')
+  world.paint({ x: 7, y: 0, w: 1, h: height }, 'sidewalk')
+  const middle = top + (rows - 1) / 2
+  world.addRoad(
+    [
+      { id: 'node_0001', cell: { x: 5, y: middle } },
+      { id: 'node_0002', cell: { x: 26, y: middle } },
+    ],
+    [{ id: 'road_0001', from: 'node_0001', to: 'node_0002', kind, lanes: METRICS.road[kind].lanes }],
+  )
+  return { world, centre: (top + rows / 2) * cell, half: (rows * cell) / 2 }
+}
 
 /** Where a marking's corners and middle land, a millimetre inside it: paint that stops on a kerb line is still on the road. */
 function footprint(marking: Marking): Array<{ x: number; z: number }> {
@@ -138,6 +162,41 @@ describe('street markings', () => {
     expect(bars[1]!.z).toBeGreaterThan(ROADWAY.centre)
     // each bar stops short of the middle, leaving the oncoming half clear
     for (const bar of bars) expect(Math.abs(bar.z - ROADWAY.centre)).toBeGreaterThan(bar.width / 2)
+  })
+
+  it.each(ROAD_KINDS)('breaks a white line between the lanes going one way on a %s', (kind) => {
+    const { world, centre, half } = classRoad(kind)
+    const road = METRICS.road[kind]
+    const lines = of(buildCity(world, new Greybox()).markings, 'lane-line')
+
+    if (road.lanes === 2) {
+      // one lane each way: the double yellow down the middle is the only line between lanes
+      expect(lines).toEqual([])
+      return
+    }
+
+    // one line each side of the centre, a lane's width out: 3.5 m on an avenue, 4.5 m on the road out
+    const lane = (half * 2) / road.lanes
+    const off = [...new Set(lines.map((line) => Number((line.z - centre).toFixed(3))))].sort((a, b) => a - b)
+    expect(off).toEqual([-lane, lane])
+
+    // and it is broken the way a North American one is: about three metres of
+    // paint with about nine metres of road between, measured off the paint
+    for (const dash of lines) {
+      expect(dash.paint).toBe('white')
+      expect(dash.length).toBeGreaterThanOrEqual(2.5)
+      expect(dash.length).toBeLessThanOrEqual(3.5)
+    }
+    const along = lines
+      .filter((line) => line.z > centre)
+      .map((line) => line.x)
+      .sort((a, b) => a - b)
+    expect(along.length).toBeGreaterThan(1)
+    for (let i = 1; i < along.length; i++) {
+      const gap = along[i]! - along[i - 1]! - lines[0]!.length
+      expect(gap).toBeGreaterThanOrEqual(8)
+      expect(gap).toBeLessThanOrEqual(10)
+    }
   })
 
   it('costs one draw for each paint, however many streets the city has', async () => {

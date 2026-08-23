@@ -55,10 +55,10 @@ const SIDES: readonly Step[] = [
  * Where the rubbish goes, decided from the grid, the doorsteps and the paint
  * and nothing else.
  *
- * The pavement `@gb/forge` lays is one 2 m cell wide, so it is read as three
- * bands across: the building line, the walking lane, and the gutter. Only the
- * two outer bands are ever claimed, which is what keeps the middle of every
- * pavement walkable by construction rather than by hoping. The roadway takes
+ * A pavement cell is read as three bands across: the building line, the walking
+ * lane, and the gutter. A cell takes at most one of the outer two, whichever it
+ * is the cell for, and never the middle, which is what keeps the middle of
+ * every pavement walkable by construction rather than by hoping. The roadway takes
  * nothing that stands, because cars drive on it; it takes litter, and not on a
  * crossing, a stop bar or the double yellow down the middle.
  *
@@ -116,20 +116,31 @@ class ClutterPlan {
     }
   }
 
-  /** Bins, sacks, crates and pallets: against the building line, or in the gutter. */
+  /**
+   * Bins, sacks, crates and pallets: against the building line, or in the
+   * gutter. The two bands are asked of the cell each one belongs in, never both
+   * of one cell. A pavement is two cells wide, so the gutter is the cell with
+   * the road beside it and the building line is the cell with the wall behind
+   * it, and neither of them is the other. On a one cell pavement they are the
+   * same cell and it takes both, which is what a narrow alley wants.
+   */
   #standing(cellX: number, cellY: number, rng: Rng): void {
-    const kerbs = SIDES.filter((side) => this.#world.grid.at(cellX + side.x, cellY + side.z) === 'street')
-    // a corner has roadway on two sides: leave it, the crowd turns there
-    if (kerbs.length !== 1) return
-    const toStreet = kerbs[0]!
-    const back = this.#world.grid.at(cellX - toStreet.x, cellY - toStreet.z)
+    const toWall = this.#only(cellX, cellY, 'building')
+    const toStreet = this.#only(cellX, cellY, 'street')
 
-    if (back === 'building' && rng.chance(this.#density.wall)) {
-      this.#place(cellX, cellY, rng, 'wall', { x: -toStreet.x, z: -toStreet.z }, toStreet, BAND.wall)
+    if (toWall && rng.chance(this.#density.wall)) {
+      this.#place(cellX, cellY, rng, 'wall', toWall, { x: -toWall.x, z: -toWall.z }, BAND.wall)
     }
-    if (rng.chance(this.#density.kerb)) {
+    // a corner has roadway on two sides: leave it, the crowd turns there
+    if (toStreet && rng.chance(this.#density.kerb)) {
       this.#place(cellX, cellY, rng, 'kerb', toStreet, toStreet, BAND.kerb)
     }
+  }
+
+  /** The one side of this cell that kind of ground is on, or nothing when it is on none or several. */
+  #only(cellX: number, cellY: number, kind: CellKind): Step | undefined {
+    const found = SIDES.filter((side) => this.#world.grid.at(cellX + side.x, cellY + side.z) === kind)
+    return found.length === 1 ? found[0] : undefined
   }
 
   /**
@@ -159,12 +170,22 @@ class ClutterPlan {
     if (kind === 'crate') this.#stack(rng, x, y, z, rot)
   }
 
-  /** A crate is rarely on its own: one or two more go on top, dropped square-ish. */
+  /**
+   * A crate is rarely on its own: one or two more go on top, dropped
+   * square-ish. Dropped square-ish is a wider rectangle than the one below it,
+   * so each one is measured against what has to stay clear the same as the one
+   * on the ground was, and the stack stops where the ground does.
+   */
   #stack(rng: Rng, x: number, y: number, z: number, rot: number): void {
-    let top = y + CLUTTER.crate.height
+    const spec = CLUTTER.crate
+    let top = y + spec.height
     for (let level = 0; level < 2 && rng.chance(0.45 - level * 0.2); level++) {
-      this.#add('crate', rng, x + rng.range(-0.05, 0.05), top, z + rng.range(-0.05, 0.05), rot + rng.range(-0.35, 0.35))
-      top += CLUTTER.crate.height
+      const at = { x: x + rng.range(-0.05, 0.05), z: z + rng.range(-0.05, 0.05) }
+      const turn = rot + rng.range(-0.35, 0.35)
+      const half = extents(spec.width, spec.depth, turn)
+      if (this.#keepOut.blocked(at.x, at.z, half.x, half.z)) return
+      this.#add('crate', rng, at.x, top, at.z, turn)
+      top += spec.height
     }
   }
 

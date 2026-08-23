@@ -1,7 +1,7 @@
 import type { RoadArm, RoadLink } from './roads.ts'
 
 /** What a painted rectangle on the road is for. */
-export type MarkingKind = 'centre-line' | 'edge-line' | 'crossing' | 'stop-bar'
+export type MarkingKind = 'centre-line' | 'edge-line' | 'lane-line' | 'crossing' | 'stop-bar'
 
 /** North American convention: yellow between the two directions, white for everything else. */
 export type MarkingPaint = 'white' | 'yellow'
@@ -33,6 +33,9 @@ export const MARKING = {
   centreGap: 0.12,
   /** From the kerb to the outside of the edge line. */
   edgeInset: 0.15,
+  /** A broken line between two lanes going the same way: painted, then the gap to the next. */
+  dashLength: 3,
+  dashGap: 9,
   /** One bar of a crossing, and the gap to the next. */
   stripeWidth: 0.4,
   stripeGap: 0.4,
@@ -96,6 +99,38 @@ class LinkPaint {
     if (edge <= middle) return
     this.#add('edge-line', 'white', at, -edge, MARKING.lineWidth, length)
     this.#add('edge-line', 'white', at, edge, MARKING.lineWidth, length)
+
+    this.#laneLines(from, to, edge)
+  }
+
+  /**
+   * Broken white between two lanes going the same way, one boundary each side
+   * of the centre on a four lane road: 3 m painted, 9 m of road, which is how
+   * a North American lane line is laid. A street has two lanes and one line
+   * down the middle, so it gets none of these.
+   */
+  #laneLines(from: number, to: number, edge: number): void {
+    const { lanes, half } = this.#link
+    const lane = (half * 2) / lanes
+    for (let boundary = 1; boundary < lanes / 2; boundary++) {
+      const across = boundary * lane
+      if (across >= edge) continue
+      for (const at of this.#dashes(from, to)) {
+        this.#add('lane-line', 'white', at, -across, MARKING.lineWidth, MARKING.dashLength)
+        this.#add('lane-line', 'white', at, across, MARKING.lineWidth, MARKING.dashLength)
+      }
+    }
+  }
+
+  /** Where each painted piece of a broken line goes, centred on the stretch it marks. */
+  #dashes(from: number, to: number): number[] {
+    const pitch = MARKING.dashLength + MARKING.dashGap
+    const span = Math.abs(to - from)
+    const count = Math.floor((span + MARKING.dashGap) / pitch)
+    if (count < 1) return []
+    const run = count * pitch - MARKING.dashGap
+    const start = (from + to) / 2 - run / 2 + MARKING.dashLength / 2
+    return Array.from({ length: count }, (_, i) => start + i * pitch)
   }
 
   /** Bars across the roadway, laid along the way the cars go, out to the gutter on each side. */

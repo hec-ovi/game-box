@@ -78,14 +78,14 @@ describe('what a city costs', () => {
     // in it hides the ring altogether
     const town = cost(root, (name) => name !== 'mountains')
 
-    // measured: 56,926 for 141 buildings, ground, kerbs, paint, the stand-in
+    // measured: 64,848 for 141 buildings, ground, kerbs, paint, the stand-in
     // ring, the wet street surface and its rubbish, of which 24,192 is the
-    // ring. It was 26,914 before the street carried anything: the rubbish is
-    // 20,936 of the rise and it scales with paved area rather than with plots,
-    // which is why the budget moved rather than the rubbish being thinned to
-    // fit a per-plot number. A greybox building is a box and a door slab, so
-    // this is the floor a real kit is measured against, not a target
-    expect(triangles).toBeLessThan(60_000)
+    // ring. Swept it is 33,108: the rubbish is 31,740 of it, and it scales with
+    // paved area rather than with plots, which is why the budget moved rather
+    // than the rubbish being thinned to fit a per-plot number. A greybox
+    // building is a box and a door slab, so this is the floor a real kit is
+    // measured against, not a target
+    expect(triangles).toBeLessThan(70_000)
     expect(town.triangles / world.plots().length).toBeLessThan(400)
   })
 
