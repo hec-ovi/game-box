@@ -1,32 +1,20 @@
 import type { ItemProfile, Narrator, NpcProfile, WorldSummary } from '@gb/forge'
 import { OfflineNarrator } from '@gb/forge'
-import { contract, type Contract } from '@gb/kit'
-import { sealQuest, questDraftContract } from '@gb/quest'
+import { Sidecar } from '@gb/sidecar'
 import type { BuildingKind, ItemArchetype, NpcRole } from '@gb/world'
-import { z } from 'zod'
-import { PROMPTS } from './prompts.generated.ts'
-import { Sidecar, type SidecarError } from '@gb/sidecar'
+import { Asker, type ScribeProblem } from './asker.ts'
+import { bullets, prompt } from './prompts.ts'
+import { QuestWriter } from './quests.ts'
+import { NameRegistry } from './registry.ts'
+import { DESCRIBE_ITEM, DESCRIBE_NPC, NAME_CITY, NAME_PLACE } from './tools.ts'
+import { Waves } from './waves.ts'
 
-const CityName = contract('name_city', z.object({ name: z.string().min(2).max(60) }))
-const PlaceName = contract('name_place', z.object({ name: z.string().min(2).max(80) }))
-const NpcProfileContract = contract(
-  'describe_npc',
-  z.object({
-    name: z.string().min(2).max(60),
-    personality: z.string().min(10).max(400),
-    knowledge: z.array(z.string().min(4).max(300)).min(2).max(4),
-  }),
-)
-const ItemProfileContract = contract(
-  'describe_item',
-  z.object({ name: z.string().min(2).max(60), description: z.string().min(4).max(300) }),
-)
-
-/** One authoring call that did not work out, kept so a thin world is explainable. */
-export interface ScribeProblem {
-  readonly task: string
-  readonly error: SidecarError
-}
+/**
+ * A quest is the longest call there is: one was measured at 100 s on its own, and
+ * several run at once, which makes each of them slower. Every other call runs on
+ * the sidecar's own clock.
+ */
+const QUEST_MS = 900_000
 
 export interface ScribeOptions {
   readonly sidecar?: Sidecar
@@ -35,6 +23,10 @@ export interface ScribeOptions {
   readonly seed?: string
   /** Tries per call before falling back. */
   readonly attempts?: number
+  /** Calls in flight at once. Defaults to `GAME_BOX_SLOTS`, or four. */
+  readonly concurrency?: number
+  /** Stops every call this narrator has not finished. */
+  readonly signal?: AbortSignal | undefined
 }
 
 /**
@@ -44,15 +36,25 @@ export interface ScribeOptions {
  * instead and the failure is recorded rather than hidden.
  */
 export class Scribe implements Narrator {
-  #sidecar: Sidecar
+  #descriptive: Asker
+  #questions: Asker
   #fallback: Narrator
-  #attempts: number
+  #registry = new NameRegistry()
+  #waves: Waves
+  #seed: string
   #problems: ScribeProblem[] = []
 
   constructor(options: ScribeOptions = {}) {
-    this.#sidecar = options.sidecar ?? new Sidecar()
+    const sidecar = options.sidecar ?? new Sidecar()
+    const attempts = Math.max(1, options.attempts ?? 2)
+    const record = (problem: ScribeProblem): void => {
+      this.#problems.push(problem)
+    }
+    this.#descriptive = new Asker({ sidecar, attempts, signal: options.signal, record })
+    this.#questions = new Asker({ sidecar, attempts, timeoutMs: QUEST_MS, signal: options.signal, record })
     this.#fallback = options.fallback ?? new OfflineNarrator(options.seed ?? 'scribe')
-    this.#attempts = Math.max(1, options.attempts ?? 2)
+    this.#waves = new Waves(options.concurrency)
+    this.#seed = options.seed ?? 'scribe'
   }
 
   problems(): readonly ScribeProblem[] {
@@ -60,13 +62,21 @@ export class Scribe implements Narrator {
   }
 
   async nameCity(input: { theme: string; seed: string }): Promise<string> {
-    const answer = await this.#ask('name_city', CityName, fill(PROMPTS['name-city'], input))
-    return answer?.name ?? this.#fallback.nameCity(input)
+    this.#seed = input.seed
+    const answer = await this.#descriptive.ask(NAME_CITY, prompt('name-city', input))
+    const name = answer?.name ?? (await this.#fallback.nameCity(input))
+    this.#registry.nameCity(name)
+    return name
   }
 
   async namePlace(input: { kind: BuildingKind; theme: string; index: number }): Promise<string> {
-    const answer = await this.#ask('name_place', PlaceName, fill(PROMPTS['name-place'], input))
-    return answer?.name ?? this.#fallback.namePlace(input)
+    const answer = await this.#descriptive.ask(
+      NAME_PLACE,
+      prompt('name-place', { ...input, ...this.#city() }),
+    )
+    const name = answer?.name ?? (await this.#fallback.namePlace(input))
+    this.#registry.add(name)
+    return name
   }
 
   async describeNpc(input: {
@@ -76,79 +86,44 @@ export class Scribe implements Narrator {
     theme: string
     index: number
   }): Promise<NpcProfile> {
-    const answer = await this.#ask('describe_npc', NpcProfileContract, fill(PROMPTS['describe-npc'], input))
-    return answer ?? this.#fallback.describeNpc(input)
+    const answer = await this.#descriptive.ask(
+      DESCRIBE_NPC,
+      prompt('describe-npc', { ...input, ...this.#city() }),
+    )
+    const person = answer ? { ...answer, knowledge: [...answer.knowledge] } : await this.#fallback.describeNpc(input)
+    this.#registry.add(person.name)
+    return person
   }
 
   async describeItem(input: { archetype: ItemArchetype; theme: string; index: number }): Promise<ItemProfile> {
-    const answer = await this.#ask('describe_item', ItemProfileContract, fill(PROMPTS['describe-item'], input))
-    return answer ?? this.#fallback.describeItem(input)
+    const answer = await this.#descriptive.ask(
+      DESCRIBE_ITEM,
+      prompt('describe-item', { ...input, ...this.#city() }),
+    )
+    const thing = answer ?? (await this.#fallback.describeItem(input))
+    this.#registry.add(thing.name)
+    return thing
   }
 
   /**
-   * One call per quest. A small model writes a better single quest than a batch,
-   * and a call that fails costs one quest rather than all of them.
+   * One call per quest, run in waves. Every draft is checked against the city
+   * before it is handed back, and a slot the model cannot fill is filled by the
+   * offline narrator, so a build never reports a city with no quests in it.
    */
   async writeQuests(input: { summary: WorldSummary; sideQuests: number }): Promise<unknown[]> {
-    const count = Math.max(1, Math.min(input.sideQuests + 1, 12))
-    const places = describePlaces(input.summary)
-    if (!places) return this.#fallback.writeQuests(input)
-
-    const quests: unknown[] = []
-    for (let i = 0; i < count; i++) {
-      const prompt = fill(PROMPTS['write-quests'], {
-        theme: input.summary.theme,
-        cityName: input.summary.cityName,
-        places,
-        questCount: '1',
-      })
-      const numbered = `${prompt}\n\nThis is quest ${i + 1} of ${count}. Give it the id quest_${String(i + 1).padStart(4, '0')}${
-        i === 0 ? ' and make it the main one.' : ' and make it a side one.'
-      }`
-      const draft = await this.#ask(`write_quest`, questDraftContract, numbered)
-      if (draft) quests.push(sealQuest(draft))
-    }
-    return quests.length ? quests : this.#fallback.writeQuests(input)
+    return new QuestWriter({
+      asker: this.#questions,
+      waves: this.#waves,
+      fallback: this.#fallback,
+      seed: this.#seed,
+    }).write(input)
   }
 
-  async #ask<T>(toolName: string, shape: Contract<T>, user: string): Promise<T | undefined> {
-    let request = user
-    for (let attempt = 0; attempt < this.#attempts; attempt++) {
-      const answer = await this.#sidecar.ask(shape, {
-        system: PROMPTS.system,
-        user: request,
-        toolName,
-        toolDescription: `Answer by calling ${toolName}.`,
-      })
-      if (answer.ok) return answer.value
-
-      this.#problems.push({ task: toolName, error: answer.error })
-      if (answer.error.code !== 'invalid-arguments') return undefined
-      // say exactly what was wrong and let it try once more
-      request = `${user}\n\nYour last call was rejected:\n${answer.error.violations
-        .map((v) => `- ${v.path}: ${v.message}`)
-        .join('\n')}\nCall the tool again, fixing exactly those fields.`
+  /** What every descriptive call is told about the city it is writing into. */
+  #city(): { cityName: string; usedNames: string } {
+    return {
+      cityName: this.#registry.cityName,
+      usedNames: bullets(this.#registry.names(), 'None yet.'),
     }
-    return undefined
   }
-}
-
-/** The abstract world, written out for the quest writer to read. */
-function describePlaces(summary: WorldSummary): string {
-  const lines = summary.places
-    .filter((place) => place.npcs.length > 0 || place.items.length > 0)
-    .map((place) => {
-      const people = place.npcs.map((n) => `${n.name} (${n.role}, ${n.npcId})`).join('; ') || 'nobody'
-      const things =
-        place.items.map((i) => `${i.name} (${i.itemId}${i.ownerNpcId ? `, owned by ${i.ownerNpcId}` : ''})`).join('; ') ||
-        'nothing'
-      return `- ${place.name}, a ${place.kind} (${place.plotId})\n    people: ${people}\n    things: ${things}`
-    })
-  return lines.join('\n')
-}
-
-function fill(template: string, values: Record<string, unknown>): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (match, key: string) =>
-    key in values ? String(values[key]) : match,
-  )
 }

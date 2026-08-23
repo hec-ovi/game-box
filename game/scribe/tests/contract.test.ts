@@ -1,54 +1,28 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
-import { Forge } from '@gb/forge'
-import Ajv2020 from 'ajv/dist/2020.js'
-import { describe, expect, it } from 'vitest'
+import { Forge, type WorldSummary } from '@gb/forge'
 import { Sidecar } from '@gb/sidecar'
+import { describe, expect, it } from 'vitest'
 import { Scribe } from '../src/index.ts'
+import { fakeModel } from './fake-model.ts'
 
-/** The sidecar's own published request schema, read from its box. */
-const chatRequestSchema = JSON.parse(
-  readFileSync(join(import.meta.dirname, '..', '..', '..', 'api', 'schema', 'chat-request.json'), 'utf8'),
-)
-const validateChatRequest = new Ajv2020({ strict: false }).compile(chatRequestSchema)
-
-interface Sent {
-  readonly toolName: string
-  readonly parameters: Record<string, unknown>
-  readonly user: string
-}
-
-/** A stand-in model that answers whatever the next scripted reply says. */
-function fakeModel(replies: Array<unknown | 'no-call' | 'http-500'>) {
-  const sent: Sent[] = []
-  const fetch = (async (_url: string, init: RequestInit) => {
-    const body = JSON.parse(String(init.body))
-    expect(validateChatRequest(body), `request off the sidecar contract: ${JSON.stringify(validateChatRequest.errors)}`).toBe(true)
-
-    const tool = body.tools[0].function
-    sent.push({ toolName: tool.name, parameters: tool.parameters, user: body.messages[1].content })
-    expect(body.tool_choice).toEqual({ type: 'function', function: { name: tool.name } })
-
-    const reply = replies.length > 1 ? replies.shift() : replies[0]
-    if (reply === 'http-500') {
-      return new Response('engine on fire', { status: 500 })
-    }
-    if (reply === 'no-call') {
-      return Response.json({ choices: [{ message: { role: 'assistant', content: 'here you go' } }] })
-    }
-    return Response.json({
-      choices: [
-        {
-          message: {
-            role: 'assistant',
-            tool_calls: [{ id: 'call_1', type: 'function', function: { name: tool.name, arguments: JSON.stringify(reply) } }],
-          },
-        },
-      ],
-      })
-  }) as unknown as typeof globalThis.fetch
-
-  return { sent, sidecar: new Sidecar({ base: 'http://127.0.0.1:8976', fetch }) }
+const CITY: WorldSummary = {
+  cityName: 'Cold Harbour',
+  theme: 'port',
+  places: [
+    {
+      plotId: 'plot_0001',
+      kind: 'bar',
+      name: 'The Anchor',
+      npcs: [{ npcId: 'npc_0001', name: 'Mara', role: 'bartender' }],
+      items: [],
+    },
+    {
+      plotId: 'plot_0002',
+      kind: 'shop',
+      name: 'Dunn Supply',
+      npcs: [{ npcId: 'npc_0002', name: 'Bez', role: 'clerk' }],
+      items: [{ itemId: 'item_0001', name: 'Ledger' }],
+    },
+  ],
 }
 
 describe('Scribe', () => {
@@ -59,6 +33,7 @@ describe('Scribe', () => {
     expect(await scribe.nameCity({ theme: 'rain-soaked port', seed: 's' })).toBe('Cold Harbour')
     expect(sent[0]!.toolName).toBe('name_city')
     expect(sent[0]!.parameters).toMatchObject({ type: 'object', properties: { name: { type: 'string' } } })
+    expect(sent[0]!.description.length).toBeGreaterThan(0)
     expect(sent[0]!.user).toContain('rain-soaked port')
     expect(scribe.problems()).toEqual([])
   })
@@ -74,7 +49,7 @@ describe('Scribe', () => {
     expect(sent).toHaveLength(2)
     expect(sent[1]!.user).toContain('rejected')
     expect(sent[1]!.user).toContain('name')
-    expect(scribe.problems().map((p) => p.error.code)).toEqual(['invalid-arguments'])
+    expect(scribe.problems().map((problem) => problem.error.code)).toEqual(['invalid-arguments'])
   })
 
   it('falls back to the offline narrator when the model will not produce valid data', async () => {
@@ -109,45 +84,53 @@ describe('Scribe', () => {
     expect(scribeC.problems()[0]!.error.code).toBe('unreachable')
   })
 
-  it('writes one quest per call, sealed and ready for the validator', async () => {
-    const draft = {
-      id: 'quest_0001',
-      kind: 'main',
-      title: 'The Ledger',
-      summary: 'Someone wants a book back.',
-      giverNpcId: 'npc_0001',
-      startStepId: 'step_0001',
-      steps: [
-        { id: 'step_0001', kind: 'talk', npcId: 'npc_0001', objective: 'Talk', next: ['step_0002'], requires: [], effects: [] },
-        { id: 'step_0002', kind: 'complete', objective: 'Done', next: [], requires: [], effects: [] },
-      ],
-      reward: { money: 10, reputation: 1, faction: 'town', items: [] },
-    }
-    const { sent, sidecar } = fakeModel([draft])
+  it('tells every call the city it is writing into and the names already spent', async () => {
+    const { sent, sidecar } = fakeModel((call) =>
+      call.toolName === 'name_city'
+        ? { name: 'Cold Harbour' }
+        : call.toolName === 'name_place'
+          ? { name: 'The Anchor' }
+          : { name: 'Mara Voss', personality: 'Watches the door.', knowledge: ['The tide is late.', 'Rook is gone.'] },
+    )
     const scribe = new Scribe({ sidecar })
 
-    const quests = await scribe.writeQuests({
-      summary: {
-        cityName: 'Cold Harbour',
-        theme: 'port',
-        places: [
-          { plotId: 'plot_0001', kind: 'bar', name: 'The Anchor', npcs: [{ npcId: 'npc_0001', name: 'Mara', role: 'bartender' }], items: [] },
-          { plotId: 'plot_0002', kind: 'shop', name: 'Dunn Supply', npcs: [], items: [{ itemId: 'item_0001', name: 'Ledger' }] },
-        ],
-      },
-      sideQuests: 1,
-    })
+    await scribe.nameCity({ theme: 'port', seed: 's' })
+    await scribe.namePlace({ kind: 'bar', theme: 'port', index: 0 })
+    await scribe.describeNpc({ role: 'bartender', placeKind: 'bar', placeName: 'The Anchor', theme: 'port', index: 0 })
 
-    expect(quests).toHaveLength(2)
-    expect(quests[0]).toMatchObject({ format: 'game-box.quest', schemaVersion: 1, id: 'quest_0001' })
-    // the world it must write about is in the prompt, by id
-    expect(sent[0]!.user).toContain('npc_0001')
-    expect(sent[0]!.user).toContain('item_0001')
-    expect(sent[0]!.user).toContain('The Anchor')
-    expect(sent[1]!.user).toContain('quest_0002')
+    expect(sent[1]!.user).toContain('City: Cold Harbour')
+    expect(sent[2]!.user).toContain('City: Cold Harbour')
+    expect(sent[2]!.user).toContain('Place: The Anchor')
+    // and the name the city already spent comes back as a name not to spend again
+    expect(sent[1]!.user).toContain('- Cold Harbour')
+    expect(sent[2]!.user).toContain('- The Anchor')
   })
 
-  it('builds a whole city with the model as its narrator', async () => {
+  it('tries again when a call ran out of time, and gives up on one the caller stopped', async () => {
+    // the sidecar's own clock is its business; what this box owes is what it does with the answer
+    const answers = (...codes: string[]) => {
+      const left = codes.slice()
+      return {
+        ask: async () => {
+          const code = left.shift()
+          return code
+            ? { ok: false as const, error: { code, phase: 'response', ms: 1 } }
+            : { ok: true as const, value: { name: 'Saltmere' } }
+        },
+      } as unknown as Sidecar
+    }
+
+    const late = new Scribe({ sidecar: answers('timeout') })
+    expect(await late.nameCity({ theme: 'port', seed: 's' })).toBe('Saltmere')
+    expect(late.problems().map((problem) => problem.error.code)).toEqual(['timeout'])
+
+    const stopped = new Scribe({ sidecar: answers('aborted'), seed: 'stopped' })
+    const name = await stopped.nameCity({ theme: 'port', seed: 's' })
+    expect(name).not.toBe('Saltmere')
+    expect(stopped.problems().map((problem) => problem.error.code)).toEqual(['aborted'])
+  })
+
+  it('builds a whole city with the model as its narrator, quests included', async () => {
     const { sidecar } = fakeModel([
       {
         name: 'Cold Harbour',
@@ -159,12 +142,21 @@ describe('Scribe', () => {
     ])
     const scribe = new Scribe({ sidecar, seed: 'city' })
 
-    const built = await new Forge(scribe).build({ theme: 'rain-soaked port', seed: 'scribe-city', blocksX: 1, blocksY: 1, blockCells: 12 })
+    const built = await new Forge(scribe).build({
+      theme: 'rain-soaked port',
+      seed: 'scribe-city',
+      blocksX: 1,
+      blocksY: 1,
+      blockCells: 12,
+    })
     expect(built.ok).toBe(true)
     if (!built.ok) return
 
     expect(built.value.world.check()).toEqual([])
     expect(built.value.world.plots().length).toBeGreaterThan(2)
     expect(built.value.world.npcs().length).toBeGreaterThan(0)
+    // the measured failure this box shipped: a city with no quests in it, reported as a success
+    expect(built.value.quests.length).toBeGreaterThan(0)
+    expect(built.value.rejected).toEqual([])
   })
 })
