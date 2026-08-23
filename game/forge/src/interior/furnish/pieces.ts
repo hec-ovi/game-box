@@ -16,6 +16,8 @@ export interface ServeOptions {
   /** Seats on the customer side, if the counter has any. */
   readonly stool?: Extract<FurnitureProp, 'bar-stool' | 'chair'>
   readonly seatKind?: AnchorKind
+  /** What stands on the counter top: a till, a coffee machine. */
+  readonly onTop?: Extract<FurnitureProp, 'register' | 'coffee-machine'>
 }
 
 /** A counter run with the wall's choice of prop settled. */
@@ -52,6 +54,7 @@ function counterRun(plan: RoomPlan, side: Side, options: Run): Placed[] {
   if (strip > 0) plan.reserve(wallBand(wall, from - 0.1, from + run + 0.1, strip))
   // up against the counter: behind it facing the room, or in front of it at a counter flat to the wall
   const staffed = segments[Math.floor(segments.length / 2)]!
+  if (options.onTop) plan.onTop(staffed, options.onTop)
   const reach = standoff('serve')
   const post = onWall(wall, alongWall(wall, staffed.pos), strip > 0 ? strip - reach : spec.d + reach)
   plan.anchor('serve', post, strip > 0 ? inward(side) : outward(side), staffed.id)

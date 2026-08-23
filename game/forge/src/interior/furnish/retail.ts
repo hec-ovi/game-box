@@ -5,7 +5,7 @@ import { cornerPiece, servePost, standAt, wallRow } from './pieces.ts'
 /** A shop: a counter you queue at, cases along the walls to look through. */
 export function shopFloor(plan: RoomPlan): void {
   plan.crowdLimit = 3
-  servePost(plan)
+  servePost(plan, { onTop: 'register' })
   for (const side of plan.openSides()) {
     for (const piece of wallRow(plan, 'display-case', side, 2, 0.9)) standAt(plan, piece, 'browse')
   }
@@ -15,7 +15,7 @@ export function shopFloor(plan: RoomPlan): void {
 /** A market hall: stalls out on the floor with room to walk between them. */
 export function marketHall(plan: RoomPlan): void {
   plan.crowdLimit = 4
-  const counter = servePost(plan)
+  const counter = servePost(plan, { onTop: 'register' })
   const floor = counter ? shrinkFrom(plan.bounds, counter, 2.2) : plan.bounds
   const stalls = plan.lattice(floor, { x: 2.6, y: 2.4 })
   let placed = 0

@@ -3,7 +3,7 @@ import { BUILDING_KINDS, type Anchor, type BuildingKind, type Furniture, type In
 import { describe, expect, it } from 'vitest'
 import { boxAt, dirOf, holds, inBox, overlaps, type Box, type Side, type Vec } from '../src/interior/geometry.ts'
 import { planInterior, type InteriorPlan } from '../src/interior/plan.ts'
-import { footprintOf, PROP_SPECS, SEAT_SPECS, seatSpecOf } from '../src/interior/props.ts'
+import { footprintOf, PROP_SPECS, SEAT_SPECS, seatSpecOf, topOf } from '../src/interior/props.ts'
 import { IN_FRONT, stanceOf, type Stance } from '../src/interior/stance.ts'
 import { buildTown } from './support.ts'
 
@@ -207,7 +207,8 @@ describe('interior plans', () => {
 
   it('never puts two pieces of furniture in the same place', () => {
     for (const { kind, seed, made } of everyPlan()) {
-      const boxes = made.furniture.map((piece) => ({ piece, box: footprintOf(piece) }))
+      // a piece standing on a counter shares that counter's floor, which is the point of it
+      const boxes = made.furniture.filter((piece) => piece.lift === undefined).map((piece) => ({ piece, box: footprintOf(piece) }))
       for (let i = 0; i < boxes.length; i++) {
         for (let j = i + 1; j < boxes.length; j++) {
           const clash = overlaps(boxes[i]!.box, boxes[j]!.box)
@@ -329,12 +330,24 @@ describe('interior plans', () => {
     expect(checked).toBeGreaterThan(100)
   })
 
-  it('keeps pieces that belong on a counter off the floor', () => {
+  it('stands a till on the counter rather than beside it', () => {
+    let lifted = 0
     for (const { kind, seed, made } of everyPlan()) {
       for (const piece of made.furniture) {
-        expect(PROP_SPECS[piece.prop].stands, `${kind}/${seed} stands a ${piece.prop} on the floor`).toBe('floor')
+        const where = `${kind}/${seed} ${piece.prop}`
+        if (PROP_SPECS[piece.prop].stands === 'floor') {
+          expect(piece.lift, `${where} is on the floor and says it is not`).toBeUndefined()
+          continue
+        }
+        // it belongs on a worktop, so it is on one, at that worktop's own height
+        const host = made.furniture.find((other) => other.lift === undefined && overlaps(footprintOf(other), footprintOf(piece)))
+        expect(host, `${where} stands on nothing`).toBeDefined()
+        expect(piece.lift, `${where} floats above its ${host?.prop}`).toBe(topOf(host!.prop))
+        expect(piece.rot, `${where} faces a different way from its ${host?.prop}`).toBe(host!.rot)
+        lifted++
       }
     }
+    expect(lifted, 'no counter in any of these rooms has anything on it').toBeGreaterThan(10)
   })
 
   it('gives the same interior for the same seed and a different one otherwise', () => {

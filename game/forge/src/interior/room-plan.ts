@@ -21,7 +21,7 @@ import {
   type Side,
   type Vec,
 } from './geometry.ts'
-import { footprintOf, gapTo, seatSpecOf, specOf } from './props.ts'
+import { footprintOf, gapTo, seatSpecOf, specOf, topOf } from './props.ts'
 import { seatRoot } from './stance.ts'
 
 /** Half an interior wall: how far off a room's line anything has to stay. */
@@ -257,6 +257,27 @@ export class RoomPlan {
   /** A spot to stand in the open, facing something. */
   post(kind: AnchorKind, pos: Vec, faces: Vec, propId?: string): boolean {
     return this.anchor(kind, pos, headingTo(pos, faces), propId)
+  }
+
+  /**
+   * Puts a piece that belongs on a worktop onto one: a till or a coffee machine
+   * on a counter that is already there. It stands at the host's own height and
+   * claims no floor, because the floor under it is the host's.
+   */
+  onTop(host: Placed, prop: FurnitureProp): boolean {
+    const lift = topOf(host.prop)
+    if (lift === undefined || specOf(prop).stands !== 'counter') return false
+    // over the back of the top, out of the way of whoever is served at the front
+    const pos = step(host.pos, host.rot + 180, Math.max(0, specOf(host.prop).d / 2 - specOf(prop).d / 2 - 0.05))
+    this.#furniture.push({
+      id: this.#mint('prop'),
+      prop,
+      roomId: this.room.id,
+      pos: { x: round(pos.x), y: round(pos.y) },
+      rot: round(host.rot),
+      lift: round(lift),
+    })
+    return true
   }
 
   reserve(box: Box): void {

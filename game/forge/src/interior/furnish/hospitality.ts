@@ -4,7 +4,7 @@ import type { RoomPlan } from '../room-plan.ts'
 /** A bar: a counter you can walk behind, stools along it, tables in the rest. */
 export function taproom(plan: RoomPlan): void {
   plan.crowdLimit = 6
-  servePost(plan, { prop: 'bar-counter', stool: 'bar-stool' })
+  servePost(plan, { prop: 'bar-counter', stool: 'bar-stool', onTop: 'register' })
   tableField(plan, { seats: 2, kind: 'sit-drink', spacing: 2.6, max: 5, scattered: true })
   if (plan.rng.chance(0.6)) cornerPiece(plan, 'jukebox')
   if (plan.rng.chance(0.5)) leanSpot(plan)
@@ -12,7 +12,7 @@ export function taproom(plan: RoomPlan): void {
 
 /** A cafe: a service counter and small tables. */
 export function cafeFloor(plan: RoomPlan): void {
-  servePost(plan)
+  servePost(plan, { onTop: 'coffee-machine' })
   tableField(plan, { seats: 2, kind: 'sit', spacing: 2.4, max: 5 })
   cornerPiece(plan, 'plant')
 }

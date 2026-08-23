@@ -1,6 +1,6 @@
 # @gb/forge contract
 
-contractVersion: 0.11.0
+contractVersion: 0.12.0
 
 ## Purpose
 
@@ -59,7 +59,7 @@ A narrator writing an unusable quest is not an error: those quests are dropped a
 - A city is mostly frontage. Every plot is a building with a door, a sign and a name; about one in eight also has an interior, and the rest cannot be walked into. A plot without an interior is closed all the way through: nobody is stationed in it, nothing is lying about in it, and no quest step points into it, so a closed door offers the player nothing rather than teasing them with something they cannot reach.
 - Which doors open is never a list of building kinds. Each kind is weighed by what its own dresser turns out to make: a counter that is always staffed counts most, then anybody else who works there, then loose stock, then whether the place reads as somewhere people are. A kind added to `@gb/world` next week is weighed the same way without anybody coming back here. On top of that a plot near the middle of town scores higher, because that is the door a player tries, and a seeded nudge wide enough to let a chapel on the square in ahead of a shop at the ring road, so a town is not a list of its businesses.
 - A town opens somewhere to sit down, somewhere to buy something, somewhere to sleep and somewhere to work, however small it is and wherever the ranking falls, because those four go in first. Each is a question about what a place holds, not about what it is called: a nightclub answers the first and a hospital the third without anything being added here.
-- A piece that belongs on a counter top is not put on the floor. Furniture carries a floor position and nothing else, so a till or a coffee machine would stand on the floor beside the counter; `PROP_SPECS` marks those and the planner leaves them out until furniture can say what it stands on.
+- A piece that belongs on a counter top stands on one. `PROP_SPECS` marks those pieces, and the planner puts each one over the back of a counter already in the room, facing the way that counter faces, with `Furniture.lift` set to that counter's own top: `METRICS.furniture.serviceCounterHeight` for a service counter, `barCounterHeight` for a bar. It claims no floor, because the floor under it is the counter's. So a bar and a shop have a till on the counter and a cafe has its machine, and nothing is left standing beside the counter it belongs on.
 - The interior varies with the seed and stays identical for the same one: an entrance hall or none, service rooms across the back or down one side, counters on either hand, furniture swept along the walls until it fits.
 - Each kind of building is recognisable from the inside: a bar has a counter you can walk behind with stools along it, a shop a counter you queue at and cases to browse, a house a sofa facing a screen and a bed against a wall.
 - Same seed, same city, down to the byte. Sub-streams are forked by label off a root the generator never draws from: `streets` for the town plan, `plots` for the mix of buildings, `quests` for how much work the town has in it, then one per block, per site and per interior. A new stream is a new label, never a draw from an existing one, so adding one cannot shift what another already decided.

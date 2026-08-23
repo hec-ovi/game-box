@@ -1,4 +1,4 @@
-import type { Furniture, FurnitureProp } from '@gb/world'
+import { METRICS, type Furniture, type FurnitureProp } from '@gb/world'
 import { boxAt, gapToPiece, type Box, type Extent, type Vec } from './geometry.ts'
 
 export interface PropSpec extends Extent {
@@ -79,6 +79,21 @@ export type SeatProp = keyof typeof SEAT_SPECS
 /** What sitting on this piece means, or nothing for a piece nobody sits on. */
 export function seatSpecOf(prop: FurnitureProp): SeatSpec | undefined {
   return (SEAT_SPECS as Partial<Record<FurnitureProp, SeatSpec>>)[prop]
+}
+
+/**
+ * How high the top of a piece is, for the handful of pieces something else
+ * stands on. The same numbers `@gb/furnish` draws those tops at, so a till put
+ * on a counter here lands on the counter there without anybody measuring.
+ */
+const TOPS: Partial<Record<FurnitureProp, number>> = {
+  counter: METRICS.furniture.serviceCounterHeight,
+  'bar-counter': METRICS.furniture.barCounterHeight,
+}
+
+/** The height of a piece's top, or nothing for one nothing stands on. */
+export function topOf(prop: FurnitureProp): number | undefined {
+  return TOPS[prop]
 }
 
 type Placement = Pick<Furniture, 'prop' | 'pos' | 'rot'>
