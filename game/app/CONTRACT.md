@@ -1,6 +1,6 @@
 # @gb/app contract
 
-contractVersion: 0.7.0
+contractVersion: 0.8.0
 
 ## Purpose
 
@@ -11,6 +11,7 @@ The game you can play: the panel you make a city in, the renderer, the frame loo
 | Param | Schema | Preconditions |
 |---|---|---|
 | the panel | theme, seed, blocks across and down, whether the local model writes it | on screen with the first byte of the page; `blocks` is held between 1 and 12 |
+| a city file | a `.gbworld.json` picked off the player's own machine | the file Export wrote, opened with nothing done to it in between |
 | URL query | `?bundle=` a world file, or `?seed=`, `?theme=`, `?blocks=`, `?model`, `?sidecar=` | with none of them the panel waits rather than building anything. Everything the brief does not own is written back untouched, so a refresh keeps the sidecar and the file it was pointed at |
 | `Boot.start(query)` | a `URLSearchParams` | the page holds `#game` and `#boot` |
 | `Game.start(mount, bundle, options)` | an opened `@gb/bundle`, `GameOptions` | the bundle opened, so its world and quests are sound |
@@ -40,6 +41,9 @@ None at the boundary. A city that will not build and a file that will not open a
 
 - This box holds no rules. Quests advance in `@gb/quest`, inventory changes in `@gb/play`, conversations happen in `@gb/talk`, geometry is built in `@gb/scene`, a city is written in `@gb/forge`. Everything here is wiring, input and frames.
 - The panel is served in `index.html`, so it is on screen with the first byte of the page rather than after the renderer, the art and the city have loaded. It says what is happening at every step of that wait, and offers a way to stop it.
+- **A city somebody sent is opened by choosing the file.** The panel takes the `.gbworld.json` Export wrote, with no conversion and nothing to edit in an address bar, and a file that is not a city is a sentence on the panel rather than a throw.
+- **The keys belong to whatever is taking what the player types.** The game binds on the document, so a conversation, the panel while it holds the keys, and any text box anywhere on the page are all asked first: naming a city cannot turn the hour over twice on its way in, and a space in a text box is not swallowed as a jump.
+- **The panel is in front of everything, so the interface gets out of its way.** Handing the keys over shuts whatever window the hud had open, because a window left standing behind the panel takes Escape and Tab while the player is pressing them at the panel.
 - The same theme, seed and block count give the same city, in the browser and out of it. Nothing here adds a number of its own to a brief: the block size and the roads out come from the seed, in `@gb/forge`.
 - A brief is held inside what the generator will take before it is sent, so a block count nobody could build is trimmed rather than refused, and what remains that the generator still turns down comes back as a sentence.
 - One city is being made at a time. Asking for another stops the one in flight, and so does Cancel: a generation runs against one `AbortSignal`, which `@gb/scribe` carries down to the model. A conversation is stopped by walking away from it, which breaks out of the reply stream and releases the call.
@@ -59,7 +63,8 @@ None at the boundary. A city that will not build and a file that will not open a
 - **A conversation can be held by clicking as well as by typing.** `@gb/talk` says which moves are legal this turn, and they go to `@gb/hud` as a menu in plain words. A click comes back as that move's own key and goes straight to the conversation, which carries it out with no model call; typing goes the way it always did. Walking away is left off the menu, because the panel already ends a conversation two ways the player can see. Every turn ends by publishing the menu again, even an empty one, which is what tells the interface its buttons are live.
 - **Whoever is being talked to turns to the player and looks them in the eye**, and goes back to what they were doing when the conversation ends. A pedestrian stops mid-route, comes round, and walks the rest of their route afterwards; a companion stops keeping up and catches up again; somebody at their post in a room stays on their post and turns only as far as their head cannot reach, so a shopkeeper never swings their back to their own counter. The turn eases rather than snapping, and the head leads it. It happens on the conversation opening, not on being looked at: a pedestrian who stopped every time the crosshair crossed them would bring the pavement to a halt.
 - A companion who followed the player into a building is waiting by the door when they come out, rather than where they were standing when the door closed.
-- **A thing is put down where a job asked for it.** A `stash` step names the room and the surface, and the room was built with a spot standing at that surface, so leaving something is walking up to it and pressing the same key that picks things up. The spot is only offered while the job is asking and the thing is in the player's hands, and it is worked out again at the moment the key goes down, so a prompt that has gone stale does nothing rather than something else.
+- **A thing is put down where a job asked for it, and it is standing there afterwards.** A `stash` step names the room and the surface, and the room was built with a spot standing at that surface, so leaving something is walking up to it and pressing the same key that picks things up. `@gb/scene` draws it on that surface with the rule it built the room's own things with, so it can be seen where it was left and picked back up. The spot is only offered while the job is asking and the thing is in the player's hands, and it is worked out again at the moment the key goes down, so a prompt that has gone stale does nothing rather than something else.
+- **Whoever is speaking talks with their hands.** While a reply is arriving `@gb/cast` lays a talk gesture over the upper body of whoever is saying it, seated or standing to match the pose they are already holding, and takes it off when the line ends. It is a layer, not a clip: somebody leaning on their counter is still leaning on it.
 - **The player can drive.** Any car on the road can be taken: `E` on a car within reach gets in, and `E` behind the wheel gets out. The companions ride, and are back on the pavement beside the car when the player gets out. While driving, the first person body is ridden rather than walked: the eye is put where the seat is every frame and the view turns with the car, so the mouse still looks around inside one that is cornering.
 - **The car the player left is solid to walk into and something the traffic brakes for**, joined here the same way the crowd and the traffic are: `@gb/drive` and `@gb/traffic` never see each other.
 - The player is stopped by people and by cars, not only by walls. Both move every frame, so what is solid is asked fresh rather than baked, and a car is treated as the long thing it is rather than as a circle.
@@ -115,6 +120,7 @@ One responsibility each. `boot/` is everything before there is a game; the rest 
 | `boot/export.ts` | handing the sealed city to the browser as a file |
 | `boot/kept.ts` | what the browser remembers: the last city, and its save |
 | `boot/painted.ts` | waiting for the browser to draw a line before blocking it again |
+| `focus.ts` | whether something else on the page is taking what the player types |
 | `index.ts` | the box's one entry |
 | `game.ts` | the pieces, and the frame |
 | `controls.ts` | the keys the game binds, for the interface to print |
@@ -138,6 +144,7 @@ One responsibility each. `boot/` is everything before there is a game; the rest 
 | `intents.ts` | what the player did in the interface, carried to whoever owns it |
 | `talking.ts` | a conversation on screen: the reply, and the moves the player can click |
 | `attending.ts` | whoever is being talked to, turned to face the player |
+| `gestures.ts` | their hands, while they are the one speaking |
 | `companions.ts` | who is walking with the player |
 | `reporting.ts` | everything the hud is told |
 | `solids.ts`, `bodies.ts` | what stops you: walls, floors, people, cars |

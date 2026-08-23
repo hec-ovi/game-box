@@ -98,13 +98,14 @@ describe('the keys the player presses', () => {
     const notes: string[] = []
     let got = 0
 
+    const body = new Player(camera, element, nowhere)
     const interaction = new Interaction({
       element,
       world: {} as World,
       player: {} as PlayerState,
       log: {} as QuestLog,
       hud: { typing: input.typing ?? false } as Hud,
-      body: new Player(camera, element, nowhere),
+      body,
       buildings: {} as Buildings,
       stashing: {} as Stashing,
       talking: { active: false } as Talking,
@@ -116,7 +117,8 @@ describe('the keys the player presses', () => {
       aimed: () => input.aimed,
     })
     close.push(() => interaction.dispose())
-    return { clock, notes, user: userEvent.setup(), got: () => got }
+    close.push(() => body.dispose())
+    return { body, clock, notes, user: userEvent.setup(), got: () => got }
   }
 
   const wheel: Target = { kind: 'drive', id: 'car_3', label: 'Get in the taxi', at: { x: 1, z: 1 } }
@@ -152,6 +154,39 @@ describe('the keys the player presses', () => {
     expect(keys.got()).toBe(0)
     expect(keys.notes).toEqual([])
     expect(keys.clock.hour).toBe(8)
+  })
+
+  it('hears none of it once the keys have been handed to the panel over the top', async () => {
+    const keys = bound({ aimed: wheel })
+    keys.body.setTyping(true)
+
+    // naming a city is typing, and the game is bound on the document under it
+    await keys.user.keyboard('etgkp')
+    expect(keys.got()).toBe(0)
+    expect(keys.clock.hour).toBe(8)
+    expect(keys.clock.weather).toBe('clear')
+
+    // and it has them back the moment the panel gives them up
+    keys.body.setTyping(false)
+    await keys.user.keyboard('t')
+    expect(keys.clock.hour).toBe(12)
+  })
+
+  it('hears none of it while a text box anywhere on the page has the caret', async () => {
+    const keys = bound({ aimed: wheel })
+    const box = document.createElement('input')
+    box.type = 'text'
+    document.body.append(box)
+    box.focus()
+
+    // every space would be swallowed as a jump, and the t, the k and the p
+    // would turn the hour and the weather over on their way into the box
+    await keys.user.type(box, 'quiet coastal town')
+    expect(box.value).toBe('quiet coastal town')
+    expect(keys.clock.hour).toBe(8)
+    expect(keys.clock.weather).toBe('clear')
+    expect(keys.clock.rate).toBeGreaterThan(0)
+    expect(keys.got()).toBe(0)
   })
 })
 
@@ -324,6 +359,12 @@ describe('putting a thing down', () => {
 
     expect(bar.player.inventory()).toEqual([])
     expect(bar.log.status('quest_0001')).toBe('complete')
+
+    // and it is lying on that surface, not gone: the same crosshair that put it
+    // down offers it back, which is the only way to see it was ever put down
+    expect(bar.prompt()).toBe('Take the ledger')
+    await bar.user.keyboard('e')
+    expect(bar.player.inventory()).toEqual(['item_0001'])
   })
 
   it('offers nowhere to leave anything until a job asks for it and the thing is in hand', async () => {

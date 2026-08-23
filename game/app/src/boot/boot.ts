@@ -1,5 +1,6 @@
 import type { OpenedBundle } from '@gb/bundle'
 import type { Sidecar } from '@gb/sidecar'
+import { typingSomewhere } from '../focus.ts'
 import { Game, type GameOptions } from '../game.ts'
 import { loadCars, loadDressing } from '../pack.ts'
 import { briefFromQuery, briefToQuery, DEFAULTS, type CityBrief } from './brief.ts'
@@ -46,6 +47,7 @@ export class Boot {
 
     this.#panel.on({
       generate: (brief) => void this.generate(brief),
+      open: (file) => void this.openFile(file),
       save: () => this.export(),
       cancel: () => this.cancel(),
       close: () => this.hidePanel(),
@@ -82,6 +84,14 @@ export class Boot {
   async generate(brief: CityBrief): Promise<void> {
     this.#panel.brief = brief
     await this.#run((signal) => this.#maker.build(brief, { signal, step: this.#step }), brief)
+  }
+
+  /** Play a city file the player picked, exactly as Export wrote it. */
+  async openFile(file: File): Promise<void> {
+    await this.#run(async (signal) => {
+      await this.#step(`Opening ${file.name}`)
+      return this.#maker.read(file, signal)
+    }, undefined)
   }
 
   /** Write the city out as the file it already is inside. */
@@ -172,7 +182,7 @@ export class Boot {
   /** One key opens the front door again, and puts it away. */
   #key = (event: KeyboardEvent): void => {
     if (event.code !== 'KeyN' || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return
-    if (typing(document.activeElement)) return
+    if (typingSomewhere()) return
     event.preventDefault()
     if (this.#panel.open) this.hidePanel()
     else this.showPanel()
@@ -187,9 +197,4 @@ export class Boot {
   get world(): OpenedBundle['world'] | undefined {
     return this.#city?.bundle.world
   }
-}
-
-function typing(element: Element | null): boolean {
-  if (!(element instanceof HTMLElement)) return false
-  return element.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(element.tagName)
 }

@@ -145,6 +145,16 @@ export class Buildings {
     this.inside?.pickups.get(itemId)?.removeFromParent()
   }
 
+  /**
+   * Put a thing down on the surface an anchor belongs to. `@gb/scene` runs the
+   * same rule it built the room's own things with, so a thing carried in from
+   * across town lands where it would have landed had the room been built with
+   * it there. Nothing drawn means the step named a spot this room has not got.
+   */
+  putDown(itemId: string, anchorId: string): boolean {
+    return this.inside?.leave(itemId, anchorId) !== undefined
+  }
+
   /** Somebody walking with the player is not also standing at their anchor. */
   showPerson(npcId: string, visible: boolean): void {
     if (visible) this.#away.delete(npcId)

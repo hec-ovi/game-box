@@ -52,6 +52,22 @@ export class CityMaker {
     return this.#open(document)
   }
 
+  /**
+   * A city out of a file the player picked off their own machine. It is the
+   * file Export wrote, opened with nothing done to it in between, so a world
+   * somebody sent is played by choosing it rather than by editing an address.
+   */
+  async read(file: Blob, signal: AbortSignal): Promise<Made> {
+    try {
+      const text = await file.text()
+      if (signal.aborted) return { ok: false, message: 'Stopped.' }
+      return await this.#open(JSON.parse(text))
+    } catch (cause) {
+      if (signal.aborted) return { ok: false, message: 'Stopped.' }
+      return { ok: false, message: `That file could not be read (${String(cause)}).` }
+    }
+  }
+
   /** A city out of a file: the same door a downloaded one comes through. */
   async fetch(url: string, signal: AbortSignal): Promise<Made> {
     try {

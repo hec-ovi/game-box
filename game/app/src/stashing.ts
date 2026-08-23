@@ -82,8 +82,11 @@ export class Stashing {
     const spot = this.spots().find((each) => each.anchorId === anchorId)
     if (!spot) return
 
-    const let_go = this.#player.drop(spot.itemId)
-    if (!let_go.ok) return
+    const letGo = this.#player.drop(spot.itemId)
+    if (!letGo.ok) return
+    // and it is standing on that surface from here on, so the player can see
+    // where they put it and can pick it back up
+    this.#buildings.putDown(spot.itemId, anchorId)
     this.#report.note(`Left the ${spot.itemName.toLowerCase()}`)
     this.#report.report(
       this.#log.handle({ kind: 'stashed', itemId: spot.itemId, interiorId: spot.interiorId, anchorId }),

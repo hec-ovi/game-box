@@ -1,5 +1,6 @@
 import { METRICS } from '@gb/world'
 import * as THREE from 'three'
+import { typingSomewhere } from './focus.ts'
 import { slide, step, type Solid, type Vec2 } from './walk.ts'
 import { Body } from './stance.ts'
 import { Zoom } from './zoom.ts'
@@ -58,6 +59,11 @@ export class Player {
   /** How high the floor is under a point. Flat indoors, kerbed outdoors. */
   setGround(ground: (x: number, z: number) => number): void {
     this.#ground = ground
+  }
+
+  /** True while the keys belong to something else on the page. */
+  get typing(): boolean {
+    return this.#typing
   }
 
   /** While the player is typing, the keys belong to the text box. */
@@ -149,7 +155,10 @@ export class Player {
   }
 
   #down = (event: KeyboardEvent): void => {
-    if (this.#typing) return
+    // the walk keys are bound on the document, so a text box anywhere on the
+    // page has them first: without this, a space in the panel's theme box is
+    // swallowed as a jump and never reaches the word being typed
+    if (this.#typing || typingSomewhere()) return
     if (event.code === 'Space') {
       event.preventDefault()
       this.#stance.jump()

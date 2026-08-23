@@ -1,5 +1,5 @@
 import type { OpenedBundle } from '@gb/bundle'
-import type { Cast } from '@gb/cast'
+import type { Cast, CastMember } from '@gb/cast'
 import { SceneCast } from '@gb/crowd'
 import { CrowdRiders, Driving } from '@gb/drive'
 import { Hud, type HudIntent } from '@gb/hud'
@@ -11,12 +11,13 @@ import { buildCity, type CityBuild, type Dressing } from '@gb/scene'
 import { Sidecar } from '@gb/sidecar'
 import type { World } from '@gb/world'
 import * as THREE from 'three'
-import { Attending, type Facing, type Post } from './attending.ts'
+import { Attending, type Post } from './attending.ts'
 import { Buildings } from './buildings.ts'
 import { Chart } from './chart.ts'
 import { Companions } from './companions.ts'
 import { Conditions } from './conditions.ts'
 import { CONTROLS } from './controls.ts'
+import { Gestures } from './gestures.ts'
 import { Guide } from './guide.ts'
 import { Intents } from './intents.ts'
 import { Interaction } from './interaction.ts'
@@ -189,7 +190,7 @@ export class Game {
 
     // the crowd turns the people it is walking; the people at their posts in a
     // room are this box's own bodies, so it turns those itself
-    const heads = (input.dressing as { members?: () => ReadonlyMap<string, Facing> }).members?.()
+    const heads = (input.dressing as { members?: () => ReadonlyMap<string, CastMember> }).members?.()
     this.#attending = new Attending({
       street: this.#street,
       eye: this.#stage.camera.position,
@@ -209,6 +210,7 @@ export class Game {
       hud: this.#hud,
       body: this.#body,
       attending: this.#attending,
+      ...(heads ? { gestures: new Gestures((npcId) => heads.get(npcId)) } : {}),
       report: this.#report,
     })
 
@@ -231,6 +233,7 @@ export class Game {
 
     this.#intents = new Intents({
       log: this.#log,
+      hud: this.#hud,
       talking: this.#talking,
       report: this.#report,
       body: this.#body,
@@ -342,7 +345,7 @@ export class Game {
    * them back. The city carries on either way.
    */
   handOverKeys(away: boolean): void {
-    this.#body.setTyping(away)
+    this.#intents.handOver(away)
   }
 
   /** Write the playthrough down now, whatever it is doing. */

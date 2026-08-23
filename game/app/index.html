@@ -126,6 +126,27 @@
         outline: 2px solid var(--gb-accent);
         outline-offset: 1px;
       }
+      .gb-boot input[type='file'] {
+        padding: var(--gb-s2) var(--gb-s3);
+        background: var(--gb-well);
+        color: var(--gb-dim);
+        border: 1px solid var(--gb-edge);
+        border-radius: 0;
+        font: inherit;
+        min-width: 0;
+      }
+      .gb-boot input[type='file']::file-selector-button {
+        margin-right: var(--gb-s3);
+        padding: var(--gb-s1) var(--gb-s3);
+        background: transparent;
+        color: var(--gb-ink);
+        border: 1px solid var(--gb-edge);
+        border-radius: 0;
+        font: 0.8rem/1.2 var(--gb-display);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
       .gb-boot-check {
         display: flex;
         align-items: center;
@@ -228,6 +249,11 @@
         <label class="gb-boot-check">
           <input data-boot="model" type="checkbox" />
           <span>Write the names, people and jobs with the local model</span>
+        </label>
+
+        <label class="gb-boot-field">
+          <span>Or open a city file</span>
+          <input data-boot="open" type="file" accept=".json,.gbworld.json,application/json" />
         </label>
 
         <div class="gb-boot-buttons">

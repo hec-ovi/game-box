@@ -5,6 +5,7 @@ import type { Sidecar } from '@gb/sidecar'
 import { Conversation, type ActionName, type TalkEvent, type TalkMove } from '@gb/talk'
 import type { World } from '@gb/world'
 import type { Attending } from './attending.ts'
+import type { Gestures } from './gestures.ts'
 import type { Player } from './player.ts'
 import type { Reporting } from './reporting.ts'
 
@@ -39,9 +40,11 @@ export class Talking {
   #hud: Hud
   #body: Player
   #attending: Attending
+  #gestures: Gestures | undefined
   #report: Reporting
   #open: Conversation | undefined
   #speaker = 'Someone'
+  #speakerId = ''
 
   constructor(input: {
     world: World
@@ -51,6 +54,8 @@ export class Talking {
     hud: Hud
     body: Player
     attending: Attending
+    /** Without an art pack there is nobody to move, and the conversation is the same. */
+    gestures?: Gestures
     report: Reporting
   }) {
     this.#world = input.world
@@ -60,6 +65,7 @@ export class Talking {
     this.#hud = input.hud
     this.#body = input.body
     this.#attending = input.attending
+    this.#gestures = input.gestures
     this.#report = input.report
   }
 
@@ -80,6 +86,7 @@ export class Talking {
     const conversation = opened.value.conversation
     this.#open = conversation
     this.#speaker = this.#world.npc(npcId)?.name ?? 'Someone'
+    this.#speakerId = npcId
     this.#attending.hold(npcId)
     this.#report.report({ ok: true, value: opened.value.changes })
     // they speak first: the line is built off the game's own data and costs no
@@ -108,6 +115,7 @@ export class Talking {
 
   end(): void {
     if (this.#open) this.#attending.release()
+    this.#gestures?.stop()
     this.#open = undefined
     this.#hud.show({ talk: null })
     this.#body.setTyping(false)
@@ -122,11 +130,16 @@ export class Talking {
       // walking away has to be enough to stop a model that is still thinking.
       // Breaking out of the stream is what releases the call.
       if (this.#open !== conversation) break
-      if (event.kind === 'said') this.#hud.show({ talk: { replyChunk: event.text } })
+      if (event.kind === 'said') {
+        this.#hud.show({ talk: { replyChunk: event.text } })
+        // their hands go while the words are arriving, and stop with them
+        this.#gestures?.start(this.#speakerId)
+      }
       if (event.kind === 'did') this.#hud.show({ talk: { acted: `${this.#speaker} ${DONE[event.action]}` } })
       if (event.kind === 'changed') this.#report.announce(event.change)
       if (event.kind === 'over') this.end()
     }
+    this.#gestures?.stop()
     this.#report.refresh()
     // Every turn ends by publishing the menu again, even an empty one: that is
     // what tells the interface the turn is over and its buttons are live.

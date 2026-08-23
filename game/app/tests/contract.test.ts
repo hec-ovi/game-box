@@ -1,6 +1,7 @@
 // @vitest-environment node
 import type { Driving } from '@gb/drive'
 import type { Hud, HudPatch, Notice } from '@gb/hud'
+import { Cast, CLIPS, GESTURES, type CastMember } from '@gb/cast'
 import { CityNav } from '@gb/nav'
 import { PlayerState } from '@gb/play'
 import { QuestLog, rewardFor, validateQuest, type Objective } from '@gb/quest'
@@ -15,6 +16,7 @@ import { Attending, type Post } from '../src/attending.ts'
 import { Buildings } from '../src/buildings.ts'
 import { Chart } from '../src/chart.ts'
 import { Conditions } from '../src/conditions.ts'
+import { Gestures } from '../src/gestures.ts'
 import { Guide } from '../src/guide.ts'
 import { Intents } from '../src/intents.ts'
 import { DAY, darkness, lookAt, NIGHT } from '../src/night.ts'
@@ -891,7 +893,7 @@ describe('the journal', () => {
 
     // the safe is on the quest from the moment it is taken. Listing it then is
     // the journal giving away its own secret before anybody has said a word
-    expect(page().steps.map((step) => step.text)).toEqual(['Talk to Iris', 'Find two crates', 'Finished'])
+    expect(page().steps.map((step) => step.text)).toEqual(['Talk to Iris', 'Find two crates'])
 
     log.handle({ kind: 'talked', npcId: 'npc_0001' })
     expect(page().steps.map((step) => step.text)).toContain('Look behind the bar')
@@ -900,7 +902,7 @@ describe('the journal', () => {
   it('says where every step stands, not just whether it is finished', () => {
     const { log, page } = journal()
     log.start('quest_0001')
-    expect(page().steps.map((step) => step.state)).toEqual(['open', 'upcoming', 'upcoming'])
+    expect(page().steps.map((step) => step.state)).toEqual(['open', 'upcoming'])
 
     log.handle({ kind: 'talked', npcId: 'npc_0001' })
     // done behind, open now, and still ahead: three states, and the two that
@@ -909,7 +911,6 @@ describe('the journal', () => {
       ['step_0001', 'done'],
       ['step_0002', 'open'],
       ['step_0003', 'open'],
-      ['step_0004', 'upcoming'],
     ])
   })
 
@@ -988,11 +989,13 @@ describe('what the player did in the interface', () => {
     const log = QuestLog.create([forked], player)
     const report = new Reporting({ world: town(), log, player, hud })
     let released = 0
+    let handed: (boolean | undefined)[] = []
     const intents = new Intents({
       log,
+      hud,
       report,
       talking: { say: async () => {}, choose: async () => {}, end: () => {} } as unknown as Talking,
-      body: { setTyping: () => {} } as unknown as Player,
+      body: { setTyping: (away: boolean) => void handed.push(away) } as unknown as Player,
       chart: { open: false } as unknown as Chart,
       releasePointer: () => void released++,
     })
@@ -1000,7 +1003,7 @@ describe('what the player did in the interface', () => {
     // the way a job actually starts: somebody offers it and what changed is
     // reported, which is what puts the page on screen in the first place
     const start = () => report.report(log.start('quest_0001'))
-    return { log, intents, page, start, released: () => released }
+    return { log, intents, page, start, pushed, released: () => released, handed }
   }
 
   it('takes the road the player picked and closes the one they did not', () => {
@@ -1030,6 +1033,24 @@ describe('what the player did in the interface', () => {
     expect(log.status('quest_0001')).toBe('unstarted')
     // the hud takes nothing off the board itself: the list goes back without it
     expect(page()).toEqual([])
+  })
+
+  it('shuts the window when something on the page takes the keys, so Escape goes to what is in front', () => {
+    const { intents, pushed, handed } = reported()
+    intents.handle({ kind: 'window', window: 'quests' })
+    pushed.length = 0
+
+    intents.handOver(true)
+    // the boot panel is over the top of everything. A window left open behind
+    // it takes Escape and Tab, and the player is pressing them at the panel
+    expect(pushed.map((patch) => patch.window)).toEqual([null])
+    expect(handed).toEqual([true])
+
+    pushed.length = 0
+    intents.handOver(false)
+    // and nothing is reopened on the way back: the player closed it
+    expect(pushed).toEqual([])
+    expect(handed).toEqual([true, false])
   })
 
   it('hands the pointer back for a window the player has to click, and takes it again when it shuts', () => {
@@ -1259,11 +1280,23 @@ describe('a conversation you can click through', () => {
     return { world, npcId: 'npc_0001', itemId: 'item_0001' }
   }
 
+  /** Somebody the art pack has drawn, who records what their arms were asked to do. */
+  function body(doing: string): { member: CastMember; moved: string[] } {
+    const moved: string[] = []
+    const member = {
+      playing: doing,
+      gesture: (clip: string) => void moved.push(clip),
+      stopGesture: () => void moved.push('stop'),
+    } as unknown as CastMember
+    return { member, moved }
+  }
+
   function chatting() {
     const { world, npcId, itemId } = bar()
     const player = PlayerState.create(world.id)
     const log = QuestLog.create([errand], player)
     const { pushed, announced, hud } = screenful()
+    const arms = body(CLIPS.idle)
     let reached = 0
     const talking = new Talking({
       world,
@@ -1279,6 +1312,7 @@ describe('a conversation you can click through', () => {
       hud,
       body: { setTyping: () => {} } as unknown as Player,
       attending: { hold: () => {}, release: () => {} } as unknown as Attending,
+      gestures: new Gestures(() => arms.member),
       report: new Reporting({ world, log, player, hud }),
     })
     // the game pushes `@gb/talk`'s own moves, which carry the action the
@@ -1290,7 +1324,7 @@ describe('a conversation you can click through', () => {
     // it replaces on the next turn and `null` takes it off, so it cannot pile
     // up inside one conversation the way an appended line would
     const acted = () => pushed.flatMap((patch) => (patch.talk?.acted !== undefined ? [patch.talk.acted] : []))
-    return { world, npcId, itemId, player, log, talking, pushed, announced, menu, spoken, acted, reached: () => reached }
+    return { world, npcId, itemId, player, log, talking, pushed, announced, menu, spoken, acted, moved: arms.moved, reached: () => reached }
   }
 
   it('opens with the speaker already talking, before the player has said anything', async () => {
@@ -1357,6 +1391,32 @@ describe('a conversation you can click through', () => {
     expect(player.money).toBeGreaterThan(0)
     // a second panel, so the first turn's line is not still standing under it
     expect(acted().at(-1)).toBe('Iris Vane took what you were carrying')
+  })
+
+  it('moves their hands while they are speaking and puts them down after', async () => {
+    const { npcId, talking, menu, moved } = chatting()
+    await talking.start(npcId)
+
+    // the opening line is a string, not a stream: nothing is being said out
+    // loud yet, so there is nothing for their arms to be doing
+    expect(moved).toEqual([])
+
+    await talking.choose(menu()[0]!.key)
+    expect(moved).toEqual([CLIPS.talk, 'stop'])
+    expect(GESTURES).toContain(moved[0])
+
+    // and once for the turn, however many pieces the line arrives in
+    await talking.say('and what do I get for it?')
+    expect(moved).toEqual([CLIPS.talk, 'stop', CLIPS.talk, 'stop'])
+  })
+
+  it('lays the seated talk over somebody who is sitting down', async () => {
+    const sitting = body(Cast.doingAt('sit'))
+    new Gestures(() => sitting.member).start('npc_0001')
+
+    // a standing talk added to a sitting pose is a person waving from a chair
+    // they are not really in: the gesture is laid over the base clip, not instead
+    expect(sitting.moved).toEqual([CLIPS.talkSeated])
   })
 
   it('still takes a typed line, which does go looking for a model, and ends on a menu', async () => {

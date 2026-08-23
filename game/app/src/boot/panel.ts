@@ -2,6 +2,8 @@ import { freshSeed, tidy, type CityBrief } from './brief.ts'
 
 export interface PanelHandlers {
   generate(brief: CityBrief): void
+  /** A city file the player picked off their own machine. */
+  open(file: File): void
   save(): void
   cancel(): void
   close(): void
@@ -19,13 +21,14 @@ export class Panel {
   #seed: HTMLInputElement
   #blocks: HTMLInputElement
   #model: HTMLInputElement
+  #open: HTMLInputElement
   #generate: HTMLButtonElement
   #export: HTMLButtonElement
   #cancel: HTMLButtonElement
   #close: HTMLButtonElement
   #roll: HTMLButtonElement
   #status: HTMLElement
-  #handlers: PanelHandlers = { generate: () => {}, save: () => {}, cancel: () => {}, close: () => {} }
+  #handlers: PanelHandlers = { generate: () => {}, open: () => {}, save: () => {}, cancel: () => {}, close: () => {} }
 
   constructor(root: HTMLElement) {
     this.#root = root
@@ -39,6 +42,7 @@ export class Panel {
     this.#seed = find('seed')
     this.#blocks = find('blocks')
     this.#model = find('model')
+    this.#open = find('open')
     this.#generate = find('generate')
     this.#export = find('export')
     this.#cancel = find('cancel')
@@ -53,6 +57,12 @@ export class Panel {
     this.#roll.addEventListener('click', () => {
       this.#seed.value = freshSeed()
       this.#seed.focus()
+    })
+    this.#open.addEventListener('change', () => {
+      const file = this.#open.files?.[0]
+      // cleared straight away, so picking the same file twice is two openings
+      this.#open.value = ''
+      if (file) this.#handlers.open(file)
     })
     this.#export.addEventListener('click', () => this.#handlers.save())
     this.#cancel.addEventListener('click', () => this.#handlers.cancel())
@@ -97,6 +107,7 @@ export class Panel {
     this.#say(step, { working: true })
     this.#generate.disabled = true
     this.#roll.disabled = true
+    this.#open.disabled = true
     this.#cancel.hidden = false
   }
 
@@ -105,6 +116,7 @@ export class Panel {
     this.#say(message, { trouble })
     this.#generate.disabled = false
     this.#roll.disabled = false
+    this.#open.disabled = false
     this.#cancel.hidden = true
   }
 

@@ -4,6 +4,7 @@ import type { PlayerState } from '@gb/play'
 import type { QuestLog } from '@gb/quest'
 import type { World } from '@gb/world'
 import type { Buildings } from './buildings.ts'
+import { typingSomewhere } from './focus.ts'
 import type { Companions } from './companions.ts'
 import type { Conditions } from './conditions.ts'
 import type { Guide } from './guide.ts'
@@ -80,7 +81,7 @@ export class Interaction {
   }
 
   #key = (event: KeyboardEvent): void => {
-    if (this.#hud.typing || this.#talking.active || event.metaKey || event.ctrlKey || event.altKey) return
+    if (this.#elsewhere() || event.metaKey || event.ctrlKey || event.altKey) return
 
     if (event.code === 'KeyE') {
       const target = this.#aimed()
@@ -94,6 +95,16 @@ export class Interaction {
 
     const said = this.#asked(event.code)
     if (said) this.#report.note(said)
+  }
+
+  /**
+   * Whose keys these are. The game binds on the document, so anything else on
+   * the page that is taking what the player types has to be asked first: the
+   * conversation, the boot panel while it has the keys, and any text box
+   * anywhere. Without it, naming a city drives the city underneath it.
+   */
+  #elsewhere(): boolean {
+    return this.#hud.typing || this.#talking.active || this.#body.typing || typingSomewhere()
   }
 
   /** The keys that ask something rather than act on something in reach. */

@@ -4,7 +4,7 @@ import { CityNav } from '@gb/nav'
 import { PlayerState } from '@gb/play'
 import { QuestLog } from '@gb/quest'
 import { Sidecar } from '@gb/sidecar'
-import { screen, within } from '@testing-library/dom'
+import { screen, waitFor, within } from '@testing-library/dom'
 import userEvent from '@testing-library/user-event'
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -62,7 +62,7 @@ describe('the panel', () => {
     const user = userEvent.setup()
     const asked: CityBrief[] = []
     const front = panel()
-    front.on({ generate: (brief) => asked.push(brief), save: () => {}, cancel: () => {}, close: () => {} })
+    front.on({ generate: (brief) => asked.push(brief), open: () => {}, save: () => {}, cancel: () => {}, close: () => {} })
     front.waiting()
 
     await user.clear(screen.getByLabelText(/seed/i))
@@ -78,7 +78,7 @@ describe('the panel', () => {
     const user = userEvent.setup()
     const asked: CityBrief[] = []
     const front = panel()
-    front.on({ generate: (brief) => asked.push(brief), save: () => {}, cancel: () => {}, close: () => {} })
+    front.on({ generate: (brief) => asked.push(brief), open: () => {}, save: () => {}, cancel: () => {}, close: () => {} })
     front.waiting()
 
     await user.clear(screen.getByLabelText(/blocks/i))
@@ -218,13 +218,17 @@ describe('exporting a city', () => {
     const clicked: string[] = []
     URL.createObjectURL = (blob: Blob) => (written.push(blob), 'blob:city')
     URL.revokeObjectURL = () => {}
-    document.addEventListener('click', (event) => {
+    // taken off again below: a click listener left on the document swallows
+    // every click in every test after this one, this file's file input included
+    const watch = (event: MouseEvent) => {
       clicked.push((event.target as HTMLAnchorElement).download)
       event.preventDefault()
-    })
+    }
+    document.addEventListener('click', watch)
 
     const city = { format: 'game-box.bundle', contentHash: 'abc' }
     download(city, 'quiet-flats-town.gbworld.json')
+    document.removeEventListener('click', watch)
 
     expect(clicked).toEqual(['quiet-flats-town.gbworld.json'])
     expect(JSON.parse(await written[0]!.text())).toEqual(city)
@@ -348,6 +352,41 @@ describe('the front door end to end', () => {
 
     expect(started).toEqual([made.value.bundle.world.name])
     expect(panel.open).toBe(false)
+  }, 30_000)
+
+  it('plays a city file the player picked, exactly as Export wrote it', async () => {
+    const made = await new CityMaker(new Sidecar()).build({ ...DEFAULTS, blocks: 1, seed: 'shared' }, QUIET)
+    if (!made.ok) throw new Error(made.message)
+
+    // the bytes Export hands the browser, taken straight back in: a world
+    // somebody was sent is opened by choosing it, with nothing in between
+    const written: Blob[] = []
+    URL.createObjectURL = (blob: Blob) => (written.push(blob), 'blob:city')
+    URL.revokeObjectURL = () => {}
+    const name = exportName(made.value.bundle.world)
+    download(made.value.document, name)
+
+    const { boot, panel } = open()
+    await boot.start(new URLSearchParams(''))
+    expect(panel.open).toBe(true)
+
+    await userEvent.setup().upload(screen.getByLabelText(/city file/i), new File([written[0]!], name))
+
+    await waitFor(() => expect(started).toEqual([made.value.bundle.world.name]), { timeout: 20_000 })
+    expect(panel.open).toBe(false)
+  }, 40_000)
+
+  it('says a picked file is not a city, rather than throwing at the player', async () => {
+    const { boot, panel } = open()
+    await boot.start(new URLSearchParams(''))
+
+    const junk = new File(['{"format":"not-a-bundle"}'], 'holiday-photos.json', { type: 'application/json' })
+    await userEvent.setup().upload(screen.getByLabelText(/city file/i), junk)
+
+    await waitFor(() => expect(screen.getByRole('status').textContent).toMatch(/will not open/i), { timeout: 20_000 })
+    expect(started).toEqual([])
+    expect(panel.open).toBe(true)
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: /generate/i }).disabled).toBe(false)
   }, 30_000)
 
   it('says why a file will not open, rather than throwing at the player', async () => {

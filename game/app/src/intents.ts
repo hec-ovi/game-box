@@ -1,4 +1,4 @@
-import type { HudIntent } from '@gb/hud'
+import type { Hud, HudIntent } from '@gb/hud'
 import type { QuestLog } from '@gb/quest'
 import type { Chart } from './chart.ts'
 import type { Player } from './player.ts'
@@ -12,6 +12,7 @@ import type { Talking } from './talking.ts'
  */
 export class Intents {
   #log: QuestLog
+  #hud: Hud
   #talking: Talking
   #report: Reporting
   #body: Player
@@ -20,6 +21,7 @@ export class Intents {
 
   constructor(input: {
     log: QuestLog
+    hud: Hud
     talking: Talking
     report: Reporting
     body: Player
@@ -27,11 +29,23 @@ export class Intents {
     releasePointer: () => void
   }) {
     this.#log = input.log
+    this.#hud = input.hud
     this.#talking = input.talking
     this.#report = input.report
     this.#body = input.body
     this.#chart = input.chart
     this.#releasePointer = input.releasePointer
+  }
+
+  /**
+   * Something on the page took the keyboard, or gave it back. The panel is in
+   * front of everything, so whatever the interface had open goes with the keys:
+   * Escape and Tab belong to what the player can actually see, and a window
+   * left standing behind the panel takes both.
+   */
+  handOver(away: boolean): void {
+    this.#body.setTyping(away)
+    if (away) this.#hud.show({ window: null })
   }
 
   handle(intent: HudIntent): void {
