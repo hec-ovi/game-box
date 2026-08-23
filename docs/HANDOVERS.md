@@ -141,6 +141,17 @@ Rows 51 and 47 are closed in forge; rows 59 and 60 are closed in hud.
 
 | 68 | Route the panel's `decide` intent into the engine's `chose` event | app | `{ kind: 'decide', questId, stepId, optionId }` maps field for field onto `log.handle({ kind: 'chose', ... })`. Then push the new `journal()` and `objectives()`; the hud marks nothing itself. The last leg of the choice blocker |
 
+## From the topic pass
+
+Row 33 is closed, and so is the free-text decider. `@gb/talk` credits a topic
+only when the NPC is put to that subject through the menu, never by a
+conversation that wanders onto it. The one-line fix the audit imagined (forward
+the first open topic on every `talked` event) fails both of its tests.
+
+| # | Work | Box | Detail |
+|---|---|---|---|
+| 69 | `Member.gesture()` has no caller, so NPCs talk with their arms still | app | Not talk's to make: talk holds no body, has no three.js and no `@gb/cast` dependency, and pulling cast in would put a renderer inside a headless box. App owns both ends already. `member.gesture(...)` on a `said` piece for `conversation.npcId`, `stopGesture()` on `over`. Two lines, nothing new needed from either contract |
+
 ## Checked and closed
 
 About fifty handovers landed and were verified in the code rather than taken on
