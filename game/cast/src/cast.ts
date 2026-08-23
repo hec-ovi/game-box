@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js'
-import { CLIP_FOR_ANCHOR, CLIPS } from './clips.ts'
+import { clipForAnchor, CLIPS } from './clips.ts'
 import { CastError } from './error.ts'
 import { Hairdresser } from './hairdresser.ts'
 import { chooseLook } from './look.ts'
@@ -110,9 +110,13 @@ export class Cast {
     return this.#clips.keys().next().value!
   }
 
-  /** What somebody stationed on this kind of anchor is doing. */
-  static doingAt(anchorKind: AnchorKind): string {
-    return CLIP_FOR_ANCHOR[anchorKind] ?? CLIPS.idle
+  /**
+   * What somebody stationed on this kind of anchor is doing. Hand it the NPC's
+   * id and a stance with more than one clip picks one off their id, so two
+   * people propped on the same wall are not the same person twice.
+   */
+  static doingAt(anchorKind: AnchorKind, npcId?: string): string {
+    return clipForAnchor(anchorKind, npcId)
   }
 
   update(seconds: number): void {

@@ -1,9 +1,9 @@
 import { ANCHOR_KINDS, BODY_KINDS, METRICS } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { Cast, CLIPS, clipsUsed, GESTURES } from '../src/index.ts'
+import { Cast, CLIPS, CLIPS_FOR_ANCHOR, clipsUsed, GESTURES } from '../src/index.ts'
 import { loadCast, person } from './pack.ts'
-import { centroid, headBone, partsOf, posed, skinsOf, skullOf, type Skin } from './posing.ts'
+import { centroid, headBone, partsOf, posed, posedBounds, skinsOf, skullOf, type Skin } from './posing.ts'
 
 const cast = await loadCast()
 
@@ -63,19 +63,47 @@ function offRest(object: THREE.Object3D): number {
 describe('what a spawned person is doing', () => {
   it('never stands in the rest pose, whatever anchor they are on', () => {
     for (const kind of ANCHOR_KINDS) {
-      for (const base of BODY_KINDS) {
-        const member = cast.spawn(
-          person({ id: `npc_${kind}_${base}`, appearance: { base, variant: 1 } }),
-          Cast.doingAt(kind),
-        )
-        cast.update(0.4)
-        expect(member.playing, `nothing is playing on the ${kind} anchor`).toBeTruthy()
-        expect(
-          degrees(offRest(member.object)),
-          `${base} on a ${kind} anchor is still in the rest pose, playing ${String(member.playing)}`,
-        ).toBeGreaterThan(5)
+      for (const clip of CLIPS_FOR_ANCHOR[kind]) {
+        for (const base of BODY_KINDS) {
+          const member = cast.spawn(person({ id: `npc_${clip}_${base}`, appearance: { base, variant: 1 } }), clip)
+          cast.update(0.4)
+          expect(member.playing, `nothing is playing on the ${kind} anchor`).toBe(clip)
+          expect(
+            degrees(offRest(member.object)),
+            `${base} on a ${kind} anchor is still in the rest pose, playing ${clip}`,
+          ).toBeGreaterThan(5)
+        }
       }
     }
+  })
+
+  /**
+   * The gap `@gb/forge` has to leave between a wall and a lean anchor. The
+   * clips tip the body back off its own feet, so the shoulders end up well
+   * behind the root; measured here across every outfit and every point in the
+   * loop, and published in CONTRACT.md because forge cannot import this box.
+   */
+  it('props a leaning body against a wall behind it, feet still on the floor', () => {
+    const STANDOFF = 0.44
+    let worst = 0
+    for (const clip of CLIPS_FOR_ANCHOR.lean) {
+      for (const base of BODY_KINDS) {
+        const member = cast.spawn(person({ id: `npc_lean_${clip}_${base}`, appearance: { base, variant: 1 } }), clip)
+        for (let step = 0; step <= 12; step++) {
+          cast.update(step === 0 ? 0.001 : 0.2)
+          // a body at rotation.y = 0 faces -Z, so its back is the larger z
+          const bounds = posedBounds(member.object)
+          const back = bounds.max.z
+          worst = Math.max(worst, back)
+          expect(back, `${base} doing ${clip} reaches ${back.toFixed(3)} m behind the anchor`).toBeLessThan(STANDOFF)
+          expect(back, `${base} doing ${clip} is standing upright, not propped on anything`).toBeGreaterThan(0.25)
+          expect(bounds.min.y, `${base} doing ${clip} has a foot through the floor`).toBeGreaterThan(-0.02)
+        }
+      }
+    }
+    // and the gap is the measurement, not a number somebody rounded up: a clip
+    // change that gains 5 cm of clearance has to move the published one too
+    expect(STANDOFF - worst, `the widest body clears the wall by ${(STANDOFF - worst).toFixed(3)} m`).toBeLessThan(0.05)
   })
 
   it('stands a bench worker up with their hands on the top, and sits a desk worker down', () => {

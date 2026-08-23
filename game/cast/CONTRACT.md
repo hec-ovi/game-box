@@ -1,6 +1,6 @@
 # @gb/cast contract
 
-contractVersion: 0.5.0
+contractVersion: 0.6.0
 
 ## Purpose
 
@@ -26,7 +26,8 @@ The city is cyberpunk at night, so the clothes are near-black coated garments wi
 |---|---|---|
 | `spawn` | `CastMember`: `object`, `outfit`, `play`, `playing`, `gesture`, `stopGesture`, `gesturing`, `lookAt`, `lookAway` | a dressed, barbered person at the origin facing -Z, already animating, with their own skeleton and mixer |
 | `clips()` / `characters()` / `has(clip)` | names | what the loaded pack can actually do |
-| `Cast.doingAt(anchorKind)` | a clip name | every anchor kind maps to a clip that exists |
+| `Cast.doingAt(anchorKind, npcId?)` | a clip name | every anchor kind maps to clips that exist; with an id, which one is drawn off the id, so the same person always does the same thing |
+| `CLIPS_FOR_ANCHOR` | one or more clip names per anchor kind | what a stance may look like |
 | `GESTURES` | clip names | the clips that may be layered over another one |
 | `parseWardrobe(value)` | `Wardrobe`: `{ characters: WardrobeEntry[] }`, each `{ id, body, file, roles, themes, styles, brows, beard? }` | throws rather than returning a wardrobe the game cannot use |
 | `chooseCharacter(wardrobe, npc, theme)` | a `WardrobeEntry` | always returns one: nobody is naked |
@@ -52,7 +53,7 @@ Everything after loading is forgiving: an unknown clip or gesture name is ignore
 
 Built by `node tools/build-anims.mjs && node tools/build-pack.mjs && node tools/build-wardrobe.mjs`, served from `assets/dist/`:
 
-- `anims.glb`: every clip, on one skeleton, no meshes.
+- `anims.glb`: every clip, on one skeleton, no meshes. 0.62 MB over the wire.
 - `wardrobe.json`: `{ characters: [{ id, body, file, roles, themes, styles, brows, beard? }] }`.
 - `characters/<id>.glb`: one finished person, body, clothes, every hairstyle and both pairs of eyebrows already merged.
 
@@ -60,9 +61,54 @@ Dressing happens in the build, never at runtime: the outfit parts and the hair a
 
 The clothes are recut fantasy art. The only CC0 wardrobe on this skeleton is Quaternius's fantasy outfits pack, four outfits on two texture sheets, so the build takes them apart: belts, bracers and pauldrons are separate nodes and are not worn, the knee boots are cut off above the shoe and the trousers taken down over them, and every fabric on the sheet is repainted per outfit. What the pack painted on as hardware is settled into the cloth around it. `tools/wardrobe/` holds that work; `game/cast/wardrobe.json` is what it reads.
 
+## What the library holds
+
+Sixteen clips, all on the canonical skeleton, all CC0. `tools/build-anims.mjs` reads `clipsUsed()` out of `src/clips.ts` and ships that list and nothing else, so a clip nobody names is not in the file.
+
+| Clip | What it is | Where it comes from |
+|---|---|---|
+| `Idle_Loop` | standing, weight shifting | Quaternius UAL1 |
+| `Idle_FoldArms_Loop` | standing, arms folded | Quaternius UAL2 |
+| `Idle_TalkingPhone_Loop` | standing, phone at the ear | Quaternius UAL2 |
+| `Idle_Talking_Loop` | talking with the hands | Quaternius UAL1 |
+| `Idle_Rail_Loop` | on the feet, hands on a surface at 1.02 to 1.04 m | Quaternius UAL2 |
+| `Idle_Wall_Loop` | propped on a wall, arms folded | authored, from `Idle_FoldArms_Loop` |
+| `Idle_WallCross_Loop` | propped on a wall, one ankle hooked behind the other | authored, from `Idle_Loop` |
+| `Idle_WallSmoke_Loop` | propped on a wall, one hand up at the mouth | authored, from `Idle_Loop` |
+| `Sitting_Idle_Loop` | sat, hands in the lap | Quaternius UAL1 |
+| `Sitting_Talking_Loop` | sat, talking | Quaternius UAL1 |
+| `Walk_Loop` | walking | Quaternius UAL1 |
+| `Walk_Carry_Loop` | walking with something in both hands | Quaternius UAL2 |
+| `Jog_Fwd_Loop` | jogging | Quaternius UAL1 |
+| `Driving_Loop` | sat at a wheel | Quaternius UAL1 |
+| `PickUp_Table` | taking something off a surface | Quaternius UAL1 |
+| `Interact` | handing something over | Quaternius UAL1 |
+
+The two Quaternius Universal Animation Libraries carry 84 clips between them and are the only CC0 source on this skeleton; the 71 the game does not name are left out of the pack. Neither pack has a wall lean, so the three `Idle_Wall*` clips are authored in `tools/anims/poses.mjs`: a standing idle with the trailing leg brought forward to match the leading one, the body tipped 8 degrees back off both ankles, the soles levelled and the chin brought down. The source clip's own breathing and weight shift come through untouched, so a propped body is still moving.
+
+### Which stance draws from which
+
+| Anchor kind | Clips |
+|---|---|
+| `stand` | `Idle_Loop`, `Idle_FoldArms_Loop`, `Idle_TalkingPhone_Loop` |
+| `lean` | `Idle_Wall_Loop`, `Idle_WallCross_Loop`, `Idle_WallSmoke_Loop` |
+| `browse` | `Idle_Loop`, `Idle_FoldArms_Loop` |
+| `serve`, `work-bench` | `Idle_Rail_Loop` |
+| `sit`, `sit-drink`, `work-desk`, `sleep` | `Sitting_Idle_Loop` |
+| `cook` | `Idle_Loop` |
+| `guard` | `Idle_FoldArms_Loop` |
+
+`lean` is propped on a wall: back to it, hands free, feet out in front. It is not the rail stance, which is `serve` and `work-bench`.
+
+### Standing a body against a wall
+
+A lean clip holds the body behind its own root, so a lean anchor is not at the wall. **The anchor goes 0.44 m out from the face of the wall, facing away from it.** That is the deepest point any of the twelve dressed characters reaches behind the root over the whole of any of the three clips (0.414 m, the back of the widest coat) with 2.6 cm to spare. The feet land about 0.48 m out. `game/cast/tests/pose.test.ts` measures it, so the number cannot drift without the suite saying so; `@gb/forge` carries its own copy, because it cannot import this box.
+
 ## Invariants
 
+- **One stance, several clips.** An anchor kind names a stance; the person's own id picks which of that stance's clips they do. Five people propped on one wall are three different idles, and the same id draws the same one every time the city is opened. A kind with one clip behaves as it always did.
 - **Facing.** A spawned body at `rotation.y = 0` faces -Z, the way a three.js camera looks at heading 0. Set `object.rotation.y` to a heading and the person faces along it. The source art faces the other way in its own files; `spawn` holds it at half a turn inside the object the game moves, so nothing outside this box has to know.
+- Nobody's foot goes through the floor and nobody floats: over every clip and every outfit the lowest point of a posed body sits within a centimetre of the ground the root stands on.
 - One clip library and one character mesh per outfit for the whole game; a person is a clone sharing that geometry with their own skeleton and their own mixer.
 - Everybody is dressed. If no outfit is cut for a body, one cut for another body is used rather than sending somebody out bare.
 - Nobody stands in the rest pose. `spawn` falls back to an idle when it is handed a clip the library has not got, and `load` refuses a library with no clips in it, so a typo is a wrong animation rather than a T-posing NPC.
@@ -70,7 +116,7 @@ The clothes are recut fantasy art. The only CC0 wardrobe on this skeleton is Qua
 - Every material a character renders with carries its base colour texture, so nobody comes out the white of a missing map.
 - Everybody has hair, or is bald on purpose: the hairstyle, the eyebrows, the beard and the colour of all three are drawn from the NPC's id, and the eyebrows always match the hair. Tinted materials are shared across the whole cast, so a crowd costs one material per colour per hair texture, not one per person.
 - The same NPC id gets the same outfit, the same hair and the same point in the loop every time the city is opened, so a shared world file looks the same to everyone.
-- Every name in `CLIP_FOR_ANCHOR`, `CLIPS` and `GESTURES` is in the shipped library, and the tests fail if one goes missing, so a renamed clip is caught at build time.
+- Every name in `CLIPS_FOR_ANCHOR`, `CLIPS` and `GESTURES` is in the shipped library, because the build reads that same list; the tests fail if one goes missing, so a renamed clip is caught at build time.
 - A stance is a clip, so the two working anchors play two of them: `work-desk` sits in the chair (`Sitting_Idle_Loop`), `work-bench` stands at the bench on the standing rail loop (`Idle_Rail_Loop`), which holds the hands at 1.02 to 1.04 m, the height `METRICS.furniture.serviceCounterHeight` is drawn at.
 - The head-look and gesture layers run after the mixer and never replace the base clip: the head turns off the pose the clip left, and a gesture adds to it on the upper body only.
 - The head stays inside about 77 degrees of yaw and 46 of pitch off the clip's own pose, and eases in and out over about a fifth of a second.
@@ -114,4 +160,4 @@ Hair is listed per body in the `hair` block of `game/cast/wardrobe.json`: `style
 
 ## How to modify this blackbox safely
 
-New clips go in the library and in `CLIPS`, `CLIP_FOR_ANCHOR` or `GESTURES` together. A clip only belongs in `GESTURES` if it stays near its own starting pose: a gesture is added to whatever the base clip is holding, so a whole-body action layered on top folds an arm through the head. New bodies need a `BODY_KIND` in `@gb/world` first, then a body file in `game/cast/wardrobe.json` and at least one outfit for it. Rebuild the pack, run the gate, then `pnpm --filter @gb/cast test`.
+New clips go in `CLIPS`, `CLIPS_FOR_ANCHOR` or `GESTURES` and then in the pack: `node tools/build-anims.mjs` builds from `clipsUsed()`, so naming a clip there is what ships it, and a name no source pack has fails the build. A pose no pack has is written in `tools/anims/poses.mjs` as per-bone angles on a clip the library already holds; `tools/anims/derive.mjs` says what the angles mean. A clip only belongs in `GESTURES` if it stays near its own starting pose: a gesture is added to whatever the base clip is holding, so a whole-body action layered on top folds an arm through the head. New bodies need a `BODY_KIND` in `@gb/world` first, then a body file in `game/cast/wardrobe.json` and at least one outfit for it. Rebuild the pack, run the gate, then `pnpm --filter @gb/cast test`.

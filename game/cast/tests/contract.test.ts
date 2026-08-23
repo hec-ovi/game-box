@@ -1,7 +1,7 @@
 import { ANCHOR_KINDS, BODY_KINDS } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { Cast, CastDressing, CastError, CLIP_FOR_ANCHOR, clipsUsed } from '../src/index.ts'
+import { Cast, CastDressing, CastError, CLIPS_FOR_ANCHOR, clipsUsed } from '../src/index.ts'
 import { animsBytes, loadCast, person, wardrobe } from './pack.ts'
 import { posedBounds } from './posing.ts'
 
@@ -15,9 +15,25 @@ describe('Cast', () => {
 
   it('has something for every kind of anchor an NPC can stand on', () => {
     for (const kind of ANCHOR_KINDS) {
-      expect(CLIP_FOR_ANCHOR[kind], `no clip for anchor kind ${kind}`).toBeTruthy()
-      expect(cast.has(CLIP_FOR_ANCHOR[kind])).toBe(true)
+      const shelf = CLIPS_FOR_ANCHOR[kind]
+      expect(shelf.length, `no clip for anchor kind ${kind}`).toBeGreaterThan(0)
+      for (const clip of shelf) expect(cast.has(clip), `${kind} names ${clip}, which the pack has not got`).toBe(true)
     }
+  })
+
+  it('gives one person the same idle every time and two people different ones', () => {
+    const varied = ANCHOR_KINDS.filter((kind) => CLIPS_FOR_ANCHOR[kind].length > 1)
+    expect(varied.length, 'no anchor kind offers a choice, so nothing varies').toBeGreaterThan(0)
+
+    for (const kind of varied) {
+      // a shared world file has to look the same to everyone who opens it
+      expect(Cast.doingAt(kind, 'npc_0042')).toBe(Cast.doingAt(kind, 'npc_0042'))
+      // and a room of them has to look like a room, not a chorus line
+      const seen = new Set(Array.from({ length: 40 }, (_, n) => Cast.doingAt(kind, `npc_${n}`)))
+      expect(seen, `everybody on a ${kind} anchor does the same thing`).toEqual(new Set(CLIPS_FOR_ANCHOR[kind]))
+    }
+    // nobody in mind: the stance's own first clip, never undefined
+    for (const kind of ANCHOR_KINDS) expect(Cast.doingAt(kind)).toBe(CLIPS_FOR_ANCHOR[kind][0])
   })
 
   it('dresses everybody, on the skeleton the clips were made for', () => {
@@ -112,7 +128,7 @@ describe('Cast', () => {
     const object = dressing.character(npc, 'lean')
 
     expect(dressing.members().get(npc.id)?.object).toBe(object)
-    expect(dressing.members().get(npc.id)?.playing).toBe(Cast.doingAt('lean'))
+    expect(dressing.members().get(npc.id)?.playing).toBe(Cast.doingAt('lean', npc.id))
     // everything that is not a person still comes from the box world
     expect(dressing.prop('table')).toBeInstanceOf(THREE.Object3D)
   })

@@ -25,7 +25,7 @@ export class CastDressing implements Dressing {
   }
 
   character(npc: Npc, doing: AnchorKind): THREE.Object3D {
-    const member = this.#cast.spawn(npc, Cast.doingAt(doing))
+    const member = this.#cast.spawn(npc, Cast.doingAt(doing, npc.id))
     this.#members.set(npc.id, member)
     return member.object
   }

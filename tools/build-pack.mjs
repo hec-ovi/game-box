@@ -15,7 +15,7 @@ const DIST = join(ROOT, 'assets', 'dist')
 
 mkdirSync(DIST, { recursive: true })
 
-// 84 clips at about half a megabyte over the wire
+// meshopt takes the clip library to about a third of its size over the wire
 execFileSync(
   'npx',
   ['gltf-transform', 'meshopt', join(BUILD, 'anims.glb'), join(DIST, 'anims.glb'), '--level', 'high'],
