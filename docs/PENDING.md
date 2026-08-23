@@ -99,6 +99,26 @@ reads `process.env` directly, so it needs exporting or Node 22's `--env-file`.
 The agent wiring OpenRouter into `host/` has that plus keeping the key out of
 every error path.
 
+### From the facade pass (2026-08-23, 20:30)
+
+- **`@gb/kitbash` blocks strip-only mode.** `src/kit/error.ts:5` uses a
+  TypeScript parameter property, and `@gb/prefab`'s entry pulls kitbash in, so
+  `node --experimental-strip-types -e "import '@gb/prefab'"` throws. Three
+  lines.
+- **The plot shape band is written down twice.** `FRONTS`/`DEPTHS`/`STOREYS`
+  live in `game/prefab/src/bucket.ts`, but "3 to 6 cells of frontage by 5 to 8
+  of depth" is a fact about how a city is cut, not about art. It belongs to
+  whoever cuts plots. Then `--cells 12` producing 37 out-of-band plots is a
+  named forge bug rather than a coverage coincidence. Prefab's view, which I
+  share: hold the generator to the band, do not widen the pack (one more front
+  and depth takes 512 models to 800 and the mesh 3.1 to 4.8 MB, and only moves
+  the cliff).
+- **The biggest remaining quality lever in the city, found and not taken:** on
+  the three looks that show the most wall, 42 to 44% of the street face is the
+  producer's plain `base` finish, visually identical across all four families.
+  Giving each look's base the same picture as its facade costs four layers
+  (2.8 MB) and beats any remaining variant choice.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating

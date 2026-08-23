@@ -80,6 +80,30 @@ pack's 256 px convention is what makes this cheap: at the delivered 896 px a
 layer is 4.28 MB, and the variants alone would cost 68.5 MB.
 
 
+### Entry 6, the door: the prompt that worked
+
+Twelve attempts. What fixed it, and both are worth reusing:
+
+**"A flat orthographic elevation, no perspective"** is what stops Grok
+photographing an open lit lobby. **Symmetry is a post step, not a prompt
+problem**: best raw symmetry over six candidates was 2.6/255, and mirroring the
+left half over the right fixes it exactly. Half the city draws its building
+mirrored, so exact symmetry is not optional.
+
+```
+A flat orthographic elevation of a pair of shut glazed entrance doors in a dark
+anodised aluminium frame set in a plain dark concrete wall, no perspective, seen
+straight on and centred on the join between the two leaves, perfectly symmetric
+left to right. Two identical leaves, each a single tall pane of dark glass with a
+horizontal rail below it and a brushed metal kick plate at the foot, a slim
+vertical pull on each leaf either side of the join, and one plain glazed fanlight
+running the full width above them. Behind the glass a dim unlit lobby, so the
+doors read as shut and locked at night. A narrow plain dark wall margin of about
+one twentieth of the frame on all four sides. Evenly lit, slightly underexposed,
+sharp corner to corner.
+```
+
+
 ## How to run one
 
 One image per call. Batched calls come back numbered by completion order, not call order, and get mislabelled.
