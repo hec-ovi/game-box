@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { Bundle } from '@gb/bundle'
+import { Bundle, type OpenedBundle } from '@gb/bundle'
 import { CityNav } from '@gb/nav'
 import { PlayerState } from '@gb/play'
 import { QuestLog } from '@gb/quest'
@@ -10,11 +10,13 @@ import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { BLOCKS, DEFAULTS, briefFromQuery, briefToQuery, clampBlocks, tidy, type CityBrief } from '../src/boot/brief.ts'
-import { Boot, type Start } from '../src/boot/boot.ts'
+import { Boot, type LoadArt, type Start } from '../src/boot/boot.ts'
 import { CityMaker } from '../src/boot/city-maker.ts'
 import { download, exportName } from '../src/boot/export.ts'
 import { Panel } from '../src/boot/panel.ts'
 import { Conditions } from '../src/conditions.ts'
+import { Greybox } from '@gb/scene'
+import type { Catalogue } from '@gb/prefab'
 import { Session, type SaveStore } from '../src/session.ts'
 import { Street } from '../src/street.ts'
 
@@ -299,24 +301,32 @@ describe('coming back to a playthrough', () => {
 
 describe('the front door end to end', () => {
   const started: string[] = []
+  const built: OpenedBundle[] = []
   let fail = false
+  let art: LoadArt = async () => ({ dressing: new Greybox() })
 
   /** A running game with no renderer in it, so the whole flow is testable. */
   const start: Start = async (_mount, bundle) => {
     if (fail) throw new Error('no GPU here')
     started.push(bundle.world.name)
+    built.push(bundle)
     return { dispose: () => {}, handOverKeys: () => {}, keep: () => {} }
   }
 
   function open(): { boot: Boot; panel: Panel } {
     servePage()
     const panel = new Panel(document.querySelector<HTMLElement>('#boot')!)
-    return { boot: new Boot({ mount: document.querySelector('#game')!, panel, sidecar: new Sidecar(), start }), panel }
+    return {
+      boot: new Boot({ mount: document.querySelector('#game')!, panel, sidecar: new Sidecar(), start, art: (theme) => art(theme) }),
+      panel,
+    }
   }
 
   beforeEach(() => {
     started.length = 0
+    built.length = 0
     fail = false
+    art = async () => ({ dressing: new Greybox() })
     localStorage.clear()
   })
 
@@ -333,6 +343,43 @@ describe('the front door end to end', () => {
     await boot.start(new URLSearchParams('?seed=frontdoor&theme=quiet%20coastal%20town&blocks=1'))
     expect(started).toHaveLength(1)
     expect(panel.open).toBe(false)
+  }, 30_000)
+
+  it('pins a city it generates to the art it was designed against', async () => {
+    // the pack the panel loaded, standing in for the shipped one: what matters
+    // here is that whatever the art answers with reaches the city before it is
+    // sealed, because a file that names no catalogue is re-skinned by the next
+    // reader whose pack has grown
+    const identity = { pack: 'test-pack', version: '2.0.0', sha256: 'a'.repeat(64) }
+    const catalogue = {
+      identity,
+      pack: identity.pack,
+      design: () => ({ model: 'tower-a-narrow', mirror: false, rooms: 0 }),
+    } as unknown as Catalogue
+    art = async () => ({ dressing: new Greybox(), catalogue })
+
+    const { boot } = open()
+    await boot.start(new URLSearchParams('?seed=pinned&theme=quiet%20coastal%20town&blocks=1'))
+
+    const world = built[0]!.world
+    expect(built[0]!.requires).toEqual([identity])
+    expect(world.catalogues()).toEqual([identity])
+    const plots = world.plots()
+    expect(plots.length).toBeGreaterThan(0)
+    expect(plots.every((plot) => plot.design?.pack === identity.pack)).toBe(true)
+  }, 30_000)
+
+  it('generates an honestly unpinned city when the art will not load', async () => {
+    // a city naming a catalogue with no plot pinned to it reads as pinned and
+    // is not, so a pack that would not load pins nothing at all
+    art = async () => ({ dressing: new Greybox() })
+
+    const { boot } = open()
+    await boot.start(new URLSearchParams('?seed=nopack&theme=quiet%20coastal%20town&blocks=1'))
+
+    expect(built[0]!.requires).toEqual([])
+    expect(built[0]!.world.catalogues()).toEqual([])
+    expect(built[0]!.world.plots().some((plot) => plot.design)).toBe(false)
   }, 30_000)
 
   it('leaves the sidecar the player named in the address bar, so a refresh comes back to it', async () => {

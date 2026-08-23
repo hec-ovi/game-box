@@ -2,7 +2,7 @@ import type { OpenedBundle } from '@gb/bundle'
 import type { Sidecar } from '@gb/sidecar'
 import { typingSomewhere } from '../focus.ts'
 import { Game, type GameOptions } from '../game.ts'
-import { loadCars, loadDressing } from '../pack.ts'
+import { loadCars, loadDressing, type ArtPack } from '../pack.ts'
 import { briefFromQuery, briefToQuery, DEFAULTS, type CityBrief } from './brief.ts'
 import { CityMaker, type City, type Made } from './city-maker.ts'
 import { download, exportName } from './export.ts'
@@ -20,6 +20,9 @@ export interface Playing {
 /** How a city becomes a running game. `Game.start` unless a test says otherwise. */
 export type Start = (mount: HTMLElement, bundle: OpenedBundle, options: GameOptions) => Promise<Playing>
 
+/** Where the art comes from. `loadDressing` unless a test says otherwise. */
+export type LoadArt = (theme: string) => Promise<ArtPack>
+
 /**
  * The composition root: the panel, the city it asks for, and the game that
  * plays it. Nothing here decides anything about a city; it carries a brief to
@@ -32,17 +35,19 @@ export class Boot {
   #maker: CityMaker
   #sidecar: Sidecar
   #start: Start
+  #art: LoadArt
   #game: Playing | undefined
   #city: City | undefined
   #brief: CityBrief | undefined
   #asked = new URLSearchParams()
   #running: AbortController | undefined
 
-  constructor(input: { mount: HTMLElement; panel: Panel; sidecar: Sidecar; start?: Start }) {
+  constructor(input: { mount: HTMLElement; panel: Panel; sidecar: Sidecar; start?: Start; art?: LoadArt }) {
     this.#mount = input.mount
     this.#panel = input.panel
     this.#sidecar = input.sidecar
     this.#start = input.start ?? Game.start
+    this.#art = input.art ?? loadDressing
     this.#maker = new CityMaker(input.sidecar)
 
     this.#panel.on({
@@ -69,10 +74,10 @@ export class Boot {
 
     const file = query.get('bundle')
     if (file) {
-      await this.#run(async (signal) => {
+      await this.#run(undefined, async (signal) => {
         await this.#step(`Opening ${file}`)
-        return this.#maker.fetch(file, signal)
-      }, undefined)
+        return { made: await this.#maker.fetch(file, signal) }
+      })
       return
     }
 
@@ -83,15 +88,27 @@ export class Boot {
 
   async generate(brief: CityBrief): Promise<void> {
     this.#panel.brief = brief
-    await this.#run((signal) => this.#maker.build(brief, { signal, step: this.#step }), brief)
+    await this.#run(brief, async (signal) => {
+      // the art comes before the city, because the city is pinned to it: which
+      // building of the pack each plot was designed against is written into the
+      // world file, and the seal covers it
+      await this.#step('Loading the art')
+      const art = await this.#art(brief.theme)
+      const made = await this.#maker.build(brief, {
+        signal,
+        step: this.#step,
+        ...(art.catalogue ? { catalogue: art.catalogue } : {}),
+      })
+      return { made, art }
+    })
   }
 
   /** Play a city file the player picked, exactly as Export wrote it. */
   async openFile(file: File): Promise<void> {
-    await this.#run(async (signal) => {
+    await this.#run(undefined, async (signal) => {
       await this.#step(`Opening ${file.name}`)
-      return this.#maker.read(file, signal)
-    }, undefined)
+      return { made: await this.#maker.read(file, signal) }
+    })
   }
 
   /** Write the city out as the file it already is inside. */
@@ -117,14 +134,21 @@ export class Boot {
     this.#game.handOverKeys(false)
   }
 
-  /** One generation at a time: asking for another stops the one in flight. */
-  async #run(make: (signal: AbortSignal) => Promise<Made>, brief: CityBrief | undefined): Promise<void> {
+  /**
+   * One generation at a time: asking for another stops the one in flight. A
+   * city written here arrives with the art it was pinned to, so it is played
+   * with the same pack rather than a second load of it.
+   */
+  async #run(
+    brief: CityBrief | undefined,
+    make: (signal: AbortSignal) => Promise<{ made: Made; art?: ArtPack }>,
+  ): Promise<void> {
     const signal = this.#signal()
-    const made = await make(signal)
+    const { made, art } = await make(signal)
     if (signal.aborted) return this.#panel.waiting('Stopped.')
     if (!made.ok) return this.#panel.waiting(made.message, true)
 
-    await this.#play(made.value, brief, signal)
+    await this.#play(made.value, brief, signal, art)
   }
 
   #signal(): AbortSignal {
@@ -133,9 +157,9 @@ export class Boot {
     return this.#running.signal
   }
 
-  async #play(city: City, brief: CityBrief | undefined, signal: AbortSignal): Promise<void> {
-    await this.#step('Loading the art')
-    const [art, cars] = await Promise.all([loadDressing(city.bundle.world.theme), loadCars()])
+  async #play(city: City, brief: CityBrief | undefined, signal: AbortSignal, loaded?: ArtPack): Promise<void> {
+    if (!loaded) await this.#step('Loading the art')
+    const [art, cars] = await Promise.all([loaded ?? this.#art(city.bundle.world.theme), loadCars()])
     if (signal.aborted) return this.#panel.waiting('Stopped.')
 
     // the city is made and sealed; it can be kept from here on whether or not

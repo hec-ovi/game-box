@@ -1,6 +1,6 @@
 # @gb/app contract
 
-contractVersion: 0.9.0
+contractVersion: 0.10.0
 
 ## Purpose
 
@@ -47,6 +47,8 @@ None at the boundary. A city that will not build and a file that will not open a
 - The same theme, seed and block count give the same city, in the browser and out of it. Nothing here adds a number of its own to a brief: the block size and the roads out come from the seed, in `@gb/forge`.
 - A brief is held inside what the generator will take before it is sent, so a block count nobody could build is trimmed rather than refused, and what remains that the generator still turns down comes back as a sentence.
 - One city is being made at a time. Asking for another stops the one in flight, and so does Cancel: a generation runs against one `AbortSignal`, which `@gb/scribe` carries down to the model. A conversation is stopped by walking away from it, which breaks out of the reply stream and releases the call.
+- **A city made here is pinned to the art it was designed against.** The catalogue lives in code, so a world file that does not record which building of the pack each plot was given is re-skinned by the next reader whose pack has grown: on the two block city the panel makes by default, growing the catalogue by one look moves **15 of 39** buildings unpinned and **0** pinned. So the art is loaded before the city is sealed rather than after it, the pack is named in the bundle's `requires` and every plot it has a building for carries the model it was given. The size the pin is written against is the size `@gb/scene` hands the dressing, in metres, or the pin names a model of the wrong shape and the reader falls back instead.
+- **A pack that would not load pins nothing at all.** A city with no catalogues promises nothing and is honestly unpinned; one naming a catalogue with no plots pinned to it looks pinned and is not. A world that took the catalogue and then refused a design is that second city and cannot be undone, so it comes back as a sentence on the panel rather than a file.
 - Export writes the document the game opened, not a fresh pack of the same world, so the file and the playthrough cannot disagree.
 - A refresh comes back to the same city and the same playthrough. The city is remembered as its brief and generated again; the playthrough is a `@gb/bundle` save in the browser's own store, and one that belongs to another city is dropped rather than forced.
 - **A refresh comes back to the same spot, not the same city.** The city is built the same way every time, so what a save has to say over the top of it is put back last: the room the player was behind the door of is opened before their metres are read, because a room is measured in its own metres from its own corner; whoever was walking with them sets off from beside them rather than from the post the city just put them back on; and the job they were following is followed again, unless it is one nobody is holding any more, which is let go rather than pointing the map at it.
@@ -73,6 +75,8 @@ None at the boundary. A city that will not build and a file that will not open a
 - **The player can drive.** Any car on the road can be taken: `E` on a car within reach gets in, and `E` behind the wheel gets out. The companions ride, and are back on the pavement beside the car when the player gets out. While driving, the first person body is ridden rather than walked: the eye is put where the seat is every frame and the view turns with the car, so the mouse still looks around inside one that is cornering.
 - **The car the player left is solid to walk into and something the traffic brakes for**, joined here the same way the crowd and the traffic are: `@gb/drive` and `@gb/traffic` never see each other.
 - The player is stopped by people and by cars, not only by walls. Both move every frame, so what is solid is asked fresh rather than baked, and a car is treated as the long thing it is rather than as a circle.
+- **A person in the road is a person's width, not a body's.** What stops the player walking into somebody is a collision capsule a third of a metre across; what a car has to give way to is wider, and sending the capsule let a car pass half a metre from somebody's middle without slowing. No width goes out at all, so `@gb/traffic` uses the one it holds for a person.
+- **Who is in the road is answered into the same two arrays every frame.** Traffic reads them once per update and keeps nothing, so the bodies are a pool: a town of walkers costs no allocation to report, and the answer is cut back to this frame's count so nobody is left standing in it from the last one.
 - **The inside of a building is dressed for that building.** Each interior draws its own floor, walls and ceiling from `@gb/furnish` and is handed the run of wall bays that goes with them, added to the shell `@gb/scene` built. The people are dressed outside the furniture in the chain, so the room is that interior's and whoever is standing in it is still the cast's. Without the interior pack a room still builds, flatter.
 - The landscape brings its own sky and light. Plain daylight only comes out if the landscape fails to build, so a scene is never unlit.
 - The sky lights the scene once. A prefiltered copy of the skydome in `scene.environment` is the sky doing that job, so `Land.skyLight` is taken down rather than counted alongside it: with both on, a cast shadow takes 1.4% of the light off what it falls on instead of 39%, which is no shadow at all.
@@ -121,7 +125,7 @@ One responsibility each. `boot/` is everything before there is a game; the rest 
 | `boot/boot.ts` | the composition root: a brief in, a running game out |
 | `boot/panel.ts` | the front door, driving the markup in `index.html` |
 | `boot/brief.ts` | theme, seed and blocks: read from the address bar, trimmed to what builds, written back |
-| `boot/city-maker.ts` | writing a city or opening a file, with progress and a way to stop |
+| `boot/city-maker.ts` | writing a city or opening a file, pinning it to the art, with progress and a way to stop |
 | `boot/export.ts` | handing the sealed city to the browser as a file |
 | `boot/kept.ts` | what the browser remembers: the last city, and its save |
 | `boot/painted.ts` | waiting for the browser to draw a line before blocking it again |

@@ -1,9 +1,9 @@
 import { Crowd, type Attention, type CrowdCast } from '@gb/crowd'
 import type { CityNav } from '@gb/nav'
-import { CarPack, LaneGraph, Traffic } from '@gb/traffic'
+import { CarPack, LaneGraph, Traffic, type Obstacle } from '@gb/traffic'
 import { METRICS, type Npc, type World } from '@gb/world'
 import * as THREE from 'three'
-import { alsoBlockedBy, PERSON_CLEAR, type Rolling } from './bodies.ts'
+import { alsoBlockedBy, type Rolling } from './bodies.ts'
 import { cityGround, citySolid, type Ground } from './solids.ts'
 import type { Solid, Vec2 } from './walk.ts'
 
@@ -44,6 +44,13 @@ export class Street {
   #traffic: Traffic | undefined
   #cars: CarPack | undefined
   #playerCar: PlayerCar | undefined
+  /**
+   * Who is in the road, answered into the same two arrays every frame. Traffic
+   * reads them once per update and keeps nothing, so a pool of bodies is safe
+   * and a town of walkers costs no allocation to report.
+   */
+  #standing: { x: number; z: number }[] = []
+  #inTheWay: Obstacle[] = []
 
   constructor(input: { world: World; nav: CityNav; ground?: Ground; playerOutdoors: () => Vec2 | undefined }) {
     this.#world = input.world
@@ -259,25 +266,35 @@ export class Street {
   obstacles() {
     return {
       near: (centre: { x: number; z: number }, radius: number) => {
-        const found: Array<{ x: number; z: number; radius: number }> = []
         const reach = radius * radius
+        let used = 0
         const consider = (x: number, z: number) => {
           const dx = x - centre.x
           const dz = z - centre.z
-          if (dx * dx + dz * dz <= reach) found.push({ x, z, radius: PERSON_CLEAR })
+          if (dx * dx + dz * dz > reach) return
+          // no radius: a person's width in a road is `@gb/traffic`'s own
+          // number, and the body-collision capsule this used to send is a
+          // third of a metre, which lets a car pass through a shoulder
+          const spot = (this.#standing[used] ??= { x: 0, z: 0 })
+          spot.x = x
+          spot.z = z
+          this.#inTheWay[used] = spot
+          used++
         }
         for (const walker of this.#crowd?.walkers() ?? []) consider(walker.x, walker.z)
         for (const companion of this.#crowd?.following() ?? []) consider(companion.x, companion.z)
         const player = this.#playerOutdoors()
         if (player) consider(player.x, player.z)
         // and the player's own car, which a driver behind brakes for the same
-        // way they brake for somebody standing in the road
+        // way they brake for somebody standing in the road. It brings its own
+        // rectangle, so it goes in as it comes rather than through the pool
         for (const patch of this.#playerCar?.inTheRoad() ?? []) {
           const dx = patch.x - centre.x
           const dz = patch.z - centre.z
-          if (dx * dx + dz * dz <= reach) found.push(patch)
+          if (dx * dx + dz * dz <= reach) this.#inTheWay[used++] = patch
         }
-        return found
+        this.#inTheWay.length = used
+        return this.#inTheWay
       },
     }
   }

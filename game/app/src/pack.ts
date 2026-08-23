@@ -1,7 +1,7 @@
 import { Cast, CastDressing, parseWardrobe } from '@gb/cast'
 import { FurnishDressing, loadFurnish } from '@gb/furnish'
 import { KitDressing, loadKit, type CityNight } from '@gb/kitbash'
-import { PrefabDressing, loadPrefab } from '@gb/prefab'
+import { PrefabDressing, loadPrefab, type Catalogue } from '@gb/prefab'
 import { Greybox, type Dressing } from '@gb/scene'
 import type { Interior } from '@gb/world'
 import type * as THREE from 'three'
@@ -22,6 +22,12 @@ export interface ArtPack {
   room?: RoomArt
   cast?: Cast
   kit?: KitDressing
+  /**
+   * The building pack's own catalogue, when it loaded. A city generated here is
+   * pinned to it before it is sealed, so it has to come back out rather than
+   * staying inside the dressing that uses it.
+   */
+  catalogue?: Catalogue
 }
 
 /**
@@ -54,6 +60,7 @@ export async function loadDressing(theme: string, base = ''): Promise<ArtPack> {
     ...(room ? { room } : {}),
     ...(cast ? { cast } : {}),
     ...(kit ? { kit } : {}),
+    ...(buildings?.catalogue ? { catalogue: buildings.catalogue } : {}),
   }
 }
 
@@ -83,14 +90,17 @@ async function loadInteriors(base: string, behind: Dressing): Promise<FurnishDre
   }
 }
 
-async function loadBuildings(base: string, theme: string): Promise<{ kit: KitDressing; front: Dressing } | undefined> {
+async function loadBuildings(
+  base: string,
+  theme: string,
+): Promise<{ kit: KitDressing; front: Dressing; catalogue?: Catalogue } | undefined> {
   try {
     const gltf = await read(`${base}/downtown-kit.glb`)
     // the theme is what picks the tone the whole kit is painted in, so a town
     // that is not a neon one has to say so here or it comes out as one
     const library = loadKit(gltf.scenes, theme)
     const kit = new KitDressing(library, new Greybox())
-    return { kit, front: await loadPrefabs(kit, library.night) }
+    return { kit, ...(await loadPrefabs(kit, library.night)) }
   } catch (cause) {
     console.warn(`no building kit (${String(cause)}); the city will be blocks`)
     return undefined
@@ -98,12 +108,13 @@ async function loadBuildings(base: string, theme: string): Promise<{ kit: KitDre
 }
 
 /** Whole buildings out of the committed pack; the kit answers for any shape it has no model for. */
-async function loadPrefabs(kit: KitDressing, night: CityNight): Promise<Dressing> {
+async function loadPrefabs(kit: KitDressing, night: CityNight): Promise<{ front: Dressing; catalogue?: Catalogue }> {
   try {
-    return new PrefabDressing(await loadPrefab(night), kit)
+    const library = await loadPrefab(night)
+    return { front: new PrefabDressing(library, kit), catalogue: library.catalogue }
   } catch (cause) {
     console.warn(`no building pack (${String(cause)}); every plot is kit-built`)
-    return kit
+    return { front: kit }
   }
 }
 

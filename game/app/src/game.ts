@@ -161,6 +161,19 @@ export class Game {
       note: (text) => this.#report.note(text),
     })
 
+    // built before anything can ask for a save, because the first thing that
+    // does is this constructor's own last line: what a save says over the top
+    // of the city is written by this and there is no save without it
+    this.#playthrough = new Playthrough({
+      world: this.#world,
+      player: this.#player,
+      log: this.#log,
+      buildings: this.#buildings,
+      body: this.#body,
+      companions: this.#companions,
+      report: this.#report,
+    })
+
     // a job that says to leave something somewhere: the surface it names is a
     // spot in the room, so putting it down is the same key as taking it
     this.#stashing = new Stashing({
@@ -274,15 +287,6 @@ export class Game {
 
     // the city is built the same way every time, so everything a playthrough
     // knows that the city does not is put back last, over the top of it
-    this.#playthrough = new Playthrough({
-      world: this.#world,
-      player: this.#player,
-      log: this.#log,
-      buildings: this.#buildings,
-      body: this.#body,
-      companions: this.#companions,
-      report: this.#report,
-    })
     this.#playthrough.resume()
   }
 

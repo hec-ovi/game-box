@@ -1377,6 +1377,42 @@ describe('the car the player parked', () => {
   })
 })
 
+describe('who a driver has to stop for', () => {
+  const world = town()
+
+  it('gives a person no width of their own, so the road uses the one a person is', () => {
+    const laid = new Street({ world, nav: CityNav.from(world), playerOutdoors: () => ({ x: 10, z: 10 }) })
+
+    // the body-collision capsule is a third of a metre and this is not it: at
+    // that width a car passes half a metre from somebody's middle without
+    // slowing, which is close enough to clip a shoulder
+    expect(laid.obstacles().near({ x: 10, z: 10 }, 6)).toEqual([{ x: 10, z: 10 }])
+  })
+
+  it('answers into the same array every frame without leaving anybody in it', () => {
+    let standing = { x: 10, z: 10 }
+    const laid = new Street({ world, nav: CityNav.from(world), playerOutdoors: () => standing })
+    laid.setPlayerCar({ rolling: () => [], inTheRoad: () => [{ x: 11, z: 10, radius: 1 }] })
+    const obstacles = laid.obstacles()
+
+    const first = obstacles.near({ x: 10, z: 10 }, 6)
+    expect(first).toHaveLength(2)
+    const person = first[0]!
+
+    // read once per update and nothing kept between calls, so the bodies are a
+    // pool: a town of walkers costs no allocation to report
+    standing = { x: 12, z: 13 }
+    const again = obstacles.near({ x: 12, z: 13 }, 6)
+    expect(again).toBe(first)
+    expect(again[0]).toBe(person)
+    expect(again[0]).toEqual({ x: 12, z: 13 })
+
+    // and a crowd that thins out leaves nobody standing in last frame's answer
+    standing = { x: 40, z: 40 }
+    expect(obstacles.near({ x: 12, z: 13 }, 6)).toEqual([{ x: 11, z: 10, radius: 1 }])
+  })
+})
+
 describe('where the player starts', () => {
   const shut = { id: 'plot_0001', name: 'Kell Supply', rect: { x: 1, y: 1, w: 2, h: 2 } }
   const open = { id: 'plot_0002', name: 'The Copper Wheel', interiorId: 'interior_0001', rect: { x: 6, y: 1, w: 2, h: 2 } }
