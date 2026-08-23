@@ -1063,6 +1063,52 @@ Supersedes the earlier exit entry, which stands only for the world library part.
 
 Boxes: `hud` for the menu and the bar, `app` for wiring exit and the clock.
 
+### The creation form, in full (2026-08-23, his ask)
+
+"creating a city we must put much more bigger form with all optional, can be
+random or you can say, which kind of side quests you would like, style, and which
+kind of main quest you would like, etc kind of theme or topic."
+
+**Every field optional, random when left alone.** That is the load-bearing part:
+the form can be long because a player who wants a city presses generate and gets
+one. Nobody is made to fill it in.
+
+Fields, and which are honourable today:
+
+| field | goes to | reachable |
+|---|---|---|
+| what the city is about, in his words | the premise writer | yes |
+| what the main quest should be about | the quest writer | yes, prompt work |
+| what kind of side quests | the quest writer, which already has recipe weights | yes |
+| tone or topic | premise and quest prompts | yes |
+| size | already a parameter (`blocks`) | yes, exposed |
+| seed | already a parameter | yes, and worth showing so a city can be shared by seed |
+| **style** | the art catalogue | **partly, and be honest in the form** |
+
+On style, and this needs saying in the interface rather than only here: the
+catalogue is eight building looks, twelve facades, twelve outfits on one
+skeleton. A player asking for medieval gets a cyberpunk town with medieval names.
+What a style field *can* honestly offer is choices within the set: which facade
+families dominate, how dense, how run down, how much neon. Offer those and do not
+offer what cannot be drawn, because a form that silently ignores half its fields
+is worse than a short one.
+
+Two things to get right:
+
+- **Random must be a real choice, not an empty string.** A blank field should
+  produce a good city, which means the offline composer and the premise writer
+  both need to handle absence well rather than degrade.
+- **The form's answers belong in the world file.** A shared city should carry
+  what it was asked for, the way it now carries its premise, or the person who
+  opens it cannot see why it is the way it is, and `Forge.extend` cannot grow it
+  in keeping.
+
+This is the same job as the brief and the `theme` cap entries above; treat those
+three as one piece of work.
+
+Boxes: `app` for the panel, `forge` and `scribe` for consuming the fields,
+`world` for carrying them.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
