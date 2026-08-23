@@ -614,6 +614,56 @@ put a hand where a glass should be with nothing in it.
 
 Box: `cast`, with `furnish` if a real phone is attached.
 
+### Every person is their own session, with their own life (2026-08-23, his design)
+
+His words, and this is a design requirement rather than a defect:
+
+> "we want context for the people in the city, where are they? who are they?
+> different histories of life they can have and talk, so if they are on an
+> instance there must be a reason, if they are walking they are going somewhere,
+> or doing something, not just random like 'the sky is holding' or 'its clear,
+> and indifferent, blah blah' things totally out of context, so each character is
+> its own session chat with its own memory and context, is not a single session
+> for all characters"
+
+Four things, and the last one is architectural.
+
+1. **A person in a building has a reason to be there.** Not "an NPC at an
+   anchor": this is their shift, their shop, their room, their appointment. The
+   narrator already writes a personality and what they know; what is missing is
+   why they are standing in that spot at this hour.
+2. **A person on the street is going somewhere.** Walkers currently wander a
+   route. They should have a destination and an errand, and be able to say so.
+   `@gb/crowd` already routes them between points, so the fact exists in the
+   simulation and never reaches the conversation.
+3. **A life, not a role.** Each has a history they can talk about. The premise
+   gives the town one; a person needs their own, small, and consistent every time
+   they are asked.
+4. **One session per character, with its own memory.** Not one shared session.
+   Each person remembers what *they* were told and what *they* said, across
+   conversations, and knows nothing of a conversation they were not in.
+
+**Point 4 is very likely the cause of the stale-context bug already logged.** If
+one session or one situation is reused across speakers, an NPC inherits the last
+one's place and transcript, which is exactly the reported symptom: characters
+answering as if they were in the previously visited instance. Fix the
+architecture and that defect probably goes with it. Verify that rather than
+assume it, but check it first.
+
+**Also kill the weather filler.** The greeting's middle slot falls back to the
+weather, which is how "the sky is holding" reaches a player as a character's
+opening line. A person with a reason to be somewhere has something better to say,
+and the fallback should be their own business, not the sky.
+
+Cost worth thinking about early: a session per character means a transcript per
+character in the save, and a city has hundreds of people. Decide what a person
+remembers and for how long before building it, or a world file grows without
+bound.
+
+Boxes: `talk` for the sessions and the memory, `forge` for the reason and the
+life at generation, `crowd` for a walker's destination and errand, `play` for
+what persists.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
