@@ -21,6 +21,3 @@ export const STEP_MARK: Record<QuestStepState, string> = {
   done: '✓',
   dropped: '×',
 }
-
-/** Said in words where a glyph is not enough: the road the quest did not take. */
-export const DROPPED_TAG = 'Not taken'

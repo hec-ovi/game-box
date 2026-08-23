@@ -1,6 +1,8 @@
 import { el } from '../dom.ts'
+import { DROPPED_TAG } from '../phrase.ts'
 import type { HudIntent, QuestEntry } from '../types.ts'
-import { DROPPED_TAG, STEP_MARK, stateOf, titleOf } from './journal.ts'
+import { ChoiceView } from './choice.ts'
+import { STEP_MARK, stateOf, titleOf } from './journal.ts'
 
 const FOLLOW = { on: 'Following', off: 'Follow' } as const
 const GIVE_UP = { armed: 'Give up?', idle: 'Give up' } as const
@@ -58,6 +60,12 @@ export class QuestEntryView {
       // A branch nobody took is part of the story, so it stays on the page and
       // says in words that it is not work waiting to be done.
       if (state === 'dropped') item.append(el('span', 'gb-tag', DROPPED_TAG))
+      // The question is asked only where it can be answered: the step the flow
+      // is standing on. Anywhere else there is nothing to click, so a decision
+      // that has been made or has not come up cannot be sent at all.
+      if (step.choice && state === 'open') {
+        item.append(new ChoiceView(this.#quest.questId, step.stepId, step.choice, this.#emit).node)
+      }
       list.append(item)
     }
     return list

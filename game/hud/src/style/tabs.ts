@@ -41,7 +41,7 @@ export const TABS = `
 /* Giving up costs the player their progress, so it is warned rather than brass. */
 .gb-give-up:hover { border-color: var(--gb-warn); color: var(--gb-warn); }
 .gb-give-up[data-armed='true'] { border-color: var(--gb-warn); background: var(--gb-warn); color: var(--gb-ink); }
-.gb-quest-entry li { display: flex; gap: var(--gb-s2); padding: 2px 0; }
+.gb-quest-entry li { display: flex; flex-wrap: wrap; gap: var(--gb-s2); padding: 2px 0; }
 .gb-quest-entry .gb-mark { width: 12px; flex: none; color: var(--gb-accent); text-align: center; }
 /* Four states, three weights: what to do now is loud, the rest are quiet. */
 .gb-quest-entry .gb-step-open { color: var(--gb-ink); }
@@ -52,6 +52,25 @@ export const TABS = `
 .gb-quest-entry .gb-step-dropped { color: var(--gb-faint); }
 .gb-quest-entry .gb-step-dropped .gb-mark { color: var(--gb-faint); }
 .gb-quest-entry .gb-tag { flex: none; align-self: center; }
+
+/* A decision: the quest's own question, and one button for each road out. */
+.gb-choice { width: 100%; padding: var(--gb-s2) 0 var(--gb-s1) var(--gb-s5); }
+.gb-choice .gb-ask { margin-bottom: var(--gb-s2); color: var(--gb-ink); }
+.gb-options { display: flex; flex-direction: column; gap: var(--gb-s1); }
+.gb-option {
+  width: 100%;
+  padding: var(--gb-s2) var(--gb-s3);
+  border: 1px solid var(--gb-accent-deep);
+  background: var(--gb-lift);
+  color: var(--gb-accent);
+  font-family: var(--gb-body);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--gb-t) var(--gb-ease), background var(--gb-t) var(--gb-ease),
+    color var(--gb-t) var(--gb-ease);
+}
+.gb-option:hover, .gb-option:focus-visible { border-color: var(--gb-accent); background: var(--gb-accent); color: var(--gb-accent-ink); }
 
 /* Map: the survey, then where the tracked job points. */
 .gb-plan:not(:empty) { margin-bottom: var(--gb-s4); border: 1px solid var(--gb-edge); background: var(--gb-well); }

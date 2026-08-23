@@ -1,4 +1,4 @@
-import type { Objective } from '@gb/quest'
+import type { Choice, Objective } from '@gb/quest'
 
 /** What the player would do if they pressed the key, and which key that is. */
 export interface Prompt {
@@ -40,6 +40,8 @@ export interface QuestStep {
   readonly text: string
   readonly state?: QuestStepState
   readonly done?: boolean
+  /** `@gb/quest`'s question and its roads, on a step that asks one. */
+  readonly choice?: Choice
 }
 
 /**
@@ -163,6 +165,7 @@ export type HudIntent =
   | { readonly kind: 'window'; readonly window: HudWindowName | null }
   | { readonly kind: 'track'; readonly questId: string | null }
   | { readonly kind: 'abandon'; readonly questId: string }
+  | { readonly kind: 'decide'; readonly questId: string; readonly stepId: string; readonly optionId: string }
 
 export interface HudHandlers {
   onIntent(intent: HudIntent): void

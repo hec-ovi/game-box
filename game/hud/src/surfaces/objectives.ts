@@ -1,7 +1,7 @@
 import type { Objective } from '@gb/quest'
 import { HUD_KEYS } from '../controls.ts'
-import { el } from '../dom.ts'
-import { noObjectives } from '../phrase.ts'
+import { el, kbd } from '../dom.ts'
+import { DECIDE_TAG, noObjectives } from '../phrase.ts'
 import { otherQuests, stepsOf, trackedQuest } from '../tracked.ts'
 import type { HudState } from '../types.ts'
 import { MoreLine } from './more.ts'
@@ -57,9 +57,18 @@ export class ObjectivesSurface implements Surface {
     }
     item.append(el('span', 'gb-what', step.text))
     if (step.optional) item.append(el('span', 'gb-tag', 'Optional'))
+    // A decision is answered in the journal, so the panel says so and prints
+    // the key: nothing in the corner takes a click.
+    if (step.choice) item.append(decide())
     if (step.hint) item.append(el('span', 'gb-hint', step.hint))
     return item
   }
+}
+
+function decide(): HTMLElement {
+  const node = el('span', 'gb-decide')
+  node.append(el('span', 'gb-tag', DECIDE_TAG), kbd(HUD_KEYS.quests))
+  return node
 }
 
 function id(step: Objective): string {
@@ -68,5 +77,5 @@ function id(step: Objective): string {
 
 function signature(step: Objective): string {
   const count = step.count ? `${step.count.done}/${step.count.needed}` : ''
-  return `${id(step)}/${step.text}/${count}/${step.optional ? 'o' : ''}/${step.hint ?? ''}`
+  return `${id(step)}/${step.text}/${count}/${step.optional ? 'o' : ''}/${step.choice ? 'd' : ''}/${step.hint ?? ''}`
 }

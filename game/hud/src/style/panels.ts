@@ -70,6 +70,15 @@ export const PANELS = `
 .gb-objectives li:not([data-counted]) .gb-what { grid-column: 1 / -1; }
 .gb-objectives .gb-tag, .gb-objectives .gb-hint { grid-column: 1 / -1; justify-self: start; }
 .gb-objectives .gb-tag { margin-top: 2px; }
+/* An answerable step points at the tab that answers it, key and all. */
+.gb-objectives .gb-decide {
+  grid-column: 1 / -1;
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: var(--gb-s1);
+  margin-top: 2px;
+}
 .gb-objectives .gb-hint { margin-top: 2px; font-size: 12px; color: rgba(233, 193, 120, 0.62); }
 .gb-objectives .gb-more {
   display: flex;

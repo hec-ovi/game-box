@@ -12,6 +12,12 @@ const DWELL: Record<NoticeTone, number> = { major: 5200, minor: 2600 }
 /** Finishing a quest is not the same event as picking up a bottle. */
 const MAJOR = new Set<Notice['kind']>(['quest-started', 'quest-complete', 'quest-failed'])
 
+/** On a step the quest went past: the road nobody took. */
+export const DROPPED_TAG = 'Not taken'
+
+/** On an open decision in the corner panel: the answer is in the journal. */
+export const DECIDE_TAG = 'Decide'
+
 /** Turns an event into the line the player reads. All wording lives here. */
 export function phrase(notice: Notice): Phrased {
   const tone = MAJOR.has(notice.kind) ? 'major' : 'minor'

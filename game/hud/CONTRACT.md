@@ -1,6 +1,6 @@
 # @gb/hud contract
 
-contractVersion: 0.6.0
+contractVersion: 0.7.0
 
 ## Purpose
 
@@ -13,7 +13,7 @@ The game pushes state, the hud draws it. There is one store behind the whole int
 ```ts
 import { Hud } from '@gb/hud'
 
-const hud = new Hud(document.body, { onIntent: (intent) => { /* say, talk-closed, typing, window, track, abandon */ } })
+const hud = new Hud(document.body, { onIntent: (intent) => { /* say, talk-closed, typing, window, track, abandon, decide */ } })
 hud.show({ objectives: log.objectives(), money: player.money(), prompt: { key: 'E', text: target.label } })
 hud.show({ quests: log.journal(), trackedQuestId: 'q1' })
 hud.show({ map: { width, height, plots, marks } })
@@ -29,7 +29,7 @@ hud.announce({ kind: 'quest-complete', title: quest.title, reward: { money: 40 }
 |---|---|---|
 | `new Hud(mount, handlers)` | an element to draw in, [HudHandlers](src/types.ts) | the element is in a document; the hud appends one child to it and one key listener to its window |
 | `hud.show(patch)` | [HudPatch](src/types.ts) | fields left out keep what is on screen; `null` clears the prompt, closes the conversation, shuts the window or stops following a quest |
-| `patch.objectives` | `@gb/quest` `Objective[]` | every open step of every live quest, in the order they should read |
+| `patch.objectives` | `@gb/quest` `Objective[]` | every open step of every live quest, in the order they should read; a step carrying a `choice` is tagged and points at the journal |
 | `patch.trackedQuestId` | `string \| null` | the quest the objectives panel follows; unset means the first quest with an open step |
 | `patch.prompt` | `{ key, text }` | text without the key: "Go into The Copper Wheel" |
 | `patch.money`, `patch.carrying` | a whole number, `Carried[]` | `quest: true` marks an item a live quest wants |
@@ -45,7 +45,7 @@ hud.announce({ kind: 'quest-complete', title: quest.title, reward: { money: 40 }
 
 | Param | Type | Postconditions |
 |---|---|---|
-| `handlers.onIntent` | [HudIntent](src/types.ts) | `say` with the trimmed line, `choose` with the `key` of the move clicked, `talk-closed`, `typing` on every change of it, `window` with the face it moved to, `track` with the quest the player chose to follow, `abandon` with the quest they gave up |
+| `handlers.onIntent` | [HudIntent](src/types.ts) | `say` with the trimmed line, `choose` with the `key` of the move clicked, `talk-closed`, `typing` on every change of it, `window` with the face it moved to, `track` with the quest the player chose to follow, `abandon` with the quest they gave up, `decide` with the option they took |
 | `hud.typing` | boolean | true while the conversation holds the keyboard, which is when the game must let its keys go |
 | `hud.destroy()` | void | the interface leaves the page, the key listener goes, every timer is cleared |
 | `HUD_KEYS` | `{ quests, map, items, controls, close, send, pick }` | the keys the interface claims, so the game can bind around them |
@@ -78,7 +78,7 @@ The window is one shell with four faces behind a tab strip. Each face is handed 
 
 | Tab | Draws from | Emits |
 |---|---|---|
-| Quests | `quests`, `trackedQuestId` | `track`, `abandon` |
+| Quests | `quests`, `trackedQuestId` | `track`, `abandon`, `decide` |
 | Map | `map`, `objectives`, `trackedQuestId` | nothing |
 | Items | `money`, `carrying` | nothing |
 | Controls | `controls` | nothing |
@@ -101,6 +101,20 @@ A step reads four ways, the same four the engine keeps.
 A quest that splits keeps both sides on the page. The road not taken is what says the choice was real, so a dropped step stays where it was written rather than leaving a gap. Nothing dropped can open again, so it never reads as work.
 
 The game says which with `state`; a step carrying `done: true` alone is done, and one carrying neither is open.
+
+## Answering a decision
+
+A `choice` step is the one a player finishes by answering, so the journal asks it: the quest's `prompt` as the question, one button per option, in the order the quest wrote them. Clicking one reports
+
+```ts
+{ kind: 'decide', questId, stepId, optionId }
+```
+
+which is `@gb/quest`'s `chose` event with the same field names, so routing it is `log.handle({ kind: 'chose', ...intent })`. It is its own intent rather than the conversation's `choose`, because a decision in the journal is not a turn in a conversation and the two must not be read as one.
+
+A button says what the player would do and nothing about where it leads: the far side of a choice is theirs to find by taking it. Only the step the flow is standing on is drawn with a question, so a decision already made or not yet reached has nothing to click at all, and a stale panel cannot answer for the player. A choice that has been answered reads like any other finished step, and whatever the other roads led to reads as `dropped`.
+
+The corner panel takes no clicks, so a step with a question there is tagged "Decide" with the journal key beside it.
 
 Giving a quest up sits beside Follow and asks twice. The first click turns the button into the question, the second reports `abandon` and the button goes back to how it was. Looking away answers no. The hud takes nothing off the board itself: the quest stays on screen until the game pushes the list without it.
 
@@ -160,6 +174,8 @@ Thrown as `HudError` with a `code`:
 - What the speaker did is one line about the turn in front of the player: sending it again replaces it and `null` takes it away, so it never piles up inside one conversation.
 - Nothing the player cannot undo happens on one click. Giving up a quest asks a second time, and leaving the button answers no.
 - A quest page shows every step the engine kept, dropped branches included, in the order the quest was written. The journal never edits the story down to the part that happened.
+- A question is drawn only where it can be answered: on the step whose `state` is `open`, and nowhere else. What is not answerable is not on screen, rather than on screen and inert.
+- No option says where it leads. The hud draws the words the quest published and nothing it worked out about the far side.
 - What just changed says so: the reticle opens and goes brass while something is in reach, a coin count flashes the way it moved, and a step count flashes when it climbs.
 - Everything a mouse can do, the keyboard can do.
 - Square corners: no `border-radius` in the stylesheet.
@@ -167,7 +183,7 @@ Thrown as `HudError` with a `code`:
 
 ## Dependencies
 
-- `@gb/quest` contract (game/quest/CONTRACT.md): the `Objective` shape the objectives panel and the map read, and the `JournalEntry` page the quests tab draws.
+- `@gb/quest` contract (game/quest/CONTRACT.md): the `Objective` shape the objectives panel and the map read, the `JournalEntry` page the quests tab draws, and the `Choice` on a step that asks a question.
 - The DOM. No renderer, no three.js, no game state.
 
 ## How to modify this blackbox safely

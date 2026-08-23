@@ -112,6 +112,28 @@ describe('objectives', () => {
     getByText(screen, 'No step open right now. Ask around for the next job.')
   })
 
+  it('points at the journal when the next thing is a decision', () => {
+    const { hud, screen } = mount()
+    // The corner takes no clicks, so a step answered in the journal has to say
+    // where, or a decision sits open with the player waiting for a target.
+    hud.show({
+      objectives: [
+        objective({
+          text: 'Decide whose the ledger is',
+          choice: {
+            prompt: 'Hollis is offering more than Mara did. Whose is it?',
+            options: [{ key: 'keep-word', label: 'Keep your word to Mara' }],
+          },
+        }),
+      ],
+    })
+
+    const line = getByText(screen, 'Decide whose the ledger is').closest('li') as HTMLElement
+    within(line).getByText('Decide')
+    expect(within(line).getByText('J').tagName).toBe('KBD')
+    expect(queryByRole(screen, 'button', { name: 'Keep your word to Mara' })).toBeNull()
+  })
+
   it('scrolls inside its corner rather than running off the screen', () => {
     const { screen } = mount()
     for (const selector of ['.gb-objectives', '.gb-purse']) {
@@ -611,6 +633,69 @@ describe('the quests tab', () => {
     await user.click(getByRole(panel, 'button', { name: 'Follow The Copper Wheel' }))
     expect(intents).toContainEqual({ kind: 'track', questId: 'q1' })
     getByRole(panel, 'button', { name: 'Give up The Copper Wheel' })
+  })
+
+  it('asks the quest\'s question on the step the player is on', async () => {
+    const user = userEvent.setup()
+    const { hud, screen, intents } = mount()
+    // A `choice` step advances on nothing else, so a journal that draws the
+    // question but no way back is a quest that cannot be finished.
+    const journal: readonly JournalEntry[] = [
+      {
+        questId: 'q1',
+        questTitle: 'The Copper Wheel',
+        status: 'active',
+        steps: [
+          { stepId: 's1', text: 'Take the ledger', state: 'done' },
+          {
+            stepId: 's2',
+            text: 'Decide whose the ledger is',
+            state: 'open',
+            choice: {
+              prompt: 'Hollis is offering more than Mara did. Whose is it?',
+              options: [
+                { key: 'keep-word', label: 'Keep your word to Mara' },
+                { key: 'sell-out', label: 'Sell it to Hollis' },
+              ],
+            },
+          },
+        ],
+      },
+    ]
+    hud.show({ window: 'quests', quests: journal })
+
+    const panel = getByRole(screen, 'dialog', { name: 'Quests' })
+    getByText(panel, 'Hollis is offering more than Mara did. Whose is it?')
+    await user.click(getByRole(panel, 'button', { name: 'Sell it to Hollis' }))
+
+    expect(intents).toContainEqual({ kind: 'decide', questId: 'q1', stepId: 's2', optionId: 'sell-out' })
+  })
+
+  it('offers no answer on a decision the player is not standing on', () => {
+    const { hud, screen } = mount()
+    const choice = {
+      prompt: 'Hollis is offering more than Mara did. Whose is it?',
+      options: [{ key: 'sell-out', label: 'Sell it to Hollis' }],
+    }
+    hud.show({
+      window: 'quests',
+      quests: [
+        {
+          questId: 'q1',
+          title: 'The Copper Wheel',
+          steps: [
+            { stepId: 's1', text: 'Decide whose the crate is', state: 'done', choice },
+            { stepId: 's2', text: 'Decide whose the ledger is', state: 'upcoming', choice },
+          ],
+        },
+      ],
+    })
+
+    // Answering a step the flow is not on moves nothing, so a panel that offers
+    // it is a button that does nothing, on the one screen that says what to do.
+    const panel = getByRole(screen, 'dialog', { name: 'Quests' })
+    expect(queryByRole(panel, 'button', { name: 'Sell it to Hollis' })).toBeNull()
+    expect(queryByText(panel, 'Hollis is offering more than Mara did. Whose is it?')).toBeNull()
   })
 
   it('asks a second time before it gives a quest up', async () => {
