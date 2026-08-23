@@ -4,6 +4,25 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>game-box</title>
+    <style>
+      /* the canvas is sized to the window, so any margin on the page overflows
+         it and the browser puts scrollbars round the game */
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #000;
+      }
+      #game {
+        width: 100vw;
+        height: 100vh;
+      }
+      #game canvas {
+        display: block;
+      }
+    </style>
   </head>
   <body>
     <div id="game"></div>

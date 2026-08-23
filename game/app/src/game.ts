@@ -369,6 +369,9 @@ export class Game {
 
   #key = (event: KeyboardEvent): void => {
     if (event.code !== 'KeyE' || this.#hud.typing || this.#talking || !this.#target) return
+    // opening a conversation focuses its input, and without this the same
+    // keystroke lands in it, so every chat starts with a stray e
+    event.preventDefault()
     this.#act(this.#target)
   }
 
