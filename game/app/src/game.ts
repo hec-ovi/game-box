@@ -16,6 +16,7 @@ import { alsoBlockedBy, PERSON_CLEAR } from './bodies.ts'
 import { Player } from './player.ts'
 import { createStage, type Stage } from './renderer.ts'
 import { cityGround, citySolid, interiorSolid } from './solids.ts'
+import { spikeGlb } from './spike-glb.ts'
 import { pick, type Target } from './targets.ts'
 
 type Place = { kind: 'city' } | { kind: 'interior'; interior: Interior; plotId: string }
@@ -79,6 +80,7 @@ export class Game {
     this.#city = buildCity(this.#world, this.#dressing)
     this.#stage.show(this.#city.root)
     this.#openTheHorizon()
+    spikeGlb(this.#city.root, this.#city.spawn, new URLSearchParams(location.search).get('glb'))
 
     this.#body = new Player(this.#stage.camera, this.#stage.renderer.domElement, this.#outdoors())
     this.#body.setGround(cityGround(this.#world, this.#land))
@@ -415,6 +417,7 @@ export class Game {
 
     this.#place = { kind: 'interior', interior, plotId }
     this.#stage.show(built.root)
+    this.#stage.indoors(true)
     if (this.#land) this.#land.root.visible = false
     this.#body.setSolid(alsoBlockedBy(interiorSolid(interior), () => this.#peopleInHere()))
     this.#body.setGround(() => 0)
@@ -434,6 +437,7 @@ export class Game {
     const doorstep = this.#city.doorsteps.get(this.#place.plotId)
     this.#place = { kind: 'city' }
     this.#stage.show(this.#city.root)
+    this.#stage.indoors(false)
     if (this.#land) this.#land.root.visible = true
     this.#body.setSolid(this.#outdoors())
     this.#body.setGround(cityGround(this.#world, this.#land))
