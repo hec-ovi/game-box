@@ -54,6 +54,23 @@ is done and the check confirms it.
 
 | 38 | Cast's rotation table gives `rot 270` for the west wall under "90 faces -x"; forge's `dirOf` has 90 facing **+x**. The physical facing is right because forge used its own `inward(side)`, but the two write-ups are mirrored on the east-west axis and one is wrong | forge | cast + forge | an east-west mirror already cost this project real time once; settle which convention is the true one and correct the other document |
 
+## From the browser playthrough
+
+A quest was completed end to end twice, once with the model and once offline.
+These are what it found on the way. Numbered by what a player hits first.
+
+| # | Defect | Box | Detail |
+|---|---|---|---|
+| 39 | The crosshair offers people who are not in the room, **and it blocks a quest** | app | `buildings.ts` hides the body of anyone out walking; `Targeting.#inTheRoom()` still lists them. `pick()` scores `facing / max(0.3, distance)`, so an invisible person 0.45 m from the quest item always wins the prompt. "Take the stained glass" was unselectable from any reachable position |
+| 40 | Every resident was out walking at once, so every open building was empty | app + crowd | the street draw takes from all residents, stationed ones included |
+| 41 | A `collect` step gets no map pin and no route | app | `places.ts` `spot()` resolves only `place` and `npcId`; a collect objective carries `itemId`. Needs item to interior to plot. A `deliver` step works fine |
+| 42 | `G` says "Nothing to head for: follow a quest first" while following a quest | app | and indoors it measures from room-local coordinates as if they were world: 80 m south for a doorstep 37 m away and roughly north |
+| 43 | A timed quest is an invisible real-time stopwatch | forge + play + hud | a timer is ~1.5 to 2 real minutes, one model reply is 8 to 19 s of it, and nothing on screen says a quest is timed or how long is left. One expired mid-playthrough and the first sign was an empty journal |
+| 44 | Every carried thing is the same beige cube | scene + furnish | box, envelope, stained glass, ledger and cash all render identically |
+| 45 | The acted line is stale | app | `talking.ts` `say()` clears the reply each turn but not `acted`, so "gave you a job" sits under the next reply |
+| 46 | `?sidecar=` and `?bundle=` are thrown away | app | `boot.ts` rewrites the URL from the brief alone after a build |
+| 47 | Wording a player would not follow | app + hud | "they are standing right there" while across town; "Nothing yet. Find someone to talk to." after finishing a job; a conversation opens blank until the player speaks first |
+
 ## Checked and closed
 
 About fifty handovers landed and were verified in the code rather than taken on
