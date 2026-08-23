@@ -7,10 +7,16 @@ what a player notices.
 
 ### Blockers: things that lose work or contradict the direction
 
-1. **A refresh with the model on wipes the playthrough.** Nothing pins the
-   sampler, so the city regenerates differently, the hash changes, resume
-   refuses and the save is cleared. The host takes a temperature; nothing sets
-   one. Boxes: `host`, `sidecar`, `bundle`.
+1. **A refresh with the model on wipes the playthrough**, and the fix is now
+   known to be the other one. `host` carries `seed` and `temperature` end to
+   end, but reproducibility cannot be bought: OpenRouter was measured at three
+   different cities from one seed at temperature 0 (`stealth/ox-alpha` does not
+   honour a seed), and llama-server's own defaults are a fresh random seed at
+   temperature 1. Even `--parallel 1` locally only holds while nothing else
+   talks to the engine, which is false once NPC dialogue runs during a build.
+   **So `Bundle.resume` must tolerate a regenerated city rather than clearing
+   the save.** Box: `bundle`, with `sidecar` sending seed and temperature for
+   what it is worth, and `scribe` deriving a per-call seed by position.
 2. **Neon lights nothing.** There is no `PointLight`, `SpotLight` or
    `RectAreaLight` anywhere in the game, so a wall beside a burning sign is lit
    by moonlight. The whole art direction is "neon is the light source". Boxes:
