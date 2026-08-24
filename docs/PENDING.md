@@ -988,6 +988,13 @@ has now asked twice, so it should not slip again.
 "instance names are all too similar, the Lattern this the Lattern that, and names
 are too confusing, we need better namings."
 
+**It has a gameplay cost, not only an aesthetic one.** The quest that vanished
+tonight was "take the second-hand cup off the shelf at Fane's Counter", and he
+could not recall the name afterwards: "fane something was the name". A quest
+names a place and the name will not stick, so the errand cannot be followed even
+before the map is opened. That makes this a correctness problem sitting behind a
+style problem.
+
 The cause is structural rather than a bad word list. Names come from
 `game/forge/src/narrator/places.ts` `PATTERNS`, one template per building kind,
 filled from the theme's word pool. A short pool plus a per-kind template gives
