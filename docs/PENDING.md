@@ -1342,6 +1342,39 @@ which is the argument for 1.
 Boxes: `hud` for showing a failed quest and a timer, `quest` and `app` for the
 clock the timer runs on.
 
+### The window resizes on every tab (2026-08-23, found by him)
+
+"settings quests map, items, all change resize when i navigate, improve it a very
+good UI UX for this things."
+
+**One cause, and it is the same one as the conversation panel:** the window sizes
+itself to its content, so Quests, Map, Items and Controls are each a different
+shape and the whole thing jumps as you move between them. A map wants to be
+large, a short quest list wants to be small, and the panel obeys whichever is on
+screen.
+
+The fix is a **fixed frame**: one size the window always is, tabs switching
+content inside it, and anything longer than the frame scrolling rather than
+growing it. That is also what makes the conversation history and the does/says
+split possible, so these are one job:
+
+- the window holds its size across tabs
+- the map fills the frame and zooms inside it, rather than the frame fitting the map
+- long content scrolls in place
+- the conversation is a side panel of fixed width, toggled on interaction
+
+Worth treating as a proper pass rather than four fixes. The panel has grown a tab
+at a time all day (quests, map, items, controls, the coming settings and codex)
+and nobody has laid it out as one thing. Doing it once, with a frame and a scroll
+rule, is cheaper than six more adjustments and it is what he is asking for.
+
+While it is open, the smaller items already logged belong in the same pass: coins
+into the inventory, `Items` renamed to `Inventory`, quest markers on the map with
+main distinct from side, place names on the map, and the settings button holding
+lock time and exit.
+
+Box: `hud`.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
