@@ -1375,6 +1375,40 @@ lock time and exit.
 
 Box: `hud`.
 
+### Use the hero bodies too (2026-08-23, his ask)
+
+The free Universal Base Characters pack ships four bodies and we use two.
+Already on disk, unused:
+
+```
+assets/src/quaternius-ubc/extracted/.../Base Characters/Godot - UE/
+  Superhero_Male_FullBody.gltf
+  Superhero_Female_FullBody.gltf
+```
+
+`BODY_KINDS` in `@gb/world` is `['male', 'female']`. Adding these is a
+**legitimate** vocabulary change, unlike a building kind: a body either exists in
+the pack or it does not, so this is physical and belongs in the closed list. Same
+distinction as the `dance` anchor.
+
+What it costs, and it is not free like a clip is:
+
+- **A wardrobe per body.** The twelve outfits are baked per character into
+  `assets/dist/characters/*.glb`, so a new body is another set of finished files.
+  Twelve files at 1.1 MB each are already two thirds of the game's 19 MB download,
+  so doubling the roster doubles the biggest thing a player downloads. Measure
+  before committing: it may want fewer outfits on the hero bodies rather than all
+  twelve.
+- **The rig must match.** `tools/check-rig.mjs` is the gate: same 65 joints, same
+  order, or the file is refused. Run it on the hero bodies before any other work,
+  because if they differ the whole item is dead.
+- **Where they are used.** "Once in a while" is right: a heavier build should be
+  a minority and should mean something (a guard, a bouncer, a dockhand) rather
+  than being sprinkled at random. `chooseCharacter` already picks by role and
+  theme, so the hook exists.
+
+Boxes: `world` for `BODY_KINDS`, `cast` for the wardrobe build and the choosing.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
