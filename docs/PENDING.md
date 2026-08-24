@@ -1247,6 +1247,53 @@ you, and what you have learned of them).
 Boxes: `play` for what is discovered, `forge` for staged backgrounds at
 generation, `talk` for what unlocks, `hud` for the codex itself.
 
+### The brief is too thin, so the reply echoes it (2026-08-23, his diagnosis)
+
+Second example, and it makes the pattern undeniable. He asked **"do you need
+help?"** and got:
+
+> "The sky is clear enough to freeze your breath, and Jarl's wiping down the same
+> spot on the bar for ten minutes. Take the second-hand cup off the shelf at
+> Fane's Counter before anybody notices it's gone, and maybe I'll tell you why it
+> matters."
+
+The job offer is fine. Everything before it is the fault, and his read is right:
+
+> "too short context make this happen, the npc is like receiving 'weather: sunny,
+> you are cleaning blah' so the only thing can do is 'i am cleaning and is
+> sunny'"
+
+**The reply mirrors the brief.** Given two or three facts, a model asked to be
+characterful will spend its opening on those two or three facts, however
+irrelevant. The flavour directives then inflate thin input into prose. So this
+and the previous example are one fault, not two.
+
+**The shape he wants, and it is the right one:** a fixed labelled template, reused
+for every character, with the slots filled from two different places.
+
+- **Filled by the engine, per turn:** location, the room and what is in it,
+  weather, hour, who else is here and what they are doing, what the player is
+  carrying, standing, what is on the menu of moves.
+- **Filled by the generator, per character, once:** personality, interests,
+  history, profession, manner of speech, what they care about, what they will not
+  talk about. This is the part that makes two people in the same room answer
+  differently, and it is what is thin today: forge writes a personality line and
+  a knowledge list, and nothing else.
+- **Fixed in the template:** how to speak, and **few-shot examples both positive
+  and negative** — a good reply beside a bad one, so the shape is shown rather
+  than described. Negative examples are the part usually missing and the reason
+  a rule like "do not narrate" does not stick.
+
+Then the generator only ever fills character fields, never wording, and the
+template improves for everybody at once.
+
+Caution already measured: **examples leak** (the model reused "The Copper Wheel"
+from a house-style example). Design them so the content is unusable as an answer,
+or vary them per call.
+
+Boxes: `talk` owns the template and the examples, `forge` and `scribe` own the
+per-character fields and need to write far more of them than they do now.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
