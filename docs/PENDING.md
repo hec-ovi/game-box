@@ -1305,6 +1305,36 @@ or vary them per call.
 Boxes: `talk` owns the template and the examples, `forge` and `scribe` own the
 per-character fields and need to write far more of them than they do now.
 
+### A quest disappeared (2026-08-23, found by him)
+
+Almost certainly the timed-quest fault, logged from a playthrough earlier today
+and never fixed: **a timer is an invisible real-time stopwatch.** Nothing marks a
+quest as timed, nothing shows the time left, and when it expires the quest is
+simply gone. The earlier report put it in the same words: "one expired
+mid-playthrough and the first sign was an empty journal."
+
+Three separate things to fix, and the first two are cheap:
+
+1. **A failed quest must not vanish.** `@gb/quest` tracks `failed` as a status
+   and `@gb/hud`'s journal now draws four step states, so the machinery exists;
+   the page is being dropped instead of shown as failed. A player needs to see
+   that it failed and why, not discover an absence.
+2. **A timed quest must say so**, and show the time remaining. Nothing on screen
+   distinguishes one today.
+3. **Decide whether timers run on the game clock or the wall clock.** This got
+   more urgent tonight: the clock went from 240x to 24x, so if a timer is in game
+   time it is now ten times longer, and if it is in real time it is unchanged and
+   still about 1.5 to 2 real minutes — of which a single model reply can eat 8 to
+   19 seconds. Either way the value wants re-picking against the slower clock.
+
+Also worth checking against tonight's other findings: if the quest was an escort
+or needed somebody who had walked out, it may have failed for one of those
+reasons rather than a timer. A visible failure reason would have told him which,
+which is the argument for 1.
+
+Boxes: `hud` for showing a failed quest and a timer, `quest` and `app` for the
+clock the timer runs on.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
