@@ -396,6 +396,17 @@ either.
    player. It should mark where the open steps send you, and **the main line
    needs a different marker from a side job** — the journal already sorts main
    above side and tags it, so the fact is published and the map ignores it.
+5. **The map needs place names, and room to read them.** Bigger, with zoom and
+   pan, and the names of places drawn on it. A city is 69x69 cells at two blocks
+   and far larger at twenty, so a fixed thumbnail cannot carry labels at any
+   size. Zoom is what makes names possible, not a separate nicety.
+
+   Worth deciding while building it: **which names**. Every plot has one, and
+   drawing all of them at twenty blocks is unreadable. The honest set is places
+   the player has entered, places a quest points at, and landmarks — which is the
+   codex's discovered-places list, so the two features share their data and
+   should be built with that in mind. `prominence` (background, notable,
+   landmark) is already a field in the places design for exactly this.
 
 On 4, the parts exist: `@gb/quest`'s journal carries `kind` per quest and each
 step's target, and `@gb/app` already resolves a step to a doorstep for the guide
