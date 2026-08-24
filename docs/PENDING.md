@@ -1409,6 +1409,35 @@ What it costs, and it is not free like a clip is:
 
 Boxes: `world` for `BODY_KINDS`, `cast` for the wardrobe build and the choosing.
 
+### A minimap, or a heading to the next thing (2026-08-23, his ask)
+
+Something always on screen pointing at where to go next.
+
+**The hard part is already built.** The guide resolves the distance and the
+compass point of the first stretch **along the real walk** rather than a straight
+line, and the map arrow places a goal on a building's own doorstep. Both are
+tested. What is missing is surfacing it without pressing a key, which is the
+same discoverability fault as everything else on the bottom bar.
+
+Two shapes, and the cheaper one may be enough:
+
+1. **A compass strip** along the top: a heading marker for the tracked
+   objective, with the distance. No second render of the city, no draw cost, and
+   it answers the actual question ("which way") better than a small map does.
+2. **A true minimap**: a corner view of the streets around the player. More
+   information, but it is a second view of the world every frame, and this
+   project is careful about frame cost for good reason.
+
+Worth trying 1 first and seeing whether 2 is still wanted. A first-person game
+where the streets are a grid may not need a map to navigate, only a direction.
+
+Two things to settle either way: **it must respect the main-versus-side
+distinction** he has now asked for twice, and **it should be part of the same
+layout pass** as the window frame rather than bolted on, since the bottom bar and
+the objectives corner already compete for the same screen edges.
+
+Box: `hud`, reading what `@gb/app`'s guide already resolves.
+
 ### Running right now
 
 `prefab` assigning twelve facade materials across eight looks and regenerating
