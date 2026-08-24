@@ -1168,12 +1168,27 @@ have no sense at all."
    who may have spoken to the player before, which is the per-character memory
    gap.
 
-**The fix is not more instructions, it is fewer and better aimed.** The current
-prompt optimises for flavour and never mentions answering. A reply should answer
-first and be in character second, and length should follow the question: a
-two-word question gets a short answer. Worth trying an explicit rule that the
-first clause responds to what was actually said, and cutting "say something only
-you could say" entirely to see what it was really buying.
+**The fix is not less context, it is fewer abstract style directives and some
+worked examples.** His correction, and it is the right one: "few shots of
+conversations, etc will help for sure, and context is useful, tiny 1k of tokens
+for location, who they are, how to speak is good."
+
+So keep the context and grow it: where they are, who they are, what they are
+doing, who else is here, what they know. That is cheap and it is what a reply
+should be built from. What to cut is the directives that ask for performance
+rather than supply facts. "Say something only you could say" is not context, it
+is an instruction to be interesting, and that reply is what being interesting
+looks like when nobody asked you to answer.
+
+Then **few-shot examples of real exchanges**, which teach length, register and
+the habit of answering far better than any rule can. One caution measured here
+already: **examples leak.** `@gb/scribe` caught the model reusing "The Copper
+Wheel" straight out of a house-style example in the system prompt. So examples
+must teach shape rather than supply content: vary them per call, or write them so
+the content is obviously unusable as an answer.
+
+And an explicit rule worth testing on its own: the first clause responds to what
+was actually said, and the length follows the question.
 
 This is the strongest single piece of evidence for the end-to-end prompt pass
 above, and this exchange should be the test case it is judged against.
