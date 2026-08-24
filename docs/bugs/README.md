@@ -8,7 +8,7 @@ named them, because the names are the report. Each one has an entry in
 |---|---|---|
 | `light_colums_over_doors.png` | Two vertical strips floor to roof at full white, flanking an entrance and washing it out. They read as geometry, not light | "The doorway is wrong" |
 | `displays_wrong_proportion_ugly_borders.png` | A portrait advert stretched to its panel, every panel wearing a thick glowing frame, and loose white light bars floating clear of any surface across the building and the street | "The doorway is wrong" |
-| `advert-not-filling-panel.png` | The bowl advert squashed into the bottom fifth of its panel, the rest empty grey, the lamp grid stronger than the picture | "The doorway is wrong" |
+| `lantern-cup-doorway.png` | The Lantern Cup entrance: light columns flanking the door, and the bowl advert squashed into the bottom fifth of its panel with the rest empty grey and the lamp grid stronger than the picture | "The doorway is wrong" |
 | `overlapping_labels.png` | Signage exploding: letters several metres tall, a fascia sign and a blade sign drawn through each other, light strips crossing the letters at angles matching no surface | "Signage is enormous and overlaps itself" |
 | `roof_black.png` | An interior with walls, floor and furniture lit and the ceiling pure black. Nothing lights a downward-facing surface | "Interior ceilings are pure black" |
 | `daylight_cartoonish.png` | Daylight: flat pale grey, no shadows on the pavement, the generated facades not reading at all | "Daylight is flat and cartoonish" |
