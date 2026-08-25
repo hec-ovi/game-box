@@ -1,10 +1,10 @@
 # @gb/prefab contract
 
-contractVersion: 0.8.0
+contractVersion: 0.9.0
 
 ## Purpose
 
-Dresses a plot with the whole building its world file names, out of one committed pack, and picks one when the file names none: the footprint it was given, the height its storeys ask for, its entrance on the wall the door faces, lit if you can walk in, and a front that reads as the kind of place its charter says it is. Its windows are cut out of the wall in the shader and look into photographed rooms that light up after dark, through a pane of glass that reflects the sky and the street; the flats carry balconies over the pavement; the commercial fronts carry lit screens over the street, clear of the door; and it says where the light each building throws comes from. Near the player a building is its walls and its glass, one material each; far off it is its shell on a third, so a town of any size is three draws.
+Dresses a plot with the whole building its world file names, out of one committed pack, and picks one when the file names none: the footprint it was given, the height its storeys ask for, its entrance on the wall the door faces, lit if you can walk in, and a front that reads as the kind of place its charter says it is. Its windows are cut out of the wall in the shader and look into photographed rooms that light up after dark, through a pane of glass that reflects the sky and the street; the flats carry balconies over the pavement; the commercial fronts carry lit screens over the street, clear of the door; and it says where the light each building throws comes from. It also says where the model really put its entrance and the band over it, and seats the signage the kit wrote for the plot on those, so a door lamp lights the door that is drawn and a nameplate lies on the board it is written on. Near the player a building is its walls and its glass, one material each; far off it is its shell on a third, so a town of any size is three draws.
 
 ## Inputs
 
@@ -14,6 +14,9 @@ Dresses a plot with the whole building its world file names, out of one committe
 | `PrefabDressing.building(plot, size, charter)` | a `@gb/world` `Plot`, `{ width, depth, height }` in metres, the plot's `ResolvedCharter` | the size matches the plot, the world's cell size is `METRICS.cellSize`, and the charter is `world.charter(plot.kind)` |
 | `PrefabDressing.shell(plot, size, charter)` | the same | for every plot at open; `lights` is never asked after it |
 | `PrefabDressing.lights(plot, size, charter)` | the same | after `building` for that plot, which is what decides whether the kit hung signs on it |
+| `PrefabDressing.face(plot, size, charter)` | the same | |
+| `StreetFace.of(geometry, wall, plane, finishes)` | a geometry `orient` has turned, the plot's `Facing`, metres from the origin out to the wall (the model's own half depth), the pack's finishes | for anyone reading a face of their own |
+| `Fixtures.on(face, signs)` | a `StreetFace` and the `@gb/kitbash` `Sign[]` that box wrote for the plot | the signs in the order `signsFor` lists them, which is the order `lightsFor` answers in |
 | `loadPrefab(night)` | a `@gb/kitbash` `CityNight` | the pack’s six files are served beside the box; in a bundler they are followed from `src/load.ts` |
 | `Library.of({ catalogue, scenes, atlas, night })` | a `Catalogue`, the pack's parsed scenes, a `PrefabAtlas`, a `CityNight` | for tests and for anyone loading the pack themselves |
 | `new InteriorWindows(rooms, night, finishes)` | the room strip as a `DataArrayTexture`, a `CityNight`, the pack's list of finishes | the finishes in the order the two facade strips stack them |
@@ -41,7 +44,9 @@ Dresses a plot with the whole building its world file names, out of one committe
 |---|---|---|
 | `building(plot, size, charter)` | `THREE.Object3D` | origin at the centre of its base, facing north unturned; the walls on `Library.material`, the glass in their windows on `Library.glass`, plus the signs the dressing behind would have hung. The model is the one `plot.design` names, or the pick when it names none, and a plot with an interior wears the entrance you can walk through. A plot the catalogue has no shape for, and a pin this pack cannot honour, come back from `rest` untouched |
 | `shell(plot, size, charter)` | `THREE.Object3D` | the same building from far off: its walls alone on `Library.shell`, the same entrance, no glass and no signs. The same plots fall back, to the `rest`'s `shell` where it has one and its `building` where not |
-| `lights(plot, size, charter)` | `LightEmitter[]` | what the building throws, in its own frame: `kind` `entrance` for the lit lobby of a door you can walk through, `screen` once per panel, and `@gb/kitbash`'s own (`sign`, `strip`, `doorlamp`) for every sign `building` hung. `position` is metres just off the lit face, `colour` is what burns packed `0xRRGGBB`, `intensity` is candela at full dark, `radius` the metres past which it is not worth drawing (0.1 lux, at most 16). A plot handed to `rest` has nothing of its own here |
+| `lights(plot, size, charter)` | `LightEmitter[]` | what the building throws, in its own frame: `kind` `entrance` for the lit lobby of a door you can walk through, `screen` once per panel, and `@gb/kitbash`'s own (`sign`, `strip`, `doorlamp`) for every sign `building` hung, seated where that sign was seated. `position` is metres just off the lit face, `colour` is what burns packed `0xRRGGBB`, `intensity` is candela at full dark, `radius` the metres past which it is not worth drawing (0.1 lux, at most 16). A plot handed to `rest` has nothing of its own here |
+| `face(plot, size, charter)` | `StreetFace`, or undefined | the street face this plot is actually drawn with, in the building's own frame: `wall`, `plane` (metres out to the wall), `door` and `band` as `Plate`s (`position` the middle of the outward face, `width` across the wall, `height`), and `reliefUnder(across, up)`, how far the model's own face stands off the wall over a patch of it. Undefined for a plot the dressing behind answers for |
+| `Fixtures.on(face, signs)`, `laidOn(sign, face)` | `Fixtures`, boolean | `holder(point)` says which sign a point in the building's frame belongs to, `seat(mesh)` carries a sign mesh onto that face, and `lit(emitters)` moves the lights with it; `laidOn` is which signs it will move, being the ones the kit laid flat on the wall the entrance is on |
 | `BuildingLights.of(...)`, `screenTints(screens)` | `LightEmitter[]`, `ScreenTint[]` | the same emitters off one geometry; the mean colour and brightness of each screen picture, in strip order |
 | `Library.tints` | `ScreenTint[]` | the same, read once when the pack loads |
 | `loadPrefab(night)` | `Library` | the pack, checked against its own manifest |
@@ -85,7 +90,7 @@ A plot the catalogue has no shape for is not an error: `building` hands it to th
 ## Dependencies
 
 - `@gb/scene` contract: the `Dressing` seam this implements, `shell` included, and `storeyHeight`. Scene batches every plot's shell at open into `city:<material>` and the near buildings' `building` into `detail:<material>`, one draw each.
-- `@gb/kitbash` contract: `CityNight`, so one clock lights the prefabs and the kit together; `SIGN`, which names the material every sign in the city is drawn with; `lightsFor` and `LightEmitter`, the emitters of the signs this box hangs and the shape its own are published in.
+- `@gb/kitbash` contract: `CityNight`, so one clock lights the prefabs and the kit together; `SIGN`, which names the material every sign in the city is drawn with and how far a panel stands off its wall; `signsFor` and `Sign`, what that box hangs on a plot and where; `DOORLAMP`, the line a door lamp is drawn to; `lightsFor` and `LightEmitter`, the emitters of the signs this box hangs and the shape its own are published in.
 - `@gb/world` contract: `Plot`, `ResolvedCharter` (its `suits` are what a look is matched on; the tests read the fourteen `SHIPPED_CHARTERS`), `AssetPackRef` and `PlotDesign` (the pin a plot carries), `plot.interiorId`, which is exactly the set of doors that open, and `PLOT_BAND`, `plotShape` and `METRICS.cellSize`, which are the shapes the catalogue holds and how a plot is read in its door's frame.
 - `@gb/kit` contract: `Rng` for the pick, `contract` for the manifest.
 - `three`, `three/webgpu` and `three/tsl`: the three materials are node materials, which is what `WebGPURenderer` needs and what its WebGL2 backend compiles for itself. The glass reflects `scene.environment`, which the app owns.
@@ -215,7 +220,62 @@ A door is the surface a player stands closest to, and since only about one build
 - **The reveals wear the wall.** The producer wraps the leftmost twenty-fifth of the picture round the four edges of the plate, and the picture carries a plain dark wall margin wider than that, so an edge comes out wall-coloured rather than carrying a slice of glass.
 - **The door you can use has its lights on, and it is the same photograph.** The pack carries the entrance twice, on two layers. `tools/doors.ts` lifts the glass towards a warm lobby, dark at the head and lit at the sill so the light reads as coming from inside, burns the fanlight and the threshold about three times as hard, and turns the reader's marks green. Nothing outside the glass, the threshold and the reader is touched, so the frame, the bar, the pulls and the kick plate are the same pixels in both, and the pack test holds them to that. It has to carry by day as well, when nothing in the city glows, which is why the lit lobby is a lighter surface and not only a stronger glow.
 - **Which one a building wears comes from `@gb/world` and nowhere else.** `plot.interiorId` is exactly the set of doors that open, checked in both directions by that box, so there is no second field to disagree with. The dressing moves the plot's door faces onto the lit layer on the copy of the geometry `orient` has already made for it: no geometry, no draw, no second material, and a plot without an interior is untouched. Nothing is ever baked onto the lit layer, so growing the pack cannot put a lobby light on a building that has no way in.
-- **The lamps beside it are `@gb/kitbash`'s.** That box hangs a pair of door lamps on every plot, bounded by the door they light, and this box hangs them on the prefab with the rest of the signage. Nothing of the pack's own stands beside a door: the only tube on a building is the one round its parapet, and the pack test holds every model to that.
+- **The lamps beside it are `@gb/kitbash`'s.** That box hangs a pair of door lamps on every plot, bounded by the door they light, and this box hangs them on the prefab with the rest of the signage, seated on the door the pack drew rather than the one the plot asks for (below). Nothing of the pack's own stands beside a door: the only tube on a building is the one round its parapet, and the pack test holds every model to that.
+
+## Where the signage lands
+
+`@gb/kitbash` writes a plot's signage against the plot's own arithmetic: a door
+snapped to the kit's 2 m module, that door's width (0.95 m) and head (2.10 m),
+and a wall plane on the plot boundary with a flat panel `SIGN.stand` (8 cm) off
+it. A pack model has its own: every one of the 512 centres its entrance on the
+front, 1.2 to 2.4 m wide with its head at 2.3 to 2.9 m, and stands its fascia
+band, its screen plates and its parapet tube exactly 8 cm proud, which is the
+plane a flat sign lands on. Hung as written, the lamps stand beside the drawn
+door and the nameplate is coplanar with the board it is written on.
+
+So `face(plot, size, charter)` reads the street face off the geometry the plot
+is drawn with, and `Fixtures` seats what is hung on it. Two anchors move and
+nothing else does:
+
+- **A door lamp is seated on the drawn door.** The pair straddles it at
+  `DOORLAMP.beside` (22 cm) outside its frame and runs from `DOORLAMP.foot`
+  (35 cm) to the drawn head plus `DOORLAMP.overhead` (15 cm). Which side each
+  lamp is on is kept, so the pair does not swap hands.
+- **Anything laid flat stands `SIGN.stand` off the face the model really has
+  under it**, which is the outermost surface over its own patch: the band under
+  a nameplate, the parapet under a board, the plain wall under a strip. A face
+  standing further out than `PROUD` is a balcony and not wall, so a strip
+  running past one is not pushed out over the pavement. A plate written on the
+  band and hanging off its edge is slid back inside it by up to 8 cm, which is
+  less than the air the kit leaves round a claimed panel.
+
+A hung box moves out with its bracket and is never slid: it is read along the
+street rather than off the wall it hangs from. What is not laid on that wall at
+all stays exactly where the kit wrote it: a blade on a flank, because that wall
+is the kit's own and so is its arithmetic, and the lit box over a subway
+entrance, which stands out on the doorstep in front of the wall and would go
+through the stairs if it were carried back onto it. `laidOn` is that line.
+
+A town's signage is one welded buffer per building, which is what keeps it one
+draw, so a vertex is carried by the sign whose patch it stands in; `signsFor`
+is what `building` hangs and `lightsFor` answers one emitter per sign in the
+same order, so the meshes and the lights take the same seats.
+
+Measured with `node tools/measure-fixtures.ts` on a 4 by 4 block town of 170
+plots, every one on the pack, 340 door lamps and 375 flat plates, against the
+same town dressed by the kit alone:
+
+| | written | seated |
+|---|---|---|
+| lamp off 22 cm outside the drawn door frame | 0.125 to 1.165 m, 0.625 median | 0 |
+| lamp head against the drawn head plus 15 cm | 0.200 to 0.800 m short | 0 |
+| plate standing off the face under it | -0.120 to 0.080 m | 0.080 m, every one |
+| plates in the same plane as that face | 63 of 375 | 0 |
+
+The plate written on a fascia band is the one thing still not right: 52 of them
+land on a band and 18 are a 0.758 m plate on a 0.600 m band, because the kit
+sizes a letter to its own metre-tall fascia. The band is published for it to
+size against instead.
 
 ## The screens on the walls
 
@@ -270,7 +330,7 @@ Tags are manifest metadata and touch none of the five binaries, so changing what
 ## Invariants
 
 - One world unit is one metre. A model is baked at its plot's exact footprint and height and is never scaled, so its windows are the size they were drawn.
-- A building is exactly as tall as the city says its plot is. Only lit trim reaches past that, and only by `PROUD` (0.2 m): a neon tube and the bracket it stands on, sideways at the shopfront and upwards at the parapet. Plots in a block abut, so a building already shares its relief with the one next door; `@gb/kitbash` reaches 5 cm with its window trim and 8 cm with a flat sign, and this is the same arrangement one step louder. The one thing that hangs out over the street is a balcony, by `BALCONY.reach` on the door's wall above the ground storey, and the pack test holds every model to that line.
+- A building is exactly as tall as the city says its plot is. Only lit trim reaches past that, and only by `PROUD` (0.2 m): a neon tube and the bracket it stands on, sideways at the shopfront and upwards at the parapet. Plots in a block abut, so a building already shares its relief with the one next door; `@gb/kitbash` reaches 5 cm with its window trim and 8 cm with a flat sign, and this is the same arrangement one step louder. The one thing that hangs out over the street is a balcony, by `BALCONY.reach` on the door's wall above the ground storey, and the pack test holds every model to that line. A sign seated on trim goes out with it: a plate on a face standing `PROUD` proud sits at 0.28 m, measured, which is a quarter of what a kit box hanging over the street already reaches.
 - **Same seed, same city, forever, whether or not a model is running.** The pick is a pure function of the plot and the committed pack: an `Rng` on the plot's own id, kind and style, forked per feature, drawing from no shared stream, so dressing one plot can never move another. Nothing on this path but the world file, the pack and three.js. Not the language model, not the sidecar, not the producer, not `@gltf-transform`.
 - The pick chooses from members sorted by id, so what order the manifest happens to list them in can never reach a street.
 - **A pinned plot is drawn from its pin, and growing the catalogue moves nothing.** `plot.design` is read, never re-derived: no pick, no `Rng`, no look at the plot's shape. A city pinned against one version of the pack draws the same 123 buildings against a pack with a whole new look in it, where picking again moves 53 of them. A plot with no pin is picked for exactly as before, so every city exported before the pin renders as it always did.
@@ -292,7 +352,9 @@ Tags are manifest metadata and touch none of the five binaries, so changing what
 - Everything the bay grid, the room raymarch, the pane and the screen use is an offset, a direction or a size in the surface's own frame, so `@gb/scene` batching a building into a shared buffer moves the vertices and leaves the room and the picture where they were.
 - Nothing glows in daylight. The rooms, the screens, the neon and the street in the glass are the night level times what is behind the pane, which is the same `CityNight` the kit's windows and lamps read, so one `setTime` moves the whole street. By day the glass reflects the sky the app lights the city with.
 - A panel's own uv spans exactly one wall picture, which is what makes the whole number the runtime reads back the plot's shift and nothing else. The pack test holds every plate's face to exactly that span, because a uv outside it would tear a second screen across one board and a uv short of it would leave part of the plate unlit.
-- Signage stays where it was written. `@gb/kitbash` puts every sign in the city on one material and publishes its name; this lifts those meshes off the kit's building and hangs them on the prefab, so a prefab street still has names over its doors and the town's signage is still one draw.
+- Signage keeps its material, its wall and its order. `@gb/kitbash` puts every sign in the city on one material and publishes its name; this lifts those meshes off the kit's building and hangs them on the prefab, so a prefab street still has names over its doors and the town's signage is still one draw. What moves is where a fixture sits on the wall, and only onto the face the model really drew: a door lamp onto the drawn door, a plate onto the surface under it.
+- **Nothing laid on a wall shares a plane with it.** Every flat sign stands `SIGN.stand` off the outermost face the model has over its own patch, so a nameplate on a fascia band, a board on a parapet and a strip on plain wall are each a real offset in front of a real surface rather than a depth trick. Measured over a generated town in `tests/fixtures.test.ts`.
+- **A door lamp is bounded by the door that is drawn.** Both lamps straddle the drawn entrance at `DOORLAMP.beside` outside its frame and reach from `DOORLAMP.foot` to its head plus `DOORLAMP.overhead`, whatever the plot's own arithmetic put there. Measured over a generated town in `tests/fixtures.test.ts`, alongside the light each one throws.
 - The pack is checked on the way in: all five binary files have to hash to what the manifest says and the mesh has to hold every model it names, or nothing loads. It is committed art, and the one thing standing between an edited pack and a city that quietly draws something else.
 - Objects only. No renderer, no camera, no frame loop, which is why the whole box is tested in Node with no canvas.
 
@@ -352,7 +414,7 @@ the recipe carries `height` anyway so it is the same object `building` takes.
 
 Adding a look is a new file in `looks/` and a rebuild; it grows every shape at once and changes what some plots already draw, so bump the pack version with it. Giving a look balconies is one `balcony` field and a rebuild. Changing what a look suits is its `tags`, `node tools/retag-buildings.ts` and a version bump, with no producer run. Changing what a look wears is that one file: its `facade` field names a picture in `finishes/`, and naming one another look already wears costs nothing while naming a new one adds two layers, the wall and its base. A picture nothing names is not in the pack. Which shapes the catalogue covers is `@gb/world`'s `PLOT_BAND`, read by `src/bucket.ts`; a change there is a rebuild, and the coverage test will tell you what the forge is actually cutting. How far trim may stand off a plot is `src/fit.ts` alone, how hard a lit face burns is `GLOW` in `src/pack.ts`, which producer material lands on which layer is `tools/layers.ts`, and the scale a base is read at is `BASE_TILE` in `src/wall.ts`, which the producer is told and the shader stretches to.
 
-How a window is laid out and how deep the room behind it runs are the two `WindowKind`s in `src/windows.ts`, and `tools/finishes.ts` reads the same two into the grid the producer is told, so a change to a grid moves the picture with it and a rebuild is needed; a change to `deep` does not. How the bay is cut is `src/bays.ts`, read by the room, the glass and the shell alike. How bright a room burns and how dark its folded faces are is `src/interior.ts`; what colours it is lit in is `ROOM_TINTS` in `src/rooms.ts`, which the shell reads too. How far the glass stands off the wall, how sharp its reflection is and what it reflects face on are `PANE` in `src/glass.ts`, and what it catches of the street after dark is `STREET` beside it; none of that needs a rebuild, because the panes are derived at load in `src/panes.ts`. What a far building keeps is `src/shell.ts`. A balcony is `balcony` in a look, built by `tools/balconies.ts` and held to `BALCONY` in `src/balcony.ts`, and the pack test measures every one; changing any of it is a rebuild. What a building throws onto the street is `src/lights.ts` alone: the lobby's colour and candela, a screen's candela, and how far off a face an emitter stands. Adding or replacing a room is a new prompt in `rooms/prompts/`, one image through the Grok route in `tools/textures/README.md`, an entry in `ROOM_PICTURES` in `src/rooms.ts` inside the run its bank covers, `node tools/draw-rooms.ts <folder of raw images>` to crop and size whatever raw images are in that folder, and a rebuild. A bank is a run of the strip, so a room added to the upper bank moves the street bank's `first` with it.
+How a window is laid out and how deep the room behind it runs are the two `WindowKind`s in `src/windows.ts`, and `tools/finishes.ts` reads the same two into the grid the producer is told, so a change to a grid moves the picture with it and a rebuild is needed; a change to `deep` does not. How the bay is cut is `src/bays.ts`, read by the room, the glass and the shell alike. How bright a room burns and how dark its folded faces are is `src/interior.ts`; what colours it is lit in is `ROOM_TINTS` in `src/rooms.ts`, which the shell reads too. How far the glass stands off the wall, how sharp its reflection is and what it reflects face on are `PANE` in `src/glass.ts`, and what it catches of the street after dark is `STREET` beside it; none of that needs a rebuild, because the panes are derived at load in `src/panes.ts`. What a far building keeps is `src/shell.ts`. A balcony is `balcony` in a look, built by `tools/balconies.ts` and held to `BALCONY` in `src/balcony.ts`, and the pack test measures every one; changing any of it is a rebuild. What a building throws onto the street is `src/lights.ts` alone: the lobby's colour and candela, a screen's candela, and how far off a face an emitter stands. What the street face is read as, and how the fascia band is told apart from a balcony slab, is `src/face.ts`; where a fixture the kit wrote is seated on it is `src/fixtures.ts` alone, and `node tools/measure-fixtures.ts` prints what a forged town lands at. Neither needs a rebuild: both read the geometry the plot is drawn with. Adding or replacing a room is a new prompt in `rooms/prompts/`, one image through the Grok route in `tools/textures/README.md`, an entry in `ROOM_PICTURES` in `src/rooms.ts` inside the run its bank covers, `node tools/draw-rooms.ts <folder of raw images>` to crop and size whatever raw images are in that folder, and a rebuild. A bank is a run of the strip, so a room added to the upper bank moves the street bank's `first` with it.
 
 What an entrance looks like is `finishes/door.png` and, over it, `DOOR` and `ENTRANCES` in `tools/doors.ts`, and a rebuild. `DOOR` is where the glass, the threshold and the reader sit in that picture, so replacing the picture means re-reading those rectangles off its own row and column profiles; `ENTRANCES` is the only thing that tells the two doors apart, and adding a third would be a name in `Layers.of` and an entry beside them. A replacement picture has to be its own mirror and has to read shut, and the pack test holds it to the first. The screen plate is painted with `Picture` in `tools/paint.ts`, which also relights a photograph through `lift` and holds the one conversion between what a glow map stores and what the runtime multiplies it back by. A screen is three places and they do not overlap: what a panel is made of and how the lamp grid behaves are `SCREEN` and the constants beside it in `src/display.ts`, which needs no rebuild; what the pictures show is the compositions in `tools/screens.ts`, which does; and where a screen goes is `BOARD`, `BANNER`, `CLEAR` and `displays()` in `tools/stack.ts` plus the `displays` list in a look, which does. A name in `SCREEN_PICTURES` is drawn if `POSTERS` in `tools/screens.ts` has a composition for it and read from `screens/<name>.png` if it does not, so replacing a drawn one with a picture is deleting its composition and dropping the file in.
 

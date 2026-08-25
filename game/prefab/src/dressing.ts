@@ -1,9 +1,11 @@
-import { SIGN, lightsFor } from '@gb/kitbash'
+import { SIGN, lightsFor, signsFor } from '@gb/kitbash'
 import type { Dressing, SurfacePart, SurfaceSize } from '@gb/scene'
 import type { AnchorKind, CellKind, FurnitureProp, Item, Npc, Plot, ResolvedCharter } from '@gb/world'
 import * as THREE from 'three'
 import type { Design } from './catalogue.ts'
 import { Entrances } from './entrance.ts'
+import { StreetFace } from './face.ts'
+import { Fixtures } from './fixtures.ts'
 import type { Library } from './library.ts'
 import { BuildingLights, type LightEmitter } from './lights.ts'
 import { orient, turnsFor } from './orient.ts'
@@ -13,6 +15,12 @@ export interface BuildingSize {
   readonly width: number
   readonly depth: number
   readonly height: number
+}
+
+/** What a plot is drawn with: its design, that model turned onto the plot, and the street face it ended up with. */
+interface Drawn extends Design {
+  readonly turned: THREE.BufferGeometry
+  readonly face: StreetFace
 }
 
 /**
@@ -33,14 +41,18 @@ export interface BuildingSize {
  * entrance you can walk through on both. It is the same building on the same
  * layer count: one attribute rewritten on the copy this plot already owns.
  *
- * Signage stays where it was written. `@gb/kitbash` puts every sign in the city
- * on one material; this lifts those meshes off the kit's building and hangs
- * them on the prefab, so a prefab street still has names over its doors and the
- * whole town's signage is still one draw.
+ * Signage keeps its material and its wall. `@gb/kitbash` puts every sign in the
+ * city on one material; this lifts those meshes off the kit's building and
+ * hangs them on the prefab, so a prefab street still has names over its doors
+ * and the whole town's signage is still one draw. It is written against the
+ * plot's arithmetic and this building is the one the pack drew, so each fixture
+ * is seated on the face it belongs to on the way over: `face` is what the
+ * model really has there, and `Fixtures` carries the lamps onto the drawn door
+ * and every plate onto the surface under it.
  *
  * What the building throws onto the street is published beside it: `lights`
  * answers the lit lobby and the screens off the geometry the plot is drawn
- * with, and the kit's own emitters for the signs it hung.
+ * with, and the kit's own emitters, seated the same way, for the signs it hung.
  */
 export class PrefabDressing implements Dressing {
   readonly #library: Library
@@ -58,43 +70,65 @@ export class PrefabDressing implements Dressing {
   }
 
   building(plot: Plot, size: BuildingSize, charter: ResolvedCharter): THREE.Object3D {
-    const design = designFor(this.#library.catalogue, plot, size, charter.suits)
-    const geometry = design ? this.#library.geometry(design.model) : undefined
-    if (!design || !geometry) return this.#rest.building(plot, size, charter)
+    const drawn = this.#drawn(plot, size, charter)
+    if (!drawn) return this.#rest.building(plot, size, charter)
 
     const building = new THREE.Group()
     building.name = plot.id
-    building.add(this.#walls(plot, design, geometry, this.#library.material))
-    const panes = this.#library.panes(design.model)
+    building.add(this.#walls(plot, drawn.model, drawn.turned, this.#library.material))
+    const panes = this.#library.panes(drawn.model)
     if (panes) {
-      const glass = new THREE.Mesh(orient(panes, turnsFor(plot.entrance.facing), design.mirror, design.rooms), this.#library.glass)
-      glass.name = `${plot.id}:${design.model}:glass`
+      const glass = new THREE.Mesh(orient(panes, turnsFor(plot.entrance.facing), drawn.mirror, drawn.rooms), this.#library.glass)
+      glass.name = `${plot.id}:${drawn.model}:glass`
       building.add(glass)
     }
     const signs = signsOn(this.#rest.building(plot, size, charter))
-    if (signs.length) this.#signed.add(plot.id)
+    if (signs.length) {
+      this.#signed.add(plot.id)
+      const fixtures = Fixtures.on(drawn.face, signsFor(plot, size, charter))
+      for (const sign of signs) fixtures.seat(sign)
+    }
     for (const sign of signs) building.add(sign)
     return building
   }
 
   /** The same building from far off: its walls on the shell material, and nothing else. */
   shell(plot: Plot, size: BuildingSize, charter: ResolvedCharter): THREE.Object3D {
-    const design = designFor(this.#library.catalogue, plot, size, charter.suits)
-    const geometry = design ? this.#library.geometry(design.model) : undefined
-    if (!design || !geometry) return this.#rest.shell ? this.#rest.shell(plot, size, charter) : this.#rest.building(plot, size, charter)
+    const drawn = this.#drawn(plot, size, charter)
+    if (!drawn) return this.#rest.shell ? this.#rest.shell(plot, size, charter) : this.#rest.building(plot, size, charter)
 
     const building = new THREE.Group()
     building.name = plot.id
-    building.add(this.#walls(plot, design, geometry, this.#library.shell))
+    building.add(this.#walls(plot, drawn.model, drawn.turned, this.#library.shell))
     return building
   }
 
-  /** The walls turned onto the plot, wearing the entrance the world says, on whichever material asked. */
-  #walls(plot: Plot, design: Design, geometry: THREE.BufferGeometry, material: THREE.Material): THREE.Mesh {
+  /**
+   * The street face this plot is actually drawn with: where the pack put its
+   * entrance and the band over it, in the building's own frame. Nothing when
+   * the catalogue has no shape for the plot, which is when the dressing behind
+   * answers for it and its own arithmetic is the truth.
+   */
+  face(plot: Plot, size: BuildingSize, charter: ResolvedCharter): StreetFace | undefined {
+    return this.#drawn(plot, size, charter)?.face
+  }
+
+  /** The model this plot is drawn with, turned onto its plot and read. */
+  #drawn(plot: Plot, size: BuildingSize, charter: ResolvedCharter): Drawn | undefined {
+    const design = designFor(this.#library.catalogue, plot, size, charter.suits)
+    const geometry = design ? this.#library.geometry(design.model) : undefined
+    const spec = design ? this.#library.catalogue.model(design.model) : undefined
+    if (!design || !geometry || !spec) return undefined
     const turned = orient(geometry, turnsFor(plot.entrance.facing), design.mirror, design.rooms)
+    const face = StreetFace.of(turned, plot.entrance.facing, spec.depth / 2, this.#library.catalogue.atlas.finishes)
+    return { ...design, turned, face }
+  }
+
+  /** The walls turned onto the plot, wearing the entrance the world says, on whichever material asked. */
+  #walls(plot: Plot, model: string, turned: THREE.BufferGeometry, material: THREE.Material): THREE.Mesh {
     if (plot.interiorId !== undefined) this.#entrances.open(turned)
     const mesh = new THREE.Mesh(turned, material)
-    mesh.name = `${plot.id}:${design.model}`
+    mesh.name = `${plot.id}:${model}`
     mesh.castShadow = true
     mesh.receiveShadow = true
     return mesh
@@ -108,10 +142,11 @@ export class PrefabDressing implements Dressing {
    * dressing behind has nothing of its own here.
    */
   lights(plot: Plot, size: BuildingSize, charter: ResolvedCharter): LightEmitter[] {
-    const design = designFor(this.#library.catalogue, plot, size, charter.suits)
-    const geometry = design ? this.#library.geometry(design.model) : undefined
-    const own = design && geometry ? this.#lights.of(orient(geometry, turnsFor(plot.entrance.facing), design.mirror), plot.entrance.facing, plot.interiorId !== undefined, design.rooms) : []
-    return this.#signed.has(plot.id) ? [...own, ...lightsFor(plot, size, charter)] : own
+    const drawn = this.#drawn(plot, size, charter)
+    const own = drawn ? this.#lights.of(drawn.turned, plot.entrance.facing, plot.interiorId !== undefined, drawn.rooms) : []
+    if (!this.#signed.has(plot.id)) return own
+    const hung = lightsFor(plot, size, charter)
+    return [...own, ...(drawn ? Fixtures.on(drawn.face, signsFor(plot, size, charter)).lit(hung) : hung)]
   }
 
   prop(prop: FurnitureProp): THREE.Object3D {
