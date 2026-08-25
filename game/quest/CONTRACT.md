@@ -1,6 +1,6 @@
 # @gb/quest contract
 
-contractVersion: 0.8.0
+contractVersion: 0.8.1
 
 ## Purpose
 
@@ -167,6 +167,8 @@ Only a key the step published moves it. A `chose` naming anything else changes n
 Conditions: `has-item`, `flag`, `money-at-least`, `reputation-at-least`, `reputation-below`, `has-companion`. They gate a step, and on the quest itself they gate whether it is offered at all.
 
 Effects: `give-item`, `take-item`, `pay`, `charge`, `reputation`, `set-flag`, `companion-join`, `companion-leave`, `reveal`.
+
+Every effect lands on the `@gb/play` `PlayerState` the log was created with, and that is the whole port to the player: `give-item` is `take(itemId)`, `take-item` is `drop(itemId)`, `pay` (the quest paying the player) is `earn(amount)`, `charge` (the player paying) is `pay(amount)`, `reputation` is `adjustReputation(delta, faction)`, `set-flag` is `setFlag(flag, value)`, `companion-join` and `companion-leave` are `addCompanion` and `removeCompanion`. `reveal` touches the player not at all; it is the log's own. The completion reward goes the same way: `earn(money)`, `adjustReputation`, one `take` per item.
 
 ## Failing (closed set)
 

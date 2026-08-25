@@ -40,7 +40,7 @@ export function applyEffects(player: PlayerState, effects: readonly Effect[]): v
         player.earn(effect.amount)
         break
       case 'charge':
-        player.spend(effect.amount)
+        player.pay(effect.amount)
         break
       case 'reputation':
         player.adjustReputation(effect.delta, effect.faction)
