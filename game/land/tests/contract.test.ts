@@ -1,5 +1,5 @@
 import { Forge, OfflineNarrator } from '@gb/forge'
-import { World, type CellKind } from '@gb/world'
+import { METRICS, World, type CellKind } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { buildLand, matchTheme, SHADOW_LAYER, THEMES, type Land } from '../src/index.ts'
@@ -78,12 +78,19 @@ function shape(land: Land): string {
 }
 
 describe('the open ground', () => {
-  it('runs a kilometre in every direction before anything rises', async () => {
+  it('rises from the edge of the map and stays low ground for a kilometre', async () => {
     const world = await town()
     const land = landOf(world)
+    const middle = middleOf(world)
+    const { bank, bankRun } = land.theme.relief
 
-    // level where the town is, and still low ground a kilometre out
-    expect(land.heightAt(middleOf(world).x, middleOf(world).z)).toBe(0)
+    // level where the town is, a bank up from its edge, and still low ground a kilometre out
+    expect(land.heightAt(middle.x, middle.z)).toBe(0)
+    const banked = around(world, middle.x + bankRun, 24)
+      .filter((spot) => land.slopeAt(spot.x, spot.z) < 0.35)
+      .map((spot) => land.heightAt(spot.x, spot.z))
+    expect(banked.length).toBeGreaterThan(12)
+    expect(banked.reduce((sum, height) => sum + height, 0) / banked.length).toBeGreaterThan(bank * 0.5)
     for (const spot of around(world, 1000)) {
       expect(Math.abs(land.heightAt(spot.x, spot.z))).toBeLessThan(110)
     }
@@ -149,11 +156,12 @@ describe('terrain', () => {
     expect(covered.size).toBe(world.grid.count('mountain'))
   })
 
-  it('meets the city at exactly zero, so the pavement kerb has something to close against', async () => {
+  it('meets the pavement at its top and the road at its surface, so nothing shows under either', async () => {
     const world = await town()
     const land = landOf(world)
     const position = land.terrain.geometry.getAttribute('position')
     const cell = world.cellSize
+    const curb = METRICS.street.curbHeight
 
     // the cells sharing one corner of the lattice: a verge corner the town touches is a seam
     const kindsAt = (x: number, z: number): Set<CellKind> => {
@@ -167,16 +175,44 @@ describe('terrain', () => {
       return kinds
     }
 
-    const seams: number[] = []
+    const pavement: number[] = []
+    const road: number[] = []
     for (let vertex = 0; vertex < position.count; vertex++) {
       const kinds = kindsAt(position.getX(vertex), position.getZ(vertex))
       if (!kinds.has('mountain')) continue
-      if (kinds.has('sidewalk') || kinds.has('park')) seams.push(position.getY(vertex))
+      if (kinds.has('sidewalk') || kinds.has('park')) pavement.push(position.getY(vertex))
+      else if (kinds.has('street')) road.push(position.getY(vertex))
     }
 
-    // the town really does hand this land a verge to close
-    expect(seams.length).toBeGreaterThan(60)
-    expect(seams.filter((height) => height !== 0)).toEqual([])
+    // the town really does hand this land a verge to close, and a road to leave by
+    expect(pavement.length).toBeGreaterThan(60)
+    expect(road.length).toBeGreaterThan(8)
+    for (const height of pavement) expect(height).toBeCloseTo(curb, 6)
+    for (const height of road) expect(height).toBe(0)
+
+    // and the verge climbs away from the kerb line rather than dipping under it
+    let dips = 0
+    let steepest = 0
+    for (let y = 0; y < world.grid.height; y++) {
+      for (let x = 0; x < world.grid.width; x++) {
+        if (world.grid.at(x, y) !== 'mountain') continue
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+          const kind = world.grid.at(x + dx, y + dy)
+          if (kind !== 'sidewalk' && kind !== 'park') continue
+          // three points just inside the verge, along the shared edge
+          const ex = dx === 1 ? (x + 1) * cell - 1e-6 : dx === -1 ? x * cell + 1e-6 : 0
+          const ez = dy === 1 ? (y + 1) * cell - 1e-6 : dy === -1 ? y * cell + 1e-6 : 0
+          for (const t of [0.05, 0.5, 0.95]) {
+            const px = dx === 0 ? (x + t) * cell : ex
+            const pz = dy === 0 ? (y + t) * cell : ez
+            if (land.heightAt(px, pz) < curb - 1e-4) dips++
+            steepest = Math.max(steepest, land.slopeAt(px, pz))
+          }
+        }
+      }
+    }
+    expect(dips).toBe(0)
+    expect(steepest).toBeLessThan(0.35)
   })
 
   it('is one welded mesh, wound to be seen from above', async () => {
@@ -598,6 +634,7 @@ describe('time of day', () => {
     land.setTime(12)
     expect(land.sun.position.y).toBeGreaterThan(0)
     expect(land.sun.intensity).toBeGreaterThan(land.theme.light.sunIntensity * 0.9)
+    expect(land.light.sunStrength).toBeCloseTo(1, 6)
     expect(land.moon.intensity).toBe(0)
 
     land.setTime(0)
@@ -606,10 +643,61 @@ describe('time of day', () => {
     expect(land.moon.position.y).toBeGreaterThan(0)
     expect(land.moon.intensity).toBeGreaterThan(0)
 
-    // and it comes back round: 06:00 is the sun on the horizon, east of town
-    land.setTime(6)
-    expect(land.sun.position.y).toBeCloseTo(0, 6)
+    // and it comes back round: sunrise is the sun on the horizon, east of town
+    land.setTime(land.light.sunrise)
+    expect(land.light.sunElevation).toBeCloseTo(0, 6)
+    expect(land.light.sunward.x).toBeGreaterThan(0)
     expect(land.sun.position.x).toBeGreaterThan(land.moon.position.x)
+  })
+
+  it('keeps the day short and low, warm in the morning and cold by evening', async () => {
+    const world = await town()
+    for (const theme of THEMES) {
+      const land = landOf(world, { theme: theme.id })
+      const light = land.light
+      // a winter day: under eleven hours of sun, and at 06:00 and 18:00 it is night
+      expect(light.sunset - light.sunrise).toBeLessThan(11)
+      expect(light.sunset - light.sunrise).toBeGreaterThan(7)
+      expect(light.noonElevation).toBeLessThan(50)
+      for (const hour of [0, 6, 18]) {
+        land.setTime(hour)
+        expect(light.sunElevation).toBeLessThan(-5)
+        expect(land.sun.intensity).toBe(0)
+        expect(light.day).toBeLessThan(0.05)
+      }
+
+      // the same height of sun is amber before noon and cooler after it
+      const morning = light.sunrise + (12 - light.sunrise) * 0.25
+      land.setTime(morning)
+      const amber = land.sun.color.clone()
+      const upAt = light.sunElevation
+      land.setTime(24 - morning)
+      expect(light.sunElevation).toBeCloseTo(upAt, 6)
+      const cool = land.sun.color.clone()
+      expect(cool.b / cool.r).toBeGreaterThan(amber.b / amber.r)
+      expect(light.dusk).toBeGreaterThan(0.5)
+    }
+  })
+
+  it('publishes what a caller needs to carry a prefiltered sky between filters', async () => {
+    const land = landOf(await town())
+    const light = land.light
+
+    land.setTime(12)
+    const noon = light.skyBrightness
+    const noonYaw = light.sunYaw
+    expect(noon).toBeGreaterThan(1)
+    land.setTime(0)
+    // the night sky is the galaxy and the city's glow, not black
+    expect(light.skyBrightness).toBeGreaterThan(0.005)
+    expect(noon / light.skyBrightness).toBeGreaterThan(30)
+
+    // the sun turns about the vertical: an hour later it has swung west by about fifteen degrees
+    land.setTime(13)
+    const swung = THREE.MathUtils.radToDeg(light.sunYaw - noonYaw)
+    expect(Math.abs(swung)).toBeGreaterThan(10)
+    expect(Math.abs(swung)).toBeLessThan(20)
+    expect(light.sunYaw).toBeCloseTo(Math.atan2(light.sunward.x, light.sunward.z), 9)
   })
 
   it('runs off the end of the clock and wraps', async () => {
@@ -674,10 +762,10 @@ describe('time of day', () => {
     const disc = land.root.getObjectByName('land:moon-disc')!
     const moonDisc = new THREE.Vector3()
 
-    // the playthrough's default rate is 240 game seconds a real second, so an
-    // hour passes in fifteen; at 60 frames a second that is this much of an
-    // hour a frame. Anything the sky steps by between two of these is a snap
-    // somebody watching a sunset will see.
+    // a clock ten times faster than the playthrough's 24 game seconds a real
+    // second would pass an hour in fifteen; at 60 frames a second that is this
+    // much of an hour a frame. Anything the sky steps by between two of these
+    // is a snap somebody watching a sunset will see.
     const FRAME = 1 / 900
     const reading = (hours: number) => {
       land.setTime(hours)
@@ -693,11 +781,13 @@ describe('time of day', () => {
         // the painted galaxy and the city's glow fade on this same number, so
         // holding it steady holds them
         night: (land.stars.material as THREE.PointsMaterial).opacity,
+        brightness: land.light.skyBrightness,
+        shadow: land.sun.shadow.intensity,
       }
     }
 
     let previous = reading(0)
-    const worst = { sun: 0, moon: 0, disc: 0, sunLight: 0, moonLight: 0, ambient: 0, haze: 0, density: 0, night: 0 }
+    const worst = { sun: 0, moon: 0, disc: 0, sunLight: 0, moonLight: 0, ambient: 0, haze: 0, density: 0, night: 0, brightness: 0, shadow: 0 }
     for (let hours = FRAME; hours <= 24; hours += FRAME) {
       const now = reading(hours)
       worst.sun = Math.max(worst.sun, THREE.MathUtils.radToDeg(previous.sun.angleTo(now.sun)))
@@ -708,6 +798,8 @@ describe('time of day', () => {
       worst.ambient = Math.max(worst.ambient, Math.abs(now.ambient - previous.ambient))
       worst.density = Math.max(worst.density, Math.abs(now.density - previous.density))
       worst.night = Math.max(worst.night, Math.abs(now.night - previous.night))
+      worst.brightness = Math.max(worst.brightness, Math.abs(now.brightness - previous.brightness))
+      worst.shadow = Math.max(worst.shadow, Math.abs(now.shadow - previous.shadow))
       for (const channel of ['r', 'g', 'b'] as const) {
         worst.haze = Math.max(worst.haze, Math.abs(now.haze[channel] - previous.haze[channel]))
       }
@@ -725,6 +817,8 @@ describe('time of day', () => {
     expect(worst.haze).toBeLessThan(0.005)
     expect(worst.density).toBeLessThan(1e-6)
     expect(worst.night).toBeLessThan(0.005)
+    expect(worst.brightness).toBeLessThan(0.01)
+    expect(worst.shadow).toBeLessThan(0.02)
   })
 })
 
@@ -901,15 +995,16 @@ describe('the sun casts a shadow', () => {
       return land.sun.shadow.intensity
     }
 
+    const sunset = land.light.sunset
     expect(strength(12)).toBe(1)
     let last = 1
-    for (const hour of [15, 16, 17, 17.4, 17.7, 18]) {
+    for (const hour of [14, 15, sunset - 1, sunset - 0.5, sunset - 0.2, sunset]) {
       const now = strength(hour)
       expect(now).toBeLessThanOrEqual(last)
       last = now
     }
     // gone at the horizon, while the sun itself is still lighting the place
-    expect(strength(18)).toBe(0)
+    expect(strength(sunset)).toBe(0)
     expect(land.sun.intensity).toBeGreaterThan(0)
     expect(strength(0)).toBe(0)
   })

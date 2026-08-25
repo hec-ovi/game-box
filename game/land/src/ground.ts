@@ -1,19 +1,19 @@
 import type { World } from '@gb/world'
+import { Apron } from './apron.ts'
 import type { HeightField } from './height.ts'
 
-/** One step of resolution: how big its quads are and how far out it reaches. */
+/** One step of resolution: how big its quads are, in cells, and how far out it reaches, in metres. */
 export interface TierSpec {
-  readonly step: number
+  readonly cells: number
   readonly reach: number
 }
 
 interface Tier {
-  readonly step: number
   readonly xs: Float64Array
   readonly zs: Float64Array
   readonly heights: Float32Array
-  /** Index range of the rectangle this tier leaves to the finer one inside it. */
-  readonly hole: { i0: number; i1: number; j0: number; j1: number }
+  /** Whether the quad at these lattice indices is drawn by this tier. */
+  readonly covers: (i: number, j: number) => boolean
 }
 
 export interface Quad {
@@ -30,11 +30,13 @@ export interface Quad {
 /**
  * The ground the player walks on, as squares that get bigger with distance.
  *
- * Near the town the lattice is fine enough to walk on; further out each step is
- * four times the last, so a landscape kilometres across costs a fraction of
- * what one resolution everywhere would. Heights are computed once and kept, and
- * `heightAt` reads back the very surface the mesh is built from, so a foot
- * placed on the answer stands exactly on the triangle you can see.
+ * Nearest the city the lattice is the grid's own cells: the verge and a
+ * shoulder just outside the map. Then the open ground at three cells a quad,
+ * and further out each step is four times the last, so a landscape kilometres
+ * across costs a fraction of what one resolution everywhere would. Heights are
+ * computed once and kept, and `heightAt` reads back the very surface the mesh
+ * is built from, so a foot placed on the answer stands exactly on the triangle
+ * you can see.
  */
 export class Ground {
   readonly #tiers: readonly Tier[]
@@ -48,43 +50,60 @@ export class Ground {
   }
 
   /**
-   * Lay every tier out on lattices anchored at the world origin, so a coarse
-   * line is always a fine line too and the tiers can be cut out of each other
-   * exactly. The finest tier alone is nudged to land on the edge of the map.
+   * Lay every tier out on lattices anchored at the world origin and stepped in
+   * whole cells, so a coarse line is always a fine line too and the tiers can
+   * be cut out of each other exactly. The finest open-ground lattice is nudged
+   * to land on the far edge of the map, and the apron runs from the map out to
+   * the first of its lines on every side.
    */
   static build(world: World, field: HeightField, specs: readonly TierSpec[]): Ground {
-    const townX = world.grid.width * world.cellSize
-    const townZ = world.grid.height * world.cellSize
+    const cell = world.cellSize
+    const townX = world.grid.width * cell
+    const townZ = world.grid.height * cell
     const tiers: Tier[] = []
 
     for (let level = 0; level < specs.length; level++) {
-      const { step, reach } = specs[level]!
-      const unit = specs[level + 1]?.step ?? step
+      const step = specs[level]!.cells * cell
+      const unit = (specs[level + 1]?.cells ?? specs[level]!.cells) * cell
+      const reach = specs[level]!.reach
       const xs = axis(step, -roundUp(reach, unit), roundUp(townX + reach, unit))
       const zs = axis(step, -roundUp(reach, unit), roundUp(townZ + reach, unit))
 
-      let hole: Tier['hole']
+      let inner: { x0: number; x1: number; z0: number; z1: number }
       if (level === 0) {
-        // the finest lattice has to leave the built area alone to the metre, so
+        // the open ground has to leave the built area alone to the metre, so
         // its line nearest the far edge of the map is moved onto it
         snapTo(xs, townX)
         snapTo(zs, townZ)
-        hole = { i0: indexOf(xs, 0), i1: indexOf(xs, townX), j0: indexOf(zs, 0), j1: indexOf(zs, townZ) }
+        // and the apron takes the map plus one line of shoulder on every side
+        inner = {
+          x0: xs[indexOf(xs, 0) - 1]!,
+          x1: xs[indexOf(xs, townX) + 1]!,
+          z0: zs[indexOf(zs, 0) - 1]!,
+          z1: zs[indexOf(zs, townZ) + 1]!,
+        }
+        tiers.push(apronTier(world, field, inner))
       } else {
-        const inner = tiers[level - 1]!
-        hole = {
-          i0: indexOf(xs, inner.xs[0]!),
-          i1: indexOf(xs, inner.xs[inner.xs.length - 1]!),
-          j0: indexOf(zs, inner.zs[0]!),
-          j1: indexOf(zs, inner.zs[inner.zs.length - 1]!),
+        const previous = tiers[level]!
+        inner = {
+          x0: previous.xs[0]!,
+          x1: previous.xs[previous.xs.length - 1]!,
+          z0: previous.zs[0]!,
+          z1: previous.zs[previous.zs.length - 1]!,
         }
       }
 
+      const hole = { i0: indexOf(xs, inner.x0), i1: indexOf(xs, inner.x1), j0: indexOf(zs, inner.z0), j1: indexOf(zs, inner.z1) }
       const heights = new Float32Array(xs.length * zs.length)
       for (let j = 0; j < zs.length; j++) {
         for (let i = 0; i < xs.length; i++) heights[j * xs.length + i] = field.at(xs[i]!, zs[j]!)
       }
-      tiers.push({ step, xs, zs, heights, hole })
+      tiers.push({
+        xs,
+        zs,
+        heights,
+        covers: (i, j) => !(i >= hole.i0 && i < hole.i1 && j >= hole.j0 && j < hole.j1),
+      })
     }
 
     for (let level = 0; level < tiers.length - 1; level++) weld(tiers[level]!, tiers[level + 1]!)
@@ -94,7 +113,7 @@ export class Ground {
   /** Height of the rendered surface, in metres. Zero over the built area. */
   heightAt(x: number, z: number): number {
     const found = this.#cell(x, z)
-    if (!found) return this.#field.at(x, z)
+    if (!found) return this.#inTown(x, z) ? 0 : this.#field.at(x, z)
     const { tier, i, j } = found
     const x0 = tier.xs[i]!
     const z0 = tier.zs[j]!
@@ -138,9 +157,8 @@ export class Ground {
     for (const tier of this.#tiers) {
       const row = tier.xs.length
       for (let j = 0; j < tier.zs.length - 1; j++) {
-        const inRowsOfHole = j >= tier.hole.j0 && j < tier.hole.j1
         for (let i = 0; i < tier.xs.length - 1; i++) {
-          if (inRowsOfHole && i >= tier.hole.i0 && i < tier.hole.i1) continue
+          if (!tier.covers(i, j)) continue
           yield {
             x0: tier.xs[i]!,
             z0: tier.zs[j]!,
@@ -162,9 +180,8 @@ export class Ground {
     return outer.xs[outer.xs.length - 1]! - this.#town.x1 / 2
   }
 
-  /** Height along one line of the finest tier, for the verge to weld itself to. */
-  seamAt(x: number, z: number): number {
-    return chord(this.#tiers[0]!, x, z)
+  #inTown(x: number, z: number): boolean {
+    return x >= 0 && z >= 0 && x <= this.#town.x1 && z <= this.#town.z1
   }
 
   #cell(x: number, z: number): { tier: Tier; i: number; j: number } | undefined {
@@ -173,11 +190,31 @@ export class Ground {
       if (z < tier.zs[0]! || z > tier.zs[tier.zs.length - 1]!) continue
       const i = cellOf(tier.xs, x)
       const j = cellOf(tier.zs, z)
-      if (i >= tier.hole.i0 && i < tier.hole.i1 && j >= tier.hole.j0 && j < tier.hole.j1) continue
+      if (!tier.covers(i, j)) continue
       return { tier, i, j }
     }
     return undefined
   }
+}
+
+/** The lattice of the grid's own cells over the map and its shoulder, with the apron's heights on it. */
+function apronTier(world: World, field: HeightField, rect: { x0: number; x1: number; z0: number; z1: number }): Tier {
+  const cell = world.cellSize
+  const xs = axis(cell, rect.x0, rect.x1)
+  const zs = axis(cell, rect.z0, rect.z1)
+  const gx0 = Math.round(rect.x0 / cell)
+  const gz0 = Math.round(rect.z0 / cell)
+
+  const corners = function* (): Generator<{ gx: number; gz: number }> {
+    for (let j = 0; j < zs.length; j++) for (let i = 0; i < xs.length; i++) yield { gx: gx0 + i, gz: gz0 + j }
+  }
+  const apron = new Apron(world, field, corners())
+
+  const heights = new Float32Array(xs.length * zs.length)
+  for (const corner of corners()) {
+    heights[(corner.gz - gz0) * xs.length + (corner.gx - gx0)] = apron.at(corner)
+  }
+  return { xs, zs, heights, covers: (i, j) => apron.covers(gx0 + i, gz0 + j) }
 }
 
 /**

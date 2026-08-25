@@ -1,7 +1,6 @@
-import type { World } from '@gb/world'
 import * as THREE from 'three'
 import type { Ground } from './ground.ts'
-import { clamp01, smoothstep01, type HeightField } from './height.ts'
+import { clamp01, smoothstep01 } from './height.ts'
 import type { Noise } from './noise.ts'
 import type { LandTheme } from './theme.ts'
 
@@ -12,22 +11,13 @@ export interface TerrainBuild {
 }
 
 /**
- * The land, as one mesh.
- *
- * Two pieces welded into the same vertices: the verge, one quad per cell the
- * grid marks as the edge of the built area, and the ground, squares that get
- * bigger the further out they are. The town's own cells are left out entirely,
- * so nothing here is ever laid over a street or a plot.
+ * The land, as one mesh: every quad of every tier of the ground, welded into
+ * the same vertices, from the verge at the kerb line out to the horizon. The
+ * town's own cells are never among them, so nothing here is ever laid over a
+ * street or a plot.
  */
-export function buildTerrain(
-  world: World,
-  ground: Ground,
-  height: HeightField,
-  theme: LandTheme,
-  noise: Noise,
-): TerrainBuild {
+export function buildTerrain(ground: Ground, theme: LandTheme, noise: Noise): TerrainBuild {
   const mesher = new Mesher()
-  verge(mesher, world, ground, height)
   for (const quad of ground.quads()) {
     mesher.quad(
       [quad.x0, quad.z0, quad.h00],
@@ -51,32 +41,6 @@ export function buildTerrain(
   mesh.name = 'land:terrain'
   mesh.receiveShadow = true
   return { mesh, triangles: mesher.indices.length / 3, vertices: mesher.positions.length / 3 }
-}
-
-/**
- * One quad per cell the grid marks `mountain`. Those cells are no longer where
- * the mountains are: they are the strip between the last pavement and the open
- * ground, so this is flat and it exists to close the gap the city leaves.
- */
-function verge(mesher: Mesher, world: World, ground: Ground, height: HeightField): void {
-  const cell = world.cellSize
-  const edgeX = world.grid.width * cell
-  const edgeZ = world.grid.height * cell
-  // on the edge of the map the verge takes the ground's own line, so the two
-  // cannot part company between the ground's much wider vertices
-  const at = (x: number, z: number): number =>
-    x === 0 || z === 0 || x === edgeX || z === edgeZ ? ground.seamAt(x, z) : height.at(x, z)
-
-  for (let y = 0; y < world.grid.height; y++) {
-    for (let x = 0; x < world.grid.width; x++) {
-      if (world.grid.at(x, y) !== 'mountain') continue
-      const x0 = x * cell
-      const z0 = y * cell
-      const x1 = x0 + cell
-      const z1 = z0 + cell
-      mesher.quad([x0, z0, at(x0, z0)], [x1, z0, at(x1, z0)], [x1, z1, at(x1, z1)], [x0, z1, at(x0, z1)])
-    }
-  }
 }
 
 /** Builds one welded vertex list, so the pieces cannot crack apart. */

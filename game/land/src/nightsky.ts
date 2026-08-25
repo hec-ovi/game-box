@@ -115,6 +115,28 @@ export function paintNightSky(pole: THREE.Vector3, rng: Rng): THREE.DataTexture 
   return texture
 }
 
+/**
+ * How much of the sheet's light and glow the upper half of the sky carries on
+ * average, each 0 to 1 at the painted strength: what the sheet adds to the
+ * dome's mean brightness once the dome's own fades are applied.
+ */
+export function nightSkyMeans(texture: THREE.DataTexture): { light: number; glow: number } {
+  const data = texture.image.data as Uint8Array
+  let light = 0
+  let glow = 0
+  let weight = 0
+  for (let row = 0; row < HEIGHT / 2; row++) {
+    const ring = Math.sin(((row + 0.5) / HEIGHT) * Math.PI)
+    for (let col = 0; col < WIDTH; col++) {
+      const at = (row * WIDTH + col) * 4
+      light += (ring * (0.2126 * data[at]! + 0.7152 * data[at + 1]! + 0.0722 * data[at + 2]!)) / 255
+      glow += (ring * data[at + 3]!) / 255
+      weight += ring
+    }
+  }
+  return { light: light / weight, glow: glow / weight }
+}
+
 /** Where the galaxy's plane stands: the axis it is drawn at right angles to. The stars read it too. */
 export function galacticPole(rng: Rng): THREE.Vector3 {
   // kept off vertical, so the band crosses the sky at an angle rather than

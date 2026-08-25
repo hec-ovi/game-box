@@ -1,6 +1,7 @@
 import { err, ok, Rng, type Result } from '@gb/kit'
 import type { World } from '@gb/world'
 import * as THREE from 'three'
+import type { Daylight } from './daylight.ts'
 import { OpenField } from './field.ts'
 import { Ground, type TierSpec } from './ground.ts'
 import { HeightField, type Basin } from './height.ts'
@@ -39,15 +40,15 @@ function skyReach(theme: LandTheme): number {
 
 /**
  * How fine the ground is, and how far each step of it reaches past the map.
- * Six metre quads for the half kilometre you are most likely to walk, then
+ * Three cell quads for the half kilometre you are most likely to walk, then
  * four times coarser twice over, which is what makes kilometres affordable.
  */
-function tiers(theme: LandTheme, horizon: number, coarse: boolean): TierSpec[] {
+function tiers(horizon: number, coarse: boolean): TierSpec[] {
   const scale = coarse ? 2 : 1
   return [
-    { step: 6 * scale, reach: 460 },
-    { step: 24 * scale, reach: 1800 },
-    { step: 96 * scale, reach: horizon },
+    { cells: 3 * scale, reach: 460 },
+    { cells: 12 * scale, reach: 1800 },
+    { cells: 48 * scale, reach: horizon },
   ]
 }
 
@@ -166,6 +167,15 @@ export class Land {
   }
 
   /**
+   * The hour's light as numbers: where the sun is, how far into twilight the
+   * sky is, how bright the dome is. Read it every frame; it is the state the
+   * lights were last written from.
+   */
+  get light(): Daylight {
+    return this.#air.light
+  }
+
+  /**
    * The sun's shadow map: how much ground around the player it covers, how fine
    * it is, and where it fades out as the sun goes down. It follows the viewer
    * `update` is given, so nothing outside has to drive it.
@@ -257,24 +267,20 @@ export function buildLand(world: World, options: LandOptions = {}): Result<Land,
   const horizon = options.horizon ?? HeightField.reach(theme) + 1400
   const rng = new Rng(options.seed ?? world.seed)
 
-  const field = OpenField.of(world, {
-    margin: FIELD_MARGIN,
-    step: world.cellSize * 2,
-    passLength: PASS,
-  })
+  const field = OpenField.of(world, { margin: FIELD_MARGIN, passLength: PASS })
   if (!field.hasOpenGround()) {
     return err({ code: 'no-valley', message: 'every cell of the grid is mountain: there is no town to build land around' })
   }
 
   const relief = new Noise(rng.fork('relief').int(0, 0x7fffffff))
   const scatter = new Noise(rng.fork('scatter').int(0, 0x7fffffff))
-  const height = new HeightField(field, theme, relief, world.cellSize)
+  const height = new HeightField(field, theme, relief)
 
   const centre = { x: (world.grid.width * world.cellSize) / 2, z: (world.grid.height * world.cellSize) / 2 }
   const basins = carveBasins(height, theme, centre, rng.fork('water'))
 
-  const ground = Ground.build(world, height, tiers(theme, horizon, low))
-  const terrain = buildTerrain(world, ground, height, theme, relief)
+  const ground = Ground.build(world, height, tiers(horizon, low))
+  const terrain = buildTerrain(ground, theme, relief)
   const water = buildWater(ground, basins, theme)
   const trees = buildTrees(world, ground, height, water.basins, theme, scatter, rng.fork('trees'), Math.round(theme.trees.max * (low ? 0.4 : 1)))
 

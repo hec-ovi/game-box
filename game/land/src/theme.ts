@@ -9,8 +9,13 @@ export interface LandTheme {
   readonly matches: readonly string[]
 
   readonly sky: {
-    /** Degrees the sun stands above the horizon at midday: how far south this place is. */
-    readonly noonElevation: number
+    /**
+     * Degrees of latitude, and the sun's declination on the day the city lives
+     * in. Together they set how long the day is and how high the sun gets: a
+     * winter declination makes it short and low at once.
+     */
+    readonly latitude: number
+    readonly declination: number
     /** Preetham parameters: haze, blue depth, and the size and shape of the glow around the sun. */
     readonly turbidity: number
     readonly rayleigh: number
@@ -30,9 +35,14 @@ export interface LandTheme {
   }
 
   readonly light: {
-    /** Sun colour high in the sky and down at the horizon, and its strength at midday. */
+    /**
+     * Sun colour high in the sky, down at the horizon in the morning and down
+     * at the horizon in the evening, and its strength at midday: the day runs
+     * from warm to cold.
+     */
     readonly sun: number
     readonly lowSun: number
+    readonly duskSun: number
     readonly sunIntensity: number
     /** Moon colour and its strength at its highest. */
     readonly moon: number
@@ -53,6 +63,9 @@ export interface LandTheme {
 
   /** Metres. The shape of the land, measured outward from the edge of the built area. */
   readonly relief: {
+    /** The bank the ground rises by from the town's very edge, and how far out it takes to do it. */
+    readonly bank: number
+    readonly bankRun: number
     /** The open ground the town stands on, and the little it lifts across all of it. */
     readonly open: number
     readonly openLift: number
@@ -123,7 +136,8 @@ const TEMPERATE: LandTheme = {
   id: 'temperate',
   matches: ['valley', 'meadow', 'forest', 'wood', 'alpine', 'green', 'farm', 'spring', 'quiet', 'market', 'hill'],
   sky: {
-    noonElevation: 52,
+    latitude: 48,
+    declination: -18,
     turbidity: 4,
     rayleigh: 1.6,
     mie: 0.005,
@@ -140,6 +154,7 @@ const TEMPERATE: LandTheme = {
   light: {
     sun: 0xfff1d8,
     lowSun: 0xff9d5e,
+    duskSun: 0xd9a2b8,
     sunIntensity: 3.1,
     moon: 0xa9c0dc,
     moonIntensity: 0.34,
@@ -154,6 +169,8 @@ const TEMPERATE: LandTheme = {
     density: 0.00032,
   },
   relief: {
+    bank: 5,
+    bankRun: 40,
     open: 1500,
     openLift: 30,
     climb: 1400,
@@ -205,7 +222,8 @@ const ARID: LandTheme = {
     'arid', 'dry', 'frontier', 'mesa', 'prairie', 'gold', 'sand', 'sun-baked',
   ],
   sky: {
-    noonElevation: 72,
+    latitude: 33,
+    declination: -12,
     turbidity: 8,
     rayleigh: 0.7,
     mie: 0.012,
@@ -222,6 +240,7 @@ const ARID: LandTheme = {
   light: {
     sun: 0xffe9bd,
     lowSun: 0xff8a45,
+    duskSun: 0xe0a08c,
     sunIntensity: 3.8,
     moon: 0xb6c3d4,
     moonIntensity: 0.3,
@@ -236,6 +255,8 @@ const ARID: LandTheme = {
     density: 0.00022,
   },
   relief: {
+    bank: 4,
+    bankRun: 50,
     open: 1900,
     openLift: 26,
     climb: 1500,
@@ -287,7 +308,8 @@ const MARITIME: LandTheme = {
     'fishing', 'fog', 'foggy', 'wet', 'storm', 'dock', 'monsoon', 'island', 'soaked',
   ],
   sky: {
-    noonElevation: 38,
+    latitude: 55,
+    declination: -17,
     turbidity: 14,
     rayleigh: 3,
     mie: 0.02,
@@ -304,6 +326,7 @@ const MARITIME: LandTheme = {
   light: {
     sun: 0xcfd8e0,
     lowSun: 0xe8a074,
+    duskSun: 0xb7b4c8,
     sunIntensity: 1.5,
     moon: 0x9fb4cc,
     moonIntensity: 0.36,
@@ -318,6 +341,8 @@ const MARITIME: LandTheme = {
     density: 0.00055,
   },
   relief: {
+    bank: 6,
+    bankRun: 36,
     open: 1200,
     openLift: 34,
     climb: 1100,

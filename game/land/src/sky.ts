@@ -2,9 +2,10 @@ import type { Rng } from '@gb/kit'
 import * as THREE from 'three'
 import { SkyMesh } from 'three/addons/objects/SkyMesh.js'
 import { acos, atan, cameraPosition, clamp, Fn, mix, normalize, positionWorld, smoothstep, texture, uniform, vec2, vec4 } from 'three/tsl'
-import { smoothstep01 } from './height.ts'
+import { Daylight } from './daylight.ts'
 import { buildMoon } from './moon.ts'
-import { galacticPole, paintNightSky } from './nightsky.ts'
+import { galacticPole, nightSkyMeans, paintNightSky } from './nightsky.ts'
+import { Preetham } from './preetham.ts'
 import { SunShadow, type ShadowSpec } from './shadow.ts'
 import { buildStars } from './stars.ts'
 import type { LandTheme } from './theme.ts'
@@ -40,10 +41,12 @@ const GLOW_HEIGHT = 0.22
  *
  * Nothing here is rebuilt when either changes: the sun and moon move, the sky's
  * uniforms are written, and the lights and the fog are edited in place, so the
- * app can set the time every frame. The skydome is a node material, which is
- * what the WebGPU renderer needs and what its WebGL2 backend compiles for
- * itself; the stars, the moon and the lights are ordinary three.js objects that
- * work the same on both.
+ * app can set the time every frame. Every number written is a smooth function
+ * of the fractional hour, read off `Daylight`, so a sunset is a slope the eye
+ * cannot catch stepping. The skydome is a node material, which is what the
+ * WebGPU renderer needs and what its WebGL2 backend compiles for itself; the
+ * stars, the moon and the lights are ordinary three.js objects that work the
+ * same on both.
  *
  * The dome, the stars and the moon are hung on the eye rather than on the town,
  * because that is where a sky is: at infinity, centred on whoever is looking.
@@ -62,18 +65,26 @@ export class Atmosphere {
   /** Everything to hang in the scene, in the order it should be added. */
   readonly objects: readonly THREE.Object3D[]
 
+  /** The hour's light as numbers, kept current with the time and the weather. */
+  readonly light: Daylight
+
   readonly #theme: LandTheme
   readonly #centre: THREE.Vector3
   /** Where the sky is centred: the last viewer it was given, the town until then. */
   readonly #eye: THREE.Vector3
-  readonly #sunward = new THREE.Vector3()
   readonly #moonward = new THREE.Vector3()
   readonly #moonReach: number
   readonly #shadow: SunShadow
+  readonly #preetham: Preetham
+  /** What the painted sheet adds to the sky's mean brightness, at full strength. */
+  readonly #sheet: { light: number; glow: number }
   /** How much of the painted night sky is showing: the galaxy, and the city's glow under it. */
   readonly #starlight = uniform(0)
   readonly #cityLight = uniform(0)
   readonly #warm: THREE.Color
+  readonly #warmDusk: THREE.Color
+  readonly #glowLuminance: number
+  readonly #sunColour = new THREE.Color()
   readonly #day: { sun: THREE.Color; sky: THREE.Color; bounce: THREE.Color; haze: THREE.Color }
   readonly #night: { sky: THREE.Color; bounce: THREE.Color; haze: THREE.Color }
   #time = 12
@@ -85,7 +96,10 @@ export class Atmosphere {
     this.#eye = this.#centre.clone()
 
     const light = theme.light
+    this.light = new Daylight(theme)
+    this.#preetham = new Preetham(theme.sky)
     this.#warm = new THREE.Color(light.lowSun)
+    this.#warmDusk = new THREE.Color(light.duskSun)
     this.#day = {
       sun: new THREE.Color(light.sun),
       sky: new THREE.Color(light.skyColour),
@@ -118,7 +132,12 @@ export class Atmosphere {
     // agree without either one drawing from where the stars are placed
     const galaxy = rng.fork('galaxy')
     const pole = galacticPole(galaxy)
-    this.#wearNightSky(paintNightSky(pole, galaxy))
+    const sheet = paintNightSky(pole, galaxy)
+    this.#sheet = nightSkyMeans(sheet)
+    this.#wearNightSky(sheet)
+    const glowLow = new THREE.Color(theme.sky.glowLow)
+    const glowHigh = new THREE.Color(theme.sky.glowHigh)
+    this.#glowLuminance = (luminance(glowLow) + luminance(glowHigh)) / 2
 
     this.stars = buildStars(radius * 0.96, pole, rng)
     this.stars.position.copy(this.#eye)
@@ -193,7 +212,7 @@ export class Atmosphere {
   follow(viewer: THREE.Vector3): void {
     if (viewer.equals(this.#eye)) return
     this.#eye.copy(viewer)
-    this.#shadow.aim(this.#sunward, viewer)
+    this.#shadow.aim(this.light.sunward, viewer)
     this.sky.position.copy(viewer)
     this.stars.position.copy(viewer)
     this.moonDisc.position.copy(this.#moonward).multiplyScalar(this.#moonReach).add(viewer)
@@ -203,21 +222,22 @@ export class Atmosphere {
   apply(): void {
     const theme = this.#theme
     const look = WEATHER[this.#weather]
-    sunward(this.#time, theme.sky.noonElevation, this.#sunward)
-    this.#moonward.copy(this.#sunward).negate()
-
-    // full night below seven degrees under the horizon, full day eleven above it
-    const day = smoothstep01((this.#sunward.y + 0.12) / 0.32)
-    const low = 1 - smoothstep01((this.#sunward.y - 0.05) / 0.3)
+    const light = this.light
+    light.set(this.#time)
+    const sunward = light.sunward
+    this.#moonward.copy(sunward).negate()
+    const { day, low, dark, dusk } = light
     const cloud = look.cloud
 
-    this.sky.sunPosition.value.copy(this.#sunward)
+    this.sky.sunPosition.value.copy(sunward)
     this.sky.cloudCoverage.value = theme.sky.cloudCoverage + (1 - theme.sky.cloudCoverage) * cloud
     this.sky.cloudDensity.value = theme.sky.cloudDensity + (1 - theme.sky.cloudDensity) * cloud * 0.9
 
-    this.#shadow.aim(this.#sunward, this.#eye)
-    this.sun.color.copy(this.#day.sun).lerp(this.#warm, low).lerp(COLD, look.grey * 0.6)
-    this.sun.intensity = theme.light.sunIntensity * day * look.light
+    // a low sun is amber in the morning and cools through the afternoon
+    this.#shadow.aim(sunward, this.#eye)
+    this.#sunColour.copy(this.#warm).lerp(this.#warmDusk, dusk)
+    this.sun.color.copy(this.#day.sun).lerp(this.#sunColour, low).lerp(COLD, look.grey * 0.6)
+    this.sun.intensity = theme.light.sunIntensity * light.sunStrength * day * look.light
     this.sun.visible = this.sun.intensity > 0.002
 
     // cloud takes less off the moon than off the sun, because a wet night still
@@ -226,20 +246,27 @@ export class Atmosphere {
     this.moon.intensity = theme.light.moonIntensity * (1 - day) * (0.45 + 0.55 * look.light)
     this.moon.visible = this.moon.intensity > 0.002
 
-    this.skyLight.color.copy(this.#night.sky).lerp(this.#day.sky, day).lerp(STORM, look.grey * 0.5)
+    // the sky and the haze cool the same way over the afternoon: halfway to the
+    // night's colours by the time the sun goes
+    this.skyLight.color.copy(this.#day.sky).lerp(this.#night.sky, dusk * 0.35)
+    this.skyLight.color.lerp(this.#night.sky, 1 - day).lerp(STORM, look.grey * 0.5)
     this.skyLight.groundColor.copy(this.#night.bounce).lerp(this.#day.bounce, day)
     this.skyLight.intensity = (theme.light.nightAmbient + (theme.light.ambient - theme.light.nightAmbient) * day) * look.ambient
 
-    this.fog.color.copy(this.#night.haze).lerp(this.#day.haze, day).lerp(STORM, look.grey)
+    this.fog.color.copy(this.#day.haze).lerp(this.#night.haze, dusk * 0.5)
+    this.fog.color.lerp(this.#night.haze, 1 - day).lerp(STORM, look.grey)
     this.fog.density = theme.light.density * look.fog * (1.25 - 0.25 * day)
 
-    // stars go out as the sun comes up to the horizon, before the sky itself brightens
-    const dark = 1 - smoothstep01((this.#sunward.y + 0.22) / 0.24)
     const showNight = dark * (1 - cloud * 0.85)
-    this.#starlight.value = STARLIGHT * showNight * theme.sky.milkyWay
+    const starlight = STARLIGHT * showNight * theme.sky.milkyWay
     // cloud hides the galaxy and reflects the city, so the glow goes the other
     // way: an overcast night over a town is brighter than a clear one
-    this.#cityLight.value = CITYLIGHT * dark * theme.sky.cityGlow * (1 + cloud * 1.1)
+    const cityLight = CITYLIGHT * dark * theme.sky.cityGlow * (1 + cloud * 1.1)
+    this.#starlight.value = starlight
+    this.#cityLight.value = cityLight
+    light.skyBrightness =
+      this.#preetham.brightness(sunward) + starlight * this.#sheet.light + cityLight * this.#sheet.glow * this.#glowLuminance
+
     this.stars.rotation.y = (this.#time / 24) * Math.PI * 2
     setFade(this.stars.material as THREE.PointsMaterial, showNight, this.stars)
     this.moonDisc.position.copy(this.#moonward).multiplyScalar(this.#moonReach).add(this.#eye)
@@ -275,15 +302,11 @@ export class Atmosphere {
   }
 }
 
-/** Which way the sun is, at this hour, for a place whose noon sun stands this high. */
-export function sunward(hours: number, noonElevation: number, out: THREE.Vector3): THREE.Vector3 {
-  const elevation = THREE.MathUtils.degToRad(noonElevation) * Math.sin(((hours - 6) / 12) * Math.PI)
-  const azimuth = THREE.MathUtils.degToRad(90 + (hours - 6) * 15)
-  return out.setFromSphericalCoords(1, Math.PI / 2 - elevation, azimuth)
-}
-
 function setFade(material: THREE.Material & { opacity: number }, opacity: number, object: THREE.Object3D): void {
   material.opacity = opacity
   object.visible = opacity > 0.02
 }
 
+function luminance(colour: THREE.Color): number {
+  return 0.2126 * colour.r + 0.7152 * colour.g + 0.0722 * colour.b
+}

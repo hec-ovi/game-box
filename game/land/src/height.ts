@@ -24,24 +24,23 @@ export interface Basin {
 /**
  * The height of the land at any point, in metres above the town's ground.
  *
- * Zero on the town and its roads, then kilometres of open ground that rolls but
- * barely climbs, then the ring: foothills, a long climb to the crest, and a
- * descent to a plateau that runs to the horizon. The rolling comes from three
- * sizes of noise laid over the profile and fades out before it reaches the
- * streets, so the town sits on a flat floor and everything outside it does not.
+ * Zero on the town and its roads, a bank rising from their very edge so the
+ * town sits in a valley, then kilometres of open ground that rolls but barely
+ * climbs, then the ring: foothills, a long climb to the crest, and a descent to
+ * a plateau that runs to the horizon. The rolling comes from three sizes of
+ * noise laid over the profile and fades out before it reaches the streets, so
+ * the town sits on a flat floor and everything outside it does not.
  */
 export class HeightField {
   readonly #field: OpenField
   readonly #theme: LandTheme
   readonly #noise: Noise
-  readonly #flat: number
   readonly #basins: Basin[] = []
 
-  constructor(field: OpenField, theme: LandTheme, noise: Noise, flat: number) {
+  constructor(field: OpenField, theme: LandTheme, noise: Noise) {
     this.#field = field
     this.#theme = theme
     this.#noise = noise
-    this.#flat = flat
   }
 
   /** How far out the ring reaches before the land settles into its outer plateau. */
@@ -56,7 +55,7 @@ export class HeightField {
 
   /** The land before any water was carved into it. */
   base(x: number, z: number): number {
-    const away = Math.max(0, this.#field.at(x, z) - this.#flat)
+    const away = this.#field.at(x, z)
     const height = this.#profile(away)
     if (away <= FLAT) return height
 
@@ -89,9 +88,15 @@ export class HeightField {
     return this.#field.at(x, z)
   }
 
+  /** The bank at the town's edge, and the ring's profile laid on top of it. */
   #profile(away: number): number {
-    const { open, openLift, climb, peak, crest, descent, plateau } = this.#theme.relief
+    const { bank, bankRun } = this.#theme.relief
     if (away <= 0) return 0
+    return bank * smoothstep01(away / bankRun) + this.#ring(away)
+  }
+
+  #ring(away: number): number {
+    const { open, openLift, climb, peak, crest, descent, plateau } = this.#theme.relief
     if (away < open) return openLift * smoothstep01(away / open)
 
     const up = away - open

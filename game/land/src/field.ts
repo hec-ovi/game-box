@@ -9,6 +9,11 @@ const FAR = 1e12
  * the roads that leave through the ring, carried on outwards so the exit stays
  * a pass and not a dead end. Terrain height is a function of this distance, so
  * the land is flat where the town and its road are and climbs away from them.
+ *
+ * Sampled at the grid's own cell corners, which makes it exact there: the
+ * nearest point of a cell to a corner is another corner, so a corner's distance
+ * to the nearest open corner is its distance to the open ground itself. Every
+ * lattice the ground is built on lands on those corners.
  */
 export class OpenField {
   readonly step: number
@@ -29,13 +34,14 @@ export class OpenField {
   }
 
   /**
-   * Rasterise the grid's open cells, run the exits outward by `passLength`
-   * metres, then measure every sample's distance to the nearest of them.
+   * Mark every corner of the grid's open cells, run the exits outward by
+   * `passLength` metres, then measure every corner's distance to the nearest
+   * open one.
    */
-  static of(world: World, options: { margin: number; step: number; passLength: number }): OpenField {
+  static of(world: World, options: { margin: number; passLength: number }): OpenField {
     const cell = world.cellSize
     const { width, height } = world.grid
-    const step = options.step
+    const step = cell
     const originX = -Math.ceil(options.margin / step) * step
     const originZ = originX
     const cols = Math.ceil((width * cell - originX * 2) / step) + 1

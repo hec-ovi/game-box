@@ -1,6 +1,6 @@
 # @gb/land contract
 
-contractVersion: 0.5.1
+contractVersion: 0.6.0
 
 ## Purpose
 
@@ -18,7 +18,7 @@ Builds the world the city stands in and the sky over it: kilometres of open, rol
 | `options.time` | hours, 0 to 24 | default midday |
 | `options.weather` | `'clear'`, `'overcast'` or `'rain'` | default clear |
 | `options.shadow` | any part of a `ShadowSpec` | left out, `SUN_SHADOW`: 100 m of near field at 2,048 square |
-| `land.setTime(hours)` | hours, wrapping | cheap enough for every frame |
+| `land.setTime(hours)` | a real number of hours, wrapping | call it every frame with the fractional hour: everything it writes is a smooth function of it, so dusk is a slope and never a step |
 | `land.setWeather(weather)` | one of `WEATHERS` | |
 | `land.update(seconds, viewer)` | seconds since the last frame, the camera's position in metres | call every frame the player is outside, walking or not: the sky rides on this |
 | `landTheme(id)` / `matchTheme(text)` | string | `matchTheme` always answers: no match falls to `DEFAULT_THEME` |
@@ -36,12 +36,13 @@ Builds the world the city stands in and the sky over it: kilometres of open, rol
 | `Land.sky` | the skydome, named `land:sky` | Preetham daylight with clouds by day and the galaxy, its dust and the city's glow after dark, all in one draw, centred on the camera, drawn first and never into the depth buffer |
 | `Land.stars` | `THREE.Points` named `land:stars` | 1,200 stars on a sphere around the camera, over half of them lying along the galaxy's band the dome paints behind them, a handful bright and most of them faint, a few amber and the rest blue-white, faded out before the sun reaches the horizon; the moon beside them is the sprite `land:moon-disc` |
 | `Land.sun`, `Land.moon`, `Land.skyLight` | two directional lights and a hemisphere light | the sun and the moon on opposite ends of the same arc, and the sky filling in behind them |
+| `Land.light` | a `Daylight` | the hour's light as numbers, the state the lights were last written from: `sunward` (unit vector, the moon is its negative), `sunElevation` (degrees), `sunYaw` (radians about +Y), `day` (0 night to 1 day), `low`, `dark`, `dusk` (0 all morning, 1 by sunset), `sunStrength` (1 at noon), `skyBrightness` (mean radiance of the dome over the upper hemisphere, in the dome's own units), and the theme's `sunrise`, `sunset` and `noonElevation`. One object, updated in place; read it every frame |
 | `Land.sun.castShadow` | true | the sun is the one thing in the game that casts. Its map follows the viewer `update` is given |
 | `Land.shadow` | a `SunShadow`: `spec` and `texel` | how much ground the map covers, how many pixels it has, and the metres one of them covers |
 | `SHADOW_LAYER` | 7 | the layer the shadow camera draws and no camera does, for a merged stand-in |
 | `Land.rain` | `THREE.LineSegments` named `land:rain` | streaks inside `Land.rainVolume`, centred on the last viewer it was given |
 | `Land.fog` | `THREE.FogExp2` | assign to `scene.fog` once: the same object is edited as the time and weather change |
-| `Land.heightAt(x, z)` | metres | the height of the triangle the mesh draws there, to float precision. Zero over the town and its roads |
+| `Land.heightAt(x, z)` | metres | the height of the triangle the mesh draws there, to float precision. Zero over the town and its roads, the pavement's top where the verge meets a pavement |
 | `Land.slopeAt(x, z)` | rise over run | the tilt of that same triangle. Zero over the town |
 | `Land.walkableAt(x, z)` | boolean | false where the ground is steeper than 0.7, or under water. True everywhere else, town included |
 | `Land.waterAt(x, z)` | metres or undefined | the water level standing at a point, undefined on dry ground |
@@ -57,23 +58,46 @@ Builds the world the city stands in and the sky over it: kilometres of open, rol
 
 ## Dependencies
 
-- `@gb/world` contract: the grid, `CELL`, `cellSize` and the world's theme and seed.
+- `@gb/world` contract: the grid, `cellSize`, `METRICS.street.curbHeight`, and the world's theme and seed.
 - `@gb/kit` contract: `Rng` for determinism, `Result` for the answer.
 - `three`, `three/addons/objects/SkyMesh.js` for the sky and `three/tsl` for the night it wears.
 
 ## Invariants
 
-- One world unit is one metre, Y up. Nothing here reads a size that is not the world's `cellSize` or a number in the theme.
-- The grid's `mountain` cells are not where the mountains are. They are the verge: the strip between the last pavement and the open ground, flat, walkable, and covered here because the city's own ground stops at them. The high ground is a function of distance from the built area and does not begin for well over a kilometre.
-- Every verge corner the city touches is at exactly zero, the height of the roadway, and `@gb/scene` kerbs the pavement that meets it down to zero. That is one number the two boxes agree on: a verge laid anywhere else, or a kerb dropped to anything else, opens a gap around the whole outer ring that the player can see under. Only the far outer edge of the verge lifts at all, and there it takes the open ground's own line so the two cannot part company, which is under a centimetre.
+- One world unit is one metre, Y up. Nothing here reads a size that is not the world's `cellSize`, `METRICS.street.curbHeight` or a number in the theme.
+- The grid's `mountain` cells are not where the mountains are. They are the verge: the strip between the last pavement and the open ground, where the ground starts to rise. The high ground is a function of distance from the built area and does not begin for well over a kilometre.
+- **The verge meets the city at the height of what it touches.** A verge corner a pavement or a park touches is at the pavement's top, `METRICS.street.curbHeight` (0.15 m), and one a street touches is at zero, the road surface; so nothing can be seen under the edge of the pavement and the road leaves town level. Measured on a 43 by 45 cell town, 112 pavement edges and 33 street edges round the ring, none of them with a gap; the same count at 212 and 58 on a 76 by 76 town. A kerb `@gb/scene` may still draw against a verge cell is buried inside the verge.
+- **The ground rises from the very edge of the city, so the city is a valley with far limits.** The pavement's height is carried out across the verge and fades by its far edge while the theme's bank climbs from the kerb line: on the temperate theme the verge runs 0.15 m at the kerb to 0.55 m at the map edge, the bank is 4 m by 40 m out, and the ring's crest is 3 km away. The slope on the verge is under 0.1, so the crowd and the player can walk over it. Beside the road out the same bank rises from the road's edge, and the road itself is graded flat for 120 m past the map.
+- Distance from the open ground is exact where it matters. The distance field is sampled at the grid's own cell corners, and the nearest point of a cell to a corner is another corner, so a corner's distance to the nearest open corner is its distance to the open ground itself. Every ground lattice is stepped in whole cells and lands on those corners.
 - The city's ground belongs to `@gb/scene`. Terrain is laid on the verge and outside the map, and on nothing else: no face, no tree and no water ever lands on a street, a pavement, a park or a plot.
-- The land is flat at zero on every open cell and for two metres around it, and the roads out are graded for 120 m past the edge of the map, so leaving town is never uphill into a wall.
 - `heightAt` reads the very surface the mesh is built from, not an approximation of it: the same lattice, the same quad, the same one of its two triangles. Measured against raycasts of the finished mesh the two agree to under a hundredth of a millimetre, so a player placed on the answer stands exactly on what they can see.
-- The ground is built as three steps of resolution, each four times coarser and further out than the last, all welded into one mesh. A tier's outermost ring of heights is pulled onto the coarse edge it meets, so no crack opens at a seam.
+- The ground is built as four steps of resolution, all welded into one mesh: the grid's own cells over the verge and a shoulder one coarse step wide outside the map, then three cells a quad, then twelve, then forty-eight. A tier's outermost ring of heights is pulled onto the coarse edge it meets, so no crack opens at a seam.
 - Water is carved, not floated. A pond's level is set below the lowest point of its own rim and its shore is walked out to where the ground comes back up through the surface. A bowl the drawn ground does not close on every side stays a dry hollow rather than a pond hanging over the land.
 - Time and weather move light, never geometry. `setTime` and `setWeather` write the sun and moon positions, the sky's uniforms and the colours and strengths of the lights and the fog, all in place. No vertex is touched again after the build.
-- The sun and the moon are the two ends of one arc: sunrise at 06:00, noon overhead at the theme's `noonElevation`, sunset at 18:00, the moon opposite it all the way round. Twilight runs from seven degrees below the horizon to eleven above.
-- The sun casts and nothing else does. One directional light, one shadow map, and it is 100 m of near field at 2,048 square: a texel covers 9.8 cm, so a 1.8 m person lays down 18 texels of shadow and a 2.1 m door 21, and the soft filter blurs the edge over about 15 cm. Stretching one map over the 6 to 7 km the land runs would put a texel at 3 m, where a person casts nothing and a house casts a smear. Cascades are the wrong trade on this stack: on the WebGL2 fallback a shadow pass is charged by the caster, about 6 us each, so every extra cascade multiplies the one bill that matters.
+- **Everything the hour drives is a smooth function of the fractional hour.** The sun's place on its arc, its colour and strength, the moon's, the ambient, the haze, the stars' fade, the shadow's strength and the dome's brightness are all read off `Daylight` for the real number `setTime` was given. Measured at a frame of 1/900 of an hour, which is a clock ten times faster than the default 24x, nothing moves by more than a twentieth of a degree of sky, a hundredth of a light unit or half a percent of a colour channel between two frames. Whoever holds the clock decides the rate; this box never steps.
+- **The day is a winter day.** The sun's path is the real one for the theme's latitude and the solar declination of the day the city lives in, with solar noon at 12:00 and the moon the other end of the same line. Two numbers set how long the day is and how high the sun gets, and a winter declination makes it short and low at once. Twilight runs from seven degrees below the horizon to eleven above.
+
+  | theme | latitude, declination | sunrise | sunset | day | noon sun |
+  |---|---|---|---|---|---|
+  | temperate | 48, -18 | 07:25 | 16:35 | 9.2 h | 24 degrees |
+  | arid | 33, -12 | 06:32 | 17:28 | 10.9 h | 45 degrees |
+  | maritime | 55, -17 | 07:44 | 16:16 | 8.6 h | 18 degrees |
+
+- **The day runs warm to cold, and it is a peak, not a plateau.** The sun's strength through the air follows the sky model's own earth-shadow law, 1 at noon and less the lower it stands. A low sun is coloured by the air: amber (`lowSun`) all morning, and cooling through the afternoon to `duskSun` while the sky light and the haze go halfway to the night's colours by sunset. On the temperate theme, measured:
+
+  | hour | sun elevation | sun intensity | sun colour | moon | ambient | shadow | sky brightness | haze |
+  |---|---|---|---|---|---|---|---|---|
+  | 00:00 | -60 | 0 | | 0.34 | 0.78 | 0 | 0.019 | `#1d2836` |
+  | 06:00 | -13 | 0 | | 0.34 | 0.78 | 0 | 0.019 | `#1d2836` |
+  | 08:00 | 5 | 0.70 | `#ffa268` | 0.10 | 1.80 | 1 | 0.30 | `#a0b0bc` |
+  | 12:00 | 24 | 3.10 | `#fff1d8` | 0 | 2.20 | 1 | 1.59 | `#b9cbd8` |
+  | 15:00 | 13 | 1.89 | `#f5d6c6` | 0 | 2.20 | 1 | 0.85 | `#98a7b3` |
+  | 16:00 | 5 | 0.70 | `#dda6b7` | 0.10 | 1.80 | 1 | 0.30 | `#798691` |
+  | 18:00 | -13 | 0 | | 0.34 | 0.78 | 0 | 0.019 | `#1d2836` |
+
+  Sky brightness is the dome's mean radiance over the upper hemisphere in its own units: the sun's aureole is left out of it by scattering the haze evenly, because a few degrees of sky that moves with the sun would make the number jump as it crossed each sample. At noon the dome's zenith is `(0.10, 0.33, 0.95)` and its horizon away from the sun `(1.30, 1.79, 1.94)`, a five to one gradient: the sky at midday is blue overhead and pale at the horizon, and what it looks like on screen after that is exposure and grade, which belong to the app.
+- **The environment can be prefiltered now and then and carried between.** The sky's pattern is very nearly rigid about the vertical, so a prefiltered copy of the dome is turned by `light.sunYaw` minus the yaw it was filtered at, and scaled by `light.skyBrightness` over the brightness it was filtered at. `sunYaw` is `atan2(sunward.x, sunward.z)`, which is `rotation.y` in three's sense; it wraps at midnight, where a full turn is the same rotation. How often to refilter is the caller's choice; this box never asks for it.
+- The sun casts and nothing else does. One directional light, one shadow map, and it is 100 m of near field at 2,048 square: a texel covers 9.8 cm square to the beam, so a 1.8 m person lays down 18 texels of shadow and a 2.1 m door 21, and the soft filter blurs the edge over about 15 cm. Under the temperate noon sun, 24 degrees up, the ground texel is 24 cm along the beam and 9.8 across it. Stretching one map over the 6 to 7 km the land runs would put a texel at 3 m, where a person casts nothing and a house casts a smear. Cascades are the wrong trade on this stack: on the WebGL2 fallback a shadow pass is charged by the caster, about 6 us each, so every extra cascade multiplies the one bill that matters.
 - The shadow map rides on the player and lands on whole texels. It is centred on the viewer `update` is given, so the near field goes with them six kilometres out of town; and the centre is snapped to whole texels of the light's own three axes before it is used, so the grid stays pinned to the world. Without the snap every shadow edge in the scene boils as the player walks, which looks worse than no shadows. Sliding the viewer a centimetre at a time moves the map in 9.8 cm steps and never between them. Moving it does not turn the sun: the light and its target move together, so the direction is the one the hour says.
 - Nothing has to be widened for a tall building upwind. Whatever lands its shadow inside the map already stands inside the map's own square, because a shadow and its caster are the same point projected along the beam. The slab simply runs 2 km back up the beam, which holds a 40 m building with the sun two degrees up.
 - Dusk dissolves the shadow rather than letting it degenerate. A square held square to the beam covers `radius / sin(elevation)` metres of ground along the sun's bearing, so the ground texel stretches the same way: 20 cm at 30 degrees, 1.1 m at five, 6.5 m at one. It stretches along the beam only, the axis a low sun makes long anyway, and by then the ground is taking under a tenth of the sunlight, so the shadow rides the sun most of the way down and fades out over the last five degrees. Below the horizon there is no shadow and no shadow pass: the sun goes invisible and the frame stops paying for it.
@@ -91,7 +115,7 @@ Builds the world the city stands in and the sky over it: kilometres of open, rol
 - Rain is a box of streaks that travels with the viewer. Drops keep world positions and wrap when they leave the box, so walking moves you through the rain instead of dragging it along, and no drop is ever drawn outside the volume.
 - Same seed, same landscape, always. Every random choice comes from a `@gb/kit` `Rng` forked per feature (`relief`, `scatter`, `water`, `trees`, `stars`, `rain`), so retuning the woods cannot move the hills. Under `stars` the moon forks again, and so does `galaxy`, which decides where the band lies and paints the sheet: the band and the stars strung along it agree, and retuning either cannot move the other.
 - This box holds no clock. It remembers the last time and weather it was told and renders them; whoever owns the clock calls `setTime`.
-- Objects only. No renderer, no camera, no frame loop, which is why the whole box is tested in Node with no canvas.
+- Objects only. No renderer, no camera, no frame loop, which is why the whole box is tested in Node with no canvas. The sky's brightness is read off a CPU copy of the dome's own Preetham maths, term for term, for the same reason.
 - The sky is a node material, which is what `WebGPURenderer` needs and what its WebGL2 backend compiles for itself. Everything else is ordinary three.js: mesh, instanced mesh, points and line segments, which render the same on both backends. Rain is stepped on the CPU for the same reason.
 
 ## What it costs
@@ -100,19 +124,19 @@ Measured on three towns, at the default detail:
 
 | | terrain | woods | ponds | draws | build |
 |---|---|---|---|---|---|
-| 32x32 cells, temperate | 135,630 tris | 3,200 trees, 74,500 tris | 5 | 5 | 97 ms |
-| 89x89 cells, arid | 159,568 tris | 2,200 trees, 61,600 tris | 2 | 5 | 75 ms |
-| 51x51 cells, maritime | 131,990 tris | 4,000 trees, 93,400 tris | 7 | 5 | 78 ms |
+| 41x41 cells, temperate | 139,276 tris | 3,200 trees, 74,300 tris | 5 | 5 | 106 ms |
+| 95x93 cells, arid | 163,746 tris | 2,200 trees, 61,600 tris | 2 | 5 | 98 ms |
+| 78x75 cells, maritime | 141,756 tris | 4,000 trees, 93,800 tris | 7 | 5 | 93 ms |
 
 The land is 6 to 7 km across and it is still five draws: the terrain, the water, the sky and one instanced mesh per tree species. Night adds two (1,200 stars in one `Points` draw and a two triangle moon sprite carrying a 64 KB face it paints at build time), rain adds one. The galaxy and the city's glow add none: they are a 288 KB sheet read inside the dome's own draw, painted once at build for a fixed 25 ms whatever the size of the town. The sun's shadow map redraws the woods and nothing else of the landscape: one or two draws, 60,000 to 93,000 triangles, `cost.shadowDraws`.
 
-Ground resolution is 6 m quads for the first half kilometre out of town, 24 m to about 1.8 km, then 96 m to the horizon. `detail: 'low'` doubles all three, which is a quarter of the geometry (35,300 tris) and a 28 ms build.
+Ground resolution is the grid's own 2 m cells over the verge and the shoulder just outside the map, 6 m quads for the first half kilometre out of town, 24 m to about 1.8 km, then 96 m to the horizon. `detail: 'low'` doubles the three open-ground steps, which is under a third of the geometry (39,000 to 48,000 tris) and a 55 to 67 ms build.
 
 Per query and per frame:
 
 - `heightAt`: 0.04 us. Two binary searches along a lattice and four numbers.
 - `walkableAt`: 0.09 to 0.16 us, the difference being one pass over the ponds. Both are safe several times a frame in a collision loop.
-- `setTime` / `setWeather`: 0.0005 ms. Two vectors, a few colour blends and eight uniform writes.
+- `setTime` / `setWeather`: 0.014 ms. The sun's place, a few colour blends, eight uniform writes, and 72 samples of the sky for its brightness.
 - `update`: 0.08 ms while raining, for 3,000 streaks and 72 KB of positions uploaded. Dry, it is the four vector writes that put the sky back on the eye. Aiming the shadow map is part of it: three dot products and three rounds, under a microsecond.
 
 ### What the shadow costs, and who pays it
@@ -144,8 +168,16 @@ stage.camera.far = land.cameraFar          // and updateProjectionMatrix()
 Every frame the player is outside:
 
 ```ts
-land.setTime(clock.hours)                  // whoever owns the clock decides the rate
+land.setTime(clock.secondsOfDay / 3600)    // the fractional hour: whoever owns the clock decides the rate
 land.update(delta, camera.position)        // the sky and the rain ride on this
+```
+
+If the sky is prefiltered into `scene.environment`, filter it now and then and carry it in between off `land.light`:
+
+```ts
+const filtered = { yaw: land.light.sunYaw, brightness: land.light.skyBrightness }   // when the prefilter runs
+scene.environmentRotation.y = land.light.sunYaw - filtered.yaw                       // every frame
+scene.environmentIntensity = base * (land.light.skyBrightness / filtered.brightness)
 ```
 
 For the player's feet, anywhere in the world:
@@ -157,7 +189,7 @@ if (!land.walkableAt(x, z)) { /* refuse the step */ }
 
 And whenever the weather changes: `land.setWeather('rain')`.
 
-The land carries its own daylight, so the scene needs no other lights, and `scene.background` is no longer used: the sky is a real object. That includes an environment map: lighting the scene from a prefiltered copy of this skydome on top of `Land.skyLight` counts the sky twice, and a cast shadow only takes away the sun's own share of the light. Measured on the temperate theme at midday, a shadow darkens what it falls on by 39 percent with the land's lights alone, by 6 percent with the sky also in `scene.environment` at 0.35, and by 1.4 percent at 1.0, where it has stopped being visible at all. Pick one of the two.
+The land carries its own daylight, so the scene needs no other lights, and `scene.background` is not used: the sky is a real object. That includes an environment map: lighting the scene from a prefiltered copy of this skydome on top of `Land.skyLight` counts the sky twice, and a cast shadow only takes away the sun's own share of the light. Measured on the temperate theme at midday, a shadow darkens what it falls on by 39 percent with the land's lights alone, by 6 percent with the sky also in `scene.environment` at 0.35, and by 1.4 percent at 1.0, where it has stopped being visible at all. Pick one of the two.
 
 For the sun's shadow the renderer needs `shadowMap.enabled = true` and a filter (`PCFSoftShadowMap` is what the near field is tuned for), and it has to be driven from `renderer.setAnimationLoop`: that is where `WebGPURenderer` advances the node frame the shadow map is redrawn on, so a loop that calls `render` from its own `requestAnimationFrame` draws the map once and then leaves it frozen where the player stood.
 
@@ -169,9 +201,9 @@ Wet ground is not this box: `land.wetness` is published for whoever owns the str
 
 A theme is one record in `src/theme.ts` and nothing else. Copy an existing one, give it an id and the words that should pick it out of a world's theme text, then set:
 
-- `sky`: how high the sun stands at midday (which is what makes a place northern or southern), the four Preetham numbers, how much cloud there is in clear weather, and the night sky: how bright the galaxy is, how much light the city throws back up at the horizon, and the two colours that glow runs through. Dry clear air wants a strong galaxy and a weak glow; sea haze the other way round.
-- `light`: sun colour high and low, moon colour and strength, sky and bounce colours and ambient strength by day and again at night, the haze colour by day and at night, and how thick the air is per metre. The night numbers are where you tune how dark night gets.
-- `relief`: metres, measured outward from the built area. How far the open ground runs and the little it lifts across it, then where the ring climbs, how high, how wide its top is, how far it takes to come down and what it settles to. Then three sizes of rolling laid over all of it, each an amplitude and a wavelength: keep the amplitude under about a twentieth of the wavelength or the open ground stops being walkable.
+- `sky`: the latitude and the sun's declination (together, how long the day is and how high the sun gets: a winter declination makes it short and low at once), the four Preetham numbers, how much cloud there is in clear weather, and the night sky: how bright the galaxy is, how much light the city throws back up at the horizon, and the two colours that glow runs through. Dry clear air wants a strong galaxy and a weak glow; sea haze the other way round.
+- `light`: sun colour high, low in the morning and low in the evening, moon colour and strength, sky and bounce colours and ambient strength by day and again at night, the haze colour by day and at night, and how thick the air is per metre. The night numbers are where you tune how dark night gets.
+- `relief`: metres, measured outward from the built area. The bank the ground rises by from the town's edge and how far out it takes, how far the open ground runs and the little it lifts across it, then where the ring climbs, how high, how wide its top is, how far it takes to come down and what it settles to. Then three sizes of rolling laid over all of it, each an amplitude and a wavelength: keep the amplitude under about a twentieth of the wavelength or the open ground stops being walkable.
 - `ground`: the colours the terrain is painted with, and the heights and the slope they change at.
 - `water`: how many ponds, how wide, how deep. Ponds grow with distance from town, because the ground is drawn in bigger squares out there; one the ground cannot hold is quietly left as a dry hollow.
 - `trees`: the species (trunk and canopy colour, height, spread, `cone`, `round` or `bare`), how far apart candidates start, what share of the ground is wooded, the tree line, the steepest ground roots hold, how far out woods reach and the cap on how many are drawn.
