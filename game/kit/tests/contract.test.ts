@@ -29,9 +29,26 @@ describe('Rng', () => {
     }
     vitestExpect(rng.weighted([['only', 1], ['never', 0]])).toBe('only')
   })
+
+  it('states its edges: collapsed ranges, certain chances, empty lists', () => {
+    const rng = new Rng('edges')
+    vitestExpect(rng.int(4, 4)).toBe(4)
+    vitestExpect(rng.int(4, 2)).toBe(4)
+    vitestExpect(rng.range(4, 4)).toBe(4)
+    vitestExpect(rng.chance(0)).toBe(false)
+    vitestExpect(rng.chance(1)).toBe(true)
+    vitestExpect(rng.shuffle([])).toEqual([])
+    vitestExpect(() => rng.pick([])).toThrow()
+    vitestExpect(() => rng.weighted([['a', 0], ['b', -1]])).toThrow()
+  })
 })
 
 describe('IdMinter', () => {
+  it('reads the kind back out of an id', () => {
+    vitestExpect(IdMinter.kindOf('npc_0007')).toBe('npc')
+    vitestExpect(IdMinter.kindOf('street_lamp_0012')).toBe('street_lamp')
+  })
+
   it('never reuses an id and resumes from a snapshot', () => {
     const first = new IdMinter()
     vitestExpect(first.mint('npc')).toBe('npc_0001')
