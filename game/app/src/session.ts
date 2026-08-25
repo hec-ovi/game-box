@@ -1,6 +1,6 @@
-import { Bundle, type OpenedBundle } from '@gb/bundle'
-import { DEFAULT_RATE, PlayerState } from '@gb/play'
-import { QuestLog } from '@gb/quest'
+import { Bundle, type OpenedBundle, type ResumeReport } from '@gb/bundle'
+import type { PlayerState } from '@gb/play'
+import type { QuestLog } from '@gb/quest'
 
 /** Somewhere a save can be kept between visits. */
 export interface SaveStore {
@@ -12,7 +12,9 @@ export interface SaveStore {
 /**
  * The playthrough between one visit and the next. A save belongs to the city it
  * was made in, so one that will not resume against this bundle is dropped and
- * the player starts fresh rather than in somebody else's town.
+ * the player starts fresh rather than in somebody else's town. One written in
+ * an earlier writing of the same city resumes reconciled, and the report says
+ * what it lost.
  */
 export class Session {
   #bundle: OpenedBundle
@@ -24,18 +26,12 @@ export class Session {
   }
 
   /** Where the player left off, or nothing if there is no save for this city. */
-  restore(): { player: PlayerState; log: QuestLog } | undefined {
+  restore(): { player: PlayerState; log: QuestLog; report: ResumeReport } | undefined {
     const kept = this.#store.read()
     if (kept === undefined) return undefined
 
     const resumed = Bundle.resume(this.#bundle, kept)
-    if (resumed.ok) {
-      // the clock is saved at the rate it was running at, and P sets that to
-      // zero. Coming back to a city where time never moves and nothing says
-      // why is worse than losing a pause nobody asked to keep
-      if (resumed.value.player.clock.rate === 0) resumed.value.player.clock.setRate(DEFAULT_RATE)
-      return resumed.value
-    }
+    if (resumed.ok) return resumed.value
     console.warn(`the save does not belong to this city (${resumed.error.code}); starting fresh`)
     this.#store.clear()
     return undefined

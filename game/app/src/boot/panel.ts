@@ -1,9 +1,15 @@
-import { freshSeed, tidy, type CityBrief } from './brief.ts'
+import type { CityBrief } from './brief.ts'
+import { CityForm } from './form.ts'
+import { LibraryView } from './library-view.ts'
+import type { Shelved } from './library.ts'
 
 export interface PanelHandlers {
   generate(brief: CityBrief): void
   /** A city file the player picked off their own machine. */
   open(file: File): void
+  /** A city off the shelf, by the library's key. */
+  pick(key: string): void
+  remove(key: string): void
   save(): void
   cancel(): void
   close(): void
@@ -12,23 +18,28 @@ export interface PanelHandlers {
 /**
  * The front door. Its markup is in `index.html`, so it is on screen with the
  * first byte of the page rather than after the renderer, the art and the city
- * have loaded; this drives it.
+ * have loaded; this drives it. The form and the library are its two halves.
  */
 export class Panel {
   #root: HTMLElement
-  #form: HTMLFormElement
-  #theme: HTMLInputElement
-  #seed: HTMLInputElement
-  #blocks: HTMLInputElement
-  #model: HTMLInputElement
+  #form: CityForm
+  #library: LibraryView
   #open: HTMLInputElement
   #generate: HTMLButtonElement
   #export: HTMLButtonElement
   #cancel: HTMLButtonElement
   #close: HTMLButtonElement
-  #roll: HTMLButtonElement
   #status: HTMLElement
-  #handlers: PanelHandlers = { generate: () => {}, open: () => {}, save: () => {}, cancel: () => {}, close: () => {} }
+  #playing = false
+  #handlers: PanelHandlers = {
+    generate: () => {},
+    open: () => {},
+    pick: () => {},
+    remove: () => {},
+    save: () => {},
+    cancel: () => {},
+    close: () => {},
+  }
 
   constructor(root: HTMLElement) {
     this.#root = root
@@ -37,26 +48,18 @@ export class Panel {
       if (!found) throw new Error(`the boot panel has no ${name}`)
       return found
     }
-    this.#form = find('form')
-    this.#theme = find('theme')
-    this.#seed = find('seed')
-    this.#blocks = find('blocks')
-    this.#model = find('model')
+    this.#form = new CityForm(find)
+    this.#library = new LibraryView(find)
     this.#open = find('open')
     this.#generate = find('generate')
     this.#export = find('export')
     this.#cancel = find('cancel')
     this.#close = find('close')
-    this.#roll = find('roll')
     this.#status = find('status')
 
-    this.#form.addEventListener('submit', (event) => {
+    find<HTMLFormElement>('form').addEventListener('submit', (event) => {
       event.preventDefault()
       this.#handlers.generate(this.brief)
-    })
-    this.#roll.addEventListener('click', () => {
-      this.#seed.value = freshSeed()
-      this.#seed.focus()
     })
     this.#open.addEventListener('change', () => {
       const file = this.#open.files?.[0]
@@ -64,9 +67,16 @@ export class Panel {
       this.#open.value = ''
       if (file) this.#handlers.open(file)
     })
+    this.#library.on({ open: (key) => this.#handlers.pick(key), remove: (key) => this.#handlers.remove(key) })
     this.#export.addEventListener('click', () => this.#handlers.save())
     this.#cancel.addEventListener('click', () => this.#handlers.cancel())
     this.#close.addEventListener('click', () => this.#handlers.close())
+    // the way back is a key as well as a button, and the button prints it
+    root.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape' || !this.#playing) return
+      event.preventDefault()
+      this.#handlers.close()
+    })
   }
 
   on(handlers: PanelHandlers): void {
@@ -74,19 +84,16 @@ export class Panel {
   }
 
   get brief(): CityBrief {
-    return tidy({
-      theme: this.#theme.value,
-      seed: this.#seed.value,
-      blocks: Number(this.#blocks.value),
-      model: this.#model.checked,
-    })
+    return this.#form.brief
   }
 
   set brief(brief: CityBrief) {
-    this.#theme.value = brief.theme
-    this.#seed.value = brief.seed
-    this.#blocks.value = String(brief.blocks)
-    this.#model.checked = brief.model
+    this.#form.brief = brief
+  }
+
+  /** The shelf, newest first. */
+  library(entries: readonly Shelved[]): void {
+    this.#library.render(entries)
   }
 
   get open(): boolean {
@@ -95,29 +102,31 @@ export class Panel {
 
   show(): void {
     this.#root.hidden = false
-    this.#theme.focus()
+    this.#form.focus()
   }
 
   hide(): void {
     this.#root.hidden = true
   }
 
+  /**
+   * Stand aside: a city being written has a loader of its own under the panel,
+   * so the form gets out of its way and what is left is the step and Cancel.
+   */
+  aside(on: boolean): void {
+    this.#root.dataset.aside = String(on)
+  }
+
   /** Something is happening and this is what it is. */
   working(step: string): void {
     this.#say(step, { working: true })
-    this.#generate.disabled = true
-    this.#roll.disabled = true
-    this.#open.disabled = true
-    this.#cancel.hidden = false
+    this.#busy(true)
   }
 
   /** Nothing is happening: the player's turn. */
   waiting(message = '', trouble = false): void {
     this.#say(message, { trouble })
-    this.#generate.disabled = false
-    this.#roll.disabled = false
-    this.#open.disabled = false
-    this.#cancel.hidden = true
+    this.#busy(false)
   }
 
   /**
@@ -126,8 +135,16 @@ export class Panel {
    * being played.
    */
   holding(what: { city: boolean; playing: boolean }): void {
+    this.#playing = what.playing
     this.#export.disabled = !what.city
     this.#close.hidden = !what.playing
+  }
+
+  #busy(working: boolean): void {
+    this.#generate.disabled = working
+    this.#open.disabled = working
+    this.#cancel.hidden = !working
+    for (const button of this.#root.querySelectorAll<HTMLButtonElement>('.gb-boot-shelved button')) button.disabled = working
   }
 
   #say(text: string, flags: { working?: boolean; trouble?: boolean }): void {

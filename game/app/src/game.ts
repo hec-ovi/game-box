@@ -2,7 +2,8 @@ import type { OpenedBundle } from '@gb/bundle'
 import type { Cast, CastMember } from '@gb/cast'
 import { SceneCast } from '@gb/crowd'
 import { CrowdRiders, Driving } from '@gb/drive'
-import { Hud, type HudIntent } from '@gb/hud'
+import { questTargets } from '@gb/forge'
+import { Hud, type HudIntent, type Notice } from '@gb/hud'
 import { CityNav } from '@gb/nav'
 import type { KitDressing } from '@gb/kitbash'
 import { PlayerState } from '@gb/play'
@@ -15,18 +16,20 @@ import { Attending, type Post } from './attending.ts'
 import { Buildings } from './buildings.ts'
 import { Chart } from './chart.ts'
 import { Companions } from './companions.ts'
+import { Compass } from './compass.ts'
 import { Conditions } from './conditions.ts'
 import { CONTROLS } from './controls.ts'
+import { Escorts } from './escorts.ts'
 import { Gestures } from './gestures.ts'
 import { Guide } from './guide.ts'
 import { Intents } from './intents.ts'
 import { Interaction } from './interaction.ts'
 import type { RoomArt } from './pack.ts'
-import { marked } from './places.ts'
 import { Player } from './player.ts'
 import { createStage } from './renderer.ts'
 import { Playthrough } from './playthrough.ts'
 import { Reporting } from './reporting.ts'
+import { resumeNotice } from './resumed.ts'
 import { Session, type SaveStore } from './session.ts'
 import { atAnOpenDoor } from './spawn.ts'
 import { Sky } from './sky.ts'
@@ -46,6 +49,8 @@ export interface GameOptions {
   sidecar?: Sidecar
   /** Where the playthrough is kept, so a refresh picks it up where it left off. */
   save?: SaveStore
+  /** What leaving the game means: the interface reports it, whoever started the game decides. */
+  leave?: () => void
   /**
    * Where the frames are drawn. `createStage` unless the caller has no GPU to
    * give it: everything else the game is made of runs without one.
@@ -73,6 +78,7 @@ export class Game {
   #street: Street
   #buildings: Buildings
   #companions: Companions
+  #escorts: Escorts
   #stashing: Stashing
   #driving: Driving
   #attending: Attending
@@ -80,6 +86,7 @@ export class Game {
   #report: Reporting
   #playthrough: Playthrough
   #chart: Chart
+  #compass: Compass
   #targeting: Targeting
   #intents: Intents
   #interaction: Interaction
@@ -97,6 +104,7 @@ export class Game {
     log: QuestLog
     sidecar: Sidecar
     dressing: Dressing
+    leave: () => void
     room?: RoomArt
     session?: Session
     cast?: Cast
@@ -115,7 +123,8 @@ export class Game {
     if (input.kit) this.#city.root.add(input.kit.streetlights(this.#world))
     this.#stage.show(this.#city.root)
 
-    this.#sky = new Sky(this.#world, this.#stage, { hour: this.#player.clock.hour, ...(input.kit ? { kit: input.kit } : {}) })
+    const clock = this.#player.clock
+    this.#sky = new Sky(this.#world, this.#stage, { hour: clock.hour, weather: clock.weather, ...(input.kit ? { kit: input.kit } : {}) })
     // the city's ring of blocks was standing in for hills; now there are hills
     if (this.#sky.standing) {
       const blocks = this.#city.root.getObjectByName('mountains')
@@ -128,6 +137,9 @@ export class Game {
       nav,
       ...(this.#sky.ground ? { ground: this.#sky.ground } : {}),
       playerOutdoors: () => (this.#buildings.outdoors ? this.#body.position : undefined),
+      // whoever a job is waiting on stays at their post, so a step that sends
+      // the player to somebody never sends them to an empty room
+      atWork: () => questTargets(this.#log.objectives()),
     })
 
     this.#body = new Player(this.#stage.camera, this.#stage.canvas, this.#street.solid())
@@ -135,12 +147,26 @@ export class Game {
     const start = atAnOpenDoor(this.#world, this.#city)
     this.#body.placeAt(start.x, start.z, start.heading)
 
+    // the clock and the sky are the player's to turn, by key and by the
+    // settings tab alike, so one hand on them serves both
+    const conditions = new Conditions(clock)
     this.#report = new Reporting({
       world: this.#world,
       log: this.#log,
       player: this.#player,
       hud: this.#hud,
-      changed: () => this.keep(),
+      conditions,
+      // a pin on somebody who is out walking goes where they are heading
+      out: (npcId) => this.#street.whereabouts(npcId),
+      changed: () => {
+        this.keep()
+        this.#compass.dirty()
+        this.#escorts.dirty()
+        // the board moved: who has to stay in, and who is walking with the
+        // player, are both read off it
+        this.#street.reconsider()
+        this.#companions.sync()
+      },
     })
 
     this.#buildings = new Buildings({
@@ -154,7 +180,11 @@ export class Game {
       sky: this.#sky,
       street: this.#street,
       announce: (text) => this.#report.note(text),
-      arrived: (place) => this.#report.report(this.#log.handle({ kind: 'arrived', place })),
+      arrived: (place) => {
+        this.#report.report(this.#log.handle({ kind: 'arrived', place }))
+        // and whoever is walking with the player came in with them
+        this.#escorts.entered(place, this.#player.companions())
+      },
       cameOut: (at) => this.#companions.regroup(at),
       away: () => [...this.#street.walkers().map((walker) => walker.id), ...this.#player.companions()],
     })
@@ -164,7 +194,18 @@ export class Game {
       player: this.#player,
       street: this.#street,
       buildings: this.#buildings,
+      riding: () => this.#driving.passengers(),
       note: (text) => this.#report.note(text),
+    })
+
+    // an escort is credited when the person walking with the player gets
+    // there, by the one event `@gb/quest` takes for it
+    this.#escorts = new Escorts({
+      world: this.#world,
+      steps: () => this.#log.objectives(),
+      doorstep: (plotId) => this.#city.doorsteps.get(plotId),
+      walking: () => this.#street.following(),
+      arrived: (npcId, place) => this.#report.report(this.#log.handle({ kind: 'companion-arrived', npcId, place })),
     })
 
     // built before anything can ask for a save, because the first thing that
@@ -211,19 +252,20 @@ export class Game {
     this.#street.setPlayerCar(this.#driving)
 
     // the crowd turns the people it is walking; the people at their posts in a
-    // room are this box's own bodies, so it turns those itself
+    // room are this box's own bodies, and with the art pack they come out of
+    // their stance to face the player
     const heads = (input.dressing as { members?: () => ReadonlyMap<string, CastMember> }).members?.()
     this.#attending = new Attending({
       street: this.#street,
       eye: this.#stage.camera.position,
-      // whoever was being talked to has been retired off the far end of the
-      // street, so there is nobody left to be in a conversation with
+      // whoever was being talked to has walked out of range or been retired
+      // off the far end of the street: there is nobody left to talk to
       gone: () => this.#talking.end(),
       post: (npcId): Post | undefined => {
         const body = this.#buildings.inside?.people.get(npcId)
         if (!body) return undefined
-        const head = heads?.get(npcId)
-        return head ? { body, head } : { body }
+        const member = heads?.get(npcId)
+        return member ? { body, member } : { body }
       },
     })
 
@@ -243,13 +285,28 @@ export class Game {
       report: this.#report,
     })
 
-    // where the tracked quest is sending the player: the map pins it and the
-    // guide walks to it, both off the one answer. Both measure from where the
-    // player stands on the city, which indoors is the door they came in by
+    // where the quests are sending the player: the map pins every live one,
+    // the guide and the compass follow the tracked one, all off the city. Each
+    // measures from where the player stands on the city, which indoors is the
+    // door they came in by
     const steps = () => this.#report.following()
-    const goals = () => marked(this.#world, steps())
+    const followed = () => this.#report.followed()
     const standing = () => ({ position: this.#buildings.cityPosition(), heading: this.#body.heading })
-    this.#chart = new Chart({ world: this.#world, hud: this.#hud, you: standing, goals })
+    this.#chart = new Chart({
+      world: this.#world,
+      hud: this.#hud,
+      you: standing,
+      goals: () => this.#report.goals(),
+      entered: () => this.#player.discovered().places,
+    })
+    const guide = new Guide({ world: this.#world, nav, from: () => this.#buildings.cityPosition(), goals: followed, steps })
+    this.#compass = new Compass({
+      hud: this.#hud,
+      guide,
+      heading: () => this.#body.heading,
+      standing: () => this.#body.position,
+      outdoors: () => this.#buildings.outdoors,
+    })
 
     this.#targeting = new Targeting({
       world: this.#world,
@@ -267,7 +324,10 @@ export class Game {
       report: this.#report,
       body: this.#body,
       chart: this.#chart,
-      releasePointer: () => document.exitPointerLock(),
+      conditions,
+      leave: input.leave,
+      // a page with no pointer lock to give back has nothing to release
+      releasePointer: () => document.exitPointerLock?.(),
     })
 
     this.#interaction = new Interaction({
@@ -282,13 +342,17 @@ export class Game {
       talking: this.#talking,
       companions: this.#companions,
       driving: this.#driving,
-      guide: new Guide({ world: this.#world, nav, from: () => this.#buildings.cityPosition(), goals, steps }),
-      conditions: new Conditions(this.#player.clock),
+      guide,
+      conditions,
       report: this.#report,
       aimed: () => this.#target,
     })
 
     this.#hud.show({ controls: CONTROLS })
+    // the quest log hears the clock before any job can be taken: a timer
+    // counts from the last reading it heard, and one that heard none fails on
+    // its first
+    this.#report.tick()
     this.#report.refresh()
 
     // the city is built the same way every time, so everything a playthrough
@@ -314,6 +378,7 @@ export class Game {
         log,
         sidecar: options.sidecar ?? new Sidecar(),
         dressing: options.dressing,
+        leave: options.leave ?? (() => {}),
         ...(options.room ? { room: options.room } : {}),
         ...(session ? { session } : {}),
         ...(options.cast ? { cast: options.cast } : {}),
@@ -327,6 +392,11 @@ export class Game {
       throw cause
     }
 
+    // a save that came back into a city written again since it was made says
+    // what it kept and what it lost, by name
+    const rebuilt = restored ? resumeNotice(bundle, restored.report) : undefined
+    if (rebuilt) hud.announce(rebuilt)
+
     if (options.cars) {
       await game.#street.openRoads(options.cars, game.#city.root, game.#body.position)
       const roads = game.#street.roads
@@ -339,7 +409,7 @@ export class Game {
   frame(seconds: number): void {
     const clock = this.#player.clock
     clock.advance(seconds)
-    this.#log.handle({ kind: 'clock', seconds: clock.totalSeconds })
+    this.#report.tick()
     this.#keepTheClock(seconds)
     this.#sky.follow(seconds, clock, this.#buildings.outdoors, this.#city)
     this.#street.setTime(clock)
@@ -347,13 +417,17 @@ export class Game {
     this.#body.update(seconds)
     this.#driving.update(seconds)
     // the street only carries on while the player is out in it
-    if (this.#buildings.outdoors) this.#street.update(seconds, this.#body.position)
+    if (this.#buildings.outdoors) {
+      this.#street.update(seconds, this.#body.position)
+      this.#escorts.update()
+    }
     // whoever is being talked to keeps facing the player, indoors and out, and
     // before the cast runs so the head turn lands on this frame's pose
     this.#attending.update(seconds)
     this.#cast?.update(seconds)
 
     this.#chart.update(seconds)
+    this.#compass.update(seconds)
     this.#target = pick(this.#body.position, this.#body.heading, this.#targeting.list())
     const prompt = this.#talking.active || !this.#target ? null : { key: 'E', text: this.#target.label }
     this.#hud.show({ prompt })
@@ -373,6 +447,11 @@ export class Game {
     this.#intents.handle(intent)
   }
 
+  /** A word for the player from outside the game: a busy model, a city that moved. */
+  announce(notice: Notice): void {
+    this.#hud.announce(notice)
+  }
+
   /**
    * Hand the keyboard and the pointer to something else on the page, and take
    * them back. The city carries on either way.
@@ -381,7 +460,6 @@ export class Game {
     this.#intents.handOver(away)
   }
 
-  /** Write the playthrough down now, whatever it is doing. */
   /**
    * The clock runs whether or not anything happens, so a playthrough saved only
    * when the player does something comes back at the hour they arrived. Kept on
@@ -394,6 +472,7 @@ export class Game {
     this.keep()
   }
 
+  /** Write the playthrough down now, whatever it is doing. */
   keep(): void {
     if (!this.#session) return
     this.#playthrough.write()

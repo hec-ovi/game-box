@@ -1,3 +1,4 @@
+import type { CompassGoal } from '@gb/hud'
 import type { CityNav, Point } from '@gb/nav'
 import type { Objective } from '@gb/quest'
 import type { World } from '@gb/world'
@@ -40,6 +41,21 @@ export class Guide {
     this.#steps = input.steps
   }
 
+  /**
+   * The tracked goal as the compass draws it: its name, the bearing of the
+   * first stretch of the walk in radians clockwise from north, and the metres
+   * along it. Nothing when there is no goal or no way there on foot.
+   */
+  resolve(): CompassGoal | undefined {
+    const goal = this.#goals()[0]
+    if (!goal) return undefined
+    const from = this.#from()
+    const route = this.#route(from, goal)
+    if (!route) return undefined
+    const corner = route[1] ?? { x: goal.x, z: goal.z }
+    return { label: goal.label, bearing: bearingOf(from, corner), distance: length(route), line: goal.line }
+  }
+
   /** One line for the player: where they are headed and which way to set off. */
   say(): string {
     const goal = this.#goals()[0]
@@ -51,15 +67,10 @@ export class Guide {
       return `${step.markerLabel ?? step.text}: not a place you can walk to`
     }
 
-    const from = this.#from()
-    const route = this.#route(from, goal)
-    if (!route) return `${goal.label}: no way there on foot`
-
-    const walk = length(route)
-    if (walk < ARRIVED) return `${goal.label}: you are there`
-
-    const corner = route[1] ?? { x: goal.x, z: goal.z }
-    return `${goal.label}: ${Math.round(walk / 10) * 10} m, head ${towards(from, corner)}`
+    const way = this.resolve()
+    if (!way) return `${goal.label}: no way there on foot`
+    if (way.distance < ARRIVED) return `${goal.label}: you are there`
+    return `${goal.label}: ${Math.round(way.distance / 10) * 10} m, head ${POINTS[Math.round(way.bearing / (Math.PI / 4)) % 8]}`
   }
 
   /** The corners of the walk there, in metres, or nothing if there is no walk. */
@@ -80,10 +91,9 @@ function length(route: readonly Point[]): number {
   return metres
 }
 
-/** Which of the eight points of the compass one spot is from another. */
-function towards(from: Vec2, to: Point): string {
+/** Which way one spot is from another, in radians clockwise from north, in one turn. */
+function bearingOf(from: Vec2, to: Point): number {
   const turn = Math.PI * 2
   const bearing = Math.atan2(to.x - from.x, -(to.z - from.z))
-  const eighth = Math.round((((bearing % turn) + turn) % turn) / (turn / 8)) % 8
-  return POINTS[eighth]!
+  return ((bearing % turn) + turn) % turn
 }

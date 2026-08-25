@@ -5,6 +5,23 @@ import type { Answer } from '@gb/talk'
 export type Bodies = () => ReadonlyMap<string, CastMember> | undefined
 
 /**
+ * How a reply reads on the body. Both are in `@gb/cast`'s `GESTURES`, so they
+ * lay over whatever stance the person is already holding.
+ */
+const ANSWERS: Record<Answer, string> = { yes: 'Idle_Yes_Loop', no: 'Idle_No_Loop' }
+
+/**
+ * What a stage direction may mean on the body, read for its words. The model
+ * writes prose and never names a clip: a direction that says they nod is the
+ * nod, one that says they shake their head is the shake, and anything else is
+ * words the panel prints and the hands already talking.
+ */
+const DIRECTIONS: readonly { means: Answer; said: RegExp }[] = [
+  { means: 'no', said: /\bshak(?:es|ing|e)\b[^.]{0,20}\bhead\b|\bhead ?shake\b/i },
+  { means: 'yes', said: /\bnod(?:s|ded|ding)?\b/i },
+]
+
+/**
  * Talking with their hands. `@gb/cast` lays a gesture over the upper body on
  * top of whatever the person is already doing, so somebody leaning on their
  * counter keeps leaning on it and moves their arms while they speak. One
@@ -31,6 +48,16 @@ export class Gestures {
     if (!member) return
     member.gesture(talkFor(member))
     this.#going = npcId
+  }
+
+  /**
+   * What they do, as the turn describes it. Read for a nod or a shake of the
+   * head and played as that; a direction that reads as neither plays nothing,
+   * because the words are the panel's and the hands are already going.
+   */
+  direct(npcId: string, does: string): void {
+    const meant = DIRECTIONS.find((direction) => direction.said.test(does))?.means
+    if (meant) this.answer(npcId, meant)
   }
 
   /**
@@ -64,12 +91,6 @@ export class Gestures {
     return undefined
   }
 }
-
-/**
- * How a reply reads on the body. Both are in `@gb/cast`'s `GESTURES`, so they
- * lay over whatever stance the person is already holding.
- */
-const ANSWERS: Record<Answer, string> = { yes: 'Idle_Yes_Loop', no: 'Idle_No_Loop' }
 
 /**
  * The talk that suits the pose they are holding. A gesture is added to the

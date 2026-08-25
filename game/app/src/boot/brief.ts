@@ -1,10 +1,19 @@
-/** What the player asked for: enough to build a city, and short enough to type. */
+import { DENSITY_LEVELS, NEON_LEVELS, WEAR_LEVELS, type Asks } from '@gb/world'
+
+/**
+ * What the player asked for. Theme, seed and size are enough to build a city;
+ * the rest is optional, and a field left blank is a choice the generator makes.
+ */
 export interface CityBrief {
   readonly theme: string
   readonly seed: string
   readonly blocks: number
   /** Write the names, people and quests with the local model rather than offline. */
   readonly model: boolean
+  /** What the city is about, in the player's own words. Unbounded: it is theirs. */
+  readonly brief?: string
+  /** The main quest, the side quests, the tone, and the style choices the art can draw. */
+  readonly asks?: Asks
 }
 
 /** What the panel starts on, and what a bare address builds. */
@@ -18,6 +27,15 @@ export const DEFAULTS: CityBrief = { theme: 'quiet coastal town', seed: 'town', 
  */
 export const BLOCKS = { min: 1, max: 24 } as const
 
+/**
+ * The style choices, each the closed list `@gb/world` will hold. The art is one
+ * catalogue, so these are what a form may offer: a period or a look outside
+ * them cannot be drawn, and is not offered rather than taken and dropped.
+ */
+export const STYLE = { neon: NEON_LEVELS, density: DENSITY_LEVELS, wear: WEAR_LEVELS } as const
+
+export type StyleAxis = keyof typeof STYLE
+
 /** As long as `@gb/world` will hold, so a long theme is cut rather than refused. */
 const THEME_LIMIT = 60
 const SEED_LIMIT = 120
@@ -27,22 +45,50 @@ export function clampBlocks(value: number): number {
   return Math.min(BLOCKS.max, Math.max(BLOCKS.min, Math.round(value)))
 }
 
-/** A brief the generator will accept, whoever typed it. */
+/** A brief the generator will accept, whoever typed it. Blank is absent, never an empty string. */
 export function tidy(brief: CityBrief): CityBrief {
+  const text = brief.brief?.trim()
+  const asks = tidyAsks(brief.asks)
   return {
     theme: (brief.theme.trim() || DEFAULTS.theme).slice(0, THEME_LIMIT),
     seed: (brief.seed.trim() || DEFAULTS.seed).slice(0, SEED_LIMIT),
     blocks: clampBlocks(brief.blocks),
     model: brief.model,
+    ...(text ? { brief: text } : {}),
+    ...(asks ? { asks } : {}),
   }
 }
 
-/** The four the brief owns. Everything else in the address bar belongs to somebody else. */
+/** The asks with every blank field left out, or nothing when every field was blank. */
+function tidyAsks(asks: Asks | undefined): Asks | undefined {
+  if (!asks) return undefined
+  const words = (value: string | undefined) => value?.trim() || undefined
+  const style = Object.fromEntries(
+    (Object.keys(STYLE) as StyleAxis[]).flatMap((axis) => {
+      const picked = asks.style?.[axis]
+      return picked && (STYLE[axis] as readonly string[]).includes(picked) ? [[axis, picked]] : []
+    }),
+  ) as Asks['style']
+  const tidied: Asks = {
+    ...(words(asks.mainQuest) ? { mainQuest: words(asks.mainQuest) } : {}),
+    ...(words(asks.sideQuests) ? { sideQuests: words(asks.sideQuests) } : {}),
+    ...(words(asks.tone) ? { tone: words(asks.tone) } : {}),
+    ...(style && Object.keys(style).length > 0 ? { style } : {}),
+  }
+  return Object.keys(tidied).length > 0 ? tidied : undefined
+}
+
+/** The same city asked for twice: everything the generator reads, compared whole. */
+export function sameBrief(a: CityBrief, b: CityBrief): boolean {
+  return JSON.stringify(tidy(a)) === JSON.stringify(tidy(b))
+}
+
+/** The four the address bar carries. Everything else in it belongs to somebody else. */
 const BRIEF_KEYS = ['theme', 'seed', 'blocks', 'model']
 
 /**
- * The address bar, which is how a city is shared and how the same one is opened
- * again. Nothing in it means nothing was asked for.
+ * The address bar, which is how a city is shared by seed and how the same one is
+ * asked for again. Nothing in it means nothing was asked for.
  */
 export function briefFromQuery(query: URLSearchParams): CityBrief | undefined {
   if (!BRIEF_KEYS.some((key) => query.has(key))) return undefined
@@ -55,16 +101,23 @@ export function briefFromQuery(query: URLSearchParams): CityBrief | undefined {
 }
 
 /**
- * The same brief written back, so the address bar names the city on screen.
- * Whatever else was asked for rides along: `?sidecar=` and `?bundle=` are not
- * the brief's to answer for, and a refresh that dropped them would quietly
- * reconnect somewhere else.
+ * The address bar written to name the city on screen: the brief it was built
+ * from, or nothing when it came out of a file. Whatever else was asked for
+ * rides along, because `?sidecar=` is not the brief's to answer for and a
+ * refresh that dropped it would quietly reconnect somewhere else. `?bundle=`
+ * names a file rather than a city, so it goes when the brief does.
  */
-export function briefToQuery(brief: CityBrief, carry?: URLSearchParams): string {
-  const query = new URLSearchParams({ theme: brief.theme, seed: brief.seed, blocks: String(brief.blocks) })
-  if (brief.model) query.set('model', '1')
-  for (const [key, value] of carry ?? []) if (!BRIEF_KEYS.includes(key)) query.append(key, value)
-  return `?${query.toString()}`
+export function briefToQuery(brief: CityBrief | undefined, carry?: URLSearchParams): string {
+  const query = new URLSearchParams()
+  if (brief) {
+    query.set('theme', brief.theme)
+    query.set('seed', brief.seed)
+    query.set('blocks', String(brief.blocks))
+    if (brief.model) query.set('model', '1')
+  }
+  for (const [key, value] of carry ?? []) if (!BRIEF_KEYS.includes(key) && key !== 'bundle') query.append(key, value)
+  const written = query.toString()
+  return written ? `?${written}` : location.pathname
 }
 
 /** A seed nobody has played: four short words of hex. */

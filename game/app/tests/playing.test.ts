@@ -144,7 +144,7 @@ describe('the keys the player presses', () => {
     expect(keys.clock.weather).toBe('overcast')
 
     await keys.user.keyboard('p')
-    expect(keys.clock.rate).toBe(0)
+    expect(keys.clock.paused).toBe(true)
     expect(keys.notes).toEqual(['12:00, the middle of the day', 'Cloud rolls in', 'Time held'])
   })
 
@@ -307,7 +307,7 @@ function inTheBar(kept?: { player: unknown; quests: unknown }) {
   })
   buildings.enter(plotId)
 
-  const report = new Reporting({ world, log, player, hud })
+  const report = new Reporting({ world, log, player, hud, conditions: new Conditions(player.clock) })
   const stashing = new Stashing({ world, log, player, buildings, report })
   const driving = { aboard: false, target: () => undefined, act: () => {} } as unknown as Driving
   const targeting = new Targeting({ world, city, buildings, stashing, street, driving })

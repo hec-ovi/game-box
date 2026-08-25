@@ -1,19 +1,25 @@
 import type { PlayerState } from '@gb/play'
-import type { World } from '@gb/world'
+import type { Npc, World } from '@gb/world'
 import type { Buildings } from './buildings.ts'
-import type { Street } from './street.ts'
+import type { SetOff, Street } from './street.ts'
 import type { Vec2 } from './walk.ts'
 
 /**
- * Who is walking with the player. Asking somebody along takes them off their
- * anchor, and telling them to stay puts them back on it, so nobody is ever in
- * two places at once.
+ * Who is walking with the player. `@gb/play` holds the list, and it is written
+ * three ways: a click on somebody in reach, a conversation in which they agree
+ * to come along, and a job that puts them beside the player. The bodies follow
+ * the list rather than any one of those: whoever is on it and not yet walking
+ * sets off, from the pavement they are standing on or the doorstep of the
+ * building they were stationed in, and whoever is walking and no longer on it
+ * goes back to their post. So nobody is ever in two places at once, and no way
+ * of agreeing leaves a flag with no body behind it.
  */
 export class Companions {
   #world: World
   #player: PlayerState
   #street: Street
   #buildings: Buildings
+  #riding: () => readonly string[]
   #note: (text: string) => void
 
   constructor(input: {
@@ -21,35 +27,44 @@ export class Companions {
     player: PlayerState
     street: Street
     buildings: Buildings
+    /** Whoever is in the player's car: with the player, and not on the pavement to be counted. */
+    riding: () => readonly string[]
     note: (text: string) => void
   }) {
     this.#world = input.world
     this.#player = input.player
     this.#street = input.street
     this.#buildings = input.buildings
+    this.#riding = input.riding
     this.#note = input.note
   }
 
   /** Ask somebody along, or tell them to stay where they are. */
-  toggle(npcId: string, at: Vec2): void {
+  toggle(npcId: string): void {
     const npc = this.#world.npc(npcId)
     if (!npc || !this.#street.walkable) return
 
     if (this.#player.isCompanion(npcId)) {
       this.#player.removeCompanion(npcId)
-      this.#street.stopFollowing(npcId)
-      this.#buildings.showPerson(npcId, true)
       this.#note(`${npc.name} stays here`)
-      return
+    } else {
+      this.#player.addCompanion(npcId)
+      this.#note(`${npc.name} comes with you`)
     }
+    this.sync()
+  }
 
-    this.#player.addCompanion(npcId)
-    // they step off the pavement from where they are standing. Handed the
-    // player's own spot instead, somebody across the street teleports to them
-    const standing = this.#street.walkers().find((walker) => walker.id === npcId)
-    this.#street.follow(npc, standing ? { x: standing.x, z: standing.z } : at)
-    this.#buildings.showPerson(npcId, false)
-    this.#note(`${npc.name} comes with you`)
+  /**
+   * Bring the bodies in line with the list. Somebody who agreed in a
+   * conversation or was put beside the player by a job sets off; somebody the
+   * job or the conversation sent home goes back to their post.
+   */
+  sync(): void {
+    if (!this.#street.walkable) return
+    const listed = new Set(this.#player.companions())
+    const walking = new Set([...this.#street.following().map((person) => person.id), ...this.#riding()])
+    for (const npcId of walking) if (!listed.has(npcId)) this.#stay(npcId)
+    for (const npcId of listed) if (!walking.has(npcId)) this.#setOff(npcId)
   }
 
   /**
@@ -64,10 +79,36 @@ export class Companions {
       const npc = this.#world.npc(npcId)
       if (!npc) continue
       this.#street.stopFollowing(npcId)
-      this.#street.follow(npc, at)
+      this.#street.follow(npc, { at })
       // and they are not also standing at their anchor, which is where a
       // freshly built room draws them
       this.#buildings.showPerson(npcId, false)
     }
   }
+
+  /**
+   * They step off from where they are standing: their own spot on the
+   * pavement, or the doorstep of the building they were stationed in. Handed
+   * the player's own spot instead, somebody across the street teleports to
+   * them and somebody behind a counter appears on the pavement outside.
+   */
+  #setOff(npcId: string): void {
+    const npc = this.#world.npc(npcId)
+    if (!npc) return
+    this.#street.follow(npc, from(npc, this.#world, this.#street))
+    this.#buildings.showPerson(npcId, false)
+  }
+
+  #stay(npcId: string): void {
+    this.#street.stopFollowing(npcId)
+    this.#buildings.showPerson(npcId, true)
+  }
+}
+
+/** Where somebody sets off from: the pavement they are on, the door of the room they were in, or beside the player. */
+function from(npc: Npc, world: World, street: Street): SetOff {
+  const standing = street.walkers().find((walker) => walker.id === npc.id)
+  if (standing) return { at: { x: standing.x, z: standing.z } }
+  const plotId = npc.station ? world.interior(npc.station.interiorId)?.plotId : undefined
+  return plotId ? { door: plotId } : {}
 }

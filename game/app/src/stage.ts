@@ -27,8 +27,8 @@ export interface Stage {
    * black inside.
    */
   indoors(on: boolean): void
-  /** Develop the frame for this hour of the day: exposure, and how hard neon glows. */
-  grade(hours: number): void
+  /** Develop the frame for how dark it is, 0 full daylight to 1 after dark: exposure, and how hard neon glows. */
+  grade(night: number): void
   /** Swap what is being rendered: the city, or the inside of a building. */
   show(root: THREE.Object3D): void
   start(frame: (seconds: number) => void): void

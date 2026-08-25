@@ -100,7 +100,8 @@ export class Buildings {
       // the shell is `@gb/scene`'s and the bays standing on its walls are the
       // furniture's, so a room is built with its own dressing and then handed
       // the run of bays that goes with it
-      const room = this.#room?.(interior)
+      const charter = this.#world.charter(interior.kind)
+      const room = charter ? this.#room?.(interior, charter) : undefined
       built = buildInterior(this.#world, interior, room?.dressing ?? this.#dressing)
       if (room) built.root.add(room.decor)
       this.#asLeft(built, interior.id)
@@ -127,6 +128,8 @@ export class Buildings {
       Math.atan2(-built.inward.x, -built.inward.z),
     )
     this.#announce(plot!.name)
+    // a place walked into is a place found, for the codex
+    this.#player.discover({ place: interior.id })
     this.#arrived({ plotId })
     this.#arrived({ interiorId: interior.id })
   }

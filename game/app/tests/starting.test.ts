@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { Bundle, type OpenedBundle } from '@gb/bundle'
 import { Cast, CastDressing, CLIPS, type CastMember } from '@gb/cast'
+import { Greybox } from '@gb/scene'
 import { Sidecar } from '@gb/sidecar'
 import * as THREE from 'three'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
@@ -20,7 +21,8 @@ class Bench implements Stage {
   readonly camera = new THREE.PerspectiveCamera(75, 16 / 9, 0.1, 500)
   readonly scene = new THREE.Scene()
   showing: THREE.Object3D | undefined
-  hours = -1
+  night = -1
+  reflected = 0
   frame: ((seconds: number) => void) | undefined
 
   constructor(mount: HTMLElement) {
@@ -29,10 +31,12 @@ class Bench implements Stage {
   }
 
   plainDaylight(): void {}
-  reflect(): void {}
+  reflect(): void {
+    this.reflected += 1
+  }
   indoors(): void {}
-  grade(hours: number): void {
-    this.hours = hours
+  grade(night: number): void {
+    this.night = night
   }
   show(root: THREE.Object3D): void {
     if (this.showing) this.scene.remove(this.showing)
@@ -72,6 +76,11 @@ function body(npcId: string): CastMember {
     get gesturing() {
       return gesturing
     },
+    holding: undefined,
+    pace: () => {},
+    attend: () => {},
+    resume: () => {},
+    attending: false,
     lookAt: () => {},
     lookAway: () => {},
   }
@@ -146,7 +155,34 @@ describe('standing a game up', () => {
     expect(bench.showing).toBeDefined()
     expect(bench.frame).toBeDefined()
     game.frame(1 / 60)
-    expect(bench.hours).toBeGreaterThanOrEqual(0)
+    expect(bench.night).toBeGreaterThanOrEqual(0)
+    expect(bench.night).toBeLessThanOrEqual(1)
+  })
+
+  it('moves the sun every frame and prefilters the sky only when the hour turns', async () => {
+    const { game, bench } = await playPlain()
+    const sun = bench.scene.getObjectByName('land')!.getObjectByProperty('castShadow', true) as THREE.Object3D
+    expect(sun).toBeDefined()
+    // built for the hour before the first frame: one prefilter so far
+    expect(bench.reflected).toBe(1)
+
+    // two game hours at the longest step the frame loop takes, from 08:00
+    let still = 0
+    let carried = 0
+    let last = sun.position.clone()
+    for (let frame = 0; frame < 3000; frame++) {
+      game.frame(0.1)
+      if (sun.position.equals(last)) still += 1
+      last = sun.position.clone()
+      carried = Math.max(carried, Math.abs(bench.scene.environmentRotation.y))
+    }
+    // the sun is a smooth function of the fractional hour, so every frame moves it
+    expect(still).toBe(0)
+    // and the expensive part ran twice, at 09:00 and at 10:00, never per frame
+    expect(bench.reflected).toBe(3)
+    // the reflection is carried between: the map turns with the sun, up to an hour's worth
+    expect(carried).toBeGreaterThan(0.1)
+    expect(carried).toBeLessThan(0.4)
   })
 
   it('builds one against a save store, which asks it for a save before it has finished building', async () => {
@@ -167,9 +203,9 @@ describe('standing a game up', () => {
  * Walk up to whoever is nearest on the pavement, the way the player would: the
  * keys the game binds, a frame at a time, until the crosshair is on somebody.
  * Nobody is placed by hand, so this covers the chain from the crowd through the
- * targeting to the key.
+ * targeting to the key. Told to avoid somebody, it walks to the next person.
  */
-function walkUpToSomebody(game: Game, crowd: THREE.Object3D): string {
+function walkUpToSomebody(game: Game, crowd: THREE.Object3D, avoid?: { body: THREE.Object3D; prompt: string }): string {
   const held = new Set<string>()
   const hold = (codes: readonly string[]) => {
     for (const code of held) if (!codes.includes(code)) document.dispatchEvent(new KeyboardEvent('keyup', { code }))
@@ -181,7 +217,7 @@ function walkUpToSomebody(game: Game, crowd: THREE.Object3D): string {
   for (let step = 0; step < 4000; step++) {
     const seen = game.look()
     const prompt = seen.target
-    if (typeof prompt === 'string' && prompt.startsWith('Talk to')) {
+    if (typeof prompt === 'string' && prompt.startsWith('Talk to') && prompt !== avoid?.prompt) {
       hold([])
       return prompt
     }
@@ -196,6 +232,7 @@ function walkUpToSomebody(game: Game, crowd: THREE.Object3D): string {
     let nearest: THREE.Object3D | undefined
     let away = Infinity
     for (const person of crowd.children) {
+      if (person === avoid?.body) continue
       const gap = Math.hypot(person.position.x - me.x, person.position.z - me.z)
       if (gap < away) [away, nearest] = [gap, person]
     }
@@ -216,6 +253,70 @@ function walkUpToSomebody(game: Game, crowd: THREE.Object3D): string {
   throw new Error('nobody on the pavement came within reach')
 }
 
+/** The same game with no people in it: the greybox answers for everything, so nothing of the cast is needed. */
+async function playPlain(options: { save?: SaveStore; bundle?: OpenedBundle } = {}): Promise<{ game: Game; mount: HTMLElement; bench: Bench }> {
+  const mount = document.createElement('div')
+  document.body.append(mount)
+  let bench: Bench | undefined
+  const game = await Game.start(mount, options.bundle ?? (await city()), {
+    dressing: new Greybox(),
+    sidecar: offline(),
+    stage: (into) => Promise.resolve((bench = new Bench(into))),
+    ...(options.save ? { save: options.save } : {}),
+  })
+  running.push(game)
+  return { game, mount, bench: bench! }
+}
+
+describe('what the interface is handed', () => {
+  it('pushes the compass outdoors and takes it away indoors, and names the place walked into on the plan', async () => {
+    const bundle = await city()
+    const { game, mount } = await playPlain({ bundle })
+    game.frame(1 / 60)
+    const strip = mount.querySelector<HTMLElement>('.gb-compass')!
+    expect(strip.dataset.state).toBe('open')
+
+    // the player opens their eyes a step off a door that opens, looking at it
+    const door = game.look().target
+    expect(door).toMatch(/^Go into /)
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE' }))
+    game.frame(1 / 60)
+    expect(game.look().place).toBe('interior')
+    // asked to close the moment the door shuts behind them; only its pixels linger
+    expect(strip.dataset.state).not.toBe('open')
+
+    // walking through the door found the place: it is in the codex and written on the plan
+    const name = String(door).slice('Go into '.length)
+    game.intent({ kind: 'window', window: 'map' })
+    game.frame(1 / 60)
+    const plan = mount.querySelector('.gb-hud')!.textContent ?? ''
+    expect(plan).toContain(name)
+    game.intent({ kind: 'window', window: 'codex' })
+    expect(mount.querySelector('.gb-hud')!.textContent).toContain(name)
+  })
+
+  it('says what a save lost coming back into a city written again since, by name', async () => {
+    // a city the model writes is a different city every time, and every city
+    // calls itself world_0001: a save under the same key resumes reconciled
+    const kept = store()
+    const { game } = await playPlain({ save: kept })
+    game.keep()
+    for (const held of running) held.dispose()
+    running = []
+    document.body.innerHTML = ''
+
+    const other = await new CityMaker(new Sidecar()).build(
+      { ...DEFAULTS, blocks: 1, seed: 'rewritten' },
+      { signal: new AbortController().signal, step: () => {} },
+    )
+    if (!other.ok) throw new Error(other.message)
+    const opened = await Bundle.open(JSON.parse(JSON.stringify(other.value.document)))
+    if (!opened.ok) throw new Error(opened.error.code)
+    const { mount } = await playPlain({ save: kept, bundle: opened.value })
+    expect(mount.querySelector('.gb-notices')!.textContent).toMatch(/written again since your last visit/)
+  }, 60_000)
+})
+
 describe('talking to somebody out on the pavement', () => {
   it('moves the hands of the body they are wearing out here, not one a room drew for them', async () => {
     const { game, bench } = await play()
@@ -235,4 +336,33 @@ describe('talking to somebody out on the pavement', () => {
     await vi.waitFor(() => expect(moved.map((arms) => arms.clip)).toContain(CLIPS.talk))
     expect(moved.every((arms) => arms.object.parent === crowd)).toBe(true)
   }, 30_000)
+
+  it('talks to the second person as the second person, with nothing of the first carried over', async () => {
+    const { game, bench } = await play()
+    for (let step = 0; step < 400; step++) game.frame(1 / 60)
+    const crowd = bench.scene.getObjectByName('crowd')!
+    const panel = () => bench.canvas.parentElement!.querySelector('.gb-hud')!.textContent ?? ''
+
+    const first = walkUpToSomebody(game, crowd)
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE' }))
+    game.intent({ kind: 'say', text: 'hello' })
+    await vi.waitFor(() => expect(moved.length).toBeGreaterThan(0))
+    const firstName = first.slice('Talk to '.length)
+    const firstBody = moved[0]!.object
+    expect(panel()).toContain(firstName)
+    game.intent({ kind: 'talk-closed' })
+    moved.length = 0
+
+    // the next person along: the conversation, the name on the panel and the
+    // body that talks are all theirs, measured rather than assumed
+    const second = walkUpToSomebody(game, crowd, { body: firstBody, prompt: first })
+    const secondName = second.slice('Talk to '.length)
+    expect(secondName).not.toBe(firstName)
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE' }))
+    game.intent({ kind: 'say', text: 'hello' })
+    await vi.waitFor(() => expect(moved.length).toBeGreaterThan(0))
+    expect(panel()).toContain(secondName)
+    expect(panel()).not.toContain(firstName)
+    expect(moved.every((arms) => arms.object !== firstBody)).toBe(true)
+  }, 60_000)
 })

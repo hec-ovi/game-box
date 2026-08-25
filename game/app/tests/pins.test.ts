@@ -23,13 +23,13 @@ function sizeOf(plot: Plot, world: World) {
 /** The same pack with one more look in it, which is what a pack update is: another building at every shape. */
 async function grown(): Promise<Catalogue> {
   const manifest = JSON.parse(await readFile(PACK_MANIFEST, 'utf8')) as {
-    models: Array<{ id: string; look: string; kinds: string[] }>
+    models: Array<{ id: string; look: string; tags: string[] }>
   }
-  const later = new Map<string, { id: string; look: string; kinds: string[] }>()
+  const later = new Map<string, { id: string; look: string; tags: string[] }>()
   for (const model of manifest.models) {
     const shape = model.id.slice(model.look.length + 1)
-    const at = later.get(shape) ?? { ...model, id: `later-a-${shape}`, look: 'later-a', kinds: [] }
-    at.kinds = [...new Set([...at.kinds, ...model.kinds])]
+    const at = later.get(shape) ?? { ...model, id: `later-a-${shape}`, look: 'later-a', tags: [] }
+    at.tags = [...new Set([...at.tags, ...model.tags])]
     later.set(shape, at)
   }
   return Catalogue.parse({ ...manifest, version: '1.6.0', models: [...manifest.models, ...later.values()] })
@@ -65,10 +65,11 @@ describe('a city made in the browser', () => {
     const later = await grown()
     const plots = city.world.plots()
 
+    const suits = (plot: Plot) => city.world.charter(plot.kind)!.suits
     const moved = plots.filter(
       (plot) =>
-        designFor(later, plot, sizeOf(plot, city.world))?.model !==
-        designFor(pack, plot, sizeOf(plot, city.world))?.model,
+        designFor(later, plot, sizeOf(plot, city.world), suits(plot))?.model !==
+        designFor(pack, plot, sizeOf(plot, city.world), suits(plot))?.model,
     )
     expect(moved.map((plot) => plot.id)).toEqual([])
 
@@ -76,7 +77,8 @@ describe('a city made in the browser', () => {
     // off the catalogue instead of off the file
     const repicked = plots.filter(
       (plot) =>
-        later.design(plot, sizeOf(plot, city.world))?.model !== pack.design(plot, sizeOf(plot, city.world))?.model,
+        later.design(plot, sizeOf(plot, city.world), suits(plot))?.model !==
+        pack.design(plot, sizeOf(plot, city.world), suits(plot))?.model,
     )
     expect(repicked.length).toBeGreaterThan(0)
   }, 30_000)

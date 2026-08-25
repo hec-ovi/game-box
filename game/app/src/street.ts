@@ -1,4 +1,4 @@
-import { Crowd, type Attention, type CrowdCast } from '@gb/crowd'
+import { Crowd, CROWD_DEFAULTS, type Attention, type Companion, type CrowdCast, type Hazard, type Hazards } from '@gb/crowd'
 import type { CityNav } from '@gb/nav'
 import { CarPack, LaneGraph, Traffic, type Obstacle } from '@gb/traffic'
 import { METRICS, type Npc, type World } from '@gb/world'
@@ -24,11 +24,22 @@ const OUT_TODAY = 1 / 3
  */
 const LANE_PER_CAR = 110
 
-/** The player's own car: solid to walk into, and something traffic brakes for. */
+/** The player's own car: solid to walk into, something traffic brakes for, and something nobody walks through. */
 export interface PlayerCar {
+  /** The car, driving or parked; nothing while the player has none. */
+  readonly car: Rolling | undefined
   rolling(): readonly Rolling[]
   inTheRoad(): readonly { x: number; z: number; radius: number }[]
 }
+
+/** Where somebody is heading or standing out here: a building's door, or a spot on the ground. */
+export type Whereabouts = { plotId: string } | { x: number; z: number }
+
+/** Where a companion sets off from: a spot on the pavement, or the doorstep of the building they were in. */
+export type SetOff = Pick<Companion, 'at'> | Pick<Companion, 'door'>
+
+/** A car as the crowd reads one, mutable so the pool can be rewritten every frame. */
+type OnTheRoad = Hazard & { x: number; z: number; vx: number; vz: number; footprint: { length: number; width: number; heading: number } }
 
 /**
  * The street outside: its walls and its floor, the people on the pavement and
@@ -40,10 +51,13 @@ export class Street {
   #nav: CityNav
   #ground: Ground | undefined
   #playerOutdoors: () => Vec2 | undefined
+  #atWork: () => ReadonlySet<string>
   #crowd: Crowd | undefined
   #traffic: Traffic | undefined
   #cars: CarPack | undefined
   #playerCar: PlayerCar | undefined
+  /** Who the crowd may send out today, kept current with who a job is waiting on. */
+  #out: readonly Npc[] = []
   /**
    * Who is in the road, answered into the same two arrays every frame. Traffic
    * reads them once per update and keeps nothing, so a pool of bodies is safe
@@ -51,12 +65,22 @@ export class Street {
    */
   #standing: { x: number; z: number }[] = []
   #inTheWay: Obstacle[] = []
+  /** The cars, answered into one array the same way: the crowd reads it once a frame and keeps nothing. */
+  #onTheRoad: OnTheRoad[] = []
 
-  constructor(input: { world: World; nav: CityNav; ground?: Ground; playerOutdoors: () => Vec2 | undefined }) {
+  constructor(input: {
+    world: World
+    nav: CityNav
+    ground?: Ground
+    playerOutdoors: () => Vec2 | undefined
+    /** Who has to stay at their post: everybody a job is waiting on. Nobody by default. */
+    atWork?: () => ReadonlySet<string>
+  }) {
     this.#world = input.world
     this.#nav = input.nav
     this.#ground = input.ground
     this.#playerOutdoors = input.playerOutdoors
+    this.#atWork = input.atWork ?? (() => new Set())
   }
 
   /**
@@ -71,32 +95,35 @@ export class Street {
    * stands on the hillside rather than at zero.
    */
   populate(cast: CrowdCast): void {
-    const residents = this.residents()
+    this.reconsider()
     this.#crowd = Crowd.create(
       {
         world: this.#world,
         nav: this.#nav,
         cast,
-        hazards: this.#onTheRoad(),
+        hazards: this.hazards(),
         ...(this.#ground ? { ground: this.#ground } : {}),
-        ...(residents.length > 0 ? { people: { street: (_serial, rng) => rng.pick(residents) } } : {}),
+        ...(this.#out.length > 0 ? { people: { street: (_serial, rng) => rng.pick(this.#out) } } : {}),
       },
       { population: 14 },
     )
   }
 
   /**
-   * Who is out today, for the crowd to draw the street from. Two rules keep the
-   * buildings from emptying onto the pavement: **nobody is the last person out
-   * of a room**, so every building the player can walk into still has somebody
-   * standing in it, and no more than a share of the town is out at once, so a
-   * bar keeps its regulars rather than its bartender on their own. Anybody the
-   * city stationed nowhere is always out, because there is nowhere to look for
-   * them. The city's own order decides, so the same town sends the same people
-   * out every time and somebody found at their post is there on the next visit.
+   * Who is out today, for the crowd to draw the street from. Three rules keep
+   * the buildings from emptying onto the pavement: **nobody is the last person
+   * out of a room**, so every building the player can walk into still has
+   * somebody standing in it; no more than a share of the town is out at once,
+   * so a bar keeps its regulars rather than its bartender on their own; and
+   * **nobody a job is waiting on goes out**, so a step that sends the player to
+   * somebody finds them at their post. Anybody the city stationed nowhere is
+   * always out, because there is nowhere to look for them. The city's own order
+   * decides, so the same town sends the same people out every time and
+   * somebody found at their post is there on the next visit.
    */
   residents(): readonly Npc[] {
     const people = this.#world.npcs()
+    const atWork = this.#atWork()
     const atTheirPost = new Map<string, number>()
     for (const npc of people) {
       const room = npc.station?.interiorId
@@ -113,12 +140,17 @@ export class Street {
         continue
       }
       const left = atTheirPost.get(room) ?? 0
-      if (stationed >= share || left <= 1) continue
+      if (stationed >= share || left <= 1 || atWork.has(npc.id)) continue
       atTheirPost.set(room, left - 1)
       stationed += 1
       out.push(npc)
     }
     return out
+  }
+
+  /** The board moved: whoever a job now waits on stays in, from the next person the crowd sends out. */
+  reconsider(): void {
+    this.#out = this.residents()
   }
 
   /**
@@ -190,12 +222,13 @@ export class Street {
   }
 
   /**
-   * The hour the cars are driving in. Their lamps come on after dark, and they
-   * are lit whether or not the player is out in the street to see it, because
-   * stepping out of a building must not be what turns the headlights on.
+   * The hour the cars are driving in, fractional so the lamps come up rather
+   * than switch. They are lit whether or not the player is out in the street
+   * to see it, because stepping out of a building must not be what turns the
+   * headlights on.
    */
-  setTime(clock: { hour: number; minute: number }): void {
-    this.#cars?.setTime(clock.hour + clock.minute / 60)
+  setTime(clock: { secondsOfDay: number }): void {
+    this.#cars?.setTime(clock.secondsOfDay / 3600)
   }
 
   update(seconds: number, near: Vec2): void {
@@ -208,13 +241,35 @@ export class Street {
     return this.#crowd?.walkers() ?? []
   }
 
+  /** Whoever is walking with the player, in the order they joined. */
+  following(): readonly { id: string; x: number; z: number }[] {
+    return this.#crowd?.following() ?? []
+  }
+
+  /**
+   * Where somebody out here is: the door they are walking to, so a job that
+   * names them can point at where they will be, or the spot they are standing
+   * on. Nothing for somebody who is not out here at all.
+   */
+  whereabouts(npcId: string): Whereabouts | undefined {
+    const going = this.#crowd?.destination(npcId)
+    if (going) return { plotId: going.plotId }
+    const out = [...this.walkers(), ...this.following()].find((person) => person.id === npcId)
+    return out ? { x: out.x, z: out.z } : undefined
+  }
+
   /** Nobody follows anybody without a crowd to walk them. */
   get walkable(): boolean {
     return this.#crowd !== undefined
   }
 
-  follow(npc: Npc, at: Vec2): void {
-    this.#crowd?.follow({ npc, at })
+  /** How close a conversation is held: past this the person is let go, on the pavement and behind a counter alike. */
+  get talkRadius(): number {
+    return this.#crowd?.options.talkRadius ?? CROWD_DEFAULTS.talkRadius
+  }
+
+  follow(npc: Npc, from: SetOff): void {
+    this.#crowd?.follow({ npc, ...from })
   }
 
   stopFollowing(npcId: string): void {
@@ -238,25 +293,44 @@ export class Street {
   }
 
   /**
-   * What a pedestrian has to look out for before stepping off the kerb. A car
-   * that has already stopped is not coming, which is what keeps a car and a
-   * pedestrian from deferring to each other forever.
+   * What a pedestrian has to look out for before stepping off the kerb, and
+   * cannot walk through: every car on the road as the box it is, and the
+   * player's own car, parked or driving, standing still to the crowd because
+   * `@gb/drive` publishes no speed. `@gb/traffic` points a nose down +Z, so a
+   * car at `heading` is going the way `(sin, cos)` of it points. Answered into
+   * the same array every frame: the crowd reads it once and keeps nothing.
    */
-  #onTheRoad() {
-    return {
-      near: (x: number, z: number, radius: number) => {
-        const reach = radius * radius
-        return (this.#traffic?.cars() ?? [])
-          .filter((car) => (car.x - x) ** 2 + (car.z - z) ** 2 <= reach)
-          .map((car) => ({
-            x: car.x,
-            z: car.z,
-            vx: -Math.sin(car.heading) * car.speed,
-            vz: -Math.cos(car.heading) * car.speed,
-            radius: METRICS.vehicle.carLength / 2,
-          }))
-      },
+  hazards(): Hazards {
+    return { near: (x, z, radius) => this.#carsNear(x, z, radius) }
+  }
+
+  #carsNear(x: number, z: number, radius: number): readonly Hazard[] {
+    const reach = radius * radius
+    let used = 0
+    const consider = (car: Rolling, speed: number) => {
+      const dx = car.x - x
+      const dz = car.z - z
+      if (dx * dx + dz * dz > reach) return
+      const spot = (this.#onTheRoad[used] ??= {
+        x: 0,
+        z: 0,
+        vx: 0,
+        vz: 0,
+        radius: METRICS.vehicle.carLength / 2,
+        footprint: { length: METRICS.vehicle.carLength, width: METRICS.vehicle.carWidth, heading: 0 },
+      })
+      spot.x = car.x
+      spot.z = car.z
+      spot.vx = Math.sin(car.heading) * speed
+      spot.vz = Math.cos(car.heading) * speed
+      spot.footprint.heading = car.heading
+      used++
     }
+    for (const car of this.#traffic?.cars() ?? []) consider(car, car.speed)
+    const own = this.#playerCar?.car
+    if (own) consider(own, 0)
+    this.#onTheRoad.length = used
+    return this.#onTheRoad
   }
 
   /**
@@ -273,8 +347,8 @@ export class Street {
           const dz = z - centre.z
           if (dx * dx + dz * dz > reach) return
           // no radius: a person's width in a road is `@gb/traffic`'s own
-          // number, and the body-collision capsule this used to send is a
-          // third of a metre, which lets a car pass through a shoulder
+          // number, and the body-collision capsule is a third of a metre,
+          // which lets a car pass through a shoulder
           const spot = (this.#standing[used] ??= { x: 0, z: 0 })
           spot.x = x
           spot.z = z

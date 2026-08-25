@@ -99,8 +99,8 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
       if (daylight) daylight.visible = !on
       grade.indoors = on
     },
-    grade(hours) {
-      grade.setTime(hours)
+    grade(night) {
+      grade.setNight(night)
     },
     show(root) {
       if (current) scene.remove(current)

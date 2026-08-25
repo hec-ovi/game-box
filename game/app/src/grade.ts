@@ -2,7 +2,7 @@ import type * as THREE from 'three'
 import { bloom } from 'three/addons/tsl/display/BloomNode.js'
 import { pass, uniform } from 'three/tsl'
 import { RenderPipeline, type WebGPURenderer } from 'three/webgpu'
-import { DAY, INDOORS, lookAt, type Look } from './night.ts'
+import { DAY, INDOORS, lookOf, type Look } from './night.ts'
 import { graded } from './tint.ts'
 
 /**
@@ -32,7 +32,7 @@ export class Grade {
   #bloom: ReturnType<typeof bloom>
   #cold = uniform(DAY.cold)
   #saturation = uniform(DAY.saturation)
-  #hours = 12
+  #night = 0
   #inside = false
 
   constructor(renderer: WebGPURenderer, scene: THREE.Scene, camera: THREE.Camera) {
@@ -46,18 +46,18 @@ export class Grade {
     this.#apply(DAY)
   }
 
-  /** Grade for this hour of the day. Cheap enough for every frame: six uniforms. */
-  setTime(hours: number): void {
-    if (!Number.isFinite(hours) || hours === this.#hours) return
-    this.#hours = hours
-    if (!this.#inside) this.#apply(lookAt(hours))
+  /** Grade for how dark it is, 0 full daylight to 1 after dark. Cheap enough for every frame: six uniforms. */
+  setNight(night: number): void {
+    if (!Number.isFinite(night) || night === this.#night) return
+    this.#night = night
+    if (!this.#inside) this.#apply(lookOf(night))
   }
 
   /** Indoors the sky is not what is lighting the frame, so the hour stops driving it. */
   set indoors(inside: boolean) {
     if (inside === this.#inside) return
     this.#inside = inside
-    this.#apply(inside ? INDOORS : lookAt(this.#hours))
+    this.#apply(inside ? INDOORS : lookOf(this.#night))
   }
 
   /** Draw the scene through the chain. Stands in for `renderer.render`. */

@@ -1,3 +1,5 @@
+import { SUNRISE_HOUR, SUNSET_HOUR } from '@gb/play'
+
 /**
  * What an hour of the day means to the frame: how bright it is developed, how
  * the bright things glow, and what colour the dark is.
@@ -26,13 +28,17 @@ export interface Look {
 }
 
 /**
- * Sunlight, which adds nothing. A sunlit wall is already at the top of the
- * range the tone map has to spend, so a glow over it lands on the wall rather
- * than on any sign, and the frame goes milky; and there is nothing to tint,
- * because daylight is the colour the art was painted. The threshold is still
- * set to above a sunlit wall, because it is what dusk crosses over from.
+ * Sunlight. The sun is low all day (24 degrees at noon on the temperate
+ * theme) and the sky is a five to one gradient from a pale horizon to a blue
+ * zenith, so a wall in the sun sits well above one in shade and the exposure
+ * is set to hold both: high enough that the shaded face of a street reads,
+ * low enough that a sunlit facade keeps its cladding rather than clipping to
+ * one value. No glow, because a sunlit wall is already at the top of the range
+ * and a halo over it lands on the wall rather than on any sign; no tint,
+ * because daylight is the colour the art was painted. The threshold is set
+ * above a sunlit wall, because it is what dusk crosses over from.
  */
-export const DAY: Look = { exposure: 1.15, threshold: 4, strength: 0, radius: 0.25, cold: 0, saturation: 1 }
+export const DAY: Look = { exposure: 0.95, threshold: 4, strength: 0, radius: 0.25, cold: 0, saturation: 1.08 }
 
 /**
  * After dark. The threshold is low so every sign is over it and the halo is
@@ -47,22 +53,30 @@ export const NIGHT: Look = { exposure: 0.8, threshold: 0.6, strength: 0.6, radiu
  * Inside a building. A room is lit by its own ceiling at every hour, so the
  * frame is developed the same way whatever the sky is doing outside.
  */
-export const INDOORS: Look = DAY
+export const INDOORS: Look = { ...DAY, exposure: 1.15, saturation: 1 }
 
-/** Sunrise and sunset in `@gb/land` are 06:00 and 18:00; these are the edges of the two twilights. */
-const DAWN = [5, 8] as const
-const DUSK = [16, 19.5] as const
+/**
+ * How long the light takes to come up and go down when there is no sky to
+ * read it off: an hour and a half either side of the whole hour the sun
+ * crosses the horizon, which is the ramp the landscape's own daylight runs.
+ */
+const TWILIGHT = 1.5
 
-/** 0 in full daylight, 1 after dark, easing across dawn and dusk. */
+/**
+ * 0 in full daylight, 1 after dark, easing across dawn and dusk, off the hour
+ * alone. For a city with no landscape round it: with one, the sky publishes
+ * its own daylight and the grade reads that instead.
+ */
 export function darkness(hours: number): number {
   if (!Number.isFinite(hours)) return 0
   const h = ((hours % 24) + 24) % 24
-  return 1 - Math.min(ramp(h, DAWN[0], DAWN[1]), 1 - ramp(h, DUSK[0], DUSK[1]))
+  return 1 - Math.min(ramp(h, SUNRISE_HOUR - TWILIGHT, SUNRISE_HOUR + TWILIGHT), 1 - ramp(h, SUNSET_HOUR - TWILIGHT, SUNSET_HOUR + TWILIGHT))
 }
 
-/** How the frame is developed at an hour of the day. */
-export function lookAt(hours: number): Look {
-  return blend(DAY, NIGHT, darkness(hours))
+/** How the frame is developed at a darkness: 0 is full daylight, 1 is after dark. A reading that is not a number is day. */
+export function lookOf(night: number): Look {
+  if (!Number.isFinite(night)) return DAY
+  return blend(DAY, NIGHT, Math.min(1, Math.max(0, night)))
 }
 
 /** Smoothstep, so the grade has no corner in it that a player would see as a jump. */

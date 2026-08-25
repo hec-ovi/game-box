@@ -20,19 +20,20 @@ export class Sky {
   #kit: KitDressing | undefined
   #land: Land | undefined
   #reflectedHour = -1
-  #reflectedAzimuth = 0
-  #reflectedGlow = 1
-  #weather: Reading['weather'] | undefined
+  #reflectedYaw = 0
+  #reflectedBrightness = 1
+  #weather: Reading['weather']
 
-  constructor(world: World, stage: Stage, options: { hour: number; kit?: KitDressing }) {
+  constructor(world: World, stage: Stage, options: { hour: number; weather: Reading['weather']; kit?: KitDressing }) {
     this.#stage = stage
     this.#kit = options.kit
+    this.#weather = options.weather
 
-    // built for the hour the playthrough is at, because the environment is
-    // prefiltered off this sky before the first frame: built at its default
-    // midday, a city opened at midnight would stand under a black sky lit like
-    // noon until the hour turned
-    const built = buildLand(world, { time: options.hour })
+    // built for the hour and the sky the playthrough is at, because the
+    // environment is prefiltered off this sky before the first frame: built at
+    // its default midday, a city opened at midnight would stand under a black
+    // sky lit like noon until the hour turned
+    const built = buildLand(world, { time: options.hour, weather: options.weather })
     if (!built.ok) {
       console.warn(`no landscape (${built.error.code}); plain daylight instead`)
       stage.plainDaylight()
@@ -79,65 +80,59 @@ export class Sky {
     // own width each kick, and the gradient, the fog and the stars with it
     const hours = clock.secondsOfDay / 3600
     this.#kit?.setTime(hours)
+    // the landscape is told the hour whether or not it is in view, so the
+    // windows, the lamps and the grade read the same sky the player steps out
+    // into, and the sun has not jumped while they were inside
+    this.#land?.setTime(hours)
+    if (this.#land && clock.weather !== this.#weather) {
+      this.#weather = clock.weather
+      this.#land.setWeather(clock.weather)
+      // a change of sky is a different dome: the copy the scene reflects is
+      // taken again rather than carried from the old one
+      this.#reflect(clock.hour)
+    }
     // the street reads both: how wet it is, and how much of what it reflects
     // is lit. Both are one uniform, so they are written every frame.
     if (city) {
-      city.night = darkness(hours)
+      city.night = this.#land ? this.#land.light.dark : darkness(hours)
       if (this.#land) city.wetness = this.#land.wetness
     }
-    // the frame is developed for the hour whether or not the sky is in view:
-    // indoors the grade holds itself at the room's own light
-    this.#stage.grade(hours)
+    // the frame is developed for how much daylight there is whether or not the
+    // sky is in view: indoors the grade holds itself at the room's own light
+    this.#stage.grade(this.#land ? 1 - this.#land.light.day : darkness(hours))
     if (!this.#land || !outdoors) return
 
-    this.#land.setTime(hours)
     if (clock.hour !== this.#reflectedHour) this.#reflect(clock.hour)
     this.#carry()
-    if (clock.weather !== this.#weather) {
-      this.#weather = clock.weather
-      this.#land.setWeather(clock.weather)
-    }
     this.#land.update(seconds, this.#stage.camera.position)
   }
 
   /**
    * Take the light off the sky, so a window has something to reflect and a wall
    * in shade is not flat. Prefiltering costs about 20 ms against a 2.5 ms frame,
-   * so it happens when the hour turns and not oftener.
+   * so it happens when the hour turns or the weather changes and not oftener.
    */
   #reflect(hour: number): void {
     if (!this.#land) return
     this.#reflectedHour = hour
     this.#stage.reflect(this.#land.sky)
-    this.#reflectedAzimuth = azimuth(this.#land.sun.position)
-    this.#reflectedGlow = glow(this.#land)
+    this.#reflectedYaw = this.#land.light.sunYaw
+    this.#reflectedBrightness = this.#land.light.skyBrightness
   }
 
   /**
    * Between rebuilds the map is moved rather than remade. Held still for a whole
    * game hour while the dome overhead keeps turning, it falls an hour behind and
-   * catches up in one frame: crossing 06:00 the sun in the reflection triples in
-   * a single frame. Turning the map with the sun and riding the sky's own
-   * brightness ramp carries that across the hour for nothing, because the sky's
-   * pattern is very nearly rigid about the vertical.
+   * catches up in one frame: crossing sunrise the sun in the reflection triples
+   * in a single frame. Turning the map with the sun and riding the dome's own
+   * brightness carries that across the hour for nothing, because the sky's
+   * pattern is very nearly rigid about the vertical, and the rebuild is then a
+   * correction rather than a step.
    */
   #carry(): void {
     if (!this.#land) return
     const scene = this.#stage.scene
-    scene.environmentRotation.y = azimuth(this.#land.sun.position) - this.#reflectedAzimuth
-    scene.environmentIntensity = glow(this.#land) / this.#reflectedGlow
+    scene.environmentRotation.y = this.#land.light.sunYaw - this.#reflectedYaw
+    scene.environmentIntensity = this.#land.light.skyBrightness / this.#reflectedBrightness
   }
-}
-
-/** Where the sun stands round the compass, in radians. */
-function azimuth(at: { x: number; z: number }): number {
-  return Math.atan2(at.x, at.z)
-}
-
-/**
- * How much light the sky is putting out, sun and moon together. The floor keeps
- * the darkest minute of the night from dividing the reflection to nothing.
- */
-function glow(land: Land): number {
-  return Math.max(land.sun.intensity + land.moon.intensity, 0.02)
 }

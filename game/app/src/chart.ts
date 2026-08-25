@@ -1,6 +1,6 @@
 import type { Hud, MapMark, MapPlot } from '@gb/hud'
 import type { World } from '@gb/world'
-import type { Marked } from './places.ts'
+import { interiorPlot, type Marked } from './places.ts'
 import type { Vec2 } from './walk.ts'
 
 /** Where the player is standing and which way they are looking. */
@@ -19,25 +19,35 @@ const EVERY = 0.25
 /**
  * The city from above, for the map face of the window. The plan is the grid the
  * city was generated on, so nothing is surveyed or baked: the plots are read
- * once and the pins are measured only while the map is actually up.
+ * once and the pins are measured only while the map is actually up. Every plot
+ * carries its name for the hover and its charter's prominence for its fill;
+ * the ones written on the plan are the places the player has walked into, the
+ * places the quests point at, and the landmarks.
  */
 export class Chart {
   #world: World
   #hud: Hud
   #you: () => Pose
   #goals: () => readonly Marked[]
+  #entered: () => readonly string[]
   #plan: MapPlot[]
-  #labelled: MapPlot[] | undefined
-  #labels = ''
+  #landmarks: readonly string[]
+  #named: MapPlot[] | undefined
+  #naming = ''
   #open = false
   #since = EVERY
 
-  constructor(input: { world: World; hud: Hud; you: () => Pose; goals: () => readonly Marked[] }) {
+  constructor(input: { world: World; hud: Hud; you: () => Pose; goals: () => readonly Marked[]; entered: () => readonly string[] }) {
     this.#world = input.world
     this.#hud = input.hud
     this.#you = input.you
     this.#goals = input.goals
-    this.#plan = this.#world.plots().map((plot) => ({ id: plot.id, rect: plot.rect }))
+    this.#entered = input.entered
+    this.#plan = this.#world.plots().map((plot) => {
+      const prominence = this.#world.charter(plot.kind)?.prominence
+      return { id: plot.id, rect: plot.rect, label: plot.name, ...(prominence ? { prominence } : {}) }
+    })
+    this.#landmarks = this.#plan.filter((plot) => plot.prominence === 'landmark').map((plot) => plot.id)
   }
 
   /** The map face is up, or it is not. Nothing is measured while it is not. */
@@ -62,7 +72,7 @@ export class Chart {
       map: {
         width: this.#world.grid.width,
         height: this.#world.grid.height,
-        plots: this.#named(goals),
+        plots: this.#plots(goals),
         marks: [this.#here(), ...goals.map((goal) => this.#pin(goal))],
       },
     })
@@ -83,26 +93,26 @@ export class Chart {
 
   #pin(goal: Marked): MapMark {
     const size = this.#world.cellSize
-    return { x: goal.x / size, y: goal.z / size, label: goal.label, kind: 'goal' }
+    return { x: goal.x / size, y: goal.z / size, label: goal.label, kind: 'goal', line: goal.line }
   }
 
   /**
-   * The plan, with the places the quest points at named. Every other building
-   * stays a shape: a plan with nine hundred names on it is unreadable, and the
-   * player has no reason to read most of them.
+   * The plan, with the plots that earn a name written on it. Every other
+   * building stays a shape with a hover: a plan with nine hundred names on it
+   * is unreadable, and the player has no reason to read most of them.
    */
-  #named(goals: readonly Marked[]): MapPlot[] {
-    const wanted = new Map(goals.flatMap((goal) => (goal.plotId ? [[goal.plotId, goal.label] as const] : [])))
-    if (wanted.size === 0) return this.#plan
-
-    const key = [...wanted].flat().join('/')
-    if (key === this.#labels && this.#labelled) return this.#labelled
-    this.#labels = key
-    this.#labelled = this.#plan.map((plot) => {
-      const label = wanted.get(plot.id)
-      return label ? { ...plot, label } : plot
-    })
-    return this.#labelled
+  #plots(goals: readonly Marked[]): MapPlot[] {
+    const named = new Set<string>(this.#landmarks)
+    for (const goal of goals) if (goal.plotId) named.add(goal.plotId)
+    for (const interiorId of this.#entered()) {
+      const plotId = interiorPlot(this.#world, interiorId)
+      if (plotId) named.add(plotId)
+    }
+    const naming = [...named].toSorted().join('/')
+    if (naming === this.#naming && this.#named) return this.#named
+    this.#naming = naming
+    this.#named = this.#plan.map((plot) => (named.has(plot.id) ? { ...plot, named: true } : plot))
+    return this.#named
   }
 }
 

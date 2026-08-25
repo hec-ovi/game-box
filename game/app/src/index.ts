@@ -1,9 +1,22 @@
 /** @gb/app: see CONTRACT.md. */
 export { Boot, type Playing, type Start } from './boot/boot.ts'
-export { BLOCKS, DEFAULTS, briefFromQuery, briefToQuery, clampBlocks, freshSeed, tidy, type CityBrief } from './boot/brief.ts'
+export {
+  BLOCKS,
+  DEFAULTS,
+  STYLE,
+  briefFromQuery,
+  briefToQuery,
+  clampBlocks,
+  freshSeed,
+  sameBrief,
+  tidy,
+  type CityBrief,
+} from './boot/brief.ts'
 export { CityMaker, type City, type Made, type Progress } from './boot/city-maker.ts'
 export { download, exportName } from './boot/export.ts'
-export { localSaves, rememberBrief, rememberedBrief } from './boot/kept.ts'
+export { IndexedShelf } from './boot/indexed-shelf.ts'
+export { localSaves } from './boot/kept.ts'
+export { Library, MemoryShelf, briefOf, keyOf, type Shelf, type Shelved } from './boot/library.ts'
 export { Panel, type PanelHandlers } from './boot/panel.ts'
 export { Game, type GameOptions } from './game.ts'
 export { loadCars, loadDressing } from './pack.ts'

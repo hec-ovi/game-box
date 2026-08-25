@@ -61,6 +61,10 @@ export class Playthrough {
   resume(): boolean {
     this.#forgetLostSpots()
     this.#follow()
+    // a save written with the clock held comes back held, as `@gb/play` keeps
+    // it, and says so: a city where time never moves and nothing says why is
+    // a city that looks broken
+    if (this.#player.clock.paused) this.#report.note('Time held')
     const where = this.#player.where
     if (!where) return false
 

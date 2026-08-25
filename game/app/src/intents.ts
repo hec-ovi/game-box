@@ -1,6 +1,7 @@
 import type { Hud, HudIntent } from '@gb/hud'
 import type { QuestLog } from '@gb/quest'
 import type { Chart } from './chart.ts'
+import type { Conditions } from './conditions.ts'
 import type { Player } from './player.ts'
 import type { Reporting } from './reporting.ts'
 import type { Talking } from './talking.ts'
@@ -17,6 +18,8 @@ export class Intents {
   #report: Reporting
   #body: Player
   #chart: Chart
+  #conditions: Conditions
+  #leave: () => void
   #releasePointer: () => void
 
   constructor(input: {
@@ -26,6 +29,9 @@ export class Intents {
     report: Reporting
     body: Player
     chart: Chart
+    conditions: Conditions
+    /** The way out of the game, which the game itself does not decide. */
+    leave: () => void
     releasePointer: () => void
   }) {
     this.#log = input.log
@@ -34,6 +40,8 @@ export class Intents {
     this.#report = input.report
     this.#body = input.body
     this.#chart = input.chart
+    this.#conditions = input.conditions
+    this.#leave = input.leave
     this.#releasePointer = input.releasePointer
   }
 
@@ -88,6 +96,25 @@ export class Intents {
         this.#chart.open = intent.window === 'map'
         if (intent.window !== null) this.#releasePointer()
         return
+      // the settings tab: the same calls P, T and K make, and the tab reads
+      // what the clock says back rather than what it asked for
+      case 'lock-time':
+        this.#set(this.#conditions.lock(intent.locked))
+        return
+      case 'skip-time':
+        this.#set(this.#conditions.nextTime())
+        return
+      case 'weather':
+        this.#set(this.#conditions.setWeather(intent.weather))
+        return
+      case 'exit':
+        this.#leave()
+        return
     }
+  }
+
+  #set(said: string | undefined): void {
+    if (said) this.#report.note(said)
+    this.#report.refresh()
   }
 }

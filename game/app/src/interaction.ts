@@ -128,7 +128,7 @@ export class Interaction {
     const target = this.#aimed()
     if (event.button !== 0 || document.pointerLockElement === null) return
     if (this.#talking.active || target?.kind !== 'talk') return
-    this.#companions.toggle(target.id, this.#body.position)
+    this.#companions.toggle(target.id)
   }
 
   #act(target: Target): void {

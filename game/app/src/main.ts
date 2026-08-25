@@ -1,10 +1,11 @@
 /**
  * Boot. The panel in `index.html` is already on screen; this gives it something
  * to do. A city comes from `?bundle=`, from `?seed=` and `?theme=`, from the
- * one the player was last in, or from whatever they type into the panel.
+ * shelf the player was last on, or from whatever they type into the panel.
  */
-import { Sidecar } from '@gb/sidecar'
 import { Boot } from './boot/boot.ts'
+import { IndexedShelf } from './boot/indexed-shelf.ts'
+import { Library } from './boot/library.ts'
 import { Panel } from './boot/panel.ts'
 
 const query = new URLSearchParams(location.search)
@@ -12,7 +13,8 @@ const base = query.get('sidecar')
 const boot = new Boot({
   mount: document.querySelector<HTMLDivElement>('#game')!,
   panel: new Panel(document.querySelector<HTMLElement>('#boot')!),
-  sidecar: new Sidecar(base ? { base } : {}),
+  library: new Library(new IndexedShelf()),
+  sidecar: base ? { base } : {},
 })
 
 if (import.meta.env.DEV) {

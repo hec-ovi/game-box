@@ -3,7 +3,7 @@ import { FurnishDressing, loadFurnish } from '@gb/furnish'
 import { KitDressing, loadKit, type CityNight } from '@gb/kitbash'
 import { PrefabDressing, loadPrefab, type Catalogue } from '@gb/prefab'
 import { Greybox, type Dressing } from '@gb/scene'
-import type { Interior } from '@gb/world'
+import type { Interior, ResolvedCharter } from '@gb/world'
 import type * as THREE from 'three'
 import { guarded } from './guarded.ts'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
@@ -12,9 +12,10 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
 /**
  * An interior's own room: the dressing that paints it and the wall bays to add
  * to what came back. Each interior draws its own floor, walls and ceiling from
- * its id, so the shop is not the same room as the flat above it.
+ * its id, so the shop is not the same room as the flat above it, and its
+ * charter says what each room is used for when the file left that out.
  */
-export type RoomArt = (interior: Interior) => { dressing: Dressing; decor: THREE.Object3D }
+export type RoomArt = (interior: Interior, charter: ResolvedCharter) => { dressing: Dressing; decor: THREE.Object3D }
 
 /** What the art pack answers for, and what is left of it when a piece is missing. */
 export interface ArtPack {
@@ -49,8 +50,8 @@ export async function loadDressing(theme: string, base = ''): Promise<ArtPack> {
   // interior still has the cast answering for whoever is standing in it
   const chain = (inside: Dressing): Dressing => guarded(cast ? new CastDressing(cast, inside) : inside)
   const room: RoomArt | undefined = furnish
-    ? (interior) => {
-        const dressed = furnish.room(interior)
+    ? (interior, charter) => {
+        const dressed = furnish.room(interior, charter)
         return { dressing: chain(dressed.dressing), decor: dressed.decor }
       }
     : undefined
