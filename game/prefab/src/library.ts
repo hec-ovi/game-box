@@ -1,9 +1,12 @@
 import type { CityNight } from '@gb/kitbash'
 import * as THREE from 'three'
 import type { Catalogue } from './catalogue.ts'
+import { glassMaterial } from './glass.ts'
 import { screenTints, type ScreenTint } from './lights.ts'
 import { prefabMaterial, type PrefabAtlas } from './material.ts'
 import { LAYER_ATTRIBUTE } from './pack.ts'
+import { Panes } from './panes.ts'
+import { shellMaterial } from './shell.ts'
 
 export class LibraryIncomplete extends Error {
   readonly code = 'library-incomplete'
@@ -25,22 +28,38 @@ export interface LibrarySpec {
 }
 
 /**
- * The pack, loaded: one geometry per model and the single material they all
- * share. Buildings clone out of here rather than reloading, so a town of
- * hundreds costs one copy of each shape it actually uses.
+ * The pack, loaded: one geometry per model, the glass derived from it, and the
+ * three materials every model shares. Buildings clone out of here rather than
+ * reloading, so a town of hundreds costs one copy of each shape it actually
+ * uses.
  */
 export class Library {
   readonly catalogue: Catalogue
+  /** What the walls are drawn with, near the player. */
   readonly material: THREE.Material
+  /** What the panes are drawn with. */
+  readonly glass: THREE.Material
+  /** What a building is drawn with from far off: the walls alone. */
+  readonly shell: THREE.Material
   /** The mean colour and brightness of each screen picture, in strip order, so a screen can light the street its own colour. */
   readonly tints: readonly ScreenTint[]
   readonly #geometries: ReadonlyMap<string, THREE.BufferGeometry>
+  readonly #panes: ReadonlyMap<string, THREE.BufferGeometry>
 
-  private constructor(catalogue: Catalogue, material: THREE.Material, tints: readonly ScreenTint[], geometries: Map<string, THREE.BufferGeometry>) {
+  private constructor(
+    catalogue: Catalogue,
+    materials: { material: THREE.Material; glass: THREE.Material; shell: THREE.Material },
+    tints: readonly ScreenTint[],
+    geometries: Map<string, THREE.BufferGeometry>,
+    panes: Map<string, THREE.BufferGeometry>,
+  ) {
     this.catalogue = catalogue
-    this.material = material
+    this.material = materials.material
+    this.glass = materials.glass
+    this.shell = materials.shell
     this.tints = tints
     this.#geometries = geometries
+    this.#panes = panes
   }
 
   static of(spec: LibrarySpec): Library {
@@ -58,12 +77,29 @@ export class Library {
     if (missing.length) throw new LibraryIncomplete(missing)
 
     const geometries = new Map(spec.catalogue.models.map((model) => [model.id, found.get(model.id)!]))
-    return new Library(spec.catalogue, prefabMaterial(spec.atlas, spec.night), screenTints(spec.atlas.screens), geometries)
+    const panes = new Panes(spec.atlas.finishes)
+    const glass = new Map<string, THREE.BufferGeometry>()
+    for (const [id, geometry] of geometries) {
+      const pane = panes.of(geometry)
+      if (pane) glass.set(id, pane)
+    }
+    const tints = screenTints(spec.atlas.screens)
+    const materials = {
+      material: prefabMaterial(spec.atlas, spec.night),
+      glass: glassMaterial(spec.atlas.finishes, spec.night),
+      shell: shellMaterial(spec.atlas, spec.night, tints),
+    }
+    return new Library(spec.catalogue, materials, tints, geometries, glass)
   }
 
   /** The model's own geometry, in its own frame, door on the south wall. */
   geometry(id: string): THREE.BufferGeometry | undefined {
     return this.#geometries.get(id)
+  }
+
+  /** The model's panes, in the same frame, or nothing when it has no window. */
+  panes(id: string): THREE.BufferGeometry | undefined {
+    return this.#panes.get(id)
   }
 }
 

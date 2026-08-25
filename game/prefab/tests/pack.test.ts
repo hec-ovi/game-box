@@ -5,12 +5,13 @@ import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import sharp from 'sharp'
 import { describe, expect, it } from 'vitest'
+import { BALCONY } from '../src/balcony.ts'
 import { bucketKey, bucketOf, everyBucket } from '../src/bucket.ts'
 import { Catalogue } from '../src/catalogue.ts'
 import { sha256 } from '../src/digest.ts'
 import { DOOR_FINISH, OPEN_DOOR_FINISH } from '../src/entrance.ts'
 import { PROUD } from '../src/fit.ts'
-import { windowsOn } from '../src/interior.ts'
+import { windowsOn } from '../src/windows.ts'
 import { ROOM_BANKS, ROOM_PICTURES, ROOM_SIZE } from '../src/rooms.ts'
 import { DISPLAY_FINISH, SCREEN_PICTURES, SCREEN_SIZE } from '../src/screens.ts'
 import { DOOR, doorTile } from '../tools/doors.ts'
@@ -151,6 +152,7 @@ describe('the shipped pack', () => {
       'neon:magenta',
       'neon:amber',
       OPEN_DOOR_FINISH,
+      BALCONY.finish,
     ])
   })
 
@@ -274,6 +276,39 @@ describe('the shipped pack', () => {
       }
     }
     expect(worst).toBe(0)
+  })
+
+  it('hangs a balcony on every upper storey of the looks that carry one, over the pavement, with a floor under its rails', async () => {
+    const carrying = new Set(looks.filter((look) => look.balcony).map((look) => look.id))
+    expect(carrying.size).toBeGreaterThan(0)
+    const wrong: string[] = []
+    let balconies = 0
+    for (const model of await models()) {
+      const rails = model.vertices.filter((vertex) => vertex.finish === BALCONY.finish)
+      const look = catalogue.model(model.id)!.look
+      if (!carrying.has(look) || model.storeys < 2) {
+        if (rails.length) wrong.push(`${model.id}: a balustrade on a look without balconies`)
+        continue
+      }
+      // one per upper storey: every rail vertex sits on a storey's floor or a guard's height above it
+      const floors = new Set(rails.map((vertex) => Math.floor((vertex.y - BALCONY.above + 0.5) / 3.2))).size
+      if (floors !== model.storeys - 1) wrong.push(`${model.id}: rails on ${floors} storeys of ${model.storeys - 1}`)
+      balconies += floors
+      // over the pavement and nowhere else, above head height, inside the reach the pavement allows.
+      // A parapet storey stepped back off the street hangs its balcony off its own face
+      const depth = catalogue.model(model.id)!.depth / 2
+      const setback = looks.find((one) => one.id === look)?.setback ?? 0
+      for (const vertex of rails) {
+        if (vertex.z < depth - setback - 0.1 || vertex.z > depth + BALCONY.reach + 0.001 || vertex.y < BALCONY.above - 0.001) {
+          wrong.push(`${model.id}: a rail at ${vertex.x.toFixed(2)}, ${vertex.y.toFixed(2)}, ${vertex.z.toFixed(2)}`)
+          break
+        }
+      }
+      // a floor the player can see: the slab is the look's own wall, standing out as far as the rails do
+      const reach = Math.max(...rails.map((vertex) => vertex.z))
+      if (!model.vertices.some((vertex) => vertex.finish.startsWith('base:') && Math.abs(vertex.z - reach) < 0.001)) wrong.push(`${model.id}: no slab under the rails`)
+    }
+    expect({ balconies: balconies > 200, wrong }).toEqual({ balconies: true, wrong: [] })
   })
 
   it('holds every model the manifest names, at the triangle count it claims', async () => {

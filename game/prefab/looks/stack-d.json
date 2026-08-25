@@ -1,7 +1,7 @@
 {
   "id": "stack-d",
   "facade": "facade-d-2",
-  "note": "a lit middle with a dark cap: glazing over the entrance floor, a cyan tube round the top",
+  "note": "a lit middle with a dark cap: glazing over the entrance floor, a cyan tube round the top, and a balcony on every upper storey",
   "tags": [
     "office",
     "apartment",
@@ -15,5 +15,10 @@
   },
   "shopfront": true,
   "glass": "body",
-  "crown": "cyan"
+  "crown": "cyan",
+  "balcony": {
+    "wide": 2.4,
+    "deep": 1.2,
+    "guard": 1.1
+  }
 }

@@ -2,6 +2,7 @@ import { SIGN, lightsFor } from '@gb/kitbash'
 import type { Dressing, SurfacePart, SurfaceSize } from '@gb/scene'
 import type { AnchorKind, CellKind, FurnitureProp, Item, Npc, Plot, ResolvedCharter } from '@gb/world'
 import * as THREE from 'three'
+import type { Design } from './catalogue.ts'
 import { Entrances } from './entrance.ts'
 import type { Library } from './library.ts'
 import { BuildingLights, type LightEmitter } from './lights.ts'
@@ -25,9 +26,12 @@ export interface BuildingSize {
  * plot by whoever resolved the charter, and handed on whole to the dressing
  * behind, which reads the rest of it.
  *
- * A plot with an interior gets the entrance you can walk through. It is the
- * same building on the same layer count: one attribute rewritten on the copy
- * this plot already owns.
+ * A building is two meshes on the pack's materials: the walls, and the glass
+ * in their windows, turned onto the plot together. Its shell, what `@gb/scene`
+ * draws it as from far off, is the walls alone on the shell material: no
+ * glass, no signs, no rooms behind the panes. A plot with an interior gets the
+ * entrance you can walk through on both. It is the same building on the same
+ * layer count: one attribute rewritten on the copy this plot already owns.
  *
  * Signage stays where it was written. `@gb/kitbash` puts every sign in the city
  * on one material; this lifts those meshes off the kit's building and hangs
@@ -58,21 +62,42 @@ export class PrefabDressing implements Dressing {
     const geometry = design ? this.#library.geometry(design.model) : undefined
     if (!design || !geometry) return this.#rest.building(plot, size, charter)
 
-    const turned = orient(geometry, turnsFor(plot.entrance.facing), design.mirror, design.rooms)
-    if (plot.interiorId !== undefined) this.#entrances.open(turned)
-
-    const mesh = new THREE.Mesh(turned, this.#library.material)
-    mesh.name = `${plot.id}:${design.model}`
-    mesh.castShadow = true
-    mesh.receiveShadow = true
-
     const building = new THREE.Group()
     building.name = plot.id
-    building.add(mesh)
+    building.add(this.#walls(plot, design, geometry, this.#library.material))
+    const panes = this.#library.panes(design.model)
+    if (panes) {
+      const glass = new THREE.Mesh(orient(panes, turnsFor(plot.entrance.facing), design.mirror, design.rooms), this.#library.glass)
+      glass.name = `${plot.id}:${design.model}:glass`
+      building.add(glass)
+    }
     const signs = signsOn(this.#rest.building(plot, size, charter))
     if (signs.length) this.#signed.add(plot.id)
     for (const sign of signs) building.add(sign)
     return building
+  }
+
+  /** The same building from far off: its walls on the shell material, and nothing else. */
+  shell(plot: Plot, size: BuildingSize, charter: ResolvedCharter): THREE.Object3D {
+    const design = designFor(this.#library.catalogue, plot, size, charter.suits)
+    const geometry = design ? this.#library.geometry(design.model) : undefined
+    if (!design || !geometry) return this.#rest.shell ? this.#rest.shell(plot, size, charter) : this.#rest.building(plot, size, charter)
+
+    const building = new THREE.Group()
+    building.name = plot.id
+    building.add(this.#walls(plot, design, geometry, this.#library.shell))
+    return building
+  }
+
+  /** The walls turned onto the plot, wearing the entrance the world says, on whichever material asked. */
+  #walls(plot: Plot, design: Design, geometry: THREE.BufferGeometry, material: THREE.Material): THREE.Mesh {
+    const turned = orient(geometry, turnsFor(plot.entrance.facing), design.mirror, design.rooms)
+    if (plot.interiorId !== undefined) this.#entrances.open(turned)
+    const mesh = new THREE.Mesh(turned, material)
+    mesh.name = `${plot.id}:${design.model}`
+    mesh.castShadow = true
+    mesh.receiveShadow = true
+    return mesh
   }
 
   /**

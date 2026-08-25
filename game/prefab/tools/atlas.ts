@@ -1,6 +1,7 @@
 import type { Material } from '@gltf-transform/core'
 import type { EmissiveStrength } from '@gltf-transform/extensions'
 import sharp from 'sharp'
+import { BALCONY } from '../src/balcony.ts'
 import { DOOR_FINISH, OPEN_DOOR_FINISH } from '../src/entrance.ts'
 import { DISPLAY_FINISH } from '../src/screens.ts'
 import { io } from './intake.ts'
@@ -25,8 +26,9 @@ export interface Atlas {
 
 /**
  * The verbs that build one look's swatch: every finish the pack takes off the
- * producer, on one model. The entrances and the screen plate are not among
- * them; both are drawn in this repo and laid straight into the strip.
+ * producer, on one model, the balustrade included. The entrances and the
+ * screen plate are not among them; both are drawn in this repo and laid
+ * straight into the strip.
  */
 export function swatchVerbs(project: string): string[][] {
   return [
@@ -36,6 +38,7 @@ export function swatchVerbs(project: string): string[][] {
     ['add-band', 'glow', '--kind', 'custom', '--tier', 'flat', '--template', 'bulk-glass', '--floors', '1', '--height', '3.20', '--after', 'body'],
     ['set-band', 'crown', '--tier', 'light', '--height', '3.20', '--clutter', '0'],
     ['line', 'ground', '--side', 'S', '--count', '3', '--spacing', '3.00', '--colours', 'teal,magenta,amber', '--thickness', '0.08'],
+    ['put', 'balcony', '--row', '1', '--wide', '2.40', '--tall', '1.10', '--section', 'crown', '--side', 'S', '--depth', '1.20'],
     ['crown', 'crown', '--colour', 'cyan'],
     ['build'],
   ]
@@ -53,9 +56,9 @@ export function swatchVerbs(project: string): string[][] {
  * Every look has a swatch of its own, and its wall comes off that one, laid
  * down twice: the wall above the street and the base under it are one picture
  * on two layers. Two looks wearing one picture land on one pair and the second
- * swatch is only read for what it adds. The glazing and the tubes are taken
- * once for the whole catalogue, because those are the same surface whichever
- * look stands on them.
+ * swatch is only read for what it adds. The glazing, the tubes and the
+ * balustrade are taken once for the whole catalogue, because those are the
+ * same surface whichever look stands on them.
  *
  * Three finishes are drawn in this repo rather than taken off a swatch: the two
  * entrances, which are the surfaces a player stands closest to, and the plate
@@ -72,6 +75,7 @@ export async function buildAtlas(looks: readonly Look[], swatches: ReadonlyMap<s
     }
     if (look === looks[0]) {
       finishes.set('glass', await tileOf(materials.get('glass-band')))
+      finishes.set(BALCONY.finish, await tileOf(materials.get('balcony')))
       for (const neon of NEONS) finishes.set(`neon:${neon}`, await tileOf(materials.get(`neon:${neon}`)))
     }
   }

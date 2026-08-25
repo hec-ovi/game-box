@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import sharp from 'sharp'
-import { FACADE, SHOPFRONT } from '../src/interior.ts'
+import { FACADE, SHOPFRONT } from '../src/windows.ts'
 import { PNG, png, type Tile } from './paint.ts'
 import type { Look } from './look.ts'
 

@@ -9,7 +9,7 @@ import { GLOW, MATERIAL_NAME } from './pack.ts'
 import { stretchOf } from './wall.ts'
 
 /** Roughness and metalness of a prefab wall: coated, dark, not a mirror. */
-const SURFACE = { roughness: 0.68, metalness: 0.05 } as const
+export const SURFACE = { roughness: 0.68, metalness: 0.05 } as const
 
 export interface PrefabAtlas {
   /** One layer per finish: the colour a face is painted. */
@@ -38,9 +38,10 @@ export interface PrefabAtlas {
  *
  * The windows are not in the picture. `InteriorWindows` cuts them out of the
  * wall arithmetically and draws the room behind each one, so a facade has depth
- * through it from the pavement instead of a lit rectangle. `WallScreens` does
- * the same for the panels: the picture and the lamp grid over it are
- * arithmetic over one fetch.
+ * through it from the pavement instead of a lit rectangle; the glass over the
+ * opening is `glassMaterial`, on the pane `Panes` stands in front of this wall.
+ * `WallScreens` does the same for the panels: the picture and the lamp grid
+ * over it are arithmetic over one fetch.
  *
  * The two never meet. A layer either has windows in it or it is a screen, so a
  * fragment pays for one of them and a wall fragment pays for neither beyond the

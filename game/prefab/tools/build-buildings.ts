@@ -17,6 +17,7 @@ import { everyBucket, type Bucket } from '../src/bucket.ts'
 import { flag } from './args.ts'
 import type { CatalogueDoc } from '../src/catalogue.ts'
 import { buildAtlas, swatchVerbs } from './atlas.ts'
+import { balconyPieces } from './balconies.ts'
 import { intake, type Baked } from './intake.ts'
 import { ROOM_SIZE } from '../src/rooms.ts'
 import { SCREEN_SIZE } from '../src/screens.ts'
@@ -111,7 +112,7 @@ async function bake(producer: Producer, look: Look, bucket: Bucket, textures: st
   const id = `${look.id}-${bucket.front}x${bucket.depth}x${bucket.storeys}`
   const built = await producer.build(id, verbsFor(look, bucket, 'gb'), 'gb', textures)
   try {
-    return { look, bucket, model: await intake(built.file, id, bucket, look, layers) }
+    return { look, bucket, model: await intake(built.file, id, bucket, look, layers, balconyPieces(look, bucket, layers)) }
   } finally {
     await built.sweep()
   }

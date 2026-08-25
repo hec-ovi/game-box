@@ -5,8 +5,10 @@ import type { Bucket } from '../src/bucket.ts'
 import { heightOf } from '../src/bucket.ts'
 import { HEIGHT_TOLERANCE, PROUD } from '../src/fit.ts'
 import { DOOR_FINISH } from '../src/entrance.ts'
+import { pastThePlot } from './footprint.ts'
 import type { Layers } from './layers.ts'
 import { NEONS, type Look } from './look.ts'
+import { pieceOf, type Piece } from './pieces.ts'
 
 export const io = new NodeIO()
   .registerExtensions([KHRMaterialsEmissiveStrength, KHRMeshQuantization, EXTMeshoptCompression])
@@ -40,22 +42,24 @@ export interface Baked {
 }
 
 /**
- * Reads what the producer wrote and holds it to the plot it was built for.
+ * Reads what the producer wrote, adds what this repo builds on top of it, and
+ * holds the whole to the plot it was built for.
  *
- * Two things happen here and nothing else. Anything standing entirely above the
- * height the city gives the plot is left out, which is how the `cyber` style's
- * automatic roof mast (a lattice and its guys, taller than the building it
- * stands on) comes off without touching the producer. Then what is left is
- * measured: it has to be exactly as tall as the plot, inside the plot's
- * footprint, on a door facing the street, and made of finishes the pack has a
- * layer for. Anything else is refused by name.
+ * Anything standing entirely above the height the city gives the plot is left
+ * out, which is how the `cyber` style's automatic roof mast (a lattice and its
+ * guys, taller than the building it stands on) comes off without touching the
+ * producer. The `extras` are the pieces generated here, the balconies, stood
+ * on the model after the producer has drawn it. Then everything is measured:
+ * it has to be exactly as tall as the plot, inside what the plot allows, on a
+ * door facing the street, and made of finishes the pack has a layer for.
+ * Anything else is refused by name.
  */
-export async function intake(file: string, id: string, bucket: Bucket, look: Look, layers: Layers): Promise<Baked> {
+export async function intake(file: string, id: string, bucket: Bucket, look: Look, layers: Layers, extras: readonly Piece[] = []): Promise<Baked> {
   const doc = await io.read(file)
   refuseUris(doc, id)
 
   const height = heightOf(bucket.storeys)
-  const parts: Array<{ prim: Primitive; lift: number; layer: number }> = []
+  const pieces: Piece[] = []
   let trimmed = 0
 
   for (const node of doc.getRoot().listNodes()) {
@@ -70,11 +74,11 @@ export async function intake(file: string, id: string, bucket: Bucket, look: Loo
         trimmed++
         continue
       }
-      parts.push({ prim, lift, layer: layers.forMaterial(prim.getMaterial()?.getName() ?? '', look) })
+      pieces.push(pieceOf(prim, lift, layers.forMaterial(prim.getMaterial()?.getName() ?? '', look)))
     }
   }
 
-  const baked = flatten(id, parts, trimmed)
+  const baked = flatten(id, [...pieces, ...extras], trimmed)
   measure(baked, id, bucket, height, layers)
   return baked
 }
@@ -107,13 +111,13 @@ function bounds(prim: Primitive): [number[], number[]] {
   return [position.getMinNormalized([]), position.getMaxNormalized([])]
 }
 
-/** Every kept part in one indexed buffer, each vertex carrying the layer it wears. */
-function flatten(id: string, parts: ReadonlyArray<{ prim: Primitive; lift: number; layer: number }>, trimmed: number): Baked {
+/** Every kept piece in one indexed buffer, each vertex carrying the layer it wears. */
+function flatten(id: string, pieces: readonly Piece[], trimmed: number): Baked {
   let vertices = 0
   let indices = 0
-  for (const part of parts) {
-    vertices += part.prim.getAttribute('POSITION')!.getCount()
-    indices += part.prim.getIndices()?.getCount() ?? 0
+  for (const piece of pieces) {
+    vertices += piece.position.length / 3
+    indices += piece.index.length
   }
 
   const position = new Float32Array(vertices * 3)
@@ -124,36 +128,15 @@ function flatten(id: string, parts: ReadonlyArray<{ prim: Primitive; lift: numbe
 
   let vertex = 0
   let at = 0
-  const point: number[] = []
-  for (const part of parts) {
-    const positions = part.prim.getAttribute('POSITION')!
-    const normals = part.prim.getAttribute('NORMAL')
-    const uvs = part.prim.getAttribute('TEXCOORD_0')
-    const count = positions.getCount()
-
-    for (let i = 0; i < count; i++) {
-      positions.getElement(i, point)
-      position[(vertex + i) * 3] = point[0]!
-      position[(vertex + i) * 3 + 1] = point[1]! + part.lift
-      position[(vertex + i) * 3 + 2] = point[2]!
-
-      if (normals) normals.getElement(i, point)
-      normal[(vertex + i) * 3] = normals ? point[0]! : 0
-      normal[(vertex + i) * 3 + 1] = normals ? point[1]! : 1
-      normal[(vertex + i) * 3 + 2] = normals ? point[2]! : 0
-
-      if (uvs) uvs.getElement(i, point)
-      uv[(vertex + i) * 2] = uvs ? point[0]! : 0.5
-      uv[(vertex + i) * 2 + 1] = uvs ? point[1]! : 0.5
-
-      layer[vertex + i] = part.layer
-    }
-
-    const source = part.prim.getIndices()
-    const length = source?.getCount() ?? 0
-    for (let i = 0; i < length; i++) index[at + i] = source!.getScalar(i) + vertex
+  for (const piece of pieces) {
+    const count = piece.position.length / 3
+    position.set(piece.position, vertex * 3)
+    normal.set(piece.normal, vertex * 3)
+    uv.set(piece.uv, vertex * 2)
+    layer.fill(piece.layer, vertex, vertex + count)
+    for (let i = 0; i < piece.index.length; i++) index[at + i] = piece.index[i]! + vertex
     vertex += count
-    at += length
+    at += piece.index.length
   }
 
   return { id, position, normal, uv, layer, index, triangles: index.length / 3, trimmed }
@@ -165,34 +148,30 @@ function flatten(id: string, parts: ReadonlyArray<{ prim: Primitive; lift: numbe
  * The walls are held exactly: a building is as tall as the city says the plot
  * is, to the millimetre, so a doorstep, a roofline and a camera never disagree
  * with the mesh. The lit trim is held to the relief budget instead, because a
- * parapet tube by definition stands on the parapet.
+ * parapet tube by definition stands on the parapet, and a balcony to its own
+ * reach over the pavement.
  */
 function measure(baked: Baked, id: string, bucket: Bucket, height: number, layers: Layers): void {
   const lit = new Set(NEONS.map((neon) => layers.at(`neon:${neon}`)))
   let low = Infinity
   let walls = -Infinity
   let trim = -Infinity
-  let wide = 0
-  let deep = 0
+  let past: string | undefined
   for (let i = 0; i < baked.layer.length; i++) {
+    const x = baked.position[i * 3]!
     const y = baked.position[i * 3 + 1]!
+    const z = baked.position[i * 3 + 2]!
     low = Math.min(low, y)
     trim = Math.max(trim, y)
     if (!lit.has(baked.layer[i]!)) walls = Math.max(walls, y)
-    wide = Math.max(wide, Math.abs(baked.position[i * 3]!))
-    deep = Math.max(deep, Math.abs(baked.position[i * 3 + 2]!))
+    if (!past && pastThePlot(x, y, z, bucket, 0)) past = `${x.toFixed(3)}, ${y.toFixed(3)}, ${z.toFixed(3)}`
   }
 
   if (Math.abs(low) > HEIGHT_TOLERANCE || Math.abs(walls - height) > HEIGHT_TOLERANCE) {
     throw new Refused('wrong-height', id, `walls stand ${low.toFixed(3)} to ${walls.toFixed(3)} m, and the plot is 0 to ${height.toFixed(3)}`)
   }
-  if (trim > height + PROUD || wide > bucket.front / 2 + PROUD || deep > bucket.depth / 2 + PROUD) {
-    throw new Refused(
-      'overhangs',
-      id,
-      `reaches ${wide.toFixed(3)} by ${deep.toFixed(3)} by ${trim.toFixed(3)} m out of a ${bucket.front / 2} by ${bucket.depth / 2} by ${height} box`,
-    )
-  }
+  if (trim > height + PROUD) throw new Refused('overhangs', id, `rises to ${trim.toFixed(3)} m over a ${height} m plot`)
+  if (past) throw new Refused('overhangs', id, `a vertex at ${past} stands past a ${bucket.front / 2} by ${bucket.depth / 2} plot`)
   if (!doorFacesTheStreet(baked, bucket, layers)) throw new Refused('faces-wrong-way', id, 'the door is not on the south wall')
 }
 

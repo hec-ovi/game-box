@@ -1,3 +1,4 @@
+import { BALCONY } from '../src/balcony.ts'
 import { DOOR_FINISH, OPEN_DOOR_FINISH } from '../src/entrance.ts'
 import { DISPLAY_FINISH } from '../src/screens.ts'
 import { baseFinish, wallFinish } from '../src/wall.ts'
@@ -38,11 +39,14 @@ export class UnknownFinish extends Error {
  * the doors, the glazing and the screen plate because a door is a door, and
  * the tubes because they are the four colours `docs/LOOK.md` settles on.
  *
- * The lit entrance is last, and nothing is ever baked onto it: no look asks for
- * it and `forMaterial` cannot reach it. The runtime moves a plot's door onto it
- * when the world says that plot has an interior. Last, because a layer index
- * rides on the vertices of every model in the pack, so a finish added anywhere
- * else renumbers the whole mesh and needs a rebuild with it.
+ * Nothing is ever baked onto the lit entrance: no look asks for it and
+ * `forMaterial` cannot reach it. The runtime moves a plot's door onto it when
+ * the world says that plot has an interior. The balustrade is the layer the
+ * balconies this repo generates wear, and no producer material lands on it.
+ *
+ * A new finish goes at the end, because a layer index rides on the vertices of
+ * every model in the pack, so a finish added anywhere else renumbers the whole
+ * mesh and needs a rebuild with it.
  */
 export class Layers {
   readonly names: readonly string[]
@@ -63,6 +67,7 @@ export class Layers {
       'glass',
       ...NEONS.map((neon) => `neon:${neon}`),
       OPEN_DOOR_FINISH,
+      BALCONY.finish,
     ])
   }
 
@@ -79,8 +84,9 @@ export class Layers {
 
   /**
    * Which layer a producer material lands on, for a model built from this look.
-   * The set is closed on purpose: a look that reaches for a balcony, a pipe or a
-   * mast fails the build here rather than costing the city a second material.
+   * The set is closed on purpose: a look that reaches for a pipe, a mast or a
+   * composed window fails the build here rather than costing the city a
+   * material it has no layer for.
    */
   forMaterial(material: string, look: Look): number {
     const index = this.#index.get(finishOf(material, look))

@@ -1,7 +1,7 @@
 {
   "id": "lodge-d",
   "facade": "facade-d",
-  "note": "a small quiet front: a narrow door, chamfered edges and a teal parapet well back from the street",
+  "note": "a small quiet front: a narrow door, chamfered edges and a teal parapet well back from the street, and a balcony on every upper storey",
   "tags": [
     "house",
     "chapel",
@@ -15,5 +15,10 @@
   },
   "crown": "teal",
   "chamfer": 0.25,
-  "setback": 1.0
+  "setback": 1.0,
+  "balcony": {
+    "wide": 2.4,
+    "deep": 1.2,
+    "guard": 1.1
+  }
 }

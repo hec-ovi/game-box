@@ -1,6 +1,7 @@
 import { MeshoptDecoder } from 'meshoptimizer'
 import { heightOf, type Bucket } from '../src/bucket.ts'
 import { PROUD } from '../src/fit.ts'
+import { pastThePlot } from './footprint.ts'
 import { io } from './intake.ts'
 import { NEONS } from './look.ts'
 
@@ -16,7 +17,8 @@ const DRIFT = 0.001
  * the repository rather than about an intermediate nobody has.
  *
  * Only the walls are held to the plot's exact height, so it needs the pack's own
- * list of finishes to know which layers are lit trim.
+ * list of finishes to know which layers are lit trim. A balcony is allowed its
+ * reach over the pavement, the same line the intake drew.
  */
 export async function verifyPack(mesh: Uint8Array, shapes: ReadonlyMap<string, Bucket>, finishes: readonly string[]): Promise<void> {
   await MeshoptDecoder.ready
@@ -35,8 +37,7 @@ export async function verifyPack(mesh: Uint8Array, shapes: ReadonlyMap<string, B
     let low = Infinity
     let walls = -Infinity
     let trim = -Infinity
-    let wide = 0
-    let deep = 0
+    let past = false
 
     for (const prim of geometry.listPrimitives()) {
       const positions = prim.getAttribute('POSITION')!
@@ -50,17 +51,14 @@ export async function verifyPack(mesh: Uint8Array, shapes: ReadonlyMap<string, B
         low = Math.min(low, y)
         trim = Math.max(trim, y)
         if (!lit.has(layers.getScalar(i))) walls = Math.max(walls, y)
-        wide = Math.max(wide, Math.abs(x))
-        deep = Math.max(deep, Math.abs(z))
+        past ||= pastThePlot(x, y, z, bucket, DRIFT)
       }
     }
 
     if (Math.abs(low) > DRIFT || Math.abs(walls - height) > DRIFT) {
       wrong.push(`${node.getName()} stands ${low.toFixed(4)} to ${walls.toFixed(4)} m, not 0 to ${height}`)
     }
-    if (trim > height + PROUD + DRIFT || wide > bucket.front / 2 + PROUD + DRIFT || deep > bucket.depth / 2 + PROUD + DRIFT) {
-      wrong.push(`${node.getName()} reaches ${wide.toFixed(3)} by ${deep.toFixed(3)} by ${trim.toFixed(3)} m`)
-    }
+    if (trim > height + PROUD + DRIFT || past) wrong.push(`${node.getName()} reaches past its plot, or ${trim.toFixed(3)} m up`)
   }
 
   if (wrong.length) throw new Error(`the packed models drifted:\n  ${wrong.slice(0, 8).join('\n  ')}`)

@@ -1,18 +1,18 @@
 {
   "pack": "gb-buildings",
-  "version": "1.7.0",
-  "sha256": "90c52ad6625878c7663a1f325100634b91ef9616b49d7c57b6bb23a78f8a167e",
+  "version": "1.8.0",
+  "sha256": "3ebb8bcde86baf1283e850152a26777e8022789066678824898382242931ef27",
   "producer": "glb-buildings@6e05c32",
   "atlas": {
     "colour": {
       "size": 256,
-      "layers": 22,
-      "sha256": "41ccfba8e631ea8691bb1b0bacd8fc720f8d11e9a30a40d65cf45f9507df7fba"
+      "layers": 23,
+      "sha256": "cfc759f8df69a49d681111fda8b21083ab351053063fd95827f933a22dc8caf9"
     },
     "emissive": {
       "size": 256,
-      "layers": 22,
-      "sha256": "ca0405f6692d80446c4307371b9f1ccd4555c0171e706ff75256644efdc1b89e"
+      "layers": 23,
+      "sha256": "eb80bb7e0a8efef1c7c4e41c9c624fec1efff0fe0e5e60fffeda856325aba75d"
     },
     "rooms": {
       "size": 256,
@@ -46,7 +46,8 @@
       "neon:teal",
       "neon:magenta",
       "neon:amber",
-      "door:open"
+      "door:open",
+      "balcony"
     ]
   },
   "models": [
@@ -1503,7 +1504,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -1521,7 +1522,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -1539,7 +1540,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -1557,7 +1558,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -1575,7 +1576,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -1593,7 +1594,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -1611,7 +1612,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -1629,7 +1630,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -1647,7 +1648,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -1665,7 +1666,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -1683,7 +1684,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -1701,7 +1702,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -1719,7 +1720,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -1737,7 +1738,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -1755,7 +1756,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -1773,7 +1774,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -1791,7 +1792,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -1809,7 +1810,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -1827,7 +1828,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -1845,7 +1846,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -1863,7 +1864,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -1881,7 +1882,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -1899,7 +1900,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -1917,7 +1918,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -1935,7 +1936,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -1953,7 +1954,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -1971,7 +1972,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -1989,7 +1990,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -2007,7 +2008,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -2025,7 +2026,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -2043,7 +2044,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -2061,7 +2062,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -2079,7 +2080,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -2097,7 +2098,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -2115,7 +2116,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -2133,7 +2134,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -2151,7 +2152,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -2169,7 +2170,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -2187,7 +2188,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -2205,7 +2206,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -2223,7 +2224,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -2241,7 +2242,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -2259,7 +2260,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -2277,7 +2278,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -2295,7 +2296,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -2313,7 +2314,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -2331,7 +2332,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -2349,7 +2350,7 @@
         "clinic",
         "station"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -3807,7 +3808,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 180,
+      "triangles": 228,
       "door": {
         "along": 0
       }
@@ -3825,7 +3826,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 180,
+      "triangles": 228,
       "door": {
         "along": 0
       }
@@ -3843,7 +3844,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 180,
+      "triangles": 228,
       "door": {
         "along": 0
       }
@@ -3861,7 +3862,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 180,
+      "triangles": 228,
       "door": {
         "along": 0
       }
@@ -3879,7 +3880,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 180,
+      "triangles": 228,
       "door": {
         "along": 0
       }
@@ -3897,7 +3898,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 180,
+      "triangles": 228,
       "door": {
         "along": 0
       }
@@ -3915,7 +3916,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 180,
+      "triangles": 228,
       "door": {
         "along": 0
       }
@@ -3933,7 +3934,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 180,
+      "triangles": 228,
       "door": {
         "along": 0
       }
@@ -3951,7 +3952,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 180,
+      "triangles": 228,
       "door": {
         "along": 0
       }
@@ -3969,7 +3970,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 180,
+      "triangles": 228,
       "door": {
         "along": 0
       }
@@ -3987,7 +3988,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 180,
+      "triangles": 228,
       "door": {
         "along": 0
       }
@@ -4005,7 +4006,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 180,
+      "triangles": 228,
       "door": {
         "along": 0
       }
@@ -4023,7 +4024,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 180,
+      "triangles": 228,
       "door": {
         "along": 0
       }
@@ -4041,7 +4042,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 180,
+      "triangles": 228,
       "door": {
         "along": 0
       }
@@ -4059,7 +4060,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 180,
+      "triangles": 228,
       "door": {
         "along": 0
       }
@@ -4077,7 +4078,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 180,
+      "triangles": 228,
       "door": {
         "along": 0
       }
@@ -4095,7 +4096,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 192,
+      "triangles": 288,
       "door": {
         "along": 0
       }
@@ -4113,7 +4114,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 192,
+      "triangles": 288,
       "door": {
         "along": 0
       }
@@ -4131,7 +4132,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 192,
+      "triangles": 288,
       "door": {
         "along": 0
       }
@@ -4149,7 +4150,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 192,
+      "triangles": 288,
       "door": {
         "along": 0
       }
@@ -4167,7 +4168,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 192,
+      "triangles": 288,
       "door": {
         "along": 0
       }
@@ -4185,7 +4186,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 192,
+      "triangles": 288,
       "door": {
         "along": 0
       }
@@ -4203,7 +4204,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 192,
+      "triangles": 288,
       "door": {
         "along": 0
       }
@@ -4221,7 +4222,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 192,
+      "triangles": 288,
       "door": {
         "along": 0
       }
@@ -4239,7 +4240,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 192,
+      "triangles": 288,
       "door": {
         "along": 0
       }
@@ -4257,7 +4258,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 192,
+      "triangles": 288,
       "door": {
         "along": 0
       }
@@ -4275,7 +4276,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 192,
+      "triangles": 288,
       "door": {
         "along": 0
       }
@@ -4293,7 +4294,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 192,
+      "triangles": 288,
       "door": {
         "along": 0
       }
@@ -4311,7 +4312,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 192,
+      "triangles": 288,
       "door": {
         "along": 0
       }
@@ -4329,7 +4330,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 192,
+      "triangles": 288,
       "door": {
         "along": 0
       }
@@ -4347,7 +4348,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 192,
+      "triangles": 288,
       "door": {
         "along": 0
       }
@@ -4365,7 +4366,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 192,
+      "triangles": 288,
       "door": {
         "along": 0
       }
@@ -4383,7 +4384,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 200,
+      "triangles": 344,
       "door": {
         "along": 0
       }
@@ -4401,7 +4402,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 200,
+      "triangles": 344,
       "door": {
         "along": 0
       }
@@ -4419,7 +4420,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 200,
+      "triangles": 344,
       "door": {
         "along": 0
       }
@@ -4437,7 +4438,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 200,
+      "triangles": 344,
       "door": {
         "along": 0
       }
@@ -4455,7 +4456,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 200,
+      "triangles": 344,
       "door": {
         "along": 0
       }
@@ -4473,7 +4474,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 200,
+      "triangles": 344,
       "door": {
         "along": 0
       }
@@ -4491,7 +4492,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 200,
+      "triangles": 344,
       "door": {
         "along": 0
       }
@@ -4509,7 +4510,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 200,
+      "triangles": 344,
       "door": {
         "along": 0
       }
@@ -4527,7 +4528,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 200,
+      "triangles": 344,
       "door": {
         "along": 0
       }
@@ -4545,7 +4546,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 200,
+      "triangles": 344,
       "door": {
         "along": 0
       }
@@ -4563,7 +4564,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 200,
+      "triangles": 344,
       "door": {
         "along": 0
       }
@@ -4581,7 +4582,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 200,
+      "triangles": 344,
       "door": {
         "along": 0
       }
@@ -4599,7 +4600,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 200,
+      "triangles": 344,
       "door": {
         "along": 0
       }
@@ -4617,7 +4618,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 200,
+      "triangles": 344,
       "door": {
         "along": 0
       }
@@ -4635,7 +4636,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 200,
+      "triangles": 344,
       "door": {
         "along": 0
       }
@@ -4653,7 +4654,7 @@
         "clinic",
         "warehouse"
       ],
-      "triangles": 200,
+      "triangles": 344,
       "door": {
         "along": 0
       }
@@ -6111,7 +6112,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -6129,7 +6130,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -6147,7 +6148,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -6165,7 +6166,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -6183,7 +6184,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -6201,7 +6202,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -6219,7 +6220,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -6237,7 +6238,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -6255,7 +6256,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -6273,7 +6274,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -6291,7 +6292,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -6309,7 +6310,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -6327,7 +6328,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -6345,7 +6346,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -6363,7 +6364,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -6381,7 +6382,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 164,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -6399,7 +6400,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -6417,7 +6418,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -6435,7 +6436,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -6453,7 +6454,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -6471,7 +6472,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -6489,7 +6490,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -6507,7 +6508,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -6525,7 +6526,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -6543,7 +6544,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -6561,7 +6562,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -6579,7 +6580,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -6597,7 +6598,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -6615,7 +6616,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -6633,7 +6634,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -6651,7 +6652,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -6669,7 +6670,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 176,
+      "triangles": 272,
       "door": {
         "along": 0
       }
@@ -6687,7 +6688,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -6705,7 +6706,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -6723,7 +6724,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -6741,7 +6742,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -6759,7 +6760,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -6777,7 +6778,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -6795,7 +6796,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -6813,7 +6814,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -6831,7 +6832,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -6849,7 +6850,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -6867,7 +6868,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -6885,7 +6886,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -6903,7 +6904,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -6921,7 +6922,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -6939,7 +6940,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }
@@ -6957,7 +6958,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 184,
+      "triangles": 328,
       "door": {
         "along": 0
       }

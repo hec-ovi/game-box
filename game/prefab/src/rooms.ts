@@ -36,6 +36,23 @@ export interface Bank {
   readonly count: number
 }
 
+/**
+ * What burns in a room: the colours a lit window is tinted in, near and far.
+ * Five of the eight are warm, because a street of lit windows after dark is
+ * mostly tungsten and only some of it is the strip light in an office; the
+ * saturated three are the accents `docs/LOOK.md` asks for.
+ */
+export const ROOM_TINTS: ReadonlyArray<readonly [number, number, number]> = [
+  [1.0, 0.87, 0.68],
+  [1.0, 0.74, 0.45],
+  [1.0, 0.9, 0.78],
+  [1.0, 0.8, 0.55],
+  [0.94, 0.96, 1.0],
+  [0.62, 0.9, 1.0],
+  [0.72, 1.0, 0.9],
+  [1.0, 0.7, 0.87],
+]
+
 export const ROOM_BANKS = {
   /** Above the street: offices, a server room, flats, a corridor, a store room. */
   upper: { first: 0, count: 8 },

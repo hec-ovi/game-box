@@ -5,17 +5,19 @@ import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { PrefabDressing, type BuildingSize } from '../src/dressing.ts'
 import { PROUD } from '../src/fit.ts'
+import { PANE } from '../src/glass.ts'
+import { GLASS_MATERIAL_NAME, MATERIAL_NAME, SHELL_MATERIAL_NAME } from '../src/pack.ts'
 import { FINISHES, PLATE, catalogueOf, charterOf, libraryOf, plotOf } from './support.ts'
 
 const catalogue = catalogueOf()
 const dressing = new PrefabDressing(libraryOf(catalogue), new Greybox())
 
-/** Where the door plate ended up, in the building's own frame. */
 /** The plot, its size and its charter, the way the scene hands them over. */
 function handed(plot: Plot, size: BuildingSize): [Plot, BuildingSize, ResolvedCharter] {
   return [plot, size, charterOf(plot)]
 }
 
+/** Where the door plate ended up, in the building's own frame. */
 function doorAt(object: THREE.Object3D): THREE.Vector3 {
   const mesh = object.children[0] as THREE.Mesh
   const box = new THREE.Box3()
@@ -74,7 +76,43 @@ describe('dressing a plot', () => {
     expect(building.children.some((child) => child.name.endsWith(':shell'))).toBe(true)
   })
 
-  it('gives @gb/scene something it can batch, so the city is one draw', () => {
+  it('answers the far shell as the walls alone: no glass, no signs, the same entrance', () => {
+    const kit = new KitDressing(placeholderKit('a neon city'), new Greybox())
+    const withSigns = new PrefabDressing(libraryOf(catalogue), kit)
+    const plot = plotOf({ kind: 'bar', name: 'The Long Wire', interiorId: 'interior_0001' })
+    const shell = withSigns.shell(plot, { width: 8, depth: 12, height: 7.2 }, charterOf(plot))
+    const meshes = shell.children.filter((child) => (child as THREE.Mesh).isMesh) as THREE.Mesh[]
+    expect(meshes.map((mesh) => (mesh.material as THREE.Material).name)).toEqual([SHELL_MATERIAL_NAME])
+    expect(finishesOn(shell)).toContain('door:open')
+    // and nothing was hung on it, so no sign lights the pavement from a shell
+    const kinds = withSigns.lights(plot, { width: 8, depth: 12, height: 7.2 }, charterOf(plot)).map((light) => light.kind)
+    expect(kinds).toContain('entrance')
+    expect(kinds).not.toContain('doorlamp')
+  })
+
+  it('stands a pane of glass off every windowed wall, on the second material, and nothing off the rest', () => {
+    const building = dressing.building(...handed(plotOf(), { width: 8, depth: 12, height: 7.2 }))
+    const meshes = building.children.filter((child) => (child as THREE.Mesh).isMesh) as THREE.Mesh[]
+    expect(meshes.map((mesh) => (mesh.material as THREE.Material).name)).toEqual([MATERIAL_NAME, GLASS_MATERIAL_NAME])
+    const [walls, glass] = meshes
+    expect(glass!.castShadow).toBe(false)
+
+    // the fixture shell wears the windowed wall: its four upright faces get a
+    // pane each, its roof and floor none, and the door and the plate none
+    expect(glass!.geometry.getIndex()!.count / 3).toBe(8)
+    const layer = glass!.geometry.getAttribute('_layer')
+    for (let i = 0; i < layer.count; i++) expect(FINISHES[Math.round(layer.getX(i))]).toBe('wall:facade-a')
+    const box = new THREE.Box3().setFromBufferAttribute(glass!.geometry.getAttribute('position') as THREE.BufferAttribute)
+    const shell = new THREE.Box3().setFromBufferAttribute(walls!.geometry.getAttribute('position') as THREE.BufferAttribute)
+    expect(box.max.x).toBeCloseTo(4 + PANE.stand)
+    expect(box.min.x).toBeCloseTo(-4 - PANE.stand)
+    expect(box.max.z).toBeCloseTo(6 + PANE.stand)
+    expect(box.min.z).toBeCloseTo(-6 - PANE.stand)
+    expect(box.max.y).toBeCloseTo(shell.max.y)
+    expect(box.min.y).toBeCloseTo(0)
+  })
+
+  it('gives @gb/scene something it can batch: every shell in one draw, and the walls and glass near the player in one each', () => {
     const world = World.create({ name: 'T', theme: 'neon', seed: 's', width: 40, height: 40 })
     for (let i = 0; i < 6; i++) {
       const added = world.addPlot({
@@ -89,8 +127,9 @@ describe('dressing a plot', () => {
     }
 
     const city = buildCity(world, dressing)
-    const batches = city.root.children.filter((child) => child.name.startsWith('city:'))
-    expect(batches.map((batch) => batch.name)).toEqual(['city:prefab:facade'])
+    city.follow(12, 18)
+    const batches = city.root.children.filter((child) => (child as THREE.BatchedMesh).isBatchedMesh && child.name !== 'clutter')
+    expect(batches.map((batch) => batch.name)).toEqual([`city:${SHELL_MATERIAL_NAME}`, `detail:${MATERIAL_NAME}`, `detail:${GLASS_MATERIAL_NAME}`])
     expect(city.buildings.size).toBe(6)
   })
 
@@ -102,7 +141,8 @@ describe('dressing a plot', () => {
     const building = withSigns.building(plot, { width: 8, depth: 12, height: 7.2 }, charterOf(plot))
     const materials = building.children.map((child) => ((child as THREE.Mesh).material as THREE.Material).name)
     expect(materials).toContain(SIGN.material)
-    expect(materials.filter((name) => name === 'prefab:facade')).toHaveLength(1)
+    expect(materials.filter((name) => name === MATERIAL_NAME)).toHaveLength(1)
+    expect(materials.filter((name) => name === GLASS_MATERIAL_NAME)).toHaveLength(1)
   })
 
   it('publishes the light a building throws: its lit lobby, each screen, and the signs it hung', () => {
