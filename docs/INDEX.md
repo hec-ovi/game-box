@@ -9,13 +9,13 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI
 | The city: what it was asked to be, the history it was built on, the charters that say what each kind of place is, its grid, plots, interiors, NPCs and their lives, items and their prices, the art each plot was designed against, the sizes furniture is drawn to and plots are cut in, and what a sound world means | `game/world/` |
 | Quests: the flow schema, what makes one playable, how it advances | `game/quest/` |
 | The playthrough: inventory, money and what it buys, flags, reputation, companions, things left lying somewhere, where the player is standing, the job they are following, the codex of places and people found, what each person remembers of the player and how they feel about them, the clock and the weather | `game/play/` |
-| Generating a city: the history it is built on, then the streets, plots, interiors, people with their lives and prices on their stock, and quests that follow from it, played through by a harness in a living town | `game/forge/` |
-| Exporting and importing a city, and the save file | `game/bundle/` |
+| Generating a city: the history it is built on and the kinds of place that history declares, then the streets, plots, interiors, people with their lives and prices on their stock, and quests that follow from it, played through by a harness in a living town | `game/forge/` |
+| Exporting and importing a city, bringing a file written before charters up to date on the way in, and the save file | `game/bundle/` |
 | Walking routes, reachability, waypoints | `game/nav/` |
 | Talking to the local model: one checked answer, or a streamed reply, and waiting out a busy one | `game/sidecar/` |
-| Asking the local model to write the city's history from the owner's brief, name the city and every sign on it in batches, write a whole place and the lives of the people in it, write the quests to what was asked, pin every call to a seed, and say how far the build has got | `game/scribe/` |
+| Asking the local model to write the city's history from the owner's brief and a charter for every kind of place it invents, name the city and every sign on it in batches, write a whole place and the lives of the people in it, write the quests to what was asked, pin every call to a seed, and say how far the build has got | `game/scribe/` |
 | Conversations with NPCs: each person their own session, the first thing they say when you walk up, what they do and say on a turn, whether their answer was yes or no, what they remember of you, what you learn of them, and what they are allowed to do | `game/talk/` |
-| Turning a world into three.js objects, the wet street and the rubbish on it, what the things in a room stand on, and where art plugs in | `game/scene/` |
+| Turning a world into three.js objects, the wet street and the rubbish on it, the lights the buildings throw and the fill that lights a ceiling, what the things in a room stand on, and where art plugs in | `game/scene/` |
 | The people: bodies, clothes, clips, what they hold, who is doing what, and coming out of a stance for whoever talks to them | `game/cast/` |
 | Buildings that look like buildings, their lit windows, their neon signs sized to the fascia, the lamps at their doors and the light each lit thing throws, the street lamps drawn from code and the ground they all stand on, from the city kit | `game/kitbash/` |
 | Whole buildings out of the committed pack the model authored offline, which one a plot gets and keeps because the world file names it, the rooms you see through their windows, their entrances (lit where you can walk in), the lit screens on their walls and where the light each building throws comes from | `game/prefab/` |
@@ -26,7 +26,7 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI
 | The car the player drives: getting in, the handling, who rides with them | `game/drive/` |
 | The interface: objectives, prompts, the compass strip and which way the job is, the conversation down the side and the moves you can click in it, announcements, the loader while a city is written, the quests, map, inventory, codex, settings and controls window, and how it all looks | `game/hud/` |
 | Determinism, ids, results, boundary validation | `game/kit/` |
-| The running game: the panel you make a city in or open one somebody sent you from, renderer, frame loop, first-person body, the car it drives, the map and the route guide, taking a thing and leaving it where a job wants it, the keys for the hour and the weather, wiring, and how the night is graded | `game/app/` |
+| The running game: the panel you make a city in (every field optional) or open one somebody sent you from, the shelf every city you made or opened is kept on with its playthrough, the loader while the model writes one, renderer, frame loop, first-person body, the car it drives, the map, the compass and the route guide, the codex and the settings the interface is handed, taking a thing and leaving it where a job wants it, the keys for the hour and the weather, who goes out walking and who walks with the player, wiring, and how the hour is graded | `game/app/` |
 | The `gb` command: build a city and pin it to the art it was drawn from, inspect it, check it | `game/cli/` |
 
 ## Sidecar
@@ -34,7 +34,7 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI
 | You want to change | Open |
 |---|---|
 | HTTP/WS endpoints, SSE shapes, OpenAI compatibility, tool calls, error bodies | `host/src/api/` |
-| Text generation, engine selection, llama.cpp/upstream wiring, pinning an answer so the same request comes back the same | `host/src/llm/` |
+| Text generation, engine selection, llama.cpp/upstream wiring, forcing a tool call in the shape the engine honours, pinning an answer so the same request comes back the same | `host/src/llm/` |
 | Speech recognition, audio envelopes, partial transcripts | `host/src/stt/` |
 | Speech synthesis, voices, streaming audio frames | `host/src/tts/` |
 | Model cache, integrity check, downloads | `host/src/models/` |
