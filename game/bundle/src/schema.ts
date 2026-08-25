@@ -31,6 +31,8 @@ export const SaveSchema = z.object({
   contentHash: z.string().regex(/^[a-f0-9]{64}$/),
   player: playerContract.schema,
   questProgress: questProgressContract.schema,
+  /** What each quest was called when the save was written, so a rebuilt city's reuse of an id is caught on resume. */
+  questTitles: z.record(z.string().min(1), z.string().min(1).max(80)).optional(),
 })
 
 export const bundleContract = contract('bundle', BundleSchema)

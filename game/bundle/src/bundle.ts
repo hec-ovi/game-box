@@ -3,6 +3,10 @@ import { PlayerState } from '@gb/play'
 import { QuestLog, validateQuest, type QuestDoc, type QuestProblem } from '@gb/quest'
 import { questView, World, type IntegrityProblem } from '@gb/world'
 import { comparePacks, type PackReport } from './packs.ts'
+import { Ledger, type ResumeReport } from './resume/ledger.ts'
+import { reconcilePlayer } from './resume/player.ts'
+import { reconcileProgress } from './resume/progress.ts'
+import { Resolver } from './resume/resolver.ts'
 import { bundleContract, saveContract, type AssetPackRef, type BundleDoc, type SaveDoc } from './schema.ts'
 import { contentHash } from './stable-json.ts'
 
@@ -21,6 +25,13 @@ export interface OpenedBundle {
   /** The art the file names against the art the reader said they have. */
   readonly packs: PackReport
   readonly contentHash: string
+}
+
+/** A playthrough back in play, and what of the save survived the city it was opened in. */
+export interface Resumed {
+  readonly player: PlayerState
+  readonly log: QuestLog
+  readonly report: ResumeReport
 }
 
 /**
@@ -92,7 +103,7 @@ export class Bundle {
     })
   }
 
-  /** A playthrough of this exact bundle. */
+  /** A playthrough of this bundle, with what each quest was called so a rebuilt city cannot pass its work off as this one's. */
   static save(bundle: OpenedBundle, player: PlayerState, log: QuestLog): SaveDoc {
     return {
       format: 'game-box.save',
@@ -101,31 +112,37 @@ export class Bundle {
       contentHash: bundle.contentHash,
       player: player.toJSON(),
       questProgress: log.toJSON(),
+      questTitles: Object.fromEntries(bundle.quests.map((quest) => [quest.id, quest.title])),
     }
   }
 
-  /** Resume a playthrough, refusing a save made against a different city. */
-  static resume(bundle: OpenedBundle, value: unknown): Result<{ player: PlayerState; log: QuestLog }, BundleError> {
+  /**
+   * Resume a playthrough. A save from another version of this city (the hash
+   * differs) is not refused: whatever still resolves here is kept, the rest is
+   * dropped, and the report says which was which.
+   */
+  static resume(bundle: OpenedBundle, value: unknown): Result<Resumed, BundleError> {
     const parsed = saveContract.parse(value)
     if (!parsed.ok) return err({ code: 'invalid-save', violations: parsed.error })
     const doc = parsed.value
+    if (doc.worldId !== bundle.world.id) return err({ code: 'save-mismatch', message: 'the save belongs to another city' })
 
-    if (doc.contentHash !== bundle.contentHash) {
-      return err({ code: 'save-mismatch', message: 'the save was made in a different version of this city' })
-    }
-    const player = PlayerState.load(doc.player, bundle.world.id)
+    const resolve = new Resolver(bundle.world, bundle.quests, doc.questTitles ?? {})
+    const ledger = new Ledger()
+    const player = PlayerState.load(reconcilePlayer(doc.player, resolve, ledger), bundle.world.id)
     if (!player.ok) {
-      return player.error.code === 'invalid-save'
-        ? err({ code: 'invalid-save', violations: player.error.violations })
-        : err({ code: 'save-mismatch', message: 'the save belongs to another world' })
+      return err({
+        code: 'invalid-save',
+        violations: player.error.code === 'invalid-save' ? player.error.violations : [{ path: 'worldId', message: player.error.code }],
+      })
     }
-    const log = QuestLog.load(doc.questProgress, bundle.quests, player.value)
+    const log = QuestLog.load(reconcileProgress(doc.questProgress, resolve, ledger), bundle.quests, player.value)
     if (!log.ok) {
       return err({
         code: 'invalid-save',
         violations: log.error.code === 'invalid-progress' ? log.error.violations : [{ path: '(root)', message: log.error.code }],
       })
     }
-    return ok({ player: player.value, log: log.value })
+    return ok({ player: player.value, log: log.value, report: ledger.report(doc.contentHash !== bundle.contentHash) })
   }
 }

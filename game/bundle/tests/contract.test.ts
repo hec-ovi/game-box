@@ -80,9 +80,10 @@ describe('Bundle', () => {
       expect(resumed.value.player.money).toBe(25)
       expect(resumed.value.log.status(quest.id)).toBe('active')
       expect(resumed.value.log.objectives().length).toBeGreaterThan(0)
+      expect(resumed.value.report).toEqual({ rebuilt: false, kept: [{ kind: 'quest', id: quest.id }], dropped: [] })
     }
 
-    const otherCity = { ...save, contentHash: 'f'.repeat(64) }
+    const otherCity = { ...save, worldId: 'world_9999' }
     const wrong = Bundle.resume(opened.value, otherCity)
     expect(wrong.ok).toBe(false)
     if (!wrong.ok) expect(wrong.error.code).toBe('save-mismatch')
