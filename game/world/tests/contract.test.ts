@@ -1,3 +1,4 @@
+import type { Result } from '@gb/kit'
 import { describe, expect, it } from 'vitest'
 import {
   ANCHOR_KINDS,
@@ -22,6 +23,7 @@ import {
   type Npc,
   type Placement,
   type Premise,
+  type WorldError,
 } from '../src/index.ts'
 
 /** A two-street hamlet with one bar, its interior, its bartender and a bottle. */
@@ -92,11 +94,14 @@ describe('World', () => {
     const { world, plot, bartender } = hamlet()
     expect(world.check()).toEqual([])
 
-    const reloaded = World.load(JSON.parse(JSON.stringify(world.toJSON())))
+    const saved = JSON.stringify(world.toJSON())
+    const reloaded = World.load(JSON.parse(saved))
     expect(reloaded.ok).toBe(true)
     if (!reloaded.ok) return
 
     const copy = reloaded.value
+    // the same city saves to the same bytes whether it was founded or loaded
+    expect(JSON.stringify(copy.toJSON())).toBe(saved)
     expect(copy.name).toBe('Dry Gulch')
     expect(copy.plot(plot.id)?.name).toBe('The Rusty Nail')
     expect(copy.npcsIn(plot.id).map((n) => n.name)).toEqual(['Mara Cole'])
@@ -512,9 +517,16 @@ function docOf(world: World): Record<string, any> {
   return JSON.parse(JSON.stringify(world.toJSON()))
 }
 
-function violationsOf(loaded: ReturnType<typeof World.load>): string[] {
-  if (loaded.ok || loaded.error.code !== 'invalid-document') throw new Error('expected invalid-document')
-  return loaded.error.violations.map((v) => v.path)
+function violationsOf(result: Result<unknown, WorldError>): string[] {
+  if (result.ok || result.error.code !== 'invalid-document') throw new Error('expected invalid-document')
+  return result.error.violations.map((v) => v.path)
+}
+
+/** Whether the same city loaded back saves to the bytes it saved to. */
+function savesAlike(world: World): boolean {
+  const saved = JSON.stringify(world.toJSON())
+  const loaded = World.load(JSON.parse(saved))
+  return loaded.ok && JSON.stringify(loaded.value.toJSON()) === saved
 }
 
 function problemsOf(loaded: ReturnType<typeof World.load>): string[] {
@@ -738,5 +750,112 @@ describe('the sizes everything is drawn and planned from', () => {
     expect(inPlotBand(east)).toBe(false)
     expect(inPlotBand({ frontage: PLOT_BAND.frontage.max, depth: PLOT_BAND.depth.min, storeys: PLOT_BAND.storeys.max })).toBe(true)
     expect(inPlotBand({ ...south, storeys: PLOT_BAND.storeys.max + 1 })).toBe(false)
+  })
+})
+
+describe('one rule at both doors', () => {
+  const catalogue = { pack: 'gb-prefab', version: '1.2.0' }
+  const design = { pack: 'gb-prefab', model: 'corner-tower-03', mirror: false, rooms: 2 }
+
+  /** A city founded with what the owner asked for, and told what it is designed against, after founding. */
+  function town() {
+    const world = World.create({ name: 'Wetmouth', theme: 'harbour', seed: 'doors', width: 16, height: 16, brief: 'A port town.', asks: { tone: 'wet' } })
+    world.paint({ x: 0, y: 5, w: 16, h: 1 }, 'sidewalk')
+    expect(world.recordCatalogues([catalogue]).ok).toBe(true)
+    return world
+  }
+
+  /** A house on a free site, its keys and its rect's in the order a caller happened to write them. */
+  function house(world: World) {
+    return world.addPlot({ style: 'timber', storeys: 1, entrance: { facing: 'south', cell: { y: 5, x: 9 } }, rect: { h: 4, w: 4, y: 1, x: 8 }, name: 'Hollis Place', kind: 'house', design })
+  }
+
+  it('takes a plot as a file carries one, and refuses one a file would refuse', () => {
+    const world = town()
+    const added = house(world)
+    expect(added.ok).toBe(true)
+    if (!added.ok) return
+    expect(Object.keys(added.value)).toEqual(['id', 'kind', 'name', 'rect', 'storeys', 'entrance', 'style', 'design'])
+    expect(Object.keys(added.value.rect)).toEqual(['x', 'y', 'w', 'h'])
+    expect(savesAlike(world)).toBe(true)
+
+    const tower = world.addPlot({ kind: 'house', name: 'Tower', rect: { x: 1, y: 6, w: 3, h: 3 }, entrance: { cell: { x: 1, y: 5 }, facing: 'north' }, storeys: 41, style: 'timber' })
+    expect(violationsOf(tower)).toEqual(['storeys'])
+    expect(world.buildSites(3, 3)).toContainEqual({ x: 1, y: 6, w: 3, h: 3 })
+  })
+
+  it('takes an interior as a file carries one: a door left unlocked, the charter\'s finish, the door it opens in order', () => {
+    const world = town()
+    const plot = house(world)
+    if (!plot.ok) throw new Error('fixture')
+    const room = world.mintId('room')
+    const added = world.addInterior({
+      id: world.mintId('interior'),
+      plotId: plot.value.id,
+      kind: 'house',
+      size: { w: 8, h: 8 },
+      rooms: [{ id: room, kind: 'main', name: 'Front room', rect: { x: 0, y: 0, w: 8, h: 8 } }],
+      doors: [{ id: world.mintId('door'), from: 'outside', to: room, pos: { x: 4, y: 0 }, rot: 180 }],
+      furniture: [],
+      anchors: [],
+    })
+    expect(added.ok).toBe(true)
+    if (!added.ok) return
+    expect(added.value.doors[0]!.locked).toBe(false)
+    expect(added.value.finish).toBe(world.charter('house')!.finish)
+    expect(Object.keys(world.plot(plot.value.id)!)).toEqual(['id', 'kind', 'name', 'rect', 'storeys', 'entrance', 'style', 'interiorId', 'design'])
+    expect(savesAlike(world)).toBe(true)
+
+    const short = world.addInterior({ ...added.value, id: 'interior_1' })
+    expect(violationsOf(short)).toEqual(['id'])
+  })
+
+  it('takes a person as a file carries one, and refuses a body the pack does not hold', () => {
+    const { world, interior } = hamlet()
+    const added = world.addNpc({
+      knowledge: [],
+      personality: 'Never stops moving.',
+      station: { anchorId: interior.anchors[1]!.id, interiorId: interior.id },
+      appearance: { variant: 0, base: 'male' },
+      role: 'patron',
+      name: 'Bo',
+      id: world.mintId('npc'),
+    })
+    expect(added.ok).toBe(true)
+    if (!added.ok) return
+    expect(Object.keys(added.value)).toEqual(['id', 'name', 'role', 'appearance', 'station', 'personality', 'knowledge'])
+    expect(savesAlike(world)).toBe(true)
+
+    const hero = world.addNpc({ ...added.value, id: world.mintId('npc'), appearance: { base: 'hero-male' as never, variant: 0 } })
+    expect(violationsOf(hero)).toEqual(['appearance.base'])
+  })
+
+  it('takes a thing as a file carries one: no price is worth nothing, in a pocket', () => {
+    const { world, interior } = hamlet()
+    const id = world.mintId('item')
+    const added = world.addItem(
+      { archetype: 'key', description: 'Worn smooth.', name: 'Brass cellar key', id },
+      { at: 'anchor', itemId: id, interiorId: interior.id, anchorId: interior.anchors[1]!.id },
+    )
+    expect(added.ok).toBe(true)
+    if (!added.ok) return
+    expect(added.value).toEqual({ id, name: 'Brass cellar key', description: 'Worn smooth.', archetype: 'key', value: 0, bulk: 'pocket' })
+    expect(Object.keys(added.value)).toEqual(['id', 'name', 'description', 'archetype', 'value', 'bulk'])
+    expect(savesAlike(world)).toBe(true)
+
+    const half = world.addItem({ ...added.value, id: world.mintId('item'), value: 4.5 }, { at: 'ground', itemId: id, cell: { x: 0, y: 0 } })
+    expect(violationsOf(half)).toEqual(['value'])
+  })
+
+  it('takes a road as a file carries one, and refuses a class of road the city does not have', () => {
+    const world = town()
+    const nodes = [{ id: world.mintId('node'), cell: { x: 2, y: 5 } }, { id: world.mintId('node'), cell: { x: 12, y: 5 } }]
+    const laid = world.addRoad(nodes, [{ id: world.mintId('road'), from: nodes[0]!.id, to: nodes[1]!.id, kind: 'street', lanes: 2 }])
+    expect(laid.ok).toBe(true)
+    expect(savesAlike(world)).toBe(true)
+
+    const lane = world.addRoad([], [{ id: world.mintId('road'), from: nodes[0]!.id, to: nodes[1]!.id, kind: 'lane' as never, lanes: 1 }])
+    expect(violationsOf(lane)).toEqual(['segments.0.kind'])
+    expect(world.toJSON().roads.segments).toHaveLength(1)
   })
 })

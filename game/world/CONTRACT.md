@@ -1,6 +1,6 @@
 # @gb/world contract
 
-contractVersion: 0.11.0
+contractVersion: 0.12.0
 
 ## Purpose
 
@@ -13,12 +13,22 @@ Holds a city: what it was asked to be, the kinds of place it has and what each o
 | `World.found(spec)` | `CitySpec`: name, theme, seed, width, height, cellSize?, generator?, premise?, brief?, asks?, charters? | none: the spec is checked here |
 | `World.create(spec)` | same `CitySpec` | the spec must already be sound; a bad one throws. Going: use `found` |
 | `World.load(value)` | [schema/world.json](schema/world.json) | any untrusted JSON, including generated output |
-| `World.addPlot(spec)` | `PlotSpec`: kind, name, rect, entrance, storeys, style, design? | footprint is free land; kind is the word of a declared charter; a design names a recorded catalogue |
+| `World.addPlot(spec)` | `PlotSpec`: kind, name, rect, entrance, storeys, style, design?, the `plot` record in [schema/world.json](schema/world.json) without its id | footprint is free land; kind is the word of a declared charter; a design names a recorded catalogue |
 | `World.recordCharters(charters)` | `ResolvedCharter[]`, 1 to `MAX_CHARTERS` (24), see [schema/world.json](schema/world.json) `charters` | the list is checked and normalised here, and must still hold every word a plot already has. Replaces the declared list |
 | `World.recordCatalogues(refs)` | `AssetPackRef[]`, at most `MAX_CATALOGUES`: `{ pack, version, sha256? }` | the list is checked here, and must still name every catalogue a plot is already pinned to. Replaces the recorded list |
 | `World.recordDesign(plotId, design)` | `PlotDesign`: `{ pack, model, mirror, rooms }` | the plot exists and `pack` is one of the recorded catalogues |
 | `World.addInterior(interior)` | `interior` in [schema/world.json](schema/world.json) | its `plotId` exists. A `finish` left out is written from the plot's charter |
-| `World.addNpc(npc)` / `addItem(item, placement)` | same | referenced interior, anchor and item exist |
+| `World.addNpc(npc)` / `addItem(item, placement)` | `npc`, `item` and `placement` in the same schema | referenced interior, anchor and item exist |
+| `World.addRoad(nodes, segments)` | `roads.nodes` and `roads.segments` in the same schema | none: the graph is checked by `check()` and refused by `load` |
+
+**One rule at both doors.** Every add reads its record through the same
+schema `load` reads a file with, so a record added at runtime is what the
+file would carry: defaults filled (a door's `locked` false, an item's `value`
+0 and `bulk` pocket), keys in schema order, anything outside the schema
+dropped. It then refuses exactly what `load` would refuse in that record, as
+`invalid-document` with the same paths (`interior_1` is not an id, a plot
+of 41 storeys, a body the pack does not hold), and nothing that `load` would
+take. A refusal writes nothing: no id, no ground, no record.
 
 ## Outputs
 
@@ -132,7 +142,7 @@ its rooms are dressed in, so a furnisher reads the interior and no table of
 kinds: `addInterior` writes the plot's charter's `finish` into a new interior
 that brought none, and an interior a `World` hands out (`interior(id)`,
 `interiors()`) always carries one, read off the charter when the file left it
-out. The file itself is left as written: a city exported before interiors
+out. A loaded file is left as written: a city exported before interiors
 carried a finish saves back byte for byte.
 
 ## The history a city was built against
@@ -270,7 +280,7 @@ draws the city draws no kerb against it, and whoever routes never crosses it.
 
 ## Errors (closed set)
 
-- `invalid-document`: failed the JSON Schema, whether it arrived as a whole document or as a city spec. Carries the offending paths.
+- `invalid-document`: failed the JSON Schema, whether it arrived as a whole document, as a city spec, or as one record added at runtime. Carries the offending paths.
 - `inconsistent-world`: schema-valid but references dangle or the grid disagrees. Carries every problem found, not just the first.
 - `no-space`: the footprint is not free land.
 - `unknown-reference`: an added interior, NPC or item points at something that does not exist, a design names a catalogue the city has not recorded, a plot's word names no charter the city declares, or a recorded list of charters or catalogues drops one a plot holds.
@@ -284,6 +294,7 @@ draws the city draws no kerb against it, and whoever routes never crosses it.
 - A `World` that returns `ok` from `load` is sound: no duplicate ids, no dangling references, every `plot.kind` resolves in the declared charters, exactly one street door per interior, one plot per interior pointing back at it, no two NPCs on one anchor, every item somewhere in the world, every plot footprint marked on the grid.
 - **What a place is, is a fact about the file.** A charter is a composition over shipped atoms only: a value outside the closed lists fails the schema, a charter stripped to its word fails the schema, and a reader draws what the charter carries. Adding a charter adds nothing to download.
 - Content is only ever accepted through the schema plus the integrity check, so a language model cannot write a broken city into the file (fail closed).
+- **A city saves to the same bytes whichever door it came in by.** Every record is read through its schema at both doors, and a field written on the document or on a plot later (`charters`, `catalogues`, a plot's `interiorId` or `design`) lands where the file carries it, so a city founded and filled through the adds, saved, loaded and saved again is byte for byte the first save. A file is left as it was written.
 - Ids are minted once and never reused; a document loaded and saved keeps every id it had.
 - **A city's history is a fact about the file.** It is written at founding and nothing here rewrites it, so growing a city later grows it against the story it started from, and a shared file says what its town is about without the generator that built it.
 - **A plot's design is a fact about the file, never re-derived.** Nothing here chooses a model, and nothing rewrites one that is written down, so the same file is the same city on every machine and in every version of the art.

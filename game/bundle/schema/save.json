@@ -200,6 +200,14 @@
                   "unlocked"
                 ]
               }
+            },
+            "history": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 400
+              }
             }
           },
           "required": [

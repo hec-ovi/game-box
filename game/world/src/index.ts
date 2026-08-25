@@ -1,5 +1,5 @@
 /** @gb/world: the city, its buildings, its people and their things. See CONTRACT.md. */
-export { World, type WorldError, type PlotSpec } from './world.ts'
+export { World, type WorldError } from './world.ts'
 export { type CitySpec } from './model/city-spec.ts'
 export { questView, type QuestView } from './quest-view.ts'
 export { Grid, CELL, CELL_KINDS, type CellKind, type Rect } from './grid.ts'
@@ -19,18 +19,29 @@ export { ROAD_WIDTHS, WIDEST_ROADWAY_CELLS, type RoadWidth } from './roads.ts'
 export { checkIntegrity, type IntegrityProblem } from './integrity.ts'
 export {
   worldContract,
+  plotSpecContract,
+  plotContract,
+  interiorContract,
+  npcContract,
+  itemContract,
+  placementContract,
+  roadsContract,
   type WorldDoc,
+  type PlotSpec,
   type Plot,
+  type InteriorInput,
   type Interior,
   type Room,
   type Door,
   type Anchor,
   type Furniture,
   type Npc,
+  type ItemInput,
   type Item,
   type Placement,
   type RoadNode,
   type RoadSegment,
+  type Roads,
 } from './model/schema.ts'
 export { MAX_CATALOGUES, type AssetPackRef, type PlotDesign } from './model/design.ts'
 export { PremiseSchema, premiseContract, type Premise } from './model/premise.ts'

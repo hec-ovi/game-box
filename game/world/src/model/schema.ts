@@ -130,6 +130,9 @@ export const RoadSegmentSchema = z.object({
   lanes: z.number().int().min(1).max(4),
 })
 
+/** The drivable graph: a node at every crossing, a segment between neighbours. */
+export const RoadsSchema = z.object({ nodes: z.array(RoadNodeSchema), segments: z.array(RoadSegmentSchema) })
+
 export const NpcSchema = z.object({
   id: id('npc'),
   name: z.string().min(1).max(60),
@@ -197,7 +200,7 @@ export const WorldSchema = z.object({
     height: z.number().int().min(4).max(1024),
     rows: z.array(z.string()).min(4),
   }),
-  roads: z.object({ nodes: z.array(RoadNodeSchema), segments: z.array(RoadSegmentSchema) }),
+  roads: RoadsSchema,
   plots: z.array(PlotSchema),
   interiors: z.array(InteriorSchema),
   npcs: z.array(NpcSchema),
@@ -207,17 +210,39 @@ export const WorldSchema = z.object({
   idCounters: z.record(z.string(), z.number().int().min(0)),
 })
 
+/** What it takes to place a plot: the record without the id the world mints and the door it opens later. */
+export const PlotSpecSchema = PlotSchema.omit({ id: true, interiorId: true })
+
+/**
+ * The one set of readers for every record, at both doors: a file is read
+ * through `worldContract`, and a record added at runtime through its own, so
+ * both fill the same defaults, keep the same key order and refuse the same
+ * things.
+ */
 export const worldContract = contract('world', WorldSchema)
+export const plotSpecContract = contract('plot-spec', PlotSpecSchema)
+export const plotContract = contract('plot', PlotSchema)
+export const interiorContract = contract('interior', InteriorSchema)
+export const npcContract = contract('npc', NpcSchema)
+export const itemContract = contract('item', ItemSchema)
+export const placementContract = contract('placement', PlacementSchema)
+export const roadsContract = contract('roads', RoadsSchema)
 
 export type WorldDoc = z.infer<typeof WorldSchema>
+export type PlotSpec = z.input<typeof PlotSpecSchema>
 export type Plot = z.infer<typeof PlotSchema>
+/** An interior as a file may carry it: a door's `locked` still to fill. */
+export type InteriorInput = z.input<typeof InteriorSchema>
 export type Interior = z.infer<typeof InteriorSchema>
 export type Room = z.infer<typeof RoomSchema>
 export type Door = z.infer<typeof DoorSchema>
 export type Anchor = z.infer<typeof AnchorSchema>
 export type Furniture = z.infer<typeof FurnitureSchema>
 export type Npc = z.infer<typeof NpcSchema>
+/** An item as a file may carry it: `value` and `bulk` still to fill. */
+export type ItemInput = z.input<typeof ItemSchema>
 export type Item = z.infer<typeof ItemSchema>
 export type Placement = z.infer<typeof PlacementSchema>
 export type RoadNode = z.infer<typeof RoadNodeSchema>
 export type RoadSegment = z.infer<typeof RoadSegmentSchema>
+export type Roads = z.infer<typeof RoadsSchema>

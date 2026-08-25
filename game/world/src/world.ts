@@ -1,4 +1,4 @@
-import { err, IdMinter, ok, type Result, type SchemaViolation } from '@gb/kit'
+import { err, IdMinter, ok, type Contract, type Result, type SchemaViolation } from '@gb/kit'
 import { charterOf, declaredCharters } from './charters/declared.ts'
 import { CELL, Grid, type Rect } from './grid.ts'
 import { checkIntegrity, type IntegrityProblem } from './integrity.ts'
@@ -9,8 +9,28 @@ import type { Asks } from './model/asks.ts'
 import type { Premise } from './model/premise.ts'
 import { chartersContract, type ResolvedCharter } from './model/resolved.ts'
 import type { Finish } from './model/traits.ts'
-import { worldContract, type Interior, type Item, type Npc, type Placement, type Plot, type WorldDoc } from './model/schema.ts'
-import type { Facing } from './model/vocabulary.ts'
+import {
+  interiorContract,
+  itemContract,
+  npcContract,
+  placementContract,
+  plotContract,
+  plotSpecContract,
+  roadsContract,
+  worldContract,
+  type Interior,
+  type InteriorInput,
+  type Item,
+  type ItemInput,
+  type Npc,
+  type Placement,
+  type Plot,
+  type PlotSpec,
+  type RoadNode,
+  type Roads,
+  type RoadSegment,
+  type WorldDoc,
+} from './model/schema.ts'
 
 export type WorldError =
   | { readonly code: 'invalid-document'; readonly violations: readonly SchemaViolation[] }
@@ -18,21 +38,14 @@ export type WorldError =
   | { readonly code: 'no-space'; readonly message: string }
   | { readonly code: 'unknown-reference'; readonly message: string }
 
-export interface PlotSpec {
-  /** The word of one of the city's charters. */
-  readonly kind: string
-  readonly name: string
-  readonly rect: Rect
-  readonly entrance: { readonly cell: { x: number; y: number }; readonly facing: Facing }
-  readonly storeys: number
-  readonly style: string
-  /** The building it was dressed with, when whoever placed it already knows. */
-  readonly design?: PlotDesign
-}
-
 /**
  * A city and everyone in it. Holds the data, answers questions about it, and
  * refuses to end up in a state that does not hold together.
+ *
+ * Every record comes in through `read`, whether it arrives in a file or at
+ * runtime: the one reader fills the same defaults, keeps the same key order
+ * and refuses the same things at both doors, so a city founded and filled
+ * here saves to the bytes it saves to after a load.
  */
 export class World {
   #doc: WorldDoc
@@ -52,9 +65,10 @@ export class World {
    * validation once it has been written to disk.
    */
   static found(spec: CitySpec): Result<World, WorldError> {
-    const checked = citySpecContract.parse(spec)
-    if (!checked.ok) return err({ code: 'invalid-document', violations: checked.error })
-    return ok(new World(blankCity(checked.value)))
+    const checked = read(citySpecContract, spec)
+    if (!checked.ok) return checked
+    const doc = read(worldContract, blankCity(checked.value))
+    return doc.ok ? ok(new World(doc.value)) : doc
   }
 
   /** Going: `found` hands the refusal back instead of throwing it. */
@@ -66,8 +80,8 @@ export class World {
 
   /** Parse and check an untrusted document, whoever produced it. */
   static load(value: unknown): Result<World, WorldError> {
-    const parsed = worldContract.parse(value)
-    if (!parsed.ok) return err({ code: 'invalid-document', violations: parsed.error })
+    const parsed = read(worldContract, value)
+    if (!parsed.ok) return parsed
     const problems = checkIntegrity(parsed.value)
     if (problems.length) return err({ code: 'inconsistent-world', problems })
     return ok(new World(parsed.value))
@@ -128,14 +142,14 @@ export class World {
    * word a plot already holds.
    */
   recordCharters(charters: readonly ResolvedCharter[]): Result<readonly ResolvedCharter[], WorldError> {
-    const checked = chartersContract.parse(charters)
-    if (!checked.ok) return err({ code: 'invalid-document', violations: checked.error })
+    const checked = read(chartersContract, charters)
+    if (!checked.ok) return checked
     const orphaned = this.#doc.plots.find((p) => !checked.value.some((c) => c.word === p.kind))
     if (orphaned) {
       return err({ code: 'unknown-reference', message: `plot ${orphaned.id} is a ${orphaned.kind}, which this list drops` })
     }
-    this.#doc.charters = checked.value
-    return ok(checked.value)
+    const written = this.#rewrite({ charters: checked.value })
+    return written.ok ? ok(checked.value) : written
   }
 
   get grid(): Grid {
@@ -191,7 +205,7 @@ export class World {
   }
 
   /** The language an interior's rooms are dressed in: its own, else its charter's. */
-  #finishOf(interior: Interior): Finish | undefined {
+  #finishOf(interior: InteriorInput): Finish | undefined {
     return interior.finish ?? this.charter(interior.kind)?.finish
   }
 
@@ -246,36 +260,31 @@ export class World {
     this.#syncGrid()
   }
 
-  addRoad(nodes: ReadonlyArray<{ id: string; cell: { x: number; y: number } }>, segments: WorldDoc['roads']['segments']): void {
-    this.#doc.roads.nodes.push(...nodes)
-    this.#doc.roads.segments.push(...segments)
+  /** Lay nodes and the segments between them: the drivable graph a car follows. */
+  addRoad(nodes: readonly RoadNode[], segments: readonly RoadSegment[]): Result<Roads, WorldError> {
+    const checked = read(roadsContract, { nodes, segments })
+    if (!checked.ok) return checked
+    this.#doc.roads.nodes.push(...checked.value.nodes)
+    this.#doc.roads.segments.push(...checked.value.segments)
+    return ok(checked.value)
   }
 
   /** Put a building on empty land and mark its footprint. */
   addPlot(spec: PlotSpec): Result<Plot, WorldError> {
-    if (!this.#grid.isAll(spec.rect, ['empty'])) {
-      return err({ code: 'no-space', message: `${spec.name}: footprint is not free` })
+    const checked = read(plotSpecContract, spec)
+    if (!checked.ok) return checked
+    if (!this.#grid.isAll(checked.value.rect, ['empty'])) {
+      return err({ code: 'no-space', message: `${checked.value.name}: footprint is not free` })
     }
-    if (!this.charter(spec.kind)) {
-      return err({ code: 'unknown-reference', message: `${spec.name} is a ${spec.kind}, which this city declares no charter for` })
+    if (!this.charter(checked.value.kind)) {
+      return err({ code: 'unknown-reference', message: `${checked.value.name} is a ${checked.value.kind}, which this city declares no charter for` })
     }
-    let design: PlotDesign | undefined
-    if (spec.design) {
-      const checked = this.#checkDesign(spec.name, spec.design)
-      if (!checked.ok) return checked
-      design = checked.value
+    if (checked.value.design) {
+      const pinned = this.#pinned(checked.value.name, checked.value.design)
+      if (!pinned.ok) return pinned
     }
-    const plot: Plot = {
-      id: this.mintId('plot'),
-      kind: spec.kind,
-      name: spec.name,
-      rect: spec.rect,
-      storeys: spec.storeys,
-      entrance: spec.entrance,
-      style: spec.style,
-      ...(design ? { design } : {}),
-    }
-    this.#grid.fill(spec.rect, 'building')
+    const plot: Plot = { id: this.mintId('plot'), ...checked.value }
+    this.#grid.fill(plot.rect, 'building')
     this.#syncGrid()
     this.#doc.plots.push(plot)
     return ok(plot)
@@ -291,14 +300,14 @@ export class World {
    * any plot is pinned to one. Replaces whatever was recorded before.
    */
   recordCatalogues(refs: readonly AssetPackRef[]): Result<readonly AssetPackRef[], WorldError> {
-    const checked = catalogueListContract.parse(refs)
-    if (!checked.ok) return err({ code: 'invalid-document', violations: checked.error })
+    const checked = read(catalogueListContract, refs)
+    if (!checked.ok) return checked
     const orphaned = this.#doc.plots.find((p) => p.design && !checked.value.some((ref) => ref.pack === p.design!.pack))
     if (orphaned) {
       return err({ code: 'unknown-reference', message: `plot ${orphaned.id} is designed against ${orphaned.design!.pack}, which this list drops` })
     }
-    this.#doc.catalogues = checked.value
-    return ok(checked.value)
+    const written = this.#rewrite({ catalogues: checked.value })
+    return written.ok ? ok(checked.value) : written
   }
 
   /**
@@ -308,48 +317,58 @@ export class World {
   recordDesign(plotId: string, design: PlotDesign): Result<Plot, WorldError> {
     const plot = this.plot(plotId)
     if (!plot) return err({ code: 'unknown-reference', message: `no plot ${plotId} to pin a design on` })
-    const checked = this.#checkDesign(`plot ${plotId}`, design)
+    const checked = read(plotDesignContract, design)
     if (!checked.ok) return checked
-    plot.design = checked.value
-    return ok(plot)
+    const pinned = this.#pinned(`plot ${plotId}`, checked.value)
+    if (!pinned.ok) return pinned
+    return this.#rewritePlot(plot, { design: checked.value })
   }
 
   /** A design is only worth writing down if the city names the catalogue it came from. */
-  #checkDesign(who: string, design: PlotDesign): Result<PlotDesign, WorldError> {
-    const checked = plotDesignContract.parse(design)
-    if (!checked.ok) return err({ code: 'invalid-document', violations: checked.error })
-    if (!this.catalogues().some((ref) => ref.pack === checked.value.pack)) {
-      return err({ code: 'unknown-reference', message: `${who} is designed against unrecorded catalogue ${checked.value.pack}` })
+  #pinned(who: string, design: PlotDesign): Result<PlotDesign, WorldError> {
+    if (!this.catalogues().some((ref) => ref.pack === design.pack)) {
+      return err({ code: 'unknown-reference', message: `${who} is designed against unrecorded catalogue ${design.pack}` })
     }
-    return ok(checked.value)
+    return ok(design)
   }
 
-  /** Open a plot: the interior is written with the finish its charter gives it, unless it brought one. */
-  addInterior(interior: Interior): Result<Interior, WorldError> {
+  /**
+   * Open a plot. An interior that brought no `finish` takes its charter's, so
+   * the file says what its rooms are dressed in without a reader asking.
+   */
+  addInterior(interior: InteriorInput): Result<Interior, WorldError> {
     const plot = this.plot(interior.plotId)
     if (!plot) return err({ code: 'unknown-reference', message: `interior points at missing plot ${interior.plotId}` })
     const finish = this.#finishOf(interior)
-    if (finish) interior.finish = finish
-    this.#doc.interiors.push(interior)
-    plot.interiorId = interior.id
-    return ok(interior)
+    const checked = read(interiorContract, finish ? { ...interior, finish } : interior)
+    if (!checked.ok) return checked
+    const opened = this.#rewritePlot(plot, { interiorId: checked.value.id })
+    if (!opened.ok) return opened
+    this.#doc.interiors.push(checked.value)
+    return ok(checked.value)
   }
 
   addNpc(npc: Npc): Result<Npc, WorldError> {
-    if (npc.station && !this.hasInterior(npc.station.interiorId)) {
-      return err({ code: 'unknown-reference', message: `npc ${npc.id} is stationed in missing interior` })
+    const checked = read(npcContract, npc)
+    if (!checked.ok) return checked
+    if (checked.value.station && !this.hasInterior(checked.value.station.interiorId)) {
+      return err({ code: 'unknown-reference', message: `npc ${checked.value.id} is stationed in missing interior` })
     }
-    this.#doc.npcs.push(npc)
-    return ok(npc)
+    this.#doc.npcs.push(checked.value)
+    return ok(checked.value)
   }
 
-  addItem(item: Item, placement: Placement): Result<Item, WorldError> {
-    if (placement.itemId !== item.id) {
-      return err({ code: 'unknown-reference', message: `placement is for ${placement.itemId}, not ${item.id}` })
+  addItem(item: ItemInput, placement: Placement): Result<Item, WorldError> {
+    const checked = read(itemContract, item)
+    if (!checked.ok) return checked
+    const placed = read(placementContract, placement)
+    if (!placed.ok) return placed
+    if (placed.value.itemId !== checked.value.id) {
+      return err({ code: 'unknown-reference', message: `placement is for ${placed.value.itemId}, not ${checked.value.id}` })
     }
-    this.#doc.items.push(item)
-    this.#doc.placements.push(placement)
-    return ok(item)
+    this.#doc.items.push(checked.value)
+    this.#doc.placements.push(placed.value)
+    return ok(checked.value)
   }
 
   /** Everything that is wrong with the world right now. Empty means sound. */
@@ -366,6 +385,26 @@ export class World {
   #syncGrid(): void {
     this.#doc.grid = { width: this.#grid.width, height: this.#grid.height, rows: [...this.#grid.rows()] }
   }
+
+  /** A field written on the document lands where the file carries it, so the two save alike. */
+  #rewrite(patch: Partial<WorldDoc>): Result<WorldDoc, WorldError> {
+    const written = read(worldContract, { ...this.#doc, ...patch })
+    if (written.ok) this.#doc = written.value
+    return written
+  }
+
+  /** The same for a field written on a plot: the record is replaced, in key order, where it stands. */
+  #rewritePlot(plot: Plot, patch: Partial<Plot>): Result<Plot, WorldError> {
+    const written = read(plotContract, { ...plot, ...patch })
+    if (written.ok) this.#doc.plots[this.#doc.plots.indexOf(plot)] = written.value
+    return written
+  }
+}
+
+/** One reader at both doors: whatever fails its contract is `invalid-document`, with the paths. */
+function read<T>(contract: Contract<T>, value: unknown): Result<T, WorldError> {
+  const checked = contract.parse(value)
+  return checked.ok ? checked : err({ code: 'invalid-document', violations: checked.error })
 }
 
 /** The document a founded city starts from: sized, named, seeded and empty. */
