@@ -13,14 +13,14 @@ import type { Surface } from './surface.ts'
  * handed and takes no clicks, so the scene hears every one of them.
  */
 export class MinimapSurface implements Surface {
-  readonly node = el('section', 'gb-minimap')
+  readonly node = el('section', 'gb-minimap gb-plate gb-cut-alt gb-edged')
   #plan = new NearPlan()
   #reveal: Reveal
 
   constructor() {
     this.node.setAttribute('aria-label', MINIMAP.label)
-    this.node.append(this.#plan.node, el('span', 'gb-minimap-north', MINIMAP.north))
-    this.#reveal = new Reveal(this.node)
+    this.node.append(this.#plan.node, el('span', 'gb-minimap-north gb-t0', MINIMAP.north), el('span', 'gb-ticks'))
+    this.#reveal = new Reveal(this.node, { kind: 'corner' })
   }
 
   render(state: HudState): void {

@@ -1,25 +1,33 @@
 import { el } from './dom.ts'
+import { rise } from './motion.ts'
 import { priceText } from './phrase.ts'
 import type { Carried } from './types.ts'
+import { chip } from './ui/chip.ts'
+import { Row } from './ui/row.ts'
 
 /** What a live quest wants reads first: it is the thing not to sell or drop. */
 function questFirst(carrying: readonly Carried[]): readonly Carried[] {
   return [...carrying].sort((a, b) => Number(Boolean(b.quest)) - Number(Boolean(a.quest)))
 }
 
-/** One thing as a row: its mark, its name, the quest tag when a quest wants it, its value when it has one. */
-function carriedRow(item: Carried): HTMLLIElement {
-  const node = el('li', item.quest ? 'gb-quest-item' : undefined)
-  node.append(el('span', 'gb-mark', item.quest ? '◆' : '·'), el('span', 'gb-what', item.name))
-  if (item.quest) node.append(el('span', 'gb-tag', 'Quest'))
-  if (item.value !== undefined) node.append(el('span', 'gb-num gb-value', priceText(item.value)))
-  return node
+/** One thing as a row: its tile, its name, the quest chip when a quest wants it, its value. */
+function carriedRow(item: Carried, at: number): HTMLElement {
+  const row = new Row({ icon: 'item', title: item.name, tag: 'li', compact: true })
+  if (item.quest) {
+    row.keyLine('on')
+    row.state.append(chip('Quest', 'accent'))
+  }
+  if (item.value !== undefined) {
+    row.state.append(el('span', 'gb-value gb-num gb-t2', priceText(item.value)))
+  }
+  rise(row.node, at)
+  return row.node
 }
 
 /** A list of things, quest items first; one quiet line when there are none. */
 export function carriedList(items: readonly Carried[], className: string, empty: string): HTMLUListElement {
-  const list = el('ul', className)
+  const list = el('ul', `${className} gb-rows`)
   const order = questFirst(items)
-  list.replaceChildren(...(order.length ? order.map(carriedRow) : [el('li', 'gb-empty', empty)]))
+  list.replaceChildren(...(order.length ? order.map(carriedRow) : [el('li', 'gb-empty gb-t3', empty)]))
   return list
 }

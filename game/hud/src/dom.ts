@@ -30,30 +30,7 @@ export function setText(node: HTMLElement, text: string): void {
 
 /** A key cap: the key the player presses, written where they can see it. */
 export function kbd(key: string): HTMLElement {
-  return el('kbd', undefined, key)
-}
-
-/**
- * A button that says what it does and shows the key that does the same thing,
- * so nothing on screen can only be reached one way.
- */
-export function keyButton(className: string, label: string, key: string, aria: string): HTMLButtonElement {
-  const node = el('button', className)
-  node.type = 'button'
-  node.setAttribute('aria-label', aria)
-  node.append(el('span', 'gb-label', label), kbd(key))
-  return node
-}
-
-/**
- * Say that a number moved, and which way. Restarting the animation needs the
- * browser to see the node without it first, which is what reading the layout
- * forces.
- */
-export function flash(node: HTMLElement, way: 'up' | 'down'): void {
-  node.removeAttribute('data-flash')
-  void node.offsetWidth
-  node.dataset.flash = way
+  return el('kbd', 'gb-cut gb-edged', key)
 }
 
 /** Every element inside that the player can tab to, in tab order. */

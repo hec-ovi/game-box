@@ -1,6 +1,8 @@
 import { el, kbd } from './dom.ts'
+import { rise } from './motion.ts'
 import { MAP_KEYS, MAP_TOOLS } from './phrase.ts'
 import type { ControlHint } from './types.ts'
+import { Row } from './ui/row.ts'
 import { WINDOW_TABS } from './windows.ts'
 
 /**
@@ -47,12 +49,12 @@ export const HUD_HINTS: readonly ControlHint[] = [
   { keys: ['Arrows'], text: 'Pan', group: 'Map' },
 ]
 
-/** One "these keys do this" row. */
+/** One "these keys do this" line: for the foot of a panel. */
 export function hintRow(hint: ControlHint): HTMLLIElement {
-  const row = el('li', 'gb-hint')
+  const row = el('li', 'gb-hint gb-t2')
   const keys = el('span', 'gb-keys')
   for (const key of hint.keys) keys.append(kbd(key))
-  row.append(keys, el('span', 'gb-hint-text', hint.text))
+  row.append(keys, el('span', undefined, hint.text))
   return row
 }
 
@@ -63,7 +65,7 @@ export function hintList(hints: readonly ControlHint[]): HTMLUListElement {
   return list
 }
 
-/** The same hints under their headings: for the controls tab. */
+/** The same hints as rows under their headings: for the controls tab. */
 export function hintGroups(hints: readonly ControlHint[]): HTMLElement[] {
   const groups = new Map<string, ControlHint[]>()
   for (const hint of hints) {
@@ -74,8 +76,15 @@ export function hintGroups(hints: readonly ControlHint[]): HTMLElement[] {
   }
   return [...groups].map(([name, list]) => {
     const section = el('section', 'gb-control-group')
-    if (name) section.append(el('h3', undefined, name))
-    section.append(hintList(list))
+    if (name) section.append(el('h3', 'gb-t5 gb-section-head', name))
+    const rows = el('ul', 'gb-rows')
+    list.forEach((hint, at) => {
+      const row = new Row({ icon: 'controls', title: hint.text, tag: 'li', compact: true })
+      for (const key of hint.keys) row.key(key)
+      rise(row.node, at)
+      rows.append(row.node)
+    })
+    section.append(rows)
     return section
   })
 }

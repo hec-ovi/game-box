@@ -1,6 +1,8 @@
 import { el } from '../dom.ts'
+import { rise } from '../motion.ts'
 import { CODEX_HEADS, NO_CODEX } from '../phrase.ts'
 import type { CodexNote, CodexPlace, HudState, HudWindowName } from '../types.ts'
+import { Row } from '../ui/row.ts'
 import { person } from './person.ts'
 import type { Tab } from './tab.ts'
 
@@ -24,7 +26,7 @@ export class CodexTab implements Tab {
       group(CODEX_HEADS.people, codex.people.map(person)),
       group(CODEX_HEADS.history, (codex.history ?? []).map(note)),
     ].filter((section) => section !== undefined)
-    this.node.replaceChildren(...(sections.length ? sections : [el('p', 'gb-empty', NO_CODEX)]))
+    this.node.replaceChildren(...(sections.length ? sections : [el('p', 'gb-empty gb-t3', NO_CODEX)]))
   }
 
   clear(): void {
@@ -37,21 +39,21 @@ export class CodexTab implements Tab {
 function group(title: string, rows: readonly HTMLElement[]): HTMLElement | undefined {
   if (rows.length === 0) return undefined
   const node = el('section', 'gb-codex-group')
-  const list = el('ul')
+  const list = el('ul', 'gb-rows')
+  rows.forEach((row, at) => rise(row, at))
   list.append(...rows)
-  node.append(el('h3', undefined, title), list)
+  node.append(el('h3', 'gb-t5 gb-section-head', title), list)
   return node
 }
 
 function place(entry: CodexPlace): HTMLElement {
-  const row = el('li', 'gb-codex-entry')
-  row.append(el('h4', undefined, entry.name))
-  if (entry.text) row.append(el('p', undefined, entry.text))
-  return row
+  const node = el('li', 'gb-codex-entry')
+  node.append(new Row({ icon: 'door', title: entry.name, line: entry.text }).node)
+  return node
 }
 
 function note(entry: CodexNote): HTMLElement {
-  const row = el('li', 'gb-codex-entry')
-  row.append(el('h4', undefined, entry.title), el('p', undefined, entry.text))
-  return row
+  const node = el('li', 'gb-codex-entry')
+  node.append(new Row({ icon: 'codex', title: entry.title }).node, el('p', 'gb-note-text gb-t3', entry.text))
+  return node
 }

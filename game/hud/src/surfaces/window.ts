@@ -1,39 +1,59 @@
 import { HUD_KEYS } from '../controls.ts'
-import { el, keyButton } from '../dom.ts'
+import { el } from '../dom.ts'
 import { FocusReturn, trapTab } from '../focus.ts'
 import { Reveal } from '../reveal.ts'
+import { closeButton } from '../ui/act.ts'
+import { ICON_PX, icon, type IconName } from '../ui/icon.ts'
 
 /**
  * The chrome the window shares whatever is inside it: a frame of one fixed
- * size centred in the room the corners leave, a head with whatever names the
- * contents, a close button with its key written on it, a body that scrolls,
- * and the manners that go with taking the keyboard. It arrives and leaves on
- * a transition, keeps Tab inside itself while it is up, and hands focus back
- * to wherever it came from on the way out.
+ * size centred in the room the corners leave, a title head with the close
+ * button and its key, whatever strip belongs under the head, a body that
+ * scrolls, and the manners that go with taking the keyboard.
+ *
+ * It rises into place and settles back out, keeps Tab inside itself while it
+ * is up, and hands focus back to wherever it came from on the way out.
  */
 export class HudWindow {
   /** The room the frame is centred in. Clicks beside the frame fall through. */
   readonly node = el('div', 'gb-window-room')
-  readonly frame = el('section', 'gb-window gb-bracket')
-  readonly body = el('div', 'gb-window-body')
+  readonly frame = el('section', 'gb-window gb-frame gb-cut gb-edged')
+  readonly body = el('div', 'gb-window-body gb-scrolls')
   #reveal: Reveal
   #focus = new FocusReturn()
 
-  constructor(input: { lead: HTMLElement; className?: string; onClose: () => void; onClosed?: () => void }) {
+  constructor(input: {
+    lead: HTMLElement
+    /** The picture beside the title, where the frame has one. */
+    mark?: IconName
+    /** What sits at the right of the head, before the close button: a readout, a plate. */
+    aside?: HTMLElement
+    strip?: HTMLElement
+    className?: string
+    onClose: () => void
+    onClosed?: () => void
+  }) {
     if (input.className) this.frame.classList.add(input.className)
     this.frame.setAttribute('role', 'dialog')
     this.frame.setAttribute('aria-modal', 'true')
     this.frame.tabIndex = -1
 
-    const close = keyButton('gb-close', 'Close', HUD_KEYS.close, 'Close (Escape)')
+    const close = closeButton(HUD_KEYS.close, 'Close (Escape)')
     close.addEventListener('click', input.onClose)
 
-    const head = el('header', 'gb-window-head')
-    head.append(input.lead, close)
-    this.frame.append(head, this.body)
+    input.lead.classList.add('gb-head-name', 'gb-t6')
+    const head = el('header', 'gb-head gb-head-tall')
+    if (input.mark) head.append(icon(input.mark, ICON_PX.tile))
+    head.append(input.lead)
+    if (input.aside) head.append(input.aside)
+    head.append(close)
+    this.frame.append(head)
+    if (input.strip) this.frame.append(input.strip)
+    this.frame.append(this.body, el('span', 'gb-ticks'))
     this.node.append(this.frame)
 
     this.#reveal = new Reveal(this.frame, {
+      kind: 'frame',
       ...(input.onClosed ? { onClosed: input.onClosed } : {}),
     })
   }

@@ -1,7 +1,9 @@
 import { carriedList } from '../carried.ts'
 import { el } from '../dom.ts'
+import { rise } from '../motion.ts'
 import { HOMES } from '../phrase.ts'
 import type { OwnedPlace } from '../types.ts'
+import { Row } from '../ui/row.ts'
 
 /**
  * The places the player owns and what they have left in each, under the
@@ -10,9 +12,9 @@ import type { OwnedPlace } from '../types.ts'
  */
 export function homesSection(homes: readonly OwnedPlace[]): HTMLElement {
   const node = el('section', 'gb-homes')
-  node.append(el('h3', undefined, HOMES.head))
+  node.append(el('h3', 'gb-t5 gb-section-head', HOMES.head))
   if (homes.length === 0) {
-    node.append(el('p', 'gb-empty', HOMES.none))
+    node.append(el('p', 'gb-empty gb-t3', HOMES.none))
     return node
   }
   const list = el('ul', 'gb-home-list')
@@ -21,10 +23,10 @@ export function homesSection(homes: readonly OwnedPlace[]): HTMLElement {
   return node
 }
 
-function home(place: OwnedPlace): HTMLLIElement {
+function home(place: OwnedPlace, at: number): HTMLLIElement {
   const node = el('li', 'gb-home')
-  node.append(el('h4', undefined, place.name))
-  if (place.text) node.append(el('p', undefined, place.text))
-  node.append(carriedList(place.placed, 'gb-carried gb-placed', HOMES.empty))
+  const row = new Row({ icon: 'home', title: place.name, line: place.text })
+  node.append(row.node, carriedList(place.placed, 'gb-carried gb-placed', HOMES.empty))
+  rise(node, at)
   return node
 }

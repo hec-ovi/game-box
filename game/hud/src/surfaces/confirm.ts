@@ -1,9 +1,11 @@
 import { HUD_KEYS } from '../controls.ts'
-import { el, keyButton } from '../dom.ts'
+import { el } from '../dom.ts'
 import { FocusReturn, trapTab } from '../focus.ts'
 import { CONFIRM } from '../phrase.ts'
 import { Reveal } from '../reveal.ts'
 import type { ConfirmAsk, HudState } from '../types.ts'
+import { act } from '../ui/act.ts'
+import { ICON_PX, icon } from '../ui/icon.ts'
 import type { Surface } from './surface.ts'
 
 /**
@@ -15,11 +17,11 @@ import type { Surface } from './surface.ts'
  */
 export class ConfirmSurface implements Surface {
   readonly node = el('div', 'gb-confirm-room')
-  #frame = el('section', 'gb-confirm gb-bracket')
-  #title = el('h2')
-  #question = el('p', 'gb-confirm-question')
-  #yes = keyButton('gb-confirm-yes', CONFIRM.yes, HUD_KEYS.send, `${CONFIRM.yes} (${HUD_KEYS.send})`)
-  #no = keyButton('gb-confirm-no', CONFIRM.no, HUD_KEYS.close, `${CONFIRM.no} (${HUD_KEYS.close})`)
+  #frame = el('section', 'gb-confirm gb-frame gb-cut gb-edged')
+  #title = el('h2', 'gb-t1')
+  #question = el('p', 'gb-confirm-question gb-t4')
+  #yes = act({ label: CONFIRM.yes, key: HUD_KEYS.send, lit: true, aria: `${CONFIRM.yes} (${HUD_KEYS.send})` })
+  #no = act({ label: CONFIRM.no, key: HUD_KEYS.close, aria: `${CONFIRM.no} (${HUD_KEYS.close})` })
   #reveal: Reveal
   #focus = new FocusReturn()
   #answer: (ask: ConfirmAsk, yes: boolean) => void
@@ -35,9 +37,11 @@ export class ConfirmSurface implements Surface {
 
     const acts = el('div', 'gb-confirm-acts')
     acts.append(this.#no, this.#yes)
-    this.#frame.append(this.#title, this.#question, acts)
+    const head = el('div', 'gb-confirm-head')
+    head.append(icon('warn', ICON_PX.line), this.#title)
+    this.#frame.append(head, this.#question, acts, el('span', 'gb-ticks'))
     this.node.append(this.#frame)
-    this.#reveal = new Reveal(this.#frame)
+    this.#reveal = new Reveal(this.#frame, { kind: 'frame' })
   }
 
   render(state: HudState): void {

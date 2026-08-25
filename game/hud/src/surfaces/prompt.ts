@@ -1,18 +1,18 @@
-import { el, setText } from '../dom.ts'
+import { el, kbd, setText } from '../dom.ts'
 import { Reveal } from '../reveal.ts'
 import type { HudState } from '../types.ts'
 import type { Surface } from './surface.ts'
 
 /** "E  Go into The Copper Wheel", while something is in reach. */
 export class PromptSurface implements Surface {
-  readonly node = el('section', 'gb-prompt')
-  #key = el('kbd')
-  #what = el('span')
+  readonly node = el('section', 'gb-prompt gb-plate gb-cut gb-edged')
+  #key = kbd('')
+  #what = el('span', 'gb-t3')
   #reveal: Reveal
 
   constructor() {
     this.node.append(this.#key, this.#what)
-    this.#reveal = new Reveal(this.node, { ms: 120, onClosed: () => this.#clear() })
+    this.#reveal = new Reveal(this.node, { kind: 'prompt', onClosed: () => this.#clear() })
   }
 
   render(state: HudState): void {

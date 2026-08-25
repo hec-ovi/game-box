@@ -3,40 +3,49 @@ import { LAYERS } from './layout.ts'
 /**
  * A city being written, or a ride between stations. It covers the view, so
  * nothing half-built shows under it, and lists the stages with the one under
- * way in brass; a veil has no stages and carries its title alone.
+ * way marked and the finished ones ticked; a veil has no stages and carries
+ * its title alone.
  */
 export const LOADER = `
-.gb-loader {
+.gb-hud .gb-loader {
   position: absolute;
   inset: 0;
   z-index: ${LAYERS.loader};
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--gb-solid) var(--gb-hatch);
+  background: var(--gb-void);
   pointer-events: auto;
 }
-.gb-loader-card {
-  position: relative;
-  width: min(440px, calc(100% - 48px));
-  padding: var(--gb-s5) var(--gb-s6);
-  background: var(--gb-panel);
-  box-shadow: var(--gb-frame);
+.gb-hud .gb-loader-card {
+  width: min(520px, calc(100% - 96px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
-.gb-loader-card h2 {
-  margin-bottom: var(--gb-s4);
-  padding-bottom: var(--gb-s2);
-  border-bottom: 1px solid var(--gb-edge);
-  color: var(--gb-accent);
-  font-size: 14px;
+.gb-hud .gb-loader-card h2 {
+  margin-bottom: var(--gb-s6);
+  color: var(--gb-ink);
+  text-align: center;
 }
-.gb-loader[data-veil='true'] .gb-loader-card h2 { margin: 0; padding: 0; border: none; text-align: center; }
-.gb-stages { display: flex; flex-direction: column; gap: var(--gb-s3); }
-.gb-stage-line { display: flex; justify-content: space-between; gap: var(--gb-s3); margin-bottom: var(--gb-s1); }
-.gb-stage[data-state='waiting'] { color: var(--gb-faint); }
-.gb-stage[data-state='running'] { color: var(--gb-ink); }
-.gb-stage[data-state='running'] .gb-what { color: var(--gb-accent); }
-.gb-stage[data-state='done'] { color: var(--gb-dim); }
-.gb-stage[data-state='done'] .gb-what::after { content: '\\00a0\\2713'; color: var(--gb-accent); }
-.gb-stage .gb-num { font-size: 12px; color: var(--gb-dim); }
+.gb-hud .gb-loader[data-veil='true'] .gb-loader-card h2 { margin: 0; }
+/* The rows are as wide as the bar under them, so a stage reads as one thing. */
+.gb-hud .gb-stages { width: 220px; display: flex; flex-direction: column; gap: var(--gb-s4); }
+.gb-hud .gb-stage-line { display: flex; align-items: center; gap: var(--gb-s2); margin-bottom: 6px; }
+.gb-hud .gb-stage-line .gb-what { flex: 1; min-width: 0; }
+.gb-hud .gb-stage-line .gb-num { color: var(--gb-dim); }
+/* The mark in front of a stage: a diamond while it runs, a tick once it is done. */
+.gb-hud .gb-stage-mark { display: flex; width: 14px; height: 14px; align-items: center; justify-content: center; }
+.gb-hud .gb-stage[data-state='waiting'] { color: var(--gb-faint); }
+.gb-stage[data-state='waiting'] .gb-stage-mark::before,
+.gb-hud .gb-stage[data-state='running'] .gb-stage-mark::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  transform: rotate(45deg);
+}
+.gb-hud .gb-stage[data-state='running'] { color: var(--gb-accent); }
+.gb-hud .gb-stage[data-state='done'] { color: var(--gb-good); }
+.gb-hud .gb-stage[data-state='done'] .gb-what { color: var(--gb-dim); }
 `

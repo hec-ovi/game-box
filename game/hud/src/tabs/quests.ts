@@ -1,4 +1,5 @@
 import { el } from '../dom.ts'
+import { rise } from '../motion.ts'
 import { noQuests } from '../phrase.ts'
 import { trackedQuest } from '../tracked.ts'
 import type { HudIntent, HudState, HudWindowName, QuestEntry, QuestStep } from '../types.ts'
@@ -30,9 +31,9 @@ export class QuestsTab implements Tab {
     if (key !== this.#key) {
       this.#key = key
       this.#pages = new Map(pages.map((quest) => [quest.questId, new QuestEntryView(quest, quest.questId === tracked, this.#emit)]))
-      this.node.replaceChildren(
-        ...(pages.length ? [...this.#pages.values()].map((page) => page.node) : [el('p', 'gb-empty', noQuests(state.hadQuest))]),
-      )
+      const nodes = [...this.#pages.values()].map((page) => page.node)
+      nodes.forEach((node, at) => rise(node, at))
+      this.node.replaceChildren(...(nodes.length ? nodes : [el('p', 'gb-empty gb-t3', noQuests(state.hadQuest))]))
     }
     for (const quest of pages) this.#pages.get(quest.questId)?.tick(quest)
   }

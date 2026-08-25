@@ -1,8 +1,9 @@
 import { HUD_KEYS, TALK_HINTS, TALK_PICK_HINT, hintList } from '../controls.ts'
-import { el, keyButton, setText } from '../dom.ts'
+import { el, setText } from '../dom.ts'
 import { FocusReturn, cycleFocus } from '../focus.ts'
 import { Reveal } from '../reveal.ts'
 import type { HudIntent, HudState, TalkMove } from '../types.ts'
+import { closeButton } from '../ui/act.ts'
 import type { Surface } from './surface.ts'
 import { Transcript } from './transcript.ts'
 
@@ -22,13 +23,13 @@ const PLACEHOLDER = 'Say something'
  * and the line under the box) and lets go the instant focus leaves it.
  */
 export class TalkSurface implements Surface {
-  readonly node = el('section', 'gb-talk gb-bracket')
-  #speaker = el('h3')
+  readonly node = el('section', 'gb-talk gb-plate gb-cut gb-edged')
+  #speaker = el('h3', 'gb-head-name gb-t6')
   #transcript = new Transcript()
-  #moves = el('ul', 'gb-moves')
-  #input = el('input', 'gb-say')
+  #moves = el('ul', 'gb-moves gb-scrolls')
+  #input = el('input', 'gb-say gb-field gb-cut gb-edged')
   #close: HTMLButtonElement
-  #hints = el('div', 'gb-talk-hints')
+  #hints = el('div')
   #emit: (intent: HudIntent) => void
   #focus = new FocusReturn()
   #reveal: Reveal
@@ -43,9 +44,9 @@ export class TalkSurface implements Surface {
     this.#input.placeholder = PLACEHOLDER
     this.#input.setAttribute('aria-label', PLACEHOLDER)
 
-    this.#close = keyButton('gb-close', 'Close', HUD_KEYS.close, 'Close conversation (Escape)')
+    this.#close = closeButton(HUD_KEYS.close, 'Close conversation (Escape)')
     this.#close.addEventListener('click', () => this.#emit({ kind: 'talk-closed' }))
-    const head = el('header', 'gb-talk-head')
+    const head = el('header', 'gb-head')
     head.append(this.#speaker, this.#close)
     const foot = el('div', 'gb-talk-foot')
     foot.append(this.#moves, this.#input, this.#hints)
@@ -59,7 +60,7 @@ export class TalkSurface implements Surface {
       if (!(to instanceof Node) || !this.node.contains(to)) this.#emit({ kind: 'typing', typing: false })
     })
 
-    this.#reveal = new Reveal(this.node, { onClosed: () => this.#clear() })
+    this.#reveal = new Reveal(this.node, { kind: 'side', onClosed: () => this.#clear() })
   }
 
   render(state: HudState): void {
@@ -101,7 +102,7 @@ export class TalkSurface implements Surface {
     const key = JSON.stringify(moves)
     if (key !== this.#drawn) {
       this.#drawn = key
-      this.#moves.replaceChildren(...moves.map((move) => this.#option(move)))
+      this.#moves.replaceChildren(...moves.map((move, at) => this.#option(move, at)))
       this.#hints.replaceChildren(hintList(moves.length ? [TALK_PICK_HINT, ...TALK_HINTS] : TALK_HINTS))
     }
     for (const button of this.#buttons()) {
@@ -113,12 +114,15 @@ export class TalkSurface implements Surface {
     }
   }
 
-  #option(move: TalkMove): HTMLLIElement {
+  /** One move: the accent tab at its left edge, the words, and its number at the right. */
+  #option(move: TalkMove, at: number): HTMLLIElement {
     const row = el('li')
-    const button = el('button', 'gb-move')
+    const button = el('button', 'gb-move gb-cut gb-edged')
     button.type = 'button'
     button.dataset.move = move.key
-    button.textContent = move.label
+    const number = el('span', 'gb-num gb-t2', String(at + 1))
+    number.setAttribute('aria-hidden', 'true')
+    button.append(el('span', 'gb-what gb-t3', move.label), number)
     button.addEventListener('click', () => this.#emit({ kind: 'choose', key: move.key }))
     row.append(button)
     return row

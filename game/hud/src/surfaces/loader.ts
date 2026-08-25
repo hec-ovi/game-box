@@ -1,18 +1,22 @@
 import { el, setText } from '../dom.ts'
 import { Reveal } from '../reveal.ts'
 import type { HudState, LoadStage } from '../types.ts'
+import { ICON_PX, icon } from '../ui/icon.ts'
+import { Meter } from '../ui/meter.ts'
 import type { Surface } from './surface.ts'
 
 /**
  * The view covered while the game is busy. A city being written: what it is
  * called and each stage of the build with how far it has got, so minutes of
  * model work read as progress rather than one line that does not move. With
- * no stages it is a veil, the title alone: a ride between stations. It goes
- * the moment the game takes it away.
+ * no stages it is a veil, the title alone: a ride between stations.
+ *
+ * Rows keep their node from push to push, so a bar fills rather than blinks,
+ * and it fills by scaling, so a build reporting progress costs no layout.
  */
 export class LoaderSurface implements Surface {
   readonly node = el('section', 'gb-loader')
-  #title = el('h2')
+  #title = el('h2', 'gb-t7')
   #list = el('ol', 'gb-stages')
   #rows = new Map<string, StageRow>()
   #reveal: Reveal
@@ -20,10 +24,10 @@ export class LoaderSurface implements Surface {
   constructor() {
     this.node.setAttribute('role', 'status')
     this.node.setAttribute('aria-live', 'polite')
-    const card = el('div', 'gb-loader-card gb-bracket')
+    const card = el('div', 'gb-loader-card')
     card.append(this.#title, this.#list)
     this.node.append(card)
-    this.#reveal = new Reveal(this.node, { onClosed: () => this.#clear() })
+    this.#reveal = new Reveal(this.node, { kind: 'veil', onClosed: () => this.#clear() })
   }
 
   render(state: HudState): void {
@@ -59,25 +63,29 @@ export class LoaderSurface implements Surface {
 
 class StageRow {
   readonly node = el('li', 'gb-stage')
-  #label = el('span', 'gb-what')
-  #count = el('span', 'gb-num')
-  #bar = el('div', 'gb-bar-fill')
+  #mark = el('span', 'gb-stage-mark')
+  #label = el('span', 'gb-what gb-t1')
+  #count = el('span', 'gb-num gb-t0')
+  #meter = new Meter(true)
+  #state: LoadStage['state'] | undefined
 
   constructor() {
-    const track = el('div', 'gb-bar-track')
-    track.append(this.#bar)
     const line = el('div', 'gb-stage-line')
-    line.append(this.#label, this.#count)
-    this.node.append(line, track)
+    line.append(this.#mark, this.#label, this.#count)
+    this.node.append(line, this.#meter.node)
   }
 
   write(stage: LoadStage): void {
     this.node.dataset.state = stage.state
+    if (stage.state !== this.#state) {
+      this.#state = stage.state
+      this.#mark.replaceChildren(...(stage.state === 'done' ? [icon('check', ICON_PX.line)] : []))
+    }
     setText(this.#label, stage.label)
     const counted = stage.total !== undefined && stage.total > 0
     setText(this.#count, counted ? `${stage.done ?? 0}/${stage.total}` : '')
     const share = stage.state === 'done' ? 1 : counted ? Math.min(1, (stage.done ?? 0) / stage.total!) : 0
-    this.#bar.style.width = `${Math.round(share * 100)}%`
+    this.#meter.set(share)
     this.node.setAttribute('role', 'progressbar')
     this.node.setAttribute('aria-label', stage.label)
     this.node.setAttribute('aria-valuemin', '0')

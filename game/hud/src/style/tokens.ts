@@ -1,46 +1,76 @@
+import { MS } from '../motion.ts'
+
 /**
- * The whole look in one place: five colours, three type stacks, one spacing
- * step and one motion curve. Everything downstream reads these, so retuning the
- * interface is retuning this file.
+ * The whole look in one place: the palette, the three type stacks, the spacing
+ * step, the chamfer sizes and the motion vocabulary. Every other file in this
+ * folder reads these, so a colour or a duration is changed here and the whole
+ * interface follows. Nothing downstream writes a colour literal.
  *
- * The palette is warm ink on lacquered black with brass for anything the player
- * can act on, three fills for the plan (a background plot, a notable one, a
- * landmark), and the green of a screen's glass for what a machine shows. It has to hold over a noon sky and a night street, so no panel
- * ever puts text straight on the scene: the panel carries the contrast, with a
- * black hairline outside it and a pale hairline inside.
+ * The city is cyberpunk at night, so the ground is near black with a teal cast
+ * and the accent is the city's cyan. Brass is the second accent and marks the
+ * main line of quests against side work, one amber thing in a cyan field. The
+ * street's magenta and its neon reds stay on the street, so a sign burning
+ * behind the glass is never mistaken for a control.
  */
 export const TOKENS = `
 .gb-hud {
-  --gb-ink: #f2efe6;
-  --gb-dim: rgba(242, 239, 230, 0.64);
-  --gb-faint: rgba(242, 239, 230, 0.4);
-  --gb-panel: rgba(10, 12, 17, 0.9);
-  --gb-solid: rgba(9, 11, 15, 0.96);
-  --gb-lift: rgba(30, 35, 45, 0.9);
-  --gb-well: rgba(0, 0, 0, 0.45);
-  --gb-edge: rgba(242, 239, 230, 0.16);
-  --gb-edge-lit: rgba(242, 239, 230, 0.38);
-  --gb-accent: #e9c178;
-  --gb-accent-deep: #9c6f30;
-  --gb-accent-ink: #15110a;
-  --gb-warn: #d8583a;
+  /* Ground, three depths and the two extremes. */
+  --gb-void: #05080a;
+  --gb-panel: rgba(10, 17, 20, 0.88);
+  --gb-solid: #0c1519;
+  --gb-lift: #132025;
+  --gb-well: #050b0e;
+  --gb-scrim: rgba(4, 8, 10, 0.74);
 
-  --gb-glass: #07100a;
-  --gb-phosphor: #9ee8a4;
-  --gb-phosphor-dim: rgba(158, 232, 164, 0.45);
+  /* Edges: at rest, under the pointer, and on the thing that is chosen. */
+  --gb-edge: #1d3038;
+  --gb-edge-lit: #2e555f;
+  --gb-edge-accent: rgba(47, 217, 230, 0.55);
 
-  --gb-plot: rgba(233, 214, 186, 0.3);
-  --gb-plot-notable: rgba(233, 193, 120, 0.55);
-  --gb-plot-landmark: rgba(233, 193, 120, 0.85);
+  /* The accent: anything the player can act on, anything read first. */
+  --gb-accent: #2fd9e6;
+  --gb-accent-lit: #7df3fa;
+  --gb-accent-dim: #14707a;
+  --gb-accent-ink: #04161a;
+  --gb-accent-glow: rgba(47, 217, 230, 0.3);
 
-  --gb-frame: 0 0 0 1px rgba(0, 0, 0, 0.72), inset 0 0 0 1px rgba(242, 239, 230, 0.07),
-    0 12px 34px rgba(0, 0, 0, 0.5);
-  --gb-hatch: repeating-linear-gradient(135deg, rgba(242, 239, 230, 0.05) 0 1px, transparent 1px 5px);
+  /* Brass: the main line of quests, and nothing else. */
+  --gb-main: #e8b44a;
+  --gb-main-lit: #ffd07a;
+  --gb-main-dim: #6e5320;
+  --gb-main-ink: #171004;
 
-  --gb-display: 'Avenir Next Condensed', 'Roboto Condensed', 'Liberation Sans Narrow', 'Arial Narrow',
-    ui-sans-serif, system-ui, sans-serif;
-  --gb-body: ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif;
-  --gb-mono: ui-monospace, 'SFMono-Regular', 'JetBrains Mono', Menlo, Consolas, monospace;
+  /* Text, by rank. */
+  --gb-ink: #dceef2;
+  --gb-dim: #8ea8b0;
+  --gb-faint: #576e76;
+
+  /* States. */
+  --gb-good: #35d48a;
+  --gb-warn: #ff8a2b;
+  --gb-danger: #ff4d5e;
+  --gb-off: #33454b;
+  --gb-off-ink: #5c7178;
+
+  /* A machine's screen: its own world, green phosphor on black glass. */
+  --gb-glass: #030a06;
+  --gb-phosphor: #6bff9e;
+  --gb-phosphor-dim: #1e6b3a;
+
+  /* The plan: a plot nobody named, one worth noticing, a landmark. */
+  --gb-plot: rgba(47, 217, 230, 0.1);
+  --gb-plot-notable: rgba(47, 217, 230, 0.24);
+  --gb-plot-landmark: rgba(47, 217, 230, 0.42);
+
+  /* Composites. The drop is a filter because a chamfer clips a box shadow away. */
+  --gb-frame: drop-shadow(0 18px 44px rgba(0, 0, 0, 0.6));
+  --gb-hatch: repeating-linear-gradient(135deg, rgba(47, 217, 230, 0.06) 0 3px, transparent 3px 7px);
+
+  /* Type: system stacks only, so the box ships as one string with no assets. */
+  --gb-display: 'Archivo Narrow', 'Roboto Condensed', 'Liberation Sans Narrow', 'Arial Narrow', ui-sans-serif,
+    system-ui, sans-serif;
+  --gb-body: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --gb-mono: ui-monospace, 'JetBrains Mono', 'DejaVu Sans Mono', 'SF Mono', Menlo, Consolas, monospace;
 
   --gb-s1: 4px;
   --gb-s2: 8px;
@@ -49,7 +79,21 @@ export const TOKENS = `
   --gb-s5: 22px;
   --gb-s6: 32px;
 
-  --gb-t: 140ms;
-  --gb-ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+  /* The chamfer, by what wears it. Corners are cut, never rounded. */
+  --gb-cut-frame: 14px;
+  --gb-cut-panel: 10px;
+  --gb-cut-row: 6px;
+  --gb-cut-chip: 4px;
+
+  /* Motion: two curves and seven durations, and nothing else anywhere. */
+  --gb-in: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --gb-out: cubic-bezier(0.5, 0, 0.9, 0.4);
+  --gb-t-press: ${MS.press}ms;
+  --gb-t-state: ${MS.state}ms;
+  --gb-t-value: ${MS.value}ms;
+  --gb-t-leave: ${MS.leave}ms;
+  --gb-t-enter: ${MS.enter}ms;
+  --gb-t-veil: ${MS.veil}ms;
+  --gb-stagger: ${MS.stagger}ms;
 }
 `

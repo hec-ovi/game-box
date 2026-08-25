@@ -1,9 +1,12 @@
 import type { Objective } from '@gb/quest'
 import { HUD_KEYS } from '../controls.ts'
 import { el, kbd } from '../dom.ts'
-import { DECIDE_TAG, MAIN_TAG, moreQuests, noObjectives } from '../phrase.ts'
+import { bump } from '../motion.ts'
+import { DECIDE_TAG, moreQuests, noObjectives } from '../phrase.ts'
 import { kindOf, mainWaiting, otherQuests, stepsOf, trackedQuest } from '../tracked.ts'
 import type { HudState } from '../types.ts'
+import { chip, mainChip } from '../ui/chip.ts'
+import { ICON_PX, icon } from '../ui/icon.ts'
 import { MoreLine } from './more.ts'
 import type { Surface } from './surface.ts'
 
@@ -11,11 +14,14 @@ import type { Surface } from './surface.ts'
  * What the player is meant to be doing right now: the quest they are following
  * and its open steps, never the whole log. Ten quests at once is a list taller
  * than the screen, so the rest are one line pointing at the quests tab.
+ *
+ * The step they are on wears the pointer; a count that climbs says so once.
  */
 export class ObjectivesSurface implements Surface {
-  readonly node = el('section', 'gb-objectives')
-  #quest = el('span', 'gb-quest')
-  #main = el('span', 'gb-tag gb-main', MAIN_TAG)
+  readonly node = el('section', 'gb-objectives gb-plate gb-cut gb-edged gb-scrolls')
+  #line = el('span', 'gb-objectives-line')
+  #quest = el('span', 'gb-quest gb-t1 gb-clip')
+  #main = mainChip()
   #list = el('ul')
   #more = new MoreLine(HUD_KEYS.quests)
   #key: string | null = null
@@ -26,7 +32,7 @@ export class ObjectivesSurface implements Surface {
     this.node.setAttribute('aria-label', 'Objectives')
     const head = el('header', 'gb-objectives-head')
     this.#main.hidden = true
-    head.append(el('h2', undefined, 'Objectives'), this.#quest, this.#main)
+    head.append(this.#line, el('h2', 'gb-t1', 'Objectives'), this.#quest, this.#main)
     this.node.append(head, this.#list, this.#more.node)
   }
 
@@ -40,40 +46,45 @@ export class ObjectivesSurface implements Surface {
     if (key === this.#key) return
     this.#key = key
 
+    this.node.dataset.line = main ? 'main' : 'side'
+    this.#line.replaceChildren(icon(main ? 'quest-main' : 'quest-side', ICON_PX.line))
     this.#quest.textContent = steps[0]?.questTitle ?? ''
     // Following the story says so; following an errand says the story is there.
     this.#main.hidden = !main
     this.#list.replaceChildren(
-      ...(steps.length ? steps.map((step) => this.#line(step)) : [el('li', 'gb-empty', noObjectives(state.hadQuest))]),
+      ...(steps.length
+        ? steps.map((step) => this.#step(step))
+        : [el('li', 'gb-empty gb-t3', noObjectives(state.hadQuest))]),
     )
     this.#more.set(moreQuests(rest, waiting))
     this.#done = new Map(steps.flatMap((step) => (step.count ? [[id(step), step.count.done] as const] : [])))
   }
 
-  #line(step: Objective): HTMLLIElement {
+  #step(step: Objective): HTMLLIElement {
     const item = el('li')
     if (step.optional) item.dataset.optional = 'true'
+    item.append(el('span', 'gb-pip'))
     if (step.count && step.count.needed > 1) {
       item.dataset.counted = 'true'
-      const count = el('span', 'gb-count', `${step.count.done}/${step.count.needed}`)
+      const count = el('span', 'gb-count gb-num gb-t2', `${step.count.done}/${step.count.needed}`)
       // A count that just moved is the one thing on this panel that changed.
       const was = this.#done.get(id(step))
-      if (was !== undefined && step.count.done > was) count.dataset.flash = 'up'
+      if (was !== undefined && step.count.done > was) bump(count)
       item.append(count)
     }
-    item.append(el('span', 'gb-what', step.text))
-    if (step.optional) item.append(el('span', 'gb-tag', 'Optional'))
+    item.append(el('span', 'gb-what gb-t3', step.text))
+    if (step.optional) item.append(chip('Optional'))
     // A decision is answered in the journal, so the panel says so and prints
     // the key: nothing in the corner takes a click.
     if (step.choice) item.append(decide())
-    if (step.hint) item.append(el('span', 'gb-hint', step.hint))
+    if (step.hint) item.append(el('span', 'gb-hint-line gb-t2', step.hint))
     return item
   }
 }
 
 function decide(): HTMLElement {
   const node = el('span', 'gb-decide')
-  node.append(el('span', 'gb-tag', DECIDE_TAG), kbd(HUD_KEYS.quests))
+  node.append(chip(DECIDE_TAG, 'accent'), kbd(HUD_KEYS.quests))
   return node
 }
 

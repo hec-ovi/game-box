@@ -1,23 +1,23 @@
 import { INNER_LEFT, LAYERS, LAYOUT, SIDE_RIGHT } from './layout.ts'
 
 /**
- * The window itself: the scrim under it, the room it is centred in, the frame
- * of one fixed size, and the tab strip that acts as its title. Whichever tab
- * is lit is what the player is reading, so the window never says the same
- * word twice, and whichever face is up the frame is the same shape.
+ * The window: the scrim under it, the room it is centred in, the frame of one
+ * fixed size, its title head and the tab strip beneath it. Whichever tab is
+ * lit is what the player is reading, and whichever face is up the frame is the
+ * same shape.
  */
 export const WINDOW = `
-.gb-scrim {
+.gb-hud .gb-scrim {
   position: absolute;
   inset: 0;
-  background: radial-gradient(120% 90% at 50% 45%, rgba(0, 0, 0, 0.58), rgba(0, 0, 0, 0.82));
-  pointer-events: auto;
   z-index: ${LAYERS.scrim};
+  background: var(--gb-scrim);
+  pointer-events: auto;
 }
 
 /* The room: the screen minus the corner, the notices band, the foot and, while
    a conversation is up, the side. The frame is centred in it. */
-.gb-window-room {
+.gb-hud .gb-window-room {
   position: absolute;
   left: ${INNER_LEFT}px;
   right: ${LAYOUT.margin}px;
@@ -31,69 +31,60 @@ export const WINDOW = `
 }
 .gb-hud[data-talk='true'] .gb-window-room { right: ${SIDE_RIGHT}px; }
 
-.gb-window {
-  position: relative;
+.gb-hud .gb-window {
   width: ${LAYOUT.window.width}px;
   height: ${LAYOUT.window.height}px;
   max-width: 100%;
   max-height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--gb-solid);
-  box-shadow: var(--gb-frame);
-  backdrop-filter: blur(16px) saturate(0.85);
   pointer-events: auto;
 }
-.gb-window:focus { outline: none; }
-.gb-window[data-state='opening'], .gb-window[data-state='closing'] { transform: scale(0.985) translateY(6px); }
-.gb-window[data-state='open'] { transform: scale(1) translateY(0); }
-.gb-window-head {
+
+/* The tab strip under the title: an icon, the word, the key. */
+.gb-hud .gb-tabs {
+  position: relative;
   flex: none;
   display: flex;
-  align-items: stretch;
-  justify-content: space-between;
-  gap: var(--gb-s3);
-  padding: 0 var(--gb-s3) 0 0;
-  background: rgba(0, 0, 0, 0.35) var(--gb-hatch);
-  border-bottom: 1px solid var(--gb-edge);
+  flex-wrap: wrap;
+  background: var(--gb-solid);
+  box-shadow: inset 0 -1px 0 var(--gb-edge);
 }
-.gb-window-head .gb-close { align-self: center; }
+.gb-hud .gb-tab {
+  --cut: var(--gb-cut-row);
+  display: flex;
+  align-items: center;
+  gap: var(--gb-s2);
+  height: 44px;
+  padding: 0 var(--gb-s4);
+  border: none;
+  background: transparent;
+  color: var(--gb-dim);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: color var(--gb-t-press) var(--gb-in), background-color var(--gb-t-press) var(--gb-in);
+}
+.gb-hud .gb-tab:hover { background: var(--gb-lift); color: var(--gb-ink); }
+.gb-hud .gb-tab[aria-selected='true'] { background: var(--gb-lift); color: var(--gb-ink); }
+.gb-hud .gb-tab[aria-selected='true'] kbd { --gb-line: var(--gb-accent); color: var(--gb-accent); }
+.gb-hud .gb-tab:focus-visible { background: var(--gb-lift); color: var(--gb-accent-lit); }
+
 /* The body is the one thing that scrolls: the frame never grows to a face. */
-.gb-window-body {
+.gb-hud .gb-window-body {
   flex: 1;
   min-height: 0;
   padding: var(--gb-s4) var(--gb-s5);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: var(--gb-accent-deep) transparent;
-  animation: gb-face-in 110ms var(--gb-ease);
 }
-@keyframes gb-face-in {
-  from { opacity: 0.4; }
-  to { opacity: 1; }
-}
+/* The frame is nearly the width of the view, so the faces that are lists of
+   rows run in columns a line of prose wide rather than one column the width of
+   the screen. Under two columns' worth of room they fall back to one, which is
+   what a small screen gets. An entry is never split down the middle.
 
-.gb-tabs { display: flex; flex-wrap: wrap; }
-.gb-tab {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: var(--gb-s3) var(--gb-s3);
-  border: none;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  color: var(--gb-faint);
-  font: inherit;
-  cursor: pointer;
-  transition: color var(--gb-t) var(--gb-ease), background var(--gb-t) var(--gb-ease),
-    border-color var(--gb-t) var(--gb-ease);
+   The quests face is not one of them: a page is a row with its steps under it,
+   and that wants the width. */
+.gb-hud .gb-inventory, .gb-hud .gb-codex, .gb-hud .gb-settings, .gb-hud .gb-controls {
+  columns: 440px;
+  column-gap: var(--gb-s6);
 }
-.gb-tab:hover { color: var(--gb-ink); background: rgba(242, 239, 230, 0.05); }
-.gb-tab[aria-selected='true'] {
-  color: var(--gb-accent);
-  border-bottom-color: var(--gb-accent);
-  background: rgba(233, 193, 120, 0.08);
-}
-.gb-tab[aria-selected='true'] kbd { border-color: var(--gb-accent-deep); color: var(--gb-accent); }
+.gb-hud .gb-inventory .gb-coin { column-span: all; }
 `

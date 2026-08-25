@@ -1,4 +1,5 @@
 import { el, setText } from '../dom.ts'
+import { rise } from '../motion.ts'
 import type { TalkTurn } from '../types.ts'
 
 /**
@@ -8,7 +9,7 @@ import type { TalkTurn } from '../types.ts'
  * nothing above it moves. It scrolls inside a frame that never changes size.
  */
 export class Transcript {
-  readonly node = el('ol', 'gb-transcript')
+  readonly node = el('ol', 'gb-transcript gb-scrolls')
   #rows: TurnRow[] = []
 
   constructor() {
@@ -38,7 +39,7 @@ export class Transcript {
 }
 
 class TurnRow {
-  readonly node = el('li', 'gb-turn')
+  readonly node = el('li', 'gb-turn gb-t3')
   readonly who: TalkTurn['who']
   #does = el('p', 'gb-does')
   #says = el('p', 'gb-says')
@@ -46,6 +47,8 @@ class TurnRow {
   constructor(who: TalkTurn['who']) {
     this.who = who
     this.node.dataset.who = who
+    // A turn arrives on its own; the ones already on the transcript never move.
+    rise(this.node, 0)
     this.#does.hidden = true
     this.node.append(this.#does, this.#says)
   }

@@ -1,6 +1,6 @@
 # @gb/hud contract
 
-contractVersion: 0.12.0
+contractVersion: 0.13.0
 
 ## Purpose
 
@@ -91,7 +91,7 @@ Every surface is handed the whole state on every change and decides for itself w
 
 The view is cut into regions that never cross, in pixels, in [src/style/layout.ts](src/style/layout.ts): the objectives corner top left (330 wide) with the minimap under it in the same column (230 square, above the foot), the band beside them across the top (196 tall) holding the compass strip (360 by 44, centred at the top of the band) with the notices column under it, the conversation down the right (380 wide, stopping above the foot), the bar along the foot (88 tall), and the room the window, the counter and the confirm share in what those leave. While a conversation is up the compass, the notices, the prompt and the room stop short of it. The corner column gives the minimap, the foot and the margins their pixels first and the objectives panel takes what is left, so however short the view is the two never meet. Each surface has a layer of its own, front to back: corner, minimap, compass, side, notices, bar, scrim, counter, window, screen, confirm, loader. Nothing shares a layer, so nothing is ever drawn through anything else.
 
-The window is one frame, 1320 by 800, centred in its room and clamped by it on a small screen, and it is that shape whatever face is up: a face is handed the body and scrolls inside it, and nothing in the window sizes itself to what is on the face. It is as near the whole view as the regions allow, because a map and six pages of lists want the room. At that width a face that is a list of rows runs in columns 440 wide rather than one line across the frame, and falls back to one column when there is no room for two. The counter is a second frame with the same chrome, 520 by 460, in the same room and behind the window, so a player can open their inventory over a counter and come back to it. The confirm is a third, 420 wide, in the same room and in front of both. A screen sits in the middle of the whole view, sized by its own grid of characters.
+The window is one frame, 1320 by 800, centred in its room and clamped by it on a small screen, and it is that shape whatever face is up: a face is handed the body and scrolls inside it, and nothing in the window sizes itself to what is on the face. It is as near the whole view as the regions allow, because a map and six pages of lists want the room. At that width a face that is a list of rows runs in columns 440 wide rather than one line across the frame, and falls back to one column when there is no room for two; the map and the quests take the whole width instead, because a plan and a quest page with its steps under it both want it. The counter is a second frame with the same chrome, 520 by 460, in the same room and behind the window, so a player can open their inventory over a counter and come back to it. The confirm is a third, 420 wide, in the same room and in front of both. A screen sits in the middle of the whole view, sized by its own grid of characters.
 
 ## The conversation
 
@@ -105,7 +105,7 @@ Answering quiets the menu. Between the player answering and the game publishing 
 
 ## The window
 
-One shell with six faces behind a tab strip. Each face is handed the same state.
+One shell: a title head with the face's name and the way out, a tab strip under it with an icon and a key on every tab, and six faces behind them. Each face is handed the same state.
 
 | Tab | Draws from | Emits |
 |---|---|---|
@@ -122,7 +122,7 @@ The objectives panel shows the tracked quest and its open steps, a count as "2/5
 
 The plan fills the window's body edge to edge and is read by zooming into it. Plots are drawn in cells and scale with the zoom; the player's arrow, the goal marks and every name are drawn in pixels, so they are the same size at any zoom and a city of twenty blocks comes apart into readable names as the player zooms in. At first the whole city is framed to the plan's aspect. The wheel zooms about the pointer, a drag pans, and the four tools over the plan do the same with a key each printed on them: Zoom in `+`, Zoom out `-`, Fit `0`, You `Y` (centre on the player); the arrows pan while the map has focus. The view is held inside the city, and it survives the survey being pushed again, so a plan four times a second does not throw the player's zoom away. Twelve times the whole city is as far in as it goes.
 
-A plot's `label` is read on hover; it is written on the plan only where `named` says so, which is the caller's list of places entered, quest targets and landmarks. `prominence` picks one of three fills (`--gb-plot`, `--gb-plot-notable`, `--gb-plot-landmark`), so a chapel and a jail are not two more grey rects. A goal on the story is a brass diamond, an errand a dot, each with its name beside it. The bearings along the foot list every goal mark, the story tagged `Main`, and clicking one swings the plan onto it; without a survey they list the tracked quest's open steps by `markerLabel` instead, and with nothing to head for they say so.
+A plot's `label` is read on hover; it is written on the plan only where `named` says so, which is the caller's list of places entered, quest targets and landmarks. `prominence` picks one of three fills (`--gb-plot`, `--gb-plot-notable`, `--gb-plot-landmark`), so a chapel and a jail are not two more grey rects. A goal on the story is a filled brass diamond, an errand an open cyan ring, each with its name beside it. The bearings along the foot list every goal mark, the story tagged `Main`, and clicking one swings the plan onto it; without a survey they list the tracked quest's open steps by `markerLabel` instead, and with nothing to head for they say so.
 
 Stations are squares of ink on the plan, each with its name, and a list beside the bearings. Standing at one (`boarding` names it), that station wears `Here` and every other carries a Travel button that reports `travel` with its id; anywhere else the list only names them and says to walk up to an entrance. The ride is the game's: it closes the map, pushes a `loading` with the title alone as the veil, moves the player and takes the veil away. A city with no stations lists none.
 
@@ -150,15 +150,15 @@ It draws from what it is pushed and never from a second pass over the world, it 
 
 ## The two lines of work
 
-The story and an errand never wear one shape in two shades, anywhere they are drawn. The story is a solid brass diamond; an errand is an open brass ring, dark inside. Shape and fill both differ, so which is which reads at a glance, at any size, over a pale daylight plot or a black street: each mark carries a dark edge and a light one. The plan, the minimap and the bearings list under the plan use the same pair, and the compass strip uses the same pair in its own medium (a solid brass diamond, an open brass square). The `line` on a goal is the game's: left out reads as an errand.
+The story and an errand never wear one shape in two shades, anywhere they are drawn. The story is a solid brass diamond; an errand is an open cyan ring, dark inside. Shape and fill both differ, so which is which reads at a glance, at any size, over a lit plot or a black street: each mark carries a dark edge. The plan, the minimap, the bearings list under the plan and the compass strip all draw the same two shapes, the strip at its own size. The `line` on a goal is the game's: left out reads as an errand.
 
 ## The compass
 
-A strip along the top of the play view answers "which way" without a key. The points of the compass slide along it as the player turns, with the way they face at the centre; the tracked goal's mark sits at its bearing, a diamond for the story and a dot for an errand, and pins to the nearer edge while the goal is behind the player. Under the strip: the goal's name and the distance ("140 m", "1.2 km"). The strip shows 120 degrees of arc across 360 pixels. The game pushes `facing` and whatever its guide resolved; the strip draws it and takes no clicks. Without a goal the points still turn; `compass: null` takes the strip away.
+A strip along the top of the play view answers "which way" without a key. The points of the compass slide along it as the player turns, with the way they face at the centre; the tracked goal's mark sits at its bearing, the plan's own diamond for the story and its own ring for an errand, and pins to the nearer edge while the goal is behind the player. Under the strip: the goal's name and the distance ("140 m", "1.2 km"). The strip shows 120 degrees of arc across 360 pixels. The game pushes `facing` and whatever its guide resolved; the strip draws it and takes no clicks. Without a goal the points still turn; `compass: null` takes the strip away.
 
 ## The codex
 
-Three headings, drawn only when they have rows: Places the player has walked into, each with its line; People they have met, each with how they stand towards the player as a tag (`Hostile` and `Cool` warned, `Warm` and `Friendly` in brass, `Neutral` quiet), what they do, a count "2 of 5 known" and every fact there is to learn of them, the learned ones in words and the rest as a locked line that says "Not learned yet"; and History, what they have been told of the city. A fact is never blank: a person with something still to find out shows it. The game keeps the record and decides what unlocks; the tab reads the push.
+Three headings, drawn only when they have rows: Places the player has walked into, each with its line; People they have met, each with how they stand towards the player as a tag (`Hostile` and `Cool` warned, `Warm` and `Friendly` in brass, `Neutral` quiet, each as a chip), what they do, a count "2 of 5 known" and every fact there is to learn of them, the learned ones in words and the rest as a locked line that says "Not learned yet"; and History, what they have been told of the city. A fact is never blank: a person with something still to find out shows it. The game keeps the record and decides what unlocks; the tab reads the push.
 
 ## The journal
 
@@ -211,27 +211,61 @@ Leaving is what it asks about today. `exit` from the Leave button, from its key 
 
 ## The loader
 
-A city being written covers the view: its title and each stage of the build, the one under way in brass, the finished ones ticked, a bar per stage filled from `done / total` where the stage can count and whole once it is `done`. Rows keep their node from push to push, so a bar fills rather than blinks. With no stages it is a veil, the title alone, which is what a ride between stations shows. `loading: null` takes it away.
+A city being written covers the view: its title and each stage of the build, the one under way marked, the finished ones ticked, a bar per stage filled from `done / total` by scaling where the stage can count and whole once it is `done`. Rows keep their node from push to push, so a bar fills rather than blinks. With no stages it is a veil, the title alone, which is what a ride between stations shows. `loading: null` takes it away.
 
 ## The look
 
-One palette, three type stacks, one spacing step and one motion curve, all declared as custom properties on `.gb-hud` in [src/style/tokens.ts](src/style/tokens.ts). Nothing downstream writes a colour or a duration of its own.
+The city is cyberpunk at night, so the ground is near black with a teal cast and the accent is the city's cyan; brass marks the main line of quests and nothing else. It is written to [docs/UI.md](../../docs/UI.md), one specification the hud and the front door both build from.
+
+Everything is declared as custom properties on `.gb-hud` in [src/style/tokens.ts](src/style/tokens.ts), and nothing downstream writes a colour or a duration of its own: a colour is changed there and the whole interface follows.
 
 | Token | For |
 |---|---|
+| `--gb-void`, `--gb-panel`, `--gb-solid`, `--gb-lift`, `--gb-well`, `--gb-scrim` | behind everything, a floating panel, a frame that owns the view, a raised thing, a sunken thing, the dim behind a frame |
+| `--gb-edge`, `--gb-edge-lit`, `--gb-edge-accent` | a hairline at rest, under the pointer, on the thing that is chosen |
+| `--gb-accent`, `--gb-accent-lit`, `--gb-accent-dim`, `--gb-accent-ink`, `--gb-accent-glow` | cyan: anything the player can act on, hovered, quiet, the text on a filled accent, its halo |
+| `--gb-main`, `--gb-main-lit`, `--gb-main-dim`, `--gb-main-ink` | brass: the main line of quests, its mark, its chip and its bar |
 | `--gb-ink`, `--gb-dim`, `--gb-faint` | text at three weights of attention |
-| `--gb-panel`, `--gb-solid`, `--gb-lift`, `--gb-well` | a floating panel, the window, a raised control, a sunken field |
-| `--gb-edge`, `--gb-edge-lit` | hairlines, quiet and lit |
-| `--gb-accent`, `--gb-accent-deep`, `--gb-accent-ink` | brass: anything the player can act on, and the text that sits on it |
-| `--gb-warn` | a failure, credits going out, or a price the player cannot meet |
+| `--gb-good`, `--gb-warn`, `--gb-danger`, `--gb-off`, `--gb-off-ink` | done, attention without failure, a failure, and a thing out of reach |
 | `--gb-glass`, `--gb-phosphor`, `--gb-phosphor-dim` | a machine's screen: the glass, the text on it, and its glow |
-| `--gb-frame` | the shadow every panel wears: black hairline outside, pale hairline inside, then the drop |
-| `--gb-hatch` | the diagonal texture on a head or a major announcement |
+| `--gb-plot`, `--gb-plot-notable`, `--gb-plot-landmark` | the three fills a plot is drawn in |
+| `--gb-frame` | the drop every frame wears, as a filter, because a chamfer clips a shadow away |
+| `--gb-hatch` | the diagonal on a header or a major announcement |
 | `--gb-display`, `--gb-body`, `--gb-mono` | condensed for labels, system sans for prose, monospace for numbers |
 | `--gb-s1` to `--gb-s6` | 4, 8, 12, 16, 22, 32 px |
-| `--gb-t`, `--gb-ease` | 140 ms on the one curve |
+| `--gb-cut-frame`, `--gb-cut-panel`, `--gb-cut-row`, `--gb-cut-chip` | 14, 10, 6, 4 px of chamfer, by what wears it |
+| `--gb-in`, `--gb-out` | arriving and leaving, on two curves and no others |
+| `--gb-t-press`, `--gb-t-state`, `--gb-t-value`, `--gb-t-leave`, `--gb-t-enter`, `--gb-t-veil`, `--gb-stagger` | 90, 140, 200, 200, 320, 400 ms, and 24 ms per row |
 
-Type stacks only, no font file: the box ships as one string with no assets, so a face would have to be inlined into every consumer's bundle. Labels are condensed, upper case and tracked; numbers are monospace with tabular figures so a credit count or a clock does not jitter as it changes.
+Type stacks only, no font file: the box ships as one string with no assets, so a face would have to be inlined into every consumer's bundle. Eight steps, `t0` to `t7`, are declared in [src/style/type.ts](src/style/type.ts) and worn by class. Labels are condensed, upper case and tracked; every number is monospace with tabular figures at the size of the text it sits in, so a credit count or a clock does not shift what is beside it.
+
+The panel language is in [src/style/shape.ts](src/style/shape.ts): the chamfer, the two-layer edge (a border cannot follow a `clip-path`, so the element is painted in the edge colour and a pseudo-element inset 1px in the ground), the corner ticks and the header. Lighting an edge is one property, `--gb-line`; the focus ring is that edge thickened to 2px, since an outline would be clipped away. The parts built on it are in [src/style/parts.ts](src/style/parts.ts): the chip, the key cap, the icon tile, the button, the field and the bar that fills.
+
+One row does the work of the quest list, the inventory, the codex, the settings, the stations, the bearings, the controls and the counter: an icon tile, a title over a supporting line, what state it is in, what can be done about it, and the key that does the same thing. It is specified in [src/style/row.ts](src/style/row.ts) and built by [src/ui/row.ts](src/ui/row.ts). A row with nothing to do is not a button and does not answer the pointer.
+
+Every picture is inline SVG on one 24 by 24 grid, one stroke weight, one colour inherited: [src/ui/icon.ts](src/ui/icon.ts) holds the whole set. No icon fonts, no image files, and the only filled one is a mark that stands for a place on the plan.
+
+## Motion
+
+Motion says a thing arrived, changed or left, and it never delays input: a click runs its handler on the same tick and the pixels catch up. The durations live in [src/motion.ts](src/motion.ts), which the stylesheet writes into its own tokens, so both follow one number.
+
+Only `transform` and `opacity` move (colour changes with them where the spec asks), because this interface draws over a scene running every frame: nothing animates a size, a position, a filter, a shadow or a background, and there is no `backdrop-filter` anywhere.
+
+| Kind | What it does |
+|---|---|
+| A frame: the window, the counter, the confirm | rises 12 px into place, settles 6 px out |
+| A side panel: the conversation | in and out through its own edge |
+| A corner panel: objectives, minimap, compass | drops in from above |
+| A notice | in from the left edge and out the same way; the ones below slide up as it goes |
+| A screen and the scrim | fade, because a machine the player sat down at does not fly |
+| The loader | fades over 400 ms, the only 400 |
+| A list of rows | each row rises in turn, 24 ms apart, capped at eight |
+| A tab's content | slides in from the side the player moved towards |
+| A bar | scales from its left edge, never widens |
+| A number that changed | counts to its new value; under three units it snaps |
+| A count that climbed | bumps once, on its own inline box |
+
+Nothing loops: no pulse, no shimmer, no spinner that turns forever. Under `prefers-reduced-motion` every duration collapses to an instant and every stagger goes to zero.
 
 ## Keys the interface owns
 
@@ -262,7 +296,7 @@ Thrown as `HudError` with a `code`:
 - One window, one face, one frame. Opening a face closes the one before it, so there is one scrim, one focus trap and one way out whatever the player is reading, and the frame is the same size whichever face is up. The counter and the screen are frames of their own on layers of their own, so what is in front is never in doubt: the screen, then the window, then the counter.
 - The regions in `layout.ts` are disjoint: the objectives corner, the minimap under it, the notices column, the conversation and the room the framed panels stand in never overlap, and each surface has a layer of its own.
 - Every window closes two ways: a button the player can see and click, and a key. The key is printed on the button.
-- Opening and closing are transitions of 120 to 150 ms. A window is closed the moment it is asked to close: it stops taking clicks, leaves the accessible tree and lets the keyboard go, and only its pixels linger. The key that closes one window is free to open the next in the same breath.
+- A surface arrives in 320 ms and leaves in 200 ms, on `transform` and `opacity` alone. A window is closed the moment it is asked to close: it stops taking clicks, leaves the accessible tree and lets the keyboard go, and only its pixels linger. The key that closes one window is free to open the next in the same breath. Nothing waits on a transition: a click runs its handler on the same tick.
 - Nothing takes the keyboard except the conversation, for as long as focus is anywhere inside it, and a screen, for as long as it is up. `typing: false` is reported before `talk-closed` and before `screen-closed`, so the game has its keys back before it hears the thing ended. Stepping off the box onto a move does not hand the walk keys back mid-sentence. `typing` is reported on change only, never twice in a row.
 - Focus goes where the player is: a window that opens takes focus and hands it back to whatever had it when it closes. Nothing to hand back to means the page, which is where the game listens.
 - The player can read the controls without leaving what they are doing: the buttons carry their keys, the conversation carries its own two, and the controls tab lists everything the game declared beside everything the interface owns.
@@ -270,8 +304,8 @@ Thrown as `HudError` with a `code`:
 - The transcript keeps every turn until the conversation ends or the game replaces it. What the speaker does is one line on the turn it belongs to: sending it again replaces it and `null` takes it away.
 - A face the player is not looking at holds no text, and neither does a window that has finished closing.
 - The corner panel never grows down the screen: it shows what is worth a glance, points at the window for the rest, and scrolls inside itself if what is left still does not fit.
-- The conversation, the window, the scrim behind it, the loader and the bar take the pointer; the rest of the interface lets clicks through to the scene.
-- Announcements come in two sizes. A quest starting, finishing or failing is `major`: large, on the accent, 5.2 seconds. Everything else is `minor`: small, quiet, 2.6 seconds. A `model-busy` notice is a wait, drawn quiet with its seconds counting down in brass, and stays for the whole wait; an `error` is a fault, drawn warned, and stays as long as a finished quest would. The two never read as one. Four at once is the most on screen; older ones go first.
+- The conversation, the window, the scrim behind it, the loader and the buttons on the foot bar take the pointer; the rest of the interface, the band the bar sits on included, lets clicks through to the scene.
+- Announcements come in two sizes. A quest starting, finishing or failing is `major`: large, hatched, 5.2 seconds. Everything else is `minor`: small, quiet, 2.6 seconds. Each carries a key line in the colour of its mood, so a finished quest, a fault and a wait never read as one thing. A `model-busy` notice is a wait, drawn quiet with its seconds counting down in accent, and stays for the whole wait; an `error` is a fault, drawn in danger, and stays as long as a finished quest would. The two never read as one. Four at once is the most on screen; older ones go first.
 - A money change of zero announces nothing, so a quest that pays in goods does not flash an empty line.
 - The counter sells nothing itself: `buy` names the offer and the game pays, takes and pushes the counter again. A price the player cannot meet is read, not hidden.
 - The hud never holds a password: what is typed goes out as `unlock` and the game says whether the screen opens.
@@ -286,9 +320,10 @@ Thrown as `HudError` with a `code`:
 - No option says where it leads. The hud draws the words the quest published and nothing it worked out about the far side.
 - The hud decides nothing about the clock or the sky: a setting is reported and drawn as pushed back, so a button reads pressed only once the game says so.
 - A quest's clock moves only when the journal is pushed, because it runs on the game clock; a wait's clock runs one real second at a time from the value announced. Both are written in place and never rebuild what is around them.
-- What just changed says so: the reticle opens and goes brass while something is in reach, and a step count flashes when it climbs.
+- What just changed says so: the reticle opens and goes accent while something is in reach, a step count bumps when it climbs, and a credit count runs to its new value instead of jumping.
 - Everything a mouse can do, the keyboard can do.
-- Square corners: no `border-radius` in the stylesheet.
+- Square corners: no `border-radius` in the stylesheet. Corners are chamfered with `clip-path`, two opposite corners on the diagonal that faces the middle of the view.
+- Asked for less movement, every duration collapses to an instant: nothing is removed from the screen and nothing changes place.
 - `Objective.markerLabel` names a place, so the map reads it; putting a marker in the world belongs to the scene, not here.
 - A place the player owns is never a gap: with nothing placed it says so, and a player with no place is told as much.
 - On the plan, what is drawn in cells scales and what is drawn in pixels does not: a name, a mark and the player's arrow are the same size at every zoom, and the view never leaves the city.
@@ -305,4 +340,6 @@ Thrown as `HudError` with a `code`:
 
 ## How to modify this blackbox safely
 
-A new kind of answer in the conversation is a case on `HudIntent` and a branch in the hud's `#dispatch`; anything the player picks goes out as an intent and comes back as a patch, because this box never decides what a move does. A new panel is a new surface in `src/surfaces/` plus its field on `HudPatch` and `HudState`, and its region and layer in `src/style/layout.ts`; nothing else changes, because every surface is handed the whole state. A framed panel in the room (the window, the counter) is built on `HudWindow` and gets the chrome, the transition and the focus manners free. A new thing worth asking "you sure" about is a value on `ConfirmAsk`, its wording in `phrase.ts` and its pair of intents in the hud's `ANSWERS`; the panel, the keys and the focus manners come with it. The map is six pieces under `src/map/`: the viewport (what is on show, in cells), the plan (the SVG), the minimap's own plan in `near.ts`, the gestures (wheel and drag), the tools over it and the two lists under it; a new thing on the plan is a node in the plan, drawn in pixels if it must stay readable at every zoom. The shapes both plans draw live in `src/map/marks.ts` and are painted by `src/style/marks.ts`, so a mark cannot come out one way on the plan and another in the corner. A new program on the screen is a `ScreenApp` in `src/screen/` (rows of text, a status line, a key) plus its kind on `ScreenProgram` and a branch where the surface builds one; the grid, the padding and the overlay helpers are in `src/screen/size.ts`. A new face of the window is an entry in `src/windows.ts` plus a `Tab` in `src/tabs/`, and it gets its chrome, its frame, its transition and its focus manners free. A new announcement is a kind on `Notice`, its wording, size and mood in `src/phrase.ts` and its name in the kind set. A new key is a `KeyAction` in `src/keys.ts` and a case in the hud, with its label in `src/controls.ts` so it appears on screen wherever it applies. Wording lives in `phrase.ts` and `controls.ts`; the look lives in `src/style/`, one file per concern, joined into one stylesheet at load. Run `pnpm --filter @gb/hud test` in the same change.
+A new kind of answer in the conversation is a case on `HudIntent` and a branch in the hud's `#dispatch`; anything the player picks goes out as an intent and comes back as a patch, because this box never decides what a move does. A new panel is a new surface in `src/surfaces/` plus its field on `HudPatch` and `HudState`, and its region and layer in `src/style/layout.ts`; nothing else changes, because every surface is handed the whole state. A framed panel in the room (the window, the counter) is built on `HudWindow` and gets the chrome, the transition and the focus manners free. A new thing worth asking "you sure" about is a value on `ConfirmAsk`, its wording in `phrase.ts` and its pair of intents in the hud's `ANSWERS`; the panel, the keys and the focus manners come with it. The map is six pieces under `src/map/`: the viewport (what is on show, in cells), the plan (the SVG), the minimap's own plan in `near.ts`, the gestures (wheel and drag), the tools over it and the two lists under it; a new thing on the plan is a node in the plan, drawn in pixels if it must stay readable at every zoom. The shapes both plans draw live in `src/map/marks.ts` and are painted by `src/style/marks.ts`, so a mark cannot come out one way on the plan and another in the corner. A new program on the screen is a `ScreenApp` in `src/screen/` (rows of text, a status line, a key) plus its kind on `ScreenProgram` and a branch where the surface builds one; the grid, the padding and the overlay helpers are in `src/screen/size.ts`. A new face of the window is an entry in `src/windows.ts` plus a `Tab` in `src/tabs/`, and it gets its chrome, its frame, its transition and its focus manners free. A new announcement is a kind on `Notice`, its wording, size and mood in `src/phrase.ts` and its name in the kind set. A new key is a `KeyAction` in `src/keys.ts` and a case in the hud, with its label in `src/controls.ts` so it appears on screen wherever it applies.
+
+Wording lives in `phrase.ts` and `controls.ts`. The parts every surface is built from live in `src/ui/`: the icon set, the row, the button, the chip, the bar and the counting number; use them rather than laying out a row of your own. The look lives in `src/style/`, one file per concern, joined into one stylesheet at load in the order of the cascade: the tokens, then the type, the shapes, the row and the motion every surface shares, then one file per surface. Every rule is written under `.gb-hud`, so a surface rule and a shared rule carry the same weight and the later one wins. A new colour is a token or it is a bug; a new duration is a field on `MS` in `src/motion.ts`. Run `pnpm --filter @gb/hud test` in the same change.

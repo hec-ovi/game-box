@@ -6,7 +6,7 @@ import { el, kbd, setText } from '../dom.ts'
  * rather than growing down the screen.
  */
 export class MoreLine {
-  readonly node = el('p', 'gb-more')
+  readonly node = el('p', 'gb-more gb-t2')
   #text = el('span')
 
   constructor(key: string) {

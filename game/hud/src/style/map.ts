@@ -1,14 +1,14 @@
 /**
  * The map: the plan fills the frame edge to edge, with the tools in one corner
- * and the bearings along the foot laid over it. Plots scale with the zoom;
- * the marks and the names are drawn in pixels, so they are the same size at
- * every zoom and the plan is read by zooming into it.
+ * and the two lists along the foot. Plots scale with the zoom; the marks and
+ * the names are drawn in pixels, so they are the same size at every zoom and
+ * the plan is read by zooming into it.
  */
 export const MAP = `
-.gb-window-body[data-face='map'] { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
-.gb-map { position: relative; display: flex; flex-direction: column; flex: 1; min-height: 0; outline: none; }
-.gb-map:focus-visible { box-shadow: inset 0 0 0 2px var(--gb-accent); }
-.gb-plan {
+.gb-hud .gb-window-body[data-face='map'] { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.gb-hud .gb-map { position: relative; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.gb-hud .gb-map:focus-visible { box-shadow: inset 0 0 0 2px var(--gb-accent); }
+.gb-hud .gb-plan {
   position: relative;
   flex: 1;
   min-height: 0;
@@ -18,107 +18,66 @@ export const MAP = `
   touch-action: none;
   user-select: none;
 }
-.gb-plan[data-dragging='true'] { cursor: grabbing; }
-.gb-plan svg { display: block; width: 100%; height: 100%; }
-.gb-plan .gb-ground { fill: rgba(242, 239, 230, 0.07); }
-.gb-plan text {
-  font-family: var(--gb-display);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.gb-hud .gb-plan[data-dragging='true'] { cursor: grabbing; }
+/* The plan itself fills the frame; an icon inside a tool over it does not. */
+.gb-hud .gb-plan > svg { display: block; width: 100%; height: 100%; }
+.gb-hud .gb-plan .gb-ground { fill: var(--gb-void); }
+.gb-hud .gb-plan text {
   paint-order: stroke fill;
-  stroke: rgba(0, 0, 0, 0.85);
+  stroke: var(--gb-void);
   stroke-width: 3px;
   stroke-linejoin: round;
   pointer-events: none;
 }
-.gb-plan .gb-name text { fill: var(--gb-ink); }
+.gb-hud .gb-plan .gb-name text { fill: var(--gb-dim); }
 /* The player, the goals and the doorways are drawn by the shared mark rules;
    only the name beside a goal belongs to the plan. */
-.gb-plan .gb-goal text { fill: var(--gb-accent); }
+.gb-hud .gb-plan .gb-goal[data-line='main'] text { fill: var(--gb-main); }
+.gb-hud .gb-plan .gb-goal text { fill: var(--gb-accent); }
 /* A station is a square of ink: the one mark that is neither the player nor a goal. */
-.gb-plan .gb-station rect { fill: var(--gb-ink); stroke: rgba(0, 0, 0, 0.7); stroke-width: 1.2; }
-.gb-plan .gb-station text { fill: var(--gb-dim); }
+.gb-hud .gb-plan .gb-station rect { fill: var(--gb-ink); stroke: var(--gb-void); stroke-width: 1.2; }
+.gb-hud .gb-plan .gb-station text { fill: var(--gb-dim); }
 
-.gb-map-tools {
+.gb-hud .gb-map-tools {
   position: absolute;
   top: var(--gb-s3);
   right: var(--gb-s3);
   display: flex;
-  gap: 1px;
-  background: rgba(0, 0, 0, 0.55);
-  box-shadow: var(--gb-frame);
+  gap: var(--gb-s1);
 }
-.gb-map-tool {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: var(--gb-s1) var(--gb-s2);
-  border: none;
-  background: var(--gb-panel);
-  color: var(--gb-dim);
-  font: inherit;
-  cursor: pointer;
-  transition: background var(--gb-t) var(--gb-ease), color var(--gb-t) var(--gb-ease);
-}
-.gb-map-tool:hover { background: var(--gb-lift); color: var(--gb-ink); }
+.gb-hud .gb-map-tool { --gb-face: var(--gb-panel); }
 
 /* The foot of the plan: the places to head for, and beside them the stations. */
-.gb-map-foot {
+.gb-hud .gb-map-foot {
   flex: none;
   display: flex;
-  max-height: 132px;
-  border-top: 1px solid var(--gb-edge);
+  max-height: 150px;
   background: var(--gb-solid);
+  box-shadow: inset 0 1px 0 var(--gb-edge);
 }
-.gb-map-foot > section {
+.gb-hud .gb-map-foot > section {
   flex: 1;
   min-width: 0;
-  overflow-y: auto;
-  padding: var(--gb-s2) var(--gb-s5) var(--gb-s3);
-  scrollbar-width: thin;
-  scrollbar-color: var(--gb-accent-deep) transparent;
+  padding: var(--gb-s3) var(--gb-s4);
 }
-.gb-map-foot > section + section { border-left: 1px solid var(--gb-edge); }
-.gb-map-foot h3 { margin-bottom: var(--gb-s1); color: var(--gb-faint); }
-.gb-stations li { display: flex; align-items: center; gap: var(--gb-s2); padding: 2px 0; }
-.gb-stations li::before { content: '■'; flex: none; width: 12px; color: var(--gb-ink); font-size: 9px; text-align: center; }
-.gb-stations .gb-what { flex: 1; }
-.gb-station-list .gb-note { margin-top: var(--gb-s1); font-size: 12px; color: var(--gb-faint); }
-.gb-travel {
-  padding: 2px var(--gb-s2);
-  border: 1px solid var(--gb-accent-deep);
-  background: transparent;
-  color: var(--gb-accent);
-  font-family: var(--gb-display);
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: border-color var(--gb-t) var(--gb-ease), background var(--gb-t) var(--gb-ease),
-    color var(--gb-t) var(--gb-ease);
-}
-.gb-travel:hover { border-color: var(--gb-accent); background: var(--gb-accent); color: var(--gb-accent-ink); }
-.gb-bearings li {
-  display: flex;
-  align-items: baseline;
-  gap: var(--gb-s2);
-  padding: 2px 0;
-}
-/* The list wears the marks the plan does: a solid diamond on the story, an open ring on an errand. */
-.gb-bearings li::before { content: '○'; flex: none; width: 12px; color: var(--gb-accent); font-size: 12px; text-align: center; }
-.gb-bearings li[data-line='main']::before { content: '◆'; color: var(--gb-accent); font-size: 12px; }
-.gb-bearings .gb-what { flex: 1; }
-.gb-bearings .gb-bearing {
+.gb-hud .gb-map-foot > section + section { box-shadow: inset 1px 0 0 var(--gb-edge); }
+.gb-hud .gb-map-foot h3 { margin-bottom: var(--gb-s2); color: var(--gb-faint); }
+.gb-hud .gb-map-foot .gb-empty, .gb-hud .gb-map-foot .gb-note { color: var(--gb-faint); }
+.gb-hud .gb-station-list .gb-note { margin-top: var(--gb-s2); }
+/* The bearings wear the plan's own marks: a filled brass diamond on the story,
+   an open cyan ring on an errand. */
+.gb-hud .gb-bearings .gb-tile { color: var(--gb-accent); }
+.gb-hud .gb-bearings .gb-tile-main { color: var(--gb-main); }
+.gb-hud .gb-bearings .gb-tile-main .gb-icon { fill: currentColor; }
+.gb-hud .gb-bearing {
   padding: 0;
   border: none;
-  border-bottom: 1px solid var(--gb-edge);
   background: transparent;
   color: var(--gb-ink);
   font: inherit;
+  text-align: left;
   cursor: pointer;
-  transition: color var(--gb-t) var(--gb-ease), border-color var(--gb-t) var(--gb-ease);
+  transition: color var(--gb-t-press) var(--gb-in);
 }
-.gb-bearings .gb-bearing:hover { color: var(--gb-accent); border-bottom-color: var(--gb-accent); }
-.gb-bearings .gb-note { color: var(--gb-accent); font-size: 12px; }
+.gb-hud .gb-bearing:hover, .gb-hud .gb-bearing:focus-visible { color: var(--gb-accent-lit); }
 `

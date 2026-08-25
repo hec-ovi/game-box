@@ -1,10 +1,12 @@
 import type { HudWindowName } from './types.ts'
+import type { IconName } from './ui/icon.ts'
 
-/** One face of the window: what it is called and the key that brings it up. */
+/** One face of the window: what it is called, the key that brings it up, and its icon. */
 export interface WindowTab {
   readonly name: HudWindowName
   readonly title: string
   readonly key: string
+  readonly icon: IconName
 }
 
 /**
@@ -13,14 +15,19 @@ export interface WindowTab {
  * is one entry here plus its tab.
  */
 export const WINDOW_TABS: readonly WindowTab[] = [
-  { name: 'quests', title: 'Quests', key: 'J' },
-  { name: 'map', title: 'Map', key: 'M' },
-  { name: 'inventory', title: 'Inventory', key: 'I' },
-  { name: 'codex', title: 'Codex', key: 'X' },
-  { name: 'settings', title: 'Settings', key: 'O' },
-  { name: 'controls', title: 'Controls', key: '?' },
+  { name: 'quests', title: 'Quests', key: 'J', icon: 'quest-main' },
+  { name: 'map', title: 'Map', key: 'M', icon: 'map' },
+  { name: 'inventory', title: 'Inventory', key: 'I', icon: 'inventory' },
+  { name: 'codex', title: 'Codex', key: 'X', icon: 'codex' },
+  { name: 'settings', title: 'Settings', key: 'O', icon: 'settings' },
+  { name: 'controls', title: 'Controls', key: '?', icon: 'controls' },
 ]
 
 export function tabFor(name: HudWindowName): WindowTab {
   return WINDOW_TABS.find((tab) => tab.name === name) ?? WINDOW_TABS[0]!
+}
+
+/** How far along the strip a face sits, so switching face knows which way it moved. */
+export function tabAt(name: HudWindowName): number {
+  return WINDOW_TABS.findIndex((tab) => tab.name === name)
 }

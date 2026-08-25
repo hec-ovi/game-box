@@ -14,7 +14,8 @@ export class ScrimSurface implements Surface {
   #reveal: Reveal
 
   constructor(dismiss: () => void) {
-    this.#reveal = new Reveal(this.node)
+    // The scrim only fades: nothing behind the player's eye should slide.
+    this.#reveal = new Reveal(this.node, { kind: 'fade' })
     this.node.addEventListener('click', dismiss)
   }
 

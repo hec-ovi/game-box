@@ -3,120 +3,83 @@ import { CORNER_RESERVED, LAYERS, LAYOUT, SIDE_RIGHT } from './layout.ts'
 /**
  * The two things that stay on screen while the player walks: what they are
  * meant to be doing, in the corner, and what the thing in front of them would
- * do, low and central. Neither crosses the view.
+ * do, low and central. Neither crosses the view, and neither takes a click.
  */
 export const PANELS = `
-.gb-objectives {
+.gb-hud .gb-objectives {
   position: absolute;
   z-index: ${LAYERS.corner};
   left: ${LAYOUT.margin}px;
   top: ${LAYOUT.margin}px;
   width: ${LAYOUT.corner.width}px;
   max-height: min(42vh, ${LAYOUT.corner.height}px, calc(100vh - ${CORNER_RESERVED}px));
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: var(--gb-accent-deep) transparent;
-  background: var(--gb-panel);
-  border-left: 3px solid var(--gb-accent);
-  box-shadow: var(--gb-frame);
-  backdrop-filter: blur(10px) saturate(0.85);
 }
 /* The head is the panel's label plate: it stays put while the steps scroll. */
-.gb-objectives-head {
+.gb-hud .gb-objectives-head {
   position: sticky;
   top: 0;
-  display: flex;
-  align-items: baseline;
-  gap: var(--gb-s2);
-  padding: var(--gb-s2) var(--gb-s4);
-  background: rgba(12, 14, 19, 0.96) var(--gb-hatch);
-  border-bottom: 1px solid var(--gb-edge);
-}
-.gb-objectives-head h2 { color: var(--gb-faint); }
-.gb-objectives .gb-quest {
-  flex: 1;
-  min-width: 0;
-  font-family: var(--gb-display);
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  color: var(--gb-accent);
-  text-align: right;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.gb-objectives ul { padding: var(--gb-s1) var(--gb-s4); }
-.gb-objectives li {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: baseline;
-  gap: 0 var(--gb-s2);
-  padding: var(--gb-s1) 0;
-}
-.gb-objectives li + li { border-top: 1px solid rgba(242, 239, 230, 0.07); }
-.gb-objectives li[data-optional='true'] .gb-what { color: var(--gb-dim); }
-.gb-objectives .gb-count {
-  grid-row: 1;
-  padding: 0 var(--gb-s1);
-  border: 1px solid var(--gb-edge);
-  background: var(--gb-well);
-  color: var(--gb-accent);
-  font-family: var(--gb-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 11px;
-}
-.gb-objectives .gb-what { grid-column: 2; }
-.gb-objectives li:not([data-counted]) .gb-what { grid-column: 1 / -1; }
-.gb-objectives .gb-tag, .gb-objectives .gb-hint { grid-column: 1 / -1; justify-self: start; }
-.gb-objectives .gb-tag { margin-top: 2px; }
-/* An answerable step points at the tab that answers it, key and all. */
-.gb-objectives .gb-decide {
-  grid-column: 1 / -1;
-  justify-self: start;
+  z-index: 1;
   display: flex;
   align-items: center;
-  gap: var(--gb-s1);
-  margin-top: 2px;
+  gap: var(--gb-s2);
+  padding: var(--gb-s2) var(--gb-s3);
+  background: var(--gb-lift) var(--gb-hatch);
+  box-shadow: inset 0 -1px 0 var(--gb-edge);
+  color: var(--gb-faint);
 }
-.gb-objectives .gb-hint { margin-top: 2px; font-size: 12px; color: rgba(233, 193, 120, 0.62); }
-.gb-objectives .gb-more {
+.gb-hud .gb-objectives-line { display: flex; color: var(--gb-accent); }
+.gb-hud .gb-objectives[data-line='main'] .gb-objectives-line { color: var(--gb-main); }
+.gb-hud .gb-objectives .gb-quest { flex: 1; min-width: 0; color: var(--gb-ink); text-align: right; }
+.gb-hud .gb-objectives ul { padding: var(--gb-s2) var(--gb-s3); }
+.gb-hud .gb-objectives li {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gb-s1) var(--gb-s2);
+  padding: var(--gb-s1) 0 var(--gb-s1) var(--gb-s3);
+  color: var(--gb-ink);
+}
+.gb-hud .gb-objectives li + li { box-shadow: inset 0 1px 0 var(--gb-edge); }
+.gb-hud .gb-objectives li[data-optional='true'] .gb-what { color: var(--gb-dim); }
+/* The pointer on the step the player is standing on: a cut square, not a bullet. */
+.gb-hud .gb-objectives .gb-pip {
+  position: absolute;
+  left: 0;
+  top: 11px;
+  width: 6px;
+  height: 6px;
+  background: var(--gb-accent);
+  transform: rotate(45deg);
+}
+.gb-hud .gb-objectives[data-line='main'] .gb-pip { background: var(--gb-main); }
+.gb-hud .gb-objectives .gb-what { flex: 1; min-width: 0; }
+.gb-hud .gb-objectives .gb-count { flex: none; color: var(--gb-accent); }
+.gb-hud .gb-objectives .gb-decide { display: flex; align-items: center; gap: var(--gb-s1); }
+.gb-hud .gb-objectives .gb-hint-line { width: 100%; color: var(--gb-faint); }
+.gb-hud .gb-objectives .gb-more {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--gb-s2);
-  padding: var(--gb-s2) var(--gb-s4) var(--gb-s3);
-  border-top: 1px solid var(--gb-edge);
-  font-size: 12px;
-  color: var(--gb-dim);
+  padding: var(--gb-s2) var(--gb-s3) var(--gb-s3);
+  box-shadow: inset 0 1px 0 var(--gb-edge);
+  color: var(--gb-faint);
 }
 
 /* "E  Go into The Copper Wheel", low and central, where the eye already is;
    central in what the conversation leaves while one is up. */
-.gb-prompt {
+.gb-hud .gb-prompt {
   position: absolute;
   z-index: ${LAYERS.corner};
   left: 50%;
   bottom: ${LAYOUT.foot + 36}px;
-  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: var(--gb-s3);
   padding: var(--gb-s2) var(--gb-s4);
-  background: var(--gb-panel);
-  border-top: 2px solid var(--gb-accent);
-  box-shadow: var(--gb-frame);
-  backdrop-filter: blur(10px) saturate(0.85);
   white-space: nowrap;
 }
 .gb-hud[data-talk='true'] .gb-prompt { left: calc((100% - ${SIDE_RIGHT}px) / 2); }
-.gb-prompt[data-state='opening'], .gb-prompt[data-state='closing'] { transform: translateX(-50%) translateY(6px); }
-.gb-prompt[data-state='open'] { transform: translateX(-50%) translateY(0); }
-.gb-prompt kbd {
-  min-width: 26px;
-  padding: 3px 7px;
-  border-color: var(--gb-accent-deep);
-  color: var(--gb-accent);
-  font-size: 12px;
-}
+.gb-hud .gb-prompt kbd { --gb-line: var(--gb-accent); min-width: 24px; height: 22px; color: var(--gb-accent); }
 `

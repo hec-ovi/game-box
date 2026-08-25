@@ -1,4 +1,6 @@
-import { el, setText } from '../dom.ts'
+import type { QuestKind } from '@gb/quest'
+import { el, setText, svg } from '../dom.ts'
+import { goalShape } from '../map/marks.ts'
 import { CARDINALS, distanceText } from '../phrase.ts'
 import { Reveal } from '../reveal.ts'
 import { LAYOUT } from '../style/layout.ts'
@@ -26,22 +28,23 @@ const TRACK = { from: -180, to: 540 } as const
 export class CompassSurface implements Surface {
   readonly node = el('section', 'gb-compass')
   #track = el('div', 'gb-compass-track')
-  #mark = el('div', 'gb-compass-mark')
-  #where = el('p', 'gb-compass-where')
+  #mark = el('span', 'gb-compass-mark')
+  #where = el('p', 'gb-compass-where gb-t1')
   #what = el('span', 'gb-what')
   #far = el('span', 'gb-num')
+  #shape: string | undefined
   #reveal: Reveal
 
   constructor() {
     this.node.setAttribute('aria-label', 'Compass')
-    const strip = el('div', 'gb-compass-strip')
+    const strip = el('div', 'gb-compass-strip gb-plate gb-cut gb-edged')
     this.#track.style.width = `${(TRACK.to - TRACK.from) * PX_PER_DEG}px`
     for (let deg = TRACK.from; deg <= TRACK.to; deg += TICK_EVERY) this.#track.append(tick(deg))
     this.#mark.hidden = true
     strip.append(this.#track, this.#mark)
     this.#where.append(this.#what, this.#far)
     this.node.append(strip, this.#where)
-    this.#reveal = new Reveal(this.node)
+    this.#reveal = new Reveal(this.node, { kind: 'corner' })
   }
 
   render(state: HudState): void {
@@ -68,14 +71,24 @@ export class CompassSurface implements Surface {
     }
     const relative = wrap(degrees(goal.bearing) - facing)
     const shown = Math.max(-HALF_ARC, Math.min(HALF_ARC, relative))
-    this.#mark.style.left = `${centre + shown * PX_PER_DEG}px`
-    this.#mark.dataset.line = goal.line ?? 'side'
+    this.#mark.style.setProperty('--at', `${centre + shown * PX_PER_DEG}px`)
+    this.#shapeFor(goal.line ?? 'side')
     if (shown === relative) delete this.#mark.dataset.edge
     else this.#mark.dataset.edge = relative < 0 ? 'left' : 'right'
     this.#mark.setAttribute('aria-label', goal.label)
     this.#where.dataset.line = goal.line ?? 'side'
     setText(this.#what, goal.label)
     setText(this.#far, distanceText(goal.distance))
+  }
+
+  /** The mark is the plan's own shape, drawn at strip size, so one place reads as one place. */
+  #shapeFor(line: QuestKind): void {
+    this.#mark.dataset.line = line
+    if (line === this.#shape) return
+    this.#shape = line
+    const box = svg('svg', { viewBox: '-10 -10 20 20', width: 14, height: 14, 'aria-hidden': 'true' })
+    box.append(goalShape(line))
+    this.#mark.replaceChildren(box)
   }
 }
 
@@ -85,7 +98,7 @@ export class CompassSurface implements Surface {
  * holds no text of its own.
  */
 function tick(deg: number): HTMLElement {
-  const node = el('div', 'gb-compass-tick')
+  const node = el('div', 'gb-compass-tick gb-t0')
   node.style.left = `${(deg - TRACK.from) * PX_PER_DEG}px`
   const turn = ((deg % 360) + 360) % 360
   if (turn % 90 === 0) node.dataset.point = CARDINALS[turn / 90]

@@ -17,6 +17,7 @@ import {
   type ScreenView,
 } from '../src/index.ts'
 import { CORNER_RESERVED, LAYOUT } from '../src/style/layout.ts'
+import { TOKENS } from '../src/style/tokens.ts'
 
 const huds: Hud[] = []
 
@@ -160,7 +161,7 @@ describe('objectives', () => {
 
     hud.show({ quests, objectives, trackedQuestId: 'q1' })
     const panel = screen.querySelector('.gb-objectives') as HTMLElement
-    const main = panel.querySelector('.gb-main') as HTMLElement
+    const main = panel.querySelector('.gb-chip-main') as HTMLElement
     expect(main.hidden).toBe(false)
     expect(main.textContent).toBe('Main')
     within(panel).getByText('1 more quest')
@@ -359,7 +360,7 @@ describe('the moves on the table', () => {
 
   /** Every move on screen right now, in the order the player reads them. */
   function options(screen: HTMLElement): string[] {
-    return [...screen.querySelectorAll('.gb-move')].map((node) => node.textContent ?? '')
+    return [...screen.querySelectorAll('.gb-move .gb-what')].map((node) => node.textContent ?? '')
   }
 
   it('draws nothing until there is something worth clicking', () => {
@@ -575,12 +576,15 @@ describe('the window', () => {
     expect(getComputedStyle(body).overflowY).toBe('auto')
     expect(getComputedStyle(frame).height).not.toBe('auto')
 
-    // At that width a page of rows reads in columns rather than one line
-    // running the whole frame; the map fills it instead and takes none.
-    for (const face of ['.gb-quests', '.gb-inventory', '.gb-codex', '.gb-settings', '.gb-controls']) {
+    // At that width a face that is a list of rows reads in columns rather than
+    // one line running the whole frame. The map fills the frame instead, and a
+    // quest page is a row with its steps under it, so both take the width.
+    for (const face of ['.gb-inventory', '.gb-codex', '.gb-settings', '.gb-controls']) {
       expect(getComputedStyle(frame.querySelector(face) as HTMLElement).getPropertyValue('columns')).toBe('440px')
     }
-    expect(getComputedStyle(frame.querySelector('.gb-map') as HTMLElement).getPropertyValue('columns')).toBe('')
+    for (const wide of ['.gb-map', '.gb-quests']) {
+      expect(getComputedStyle(frame.querySelector(wide) as HTMLElement).getPropertyValue('columns')).toBe('')
+    }
   })
 
   it('keeps Tab inside itself while it is up, all the way round', async () => {
@@ -796,10 +800,10 @@ describe('the quests tab', () => {
     })
 
     const panel = getByRole(screen, 'dialog', { name: 'Quests' })
-    const titles = [...panel.querySelectorAll('.gb-quest-entry h3')].map((node) => node.textContent)
+    const titles = [...panel.querySelectorAll('.gb-quest-entry .gb-row-title')].map((node) => node.textContent)
     expect(titles).toEqual(['The Copper Wheel', 'Salt and Lamp Oil', 'Lamps for the Alley'])
 
-    const marked = [...panel.querySelectorAll('.gb-quest-entry')].map((entry) => entry.querySelector('.gb-main') !== null)
+    const marked = [...panel.querySelectorAll('.gb-quest-entry')].map((entry) => entry.querySelector('.gb-chip-main') !== null)
     expect(marked).toEqual([true, false, false])
   })
 
@@ -843,7 +847,7 @@ describe('the quests tab', () => {
     const clock = timer.querySelector('.gb-num') as HTMLElement
     expect(clock.textContent).toBe('1 h 12 min')
     expect(timer.dataset.low).toBe('false')
-    expect((panel.querySelector('.gb-quest-timer .gb-bar-fill') as HTMLElement).style.width).toBe('40%')
+    expect((panel.querySelector('.gb-quest-timer .gb-fill') as HTMLElement).style.transform).toBe('scaleX(0.4)')
 
     // The timer runs on the game clock, so each push of the journal moves it,
     // written into the node already there: the page is not rebuilt around it.
@@ -893,7 +897,7 @@ describe('the inventory tab', () => {
     const panel = getByRole(screen, 'dialog', { name: 'Inventory' })
     within(panel).getByText('128')
     expect(screen.querySelectorAll('.gb-coin')).toHaveLength(1)
-    const names = [...panel.querySelectorAll('.gb-carried .gb-what')].map((node) => node.textContent)
+    const names = [...panel.querySelectorAll('.gb-carried .gb-row-title')].map((node) => node.textContent)
     expect(names).toEqual(['Brass ledger', 'Green bottle'])
     within(panel).getByText('Quest')
     // What a thing is worth sits on its row; a thing with no value says nothing.
@@ -1436,7 +1440,7 @@ describe('the compass', () => {
     const points = [...compass.querySelectorAll('.gb-compass-tick[data-point]')].map((node) => node.getAttribute('data-point'))
     expect(points.slice(0, 4)).toEqual(['S', 'W', 'N', 'E'])
     // Facing north, a goal to the north-east sits 45 degrees right of centre: the strip shows 120 degrees over 360 px.
-    expect(mark.style.left).toBe('315px')
+    expect(mark.style.getPropertyValue('--at')).toBe('315px')
     expect(mark.getAttribute('data-line')).toBe('main')
     expect(mark.hasAttribute('data-edge')).toBe(false)
     getByText(compass, 'The Copper Wheel')
@@ -1445,13 +1449,13 @@ describe('the compass', () => {
 
     // Turning to face east slides the track by ninety degrees and brings the mark to centre.
     hud.show({ compass: { facing: east, goal: { label: 'The Copper Wheel', bearing: east, distance: 1240, line: 'main' } } })
-    expect(mark.style.left).toBe('180px')
+    expect(mark.style.getPropertyValue('--at')).toBe('180px')
     expect(track.style.transform).not.toBe(at0)
     getByText(compass, '1.2 km')
 
     // A goal behind the player is pinned to the nearer edge; an errand wears the other mark.
     hud.show({ compass: { facing: 0, goal: { label: 'The docks', bearing: Math.PI * 1.2, distance: 80, line: 'side' } } })
-    expect(mark.style.left).toBe('0px')
+    expect(mark.style.getPropertyValue('--at')).toBe('0px')
     expect(mark.getAttribute('data-edge')).toBe('left')
     expect(mark.getAttribute('data-line')).toBe('side')
 
@@ -1562,15 +1566,15 @@ describe('the two lines of work', () => {
     })
 
     // Two shapes, not one shape in two shades: a solid diamond and an open ring.
+    const paint = (node: Element): string[] => [
+      getComputedStyle(node).getPropertyValue('fill'),
+      getComputedStyle(node).getPropertyValue('stroke'),
+    ]
     for (const root of ['.gb-plan', '.gb-near']) {
       const main = screen.querySelector(`${root} .gb-goal[data-line='main'] .gb-mark-main`) as Element
       const side = screen.querySelector(`${root} .gb-goal[data-line='side'] .gb-mark-side`) as Element
       expect(main.tagName).toBe('path')
       expect(side.tagName).toBe('circle')
-      const paint = (node: Element): string[] => [
-        getComputedStyle(node).getPropertyValue('fill'),
-        getComputedStyle(node).getPropertyValue('stroke'),
-      ]
       expect(paint(main)).not.toEqual(paint(side))
       for (const value of [...paint(main), ...paint(side)]) expect(value).not.toBe('')
     }
@@ -1579,13 +1583,16 @@ describe('the two lines of work', () => {
     const rows = [...screen.querySelectorAll('.gb-bearings li')]
     expect(rows.map((row) => row.getAttribute('data-line'))).toEqual(['main', 'side'])
 
-    // And so does the compass: the story turns on its point, an errand does not.
+    // And so does the compass, in its own medium: the same two shapes, drawn
+    // at strip size, so a place on the plan and the same place on the strip
+    // are recognisably one place.
     const strip = screen.querySelector('.gb-compass-mark') as HTMLElement
-    const asMain = getComputedStyle(strip).transform
-    expect(asMain).toContain('rotate(45deg)')
+    const asMain = strip.querySelector('.gb-mark-main') as Element
+    expect(asMain.tagName).toBe('path')
     hud.show({ compass: { facing: 0, goal: { label: 'The docks', bearing: 0, distance: 90, line: 'side' } } })
-    expect(getComputedStyle(strip).transform).not.toBe(asMain)
-    expect(getComputedStyle(strip).width).not.toBe('10px')
+    const asSide = strip.querySelector('.gb-mark-side') as Element
+    expect(asSide.tagName).toBe('circle')
+    expect(paint(asMain)).not.toEqual(paint(asSide))
   })
 })
 
@@ -1661,7 +1668,7 @@ describe('the controls tab', () => {
     within(panel).getByText('Move')
     within(panel).getByText('Walk')
     const body = panel.querySelector('.gb-window-body') as HTMLElement
-    const keys = [...body.querySelectorAll('.gb-hint kbd')].map((node) => node.textContent)
+    const keys = [...body.querySelectorAll('.gb-row kbd')].map((node) => node.textContent)
     for (const key of ['W', 'G', 'T', 'K', 'P', 'N', 'I', 'J', 'M', 'X', 'O', '?', 'Esc']) expect(keys).toContain(key)
     within(body).getByText('Leave the game')
     within(body).getByText('Inventory')
@@ -1688,7 +1695,7 @@ describe('the loader', () => {
     const places = getByRole(loader, 'progressbar', { name: 'Writing the places' })
     expect(places.getAttribute('aria-valuenow')).toBe('38')
     within(places).getByText('3/8')
-    expect((places.querySelector('.gb-bar-fill') as HTMLElement).style.width).toBe('38%')
+    expect((places.querySelector('.gb-fill') as HTMLElement).style.transform).toBe('scaleX(0.375)')
     expect(getByRole(loader, 'progressbar', { name: 'Writing the quests' }).getAttribute('aria-valuenow')).toBe('0')
 
     // The next push fills the bar already there rather than drawing a new one.
@@ -1854,6 +1861,130 @@ describe('the layers', () => {
     for (const side of ['left', 'right', 'top', 'bottom']) {
       expect(px('.gb-confirm-room', side)).toBe(px('.gb-window-room', side))
     }
+  })
+})
+
+describe('the look', () => {
+  /** Every declaration in the sheet that is not the block declaring the tokens. */
+  function withoutTokens(): string {
+    return HUD_CSS.replace(TOKENS, '')
+  }
+
+  it('writes every colour as a token, so one file retunes the whole interface', () => {
+    // A hex or an rgb() anywhere else is a colour that cannot be changed with
+    // the rest, which is how one panel ends up a shade off every other.
+    expect(withoutTokens()).not.toMatch(/#[0-9a-fA-F]{3}\b/)
+    expect(withoutTokens()).not.toMatch(/rgba?\(/)
+    expect(TOKENS).toMatch(/--gb-accent:/)
+  })
+
+  it('cuts its corners rather than rounding them, and never draws a border-radius', () => {
+    expect(HUD_CSS).not.toMatch(/border-radius/)
+    expect(HUD_CSS).toMatch(/clip-path: polygon/)
+    const { hud, screen } = mount()
+    hud.show({ window: 'quests', quests: QUESTS })
+    const frame = getByRole(screen, 'dialog', { name: 'Quests' })
+    expect(frame.classList.contains('gb-cut')).toBe(true)
+    expect(getComputedStyle(frame).getPropertyValue('clip-path')).toContain('polygon')
+  })
+
+  it('gives every row its icon, its state and the button that acts on it', () => {
+    const { hud, screen } = mount()
+    hud.show({
+      money: 50,
+      counter: { seller: 'Mara Quill', offers: [{ id: 'i1', name: 'Green bottle', price: 3 }] },
+    })
+    const row = getByText(screen, 'Green bottle').closest('.gb-row') as HTMLElement
+    expect(row.querySelector('.gb-tile svg')).not.toBeNull()
+    within(row).getByText('3 credits')
+    // A row that can be acted on says so, so the pointer answers on it and
+    // nowhere else.
+    expect(row.dataset.acts).toBe('true')
+    expect((row.querySelector('.gb-row-acts button') as HTMLButtonElement).disabled).toBe(false)
+  })
+})
+
+describe('motion', () => {
+  /** The property each transition and each keyframe in the sheet writes. */
+  function animated(): string[] {
+    const moved: string[] = []
+    for (const match of HUD_CSS.matchAll(/transition:\s*([^;]+);/g)) {
+      for (const part of (match[1] ?? '').split(',')) {
+        const name = part.trim().split(/\s+/)[0]
+        if (name) moved.push(name)
+      }
+    }
+    for (const frames of HUD_CSS.matchAll(/@keyframes[^{]+\{([\s\S]*?\}\s*)\}/g)) {
+      for (const line of (frames[1] ?? '').matchAll(/([a-z-]+):\s*[^;]+;/g)) {
+        if (line[1]) moved.push(line[1])
+      }
+    }
+    return moved
+  }
+
+  it('moves nothing but transform, opacity and colour, because it draws over a running scene', () => {
+    // Anything that lays out or repaints per frame over a 3D scene costs the
+    // frame, so the sheet may not name one at all.
+    expect([...new Set(animated())].sort()).toEqual(['background-color', 'color', 'opacity', 'transform'])
+    expect(HUD_CSS).not.toMatch(/backdrop-filter/)
+    expect(HUD_CSS).not.toMatch(/transition:\s*all/)
+  })
+
+  it('says how a surface arrives and how it leaves, one family per kind', () => {
+    const { hud, screen } = mount()
+    hud.show({ compass: { facing: 0 }, talk: { speaker: 'Mara Quill' }, window: 'quests', quests: QUESTS })
+    const at = (selector: string): string[] => {
+      const node = screen.querySelector(selector) as HTMLElement
+      return [node.dataset.reveal ?? '', node.dataset.state ?? '']
+    }
+    // A corner panel drops in, a side panel comes in from its edge, a frame rises.
+    expect(at('.gb-compass')).toEqual(['corner', 'open'])
+    expect(at('.gb-talk')).toEqual(['side', 'open'])
+    expect(at('.gb-window:not(.gb-counter)')).toEqual(['frame', 'open'])
+    expect(at('.gb-scrim')).toEqual(['fade', 'open'])
+
+    // Closed the moment it is asked: it takes no clicks and leaves the
+    // accessible tree while its pixels are still there.
+    hud.show({ window: null })
+    const frame = screen.querySelector('.gb-window:not(.gb-counter)') as HTMLElement
+    expect(frame.dataset.state).toBe('closing')
+    expect(frame.getAttribute('aria-hidden')).toBe('true')
+    expect(frame.hidden).toBe(false)
+  })
+
+  it('collapses to an instant change when the player asks for less movement', () => {
+    vi.useFakeTimers()
+    const real = window.matchMedia
+    window.matchMedia = ((query: string) =>
+      ({ matches: query.includes('prefers-reduced-motion'), media: query })) as typeof window.matchMedia
+    try {
+      const { hud, screen } = mount()
+      hud.show({ window: 'quests', quests: QUESTS })
+      hud.show({ window: null })
+      // Nothing lingers: the frame is out on the same tick rather than after a
+      // leave the player did not ask to watch.
+      vi.advanceTimersByTime(0)
+      expect((screen.querySelector('.gb-window:not(.gb-counter)') as HTMLElement).hidden).toBe(true)
+
+      // And a number that would count to its new value is simply at it.
+      hud.show({ money: 50, counter: { seller: 'Mara Quill', offers: [] } })
+      const counter = getByRole(screen, 'dialog', { name: 'Mara Quill' })
+      hud.show({ money: 400 })
+      within(counter).getByText('400')
+    } finally {
+      window.matchMedia = real
+      vi.useRealTimers()
+    }
+  })
+
+  it('acts on a click before it moves anything', async () => {
+    const user = userEvent.setup()
+    const { hud, screen, intents } = mount()
+    hud.show({ money: 50, counter: { seller: 'Mara Quill', offers: [{ id: 'i1', name: 'Green bottle', price: 3 }] } })
+    // The intent is out on the same tick as the click: motion follows what the
+    // player asked for, it never delays it.
+    await user.click(getByRole(screen, 'button', { name: 'Buy Green bottle, 3 credits' }))
+    expect(intents).toContainEqual({ kind: 'buy', itemId: 'i1' })
   })
 })
 

@@ -1,5 +1,5 @@
 import { HUD_KEYS } from '../controls.ts'
-import { el, keyButton, setText } from '../dom.ts'
+import { el, setText } from '../dom.ts'
 import { FocusReturn } from '../focus.ts'
 import { Reveal } from '../reveal.ts'
 import type { ScreenApp } from '../screen/app.ts'
@@ -9,6 +9,8 @@ import { body, fit } from '../screen/size.ts'
 import { SnakeApp } from '../screen/snake.ts'
 import { TetrisApp } from '../screen/tetris.ts'
 import type { HudIntent, HudState, ScreenView } from '../types.ts'
+import { closeButton } from '../ui/act.ts'
+import { ICON_PX, icon } from '../ui/icon.ts'
 import type { Surface } from './surface.ts'
 
 /**
@@ -20,8 +22,8 @@ import type { Surface } from './surface.ts'
  */
 export class ScreenSurface implements Surface {
   readonly node = el('div', 'gb-screen-room')
-  #frame = el('section', 'gb-screen gb-bracket')
-  #title = el('h3')
+  #frame = el('section', 'gb-screen gb-cut gb-edged')
+  #title = el('h3', 'gb-head-name gb-t5')
   #text = el('pre', 'gb-screen-text')
   #emit: (intent: HudIntent) => void
   #reveal: Reveal
@@ -36,13 +38,13 @@ export class ScreenSurface implements Surface {
     this.#frame.setAttribute('aria-modal', 'true')
     this.#frame.tabIndex = -1
     this.#text.setAttribute('aria-live', 'polite')
-    const close = keyButton('gb-close', 'Close', HUD_KEYS.close, 'Close screen (Escape)')
+    const close = closeButton(HUD_KEYS.close, 'Close screen (Escape)')
     close.addEventListener('click', () => this.#closed())
-    const head = el('header', 'gb-screen-head')
-    head.append(this.#title, close)
-    this.#frame.append(head, this.#text)
+    const head = el('header', 'gb-head')
+    head.append(icon('screen', ICON_PX.button), this.#title, close)
+    this.#frame.append(head, this.#text, el('span', 'gb-ticks'))
     this.node.append(this.#frame)
-    this.#reveal = new Reveal(this.#frame, { onClosed: () => this.#clear() })
+    this.#reveal = new Reveal(this.#frame, { kind: 'fade', onClosed: () => this.#clear() })
   }
 
   render(state: HudState): void {
