@@ -11,6 +11,11 @@
  * The offsets are written in the character's own frame: +Y up, +Z the way the
  * art faces in its own file, +X its left. `back` tips the crown away from the
  * face, `left` turns toward the left hand, `roll` tips onto the left shoulder.
+ *
+ * `upright` is the one offset that changes frame by frame: a bone is turned,
+ * at every keyframe, by the least that keeps one of its own axes within some
+ * degrees of vertical, which is how a hand keeps a glass from lying on its
+ * side in the lap while the arm the source authored still swings.
  */
 import { Skeleton, conjugate, multiply, rotate, turn } from './skeleton.mjs'
 
@@ -42,7 +47,7 @@ export class PoseDeriver {
       const bone = channel.getTargetNode()?.getName()
       if (bone) tracks.set(`${bone}/${channel.getTargetPath()}`, channel)
     }
-    for (const bone of [...Object.keys(spec.turn ?? {}), ...Object.keys(spec.shift ?? {})]) {
+    for (const bone of [...Object.keys(spec.turn ?? {}), ...Object.keys(spec.shift ?? {}), ...Object.keys(spec.upright ?? {})]) {
       if (!tracks.has(`${bone}/rotation`)) throw new Error(`${spec.name}: ${spec.from} does not drive a bone called ${bone}`)
     }
 
@@ -51,10 +56,12 @@ export class PoseDeriver {
       if (!key.endsWith('/rotation')) continue
       rotations.set(key.slice(0, -'/rotation'.length), channel.getSampler().getOutput().getArray())
     }
-    const skeleton = new Skeleton(this.#topOf(channels), rotations)
+    const top = this.#topOf(channels)
+    const skeleton = new Skeleton(top, rotations)
     const frames = tracks.get('root/rotation').getSampler().getInput().getCount()
 
     const posed = this.#pose(spec, skeleton, rotations, frames)
+    this.#level(spec, top, rotations, posed, frames)
     const shifted = this.#place(spec, skeleton, tracks, frames)
 
     const clip = this.#document.createAnimation(spec.name)
@@ -102,6 +109,44 @@ export class PoseDeriver {
       }
     }
     return out
+  }
+
+  /**
+   * Turns each `upright` bone, frame by frame, by the least that brings its
+   * axis to within the limit of vertical. Read off the pose the turns left,
+   * so it composes with them; written into the posed tracks.
+   */
+  #level(spec, top, rotations, posed, frames) {
+    const rules = Object.entries(spec.upright ?? {})
+    if (!rules.length) return
+    const turned = new Map(rotations)
+    for (const [key, track] of posed) turned.set(key.slice(0, -'/rotation'.length), track)
+    for (const [bone] of rules) {
+      if (!posed.has(`${bone}/rotation`)) posed.set(`${bone}/rotation`, new Float32Array(rotations.get(bone)))
+      turned.set(bone, posed.get(`${bone}/rotation`))
+    }
+    const skeleton = new Skeleton(top, turned)
+
+    for (let frame = 0; frame < frames; frame++) {
+      const world = skeleton.worldRotations(frame)
+      for (const [bone, rule] of rules) {
+        const axis = rotate(rule.axis, world.get(bone))
+        const off = Math.acos(Math.max(-1, Math.min(1, axis[1])))
+        const limit = (rule.within * Math.PI) / 180
+        if (off <= limit) continue
+        // the shortest way from where the axis points to straight up: about axis x up
+        const hinge = [-axis[2], 0, axis[0]]
+        const length = Math.hypot(...hinge)
+        if (length < 1e-6) continue
+        const fix = turn(hinge.map((value) => value / length), ((off - limit) * 180) / Math.PI)
+        const parent = skeleton.parentOf(bone)
+        const anchor = parent === undefined ? [0, 0, 0, 1] : world.get(parent)
+        const local = multiply(multiply(conjugate(anchor), fix), anchor)
+        const track = posed.get(`${bone}/rotation`)
+        const frame4 = frame * 4
+        track.set(multiply(local, [track[frame4], track[frame4 + 1], track[frame4 + 2], track[frame4 + 3]]), frame4)
+      }
+    }
   }
 
   /** The moved bones' new translation tracks, in metres of the character's own frame. */

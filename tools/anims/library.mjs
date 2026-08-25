@@ -69,6 +69,30 @@ export class ClipLibrary {
     }
   }
 
+  /**
+   * Drops every scale channel. The packs write one on nearly every bone of
+   * every clip and none of them ever leaves 1, so they are bytes for nothing
+   * and, played, they would reset a build the game put on the rig at spawn.
+   * A channel that does scale something is refused rather than lost.
+   */
+  dropScale() {
+    let dropped = 0
+    for (const animation of this.#root.listAnimations()) {
+      for (const channel of animation.listChannels()) {
+        if (channel.getTargetPath() !== 'scale') continue
+        const values = channel.getSampler().getOutput().getArray()
+        const scaled = values.find((value) => Math.abs(value - 1) > 1e-4)
+        if (scaled !== undefined) {
+          throw new Error(`${animation.getName()}: ${channel.getTargetNode()?.getName()} is scaled to ${scaled}, and a build set at spawn cannot survive that`)
+        }
+        channel.getSampler().dispose()
+        channel.dispose()
+        dropped++
+      }
+    }
+    return dropped
+  }
+
   /** The clips are the point; the mannequin they were authored on is not. */
   stripArt() {
     for (const node of this.#root.listNodes()) node.setMesh(null)

@@ -7,7 +7,7 @@
  * offsets live with each prop and are measured against the rig in
  * `tests/props.test.ts`.
  */
-export type PropKind = 'phone' | 'cigarette' | 'glass' | 'torch' | 'trolley'
+export type PropKind = 'phone' | 'cigarette' | 'glass' | 'food' | 'torch' | 'trolley'
 
 export type Hand = 'hand_l' | 'hand_r'
 
@@ -42,6 +42,7 @@ export const HANDHELD: Readonly<Record<string, Held>> = {
   Idle_Drink_Loop: GLASS,
   Sitting_Drink_Loop: GLASS,
   Sitting_StoolDrink_Loop: GLASS,
+  Sitting_Eat_Loop: { prop: 'food', bone: 'hand_l' },
   Idle_Torch_Loop: { prop: 'torch', bone: 'hand_l' },
   Push_Loop: { prop: 'trolley', bone: 'body' },
 }

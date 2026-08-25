@@ -7,7 +7,7 @@
  * stool clip lifts the whole body onto a taller pad and tucks the feet onto
  * its rail.
  */
-import { LEFT_ARM, TORSO, UPPER } from '../blend.mjs'
+import { A_GLASS_IN_THE_LEFT_HAND, LEFT_ARM, TORSO, UPPER } from '../blend.mjs'
 import { METRICS } from '../../../game/world/src/metrics.ts'
 
 /** Sat, leaning in, both hands out on the desk. */
@@ -75,32 +75,59 @@ export const SEATED = [
     turn: AT_THE_TABLE,
   },
   {
-    name: 'Sitting_Drink_Loop',
-    what: 'sat, raising a glass to the mouth and putting it down again',
+    name: 'Sitting_DrinkArm_Loop',
+    what: 'the drinking arm on the seated stance; a step on the way to the drink',
     base: 'Sitting_Idle_Loop',
-    hold: 0,
     add: [{ clip: 'Consume', bones: UPPER }],
     stretch: 2.2,
+  },
+  {
+    name: 'Sitting_DrinkReach_Loop',
+    from: 'Sitting_DrinkArm_Loop',
+    what: 'the drinking arm brought in from arm\'s length; a step on the way to the drink',
+    // `Consume` raises the hand to head height half a metre in front of the
+    // face: the arm is brought in toward the lips
+    turn: { upperarm_l: { left: -20, roll: -40 }, lowerarm_l: { back: -10, left: -50 } },
+    upright: A_GLASS_IN_THE_LEFT_HAND,
+  },
+  {
+    name: 'Sitting_Drink_Loop',
+    from: 'Sitting_DrinkReach_Loop',
+    what: 'sat, raising a glass to the mouth and putting it down again',
+    // settled with the levelled glass: the rim meets the lips at the top of
+    // the loop and the glass rests over the lap at the bottom, both measured
+    // in `tests/props.test.ts`
+    turn: { upperarm_l: { back: 10, roll: 20 }, lowerarm_l: { left: -20 } },
+    upright: A_GLASS_IN_THE_LEFT_HAND,
   },
   {
     name: 'Sitting_EatArm_Loop',
     what: 'the eating arm on the seated stance; a step on the way to the meal',
     base: 'Sitting_Idle_Loop',
-    hold: 0,
     add: [{ clip: 'Consume', bones: LEFT_ARM }],
     stretch: 2.6,
   },
   {
-    name: 'Sitting_Eat_Loop',
+    name: 'Sitting_EatReach_Loop',
     from: 'Sitting_EatArm_Loop',
-    what: 'sat at a table, chin down, one hand on the table and the other going to the mouth',
+    what: 'chin down, one hand on the table, the eating arm brought in from arm\'s length; a step on the way to the meal',
     turn: {
       spine_02: { back: -8 },
       neck_01: { back: -10 },
       Head: { back: -6 },
+      upperarm_l: { back: -20, left: -40, roll: -20 },
+      lowerarm_l: { back: 20, left: -30 },
       upperarm_r: { back: 62 },
       lowerarm_r: { back: -30 },
     },
+  },
+  {
+    name: 'Sitting_Eat_Loop',
+    from: 'Sitting_EatReach_Loop',
+    what: 'sat at a table, chin down, one hand on the table and the other bringing food to the mouth',
+    // settled: the roll meets the lips at the top of the loop and rests over
+    // the lap at the bottom, measured in `tests/props.test.ts`
+    turn: { upperarm_l: { back: -10 }, lowerarm_l: { back: 40, left: 10 } },
   },
   {
     name: 'Sitting_PhoneArm_Loop',

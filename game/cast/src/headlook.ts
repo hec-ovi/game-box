@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { restAxesOf, type BoneAxes } from './axes.ts'
 
 /**
  * How far each bone in the chain may turn off the pose the clip put it in.
@@ -15,14 +16,9 @@ const CHAIN = [
 /** Seconds for the look to reach the target, and to let go of it. */
 const EASE = 0.22
 
-interface Link {
-  readonly bone: THREE.Bone
+interface Link extends BoneAxes {
   readonly yaw: number
   readonly pitch: number
-  /** Where the face points, and which way is up, in this bone's own frame. */
-  readonly forward: THREE.Vector3
-  readonly up: THREE.Vector3
-  readonly right: THREE.Vector3
 }
 
 /**
@@ -43,23 +39,9 @@ export class HeadLook {
 
   /** Reads the rest pose, so the axes come from the rig rather than a guess. */
   constructor(root: THREE.Object3D) {
-    root.updateMatrixWorld(true)
-    const model = root.getWorldQuaternion(new THREE.Quaternion()).invert()
-    const bones = new Map<string, THREE.Bone>()
-    root.traverse((child) => {
-      if ((child as THREE.Bone).isBone) bones.set(child.name, child as THREE.Bone)
-    })
-
-    for (const limit of CHAIN) {
-      const bone = bones.get(limit.bone)
-      if (!bone) continue
-      // the rest pose faces the model's +Z with +Y up; expressed in the bone's
-      // own frame those become the axes the offset turns around
-      const rest = model.clone().multiply(bone.getWorldQuaternion(new THREE.Quaternion())).invert()
-      const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(rest)
-      const up = new THREE.Vector3(0, 1, 0).applyQuaternion(rest)
-      const right = new THREE.Vector3().crossVectors(up, forward)
-      this.#links.push({ bone, yaw: limit.yaw, pitch: limit.pitch, forward, up, right })
+    for (const axes of restAxesOf(root, CHAIN.map((limit) => limit.bone))) {
+      const limit = CHAIN.find((one) => one.bone === axes.bone.name)!
+      this.#links.push({ ...axes, yaw: limit.yaw, pitch: limit.pitch })
     }
   }
 

@@ -35,6 +35,7 @@ const made = new ClipAuthor(library.document).author(AUTHORED)
 
 const wanted = clipsUsed()
 const dropped = library.keepOnly(wanted)
+const scales = library.dropScale()
 
 // prune first so the dropped clips' keyframes go with them, then resample:
 // most of a rig's tracks never move, and resample is what collapses them
@@ -45,5 +46,5 @@ const target = join(OUT, 'anims.glb')
 const bones = await library.write(target)
 
 const authored = made.filter((name) => wanted.includes(name))
-console.log(`${wanted.length} clips (${authored.length} authored here, ${dropped} the game never plays dropped) on ${bones} bones -> ${target}`)
+console.log(`${wanted.length} clips (${authored.length} authored here, ${dropped} the game never plays dropped, ${scales} scale channels at 1 dropped) on ${bones} bones -> ${target}`)
 console.log(wanted.join(', '))

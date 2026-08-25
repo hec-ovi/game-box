@@ -2,6 +2,7 @@
 export { Cast, type CastSource } from './cast.ts'
 export { type CastMember } from './member.ts'
 export { CastError, type CastErrorCode } from './error.ts'
+export { buildFor, type Build } from './build.ts'
 export { CLIPS_FOR_ANCHOR, CLIPS, GAITS, GESTURES, WALKS, clipForAnchor, clipsUsed, walkFor } from './clips.ts'
 export { HANDHELD, type Held, type PropKind } from './props/handheld.ts'
 export { CastDressing } from './dressing.ts'

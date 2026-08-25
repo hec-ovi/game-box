@@ -3,11 +3,13 @@ import * as THREE from 'three'
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js'
+import { buildFor } from './build.ts'
 import { clipForAnchor, CLIPS } from './clips.ts'
 import { CastError } from './error.ts'
 import { Hairdresser } from './hairdresser.ts'
 import { chooseLook } from './look.ts'
 import { Person, type CastMember } from './member.ts'
+import { shape } from './physique.ts'
 import { Props } from './props/props.ts'
 import { chooseCharacter, parseWardrobe, type Wardrobe } from './wardrobe.ts'
 
@@ -82,7 +84,7 @@ export class Cast {
     return this.#clips.has(clip)
   }
 
-  /** A person, dressed and barbered for their role, at the origin facing -Z, already doing something. */
+  /** A person, dressed, barbered and built for their role, at the origin facing -Z, already doing something. */
   spawn(npc: Npc, doing: string = CLIPS.idle): CastMember {
     const entry = chooseCharacter(this.#wardrobe, npc, this.theme)
     const source = this.#characters.get(entry.id)
@@ -90,15 +92,18 @@ export class Cast {
 
     const body = cloneSkinned(source)
     body.rotation.y = HALF_TURN
+    const build = buildFor(npc)
+    shape(body, build)
     this.#hair.dress(body, entry, chooseLook(entry, npc.id))
 
     const object = new THREE.Group()
     object.name = npc.id
     object.userData.npcId = npc.id
     object.userData.outfit = entry.id
+    object.userData.build = build
     object.add(body)
 
-    const person = new Person(npc, object, body, entry.id, this.#clips, this.#additive, this.#props)
+    const person = new Person(npc, object, body, entry.id, build, this.#clips, this.#additive, this.#props)
     this.#people.push(person)
     // never the rest pose: a clip the library has not got would leave them T-posing
     person.play(this.#standing(doing), 0)

@@ -86,21 +86,35 @@ describe('what a person has in their hands', () => {
     expect(tip.distanceTo(centre), 'the lit end is not held away from the face').toBeGreaterThan(filter.distanceTo(centre))
   })
 
-  it('keeps the glass upright as it is raised, for every drink clip', () => {
-    for (const clip of Object.keys(HANDHELD).filter((name) => HANDHELD[name]!.prop === 'glass')) {
-      const member = cast.spawn(person({ id: 'npc_glass' }), clip)
-      let raised = 0
-      for (let step = 0; step <= 30; step++) {
-        cast.update(step === 0 ? 0.001 : 0.1)
-        const glass = held(member.object, 'glass')
-        const up = new THREE.Vector3(0, 0, 1).applyQuaternion(glass.getWorldQuaternion(new THREE.Quaternion()))
-        const tilt = (up.angleTo(new THREE.Vector3(0, 1, 0)) * 180) / Math.PI
-        const height = glass.getWorldPosition(new THREE.Vector3()).y
-        raised = Math.max(raised, height)
-        // it tips toward the mouth at the top, as a drink does, and never past that
-        if (height > 1.0) expect(tilt, `${clip}: the glass tips ${tilt.toFixed(0)} degrees on the way up`).toBeLessThan(60)
+  it('brings the glass to the lips at the top of every drink loop, upright on the way, and the roll to the mouth', () => {
+    const toTheMouth = Object.keys(HANDHELD).filter((name) => ['glass', 'food'].includes(HANDHELD[name]!.prop))
+    expect(toTheMouth.length).toBeGreaterThan(3)
+    for (const clip of toTheMouth) {
+      for (const base of BODIES) {
+        const member = cast.spawn(person({ id: `npc_mouth_${base}`, appearance: { base, variant: 1 } }), clip)
+        const what = HANDHELD[clip]!.prop
+        let nearest = Infinity
+        let lowest = Infinity
+        for (let step = 0; step <= 44; step++) {
+          cast.update(step === 0 ? 0.001 : 0.05)
+          const thing = held(member.object, what)
+          const { shape, offTheSkin } = skull(member.object)
+          // the open end is the local +Z end, toward the index finger
+          const end = thing.localToWorld(new THREE.Vector3(0, 0, 0.05))
+          const middle = thing.getWorldPosition(new THREE.Vector3())
+          const up = new THREE.Vector3(0, 0, 1).applyQuaternion(thing.getWorldQuaternion(new THREE.Quaternion()))
+          const tilt = (up.angleTo(new THREE.Vector3(0, 1, 0)) * 180) / Math.PI
+          nearest = Math.min(nearest, offTheSkin(end))
+          lowest = Math.min(lowest, middle.y)
+          expect(shape.inside(middle), `${base} in ${clip}: the ${what} is in the head`).toBe(false)
+          // a drink tips toward the mouth at the top and never past that
+          if (what === 'glass') expect(tilt, `${base} in ${clip}: the glass tips ${tilt.toFixed(0)} degrees`).toBeLessThan(50)
+        }
+        expect(nearest, `${base} in ${clip}: the ${what} gets no nearer the lips than ${nearest.toFixed(3)} m`).toBeLessThan(0.05)
+        // and it comes down again: a whole loop travels, to the lap in a chair, 0.3 m higher on a stool
+        const rest = clip.startsWith('Sitting_') && !clip.includes('Stool') ? 0.9 : 1.2
+        expect(lowest, `${base} in ${clip}: the ${what} never comes down`).toBeLessThan(rest)
       }
-      expect(raised, `${clip}: the glass never comes up`).toBeGreaterThan(1.0)
     }
   })
 

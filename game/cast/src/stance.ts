@@ -16,3 +16,15 @@ export function stanceOf(clip: string): Stance {
 export function seatedIdleOf(clip: string): string {
   return clip.includes('Stool') ? 'Sitting_Stool_Loop' : 'Sitting_Idle_Loop'
 }
+
+/** The talk gesture for the body a clip holds; a body lying down talks with its head alone. */
+export function talkOf(clip: string): string | undefined {
+  switch (stanceOf(clip)) {
+    case 'standing':
+      return CLIPS.talk
+    case 'seated':
+      return CLIPS.talkSeated
+    case 'lying':
+      return undefined
+  }
+}

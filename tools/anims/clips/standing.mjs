@@ -14,7 +14,7 @@
  * `left` about the up axis, `roll` about the forward axis. `shift` is metres
  * in the same frame. See tools/anims/derive.mjs.
  */
-import { LEFT_ARM, RIGHT_ARM, TORSO } from '../blend.mjs'
+import { A_GLASS_IN_THE_LEFT_HAND, LEFT_ARM, RIGHT_ARM, TORSO } from '../blend.mjs'
 
 /** Both feet level under the hips and the knees nearly straight. */
 const AT_EASE_LEGS = {
@@ -140,12 +140,30 @@ export const STANDING = [
     add: [{ clip: 'Yes', bones: TORSO }],
   },
   {
-    name: 'Idle_Drink_Loop',
-    what: 'on their feet, raising a glass to the mouth and putting it down again',
+    name: 'Idle_DrinkArm_Loop',
+    what: 'the drinking arm on the relaxed stance; a step on the way to the drink',
     base: 'Idle_Relaxed_Loop',
-    hold: 0,
     add: [{ clip: 'Consume', bones: LEFT_ARM }],
     stretch: 2.2,
+  },
+  {
+    name: 'Idle_DrinkReach_Loop',
+    from: 'Idle_DrinkArm_Loop',
+    what: 'the drinking arm brought in from arm\'s length; a step on the way to the drink',
+    // `Consume` raises the hand to head height half a metre in front of the
+    // face: the arm is brought in toward the lips
+    turn: { upperarm_l: { back: -10, left: -50, roll: -30 }, lowerarm_l: { back: 30, left: -60 } },
+    upright: A_GLASS_IN_THE_LEFT_HAND,
+  },
+  {
+    name: 'Idle_Drink_Loop',
+    from: 'Idle_DrinkReach_Loop',
+    what: 'on their feet, raising a glass to the mouth and putting it down again',
+    // settled with the levelled glass: the rim meets the lips at the top of
+    // the loop and the glass rests in front of the chest at the bottom, both
+    // measured in `tests/props.test.ts`
+    turn: { upperarm_l: { back: -20, roll: 20 }, lowerarm_l: { back: 20, left: -30 } },
+    upright: A_GLASS_IN_THE_LEFT_HAND,
   },
   {
     name: 'Idle_Wall_Loop',

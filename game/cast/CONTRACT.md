@@ -1,10 +1,10 @@
 # @gb/cast contract
 
-contractVersion: 0.9.0
+contractVersion: 0.10.0
 
 ## Purpose
 
-The people: one clip library and one dressed character per outfit, loaded once, cloned per NPC, wearing what their role suits and the hair their id draws, playing what the anchor they stand on implies with the thing that clip is posed around in their hand, and leaving that stance to face whoever talks to them.
+The people: one clip library and one dressed character per outfit, loaded once, cloned per NPC, wearing what their role suits and the hair their id draws, built to the size their id draws, playing what the anchor they stand on implies with the thing that clip is posed around in their hand, leaving that stance to face whoever talks to them, and talking with their hands and their head for as long as their line is arriving.
 
 The city is cyberpunk at night, so the clothes are near-black coated garments with one lit accent each, and the hair is as often dyed as grown. Twelve outfits cover the twelve `NPC_ROLES` across the pack's two bodies.
 
@@ -19,6 +19,7 @@ The city is cyberpunk at night, so the clothes are near-black coated garments wi
 | `member.play(clip, fade?)` / `member.stopGesture(fade?)` | clip names | an unknown name is ignored: they keep doing what they were doing. `play` ends an `attend` |
 | `member.pace(metresPerSecond)` | the speed the body is really moving at | only a clip in `GAITS` is paced; anything else is left alone |
 | `member.gesture(clip, fade?)` | one of `GESTURES` | any other name is ignored, including a clip the library has |
+| `member.speak(on)` / `member.pulse()` | a boolean; nothing | `speak(true)` opens a line and `speak(false)` closes it; `pulse` is a chunk of the reply arriving and does nothing while they are not speaking |
 | `member.lookAt(point)` / `member.lookAway()` | a `THREE.Vector3` in world space | |
 | `member.attend(point)` / `member.resume()` | a `THREE.Vector3` in world space | `attend` may be called again with a new point; `resume` with nothing to resume does nothing |
 
@@ -26,7 +27,9 @@ The city is cyberpunk at night, so the clothes are near-black coated garments wi
 
 | Param | Schema | Postconditions |
 |---|---|---|
-| `spawn` | `CastMember`: `object`, `outfit`, `play`, `playing`, `holding`, `pace`, `gesture`, `stopGesture`, `gesturing`, `lookAt`, `lookAway`, `attend`, `resume`, `attending` | a dressed, barbered person at the origin facing -Z, already animating, with their own skeleton and mixer |
+| `spawn` | `CastMember`: `object`, `outfit`, `build`, `play`, `playing`, `holding`, `pace`, `gesture`, `stopGesture`, `gesturing`, `speak`, `pulse`, `speaking`, `lookAt`, `lookAway`, `attend`, `resume`, `attending` | a dressed, barbered, built person at the origin facing -Z, already animating, with their own skeleton and mixer |
+| `member.build` / `buildFor(npc)` | `Build`: `regular` or `heavy` | how the rig was scaled at spawn; `buildFor` answers it off the person alone, with no body to spawn |
+| `member.speaking` | a boolean | true between `speak(true)` and `speak(false)`, whatever the clip under it |
 | `member.holding` | a `THREE.Object3D` or undefined | the thing the playing clip is posed around, parented to their own bone; nothing for a clip that holds nothing |
 | `clips()` / `characters()` / `has(clip)` | names | what the loaded pack can actually do |
 | `Cast.doingAt(anchorKind, npcId?)` | a clip name | every anchor kind maps to clips that exist; with an id, which one is drawn off the id, so the same person always does the same thing |
@@ -60,7 +63,7 @@ Everything after loading is forgiving: an unknown clip or gesture name is ignore
 
 Built by `node tools/build-anims.mjs && node tools/build-pack.mjs && node tools/build-wardrobe.mjs`, served from `assets/dist/`:
 
-- `anims.glb`: every clip, on one skeleton, no meshes. 1.65 MB over the wire, 47 clips.
+- `anims.glb`: every clip, on one skeleton, no meshes. 1.31 MB over the wire, 47 clips.
 - `wardrobe.json`: `{ characters: [{ id, body, file, roles, themes, styles, brows, beard? }] }`.
 - `characters/<id>.glb`: one finished person, body, clothes, every hairstyle and both pairs of eyebrows already merged. Twelve files, 1.08 to 1.15 MB each, 13.47 MB together.
 
@@ -78,6 +81,27 @@ The Universal Base Characters pack ships two bodies, both on the canonical 65-jo
 | `Superhero_Female_FullBody.gltf` | `female` |
 
 This box never assigns a body: `npc.appearance.base` is the world's, and whatever it says is dressed from the outfits cut for that body (`chooseCharacter` in `src/wardrobe.ts`).
+
+### The heavy build
+
+Two bodies would put the same frame on every doorman in the city, so a minority of the people whose work is physical are built heavier at spawn: **`buildFor(npc)` is `heavy` for the 30 percent of guards, workers and mechanics whose id hashes into it**, and `regular` for everybody else. It is drawn off the id alone, so the same person is the same size every time the city is opened and on anyone else's machine, and `member.build` says which they are.
+
+The build is the pack's own rig scaled, not a second mesh: the torso bones go 12 percent wider across, the upper arms 16, the shoulder joints sit 15 percent further out along the clavicles, and the whole body grows 4 percent about the root (`src/physique.ts`). Every bone's scale is cancelled by a group under it, so the scale reaches that bone's own skin and nothing below it: a thicker chest does not shear the arms swinging off it, and every clip plays as authored. The clip library carries no scale channel at all (`tools/anims/library.mjs` drops the packs' 2,925 channels that never leave 1, and refuses one that does), so nothing the mixer writes can undo a build.
+
+Measured on one id spawned into both builds, in one outfit, on both bodies (`tests/build.test.ts`):
+
+| | regular | heavy |
+|---|---|---|
+| height, male | 1.768 m | 1.838 m |
+| height, female | 1.767 m | 1.837 m |
+| shoulders across the skin, male | 0.477 m | 0.553 m |
+| shoulders across the skin, female | 0.442 m | 0.502 m |
+| upper-arm joints apart, male | 0.382 m | 0.451 m |
+| chest off the spine | 1.00 | 1.13 |
+| upper arm, thickness | 1.00 | 1.18 |
+| head, thickness | 1.00 | 1.04, the height and no more |
+
+Through all 47 clips the heavy body's lowest point stays within 12 mm of the regular body's (worst: the flight frame of `Sprint_Loop`), so the feet are on the floor, the soles on the stool's rail and the back on the mattress wherever the regular body's are. On a seat the taller body's hips ride at most 22 mm higher (worst: `Sitting_Desk_Loop`), which goes into the pad's give rather than into the air. Propped on a wall it stays inside the published 0.44 m standoff. What is in the hand goes where it goes on the regular body, within 3 cm: the wider shoulder carries the phone 27 mm further off the ear at worst and leaves the glass and the roll at the lips.
 
 ### The outfits
 
@@ -114,7 +138,7 @@ Forty-seven clips, all on the canonical skeleton, all CC0. `tools/build-anims.mj
 | `Idle_Hip_Loop` | on their feet, weight on the right hip, the left knee soft | posed here, from `Idle_Relaxed_Loop` |
 | `Idle_Folded_Loop` | on their feet, weight on both, arms folded | posed here, from `Idle_FoldArms_Loop` |
 | `Idle_Phone_Loop` | on their feet, the phone in the palm against the ear | posed here, from `Idle_TalkingPhone_Loop` |
-| `Idle_Drink_Loop` | on their feet, raising a glass to the mouth and putting it down again | blended here: `Idle_Relaxed_Loop` under `Consume`'s left arm |
+| `Idle_Drink_Loop` | on their feet, raising a glass to the lips and putting it down again in front of the chest | blended and posed here: `Idle_Relaxed_Loop` under `Consume`'s left arm, the arm brought in from arm's length and the glass levelled |
 | `Idle_Talking_Loop` | talking with the hands | Quaternius UAL1 |
 | `Idle_No_Loop` | standing, shaking the head | Quaternius UAL2 |
 | `Idle_Yes_Loop` | standing, nodding | blended here: `Idle_Loop` under the nod out of `Yes` |
@@ -135,8 +159,8 @@ Forty-seven clips, all on the canonical skeleton, all CC0. `tools/build-anims.mj
 | `Dance_Slow_Loop` | the same dance at two thirds of the speed | trimmed here, from `Dance_Loop` |
 | `Sitting_Idle_Loop` | sat, hands in the lap | Quaternius UAL1 |
 | `Sitting_Talking_Loop` | sat, talking | Quaternius UAL1 |
-| `Sitting_Eat_Loop` | sat at a table, chin down, one hand on the table and the other going to the mouth | blended and posed here: `Sitting_Idle_Loop` under `Consume`'s left arm, the right arm put on the table |
-| `Sitting_Drink_Loop` | sat, raising a glass to face height and putting it down | blended here: `Sitting_Idle_Loop` under `Consume` |
+| `Sitting_Eat_Loop` | sat at a table, chin down, one hand resting on the top and the other bringing a roll to the mouth | blended and posed here: `Sitting_Idle_Loop` under `Consume`'s left arm, the right arm put on the table and the left brought in to the mouth |
+| `Sitting_Drink_Loop` | sat, raising a glass to the lips and putting it down over the lap | blended and posed here: `Sitting_Idle_Loop` under `Consume`, the arm brought in from arm's length and the glass levelled |
 | `Sitting_Phone_Loop` | sat, phone at the ear | blended and posed here: `Sitting_Idle_Loop` under `Idle_Phone_Loop`, the arm brought to the ear |
 | `Sitting_Desk_Loop` | sat, leaning in, both hands out on the desk | posed here, from `Sitting_Idle_Loop` |
 | `Sitting_Stool_Loop` | on a stool, knees up, feet on the rail under the seat | posed here, from `Sitting_Idle_Loop` |
@@ -172,8 +196,8 @@ The two Quaternius Universal Animation Libraries are 84 clips between them (43 e
 
 The twenty-five made here come out of clips those packs do have, in three ways (`tools/anims/clips/`, built in the order written, so a clip may build on any clip above it):
 
-- **A pose** holds some bones at an angle for the whole of a clip (`tools/anims/derive.mjs`). The source clip's own breathing and weight shift come through untouched, so a posed body is still moving. The relaxed idles are the ready stance with the feet brought level under the hips and the knees straightened, the arms hung by the thighs; a wall lean is a standing idle tipped 8 degrees back off both ankles; the stool is the chair clip lifted by the difference in pads with the shins swung back under the seat.
-- **A blend** lays one clip's movement over another clip's stance (`tools/anims/blend.mjs`), which is the sum the gesture layer does at runtime, done once at build time: `result = stance * (reference^-1 * movement)`. Measured from the movement's own first frame it adds the movement alone, so a seated body drinks; measured from a plain standing idle it also carries the pose, so a seated body gets a phone to its ear. `hold` freezes the stance at one moment, which is how a clip that only passes through lying on the floor becomes a clip that stays there. A blend can be confined to one arm, which is how a meal keeps the other hand on the table.
+- **A pose** holds some bones at an angle for the whole of a clip (`tools/anims/derive.mjs`). The source clip's own breathing and weight shift come through untouched, so a posed body is still moving. The relaxed idles are the ready stance with the feet brought level under the hips and the knees straightened, the arms hung by the thighs; a wall lean is a standing idle tipped 8 degrees back off both ankles; the stool is the chair clip lifted by the difference in pads with the shins swung back under the seat. A pose may also carry `upright`, the one offset that changes frame by frame: a bone is turned, at every keyframe, by the least that keeps one of its own axes within some degrees of vertical, which is what keeps a glass from lying on its side in the lap while the arm the source authored still swings.
+- **A blend** lays one clip's movement over another clip's stance (`tools/anims/blend.mjs`), which is the sum the gesture layer does at runtime, done once at build time: `result = stance * (reference^-1 * movement)`. Measured from the movement's own first frame it adds the movement alone, so a seated body drinks; measured from a plain standing idle it also carries the pose, so a seated body gets a phone to its ear. `hold` freezes the stance at one moment, which is how a clip that only passes through lying on the floor becomes a clip that stays there. A blend can be confined to one arm, which is how a meal keeps the other hand on the table. Without `hold` the stance loops a whole number of times under the movement, so the body under a drinking arm goes on breathing.
 - **A trim** cuts a section out of a one-shot and eases its last third of a second back to its first frame, so it runs as a loop (`tools/anims/trim.mjs`): the three seconds `Fixing_Kneeling` spends kneeling, and the dance at two thirds of the speed.
 
 Neither can invent a limb the source never moves: there is no free clip of hands working a stove, a keyboard or a counter service, so those stances are held poses with the source's own breathing rather than real work.
@@ -223,11 +247,27 @@ A clip posed around an object gets the object, built here from a few boxes and c
 |---|---|---|
 | phone, 75 x 155 x 10 mm, screen lit | `Idle_Phone_Loop`, `Idle_WallPhone_Loop`, `Sitting_Phone_Loop`, `Sitting_StoolPhone_Loop` | in the right palm, lying along the fingers, screen toward the ear; its middle 0.4 to 6 cm off the head's skin and within 8 cm of ear height through the whole loop, on both bodies |
 | cigarette, 85 x 8 mm, tip lit | `Idle_WallSmoke_Loop` | between the second knuckles of the right index and middle fingers, running to the lips, the lit end out |
-| glass, a 100 mm tumbler with drink in it | `Idle_Drink_Loop`, `Sitting_Drink_Loop`, `Sitting_StoolDrink_Loop` | in the left grip, axis across the knuckles; raised above 1.0 m each loop and tipped no more than 60 degrees on the way, toward the mouth |
+| glass, a 100 mm tumbler with drink in it | `Idle_Drink_Loop`, `Sitting_Drink_Loop`, `Sitting_StoolDrink_Loop` | in the left grip, axis across the knuckles; its rim reaches the lips each loop and it comes down again to the chest or the lap, tipping no more than 30 degrees on the way |
+| filled roll in a paper wrap, 100 x 56 mm | `Sitting_Eat_Loop` | in the left grip like the glass, the open end toward the index finger; brought to the mouth each loop and rested over the lap |
 | hand light, a lit tube on a grip | `Idle_Torch_Loop` | in the left fist, standing up within 30 degrees of vertical |
 | trolley, a cage on four wheels | `Push_Loop` | in front of the body, its handle through both hands within 6 cm all the way round the cycle |
 
 The hand bone's frame, which every grip is written against: +Y runs down the fingers from the wrist, Z runs across the knuckles with the index finger at +Z, and the palm faces -X on the right hand and +X on the left. `tests/props.test.ts` checks the frame and every placement.
+
+### Eating and drinking
+
+`Consume` is the pack's one hand-to-mouth movement, and it is authored at arm's length: it lifts the hand to head height half a metre in front of the face, which over a seated stance is somebody holding a glass out at a mirror. So each of these clips is built in three steps (`tools/anims/clips/`), the arm brought in over two poses and the thing in the hand levelled frame by frame, and what reaches the mouth is measured rather than eyeballed. Measured on both bodies over a whole loop (`tests/props.test.ts`), with the thing's open end against the nearest point of the head's skin:
+
+| Clip | To the lips | The thing travels | Tipped at most |
+|---|---|---|---|
+| `Idle_Drink_Loop` | 1 mm | 0.88 to 1.54 m | 30 degrees |
+| `Sitting_Drink_Loop` | 3 mm | 0.60 to 1.12 m | 30 degrees |
+| `Sitting_StoolDrink_Loop` | 2 to 3 mm | 0.90 to 1.42 m | 30 degrees |
+| `Sitting_Eat_Loop` | 6 to 16 mm | 0.67 to 1.08 m | a roll, so it is not levelled |
+
+Nothing ever enters the head, and the body keeps breathing underneath: the stance loops a whole number of times under the arm rather than being frozen at one frame, so a diner's head moves 7 mm and the hand resting on the table 9 while the other hand eats.
+
+The meal is on the `sit` shelf, which is a chair at a table: the resting wrist rides 0.80 to 0.81 m, next to the desk clip's 0.78 over the same 0.75 top. The stool shelf (`sit-drink`) is a bar and carries the drink alone; lifted onto the stool that wrist would ride 1.11 m, a hand over a 1.0 m bar counter, so eating at a bar wants an arm posed for the counter rather than the table.
 
 ### Being spoken to
 
@@ -239,6 +279,18 @@ The hand bone's frame, which every grip is written against: +Y runs down the fin
 - `play` from outside ends the attention: the app's order wins.
 
 `tests/attend.test.ts` measures the face turning to the point, the object not moving, the hips staying at chair and at stool height, and the stand-up and sit-down round trip.
+
+### Talking
+
+`member.speak(true)` opens a line, `member.pulse()` is one chunk of it arriving, `member.speak(false)` closes it. It is mimicry, not lip sync: the rig ends at `Head` with no jaw joint and no mesh in the pack carries a morph target, so there is no mouth to shape, and a mouth that moved to a syllable it could not form would read worse than one that does not.
+
+What it does instead, over whatever the body is already doing:
+
+- **The hands.** The talk gesture for the stance they hold, standing or seated, laid over the upper body as any gesture is: `Idle_Talking_Loop` on their feet, `Sitting_Talking_Loop` sat, and nothing at all lying down. It eases up over about 0.15 s to a third of its weight while the line is being waited for, rises toward full weight as the chunks arrive, and eases off when the line closes, so somebody leaning on their counter is still leaning on it.
+- **The head.** A beat of 3.5 degrees of nod at 3.1 Hz and 2.5 of sway at 1.7, the neck carrying a third of what the head does, added to the pose the clip and the head-look left. Its phase is drawn off the person's id, so a room of talkers is not in step.
+- **The timing.** Each `pulse` adds to the beat's energy, which tops out at one and decays with a third of a second's half life. A stream that stalls goes still within a second and the hands keep going, because the line is still open; a stream that ends goes still and lets go of the hands.
+
+The talk layer follows the clip under it: stand somebody up mid-sentence and they talk with the standing hands, and an arm the new clip has busy (a phone at the ear, a trolley's handle) is left out of it and left to the clip. `gesture(CLIPS.talk)` while they are speaking does nothing, because the talk is already on their hands; a nod or a shake of the head goes over the top of it as it always does. `tests/speech.test.ts` measures each of these against a twin standing still.
 
 ### Standing a body against a wall
 
@@ -278,7 +330,9 @@ The bed `@gb/forge` places is 1.84 m of pad and a body with boots on is 1.90 m e
 - No limb ends up inside the head, through any clip the game plays or any gesture layered over it.
 - Every material a character renders with carries its base colour texture, so nobody comes out the white of a missing map.
 - Everybody has hair, or is bald on purpose: the hairstyle, the eyebrows, the beard and the colour of all three are drawn from the NPC's id, and the eyebrows always match the hair. Every piece sits outside the skin, so a buzz cut shows as a buzz cut. Tinted materials are shared across the whole cast, so a crowd costs one material per colour per hair texture, not one per person.
-- The same NPC id gets the same outfit, the same hair, the same walk and the same point in the loop every time the city is opened, so a shared world file looks the same to everyone.
+- The same NPC id gets the same outfit, the same hair, the same build, the same walk and the same point in the loop every time the city is opened, so a shared world file looks the same to everyone.
+- A build is the rig scaled, never a second body: it reaches the skin of the bones it names and nothing hanging off them, no clip carries a scale channel that could undo it, and through every clip the heavy body's feet, hips and back land where the regular body's do.
+- Nobody's mouth is animated. Speech is the talk gesture and a head beat over whatever they are doing, so a person keeps their stance while they talk and goes still within a second of the words stopping.
 - Every name in `CLIPS_FOR_ANCHOR`, `CLIPS`, `GAITS`, `WALKS` and `GESTURES` is in the shipped library, because `clipsUsed()` is all five lists and the build ships exactly that; the tests fail if one goes missing, so a renamed clip is caught at build time.
 - A stance is a clip, so the two working anchors are two bodies: `work-desk` sits in the chair with its hands out on the desk top, `work-bench` stands at the bench with its hands on the counter top, or kneels at its foot. Both heights are measured against `METRICS.furniture` in the tests.
 - The head-look and gesture layers run after the mixer and never replace the base clip: the chest, neck and head turn off the pose the clip left, and a gesture adds to it on the upper body only, sparing an arm the clip has busy.
@@ -323,4 +377,4 @@ Hair is listed per body in the `hair` block of `game/cast/wardrobe.json`: `style
 
 ## How to modify this blackbox safely
 
-New clips go in `CLIPS`, `CLIPS_FOR_ANCHOR`, `GAITS`, `WALKS` or `GESTURES` and then in the pack: `node tools/build-anims.mjs` builds from `clipsUsed()`, so naming a clip there is what ships it, and a name no source pack has fails the build. A clip no pack has is written in `tools/anims/clips/` (standing, working, seated) as a pose (per-bone angles on a clip already in the library; `tools/anims/derive.mjs` says what the angles mean), a blend (one clip's movement laid over another's stance; `tools/anims/blend.mjs`) or a trim (a section of a one-shot closed into a loop; `tools/anims/trim.mjs`). The list is built in the order written, so any clip may build on any clip above it, and a step on the way that nothing names is not shipped. Every clip drives all 65 bones, and it has to: the character files' own rest poses sit a few millimetres off the animation mannequin's, so a clip that leaves a bone undriven leaves it wherever that file put it, which is 5 cm at a toe. A clip only belongs in `GESTURES` if it stays near its own starting pose. A clip posed around a thing gets a row in `HANDHELD` and, if it is a new thing, a builder in `src/props/`. A new body needs a `BODY_KIND` in `@gb/world` first, then a body file in `game/cast/wardrobe.json` and at least one outfit cut for it. Rebuild the pack, run the gate, then `pnpm --filter @gb/cast test`.
+New clips go in `CLIPS`, `CLIPS_FOR_ANCHOR`, `GAITS`, `WALKS` or `GESTURES` and then in the pack: `node tools/build-anims.mjs` builds from `clipsUsed()`, so naming a clip there is what ships it, and a name no source pack has fails the build. A clip no pack has is written in `tools/anims/clips/` (standing, working, seated) as a pose (per-bone angles on a clip already in the library; `tools/anims/derive.mjs` says what the angles mean), a blend (one clip's movement laid over another's stance; `tools/anims/blend.mjs`) or a trim (a section of a one-shot closed into a loop; `tools/anims/trim.mjs`). The list is built in the order written, so any clip may build on any clip above it, and a step on the way that nothing names is not shipped. Every clip drives all 65 bones, and it has to: the character files' own rest poses sit a few millimetres off the animation mannequin's, so a clip that leaves a bone undriven leaves it wherever that file put it, which is 5 cm at a toe. A clip only belongs in `GESTURES` if it stays near its own starting pose. A clip posed around a thing gets a row in `HANDHELD` and, if it is a new thing, a builder in `src/props/`. A new body needs a `BODY_KIND` in `@gb/world` first, then a body file in `game/cast/wardrobe.json` and at least one outfit cut for it. A new build is a set of ratios and which roles draw it in `src/build.ts` and `src/physique.ts`, and it stays a scaling of the one rig, so it costs no file and no download. Rebuild the pack, run the gate, then `pnpm --filter @gb/cast test`.

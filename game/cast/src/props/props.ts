@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { buildCigarette } from './cigarette.ts'
+import { buildFood } from './food.ts'
 import { buildGlass } from './glass.ts'
 import type { Held, PropKind } from './handheld.ts'
 import { buildPhone } from './phone.ts'
@@ -32,6 +33,8 @@ function build(prop: PropKind, bone: Held['bone']): THREE.Object3D {
       return buildPhone(hand)
     case 'glass':
       return buildGlass(hand)
+    case 'food':
+      return buildFood(hand)
     case 'cigarette':
       return buildCigarette()
     case 'torch':

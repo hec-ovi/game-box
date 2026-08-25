@@ -1,5 +1,6 @@
 import type { Npc } from '@gb/world'
 import * as THREE from 'three'
+import type { Build } from './build.ts'
 import { CLIPS, GAITS, GESTURES } from './clips.ts'
 import { Facing } from './facing.ts'
 import { upperBodyOf } from './gesture.ts'
@@ -8,7 +9,8 @@ import { HeadLook } from './headlook.ts'
 import { Hands } from './hands.ts'
 import { busyHandsOf, type Hand } from './props/handheld.ts'
 import type { Props } from './props/props.ts'
-import { seatedIdleOf, stanceOf } from './stance.ts'
+import { Speech } from './speech.ts'
+import { seatedIdleOf, stanceOf, talkOf } from './stance.ts'
 
 /** One person in the world: their body, what they are doing, and where they are looking. */
 export interface CastMember {
@@ -16,6 +18,8 @@ export interface CastMember {
   readonly object: THREE.Object3D
   /** The wardrobe entry they are wearing. */
   readonly outfit: string
+  /** How they are built: the pack's own body, or the heavy build cut from it at spawn. */
+  readonly build: Build
   /** Cross-fade the whole body to a clip. Unknown names are ignored, never thrown. */
   play(clip: string, fadeSeconds?: number): void
   readonly playing: string | undefined
@@ -27,6 +31,11 @@ export interface CastMember {
   gesture(clip: string, fadeSeconds?: number): void
   stopGesture(fadeSeconds?: number): void
   readonly gesturing: string | undefined
+  /** Start or stop talking: the talk gesture for the stance they are in, and a head that moves with the words. */
+  speak(on: boolean): void
+  /** A chunk of the line arrived: the head beats to it. Nothing unless they are speaking. */
+  pulse(): void
+  readonly speaking: boolean
   /** Turn the head toward a point in world space, and hold it there. */
   lookAt(point: THREE.Vector3): void
   lookAway(): void
@@ -52,6 +61,7 @@ export class Person implements CastMember {
   readonly npcId: string
   readonly object: THREE.Object3D
   readonly outfit: string
+  readonly build: Build
 
   #clips: ReadonlyMap<string, THREE.AnimationClip>
   #additive: Map<string, THREE.AnimationClip>
@@ -59,10 +69,13 @@ export class Person implements CastMember {
   #look: HeadLook
   #facing: Facing
   #hands: Hands
+  #speech: Speech
   #action: THREE.AnimationAction | undefined
   #playing: string | undefined
   #overlay: THREE.AnimationAction | undefined
   #gesturing: string | undefined
+  #talk: THREE.AnimationAction | undefined
+  #talking: string | undefined
   #stance: string | undefined
   #stoodUp = false
   #then: (() => void) | undefined
@@ -77,6 +90,7 @@ export class Person implements CastMember {
     object: THREE.Object3D,
     body: THREE.Object3D,
     outfit: string,
+    build: Build,
     clips: ReadonlyMap<string, THREE.AnimationClip>,
     additive: Map<string, THREE.AnimationClip>,
     props: Props,
@@ -84,6 +98,7 @@ export class Person implements CastMember {
     this.npcId = npc.id
     this.object = object
     this.outfit = outfit
+    this.build = build
     this.#clips = clips
     this.#additive = additive
     this.#mixer = new THREE.AnimationMixer(body)
@@ -91,6 +106,7 @@ export class Person implements CastMember {
     this.#look = new HeadLook(body)
     this.#facing = new Facing(body, body.rotation.y)
     this.#hands = new Hands(body, props)
+    this.#speech = new Speech(body, hash01(`${npc.id}/speech`))
   }
 
   get playing(): string | undefined {
@@ -109,6 +125,10 @@ export class Person implements CastMember {
     return this.#stance !== undefined
   }
 
+  get speaking(): boolean {
+    return this.#speech.on
+  }
+
   play(name: string, fadeSeconds = 0.25): void {
     // an order from outside ends whatever attend was doing
     this.#stance = undefined
@@ -124,16 +144,12 @@ export class Person implements CastMember {
   }
 
   gesture(name: string, fadeSeconds = 0.3): void {
-    if (name === this.#gesturing || !GESTURES.includes(name)) return
-    const clip = this.#masked(name, this.#playing ? busyHandsOf(this.#playing) : [])
+    // the talk while speaking is already on the hands
+    if (name === this.#gesturing || !GESTURES.includes(name) || name === this.#talking) return
+    const clip = this.#masked(name, this.#busyHands())
     if (!clip) return
     this.stopGesture(fadeSeconds)
-    const overlay = this.#mixer.clipAction(clip)
-    overlay.blendMode = THREE.AdditiveAnimationBlendMode
-    overlay.reset()
-    overlay.setLoop(THREE.LoopRepeat, Infinity)
-    overlay.time = clip.duration * hash01(`${this.npcId}/${name}#upper`)
-    overlay.enabled = true
+    const overlay = this.#layer(clip)
     overlay.setEffectiveWeight(1)
     overlay.fadeIn(fadeSeconds)
     overlay.play()
@@ -145,6 +161,20 @@ export class Person implements CastMember {
     this.#overlay?.fadeOut(fadeSeconds)
     this.#overlay = undefined
     this.#gesturing = undefined
+  }
+
+  speak(on: boolean): void {
+    if (on === this.#speech.on) return
+    if (on) {
+      this.#speech.start()
+      this.#speakWith()
+    } else {
+      this.#speech.stop()
+    }
+  }
+
+  pulse(): void {
+    this.#speech.pulse()
   }
 
   lookAt(point: THREE.Vector3): void {
@@ -195,6 +225,14 @@ export class Person implements CastMember {
     this.#mixer.update(seconds)
     if (this.#facing.busy) this.#facing.apply(seconds)
     if (this.#look.busy) this.#look.apply(seconds)
+    if (this.#speech.busy) {
+      this.#speech.apply(seconds)
+      this.#talk?.setEffectiveWeight(this.#speech.level)
+    } else if (this.#talk) {
+      this.#talk.stop()
+      this.#talk = undefined
+      this.#talking = undefined
+    }
   }
 
   #standUp(): void {
@@ -229,12 +267,47 @@ export class Person implements CastMember {
     this.#playing = name
     this.#then = then
     this.#hands.forClip(name)
+    // the body under the talk changed: seated hands, standing hands, or an arm now busy
+    if (this.#speech.on) this.#speakWith()
   }
 
   #finished(): void {
     const then = this.#then
     this.#then = undefined
     then?.()
+  }
+
+  /**
+   * The talk gesture for the body they are holding now, at whatever level the
+   * words are at. Called again whenever the clip under it changes, so somebody
+   * who stands up mid-sentence talks with the standing hands, and an arm the
+   * new clip has busy is left to it.
+   */
+  #speakWith(): void {
+    const name = this.#playing ? talkOf(this.#playing) : undefined
+    const clip = name ? this.#masked(name, this.#busyHands()) : undefined
+    if (this.#talk?.getClip() === clip) return
+    this.#talk?.stop()
+    this.#talk = clip && this.#layer(clip)
+    this.#talking = this.#talk && name
+    this.#talk?.setEffectiveWeight(this.#speech.level)
+    this.#talk?.play()
+  }
+
+  /** The hands the playing clip has busy: an arm holding something is left out of any layer over it. */
+  #busyHands(): readonly Hand[] {
+    return this.#playing ? busyHandsOf(this.#playing) : []
+  }
+
+  /** An additive upper-body action of an already masked clip, started somewhere of its own in the loop. */
+  #layer(clip: THREE.AnimationClip): THREE.AnimationAction {
+    const overlay = this.#mixer.clipAction(clip)
+    overlay.blendMode = THREE.AdditiveAnimationBlendMode
+    overlay.reset()
+    overlay.setLoop(THREE.LoopRepeat, Infinity)
+    overlay.time = clip.duration * hash01(`${this.npcId}/${clip.name}`)
+    overlay.enabled = true
+    return overlay
   }
 
   /** Masked clips are cut once and shared by everybody wearing the rig. */

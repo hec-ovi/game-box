@@ -26,6 +26,13 @@ export const LEFT_ARM = /^(clavicle_|upperarm_|lowerarm_|hand_|index_\d\d_|middl
 export const RIGHT_ARM = /^(clavicle_|upperarm_|lowerarm_|hand_|index_\d\d_|middle_\d\d_|pinky_\d\d_|ring_\d\d_|thumb_\d\d_)(leaf_)?r$/
 export const UPPER = new RegExp(`${TORSO.source}|${ARMS.source}`)
 
+/**
+ * A glass is held with its axis across the knuckles, the hand bone's own Z
+ * (`game/cast/src/props/hand.ts`), and tips no further than a drink does:
+ * `upright` in a pose spec, see derive.mjs.
+ */
+export const A_GLASS_IN_THE_LEFT_HAND = { hand_l: { axis: [0, 0, 1], within: 30 } }
+
 export class MotionBlender {
   #document
   #root
