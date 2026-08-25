@@ -47,9 +47,10 @@ export function inBand<T>(list: ReadonlyArray<Band<T>>, at: number): T | undefin
   return (list.find((band) => at <= band.upTo) ?? list[list.length - 1])?.value
 }
 
-/** A fragment of stored text, punctuated so it can sit in a spoken line. */
+/** A fragment of stored text, capitalised and punctuated so it can stand as a spoken sentence. */
 export function sentence(text: string): string {
   const trimmed = text.trim()
   if (!trimmed) return ''
-  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`
+  const capped = trimmed[0]!.toUpperCase() + trimmed.slice(1)
+  return /[.!?]$/.test(capped) ? capped : `${capped}.`
 }

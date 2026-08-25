@@ -3,90 +3,103 @@ import type { PlayerState } from '@gb/play'
 import type { Change, QuestLog } from '@gb/quest'
 import type { Sidecar } from '@gb/sidecar'
 import type { World } from '@gb/world'
+import { Background } from './background.ts'
 import { Brief } from './brief.ts'
 import { Credit } from './credit.ts'
 import { Decider } from './decide.ts'
 import type { Decision, Opening, TalkError, TalkEvent, Turn } from './events.ts'
 import { Greeting } from './greeting.ts'
+import { Memory } from './memory.ts'
 import { legalMoves, topicOf, type ActionName, type Move, type Situation } from './moves.ts'
 import { Performer } from './perform.ts'
 import { pickByKey, pickLabel, picks, type TalkMove } from './picks.ts'
 import { Script } from './script.ts'
-import { Voice } from './voice.ts'
+import { Sessions, type Transcript } from './sessions.ts'
+import { Speaker } from './speak.ts'
+
+interface Input {
+  world: World
+  log: QuestLog
+  player: PlayerState
+  sidecar: Sidecar
+  npcId: string
+  /** The playthrough's sessions, one transcript per person. Left out, this conversation starts from nothing. */
+  sessions?: Sessions | undefined
+  signal?: AbortSignal | undefined
+}
 
 /**
- * One conversation with one NPC. A turn runs on two tracks: the voice, which
- * only ever speaks and is handed no ids at all, and the action, which is a
- * single choice from the moves that were legal when the turn began, with doing
- * nothing at the top of the list. What an NPC can do is bounded by the quest
- * script, not by how the sentence was phrased. The NPC speaks first, off the
- * game's own data, so there is something on screen the instant the panel opens.
- * With no sidecar to reach, both tracks run off the quest data too, and the job
- * can still be handed out, agreed to and delivered.
+ * One conversation with one person, built from the world and the playthrough
+ * as they stand when it opens, and holding nothing of anyone else. A turn runs
+ * on two tracks: the voice, which is the person (what they do, say, let slip,
+ * keep in mind, and how the turn left them) and is handed no ids and no menu;
+ * and the action, a single choice from the moves that were legal when the turn
+ * began, with doing nothing at the top of the list. What they can do is bounded
+ * by the quest script, not by how the sentence was phrased. They speak first,
+ * off the game's own data, so there is something on screen the instant the
+ * panel opens. With no sidecar to reach, both tracks run off the quest data
+ * too, and the job can still be handed out, agreed to and delivered.
  */
 export class Conversation {
   #situation: Situation
+  #transcript: Transcript
   #brief: Brief
   #credit: Credit
   #greeting: Greeting
-  #voice: Voice
+  #background: Background
+  #memory: Memory
+  #speaker: Speaker
   #decider: Decider
   #script: Script
   #performer: Performer
-  #history: Turn[] = []
+  #turns = 0
   #open = true
   #signal: AbortSignal | undefined
 
-  private constructor(input: {
-    world: World
-    log: QuestLog
-    player: PlayerState
-    sidecar: Sidecar
-    npcId: string
-    signal?: AbortSignal | undefined
-  }) {
+  private constructor(input: Input) {
     this.#situation = { world: input.world, log: input.log, player: input.player, npcId: input.npcId }
+    this.#transcript = (input.sessions ?? new Sessions()).of(input.npcId)
     this.#signal = input.signal
     this.#brief = new Brief(this.#situation)
     this.#credit = new Credit(this.#situation)
     this.#greeting = new Greeting(this.#situation)
-    this.#voice = new Voice(input.sidecar)
+    this.#background = new Background(this.#situation)
+    this.#memory = new Memory(this.#situation)
+    this.#speaker = new Speaker(input.sidecar)
     this.#decider = new Decider(input.sidecar)
-    this.#script = new Script(this.#situation)
+    this.#script = new Script(this.#situation, this.#background)
     this.#performer = new Performer(this.#situation)
   }
 
   /**
-   * Walking up to someone is itself an event: a quest step that already asked
+   * Walking up to someone is itself an event: they go in the codex as met, the
+   * facts that seeing them earns are earned, a quest step that already asked
    * the player to talk to them completes here, and the person speaks first.
    * The opening line and the moves that come with it are the game's own data,
    * so the panel is never empty and nothing is waited on.
    *
    * `signal` is the player's way out. It rides on every model call this
-   * conversation makes, so a turn can be cut short before the first word of the
-   * reply arrives.
+   * conversation makes, so a turn can be cut short before a word of the reply
+   * arrives.
    */
-  static open(input: {
-    world: World
-    log: QuestLog
-    player: PlayerState
-    sidecar: Sidecar
-    npcId: string
-    signal?: AbortSignal | undefined
-  }): Result<{ conversation: Conversation; changes: readonly Change[]; opening: Opening }, TalkError> {
+  static open(
+    input: Input,
+  ): Result<{ conversation: Conversation; changes: readonly Change[]; opening: Opening; learned: readonly string[] }, TalkError> {
     if (!input.world.hasNpc(input.npcId)) return err({ code: 'unknown-npc', npcId: input.npcId })
     const conversation = new Conversation(input)
+    input.player.discover({ npc: input.npcId })
+    const learned = conversation.#background.meet()
     // Crediting first: a step that completes on the way in changes what is legal,
     // and the greeting is drawn from the state the player is walking into.
     const changes = conversation.#credit.earned()
-    return ok({ conversation, changes, opening: conversation.#begin() })
+    return ok({ conversation, changes, opening: conversation.#begin(), learned })
   }
 
   /** They speak first, off the game's own data, and the menu opens with them. */
   #begin(): Opening {
     const moves = legalMoves(this.#situation)
     const line = this.#greeting.line(moves)
-    this.#history.push({ role: 'assistant', content: line })
+    this.#transcript.push({ role: 'assistant', content: line })
     return { line, moves: picks(moves) }
   }
 
@@ -99,7 +112,7 @@ export class Conversation {
   }
 
   history(): readonly Turn[] {
-    return this.#history
+    return this.#transcript.turns
   }
 
   /** What this NPC could do if they chose to, right now. */
@@ -122,49 +135,48 @@ export class Conversation {
     const move = pickByKey(legalMoves(this.#situation), key)
     if (!move) return
 
-    const line = this.#script.acting(move)
-    this.#history.push({ role: 'user', content: pickLabel(move) })
-    this.#history.push({ role: 'assistant', content: line })
-    yield { kind: 'said', text: line }
+    const spoken = this.#script.acting(move)
+    this.#transcript.push({ role: 'user', content: pickLabel(move) })
+    this.#transcript.push({ role: 'assistant', content: spoken.line })
+    yield* this.#spoken(undefined, spoken.line)
+    yield* this.#learned(spoken.learned)
     yield* this.#act({ move })
   }
 
-  /** Say something to them. Their reply arrives in pieces, their actions as they take them. */
+  /** Say something to them. Their turn arrives whole, their actions as they take them. */
   async *say(playerText: string): AsyncGenerator<TalkEvent> {
     if (this.#cut) return
-    this.#history.push({ role: 'user', content: playerText })
+    this.#transcript.push({ role: 'user', content: playerText })
     const moves = legalMoves(this.#situation)
+    const offered = this.#background.offered()
 
-    const spoken = await this.#voice.speak({
-      system: this.#brief.voice(moves),
-      history: this.#history,
+    const taken = await this.#speaker.take({
+      npcName: this.#brief.npcName,
+      system: this.#brief.voice(moves, offered, this.#turns++),
+      exchange: this.#brief.exchange(this.#transcript.turns),
+      facts: offered.length,
       signal: this.#signal,
     })
-    if (!spoken.ok) {
-      // Cut short is the player's own decision, so nothing stands in for the reply.
-      if (spoken.error.code !== 'aborted') yield* this.#unattended(playerText, moves)
-      return
-    }
-
-    let line = ''
-    for await (const piece of spoken.value) {
-      line += piece
-      yield { kind: 'said', text: piece }
-    }
-    if (line.trim()) this.#history.push({ role: 'assistant', content: line })
-    // Cut off mid-reply: the turn ends on the words that got through, and nothing is done.
+    // Cut short is the player's own decision, so nothing stands in for the reply.
     if (this.#cut) return
-    // A reply that broke off before a word of it arrived is no reply at all.
-    if (!line.trim()) {
+    // No reply at all is no reply: the game's own data speaks instead.
+    if (!taken.ok || !taken.value.says) {
       yield* this.#unattended(playerText, moves)
       return
     }
+
+    const reply = taken.value
+    this.#transcript.push({ role: 'assistant', content: reply.says })
+    yield* this.#spoken(reply.does, reply.says)
+    // What they gave away and what they were told stand with the words, whatever comes of the decision.
+    yield* this.#learned(this.#background.reveal(offered, reply.reveals))
+    this.#memory.keep(reply.remembers, reply.mood)
 
     const chosen = await this.#decider.choose({
       npcName: this.#brief.npcName,
       city: this.#brief.city,
       moves,
-      transcript: this.#brief.transcript(this.#history),
+      transcript: this.#brief.transcript(this.#transcript.turns),
       signal: this.#signal,
     })
     if (this.#cut) return
@@ -181,9 +193,20 @@ export class Conversation {
   /** No sidecar: the quest data speaks and the player's own words decide. */
   *#unattended(playerText: string, moves: readonly Move[]): Generator<TalkEvent> {
     const scripted = this.#script.turn(playerText, moves)
-    this.#history.push({ role: 'assistant', content: scripted.line })
-    yield { kind: 'said', text: scripted.line }
+    this.#transcript.push({ role: 'assistant', content: scripted.line })
+    yield* this.#spoken(undefined, scripted.line)
+    yield* this.#learned(scripted.learned)
     yield* this.#act(scripted)
+  }
+
+  /** One turn out loud: the body and the words apart, and the words alone for a caller still reading those. */
+  *#spoken(does: string | undefined, says: string): Generator<TalkEvent> {
+    yield does ? { kind: 'turn', does, says } : { kind: 'turn', says }
+    yield { kind: 'said', text: says }
+  }
+
+  *#learned(factId: string | undefined): Generator<TalkEvent> {
+    if (factId !== undefined) yield { kind: 'learned', npcId: this.#situation.npcId, factId }
   }
 
   /**

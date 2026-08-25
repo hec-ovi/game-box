@@ -3,10 +3,10 @@ import { QuestLog, validateQuest, type QuestDoc } from '@gb/quest'
 import { Sidecar } from '@gb/sidecar'
 import { World, type Interior, type Item, type Npc, type Placement } from '@gb/world'
 import { describe, expect, it } from 'vitest'
-import { Conversation, type TalkEvent } from '../src/index.ts'
+import { Conversation, Sessions, type TalkEvent } from '../src/index.ts'
 
 /** A bar, its bartender Mara, a courier Hollis across the room, and a ledger. */
-function bar(options: { carries?: boolean } = {}) {
+function bar(options: { carries?: boolean; hollisAt?: 'sit-drink' | 'dance' } = {}) {
   const world = World.create({ name: 'Cold Harbour', theme: 'a fogbound port town that lives off the tide', seed: 'talk', width: 16, height: 16 })
   world.paint({ x: 0, y: 6, w: 16, h: 1 }, 'sidewalk')
   const plot = world.addPlot({
@@ -29,10 +29,10 @@ function bar(options: { carries?: boolean } = {}) {
     size: { w: 8, h: 8 },
     rooms: [{ id: room, kind: 'main', name: 'Taproom', rect: { x: 0, y: 0, w: 8, h: 8 } }],
     doors: [{ id: world.mintId('door'), from: 'outside', to: room, pos: { x: 4, y: 0 }, rot: 180, locked: false }],
-    furniture: [],
+    furniture: [{ id: world.mintId('furniture'), prop: 'bar-counter', roomId: room, pos: { x: 4, y: 7 }, rot: 0 }],
     anchors: [
       { id: serve, kind: 'serve', roomId: room, pos: { x: 4, y: 6 }, rot: 180 },
-      { id: stool, kind: 'sit-drink', roomId: room, pos: { x: 3, y: 4 }, rot: 0 },
+      { id: stool, kind: options.hollisAt ?? 'sit-drink', roomId: room, pos: { x: 3, y: 4 }, rot: 0 },
     ],
   }
   world.addInterior(interior)
@@ -45,6 +45,16 @@ function bar(options: { carries?: boolean } = {}) {
     station: { interiorId: interior.id, anchorId: serve },
     personality: 'Dry, unhurried, watches the door.',
     knowledge: ['The tide takes the low road twice a day.', 'Rook has not been in since Tuesday.'],
+    life: {
+      history: 'Born on the quay, ran freight until the road went bad, took the bar on when Rook could not pay for it.',
+      manner: 'Short sentences. Never repeats herself.',
+      reason: 'covering the day shift while Rook is away',
+    },
+    background: [
+      { fact: 'wears a sailor knot at the wrist', unlockedBy: 'met' },
+      { fact: 'ran the freight road before the bar', unlockedBy: 'talked' },
+      { fact: 'owes Rook for the bar and will not say how much', unlockedBy: 'quest' },
+    ],
   }
   const hollis: Npc = {
     id: world.mintId('npc'),
@@ -146,8 +156,16 @@ function ledgerQuest(mara: string, ledger: string, copy = 'item_9999'): QuestDoc
 }
 
 interface Script {
-  /** What the voice track says, in the pieces it streams. */
-  readonly text?: string | readonly string[]
+  /** What the voice track says. Left out, the model talks its way out of the turn call and the game's data speaks. */
+  readonly text?: string
+  /** What the voice track says the body does. */
+  readonly does?: string
+  /** The number of the fact about themselves the voice track let slip. */
+  readonly reveals?: number
+  /** What the voice track says the person now holds of the player. */
+  readonly remembers?: readonly string[]
+  /** How the voice track says the turn left them. */
+  readonly mood?: 'warmer' | 'cooler' | 'same'
   /** The line off the menu the action track calls the tool with. 1 is nothing but talk. */
   readonly pick?: number
   /** How the action track reports the reply. Left out is a call that did not say. */
@@ -160,39 +178,45 @@ interface Script {
 
 interface ToolCall {
   readonly name: string
-  readonly parameters: Record<string, unknown>
+  readonly parameters: { properties: Record<string, unknown>; required?: string[] }
 }
 
-/** A model with two tracks: a line it speaks, and the call it makes off the menu. */
+interface Call {
+  readonly system: string
+  readonly user: string
+  readonly forced: string
+  readonly tool: ToolCall
+}
+
+/** A model with two tracks: the turn it takes as the person, and the call it makes off the menu. */
 function speaker(script: Script) {
-  const voice: Array<{ system: string; messages: Array<{ role: string; content: string }> }> = []
-  const decisions: Array<{ system: string; user: string; forced: string; tool: ToolCall }> = []
+  const voice: Call[] = []
+  const decisions: Call[] = []
 
   const fetch = (async (_url: string, init: RequestInit) => {
     if (script.fail) throw new TypeError('fetch failed')
     const body = JSON.parse(String(init.body)) as {
       messages: Array<{ role: string; content: string }>
-      tools?: Array<{ function: ToolCall }>
-      tool_choice?: { function: { name: string } }
+      tools: Array<{ function: ToolCall }>
+      tool_choice: { function: { name: string } }
     }
-    const system = body.messages[0]!.content
-    const last = body.messages[body.messages.length - 1]!.content
+    const tool = body.tools[0]!.function
+    const call: Call = { system: body.messages[0]!.content, user: body.messages[body.messages.length - 1]!.content, forced: body.tool_choice.function.name, tool }
 
-    if (body.tool_choice) {
-      const tool = body.tools![0]!.function
-      decisions.push({ system, user: last, forced: body.tool_choice.function.name, tool })
-      return script.prose === undefined ? called(tool.name, script.pick ?? 1, script.says) : spoke(script.prose)
+    if (tool.name === 'take_turn') {
+      voice.push(call)
+      if (script.text === undefined) return spoke('...')
+      const { does, reveals, remembers, mood } = script
+      return called(tool.name, { does, says: script.text, reveals, remembers, mood })
     }
-    voice.push({ system, messages: body.messages })
-    const said = script.text === undefined ? [] : typeof script.text === 'string' ? [script.text] : [...script.text]
-    return stream(said)
+    decisions.push(call)
+    return script.prose === undefined ? called(tool.name, { option: script.pick ?? 1, answer: script.says }) : spoke(script.prose)
   }) as unknown as typeof globalThis.fetch
 
   return { voice, decisions, fetch, sidecar: new Sidecar({ base: 'http://127.0.0.1:8976', fetch }) }
 
   /** The forced call, made: the answer arrives as arguments, never as text. */
-  function called(name: string, option: number, says?: string): Response {
-    const args = says === undefined ? { option } : { option, answer: says }
+  function called(name: string, args: Record<string, unknown>): Response {
     const call = { id: 'call_0', type: 'function', function: { name, arguments: JSON.stringify(args) } }
     return answer({ role: 'assistant', content: null, tool_calls: [call] }, 'tool_calls')
   }
@@ -206,16 +230,6 @@ function speaker(script: Script) {
     const payload = { id: 'x', object: 'chat.completion', created: 0, model: 'm', choices: [{ index: 0, message, finish_reason: finish }] }
     return new Response(JSON.stringify(payload), { headers: { 'content-type': 'application/json' } })
   }
-
-  function stream(pieces: readonly string[]): Response {
-    const chunks = [...pieces.map((piece) => chunk({ content: piece })), chunk({}, 'stop')]
-    const sse = `${chunks.map((c) => `data: ${JSON.stringify(c)}`).join('\n\n')}\n\ndata: [DONE]\n\n`
-    return new Response(sse, { headers: { 'content-type': 'text/event-stream' } })
-  }
-
-  function chunk(delta: unknown, finish: string | null = null) {
-    return { id: 'x', object: 'chat.completion.chunk', created: 0, model: 'm', choices: [{ index: 0, delta, finish_reason: finish }] }
-  }
 }
 
 /**
@@ -224,21 +238,21 @@ function speaker(script: Script) {
  * been spoken and only the action is left to decide. Until then the model
  * answers in full, so a turn that is not cut short hands the job over.
  */
-function cutIn(at: 'request' | 'first-token' | 'decision') {
+function cutIn(at: 'request' | 'reply' | 'decision') {
   const stop = new AbortController()
   const model = speaker({ text: 'Fetch me the ledger.', pick: 2 })
 
   const fetch = (async (url: string, init: RequestInit) => {
-    const body = JSON.parse(String(init.body)) as { tool_choice?: unknown }
-    const deciding = body.tool_choice !== undefined
+    const body = JSON.parse(String(init.body)) as { tool_choice: { function: { name: string } } }
+    const deciding = body.tool_choice.function.name === 'report_action'
 
     if (at === 'request' || (at === 'decision' && deciding)) {
       stop.abort()
       // a real fetch rejects the moment the signal it was handed fires
       if (init.signal?.aborted) throw new Error('the request was aborted')
     }
-    if (at === 'first-token' && !deciding) {
-      return new Response(quiet(stop), { headers: { 'content-type': 'text/event-stream' } })
+    if (at === 'reply' && !deciding) {
+      return new Response(quiet(stop), { headers: { 'content-type': 'application/json' } })
     }
     return model.fetch(url, init)
   }) as unknown as typeof globalThis.fetch
@@ -273,7 +287,14 @@ const QUESTS = { plain: ledgerQuest, 'heard-out': heardOutQuest, topic: topicQue
 
 function setup(
   script: Script,
-  options: { carries?: boolean; quest?: keyof typeof QUESTS; sidecar?: Sidecar; signal?: AbortSignal } = {},
+  options: {
+    carries?: boolean
+    hollisAt?: 'sit-drink' | 'dance'
+    quest?: keyof typeof QUESTS
+    sidecar?: Sidecar
+    signal?: AbortSignal
+    sessions?: Sessions
+  } = {},
 ) {
   const fixture = bar(options)
   const write = QUESTS[options.quest ?? 'plain']
@@ -296,6 +317,7 @@ function setup(
     player,
     sidecar: options.sidecar ?? model.sidecar,
     npcId: fixture.mara.id,
+    sessions: options.sessions,
     signal: options.signal,
   })
   if (!opened.ok) throw new Error('conversation did not open')
@@ -337,20 +359,26 @@ describe('Conversation', () => {
     if (!opened.ok) expect(opened.error.code).toBe('unknown-npc')
   })
 
-  it('streams what they say, in pieces, and the voice track is offered nothing to call', async () => {
-    const { conversation, model, opening } = setup({ text: ['We close ', 'at midnight.'] })
+  it('takes the turn as one call, the body before the words, and answers on top of what was already said', async () => {
+    const { conversation, model, opening } = setup({ text: 'We close at midnight.', does: 'wipes the counter' })
     const events = await collect(conversation.say('when do you close?'))
 
-    expect(events.filter((e) => e.kind === 'said').length).toBeGreaterThan(1)
-    expect(said(events)).toBe('We close at midnight.')
+    expect(events).toContainEqual({ kind: 'turn', does: 'wipes the counter', says: 'We close at midnight.' })
+    expect(events).toContainEqual({ kind: 'said', text: 'We close at midnight.' })
     expect(conversation.history()).toEqual([
       { role: 'assistant', content: opening.line },
       { role: 'user', content: 'when do you close?' },
       { role: 'assistant', content: 'We close at midnight.' },
     ])
+
+    const call = model.voice[0]!
+    expect(call.forced).toBe('take_turn')
+    // `does` is decided before `says`: llama writes the fields in the order the schema lists them
+    expect(Object.keys(call.tool.parameters.properties).slice(0, 2)).toEqual(['does', 'says'])
+    expect(call.tool.parameters.required).toEqual(['says'])
     // the model answers on top of the line the player already read, not from nothing
-    expect(model.voice[0]!.messages[1]).toEqual({ role: 'assistant', content: opening.line })
-    expect(model.voice[0]!.messages.some((m) => m.role === 'user' && m.content === 'when do you close?')).toBe(true)
+    expect(call.user).toContain(`Mara Cole: "${opening.line}"`)
+    expect(call.user).toContain('Them: "when do you close?"')
   })
 
   it('puts only the legal moves to the decider, in plain words, with no ids anywhere', async () => {
@@ -364,7 +392,7 @@ describe('Conversation', () => {
     expect(menu).toContain('2. hand them the job: The Ledger')
     expect(menu).toContain('3. be done with them')
     expect(menu).not.toContain('take the salt-stained ledger')
-    for (const text of [menu, model.decisions[0]!.user, model.voice[0]!.system]) {
+    for (const text of [menu, model.decisions[0]!.user, model.voice[0]!.system, model.voice[0]!.user]) {
       expect(text).not.toMatch(/[a-z]+_\d{4}/)
     }
   })
@@ -420,11 +448,11 @@ describe('Conversation', () => {
   })
 
   it('never says an id out loud, even when the model writes one', async () => {
-    const { conversation } = setup({ text: ['One job going: qu', 'est_0001. The item_00', '02 is on the stool.'] })
+    const { conversation } = setup({ text: 'One job going: quest_0001. The item_0002 is on the stool.', does: 'taps quest_0001' })
 
     const events = await collect(conversation.say('anything going?'))
     expect(said(events)).toBe('One job going: it. it is on the stool.')
-    expect(said(events)).not.toMatch(/_\d/)
+    expect(events).toContainEqual({ kind: 'turn', does: 'taps it', says: 'One job going: it. it is on the stool.' })
   })
 
   it('walks with the player and stops when asked', async () => {
@@ -496,7 +524,7 @@ describe('Conversation', () => {
   })
 
   it('with no sidecar, someone with nothing to give still talks and never says an id', async () => {
-    const { conversation, hollis, world, log, player } = setup({ fail: true })
+    const { hollis, world, log, player } = setup({ fail: true })
     const chat = Conversation.open({ world, log, player, sidecar: speaker({ fail: true }).sidecar, npcId: hollis.id })
     if (!chat.ok) throw new Error('did not open')
 
@@ -509,10 +537,8 @@ describe('Conversation', () => {
     const parting = await collect(chat.value.conversation.say('see you later'))
     expect(parting).toContainEqual({ kind: 'did', action: 'end_talk' })
     expect(chat.value.conversation.isOpen).toBe(false)
-
-    // conversation is unused beyond opening the fixture
-    expect(conversation.isOpen).toBe(true)
   })
+
   it('credits the talk step with the turn that hands the job over, not the turn before it', async () => {
     const { conversation, log } = setup({ text: 'Fetch me the ledger.', pick: 2 }, { quest: 'heard-out' })
     expect(log.objectives()).toEqual([])
@@ -581,20 +607,38 @@ describe('Conversation', () => {
     expect(conversation.available()).toContain('take_delivery')
   })
 
-  it('tells the character where they are, when it is, and what the player is worth here', async () => {
-    const { conversation, model, player } = setup({ text: 'Aye.' })
+  it('fills the template from the room, the hour, the company, the player and the file, and never with an id', async () => {
+    const { conversation, model, player, ledger } = setup({ text: 'Aye.' })
     player.clock.setTime(21, 30)
     player.clock.setWeather('rain')
     player.adjustReputation(50)
+    player.take(ledger.id)
 
     await collect(conversation.say('evening'))
     const brief = model.voice[0]!.system
-    expect(brief).toContain('The kind of place Cold Harbour is: a fogbound port town')
-    expect(brief).toContain('behind the counter')
-    expect(brief).toContain('late evening')
-    expect(brief).toContain('raining')
-    expect(brief).toContain('Hollis Vance the courier')
+    // the engine's slots, this turn
+    expect(brief).toContain('You are Mara Cole, the bartender at The Anchor, in Cold Harbour.')
+    expect(brief).toContain('Cold Harbour is a fogbound port town')
+    expect(brief).toContain('The room: Taproom: bar counter; duplicate ledger lying about')
+    expect(brief).toContain('What you are doing: behind the counter')
+    expect(brief).toContain('The hour: late evening')
+    expect(brief).toContain('The weather: raining hard enough to hear')
+    expect(brief).toContain('Who else is here: Hollis Vance the courier, sat with a drink')
+    expect(brief).toContain('The one talking to you is carrying: salt-stained ledger')
     expect(brief).toContain('Their name is good in this town')
+    expect(brief).toContain('You feel nothing in particular about them yet.')
+    expect(brief).toContain('You have not met them before this.')
+    // the generator's slots, once per person
+    expect(brief).toContain('- How you come across: Dry, unhurried, watches the door.')
+    expect(brief).toContain('- How you talk: Short sentences. Never repeats herself.')
+    expect(brief).toContain('- Your story: Born on the quay')
+    expect(brief).toContain('- Why you are here right now: covering the day shift while Rook is away')
+    expect(brief).toContain('- The tide takes the low road twice a day.')
+    // the fixed part: the rule the reported replies broke, and worked examples that vary by the turn
+    expect(brief).toContain('The first clause answers what they actually said.')
+    expect(brief).toMatch(/They said: ".+"\nRight: ".+"\nWrong: ".+"/)
+    await collect(conversation.say('and?'))
+    expect(model.voice[1]!.system).not.toBe(brief)
     expect(brief).not.toMatch(/[a-z]+_\d{4}/)
   })
 
@@ -719,6 +763,7 @@ describe('Conversation', () => {
     expect(chat).toContain(mara.knowledge[0])
     expect(chat).not.toBe(mara.knowledge[0])
   })
+
   it('with no model, the same words give the same conversation every time', async () => {
     const play = async () => {
       const { conversation } = setup({ fail: true })
@@ -733,6 +778,121 @@ describe('Conversation', () => {
     expect(first).toEqual(await play())
     // the two facts she has are not passed on the same way twice
     expect(new Set(first.slice(3, 5)).size).toBe(2)
+  })
+})
+
+describe('every person is their own session', () => {
+  it('carries on where the two of them left off, and nobody else hears a word of it', async () => {
+    const sessions = new Sessions()
+    const first = setup({ text: 'Wren. I will remember that.' }, { sessions })
+    await collect(first.conversation.say('my name is Wren'))
+
+    const again = Conversation.open({ world: first.world, log: first.log, player: first.player, sidecar: first.model.sidecar, npcId: first.mara.id, sessions })
+    if (!again.ok) throw new Error('did not open')
+    expect(again.value.conversation.history().slice(0, 3)).toEqual(first.conversation.history().slice(0, 3))
+    await collect(again.value.conversation.say('still remember me?'))
+    expect(first.model.voice[1]!.user).toContain('Them: "my name is Wren"')
+
+    const other = Conversation.open({ world: first.world, log: first.log, player: first.player, sidecar: first.model.sidecar, npcId: first.hollis.id, sessions })
+    if (!other.ok) throw new Error('did not open')
+    expect(other.value.conversation.history()).toHaveLength(1)
+    await collect(other.value.conversation.say('evening'))
+    expect(first.model.voice[2]!.user).not.toContain('Wren')
+    expect(first.model.voice[2]!.system).toContain('You are Hollis Vance')
+
+    // with no sessions handed in, a conversation starts from nothing
+    const fresh = Conversation.open({ world: first.world, log: first.log, player: first.player, sidecar: first.model.sidecar, npcId: first.mara.id })
+    if (!fresh.ok) throw new Error('did not open')
+    expect(fresh.value.conversation.history()).toHaveLength(1)
+  })
+
+  it('keeps a bounded transcript, newest last', async () => {
+    const { conversation } = setup({ fail: true })
+    for (let turn = 0; turn < 12; turn++) await collect(conversation.say(`turn ${turn}`))
+    const history = conversation.history()
+    expect(history).toHaveLength(16)
+    expect(history[history.length - 2]).toEqual({ role: 'user', content: 'turn 11' })
+  })
+})
+
+describe('what a turn leaves behind', () => {
+  it('holds what the player told them, warms or cools to them, and puts both in front of them next time', async () => {
+    const { conversation, model, player, mara } = setup({
+      text: 'Wren, off the freight road. Noted.',
+      remembers: ['their name is Wren', 'they came in off the freight road', 'they asked about the tide', 'a fourth thing nobody keeps'],
+      mood: 'warmer',
+    })
+    await collect(conversation.say('I am Wren, came in off the freight road'))
+
+    // three a turn at most, each one theirs alone
+    expect(player.memories(mara.id)).toEqual([
+      { fact: 'their name is Wren', source: 'told' },
+      { fact: 'they came in off the freight road', source: 'told' },
+      { fact: 'they asked about the tide', source: 'told' },
+    ])
+    expect(player.disposition(mara.id)).toBe('warm')
+
+    await collect(conversation.say('so?'))
+    const brief = model.voice[1]!.system
+    expect(brief).toContain('What you remember of them: they told you their name is Wren; they told you they came in off the freight road')
+    expect(brief).toContain('You like them well enough.')
+
+    const cooler = setup({ text: 'Get out.', mood: 'cooler' })
+    await collect(cooler.conversation.say('your bar is a dump'))
+    expect(cooler.player.disposition(cooler.mara.id)).toBe('cool')
+  })
+
+  it('earns the facts seeing them earns on the way in, and lists them as met', () => {
+    const { learned, player, mara, world, log, model } = setup({})
+    expect(learned).toEqual(['0'])
+    expect(player.unlocked(mara.id)).toEqual(['0'])
+    expect(player.discovered().people.map((person) => person.npcId)).toContain(mara.id)
+
+    const again = Conversation.open({ world, log, player, sidecar: model.sidecar, npcId: mara.id })
+    if (!again.ok) throw new Error('did not open')
+    expect(again.value.learned).toEqual([])
+  })
+
+  it('lets a fact about themselves slip by its number, and the codex unlocks', async () => {
+    const { conversation, model, player, mara } = setup({ text: 'I ran freight before this.', reveals: 1 })
+    const events = await collect(conversation.say('what did you do before the bar?'))
+
+    const call = model.voice[0]!
+    expect(call.system).toContain('1. ran the freight road before the bar')
+    expect(call.system).not.toContain('owes Rook')
+    expect(call.tool.parameters.properties.reveals).toMatchObject({ type: 'integer', minimum: 1, maximum: 1 })
+    expect(events).toContainEqual({ kind: 'learned', npcId: mara.id, factId: '1' })
+    expect(player.unlocked(mara.id)).toEqual(['0', '1'])
+
+    // nothing left to let slip: the field is not even offered
+    await collect(conversation.say('and?'))
+    expect(model.voice[1]!.system).toContain('- nothing beyond what is written above')
+    expect(model.voice[1]!.tool.parameters.properties.reveals).toBeUndefined()
+  })
+
+  it('offers the fact a job earns only once their job is done', async () => {
+    const { conversation, model, log, player, ledger } = setup({ text: 'Aye.', pick: 2 })
+    log.start('quest_0001')
+    player.take(ledger.id)
+    log.handle({ kind: 'acquired', itemId: ledger.id, stolen: true })
+
+    await collect(conversation.say('here it is'))
+    expect(model.voice[0]!.system).not.toContain('owes Rook')
+    expect(log.status('quest_0001')).toBe('complete')
+
+    await collect(conversation.say('so what do you owe him?'))
+    expect(model.voice[1]!.system).toContain('2. owes Rook for the bar and will not say how much')
+  })
+
+  it('with no model, a fact about themselves is earned the moment it is said', async () => {
+    const { conversation, mara } = setup({ fail: true })
+    await collect(conversation.say('evening'))
+    await collect(conversation.say('what do you know?'))
+    await collect(conversation.say('and?'))
+    const events = await collect(conversation.say('and?'))
+
+    expect(said(events)).toContain('Ran the freight road before the bar.')
+    expect(events).toContainEqual({ kind: 'learned', npcId: mara.id, factId: '1' })
   })
 })
 
@@ -788,6 +948,40 @@ describe('the first words', () => {
     if (!idle.ok) throw new Error('did not open')
     expect(idle.value.opening.line).not.toBe('')
     expect(idle.value.opening.moves.map((move) => move.action)).toEqual(['end_talk'])
+  })
+
+  it("says their own business when the file gives one, and never the sky", () => {
+    const { world, log, player, mara, hollis } = setup({})
+    const greet = (npcId: string) => {
+      const opened = Conversation.open({ world, log, player, sidecar: speaker({}).sidecar, npcId })
+      if (!opened.ok) throw new Error('did not open')
+      return opened.value.opening.line
+    }
+
+    expect(greet(mara.id)).toContain('Covering the day shift while Rook is away.')
+    for (const weather of ['clear', 'overcast', 'rain'] as const) {
+      player.clock.setWeather(weather)
+      for (let hour = 0; hour < 24; hour += 3) {
+        player.clock.setTime(hour)
+        for (const line of [greet(mara.id), greet(hollis.id)]) {
+          expect(line, `${weather} ${hour}`).not.toMatch(/sky|cloud|grey as stone|rain has set in|coming down/)
+        }
+      }
+    }
+  })
+
+  it('falls back to the spot they keep indoors, and to the street only for somebody out walking', () => {
+    // an anchor with no line of its own is still indoors
+    const { world, log, player, hollis } = setup({}, { hollisAt: 'dance' })
+    const indoors = Conversation.open({ world, log, player, sidecar: speaker({}).sidecar, npcId: hollis.id })
+    if (!indoors.ok) throw new Error('did not open')
+    expect(indoors.value.opening.line).toMatch(/here most days|Same courier as yesterday|On my feet where I always am/)
+
+    const walker: Npc = { id: world.mintId('npc'), name: 'Pell Adair', role: 'courier', appearance: { base: 'male', variant: 3 }, personality: 'Brisk.', knowledge: [] }
+    world.addNpc(walker)
+    const out = Conversation.open({ world, log, player, sidecar: speaker({}).sidecar, npcId: walker.id })
+    if (!out.ok) throw new Error('did not open')
+    expect(out.value.opening.line).toMatch(/on my way somewhere|only the courier|Walk with me/)
   })
 })
 
@@ -880,6 +1074,7 @@ describe('Conversation.moves and choose', () => {
     expect(player.has(key.id)).toBe(true)
     expect(log.status('quest_0001')).toBe('unstarted')
 
+    expect(events[0]).toEqual({ kind: 'turn', says: "Here. Don't lose it." })
     expect(said(events)).toBe("Here. Don't lose it.")
     expect(events.findIndex((e) => e.kind === 'said')).toBeLessThan(events.findIndex((e) => e.kind === 'did'))
   })
@@ -923,13 +1118,13 @@ describe('Conversation.moves and choose', () => {
     ])
 
     await collect(conversation.say('where do I start?'))
-    expect(model.voice[0]!.messages).toContainEqual({ role: 'user', content: 'Take the job: The Ledger' })
+    expect(model.voice[0]!.user).toContain('Them: "Take the job: The Ledger"')
   })
 })
 
 describe('cutting a turn short', () => {
   it("stops on the player's signal, however far the turn had got", async () => {
-    for (const at of ['request', 'first-token', 'decision'] as const) {
+    for (const at of ['request', 'reply', 'decision'] as const) {
       const model = cutIn(at)
       const { conversation, log } = setup({}, { sidecar: model.sidecar, signal: model.stop.signal })
 

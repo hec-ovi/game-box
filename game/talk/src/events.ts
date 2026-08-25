@@ -8,9 +8,14 @@ export type TalkError = { readonly code: 'unknown-npc'; readonly npcId: string }
 export type Answer = 'yes' | 'no'
 
 export type TalkEvent =
+  /** One spoken turn: what their body does, if anything, and the words out loud. */
+  | { readonly kind: 'turn'; readonly does?: string; readonly says: string }
+  /** The words of a turn on their own, for a caller not yet reading `turn`. */
   | { readonly kind: 'said'; readonly text: string }
   | { readonly kind: 'answered'; readonly answer: Answer }
   | { readonly kind: 'did'; readonly action: ActionName; readonly detail?: string }
+  /** The player earned one of this person's background facts; the codex holds it now. */
+  | { readonly kind: 'learned'; readonly npcId: string; readonly factId: string }
   | { readonly kind: 'changed'; readonly change: Change }
   | { readonly kind: 'over' }
 

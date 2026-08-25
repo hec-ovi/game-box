@@ -1,23 +1,39 @@
+import type { Npc } from '@gb/world'
+import type { Offered } from './background.ts'
 import type { Turn } from './events.ts'
+import { Examples } from './examples.ts'
+import { Memory } from './memory.ts'
 import type { Move, Situation } from './moves.ts'
 import { PROMPTS } from './prompts.generated.ts'
 import { Scene } from './scene.ts'
-import { fill } from './text.ts'
+import { fill, keyed } from './text.ts'
 import { Wants } from './wants.ts'
 
 /** How many turns of the conversation the decider is shown. */
 const RECENT = 6
+const LINES = keyed(PROMPTS.brief)
+const LIFE = keyed(PROMPTS.life)
 
-/** Everything the model is told: who this person is, what is going on, what was just said. */
+/**
+ * Everything the model is told, in one fixed labelled template. The engine
+ * fills the slots that change by the turn (the room, the hour, the company,
+ * what the player carries, standing, what they remember, the moves on offer);
+ * the generator filled the slots that make this person this person, once, in
+ * the world file; and how to speak is fixed text with worked examples.
+ */
 export class Brief {
   #situation: Situation
   #scene: Scene
   #wants: Wants
+  #memory: Memory
+  #examples: Examples
 
   constructor(situation: Situation) {
     this.#situation = situation
     this.#scene = new Scene(situation)
     this.#wants = new Wants(situation)
+    this.#memory = new Memory(situation)
+    this.#examples = new Examples(situation)
   }
 
   get npcName(): string {
@@ -28,33 +44,66 @@ export class Brief {
     return this.#situation.world.name
   }
 
-  /** The character the voice track speaks as: their knowledge, their room, their hour. */
-  voice(moves: readonly Move[]): string {
+  /** The character the voice track speaks as, this turn. `turn` counts the turns so far. */
+  voice(moves: readonly Move[], offered: readonly Offered[], turn: number): string {
     const npc = this.#npc()
-
     return fill(PROMPTS.npc, {
       name: npc.name,
       role: npc.role,
       place: this.#scene.place,
       city: this.city,
       theme: this.#situation.world.theme,
-      personality: npc.personality,
-      knowledge: npc.knowledge.map((fact) => `- ${fact}`).join('\n') || '- nothing worth repeating',
-      surroundings: this.#scene.where(),
+      life: this.#life(npc),
+      room: this.#scene.room(),
+      doing: this.#scene.stance(),
+      hour: this.#scene.hour,
+      weather: this.#scene.weather,
+      company: this.#scene.company(),
+      carrying: this.#scene.carrying(),
+      knowledge: this.#knowledge(npc),
+      background: offered.length
+        ? offered.map((fact, index) => fill(LINES.fact!, { number: String(index + 1), fact: fact.fact })).join('\n')
+        : LINES['no-background']!,
       standing: this.#scene.standing(),
+      disposition: this.#memory.disposition(),
+      memories: this.#memory.held(),
       situation: this.#wants.block(moves),
+      examples: this.#examples.shown(turn),
     })
   }
 
-  /** The exchange as the decider reads it: who said what, most recent last. */
+  /** The whole kept exchange, as the voice track reads it before answering. */
+  exchange(history: readonly Turn[]): string {
+    return this.#lines(history)
+  }
+
+  /** The exchange as the decider reads it: the last few turns, most recent last. */
   transcript(history: readonly Turn[]): string {
-    return history
-      .slice(-RECENT)
-      .map((turn) => `${turn.role === 'user' ? 'Them' : this.npcName}: "${turn.content}"`)
+    return this.#lines(history.slice(-RECENT))
+  }
+
+  #lines(turns: readonly Turn[]): string {
+    return turns.map((turn) => `${turn.role === 'user' ? LINES.them! : this.npcName}: "${turn.content}"`).join('\n')
+  }
+
+  /** The generator's lines about this person, one per field it wrote. Personality is always there. */
+  #life(npc: Npc): string {
+    const fields: Record<string, string | undefined> = { personality: npc.personality, ...npc.life }
+    return Object.entries(fields)
+      .filter(([key, value]) => value && LIFE[key])
+      .map(([key, value]) => `- ${fill(LIFE[key]!, { value: value! })}`)
       .join('\n')
   }
 
-  #npc() {
+  /** What they know, and what the whole town knows. */
+  #knowledge(npc: Npc): string {
+    const own = npc.knowledge.map((fact) => `- ${fact}`)
+    const common = (this.#situation.world.premise()?.common ?? []).map((fact) => fill(LINES.common!, { fact }))
+    const lines = [...own, ...common]
+    return lines.length ? lines.join('\n') : LINES['no-knowledge']!
+  }
+
+  #npc(): Npc {
     return this.#situation.world.npc(this.#situation.npcId)!
   }
 }
