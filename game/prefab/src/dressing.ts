@@ -1,5 +1,5 @@
 import { SIGN, lightsFor } from '@gb/kitbash'
-import type { Dressing } from '@gb/scene'
+import type { Dressing, SurfacePart, SurfaceSize } from '@gb/scene'
 import type { AnchorKind, CellKind, FurnitureProp, Item, Npc, Plot, ResolvedCharter } from '@gb/world'
 import * as THREE from 'three'
 import { Entrances } from './entrance.ts'
@@ -105,8 +105,8 @@ export class PrefabDressing implements Dressing {
     return this.#rest.ground(kind)
   }
 
-  surface(part: 'floor' | 'wall' | 'ceiling'): THREE.Material {
-    return this.#rest.surface(part)
+  surface(part: SurfacePart, size: SurfaceSize): THREE.Material {
+    return this.#rest.surface(part, size)
   }
 }
 
