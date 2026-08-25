@@ -29,7 +29,7 @@ function bar(options: { carries?: boolean; hollisAt?: 'sit-drink' | 'dance'; doi
     size: { w: 8, h: 8 },
     rooms: [{ id: room, kind: 'main', name: 'Taproom', rect: { x: 0, y: 0, w: 8, h: 8 } }],
     doors: [{ id: world.mintId('door'), from: 'outside', to: room, pos: { x: 4, y: 0 }, rot: 180, locked: false }],
-    furniture: [{ id: world.mintId('furniture'), prop: 'bar-counter', roomId: room, pos: { x: 4, y: 7 }, rot: 0 }],
+    furniture: [{ id: world.mintId('prop'), prop: 'bar-counter', roomId: room, pos: { x: 4, y: 7 }, rot: 0 }],
     anchors: [
       { id: serve, kind: 'serve', roomId: room, pos: { x: 4, y: 6 }, rot: 180, ...(options.doing ? { doing: options.doing } : {}) },
       { id: stool, kind: options.hollisAt ?? 'sit-drink', roomId: room, pos: { x: 3, y: 4 }, rot: 0 },

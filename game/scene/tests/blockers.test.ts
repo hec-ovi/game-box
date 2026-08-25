@@ -11,7 +11,7 @@ function solidAt(built: InteriorBuild, x: number, z: number, margin = 0): boolea
 }
 
 function piece(id: string, prop: Furniture['prop'], x: number, y: number, rot = 0): Furniture {
-  return { id, prop, roomId: 'room_1', pos: { x, y }, rot }
+  return { id, prop, roomId: 'room_0001', pos: { x, y }, rot }
 }
 
 /** One handmade bar with that furniture in it, built for real. */
@@ -93,18 +93,18 @@ describe('what the player walks into', () => {
   })
 
   it('lets them walk over a rug and not through the counter beside it', () => {
-    const built = room(piece('prop_1', 'rug', 2, 4), piece('prop_2', 'counter', 6, 4))
+    const built = room(piece('prop_0001', 'rug', 2, 4), piece('prop_0002', 'counter', 6, 4))
 
-    expect(built.blockers.map((b) => b.propId)).toEqual(['prop_2'])
+    expect(built.blockers.map((b) => b.propId)).toEqual(['prop_0002'])
     expect(solidAt(built, 2, 4)).toBe(false)
     expect(solidAt(built, 6, 4)).toBe(true)
     // and the rug is still drawn, it just does not stop anyone
-    expect(built.props.get('prop_1')).toBeDefined()
+    expect(built.props.get('prop_0001')).toBeDefined()
   })
 
   it('turns the rectangle with the furniture', () => {
-    const straight = room(piece('prop_1', 'bar-counter', 4, 4, 0))
-    const turned = room(piece('prop_1', 'bar-counter', 4, 4, 90))
+    const straight = room(piece('prop_0001', 'bar-counter', 4, 4, 0))
+    const turned = room(piece('prop_0001', 'bar-counter', 4, 4, 90))
 
     // a counter is 1.4 m across the front and 0.6 m through: stood facing east, its long side runs north to south
     expect(solidAt(straight, 4.6, 4)).toBe(true)
@@ -114,14 +114,14 @@ describe('what the player walks into', () => {
 
     // and off the compass points, where an east for west mirror would show: facing north-east,
     // the long side runs north-west to south-east
-    const diagonal = room(piece('prop_1', 'bar-counter', 4, 4, 45))
+    const diagonal = room(piece('prop_0001', 'bar-counter', 4, 4, 45))
     const step = 0.4 * Math.SQRT1_2
     expect(solidAt(diagonal, 4 + step, 4 + step)).toBe(true)
     expect(solidAt(diagonal, 4 + step, 4 - step)).toBe(false)
   })
 
   it('puts the rectangle where the model stands, not where its origin is', () => {
-    const stool = piece('prop_1', 'bar-stool', 4, 4, 90)
+    const stool = piece('prop_0001', 'bar-stool', 4, 4, 90)
     const { world, interior } = bar([stool])
     const footprint = buildInterior(world, interior, new Lopsided()).blockers[0]!
 
@@ -132,8 +132,8 @@ describe('what the player walks into', () => {
 
   it('never parks a wardrobe in the doorway', () => {
     // the bar's street door is at (4, 0)
-    expect(room(piece('prop_1', 'wardrobe', 4, 0)).blockers).toEqual([])
+    expect(room(piece('prop_0001', 'wardrobe', 4, 0)).blockers).toEqual([])
     // the same wardrobe further in is solid, so it is the doorway that spares it and not the prop
-    expect(solidAt(room(piece('prop_1', 'wardrobe', 4, 4)), 4, 4)).toBe(true)
+    expect(solidAt(room(piece('prop_0001', 'wardrobe', 4, 4)), 4, 4)).toBe(true)
   })
 })

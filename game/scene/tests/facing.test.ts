@@ -46,9 +46,9 @@ function plotFacing(facing: Facing): { world: World; plot: Plot } {
 describe('which way things point', () => {
   it('turns a stored compass heading into the way a piece of furniture actually faces', () => {
     const furniture: Furniture[] = COMPASS.map((point, index) => ({
-      id: `prop_${index}`,
+      id: `prop_000${index}`,
       prop: 'chair',
-      roomId: 'room_1',
+      roomId: 'room_0001',
       pos: { x: 2 + index, y: 4 },
       rot: point.heading,
     }))
@@ -56,16 +56,16 @@ describe('which way things point', () => {
     const build = buildInterior(world, interior, new Greybox())
 
     for (const [index, point] of COMPASS.entries()) {
-      const front = frontOf(build.props.get(`prop_${index}`)!)
+      const front = frontOf(build.props.get(`prop_000${index}`)!)
       expect(pointing(point.side, front.x, front.z)).toBe(pointing(point.side, point.front.x, point.front.z))
     }
   })
 
   it('turns an anchor the same way, so whoever stands on it faces where the plan says', () => {
     const anchors: Anchor[] = COMPASS.map((point, index) => ({
-      id: `anchor_${index}`,
+      id: `anchor_000${index}`,
       kind: 'stand',
-      roomId: 'room_1',
+      roomId: 'room_0001',
       pos: { x: 2 + index, y: 4 },
       rot: point.heading,
     }))
@@ -73,21 +73,21 @@ describe('which way things point', () => {
     const build = buildInterior(world, interior, new Greybox())
 
     for (const [index, point] of COMPASS.entries()) {
-      const front = frontOf(build.anchors.get(`anchor_${index}`)!)
+      const front = frontOf(build.anchors.get(`anchor_000${index}`)!)
       expect(pointing(point.side, front.x, front.z)).toBe(pointing(point.side, point.front.x, point.front.z))
     }
   })
 
   it('stands the bartender facing the bar, not with their back to it', () => {
-    const counter: Furniture = { id: 'prop_bar', prop: 'bar-counter', roomId: 'room_1', pos: { x: 5, y: 4 }, rot: 270 }
+    const counter: Furniture = { id: 'prop_0009', prop: 'bar-counter', roomId: 'room_0001', pos: { x: 5, y: 4 }, rot: 270 }
     // the anchor is west of the counter, so the heading that looks at it is east
-    const serving: Anchor = { id: 'anchor_bar', kind: 'serve', roomId: 'room_1', pos: { x: 4, y: 4 }, rot: 90, propId: counter.id }
+    const serving: Anchor = { id: 'anchor_0009', kind: 'serve', roomId: 'room_0001', pos: { x: 4, y: 4 }, rot: 90, propId: counter.id }
     const bartender: Npc = {
-      id: 'npc_1',
+      id: 'npc_0001',
       name: 'Mara',
       role: 'bartender',
       appearance: { base: 'female', variant: 1 },
-      station: { interiorId: 'interior_1', anchorId: serving.id },
+      station: { interiorId: 'interior_0001', anchorId: serving.id },
       personality: 'Pours and listens.',
       knowledge: [],
     }
@@ -95,7 +95,7 @@ describe('which way things point', () => {
     const build = buildInterior(world, interior, new Greybox())
 
     const toCounter = new THREE.Vector3(counter.pos.x - serving.pos.x, 0, counter.pos.y - serving.pos.y).normalize()
-    expect(frontOf(build.people.get('npc_1')!).dot(toCounter)).toBeCloseTo(1, 5)
+    expect(frontOf(build.people.get('npc_0001')!).dot(toCounter)).toBeCloseTo(1, 5)
     expect(frontOf(build.anchors.get(serving.id)!).dot(toCounter)).toBeCloseTo(1, 5)
   })
 

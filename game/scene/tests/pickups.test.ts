@@ -317,8 +317,8 @@ function seated(dressing: Greybox, places = 1): InteriorBuild {
   const anchors: Anchor[] = []
   for (let at = 0; at < places; at++) {
     const id = `prop_000${at + 1}`
-    furniture.push({ id, prop: 'chair', roomId: 'room_1', pos: { x: 1.5 + at * 1.5, y: 4 }, rot: 0 })
-    anchors.push({ id: `anchor_000${at + 1}`, kind: 'sit', roomId: 'room_1', pos: { x: 1.5 + at * 1.5, y: 4 }, rot: 0, propId: id })
+    furniture.push({ id, prop: 'chair', roomId: 'room_0001', pos: { x: 1.5 + at * 1.5, y: 4 }, rot: 0 })
+    anchors.push({ id: `anchor_000${at + 1}`, kind: 'sit', roomId: 'room_0001', pos: { x: 1.5 + at * 1.5, y: 4 }, rot: 0, propId: id })
   }
   const { world, interior } = bar(furniture, anchors)
 

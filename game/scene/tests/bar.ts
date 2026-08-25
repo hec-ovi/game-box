@@ -14,12 +14,12 @@ export function bar(furniture: Furniture[], anchors: Anchor[] = [], npcs: Npc[] 
   if (!plot.ok) throw new Error(plot.error.code)
 
   const interior: Interior = {
-    id: 'interior_1',
+    id: 'interior_0001',
     plotId: plot.value.id,
     kind: 'bar',
     size: { w: 8, h: 8 },
-    rooms: [{ id: 'room_1', kind: 'main', name: 'Bar', rect: { x: 0, y: 0, w: 8, h: 8 } }],
-    doors: [{ id: 'door_1', from: 'outside', to: 'room_1', pos: { x: 4, y: 0 }, rot: 180, locked: false }],
+    rooms: [{ id: 'room_0001', kind: 'main', name: 'Bar', rect: { x: 0, y: 0, w: 8, h: 8 } }],
+    doors: [{ id: 'door_0001', from: 'outside', to: 'room_0001', pos: { x: 4, y: 0 }, rot: 180, locked: false }],
     furniture,
     anchors,
   }

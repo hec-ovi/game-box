@@ -17,7 +17,7 @@ const EXACT = 5
 const COUNTER_TOP = METRICS.furniture.serviceCounterHeight
 
 function piece(id: string, prop: FurnitureProp, x: number, y: number, lift?: number): Furniture {
-  return { id, prop, roomId: 'room_1', pos: { x, y }, rot: 0, ...(lift === undefined ? {} : { lift }) }
+  return { id, prop, roomId: 'room_0001', pos: { x, y }, rot: 0, ...(lift === undefined ? {} : { lift }) }
 }
 
 /** One handmade bar with that furniture in it, built for real. */
@@ -47,33 +47,33 @@ class SharedKit extends Greybox {
 
 describe('a piece that stands on another piece', () => {
   it('puts the till on the counter top, not a centimetre over it', () => {
-    const built = room([piece('prop_counter', 'counter', 4, 4), piece('prop_till', 'register', 4, 4, COUNTER_TOP)])
+    const built = room([piece('prop_0001', 'counter', 4, 4), piece('prop_0002', 'register', 4, 4, COUNTER_TOP)])
 
-    expect(built.props.get('prop_till')!.position.y).toBe(COUNTER_TOP)
+    expect(built.props.get('prop_0002')!.position.y).toBe(COUNTER_TOP)
     // the base of what is drawn, and the surface it is standing on, are one number
-    expect(drawn(built, 'prop_till').min.y).toBeCloseTo(COUNTER_TOP, EXACT)
-    expect(drawn(built, 'prop_counter').max.y).toBeCloseTo(COUNTER_TOP, EXACT)
+    expect(drawn(built, 'prop_0002').min.y).toBeCloseTo(COUNTER_TOP, EXACT)
+    expect(drawn(built, 'prop_0001').max.y).toBeCloseTo(COUNTER_TOP, EXACT)
   })
 
   it('leaves a piece with no lift on the floor, where every city already has it', () => {
-    const built = room([piece('prop_counter', 'counter', 4, 4)])
+    const built = room([piece('prop_0001', 'counter', 4, 4)])
 
-    expect(built.props.get('prop_counter')!.position.y).toBe(0)
-    expect(drawn(built, 'prop_counter').min.y).toBeCloseTo(0, EXACT)
+    expect(built.props.get('prop_0001')!.position.y).toBe(0)
+    expect(drawn(built, 'prop_0001').min.y).toBeCloseTo(0, EXACT)
   })
 
   it('measures how tall it is off the floor, so what stops the player is what they see', () => {
-    const built = room([piece('prop_counter', 'counter', 4, 4), piece('prop_till', 'register', 4, 4, COUNTER_TOP)])
+    const built = room([piece('prop_0001', 'counter', 4, 4), piece('prop_0002', 'register', 4, 4, COUNTER_TOP)])
 
-    const till = built.blockers.find((blocker) => blocker.propId === 'prop_till')!
+    const till = built.blockers.find((blocker) => blocker.propId === 'prop_0002')!
     expect(till, 'the till published no rectangle').toBeDefined()
-    expect(till.height).toBeCloseTo(drawn(built, 'prop_till').max.y, EXACT)
+    expect(till.height).toBeCloseTo(drawn(built, 'prop_0002').max.y, EXACT)
     expect(till.height).toBeGreaterThan(COUNTER_TOP)
   })
 
   it('lifts by moving the object, so the piece costs no draw of its own', () => {
     const kit = new SharedKit()
-    const built = room([piece('prop_counter', 'counter', 4, 4), piece('prop_till', 'register', 4, 4, COUNTER_TOP)], kit)
+    const built = room([piece('prop_0001', 'counter', 4, 4), piece('prop_0002', 'register', 4, 4, COUNTER_TOP)], kit)
 
     const meshes = [...built.props.values()].flatMap((object) => object.children as THREE.Mesh[])
     expect(meshes).toHaveLength(2)
