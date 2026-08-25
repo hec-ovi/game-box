@@ -385,6 +385,9 @@ importers:
       '@gb/play':
         specifier: workspace:*
         version: link:../play
+      '@gb/world':
+        specifier: workspace:*
+        version: link:../world
       zod:
         specifier: ^4.4.3
         version: 4.4.3
