@@ -14,17 +14,37 @@
  */
 
 /** One thing a player does, in the words the game would use for it. */
-export type Verb = 'talk' | 'talk about' | 'walk' | 'take' | 'hand over' | 'put down' | 'answer'
+export type Verb = 'talk' | 'talk about' | 'walk' | 'walk with' | 'take' | 'hand over' | 'put down' | 'answer'
 
 /** Every verb the harness knows how to do, and what the game reports when it is done. */
 export const VERBS: Readonly<Record<Verb, string>> = {
   talk: 'talked',
   'talk about': 'talked, with the subject the player put them to',
   walk: 'arrived',
+  'walk with': 'companion-arrived, the companion having got there on foot beside the player',
   take: 'acquired',
   'hand over': 'gave',
   'put down': 'stashed',
   answer: 'chose',
+}
+
+/**
+ * What each verb costs on the game clock, in game seconds, which is what a
+ * timed job is measured against. `@gb/quest` budgets 600 for a conversation
+ * (one model reply is 200 to 450) and 3000 for a walk across town, so a verb
+ * that walks somewhere costs a walk and one that talks costs a reply; handing
+ * something over is both. A job whose timer cannot cover its own verbs at
+ * these prices fails in the harness the way it would fail a real player.
+ */
+export const COSTS: Readonly<Record<Verb, number>> = {
+  talk: 600,
+  'talk about': 600,
+  walk: 3000,
+  'walk with': 3000,
+  take: 3000,
+  'hand over': 3600,
+  'put down': 3000,
+  answer: 600,
 }
 
 /** A verb the game does not have yet, and who is building it. */

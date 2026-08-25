@@ -1,7 +1,7 @@
 import type { Rng } from '@gb/kit'
 import type { Flavour } from '../../theme/flavour.ts'
 import type { CityCast } from '../cast.ts'
-import { secondsToWalk } from '../pace.ts'
+import { secondsFor } from '../pace.ts'
 import { stepId, type Draft, type FailWhen } from '../shape.ts'
 import { RecipeBase, type Job } from './recipe.ts'
 
@@ -31,7 +31,8 @@ export class EscortRun extends RecipeBase {
     const walk = cast.metres(giver.place, walker.place) + cast.metres(walker.place, destination) + cast.metres(destination, giver.place)
     const hurried = rng.chance(IN_A_HURRY)
     const failWhen: FailWhen[] = [{ kind: 'npc-lost', npcId: walker.npc.npcId }]
-    if (hurried) failWhen.push({ kind: 'time-limit', seconds: secondsToWalk(walk) })
+    // three walks and two conversations: finding the walker, and telling whoever asked
+    if (hurried) failWhen.push({ kind: 'time-limit', seconds: secondsFor({ metres: walk, legs: 3, talks: 2 }) })
 
     return this.finish(cast, job, {
       giver,

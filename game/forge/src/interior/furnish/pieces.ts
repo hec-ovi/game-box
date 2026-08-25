@@ -1,14 +1,17 @@
 import type { AnchorKind, FurnitureProp } from '@gb/world'
-import { alongWall, faceReach, headingTo, inward, onWall, outward, step, wallBand, wallOf, type Side } from '../geometry.ts'
+import { alongWall, boxAt, faceReach, headingTo, inward, onWall, outward, step, wallBand, wallOf, type Side } from '../geometry.ts'
 import { specOf } from '../props.ts'
 import type { Placed, RoomPlan } from '../room-plan.ts'
-import { standoff } from '../stance.ts'
+import { seatRoot, standoff } from '../stance.ts'
 
 /** Floor kept behind a counter for whoever works there. */
 const STAFF_STRIP = 1.2
 
 /** How far a seat is pushed in to the edge of the table it is drawn up to. */
 const DRAWN_UP = 0.1
+
+/** The floor a dancing body takes, so no table lands on their feet. */
+const DANCER = { w: 0.9, d: 0.9 }
 
 export interface ServeOptions {
   /** The run itself. A bar walks behind a bar counter; everywhere else serves over a counter. */
@@ -63,12 +66,13 @@ function counterRun(plan: RoomPlan, side: Side, options: Run): Placed[] {
     const spacing = seat.w + 0.65
     const seats = Math.max(1, Math.floor(run / spacing))
     const start = from + (run - (seats - 1) * spacing) / 2
+    // a seat like any other: the drinker's root lands the drawn-up gap off the
+    // counter's face, and the stool goes its own seat offset behind that
+    const out = seatRoot(options.stool, 'sit-drink') + DRAWN_UP / 4
     for (let i = 0; i < seats; i++) {
       const at = start + i * spacing
-      const pos = onWall(wall, at, strip + spec.d + 0.15 + seat.d / 2)
-      // furniture, not a post: nobody perches on a stool until there is a clip
-      // that sits a body on a raised seat, and the drinkers are at the tables
-      plan.at(options.stool, pos, headingTo(pos, onWall(wall, at, strip)))
+      const pos = onWall(wall, at, strip + spec.d + out)
+      plan.seat(options.stool, pos, onWall(wall, at, strip), 'sit-drink')
     }
   }
   return segments
@@ -98,6 +102,17 @@ export function seatTable(plan: RoomPlan, table: Placed, seats: number, kind: An
     if (plan.seat('chair', step(table.pos, rot, away), table.pos, kind)) sat++
   }
   return sat
+}
+
+/**
+ * An office chair drawn up to a desk, and the person sat in it with their hands
+ * on the top. The chair goes where the seated root lands inside the desk's reach
+ * band: the desk's own half depth, the stance, then the seat's own offset back
+ * to the chair's centre.
+ */
+export function deskChair(plan: RoomPlan, desk: Placed, facing: number): boolean {
+  const away = specOf(desk.prop).d / 2 + standoff('work-desk') + seatRoot('office-chair', 'work-desk')
+  return plan.seat('office-chair', step(desk.pos, facing, away), desk.pos, 'work-desk')
 }
 
 /** As many of one piece along a wall as the wall will take. */
@@ -151,6 +166,24 @@ export function leanSpots(plan: RoomPlan, most: number): number {
   for (const side of plan.openSides()) {
     if (placed >= most) break
     if (plan.leanOn(side)) placed++
+  }
+  return placed
+}
+
+/**
+ * Bodies dancing on the open floor, in the middle of the room where the tables
+ * would go, each facing a different way. Only a room whose town calls for
+ * dancing gets one, and it goes in before the tables so the floor is there.
+ */
+export function danceFloor(plan: RoomPlan, most: number): number {
+  let placed = 0
+  for (const spot of plan.rng.shuffle(plan.lattice(plan.bounds, { x: 1.2, y: 1.2 }))) {
+    if (placed >= most) break
+    const rot = plan.rng.pick([0, 90, 180, 270])
+    if (!plan.anchor('dance', spot, rot)) continue
+    // nothing stands under a dancer, so the floor they need is kept for them
+    plan.reserve(boxAt(spot, DANCER, rot))
+    placed++
   }
   return placed
 }

@@ -119,3 +119,11 @@ fewer of, and one the town has to contain whatever the mix rolls.
 - more: cafe, apartment, shop, office
 - fewer: warehouse, workshop
 - must: cafe
+
+## the clubs
+- fits: neon
+- lives: the clubs that open at midnight, and the dancing that keeps the street lit till the trains start
+- word: Beat
+- more: bar, apartment, hotel
+- fewer: chapel, house
+- must: bar

@@ -1,38 +1,74 @@
 import type { Rng } from '@gb/kit'
 import type { BuildingKind } from '@gb/world'
 import type { Words } from '../theme/words.ts'
+import { NamePool, type Head } from './name-pool.ts'
 
-/** The parts a sign is written from. */
-interface Sign {
-  readonly adjective: string
-  readonly noun: string
-  readonly family: string
+/** What a place of this kind calls its trade on the sign, plainly. */
+const TRADES: Record<BuildingKind, readonly string[]> = {
+  bar: ['Bar', 'Tap', 'Lounge', 'Saloon'],
+  cafe: ['Coffee', 'Cafe', 'Counter', 'Canteen'],
+  restaurant: ['Kitchen', 'Table', 'Grill', 'Diner'],
+  shop: ['Supply', 'Stores', 'Goods', 'Provisions'],
+  market: ['Market', 'Stalls', 'Exchange', 'Market Hall'],
+  office: ['& Co.', 'Group', 'Agency', 'Partners'],
+  workshop: ['Repairs', 'Works', 'Garage', 'Fitters'],
+  warehouse: ['Depot', 'Haulage', 'Storage', 'Freight'],
+  clinic: ['Surgery', 'Clinic', 'Dispensary', 'Practice'],
+  hotel: ['Rooms', 'Hotel', 'Lodging', 'Inn'],
+  station: ['Station', 'Halt', 'Terminal', 'Junction'],
+  chapel: ['Chapel', 'Mission', 'Meeting House', 'Hall'],
+  house: ['House', 'Cottage', 'Villa', 'Lodge'],
+  apartment: ['Apartments', 'Tenements', 'Court', 'Mansions'],
 }
 
-type Pattern = (sign: Sign) => string
+/** Places whose sign can be nothing but a name: a bar called Fane's, a cafe called Mara's. */
+const BARE: readonly BuildingKind[] = ['bar', 'cafe', 'restaurant', 'shop']
 
-/** Two or three ways each kind of place names itself, so no town reads off one template. */
-const PATTERNS: Record<BuildingKind, readonly Pattern[]> = {
-  bar: [(s) => `The ${s.adjective} ${s.noun}`, (s) => `${s.family}'s`, (s) => `The ${s.noun} & ${s.adjective}`],
-  cafe: [(s) => `${s.adjective} ${s.noun} Coffee`, (s) => `${s.family}'s Counter`, (s) => `The ${s.noun} Cup`],
-  restaurant: [(s) => `${s.noun} House`, (s) => `${s.family}'s Table`, (s) => `The ${s.adjective} Kitchen`],
-  shop: [(s) => `${s.family} Supply`, (s) => `The ${s.adjective} ${s.noun}`, (s) => `${s.family} & Daughters`],
-  market: [(s) => `${s.adjective} Market`, (s) => `${s.noun} Market Hall`, (s) => `The ${s.adjective} Stalls`],
-  office: [(s) => `${s.family} & Co.`, (s) => `${s.family} Brothers`, (s) => `${s.adjective} ${s.noun} Group`],
-  workshop: [(s) => `${s.family} Repairs`, (s) => `The ${s.adjective} ${s.noun} Works`, (s) => `${s.family} & Son`],
-  warehouse: [(s) => `${s.adjective} Depot`, (s) => `${s.noun} Store No. 2`, (s) => `${s.family} Haulage`],
-  clinic: [(s) => `${s.family} Surgery`, (s) => `The ${s.adjective} Ward`, (s) => `${s.noun} Street Clinic`],
-  hotel: [(s) => `The ${s.adjective} ${s.noun} Rooms`, (s) => `${s.family} House`, (s) => `The ${s.noun} Inn`],
-  station: [(s) => `${s.adjective} Station`, (s) => `${s.noun} Halt`, (s) => `${s.family} Street Station`],
-  chapel: [(s) => `${s.adjective} Chapel`, (s) => `The Chapel of the ${s.noun}`, (s) => `${s.family} Chapel`],
-  house: [(s) => `${s.family} House`, (s) => `The ${s.adjective} ${s.noun}`, (s) => `${s.family} Cottage`],
-  apartment: [(s) => `${s.adjective} Apartments`, (s) => `${s.noun} Buildings`, (s) => `${s.family} Tenements`],
+/** The tails a numbered address takes. */
+const ROWS: readonly string[] = ['Row', 'Street', 'Lane', 'Yard']
+
+/**
+ * One name out of one head. A head is the word the sign is remembered by, and
+ * which shape it takes decides the rest: a family name on its own or with its
+ * heirs, a first name with the trade, a trade plainly stated after a place, a
+ * numbered address, or the old "The X Y". The trade is the kind's own word.
+ */
+function compose(head: Head, kind: BuildingKind, words: Words, rng: Rng): string {
+  const trade = rng.pick(TRADES[kind])
+  switch (head.shape) {
+    case 'first':
+      return BARE.includes(kind) && rng.chance(0.4) ? `${head.word}'s` : `${head.word}'s ${trade}`
+    case 'family':
+      return rng.pick([
+        `${head.word}'s`,
+        `${head.word} & Daughters`,
+        `${head.word} & Sons`,
+        `${head.word} ${trade}`,
+        `${head.word} Brothers`,
+        `${head.word} ${trade}`,
+      ])
+    case 'adjective':
+      return `The ${head.word} ${rng.pick(words.nouns)}`
+    case 'noun':
+      return rng.chance(0.5) ? `The ${head.word}` : `The ${head.word} ${trade}`
+    case 'place':
+      return rng.chance(0.6) ? `${head.word} ${trade}` : `${head.word} ${rng.pick(ROWS)} ${trade}`
+    case 'number':
+      return `${head.word} ${rng.pick(words.nouns)} ${rng.pick(ROWS)}`
+  }
 }
 
-/** A name for one place: its kind picks the pattern, the seed picks the words. */
-export function placeName(kind: BuildingKind, words: Words, rng: Rng): string {
-  const sign: Sign = { adjective: rng.pick(words.adjectives), noun: rng.pick(words.nouns), family: rng.pick(words.last) }
-  return rng.pick(PATTERNS[kind])(sign)
+/**
+ * A name for one place: the head is the pool's, taken by the place's index in
+ * the town so no word heads two signs in a city, and the seed picks the rest.
+ */
+export function placeName(kind: BuildingKind, index: number, pool: NamePool, rng: Rng): string {
+  return compose(pool.headAt(index), kind, pool.words, rng)
+}
+
+/** The word a sign is remembered by: the first one that is not an article. */
+export function headOf(name: string): string {
+  return name.replace(/^The\s+/, '').split(/\s+/)[0]!.replace(/'s$/, '')
 }
 
 /** How often a town is named after what it lives on, when its premise says what that is. */

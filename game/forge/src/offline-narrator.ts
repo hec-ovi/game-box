@@ -1,13 +1,16 @@
 import { Rng } from '@gb/kit'
 import type { BuildingKind, ItemArchetype, NpcRole, Premise } from '@gb/world'
+import { backgroundOf } from './narrator/background.ts'
 import { knowledgeOf, personalityOf } from './narrator/knowledge.ts'
+import { lifeOf } from './narrator/lives.ts'
 import { cityName } from './narrator/places.ts'
 import { writeEachPlace } from './narrator/one-at-a-time.ts'
+import { Roster } from './narrator/roster.ts'
 import { Signs } from './narrator/signs.ts'
 import type { Instance, InstanceRequest, ItemProfile, Narrator, NpcProfile, WorldSummary } from './narrator.ts'
 import { composePremise, type Written } from './premise/write.ts'
 import { QuestWriter } from './quests/write.ts'
-import { flavourOf } from './theme/flavour.ts'
+import { flavourOf, type Flavour } from './theme/flavour.ts'
 import { wordsFor } from './theme/words.ts'
 
 /** What an unremarkable thing looks like when somebody describes it. */
@@ -33,7 +36,7 @@ const ITEM_ASIDES: readonly string[] = [
 export class OfflineNarrator implements Narrator {
   #rng: Rng
   #signs: Signs
-  #usedNames = new Set<string>()
+  #rosters = new Map<Flavour, Roster>()
   /** The town's history, once it has been asked for: what the rest of it is written against. */
   #written: Written | undefined
 
@@ -42,19 +45,18 @@ export class OfflineNarrator implements Narrator {
     this.#signs = new Signs(seed)
   }
 
-  /** Nobody in a town shares a name with anybody else in it. */
-  #uniqueName(rng: Rng, theme: string): string {
-    const words = wordsFor(flavourOf(theme))
-    for (let attempt = 0; attempt < 40; attempt++) {
-      const name = `${rng.pick(words.first)} ${rng.pick(words.last)}`
-      if (!this.#usedNames.has(name)) {
-        this.#usedNames.add(name)
-        return name
-      }
+  /**
+   * Nobody in a town shares a name with anybody else in it: the nth person
+   * takes the nth pair off the roster, whatever order they are asked in.
+   */
+  #nameAt(index: number, theme: string): string {
+    const flavour = flavourOf(theme)
+    let roster = this.#rosters.get(flavour)
+    if (!roster) {
+      roster = new Roster(wordsFor(flavour), this.#rng.fork(`roster/${flavour}`))
+      this.#rosters.set(flavour, roster)
     }
-    const fallback = `${rng.pick(words.first)} ${rng.pick(words.last)} the ${rng.pick(['Younger', 'Elder', 'Quiet', 'Tall', 'Lame'])}`
-    this.#usedNames.add(fallback)
-    return fallback
+    return roster.nameAt(index)
   }
 
   /** What the town lives on and what happened to it, drawn from the seed. */
@@ -69,8 +71,8 @@ export class OfflineNarrator implements Narrator {
     return cityName(wordsFor(flavourOf(input.theme)), this.#rng.fork(`city/${input.seed}`), livesOn)
   }
 
-  async namePlace(input: { kind: BuildingKind; theme: string; index: number }): Promise<string> {
-    return this.#signs.over(input.kind, input.theme, input.index)
+  async namePlace(input: { kind: BuildingKind; theme: string; index: number; premise?: string }): Promise<string> {
+    return this.#signs.over(input.kind, input.theme, input.index, input.premise)
   }
 
   /** The plural, one place at a time: nothing here is slow, so nothing here fans out. */
@@ -78,18 +80,17 @@ export class OfflineNarrator implements Narrator {
     return writeEachPlace(this, requests)
   }
 
-  async describeNpc(input: {
-    role: NpcRole
-    placeKind: BuildingKind
-    placeName: string
-    theme: string
-    index: number
-  }): Promise<NpcProfile> {
+  /** A person written whole: name, character, what they know, their life and the codex the player earns of them. */
+  async describeNpc(input: { role: NpcRole; placeKind: BuildingKind; placeName: string; theme: string; index: number }): Promise<NpcProfile> {
     const rng = this.#rng.fork(`npc/${input.index}`)
+    const premise = this.#written?.premise
+    const life = lifeOf(input.role, input.placeName, rng.fork('life'), premise)
     return {
-      name: this.#uniqueName(rng, input.theme),
+      name: this.#nameAt(input.index, input.theme),
       personality: personalityOf(input.role, input.placeName, rng),
-      knowledge: knowledgeOf(input.role, input.placeKind, input.placeName, rng, this.#written?.premise.common ?? []),
+      knowledge: knowledgeOf(input.role, input.placeKind, input.placeName, rng, premise?.common ?? []),
+      life,
+      background: backgroundOf(input.role, input.placeName, life, rng.fork('background')),
     }
   }
 

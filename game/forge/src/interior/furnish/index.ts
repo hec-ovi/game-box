@@ -8,8 +8,14 @@ import { concourse, lobby, nave, treatmentRoom, waitingRoom } from './civic.ts'
 import { entranceHall, storeRoom } from './service.ts'
 import { openOffice, privateOffice, warehouseFloor, workshopFloor } from './work.ts'
 
-/** Fills one room with what its building and its own kind call for. */
-export function furnishRoom(plan: RoomPlan, building: BuildingKind, role: RoomRole): void {
+/** What the town asks of its rooms beyond what the building kind says. */
+export interface RoomWants {
+  /** The town's story calls for dancing, so a taproom gets a floor for it. */
+  readonly dancing: boolean
+}
+
+/** Fills one room with what its building, its own kind and the town call for. */
+export function furnishRoom(plan: RoomPlan, building: BuildingKind, role: RoomRole, wants: RoomWants): void {
   switch (plan.room.kind) {
     case 'bedroom':
       return building === 'hotel' ? guestRoom(plan) : bedroom(plan)
@@ -26,7 +32,7 @@ export function furnishRoom(plan: RoomPlan, building: BuildingKind, role: RoomRo
     case 'hall':
       return hallRoom(plan, building)
     case 'main':
-      return mainRoom(plan, building)
+      return mainRoom(plan, building, wants)
   }
 }
 
@@ -44,10 +50,10 @@ function hallRoom(plan: RoomPlan, building: BuildingKind): void {
   }
 }
 
-function mainRoom(plan: RoomPlan, building: BuildingKind): void {
+function mainRoom(plan: RoomPlan, building: BuildingKind, wants: RoomWants): void {
   switch (building) {
     case 'bar':
-      return taproom(plan)
+      return taproom(plan, wants)
     case 'cafe':
       return cafeFloor(plan)
     case 'restaurant':

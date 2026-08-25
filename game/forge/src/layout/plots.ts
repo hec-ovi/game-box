@@ -1,5 +1,5 @@
 import type { Rng } from '@gb/kit'
-import type { BuildingKind, Facing, Rect } from '@gb/world'
+import { PLOT_BAND, type BuildingKind, type Facing, type Rect } from '@gb/world'
 
 /** A building-shaped hole in a block, before anything is named or built. */
 export interface PlotSite {
@@ -9,10 +9,15 @@ export interface PlotSite {
   readonly entrance: { x: number; y: number }
 }
 
-const MIN_FRONT = 3
-const MAX_FRONT = 6
-const MIN_DEPTH = 4
-const MAX_DEPTH = 8
+/**
+ * The shapes a plot comes in, read off `@gb/world`'s `PLOT_BAND`: the building
+ * art is drawn for exactly those, so every plot cut here is inside it, whatever
+ * block size the brief names.
+ */
+const MIN_FRONT = PLOT_BAND.frontage.min
+const MAX_FRONT = PLOT_BAND.frontage.max
+const MIN_DEPTH = PLOT_BAND.depth.min
+const MAX_DEPTH = PLOT_BAND.depth.max
 
 /** How far back from the sidewalk the buildings on a block stand. */
 function depthOf(shortSide: number): number {
@@ -40,7 +45,8 @@ export function sitesInBlock(block: Rect, rng: Rng): PlotSite[] {
   const depth = depthOf(Math.min(block.w, block.h))
   const sites: PlotSite[] = []
 
-  // a block too small for a ring becomes one row facing south
+  // a block too small for a ring becomes one row facing south; every block is
+  // at least as deep as the band's shallowest plot, so the row is never shallower
   if (block.h < depth * 2 + 2 || block.w < MIN_FRONT * 2) {
     sites.push(...strip(block, 'south', Math.min(depth, block.h), rng))
     return sites
@@ -92,11 +98,12 @@ function doorstep(rect: Rect, facing: Facing): { x: number; y: number } {
 }
 
 /**
- * How tall a building of this kind gets, within the brief's limit. A building on
- * an avenue stands a storey taller than the same building on a side street: the
- * spine is where a town puts its frontage.
+ * How tall a building of this kind gets, within the brief's limit and the
+ * band's. A building on an avenue stands a storey taller than the same
+ * building on a side street: the spine is where a town puts its frontage.
  */
-export function storeysFor(kind: BuildingKind, maxStoreys: number, rng: Rng, onAvenue = false): number {
+export function storeysFor(kind: BuildingKind, briefStoreys: number, rng: Rng, onAvenue = false): number {
+  const maxStoreys = Math.min(briefStoreys, PLOT_BAND.storeys.max)
   const ranges: Partial<Record<BuildingKind, [number, number]>> = {
     house: [1, 2],
     apartment: [3, maxStoreys],

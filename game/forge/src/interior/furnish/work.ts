@@ -1,6 +1,6 @@
 import { headingTo, step } from '../geometry.ts'
 import type { RoomPlan } from '../room-plan.ts'
-import { cornerPiece, servePost, standAt, wallRow } from './pieces.ts'
+import { cornerPiece, deskChair, servePost, standAt, wallRow } from './pieces.ts'
 
 /** An open office: desks in rows, all facing the same way, a chair at each. */
 export function openOffice(plan: RoomPlan): void {
@@ -11,7 +11,7 @@ export function openOffice(plan: RoomPlan): void {
     const desk = plan.at('desk', spot, rot, 0, 0.4)
     if (!desk) continue
     desks++
-    plan.seat('office-chair', step(desk.pos, rot, 0.75), desk.pos, 'work-desk')
+    deskChair(plan, desk, rot)
   }
   wallRow(plan, 'cabinet', plan.openSides()[0] ?? plan.backSide(), 2, 0.7)
   cornerPiece(plan, 'plant')
@@ -22,7 +22,7 @@ export function privateOffice(plan: RoomPlan): void {
   for (const side of [plan.backSide(), ...plan.openSides()]) {
     const desk = plan.againstWall('desk', side, { gap: 0.9, approach: 0.8, prefer: 'centre' })
     if (!desk) continue
-    plan.seat('office-chair', step(desk.pos, desk.rot + 180, 0.75), desk.pos, 'work-desk')
+    deskChair(plan, desk, desk.rot + 180)
     break
   }
   wallRow(plan, 'cabinet', plan.openSides()[0] ?? plan.backSide(), 1, 0.6)

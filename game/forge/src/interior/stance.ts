@@ -42,6 +42,14 @@ export const AT_HAND: Stance = { near: 0.1, at: 0.15, far: 0.25 }
 export const IN_FRONT: Stance = { near: 0.2, at: 0.3, far: 0.45 }
 
 /**
+ * Sat at a desk, leaning in. `@gb/cast` measured the seated desk pose with the
+ * wrists 0.20 to 0.24 m in front of the root at 0.78 m, against a 0.75 m top,
+ * so the near edge of the desk belongs under the wrists and outside the knees:
+ * the chair is drawn up until the root stands this far off the desk's face.
+ */
+export const AT_DESK: Stance = { near: 0.05, at: 0.115, far: 0.2 }
+
+/**
  * Propped against a wall, back to it, hands free, feet out in front. There is
  * no piece: the wall is the piece.
  *
@@ -62,6 +70,7 @@ const STANCES: Partial<Record<AnchorKind, Stance>> = {
   serve: AT_HAND,
   cook: AT_HAND,
   'work-bench': AT_HAND,
+  'work-desk': AT_DESK,
   browse: IN_FRONT,
   stand: IN_FRONT,
 }

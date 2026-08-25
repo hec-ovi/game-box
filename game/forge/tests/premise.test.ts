@@ -209,7 +209,6 @@ describe('a city written against a history', () => {
     for (const junk of [
       { livesOn: 'somewhere' },
       { ...SHIPPING, sides: [{ name: 'only one side', wants: 'everything' }] },
-      { ...SHIPPING, build: { moreOf: ['hospital'], fewerOf: [], mustHave: [] } },
       // longer than a world document will hold: dropped here, rather than taken
       // as far as `World.found` and refused with the whole city
       { ...SHIPPING, stake: 'x'.repeat(500) },
@@ -252,5 +251,29 @@ describe('a city written against a history', () => {
     )
     const named = names.filter((name) => words.has(name.split(' ').at(-1)!))
     expect(named.length, `none of ${names.join(', ')} is named after what its town lives on`).toBeGreaterThan(2)
+  })
+})
+
+describe('a history that fails the contract in one place', () => {
+  it('keeps every field that holds up and drops only the word that does not', async () => {
+    // one building kind the game has not got, and one side missing its wants:
+    // the rest of the history is what the town is built on
+    const broken = {
+      ...SHIPPING,
+      sides: [...SHIPPING.sides, { name: 'the harbourmaster' }],
+      build: { moreOf: ['warehouse', 'casino', 'bar'], fewerOf: ['office'], mustHave: ['warehouse', 'lighthouse'] },
+    }
+    const built = await build(new Told(SEED, broken))
+    const premise = built.world.premise()
+    expect(premise, 'the whole history was thrown away for one bad word').toBeDefined()
+    expect(premise!.livesOn).toBe(SHIPPING.livesOn)
+    expect(premise!.sides).toEqual(SHIPPING.sides)
+    expect(premise!.build).toEqual({ moreOf: ['warehouse', 'bar'], fewerOf: ['office'], mustHave: ['warehouse'] })
+    expect(built.world.plotsOfKind('warehouse').length).toBeGreaterThan(0)
+  })
+
+  it('still drops a history nothing can be salvaged from', async () => {
+    const built = await build(new Told(SEED, { livesOn: 'the sea', sides: [] }))
+    expect(built.world.premise()).toBeUndefined()
   })
 })

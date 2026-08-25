@@ -1,11 +1,13 @@
 import type { Rng } from '@gb/kit'
-import { BODY_KINDS, METRICS, type BuildingKind, type Premise, type World } from '@gb/world'
+import { METRICS, type BuildingKind, type Premise, type World } from '@gb/world'
 import { openDoors, type Frontage } from '../interior/open.ts'
 import { planInterior } from '../interior/plan.ts'
 import type { InstanceRequest } from '../narrator.ts'
 import { premiseLines } from '../premise/render.ts'
 import type { Signs } from '../narrator/signs.ts'
-import { itemsFor, occupancy, roleFor, surfacesOf } from '../populate.ts'
+import { bodyFor, itemsFor, occupancy, roleFor, surfacesOf } from '../populate.ts'
+import { callsForDancing } from '../premise/wants.ts'
+import { priceOf } from '../prices.ts'
 import type { Chosen, PlannedInside, PlannedPost, PlannedSite, PlannedThing } from './planned.ts'
 
 /** What the whole town needs before a single site can be planned. */
@@ -37,12 +39,13 @@ export function planRaise(world: World, chosen: readonly Chosen[], setup: RaiseS
   })
   const counts = { npcs: world.npcs().length, items: world.items().length }
   const style = `${setup.theme.split(/\s+/)[0]?.toLowerCase() ?? 'plain'}-`
+  const story = setup.premise ? premiseLines(setup.premise) : undefined
 
   return chosen.map((one, at) => ({
     ...one,
     index: first + at,
     style: style + one.kind,
-    sign: setup.signs.over(one.kind, setup.theme, first + at),
+    sign: setup.signs.over(one.kind, setup.theme, first + at, story),
     ...(open.has(String(at)) ? { inside: planInside(world, one, setup, counts) } : {}),
   }))
 }
@@ -88,7 +91,14 @@ function frontagesOf(world: World, chosen: readonly Chosen[], demanded: Readonly
 function planInside(world: World, one: Chosen, setup: RaiseSetup, counts: { npcs: number; items: number }): PlannedInside {
   const wall = METRICS.building.wallThickness
   const size = { w: one.site.rect.w * world.cellSize - wall * 2, h: one.site.rect.h * world.cellSize - wall * 2 }
-  const plan = planInterior({ kind: one.kind, size, entrance: one.site.facing, mint: (kind) => world.mintId(kind), rng: one.rng.fork('inside') })
+  const plan = planInterior({
+    kind: one.kind,
+    size,
+    entrance: one.site.facing,
+    wants: { dancing: callsForDancing(setup.theme, setup.premise) },
+    mint: (kind) => world.mintId(kind),
+    rng: one.rng.fork('inside'),
+  })
   const interiorId = world.mintId('interior')
   const rng = setup.people.fork(`people/${interiorId}`)
 
@@ -99,7 +109,8 @@ function planInside(world: World, one: Chosen, setup: RaiseSetup, counts: { npcs
     // a staff post is always filled: a bar without a bartender is not a bar
     const chance = occupancy(anchor.kind)
     if (chance < 1 && !rng.chance(chance * setup.density)) continue
-    posts.push({ anchor, role, index: counts.npcs++, appearance: { base: rng.pick(BODY_KINDS), variant: rng.int(0, 8) } })
+    const index = counts.npcs++
+    posts.push({ anchor, role, index, appearance: { base: bodyFor(role, index, rng), variant: rng.int(0, 8) } })
   }
 
   const surfaces = surfacesOf(plan.anchors)
@@ -107,7 +118,7 @@ function planInside(world: World, one: Chosen, setup: RaiseSetup, counts: { npcs
   for (const [at, archetype] of itemsFor(one.kind, rng).entries()) {
     const anchor = surfaces[at % Math.max(1, surfaces.length)]
     if (!anchor) break
-    things.push({ thingId: `${interiorId}/thing/${at}`, archetype, anchorId: anchor.id, index: counts.items++, value: rng.int(1, 60) })
+    things.push({ thingId: `${interiorId}/thing/${at}`, archetype, anchorId: anchor.id, index: counts.items++, value: priceOf(archetype, rng) })
   }
 
   return { interiorId, size, plan, posts, things }

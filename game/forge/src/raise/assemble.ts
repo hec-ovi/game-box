@@ -55,6 +55,8 @@ function fill(world: World, inside: PlannedInside, plotId: string, instance: Ins
       workPlotId: plotId,
       personality: person.personality,
       knowledge: [...person.knowledge],
+      ...(person.life ? { life: { ...person.life } } : {}),
+      ...(person.background?.length ? { background: person.background.map((fact) => ({ ...fact })) } : {}),
     }
     if (world.addNpc(npc).ok && post.anchor.kind === 'serve') staff ??= npc.id
   }

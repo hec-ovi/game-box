@@ -1,5 +1,5 @@
-import type { Rng } from '@gb/kit'
-import type { Anchor, AnchorKind, BuildingKind, ItemArchetype, NpcRole } from '@gb/world'
+import { Rng } from '@gb/kit'
+import type { Anchor, AnchorKind, BodyKind, BuildingKind, ItemArchetype, NpcRole } from '@gb/world'
 
 /** Who stands at an anchor of this kind, in this kind of building. */
 export function roleFor(anchor: AnchorKind, building: BuildingKind): NpcRole | undefined {
@@ -29,7 +29,27 @@ export function roleFor(anchor: AnchorKind, building: BuildingKind): NpcRole | u
       return building === 'warehouse' ? 'guard' : 'worker'
     case 'lean':
       return 'wanderer'
+    case 'dance':
+      return 'patron'
   }
+}
+
+/** Roles whose work can put a hero body on the floor: the ones on their feet, watching or lifting. */
+const HERO_ROLES: readonly NpcRole[] = ['guard', 'worker', 'mechanic']
+
+/** How many of those get one. */
+const HERO_SHARE = 0.25
+
+/**
+ * Which body somebody has. Everybody is one of the two plain bodies, drawn from
+ * the interior's own stream; a minority of the guards and the people who work on
+ * their feet get the hero build instead, decided off their own index in the town
+ * so the same person is the same build every time the city is opened.
+ */
+export function bodyFor(role: NpcRole, index: number, rng: Rng): BodyKind {
+  const plain = rng.pick(['male', 'female'] as const)
+  const hero = HERO_ROLES.includes(role) && new Rng(`hero/${index}`).chance(HERO_SHARE)
+  return hero ? `hero-${plain}` : plain
 }
 
 /** How likely an anchor of this kind has somebody on it. Staff posts are always filled. */
@@ -45,8 +65,9 @@ export function occupancy(anchor: AnchorKind): number {
     case 'sleep':
       return 0.4
     case 'sit-drink':
-    // somebody propped at the wall is a customer like somebody at a table
+    // somebody propped at the wall or dancing is a customer like somebody at a table
     case 'lean':
+    case 'dance':
       return 0.5
     case 'sit':
     case 'browse':

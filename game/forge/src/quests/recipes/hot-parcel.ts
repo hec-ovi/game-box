@@ -1,7 +1,7 @@
 import type { Rng } from '@gb/kit'
 import type { Flavour } from '../../theme/flavour.ts'
 import type { CityCast } from '../cast.ts'
-import { secondsToWalk } from '../pace.ts'
+import { secondsFor } from '../pace.ts'
 import { stepId, type Draft } from '../shape.ts'
 import { RecipeBase, type Job } from './recipe.ts'
 
@@ -26,7 +26,8 @@ export class HotParcel extends RecipeBase {
     // the hint is read from wherever the player is standing, which is usually not this room
     const owner = source.npcs.find((npc) => npc.npcId === item.ownerNpcId)?.name ?? `somebody at ${source.name}`
     const walk = cast.metres(giver.place, source) * 2
-    const seconds = secondsToWalk(walk)
+    // there and back, and the hand-over is a conversation
+    const seconds = secondsFor({ metres: walk, legs: 2, talks: 1 })
 
     return this.finish(cast, job, {
       giver,

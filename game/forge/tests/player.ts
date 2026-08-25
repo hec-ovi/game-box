@@ -1,7 +1,9 @@
 import type { PlayerState } from '@gb/play'
 import type { Objective, QuestDoc, QuestLog } from '@gb/quest'
 import type { World } from '@gb/world'
-import { HANDS, type Hands, type Verb } from './verbs.ts'
+import { questTargets } from '../src/quests/targets.ts'
+import type { Street } from './street.ts'
+import { COSTS, HANDS, type Hands, type Verb } from './verbs.ts'
 
 /**
  * A quest played the way a player plays one.
@@ -11,7 +13,14 @@ import { HANDS, type Hands, type Verb } from './verbs.ts'
  * what the line publishes, never from the quest document, because a player never
  * sees the document. Then it does that thing with one of the verbs the game
  * actually has (`verbs.ts`); a step that needs a verb nobody has yet stops the
- * quest and is reported, never credited.
+ * quest and is reported, never credited. Every verb costs game seconds and the
+ * clock is reported after each one, so a timer too short for its own job fails
+ * here the way it would fail a player.
+ *
+ * The town can be alive while it is played: given a `street`, a third of the
+ * people are out walking, and a line pointing at somebody who is out is a line
+ * pointing at an empty room. With `keepTargets` the people a quest is waiting on
+ * stay at their posts, which is the rule the running game is asked to keep.
  */
 
 /** Which road a player takes when a quest makes them choose. */
@@ -38,12 +47,28 @@ export interface Playthrough {
   readonly paid: number
   /** Steps waiting on a verb nobody has yet. */
   readonly blocked: readonly Block[]
+  /** Steps that point at somebody who was out walking when the player got there. */
+  readonly absent: readonly string[]
   /**
    * Steps that stopped for some other reason: the board asked for something it
    * published no target for, or asking for it moved nothing. Nobody else's fault
    * but this box's.
    */
   readonly stranded: readonly string[]
+}
+
+/** How the town is living while the quest is played. */
+export interface Living {
+  readonly street: Street
+  /** Whether the people a quest is waiting on stay at their posts. */
+  readonly keepTargets: boolean
+}
+
+export interface PlayerOptions {
+  readonly owned?: ReadonlySet<string>
+  readonly choose?: Choose
+  readonly hands?: Hands
+  readonly living?: Living
 }
 
 /** How many rounds of doing everything on the board before a quest is called stuck. */
@@ -62,29 +87,35 @@ export class Player {
   #owned: ReadonlySet<string>
   #choose: Choose
   #hands: Hands
+  #living: Living | undefined
   #held = new Set<string>()
+  #out: ReadonlySet<string> = new Set()
 
-  constructor(log: QuestLog, state: PlayerState, options: { owned?: ReadonlySet<string>; choose?: Choose; hands?: Hands } = {}) {
+  constructor(log: QuestLog, state: PlayerState, options: PlayerOptions = {}) {
     this.#log = log
     this.#state = state
     this.#owned = options.owned ?? new Set()
     this.#choose = options.choose ?? (() => 0)
     this.#hands = options.hands ?? HANDS
+    this.#living = options.living
   }
 
   /** Does everything the board asks for, over and over, until the quest ends or stops moving. */
   play(quest: QuestDoc): Playthrough {
     const kinds = new Map(quest.steps.map((step) => [step.id, step.kind]))
     const blocked = new Map<string, Block>()
+    const absent = new Set<string>()
     let open: Objective[] = []
 
     for (let round = 0; round < ROUNDS; round++) {
       open = this.#log.objectives().filter((objective) => objective.questId === quest.id)
       if (!open.length) break
+      this.#lookOutside(open)
       let moved = false
       for (const objective of open) {
         const tried = this.does(objective, quest.id)
         if (tried.stopped) blocked.set(objective.stepId, { ...tried.stopped, kind: kinds.get(objective.stepId) ?? '?' })
+        if (tried.away) absent.add(objective.stepId)
         moved = tried.moved || moved
       }
       if (!moved) break
@@ -92,7 +123,7 @@ export class Player {
     }
 
     const status = this.#log.status(quest.id)
-    const stranded = open.filter((objective) => !blocked.has(objective.stepId)).map((objective) => objective.stepId)
+    const stranded = open.filter((objective) => !blocked.has(objective.stepId) && !absent.has(objective.stepId)).map((objective) => objective.stepId)
     return {
       questId: quest.id,
       title: quest.title,
@@ -100,19 +131,35 @@ export class Player {
       completable: status === 'complete',
       paid: this.#state.money,
       blocked: [...blocked.values()],
+      absent: [...absent],
       stranded: status === 'complete' ? [] : stranded,
     }
   }
 
   /**
    * Does one line on the board: either the board moves, or the player has not
-   * got the verb it asks for and that is what comes back.
+   * got the verb it asks for, or the person it names is not at their post.
    */
-  does(objective: Objective, questId: string): { moved: boolean; stopped?: Omit<Block, 'kind'> } {
+  does(objective: Objective, questId: string): { moved: boolean; stopped?: Omit<Block, 'kind'>; away?: boolean } {
     const verb = verbFor(objective)
     if (!verb) return { moved: false }
     if (!this.#hands.can(verb)) return { moved: false, stopped: { stepId: objective.stepId, verb, why: this.#hands.missing(verb)!.why } }
-    return { moved: this.#act(verb, objective, questId) }
+    if (objective.npcId && this.#out.has(objective.npcId)) return { moved: false, away: true }
+    const moved = this.#act(verb, objective, questId)
+    this.#spend(COSTS[verb])
+    return { moved }
+  }
+
+  /** Who is out on the street this round: the town's third, less whoever this quest is waiting on. */
+  #lookOutside(open: readonly Objective[]): void {
+    if (!this.#living) return
+    this.#out = this.#living.street.out(this.#living.keepTargets ? questTargets(open) : new Set())
+  }
+
+  /** Time passing on the game clock, reported the way the running game reports it. */
+  #spend(gameSeconds: number): void {
+    this.#state.clock.advance(gameSeconds / this.#state.clock.rate)
+    this.#log.handle({ kind: 'clock', seconds: this.#state.clock.totalSeconds })
   }
 
   /** Does one thing, and says whether the board moved because of it. */
@@ -124,6 +171,8 @@ export class Player {
         return this.#report({ kind: 'talked', npcId: objective.npcId!, topic: objective.topic! })
       case 'walk':
         return this.#report({ kind: 'arrived', place: objective.place! })
+      case 'walk with':
+        return this.#report({ kind: 'companion-arrived', npcId: objective.npcId!, place: objective.place! })
       case 'take': {
         let moved = false
         for (const itemId of this.#some(objective, (id) => !this.#held.has(id))) {
@@ -184,6 +233,7 @@ export function verbFor(objective: Objective): Verb | undefined {
   if (objective.anchorId) return 'put down'
   if (objective.itemId && objective.npcId) return 'hand over'
   if (objective.itemId) return 'take'
+  if (objective.npcId && objective.place) return 'walk with'
   if (objective.place) return 'walk'
   if (objective.topic) return 'talk about'
   if (objective.npcId) return 'talk'

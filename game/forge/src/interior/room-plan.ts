@@ -31,7 +31,7 @@ export const WALL_CLEAR = 0.1
 const SWEEP = 0.15
 
 /** Anchors that are extra people in the room rather than the person who runs it. */
-const CROWD: readonly AnchorKind[] = ['sit', 'sit-drink', 'browse', 'lean']
+const CROWD: readonly AnchorKind[] = ['sit', 'sit-drink', 'browse', 'lean', 'dance']
 
 export type Mint = (kind: string) => string
 
@@ -305,6 +305,7 @@ export class RoomPlan {
       pos: { x: round(pos.x), y: round(pos.y) },
       rot: round(host.rot),
       lift: round(lift),
+      on: host.id,
     })
     return true
   }

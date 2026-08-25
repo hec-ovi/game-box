@@ -1,9 +1,18 @@
-import type { BuildingKind, ItemArchetype, NpcRole, Premise, RoomKind } from '@gb/world'
+import type { BuildingKind, ItemArchetype, Npc, NpcRole, Premise, RoomKind } from '@gb/world'
 
+/**
+ * A person as a narrator writes them. `life` and `background` are `@gb/world`'s
+ * own shapes: the life is what a prompt is handed so two people in one room
+ * answer differently, the background is the codex the player earns. A narrator
+ * that leaves them out gets a person who answers off `personality` and
+ * `knowledge` alone.
+ */
 export interface NpcProfile {
   readonly name: string
   readonly personality: string
   readonly knowledge: readonly string[]
+  readonly life?: Npc['life']
+  readonly background?: Npc['background']
 }
 
 export interface ItemProfile {
@@ -109,13 +118,16 @@ export interface Narrator {
    */
   writePremise?(input: { theme: string; seed: string }): Promise<Premise>
   nameCity(input: { theme: string; seed: string; premise?: Premise }): Promise<string>
-  namePlace(input: { kind: BuildingKind; theme: string; index: number }): Promise<string>
+  /** A sign for one place. `premise` is the town's story as `premiseLines` renders it, when it has one. */
+  namePlace(input: { kind: BuildingKind; theme: string; index: number; premise?: string }): Promise<string>
+  /** One person for one post. `premise` is the town's story as `premiseLines` renders it, when it has one. */
   describeNpc(input: {
     role: NpcRole
     placeKind: BuildingKind
     placeName: string
     theme: string
     index: number
+    premise?: string
   }): Promise<NpcProfile>
   describeItem(input: { archetype: ItemArchetype; theme: string; index: number }): Promise<ItemProfile>
   /**

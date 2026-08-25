@@ -2,7 +2,7 @@ import { PlayerState } from '@gb/play'
 import { QuestLog, REWARD_TABLE, type QuestDoc } from '@gb/quest'
 import { METRICS } from '@gb/world'
 import { describe, expect, it } from 'vitest'
-import { secondsToWalk } from '../src/quests/pace.ts'
+import { secondsFor } from '../src/quests/pace.ts'
 import { across, line, playEvery } from './playable.ts'
 import { buildTown, digest } from './support.ts'
 
@@ -181,11 +181,21 @@ describe('generated quests', () => {
     }
   })
 
-  it('gives a timed job longer than the walk it asks for, on the clock the game runs', () => {
-    const walk = 100
+  it('gives a timed job the hour the clock needs, and more for every walk and every reply', () => {
+    // @gb/quest's own budget at 24 game seconds a real second: 600 a
+    // conversation, 3000 a walk, nothing under 3600, and a real walk at
+    // walking pace when it is longer than that
     const clock = PlayerState.create('world_0001').clock
+    expect(clock.rate).toBe(24)
+    expect(secondsFor({ metres: 0, legs: 0, talks: 0 })).toBe(3600)
+    expect(secondsFor({ metres: 100, legs: 1, talks: 1 })).toBeGreaterThanOrEqual(3600 + 600)
+    const far = 1000
     const before = clock.totalSeconds
-    clock.advance(walk / METRICS.player.walkSpeed)
-    expect(clock.totalSeconds - before).toBeLessThan(secondsToWalk(walk))
+    clock.advance(far / METRICS.player.walkSpeed)
+    expect(secondsFor({ metres: far, legs: 1, talks: 0 })).toBeGreaterThan(clock.totalSeconds - before)
+    expect(secondsFor({ metres: 1e6, legs: 9, talks: 9 })).toBe(86400)
+    for (const quest of everyQuest) {
+      for (const rule of quest.failWhen ?? []) if (rule.kind === 'time-limit') expect(rule.seconds, quest.title).toBeGreaterThanOrEqual(3600)
+    }
   })
 })

@@ -16,6 +16,7 @@ export const TRADES: readonly Trade[] = [
   { handle: "the market day", fits: ["agrarian"], lives: "one market day a week that the rest of the county comes to", word: "Cross", more: ["market", "restaurant", "hotel"], fewer: ["office", "workshop"], must: ["hotel"] },
   { handle: "the crossroads", fits: ["plain"], lives: "the crossroads, and the trade that stops here because it has to", word: "Turn", more: ["shop", "hotel", "bar"], fewer: ["warehouse"], must: ["shop"] },
   { handle: "the college", fits: ["plain"], lives: "the college on the hill, and everything that grew up to feed it", word: "Campus", more: ["cafe", "apartment", "shop", "office"], fewer: ["warehouse", "workshop"], must: ["cafe"] },
+  { handle: "the clubs", fits: ["neon"], lives: "the clubs that open at midnight, and the dancing that keeps the street lit till the trains start", word: "Beat", more: ["bar", "apartment", "hotel"], fewer: ["chapel", "house"], must: ["bar"] },
 ]
 
 export const TURNS: readonly Turn[] = [

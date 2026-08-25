@@ -1,10 +1,11 @@
 import { readFileSync } from 'node:fs'
 import { PlayerState } from '@gb/play'
-import { QuestLog, validateQuest, type QuestDoc } from '@gb/quest'
+import { validateQuest, type QuestDoc } from '@gb/quest'
 import { questView, World, type WorldDoc } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { Forge, OfflineNarrator, summarise } from '../src/index.ts'
 import { ownedItems, Player } from './player.ts'
+import { openLog } from './playable.ts'
 import { buildTown } from './support.ts'
 
 /** A city this box built and sealed before the streets were reseeded. Never regenerated. */
@@ -74,7 +75,7 @@ describe('Forge', () => {
 
     const quest = quests[0]!
     const state = PlayerState.create(world.id)
-    const log = QuestLog.create(quests, state)
+    const log = openLog(quests, state)
     expect(log.start(quest.id).ok).toBe(true)
 
     const run = new Player(log, state, { owned: ownedItems(world) }).play(quest)

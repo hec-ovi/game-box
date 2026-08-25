@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest'
 import { DOORSTEP } from '../src/interior/doors.ts'
 import { boxAt, dirOf, holds, inBox, inward, overlaps, SIDES, type Box, type Side, type Vec } from '../src/interior/geometry.ts'
 import { planInterior, type InteriorPlan } from '../src/interior/plan.ts'
-import { footprintOf, PROP_SPECS, SEAT_SPECS, seatSpecOf, topOf } from '../src/interior/props.ts'
-import { IN_FRONT, LEAN_BODY, stanceOf, type Stance } from '../src/interior/stance.ts'
+import { footprintOf, SEAT_SPECS, seatSpecOf, specOf, topOf } from '../src/interior/props.ts'
+import { AT_DESK, IN_FRONT, LEAN_BODY, stanceOf, type Stance } from '../src/interior/stance.ts'
 import { buildTown } from './support.ts'
 
 /** The floor a doorway keeps to itself: the opening, and a metre either side of the wall. */
@@ -27,7 +27,7 @@ const SEEDS = ['alpha', 'bravo', 'charlie', 'delta', 'echo']
 function plan(kind: BuildingKind, seed: string, size = SIZES[1]!, entrance: Side = 'north'): InteriorPlan {
   let minted = 0
   const mint = (thing: string) => `${thing}_${String(++minted).padStart(4, '0')}`
-  return planInterior({ kind, size, entrance, mint, rng: new Rng(seed) })
+  return planInterior({ kind, size, entrance, wants: { dancing: false }, mint, rng: new Rng(seed) })
 }
 
 /** Every plan a sweep over kinds, seeds, shapes and which way the door faces. */
@@ -141,7 +141,7 @@ function step(from: Vec, rot: number, distance: number): Vec {
  * piece's own footprint rather than asked of the planner. Zero inside it.
  */
 function faceGap(point: Vec, piece: Furniture): number {
-  const spec = PROP_SPECS[piece.prop]
+  const spec = specOf(piece.prop)
   const a = (piece.rot * Math.PI) / 180
   const dx = point.x - piece.pos.x
   const dy = point.y - piece.pos.y
@@ -304,31 +304,32 @@ describe('interior plans', () => {
     expect(checked).toBeGreaterThan(100)
   })
 
-  it('leaves the bar stools to be walked round, and still fills the room', () => {
-    // `@gb/cast`'s seated clip has its soles on the floor and its underside at
-    // 0.423 m, so on a 0.75 m stool a body is a third of a metre out. Until
-    // there is a pose for a raised seat a stool is a piece a body walks round,
-    // and the drinkers are at the tables and against the walls
+  it('sits the drinkers on the bar stools, and nobody else', () => {
+    // `@gb/cast` sits a `sit-drink` body at `stoolHeight` with its feet on the
+    // rail, so that stance belongs on a stool and on nothing else: on a chair it
+    // floats 0.30 m, and a `sit` body on a stool sits inside it
     let stools = 0
-    let drinkers = 0
+    let perched = 0
     for (const { kind, seed, made } of everyPlan()) {
       const raised = new Set(made.furniture.filter((piece) => piece.prop === 'bar-stool').map((piece) => piece.id))
       stools += raised.size
       for (const anchor of made.anchors) {
-        expect(anchor.propId === undefined || !raised.has(anchor.propId), `${kind}/${seed}: somebody is perched on a bar stool`).toBe(true)
-        if (kind === 'bar' && (anchor.kind === 'sit-drink' || anchor.kind === 'lean')) drinkers++
+        const onStool = anchor.propId !== undefined && raised.has(anchor.propId)
+        expect(onStool === (anchor.kind === 'sit-drink'), `${kind}/${seed}: a ${anchor.kind} body ${onStool ? 'on' : 'off'} a stool`).toBe(true)
+        if (onStool) perched++
       }
     }
     expect(stools, 'no bar has a stool at its counter').toBeGreaterThan(5)
-    expect(drinkers, 'a bar with nobody in it').toBeGreaterThan(10)
+    expect(perched, 'no bar has anybody on its stools').toBeGreaterThan(5)
   })
 
-  it('draws a desk worker up to their desk, close enough to put their hands on it', () => {
+  it('draws a desk worker up to their desk, inside the reach band the seated pose has', () => {
     // `@gb/cast` measured the seated desk pose: the wrists land 0.20 to 0.24 m
     // in front of the root at 0.78 m off the floor, and a desk top is 0.75 m.
     // Any further off and the forearms rest on air; any closer and the knees
-    // are through the pedestal
-    const REACH = 0.24
+    // are through the pedestal. The band is the stance's, like a counter's
+    expect(stanceOf('work-desk')).toBe(AT_DESK)
+    expect(AT_DESK.far).toBeLessThanOrEqual(0.2)
     let checked = 0
     for (const { kind, seed, made } of everyPlan()) {
       const desks = made.furniture.filter((piece) => piece.prop === 'desk')
@@ -336,8 +337,8 @@ describe('interior plans', () => {
         if (anchor.kind !== 'work-desk') continue
         const nearest = desks.map((desk) => faceGap(anchor.pos, desk)).sort((a, b) => a - b)[0]
         expect(nearest, `${kind}/${seed}: somebody at a desk with no desk in the room`).toBeDefined()
-        expect(nearest!, `${kind}/${seed}: the desk is ${nearest!.toFixed(2)} m off, hands over air`).toBeLessThanOrEqual(REACH)
-        expect(nearest!, `${kind}/${seed}: sitting inside the desk`).toBeGreaterThan(0)
+        expect(nearest!, `${kind}/${seed}: the desk is ${nearest!.toFixed(2)} m off, hands over air`).toBeLessThanOrEqual(AT_DESK.far + 1e-6)
+        expect(nearest!, `${kind}/${seed}: sitting inside the desk`).toBeGreaterThanOrEqual(AT_DESK.near - 1e-6)
         checked++
       }
     }
@@ -430,24 +431,45 @@ describe('interior plans', () => {
     expect(checked).toBeGreaterThan(8)
   })
 
-  it('stands a till on the counter rather than beside it', () => {
-    let lifted = 0
+  it('stands a till and a coffee machine on the counter rather than beside it, naming the counter', () => {
+    const lifted = new Map<string, number>()
     for (const { kind, seed, made } of everyPlan()) {
       for (const piece of made.furniture) {
         const where = `${kind}/${seed} ${piece.prop}`
-        if (PROP_SPECS[piece.prop].stands === 'floor') {
+        if (specOf(piece.prop).stands === 'floor') {
           expect(piece.lift, `${where} is on the floor and says it is not`).toBeUndefined()
+          expect(piece.on, `${where} is on the floor and names a host`).toBeUndefined()
           continue
         }
-        // it belongs on a worktop, so it is on one, at that worktop's own height
+        // it belongs on a worktop, so it is on one, at that worktop's own height, and says which
         const host = made.furniture.find((other) => other.lift === undefined && overlaps(footprintOf(other), footprintOf(piece)))
         expect(host, `${where} stands on nothing`).toBeDefined()
+        expect(piece.on, `${where} does not name what it stands on`).toBe(host!.id)
         expect(piece.lift, `${where} floats above its ${host?.prop}`).toBe(topOf(host!.prop))
         expect(piece.rot, `${where} faces a different way from its ${host?.prop}`).toBe(host!.rot)
-        lifted++
+        lifted.set(piece.prop, (lifted.get(piece.prop) ?? 0) + 1)
       }
     }
-    expect(lifted, 'no counter in any of these rooms has anything on it').toBeGreaterThan(10)
+    expect(lifted.get('register') ?? 0, 'no bar or shop has a till').toBeGreaterThan(5)
+    expect(lifted.get('coffee-machine') ?? 0, 'no cafe has a machine').toBeGreaterThan(3)
+  })
+
+  it('puts dancers on a bar floor only where the town calls for dancing', () => {
+    let dancing = 0
+    for (const seed of SEEDS) {
+      let minted = 0
+      const mint = (thing: string) => `${thing}_${String(++minted).padStart(4, '0')}`
+      const club = planInterior({ kind: 'bar', size: SIZES[2]!, entrance: 'north', wants: { dancing: true }, mint, rng: new Rng(seed) })
+      const dancers = club.anchors.filter((anchor) => anchor.kind === 'dance')
+      dancing += dancers.length
+      for (const dancer of dancers) {
+        for (const piece of club.furniture) expect(inBox(footprintOf(piece), dancer.pos), `${seed}: dancing in a ${piece.prop}`).toBe(false)
+      }
+    }
+    expect(dancing, 'a town that calls for dancing has nobody dancing').toBeGreaterThan(3)
+    for (const { kind, seed, made } of everyPlan()) {
+      expect(made.anchors.some((anchor) => anchor.kind === 'dance'), `${kind}/${seed} dances with no story asking for it`).toBe(false)
+    }
   })
 
   it('gives the same interior for the same seed and a different one otherwise', () => {

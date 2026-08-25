@@ -3,6 +3,7 @@ export { Forge, summarise, type ForgeError, type ForgeResult } from './forge.ts'
 export { briefContract, type Brief } from './brief.ts'
 export { OfflineNarrator } from './offline-narrator.ts'
 export { premiseLines } from './premise/render.ts'
+export { questTargets } from './quests/targets.ts'
 /** The history's own shape is `@gb/world`'s. Passed through here while `@gb/scribe` still reads it off this box. */
 export { premiseContract, type Premise } from '@gb/world'
 export type {

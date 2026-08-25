@@ -48,6 +48,7 @@ export function drawOf(kind: BuildingKind): Draw {
     kind,
     size: PROBE,
     entrance: 'north',
+    wants: { dancing: false },
     mint: (thing) => `${thing}_${++minted}`,
     rng: new Rng(`open/${kind}`),
   })
