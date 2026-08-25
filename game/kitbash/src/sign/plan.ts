@@ -5,7 +5,7 @@ import type { Band } from '../compose/bands.ts'
 import type { Face } from '../compose/faces.ts'
 import { board, stripOfMarks, tube } from './accents.ts'
 import { checkSignage } from './bounds.ts'
-import { WallClaims } from './claims.ts'
+import type { WallClaims } from './claims.ts'
 import { doorLamps } from './doorlamp.ts'
 import { fasciaOf, type Fascia } from './fascia.ts'
 import { againstNeon, backing, houseNeon, type Neon } from './palette.ts'
@@ -21,7 +21,8 @@ import { across, bladeFor, down, edging, lettersOf, panelFor, widthFor } from '.
  * gave it.
  *
  * Every letter is sized off the fascia, and every panel claims its patch of
- * wall before it is drawn, so nothing is drawn through anything else. Nothing
+ * the building's walls before it is drawn, so nothing is drawn through
+ * anything else, a camera hung later included. Nothing
  * here draws from a stream anything else uses, so signage can be tuned without
  * moving the windows of a city that already exists.
  */
@@ -32,13 +33,12 @@ const BLADE = { widest: 0.95, clear: 0.55, shortest: 2.4 } as const
 /** What hangs out over the street: how high above the shopfront, and how deep. */
 const HANGING = { high: 0.95, tall: 0.64, longest: 3.1 } as const
 
-export function planSigns(plot: Plot, charter: PlotCharter, height: number, faces: readonly Face[], front: Face, doorModule: number, bands: readonly Band[], rng: Rng): Sign[] {
+export function planSigns(plot: Plot, charter: PlotCharter, height: number, faces: readonly Face[], front: Face, doorModule: number, bands: readonly Band[], rng: Rng, claims: WallClaims): Sign[] {
   checkSignage(charter.signage)
   const { signage: trade, blade: word } = charter
   const hue = houseNeon(rng)
   const fascia = fasciaOf(bands[0] ?? { base: 0, height })
   const doorAlong = alongOf(front, doorModule)
-  const claims = new WallClaims()
   const signs: Sign[] = []
   const hang = (face: Face, candidates: readonly Panel[]): void => {
     const sign = place(face, candidates, claims)

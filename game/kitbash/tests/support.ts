@@ -32,7 +32,7 @@ export function charterOf(plot: Plot): ResolvedCharter {
 }
 
 /** A charter no preset declares: a windowless block spelling JAIL, which is what a generated city hands over for a word the engine has never heard of. */
-export function inventedCharter(): ResolvedCharter {
+export function inventedCharter(patch: Partial<ResolvedCharter> = {}): ResolvedCharter {
   const base = presetOf('office')
   return {
     ...base,
@@ -43,6 +43,7 @@ export function inventedCharter(): ResolvedCharter {
     built: RECIPES.blank.sparse,
     signage: { blade: 1, hanging: 0.2, accents: 3, nameplate: 0.8 },
     suits: ['blank', 'jail'],
+    ...patch,
   }
 }
 
@@ -98,11 +99,12 @@ export function fingerprint(object: THREE.Object3D): string {
 
 /**
  * A town of plots of every kind, every height and every facing, cut from a
- * seed: what a generated city hands the dressing, without the generator.
+ * seed: what a generated city hands the dressing, without the generator. The
+ * kinds are the presets unless a test brings its own charters.
  */
-export function townOf(seed: string, count: number): Plot[] {
-  const world = World.create({ name: 'town', theme: 'test', seed, width: TOWN, height: TOWN })
-  const words = SHIPPED_CHARTERS.map((charter) => charter.word)
+export function townOf(seed: string, count: number, charters: readonly ResolvedCharter[] = SHIPPED_CHARTERS): Plot[] {
+  const world = World.create({ name: 'town', theme: 'test', seed, width: TOWN, height: TOWN, charters: [...charters] })
+  const words = charters.map((charter) => charter.word)
   const rng = new Rng(seed)
   const plots: Plot[] = []
   let [x, y] = [2, 2]

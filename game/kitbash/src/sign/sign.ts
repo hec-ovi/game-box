@@ -18,8 +18,8 @@ export interface Written {
   readonly height: number
 }
 
-/** A lettered panel, a bare tube, or the lamp at the door. */
-export type SignKind = 'sign' | 'strip' | 'doorlamp'
+/** A lettered panel, a bare tube, the lamp at the door, or the lit box over a subway entrance. */
+export type SignKind = 'sign' | 'strip' | 'doorlamp' | 'subway'
 
 /** Flat on its wall, or hung off it at a right angle and lit on both sides. */
 export type Mount = 'flat' | 'hung'

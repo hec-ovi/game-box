@@ -3,9 +3,13 @@ import type { Plot } from '@gb/world'
 import { isGlazed, MODULE, type PieceId } from '../catalog/pieces.ts'
 import type { Course } from '../catalog/recipes.ts'
 import type { PlotCharter } from '../charter.ts'
+import { planFixtures, type Fixtures } from '../fixture/plan.ts'
+import { subwaySign } from '../fixture/subway/plan.ts'
 import type { Room } from '../night/room.ts'
+import { WallClaims } from '../sign/claims.ts'
 import { lightsOf, type LightEmitter } from '../sign/light.ts'
 import { planSigns } from '../sign/plan.ts'
+import { alongOf } from '../sign/place.ts'
 import type { Sign } from '../sign/sign.ts'
 import { bandsOf, type Band } from './bands.ts'
 import { doorModule, entranceFace, facesOf, type Face } from './faces.ts'
@@ -31,17 +35,21 @@ export interface BuildingPlan {
   readonly placements: readonly Placement[]
   /** Middle of the doorway on the wall plane, and the way it looks out. */
   readonly door: { readonly position: readonly [number, number, number]; readonly rotationY: number }
-  /** Every lit sign hung on it, in the building's own frame. */
+  /** Every lit sign hung on it, in the building's own frame, the box over a subway entrance included. */
   readonly signs: readonly Sign[]
   /** A light for each of them, for whoever lights the walls. */
   readonly lights: readonly LightEmitter[]
+  /** What is drawn into it from code: a subway entrance on the doorstep, a camera over the door. */
+  readonly fixtures: Fixtures
 }
 
 /**
  * Turns a plot into the pieces that build it: walls module by module on every
  * face out of the courses its charter was resolved to, the door on the face
  * the entrance says, a flat deck on top, the room every glazed module looks
- * into, the signs hung on its walls and the light each of them throws.
+ * into, the signs hung on its walls and the light each of them throws, and
+ * the fixtures its charter calls for: a subway entrance on the doorstep of a
+ * station, a camera over the door of a private place.
  *
  * Every draw comes from the plot's own seed, forked per feature, so the same
  * plot is the same building every time and adding a feature here cannot move
@@ -77,8 +85,12 @@ export function planBuilding(plot: Plot, size: BuildingSize, cellSize: number, c
     }
   }
   placements.push(...deck(size))
-  const signs = planSigns(plot, charter, size.height, Object.values(faces), front, doorIndex, bands, signage)
-  return { placements, door: { position: [doorX, 0, doorZ], rotationY: front.rotationY }, signs, lights: lightsOf(signs) }
+  // every wall is claimed once, by signs first and by the camera after, so nothing is hung through anything else
+  const claims = new WallClaims()
+  const signs = planSigns(plot, charter, size.height, Object.values(faces), front, doorIndex, bands, signage, claims)
+  const fixtures = planFixtures(plot, charter, front, alongOf(front, doorIndex), cellSize, claims)
+  if (fixtures.subway) signs.push(subwaySign(fixtures.subway, charter.blade, front))
+  return { placements, door: { position: [doorX, 0, doorZ], rotationY: front.rotationY }, signs, lights: lightsOf(signs), fixtures }
 }
 
 /**

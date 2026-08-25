@@ -19,7 +19,7 @@ export interface LightEmitter {
 }
 
 /** Candela a square metre of lit surface throws at emissive 1, by what is burning. */
-const CANDELA: Record<SignKind, number> = { sign: 20, strip: 20, doorlamp: 120 }
+const CANDELA: Record<SignKind, number> = { sign: 20, strip: 20, doorlamp: 120, subway: 20 }
 
 /** How much of a letter's cell is tube. */
 const INK_COVER = 0.35

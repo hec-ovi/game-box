@@ -158,7 +158,8 @@ describe('signage on a generated town', () => {
   it('claims its wall, so no two lit things overlap and every one lies on the wall it names', () => {
     let [flat, hung] = [0, 0]
     for (const { plot, size, signs } of planned) {
-      for (const sign of signs) {
+      // the box over a subway entrance stands on the doorstep, held to that in fixtures.test.ts
+      for (const sign of signs.filter((sign) => sign.kind !== 'subway')) {
         const { normal, half } = wallOf(sign, size)
         const facing = [-sign.right[1], sign.right[0]]
         const dot = facing[0]! * normal[0] + facing[1]! * normal[1]
@@ -173,7 +174,7 @@ describe('signage on a generated town', () => {
           expect(off - sign.width / 2, `${plot.id} starts at its wall`).toBeCloseTo(SIGN.stand, 9)
         }
       }
-      const patches = signs.map((sign) => ({ wall: sign.wall, ...patch(sign) }))
+      const patches = signs.filter((sign) => sign.kind !== 'subway').map((sign) => ({ wall: sign.wall, ...patch(sign) }))
       for (let i = 0; i < patches.length; i++) {
         for (let j = i + 1; j < patches.length; j++) {
           const [a, b] = [patches[i]!, patches[j]!]

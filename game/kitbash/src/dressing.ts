@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { assemble } from './assemble.ts'
 import type { PlotCharter } from './charter.ts'
 import { planBuilding, type BuildingSize } from './compose/plan.ts'
+import { fixtureParts } from './fixture/build.ts'
 import type { KitLibrary } from './kit/library.ts'
 import { buildSigns } from './sign/build.ts'
 import type { LightEmitter } from './sign/light.ts'
@@ -11,10 +12,11 @@ import { SIGN } from './sign/sign.ts'
 import { buildStreetLamps } from './street/lamps.ts'
 
 /**
- * The city dressed in the Downtown kit. It answers for buildings, for the
- * ground they stand on and for the lamps along the kerb, and hands everything
- * else to the dressing behind it, because the kit is a street kit: it has no
- * furniture and no people in it.
+ * The city dressed in the Downtown kit. It answers for buildings, with the
+ * subway entrance on a station's doorstep and the camera over a private door
+ * drawn into them, for the ground they stand on and for the lamps along the
+ * kerb, and hands everything else to the dressing behind it, because the kit
+ * is a street kit: it has no furniture and no people in it.
  */
 export class KitDressing implements Dressing {
   readonly #kit: KitLibrary
@@ -27,7 +29,7 @@ export class KitDressing implements Dressing {
 
   building(plot: Plot, size: BuildingSize, charter: PlotCharter): THREE.Object3D {
     const plan = planBuilding(plot, size, size.width / plot.rect.w, charter)
-    const building = assemble(plan.placements, this.#kit, plot.id)
+    const building = assemble(plan.placements, this.#kit, plot.id, fixtureParts(plan.fixtures))
 
     // every sign in the city is one material, so the lot is one more draw
     const signs = buildSigns(plan.signs, this.#kit.material(SIGN.material), plot.id)

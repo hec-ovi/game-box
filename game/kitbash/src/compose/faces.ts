@@ -70,14 +70,17 @@ export function entranceFace(plot: Plot): FaceId {
  * the door and the pavement the scene sends the player to line up.
  */
 export function doorModule(plot: Plot, face: Face, cellSize: number): number {
-  const { rect, entrance } = plot
-  const target = face.acrossX
-    ? (entrance.cell.x + 0.5 - rect.x - rect.w / 2) * cellSize
-    : (entrance.cell.y + 0.5 - rect.y - rect.h / 2) * cellSize
   const axis = face.acrossX ? 0 : 1
+  const target = doorstepOf(plot, cellSize)[axis]
   let best = 0
   for (let i = 1; i < face.modules; i++) {
     if (Math.abs(face.centreOf(i)[axis] - target) < Math.abs(face.centreOf(best)[axis] - target)) best = i
   }
   return best
+}
+
+/** The middle of the doorstep cell, on the pavement, in the building's own frame. */
+export function doorstepOf(plot: Plot, cellSize: number): readonly [number, number] {
+  const { rect, entrance } = plot
+  return [(entrance.cell.x + 0.5 - rect.x - rect.w / 2) * cellSize, (entrance.cell.y + 0.5 - rect.y - rect.h / 2) * cellSize]
 }

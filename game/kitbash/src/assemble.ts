@@ -1,7 +1,8 @@
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
-import { FAKE_INTERIOR, GLASS, type PieceId } from './catalog/pieces.ts'
+import { FAKE_INTERIOR, GLASS } from './catalog/pieces.ts'
 import type { Placement } from './compose/plan.ts'
+import type { Fixture } from './fixture/fixture.ts'
 import { KitUnmergeable } from './kit/error.ts'
 import type { KitLibrary } from './kit/library.ts'
 import { bakeRoom } from './night/room.ts'
@@ -9,7 +10,7 @@ import { bakeRoom } from './night/room.ts'
 /** Everything on one material, and which pieces put it there. */
 interface Bucket {
   readonly geometries: THREE.BufferGeometry[]
-  readonly pieces: Set<PieceId>
+  readonly pieces: Set<string>
 }
 
 /**
@@ -19,10 +20,20 @@ interface Bucket {
  *
  * Panes carry the room they look into as they go by, which is what lets one
  * glass material draw a different interior behind every window without a draw
- * or a triangle of its own.
+ * or a triangle of its own. Fixtures drawn from code arrive already in the
+ * building's frame and join the bucket of the kit material they are on.
  */
-export function assemble(placements: readonly Placement[], library: KitLibrary, name: string): THREE.Group {
+export function assemble(placements: readonly Placement[], library: KitLibrary, name: string, fixtures: readonly Fixture[] = []): THREE.Group {
   const buckets = new Map<string, Bucket>()
+  const take = (material: string, geometry: THREE.BufferGeometry, piece: string): void => {
+    const bucket = buckets.get(material)
+    if (bucket) {
+      bucket.geometries.push(geometry)
+      bucket.pieces.add(piece)
+    } else {
+      buckets.set(material, { geometries: [geometry], pieces: new Set([piece]) })
+    }
+  }
   const matrix = new THREE.Matrix4()
   const quaternion = new THREE.Quaternion()
   const axis = new THREE.Vector3(0, 1, 0)
@@ -42,16 +53,10 @@ export function assemble(placements: readonly Placement[], library: KitLibrary, 
 
       const geometry = part.geometry.clone().applyMatrix4(matrix)
       if (part.material === GLASS && placement.room) bakeRoom(geometry, placement.room)
-
-      const bucket = buckets.get(part.material)
-      if (bucket) {
-        bucket.geometries.push(geometry)
-        bucket.pieces.add(placement.piece)
-      } else {
-        buckets.set(part.material, { geometries: [geometry], pieces: new Set([placement.piece]) })
-      }
+      take(part.material, geometry, placement.piece)
     }
   }
+  for (const fixture of fixtures) take(fixture.material, fixture.geometry, fixture.piece)
 
   const group = new THREE.Group()
   group.name = name
