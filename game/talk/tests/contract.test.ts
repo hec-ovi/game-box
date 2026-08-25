@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { Conversation, Sessions, type TalkEvent } from '../src/index.ts'
 
 /** A bar, its bartender Mara, a courier Hollis across the room, and a ledger. */
-function bar(options: { carries?: boolean; hollisAt?: 'sit-drink' | 'dance' } = {}) {
+function bar(options: { carries?: boolean; hollisAt?: 'sit-drink' | 'dance'; doing?: string } = {}) {
   const world = World.create({ name: 'Cold Harbour', theme: 'a fogbound port town that lives off the tide', seed: 'talk', width: 16, height: 16 })
   world.paint({ x: 0, y: 6, w: 16, h: 1 }, 'sidewalk')
   const plot = world.addPlot({
@@ -31,7 +31,7 @@ function bar(options: { carries?: boolean; hollisAt?: 'sit-drink' | 'dance' } = 
     doors: [{ id: world.mintId('door'), from: 'outside', to: room, pos: { x: 4, y: 0 }, rot: 180, locked: false }],
     furniture: [{ id: world.mintId('furniture'), prop: 'bar-counter', roomId: room, pos: { x: 4, y: 7 }, rot: 0 }],
     anchors: [
-      { id: serve, kind: 'serve', roomId: room, pos: { x: 4, y: 6 }, rot: 180 },
+      { id: serve, kind: 'serve', roomId: room, pos: { x: 4, y: 6 }, rot: 180, ...(options.doing ? { doing: options.doing } : {}) },
       { id: stool, kind: options.hollisAt ?? 'sit-drink', roomId: room, pos: { x: 3, y: 4 }, rot: 0 },
     ],
   }
@@ -174,6 +174,8 @@ interface Script {
   readonly prose?: string
   /** No sidecar at all. */
   readonly fail?: boolean
+  /** The engine dies while the action track is answering. */
+  readonly died?: boolean
 }
 
 interface ToolCall {
@@ -210,6 +212,7 @@ function speaker(script: Script) {
       return called(tool.name, { does, says: script.text, reveals, remembers, mood })
     }
     decisions.push(call)
+    if (script.died) return answer({ role: 'assistant', content: null }, 'error')
     return script.prose === undefined ? called(tool.name, { option: script.pick ?? 1, answer: script.says }) : spoke(script.prose)
   }) as unknown as typeof globalThis.fetch
 
@@ -278,8 +281,8 @@ async function collect(stream: AsyncGenerator<TalkEvent>): Promise<TalkEvent[]> 
 
 function said(events: readonly TalkEvent[]): string {
   return events
-    .filter((event) => event.kind === 'said')
-    .map((event) => event.text)
+    .filter((event) => event.kind === 'turn')
+    .map((event) => event.says)
     .join('')
 }
 
@@ -290,6 +293,7 @@ function setup(
   options: {
     carries?: boolean
     hollisAt?: 'sit-drink' | 'dance'
+    doing?: string
     quest?: keyof typeof QUESTS
     sidecar?: Sidecar
     signal?: AbortSignal
@@ -364,11 +368,10 @@ describe('Conversation', () => {
     const events = await collect(conversation.say('when do you close?'))
 
     expect(events).toContainEqual({ kind: 'turn', does: 'wipes the counter', says: 'We close at midnight.' })
-    expect(events).toContainEqual({ kind: 'said', text: 'We close at midnight.' })
     expect(conversation.history()).toEqual([
       { role: 'assistant', content: opening.line },
       { role: 'user', content: 'when do you close?' },
-      { role: 'assistant', content: 'We close at midnight.' },
+      { role: 'assistant', content: 'We close at midnight.', does: 'wipes the counter' },
     ])
 
     const call = model.voice[0]!
@@ -609,7 +612,7 @@ describe('Conversation', () => {
 
   it('fills the template from the room, the hour, the company, the player and the file, and never with an id', async () => {
     const { conversation, model, player, ledger } = setup({ text: 'Aye.' })
-    player.clock.setTime(21, 30)
+    player.clock.setTime(19, 30)
     player.clock.setWeather('rain')
     player.adjustReputation(50)
     player.take(ledger.id)
@@ -628,6 +631,11 @@ describe('Conversation', () => {
     expect(brief).toContain('Their name is good in this town')
     expect(brief).toContain('You feel nothing in particular about them yet.')
     expect(brief).toContain('You have not met them before this.')
+
+    // the phrase the file wrote for the spot comes before the spot's kind
+    const written = setup({ text: 'Evening.' }, { doing: 'polishing the same glass she has held all night' })
+    await collect(written.conversation.say('evening'))
+    expect(written.model.voice[0]!.system).toContain('What you are doing: polishing the same glass she has held all night')
     // the generator's slots, once per person
     expect(brief).toContain('- How you come across: Dry, unhurried, watches the door.')
     expect(brief).toContain('- How you talk: Short sentences. Never repeats herself.')
@@ -678,6 +686,13 @@ describe('Conversation', () => {
       detail: 'quest_0001',
     })
     expect(off.log.status('quest_0001')).toBe('active')
+
+    // and an engine that died mid-reply: the spoken turn stands, the words decide
+    const died = setup({ text: 'Aye, could be.', died: true })
+    const events = await collect(died.conversation.say('yes, I will do it'))
+    expect(events).toContainEqual({ kind: 'turn', says: 'Aye, could be.' })
+    expect(events).toContainEqual({ kind: 'did', action: 'give_quest', detail: 'quest_0001' })
+    expect(died.log.status('quest_0001')).toBe('active')
   })
 
   it('takes plain English for an answer with no model running', async () => {
@@ -923,7 +938,7 @@ describe('the first words', () => {
       return opened.value.opening.line
     }
 
-    player.clock.setTime(21, 30)
+    player.clock.setTime(19, 30)
     player.adjustReputation(-50)
     const scorned = greet()
     expect(scorned).toMatch(/^(Evening|Late to be out)\./)
@@ -1076,7 +1091,7 @@ describe('Conversation.moves and choose', () => {
 
     expect(events[0]).toEqual({ kind: 'turn', says: "Here. Don't lose it." })
     expect(said(events)).toBe("Here. Don't lose it.")
-    expect(events.findIndex((e) => e.kind === 'said')).toBeLessThan(events.findIndex((e) => e.kind === 'did'))
+    expect(events.findIndex((e) => e.kind === 'turn')).toBeLessThan(events.findIndex((e) => e.kind === 'did'))
   })
 
   it('does nothing at all with a move that has stopped being legal', async () => {

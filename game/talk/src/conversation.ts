@@ -137,7 +137,6 @@ export class Conversation {
 
     const spoken = this.#script.acting(move)
     this.#transcript.push({ role: 'user', content: pickLabel(move) })
-    this.#transcript.push({ role: 'assistant', content: spoken.line })
     yield* this.#spoken(undefined, spoken.line)
     yield* this.#learned(spoken.learned)
     yield* this.#act({ move })
@@ -166,7 +165,6 @@ export class Conversation {
     }
 
     const reply = taken.value
-    this.#transcript.push({ role: 'assistant', content: reply.says })
     yield* this.#spoken(reply.does, reply.says)
     // What they gave away and what they were told stand with the words, whatever comes of the decision.
     yield* this.#learned(this.#background.reveal(offered, reply.reveals))
@@ -180,8 +178,9 @@ export class Conversation {
       signal: this.#signal,
     })
     if (this.#cut) return
-    // A call that never came back with a line off the menu is not a decision to
-    // do nothing: the player's own words decide, the way they do with no model.
+    // A call that never came back with a line off the menu (nothing running, a
+    // busy model, an engine that died mid-reply, prose, a number off the menu) is
+    // not a decision to do nothing: the player's own words decide, as with no model.
     yield* this.#act(chosen.ok ? chosen.value : this.#script.decide(playerText, moves))
   }
 
@@ -193,16 +192,15 @@ export class Conversation {
   /** No sidecar: the quest data speaks and the player's own words decide. */
   *#unattended(playerText: string, moves: readonly Move[]): Generator<TalkEvent> {
     const scripted = this.#script.turn(playerText, moves)
-    this.#transcript.push({ role: 'assistant', content: scripted.line })
     yield* this.#spoken(undefined, scripted.line)
     yield* this.#learned(scripted.learned)
     yield* this.#act(scripted)
   }
 
-  /** One turn out loud: the body and the words apart, and the words alone for a caller still reading those. */
+  /** One turn out loud, into the transcript and out to the caller: the body and the words apart. */
   *#spoken(does: string | undefined, says: string): Generator<TalkEvent> {
+    this.#transcript.push(does ? { role: 'assistant', content: says, does } : { role: 'assistant', content: says })
     yield does ? { kind: 'turn', does, says } : { kind: 'turn', says }
-    yield { kind: 'said', text: says }
   }
 
   *#learned(factId: string | undefined): Generator<TalkEvent> {

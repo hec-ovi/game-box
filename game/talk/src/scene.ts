@@ -52,10 +52,11 @@ export class Scene {
     return things ? fill(WORDS.room!, { name: room.name, things }) : fill(WORDS['room-bare']!, { name: room.name })
   }
 
-  /** What they are doing where they stand, off the spot they keep. */
+  /** What they are doing where they stand: the phrase the file wrote for the spot, else the spot's kind. */
   stance(npc: Npc = this.#npc()): string {
     if (!npc.station) return WORDS.walking!
-    return WORDS[this.#anchor(npc)?.kind ?? ''] ?? WORDS.stand!
+    const anchor = this.#anchor(npc)
+    return anchor?.doing || (WORDS[anchor?.kind ?? ''] ?? WORDS.stand!)
   }
 
   /** Who else is in the building, each with what they are doing there. */

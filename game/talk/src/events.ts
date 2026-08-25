@@ -10,8 +10,6 @@ export type Answer = 'yes' | 'no'
 export type TalkEvent =
   /** One spoken turn: what their body does, if anything, and the words out loud. */
   | { readonly kind: 'turn'; readonly does?: string; readonly says: string }
-  /** The words of a turn on their own, for a caller not yet reading `turn`. */
-  | { readonly kind: 'said'; readonly text: string }
   | { readonly kind: 'answered'; readonly answer: Answer }
   | { readonly kind: 'did'; readonly action: ActionName; readonly detail?: string }
   /** The player earned one of this person's background facts; the codex holds it now. */
@@ -28,9 +26,11 @@ export interface Decision {
   readonly answer?: Answer | undefined
 }
 
+/** One line of a transcript: who spoke, the words, and what their body did when it did anything. */
 export interface Turn {
   readonly role: 'user' | 'assistant'
   readonly content: string
+  readonly does?: string | undefined
 }
 
 /** The turn the NPC takes on their own, before the player has said anything. */

@@ -1,6 +1,6 @@
 # @gb/talk contract
 
-contractVersion: 0.9.0
+contractVersion: 0.10.0
 
 ## Purpose
 
@@ -21,11 +21,11 @@ Conversations with the people in the city: each person is their own session, spe
 |---|---|---|
 | `open` | `{ conversation, changes, opening, learned }` | the person goes in the codex as met and `learned` lists the fact ids seeing them earned; walking up to someone is a `talked` event, so a step that already asked for it completes here; a step that names a subject waits to be asked |
 | `opening` | `{ line, moves }` | what they say before the player has said anything, and the moves that were legal when they said it. Always a line, never a model call |
-| `say` | a stream of `TalkEvent` | `turn` with `does` (what their body does, when it does anything) and `says` (the words); `said` carrying the same words for a caller not yet reading `turn`; `learned` for a fact about themselves they let slip; `answered` when the reply was a yes or a no; `did` for the action taken; `changed` for every quest change it caused; `over` when it ends |
+| `say` | a stream of `TalkEvent` | `turn` with `does` (what their body does, when it does anything) and `says` (the words); `learned` for a fact about themselves they let slip; `answered` when the reply was a yes or a no; `did` for the action taken; `changed` for every quest change it caused; `over` when it ends |
 | `available()` | the action names legal right now | what the UI can promise before a word is said |
 | `moves()` | every legal move as `{ key, action, label }` | `label` is what the player clicks, in their own words and with no id in it; `action` is its `ActionName`, so a caller can filter or group without reading the key; `key` names the move and what it is about, never its place in the list |
-| `choose` | a stream of `TalkEvent` | the same shape `say` gives: the spoken `turn` and `said`, `learned`, `answered`, `did`, `changed`, `over` |
-| `history()` | `Turn[]` | this person's transcript, oldest first, bounded |
+| `choose` | a stream of `TalkEvent` | the same shape `say` gives: the spoken `turn`, `learned`, `answered`, `did`, `changed`, `over` |
+| `history()` | `Turn[]` | this person's transcript, oldest first, bounded: `{ role, content, does? }`, with `does` on a turn whose body did something, so a reopened transcript shows what they did as well as what they said |
 
 ## Every person is their own session
 
@@ -63,7 +63,7 @@ Ids never appear in either track. The menu says "the job: The Ledger", not a que
 
 One fixed labelled template, `prompts/npc.md`, filled from three places:
 
-- **By the engine, every turn:** the building, the room and what stands in it (furniture, and the things lying on its surfaces that the player has not taken), the spot they keep, the hour, the weather, who else is in the building and what each is doing, what the player is carrying, what the player's name in town is worth, how this person feels about them, what they remember of them, and what is between them read off the moves they may make and the targets the quest log resolved (they are told they are owed a ledger and what the job pays, never the objective line the HUD shows).
+- **By the engine, every turn:** the building, the room and what stands in it (furniture, and the things lying on its surfaces that the player has not taken), what they are doing there (the anchor's `doing` phrase when the world file wrote one, else a line for the anchor's kind, from `prompts/surroundings.md`), the hour, the weather, who else is in the building and what each is doing, what the player is carrying, what the player's name in town is worth, how this person feels about them, what they remember of them, and what is between them read off the moves they may make and the targets the quest log resolved (they are told they are owed a ledger and what the job pays, never the objective line the HUD shows).
 - **By the generator, once per person, in the world file:** `personality`, and every `Npc.life` field it wrote (`manner`, `history`, `interests`, `cares`, `avoids`, `reason`, `errand`), one labelled line each and none for a field it did not write; `knowledge`, plus the premise's `common` facts marked as what everybody in town knows; and the `background` facts whose stage the player has reached and has not earned yet, numbered.
 - **Fixed in the template:** how to speak, as a short list of rules (the first clause answers what was actually said, a name put as a question is confirmed or corrected first, the length follows the question, the room and the sky are drawn on only when they bear on what was asked, the body goes in `does`), and three worked examples per turn, each a question with a reply of the right shape beside one of the wrong shape and why. The examples carry no name, place, price or sky, and a different three are drawn every turn, seeded off the world, the person and the turn count, so none can settle in as the answer.
 
@@ -118,8 +118,8 @@ The spoken side is terse but never reads stored text out as it is stored: a fact
 ## Errors (closed set)
 
 - `unknown-npc`: nobody by that id lives here. No conversation is opened. The only error handed back to a caller.
-- `turn-unanswered`: the turn call came back with no turn: nothing running, a refusal, a timeout, prose instead of the call, or words that were blank. The box settles it instead of returning it: the game's own data speaks and the player's words decide, exactly as with no sidecar.
-- `action-unanswered`: the forced action call came back with no line off the menu: nothing running, a refusal, a timeout, prose instead of the call, or a number the menu has not got. The box settles it instead of returning it: the turn already published stands, and the player's own words decide the action and the answer exactly as they do with no sidecar. Never a silent "they did nothing", and never the first line of the menu by default.
+- `turn-unanswered`: the turn call came back with no turn: nothing running, a busy model, an engine that died mid-reply, a refusal, a timeout, prose instead of the call, or words that were blank. The box settles it instead of returning it: the game's own data speaks and the player's words decide, exactly as with no sidecar.
+- `action-unanswered`: the forced action call came back with no line off the menu: nothing running, a busy model the sidecar stopped waiting on, an engine that died mid-reply (`broken`), a refusal, a timeout, prose instead of the call, or a number the menu has not got. The box settles it instead of returning it: the turn already published stands, and the player's own words decide the action and the answer exactly as they do with no sidecar. Never a silent "they did nothing", and never the first line of the menu by default.
 
 ## Dependencies
 
