@@ -63,6 +63,9 @@ const built = await new Forge(new OfflineNarrator('furnish')).build({
   blocksX: 3,
   blocksY: 3,
   blockCells: 14,
+  // the places are the brief's own number, so a town has to be asked for a
+  // spread of them: three opens no bar and no home and prints a third of a table
+  openPlaces: 12,
 })
 if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 400))
 const world = built.value.world

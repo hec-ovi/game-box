@@ -146,7 +146,7 @@ built.root.add(room.decor)
 
 ### The dance floor
 
-- **The floor is lit where the dancing is.** A room dances when its use is `dance-floor` (the value `@gb/world` is asked for, row 228) or when `dance` anchors stand in it, which is what `@gb/forge` writes today. Tiles are laid on a 0.5 m lattice from the room's own corner, 0.46 m square and 2 cm tall, each shining in one of `LIT_TILES`, wherever a tile's middle is within `DANCE.reach` (1.3 m) of a dancer, clear of every piece of furniture standing on the floor and of the floor inside every doorway, inside the walls. A room whose use says it dances and has nobody dancing yet lights every clear tile it has. Measured on the club town: 28 tiles under the disco's two dancers, 14 under the bar's one, none anywhere else, their level tops at 0.020 to the micron and their area the tiles' own less the centimetre chamfered off each corner.
+- **The floor is lit where the dancing is.** A room dances when its use is `dance-floor` (the value `@gb/world` is asked for, row 228) or when `dance` anchors stand in it, which is what `@gb/forge` writes today. Tiles are laid on a 0.5 m lattice from the room's own corner, 0.46 m square and 2 cm tall, each shining in one of `LIT_TILES`, wherever a tile's middle is within `DANCE.reach` (1.3 m) of a dancer, clear of every piece of furniture standing on the floor and of the floor inside every doorway, inside the walls. A room whose use says it dances and has nobody dancing yet lights every clear tile it has. Measured on the club town: 97 tiles across the five rooms that dance, 23 and 21 under each disco's two dancers and 14 to 20 under the three bars', none in the seven rooms nobody dances in, their level tops at 0.020 to the micron and their area the tiles' own less the centimetre chamfered off each corner.
 - **A tile is walked on, not into.** Two centimetres is a rug's height, under the 0.25 m `@gb/scene` steps a body over, and no tile is published as a blocker: like every bay, a tile is decoration.
 - **A booth stands once, on the wall nearest the dancers.** It is a bay kind (`booth`) that weighs nothing in every taste row, so nothing draws one by chance: a room that dances takes the one bay, 6 to 12 cells wide, with the wall clear at its depth and 1.6 m of open floor in front of it, whose middle is nearest a dancer (or the middle of the room), and makes it the booth. A console standing 28 cm off the wall with its top at `serviceCounterHeight` exactly, two platters and a mixer on it, a lit strip along its foot and a band across its front, and a rack of five meters over it each lit to its own height. It is the deepest bay in the vocabulary and still inside the 35 cm the player's radius holds them off a wall. Its top is a contact, reported in `FurnishRoom.contacts` and held level on the number like a shelf ledge. A room with no such bay has no booth. Dancing also tilts the taste (`DANCE_TILT`): strips and lit niches up the walls, little to read and little to see out of.
 
@@ -214,17 +214,24 @@ The pack is 48 KB on disk, five webp layers across four surfaces. Every layer is
 
 Screens cost bytes and nothing else. Against the same catalog without them: no triangle and no draw anywhere moved, and the buffers went 1.70 MB to 1.81 MB and 1.70 MB to 1.80 MB, +220 KB in all, +6.5%. That is the four byte attribute on every vertex in the box (206 KB) plus the six screenings of the television (14 KB).
 
-Measured headless in Node on a generated town of nine blocks, whole rooms, shell and pickups included, each room in the language its finish gives it, the decor column carrying the walls, the screens' prints and any dance floor:
+Measured headless in Node on a generated town of nine blocks with its twelve places open, whole rooms, shell and pickups included, each room in the language its finish gives it, the decor column carrying the walls, the screens' prints and any dance floor:
 
 | room | finish | language | pieces | items | bays | furnished | furnished + decor | greybox |
 |---|---|---|---|---|---|---|---|---|
-| restaurant | corporate | corpo | 19 | 1 | 112 | 43 draws, 9,216 tris, 7 mats | 44 draws, 19,032 tris | 43 draws, 988 tris, 8 mats |
-| office | corporate | corpo | 18 | 3 | 60 | 40 draws, 7,850 tris, 6 mats | 41 draws, 12,570 tris | 40 draws, 748 tris, 7 mats |
-| house | domestic | home | 16 | 2 | 105 | 48 draws, 10,270 tris, 4 mats | 49 draws, 29,974 tris | 48 draws, 640 tris, 5 mats |
-| hotel | domestic | home | 15 | 2 | 112 | 43 draws, 9,480 tris, 8 mats | 44 draws, 27,432 tris | 43 draws, 1,396 tris, 9 mats |
-| station | civic | corpo | 13 | 3 | 49 | 35 draws, 8,226 tris, 8 mats | 36 draws, 12,434 tris | 35 draws, 1,300 tris, 9 mats |
+| bar | corporate | corpo | 26 | 5 | 84 | 56 draws, 14,572 tris, 11 mats | 57 draws, 21,084 tris | 56 draws, 2,368 tris, 12 mats |
+| restaurant | corporate | corpo | 24 | 6 | 106 | 66 draws, 12,800 tris, 9 mats | 67 draws, 20,744 tris | 66 draws, 2,488 tris, 10 mats |
+| office | corporate | corpo | 22 | 6 | 69 | 56 draws, 12,606 tris, 11 mats | 57 draws, 18,790 tris | 56 draws, 2,164 tris, 12 mats |
+| cafe | corporate | corpo | 21 | 7 | 77 | 49 draws, 11,434 tris, 9 mats | 50 draws, 17,594 tris | 49 draws, 2,080 tris, 10 mats |
+| workshop | industrial | corpo | 17 | 5 | 75 | 49 draws, 10,078 tris, 10 mats | 50 draws, 17,438 tris | 49 draws, 1,876 tris, 11 mats |
+| hotel | domestic | home | 13 | 4 | 69 | 41 draws, 9,822 tris, 8 mats | 42 draws, 23,662 tris | 41 draws, 1,372 tris, 9 mats |
+| clinic | civic | corpo | 13 | 6 | 59 | 47 draws, 8,222 tris, 10 mats | 48 draws, 11,670 tris | 47 draws, 2,056 tris, 11 mats |
+| house | domestic | home | 13 | 2 | 67 | 49 draws, 12,752 tris, 7 mats | 50 draws, 25,696 tris | 49 draws, 1,060 tris, 8 mats |
+| shop | corporate | corpo | 11 | 2 | 60 | 31 draws, 7,216 tris, 7 mats | 32 draws, 11,872 tris | 31 draws, 1,048 tris, 8 mats |
+| warehouse | industrial | corpo | 11 | 1 | 39 | 21 draws, 6,516 tris, 6 mats | 22 draws, 10,244 tris | 21 draws, 520 tris, 7 mats |
+| apartment | domestic | home | 10 | 3 | 78 | 24 draws, 7,258 tris, 4 mats | 25 draws, 20,714 tris | 24 draws, 352 tris, 5 mats |
+| restaurant | corporate | corpo | 10 | 2 | 65 | 34 draws, 4,752 tris, 7 mats | 35 draws, 9,120 tris | 34 draws, 880 tris, 8 mats |
 
-`node game/furnish/tools/print-cost.ts` prints the table. **One draw for the decor, whatever is in it**: 49 bays and 112 bays, four printed screens or none, a dance floor or not, all cost the same one mesh, and a finer rhythm or a bigger vocabulary buys triangles, never draws. Home walls cost more than corpo because every corner of every bay is moulded, and a civic wall costs less than a corporate one of more bays because its taste runs to bare stretches.
+`node game/furnish/tools/print-cost.ts` prints the table. **One draw for the decor, whatever is in it**: 39 bays and 106 bays, printed screens or none, a dance floor or not, all cost the same one mesh, and a finer rhythm or a bigger vocabulary buys triangles, never draws. Home walls cost more than corpo because every corner of every bay is moulded, about 190 triangles a bay against 80, and a civic wall is the cheapest of the lot at 58 because its taste runs to bare stretches.
 
 Giving the items shapes cost a room **no draw and one material fewer**: they were already an object each, they now draw with the furniture's material instead of the layer behind, so every room in the table lost a material.
 

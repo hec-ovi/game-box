@@ -83,23 +83,34 @@ export function backwardsMass(object: THREE.Object3D): number {
 }
 
 /**
- * A town built the way the game builds one.
- *
- * Three blocks a side, not one. A town only opens a fraction of its doors, so
- * a 1x1 sample is three interiors: too few to hold a catalog against, and thin
- * enough that a tuning change in `@gb/forge` moves the sample instead of
- * finding a fault here.
+ * How many places a town is asked to open. `@gb/forge` opens an absolute
+ * number, the brief's, whatever the size of the city, and it ranks which ones
+ * on what a place holds and how near the middle it stands. Three, the default,
+ * is a playthrough's worth and not a catalog's: measured over the seeds below,
+ * three opens no bar in any of them, so nobody serves at a bar counter or sits
+ * on a bar stool and a sample of a real town misses what the box draws for one.
+ * At twelve each of those towns puts a body on all eight props on its own, so
+ * the sample stands however the ranking picks next.
  */
-export async function town(seed = 'furnish'): Promise<World> {
-  const built = await new Forge(new OfflineNarrator(seed)).build({
-    theme: 'old harbour town',
+const PLACES = 12
+
+/** A town built the way the game builds one, opening the places these tests have to see inside. */
+async function built(theme: string, seed: string): Promise<World> {
+  const made = await new Forge(new OfflineNarrator(seed)).build({
+    theme,
     seed,
     blocksX: 3,
     blocksY: 3,
     blockCells: 14,
+    openPlaces: PLACES,
   })
-  if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 400))
-  return built.value.world
+  if (!made.ok) throw new Error(JSON.stringify(made.error).slice(0, 400))
+  return made.value.world
+}
+
+/** A town of the ordinary trades: shops, flats, offices, a bar, the places the catalog was drawn for. */
+export async function town(seed = 'furnish'): Promise<World> {
+  return built('old harbour town', seed)
 }
 
 /**
@@ -108,32 +119,16 @@ export async function town(seed = 'furnish'): Promise<World> {
  * camera over its door. The one town with each of those in it.
  */
 export async function clubTown(): Promise<World> {
-  const built = await new Forge(new OfflineNarrator('club-1')).build({
-    theme: 'dense neon port city',
-    seed: 'club-1',
-    blocksX: 3,
-    blocksY: 3,
-    blockCells: 14,
-  })
-  if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 400))
-  return built.value.world
+  return built('dense neon port city', 'club-1')
 }
 
 /** Seeds a test that has to see the catalog exercised samples over, rather than one town. */
-export const TOWN_SEEDS = ['furnish', 'furnish-2', 'furnish-3'] as const
+const TOWN_SEEDS = ['furnish', 'furnish-2', 'furnish-3'] as const
 
 /** Every interior of several towns: what a coverage test reads, so one seed's mix cannot pass for the game's. */
 export async function interiorsAcrossTowns(): Promise<Interior[]> {
   const worlds = await Promise.all(TOWN_SEEDS.map((seed) => town(seed)))
   return worlds.flatMap((world) => [...world.interiors()])
-}
-
-/** The busiest interior in a town: the most furniture in one room. */
-export function busiest(world: World): Interior {
-  const interiors = [...world.interiors()].sort((a, b) => b.furniture.length - a.furniture.length)
-  const found = interiors[0]
-  if (!found) throw new Error('the town has no interiors')
-  return found
 }
 
 /** One level upward-looking surface of a built prop: how high it is and how much of it there is. */
