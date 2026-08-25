@@ -1,5 +1,5 @@
 import { GLYPH_ASPECT } from './atlas.ts'
-import { BLANK, cellFor } from './glyphs.ts'
+import { BLANK, cellFor, SOLID } from './glyphs.ts'
 import type { Written } from './sign.ts'
 
 /**
@@ -30,6 +30,16 @@ export function lettersOf(text: string): string[] {
 export function widthFor(letters: readonly string[], height: number): number {
   const glyph = height * (1 - 2 * MARGIN.up)
   return letters.length * glyph * GLYPH_ASPECT + 2 * Math.min(0.22, height * 0.4)
+}
+
+/** How tall a panel is when a letter of `letter` metres runs across it. */
+export function panelFor(letter: number): number {
+  return letter / (1 - 2 * MARGIN.up)
+}
+
+/** How wide a panel is when a letter of `letter` metres runs down it. */
+export function bladeFor(letter: number): number {
+  return letter * GLYPH_ASPECT / (1 - 2 * MARGIN.up)
 }
 
 /** A name written across a panel, left to right. */
@@ -68,7 +78,13 @@ export function down(letters: readonly string[], width: number, height: number):
   return cells.map((cell, at) => ({ cell, u: 0, v: from - at * advance, width: glyph * GLYPH_ASPECT, height: glyph }))
 }
 
-/** What a run of letters actually spells, for anyone reading a sign back. */
-export function readBack(glyphs: readonly Written[]): string {
-  return glyphs.map((written) => written.cell).join('')
+/** Four thin tubes round the edge of a panel: a lit box rather than a painted one. */
+export function edging(width: number, height: number): Written[] {
+  const thick = Math.min(0.05, height * 0.1)
+  return [
+    { cell: SOLID, u: 0, v: (height - thick) / 2, width, height: thick },
+    { cell: SOLID, u: 0, v: -(height - thick) / 2, width, height: thick },
+    { cell: SOLID, u: (width - thick) / 2, v: 0, width: thick, height },
+    { cell: SOLID, u: -(width - thick) / 2, v: 0, width: thick, height },
+  ]
 }

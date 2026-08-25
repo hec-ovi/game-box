@@ -12,16 +12,19 @@ import { SIGN, type Sign, type Written } from './sign.ts'
  * A sign is quads and nothing else. The panel is a quad on the empty cell, each
  * letter is a quad on its own cell, and a letter quad paints the panel colour
  * where the letter is not, so the two are the same opaque surface with no
- * blending and nothing to sort.
+ * blending and nothing to sort. A sign hung off the wall is drawn twice, once
+ * each way, so it reads from both ends of the street.
  */
 export function buildSigns(signs: readonly Sign[], material: THREE.Material, name: string): THREE.Mesh | undefined {
-  const quads = signs.reduce((total, sign) => total + 1 + sign.glyphs.length, 0)
+  const quads = signs.reduce((total, sign) => total + facingsOf(sign).length * (1 + sign.glyphs.length), 0)
   if (quads === 0) return undefined
 
   const build = new Quads(quads)
   for (const sign of signs) {
-    build.add(sign, { cell: BLANK, u: 0, v: 0, width: sign.width, height: sign.height }, 0)
-    for (const glyph of sign.glyphs) build.add(sign, glyph, SIGN.layer)
+    for (const right of facingsOf(sign)) {
+      build.add(sign, right, { cell: BLANK, u: 0, v: 0, width: sign.width, height: sign.height }, 0)
+      for (const glyph of sign.glyphs) build.add(sign, right, glyph, SIGN.layer)
+    }
   }
 
   const mesh = new THREE.Mesh(build.geometry(), material)
@@ -31,9 +34,9 @@ export function buildSigns(signs: readonly Sign[], material: THREE.Material, nam
   return mesh
 }
 
-/** How many triangles a plan's worth of signs comes to, without building them. */
-export function signTriangles(signs: readonly Sign[]): number {
-  return signs.reduce((total, sign) => total + 2 * (1 + sign.glyphs.length), 0)
+/** The ways a sign is read: a flat one from the street, a hung one from either end of it. */
+function facingsOf(sign: Sign): ReadonlyArray<readonly [number, number]> {
+  return sign.mount === 'hung' ? [sign.right, [-sign.right[0], -sign.right[1]]] : [sign.right]
 }
 
 /** A run of quads being filled in, one buffer per attribute. */
@@ -57,8 +60,8 @@ class Quads {
     this.#index = new Uint32Array(quads * 6)
   }
 
-  add(sign: Sign, written: Written, layer: number): void {
-    const [rx, rz] = sign.right
+  add(sign: Sign, right: readonly [number, number], written: Written, layer: number): void {
+    const [rx, rz] = right
     // the panel looks along its own width turned a quarter up
     const [nx, nz] = [-rz, rx]
     const cx = sign.origin[0] + rx * written.u + nx * layer

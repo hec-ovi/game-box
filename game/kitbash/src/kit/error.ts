@@ -1,10 +1,13 @@
 /** The art handed over is not the kit we build from. */
 export class KitIncomplete extends Error {
   readonly code = 'kit-incomplete' as const
+  /** The catalog pieces the scene had no node, or nothing drawable, for. */
+  readonly missing: readonly string[]
 
-  constructor(readonly missing: readonly string[]) {
+  constructor(missing: readonly string[]) {
     super(`kitbash: the kit is missing ${missing.length} piece(s): ${missing.join(', ')}`)
     this.name = 'KitIncomplete'
+    this.missing = missing
   }
 }
 
@@ -16,9 +19,13 @@ export class KitIncomplete extends Error {
  */
 export class KitUnmergeable extends Error {
   readonly code = 'kit-unmergeable' as const
+  readonly material: string
+  readonly pieces: readonly string[]
 
-  constructor(readonly material: string, readonly pieces: readonly string[]) {
+  constructor(material: string, pieces: readonly string[]) {
     super(`kitbash: the pieces on ${material} do not share one set of vertex attributes: ${pieces.join(', ')}`)
     this.name = 'KitUnmergeable'
+    this.material = material
+    this.pieces = pieces
   }
 }

@@ -3,6 +3,7 @@ import type { Plot } from '@gb/world'
 import { isGlazed, MODULE, type PieceId } from '../catalog/pieces.ts'
 import { RECIPES, type Course } from '../catalog/recipes.ts'
 import type { Room } from '../night/room.ts'
+import { lightsOf, type LightEmitter } from '../sign/light.ts'
 import { planSigns } from '../sign/plan.ts'
 import type { Sign } from '../sign/sign.ts'
 import { bandsOf, type Band } from './bands.ts'
@@ -31,12 +32,15 @@ export interface BuildingPlan {
   readonly door: { readonly position: readonly [number, number, number]; readonly rotationY: number }
   /** Every lit sign hung on it, in the building's own frame. */
   readonly signs: readonly Sign[]
+  /** A light for each of them, for whoever lights the walls. */
+  readonly lights: readonly LightEmitter[]
 }
 
 /**
  * Turns a plot into the pieces that build it: walls module by module on every
  * face, the door on the face the entrance says, a flat deck on top, the room
- * every glazed module looks into, and the signs hung on its walls.
+ * every glazed module looks into, the signs hung on its walls and the light
+ * each of them throws.
  *
  * Every draw comes from the plot's own seed, forked per feature, so the same
  * plot is the same building every time and adding a feature here cannot move
@@ -73,7 +77,7 @@ export function planBuilding(plot: Plot, size: BuildingSize, cellSize: number): 
   }
   placements.push(...deck(size))
   const signs = planSigns(plot, size.height, Object.values(faces), front, doorIndex, bands, signage)
-  return { placements, door: { position: [doorX, 0, doorZ], rotationY: front.rotationY }, signs }
+  return { placements, door: { position: [doorX, 0, doorZ], rotationY: front.rotationY }, signs, lights: lightsOf(signs) }
 }
 
 /**

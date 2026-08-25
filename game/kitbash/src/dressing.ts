@@ -5,6 +5,7 @@ import { assemble } from './assemble.ts'
 import { planBuilding, type BuildingSize } from './compose/plan.ts'
 import type { KitLibrary } from './kit/library.ts'
 import { buildSigns } from './sign/build.ts'
+import type { LightEmitter } from './sign/light.ts'
 import { SIGN } from './sign/sign.ts'
 import { buildStreetLamps } from './street/lamps.ts'
 
@@ -39,6 +40,14 @@ export class KitDressing implements Dressing {
     door.rotation.y = plan.door.rotationY
     building.add(door)
     return building
+  }
+
+  /**
+   * A light for every sign, strip and door lamp on that plot, in the building's
+   * own frame, so the walls can be lit from what burns on them.
+   */
+  lights(plot: Plot, size: BuildingSize): readonly LightEmitter[] {
+    return planBuilding(plot, size, size.width / plot.rect.w).lights
   }
 
   /**

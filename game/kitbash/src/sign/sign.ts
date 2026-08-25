@@ -1,3 +1,5 @@
+import type { FaceId } from '../compose/faces.ts'
+
 /**
  * What a sign is, before anything is drawn: a rectangle somewhere on a wall,
  * the colour it burns, and the letters written across it.
@@ -16,8 +18,18 @@ export interface Written {
   readonly height: number
 }
 
+/** A lettered panel, a bare tube, or the lamp at the door. */
+export type SignKind = 'sign' | 'strip' | 'doorlamp'
+
+/** Flat on its wall, or hung off it at a right angle and lit on both sides. */
+export type Mount = 'flat' | 'hung'
+
 /** One lit rectangle on a building. */
 export interface Sign {
+  readonly kind: SignKind
+  /** The wall it belongs to. */
+  readonly wall: FaceId
+  readonly mount: Mount
   /** Centre of the panel, in the building's own frame. */
   readonly origin: readonly [number, number, number]
   /** Unit vector along the panel's width, as `[x, z]`. The panel looks along `right` turned up. */
@@ -41,6 +53,8 @@ export const SIGN = {
   stand: 0.08,
   /** How far a sign hangs out over the street. */
   reach: 1.15,
+  /** How much wall a hung sign's bracket takes, along the wall. */
+  foot: 0.16,
   /**
    * How much brighter than its own colour a tube burns after dark. Held low
    * enough that a saturated tube stays its own colour through the tone map:

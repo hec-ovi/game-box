@@ -1,5 +1,6 @@
 import type { Plot } from '@gb/world'
 import { planBuilding, type BuildingSize } from './compose/plan.ts'
+import type { LightEmitter } from './sign/light.ts'
 import type { Sign } from './sign/sign.ts'
 
 /**
@@ -9,4 +10,9 @@ import type { Sign } from './sign/sign.ts'
  */
 export function signsFor(plot: Plot, size: BuildingSize, cellSize = size.width / plot.rect.w): readonly Sign[] {
   return planBuilding(plot, size, cellSize).signs
+}
+
+/** A light for every sign, strip and door lamp the plan puts on that plot, in the same frame. */
+export function lightsFor(plot: Plot, size: BuildingSize, cellSize = size.width / plot.rect.w): readonly LightEmitter[] {
+  return planBuilding(plot, size, cellSize).lights
 }

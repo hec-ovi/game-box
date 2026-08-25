@@ -1,4 +1,5 @@
-import { World, type Plot } from '@gb/world'
+import { Rng } from '@gb/kit'
+import { BUILDING_KINDS, World, type Plot } from '@gb/world'
 import * as THREE from 'three'
 import { SIGN } from '../src/index.ts'
 
@@ -68,3 +69,30 @@ export function fingerprint(object: THREE.Object3D): string {
   }
   return (hash >>> 0).toString(16)
 }
+
+/**
+ * A town of plots of every kind, every height and every facing, cut from a
+ * seed: what a generated city hands the dressing, without the generator.
+ */
+export function townOf(seed: string, count: number): Plot[] {
+  const world = World.create({ name: 'town', theme: 'test', seed, width: TOWN, height: TOWN })
+  const rng = new Rng(seed)
+  const plots: Plot[] = []
+  let [x, y] = [2, 2]
+  for (let at = 0; at < count; at++) {
+    const [w, h] = [rng.int(1, 6), rng.int(2, 5)]
+    if (x + w + 2 > TOWN - 2) [x, y] = [2, y + 8]
+    const facing = FACINGS[at % FACINGS.length]!
+    const cell = facing === 'south' ? { x, y: y + h } : facing === 'north' ? { x, y: y - 1 } : facing === 'east' ? { x: x + w, y } : { x: x - 1, y }
+    const added = world.addPlot({ kind: BUILDING_KINDS[at % BUILDING_KINDS.length]!, name: `Place ${at} Of The Town`, rect: { x, y, w, h }, entrance: { cell, facing }, storeys: 1 + (at % 6), style: 'plain' })
+    if (!added.ok) throw new Error(JSON.stringify(added.error))
+    plots.push(added.value)
+    x += w + 2
+  }
+  return plots
+}
+
+const FACINGS = ['north', 'south', 'east', 'west'] as const
+
+/** Cells across the town: room for a hundred and more plots in rows. */
+const TOWN = 200

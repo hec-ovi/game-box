@@ -40,8 +40,8 @@ const AGAINST: ReadonlyArray<readonly [Neon, number]> = [
 /** The backs of the boxes the tubes are mounted on: near black, faintly cold. */
 const BACKING: readonly number[] = [0x090b10, 0x0c0d12, 0x07090c, 0x0b0e16]
 
-/** A doorway, a canopy, a window strip: always warm, always low. */
-export const DOORLIGHT: Neon = { ink: 0xffcf8a, glow: 0.55 }
+/** The lamp at a door: always warm, and never past its own colour, because a lamp is not a tube. */
+export const DOORLIGHT: Neon = { ink: 0xffcf8a, glow: 0.45 }
 
 /** The hue a whole building is lit in. */
 export function houseNeon(rng: Rng): Neon {

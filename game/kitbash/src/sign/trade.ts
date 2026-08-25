@@ -13,7 +13,7 @@ export interface Signage {
   readonly blade: number
   /** Chance of a sign hanging out over the street. */
   readonly hanging: number
-  /** How many small lit accents: a doorlight, a strip of marks, a tube up the corner, a board high on the wall. */
+  /** How many small lit accents: the door lamps, a strip of marks, a tube up the corner, a board high on the wall. */
   readonly accents: number
   /** How hard the nameplate over the door burns: 1 is neon, 0.25 is a lit house number. */
   readonly nameplate: number

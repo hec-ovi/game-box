@@ -1,8 +1,8 @@
 import { BUILDING_KINDS, METRICS, type BuildingKind } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { cellAt, cellUv, GLYPH_KEYS, KitDressing, nightLook, placeholderKit, SIGN, SIGN_ATTRIBUTES, signsFor, SOLID, TONES } from '../src/index.ts'
-import { fingerprint, plotOf, signMesh, sizeOf, wallBounds } from './support.ts'
+import { cellAt, cellUv, DOORLAMP, GLYPH_KEYS, KitDressing, LETTER_SHARE, lightsFor, MODULE, nightLook, placeholderKit, SIGN, SIGN_ATTRIBUTES, signsFor, SOLID, TONES, type Sign } from '../src/index.ts'
+import { fingerprint, plotOf, signMesh, sizeOf, townOf, wallBounds } from './support.ts'
 
 const kit = placeholderKit()
 const dressing = new KitDressing(kit)
@@ -120,6 +120,113 @@ describe('signs', () => {
       const [u0, v0, u1, v1] = cellUv(key)
       expect(cellAt((u0 + u1) / 2, (v0 + v1) / 2), key).toBe(key)
     }
+  })
+})
+
+describe('signage on a generated town', () => {
+  const town = townOf('signage', 120)
+  const planned = town.map((plot) => {
+    const size = sizeOf(plot, heightOf(plot.storeys))
+    return { plot, size, signs: signsFor(plot, size) }
+  })
+
+  /** The outward normal of each wall, and how far its plane is from the building's middle. */
+  const wallOf = (sign: Sign, size: { width: number; depth: number }): { normal: [number, number]; half: number } => ({
+    normal: { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] }[sign.wall] as [number, number],
+    half: sign.wall === 'north' || sign.wall === 'south' ? size.depth / 2 : size.width / 2,
+  })
+
+  /** The patch of wall a sign takes, as `along` the wall and `up` it: a flat one its face, a hung one its bracket. */
+  const patch = (sign: Sign): { a0: number; a1: number; u0: number; u1: number } => {
+    const right = sign.mount === 'flat' ? sign.right : [sign.right[1], -sign.right[0]]
+    const along = sign.origin[0] * right[0] + sign.origin[2] * right[1]
+    const width = sign.mount === 'flat' ? sign.width : SIGN.foot
+    return { a0: along - width / 2, a1: along + width / 2, u0: sign.origin[1] - sign.height / 2, u1: sign.origin[1] + sign.height / 2 }
+  }
+
+  it('claims its wall, so no two lit things overlap and every one lies on the wall it names', () => {
+    let [flat, hung] = [0, 0]
+    for (const { plot, size, signs } of planned) {
+      for (const sign of signs) {
+        const { normal, half } = wallOf(sign, size)
+        const facing = [-sign.right[1], sign.right[0]]
+        const dot = facing[0]! * normal[0] + facing[1]! * normal[1]
+        const off = sign.origin[0] * normal[0] + sign.origin[2] * normal[1] - half
+        if (sign.mount === 'flat') {
+          flat++
+          expect(dot, `${plot.id} looks the way its wall does`).toBeCloseTo(1, 9)
+          expect(off, `${plot.id} stands on its wall`).toBeCloseTo(SIGN.stand, 9)
+        } else {
+          hung++
+          expect(dot, `${plot.id} hangs at a right angle`).toBeCloseTo(0, 9)
+          expect(off - sign.width / 2, `${plot.id} starts at its wall`).toBeCloseTo(SIGN.stand, 9)
+        }
+      }
+      const patches = signs.map((sign) => ({ wall: sign.wall, ...patch(sign) }))
+      for (let i = 0; i < patches.length; i++) {
+        for (let j = i + 1; j < patches.length; j++) {
+          const [a, b] = [patches[i]!, patches[j]!]
+          if (a.wall !== b.wall) continue
+          const crossed = a.a0 < b.a1 && b.a0 < a.a1 && a.u0 < b.u1 && b.u0 < a.u1
+          expect(crossed, `${plot.id}: sign ${i} through sign ${j}`).toBe(false)
+        }
+      }
+    }
+    expect(flat).toBeGreaterThan(200)
+    expect(hung, 'and the town has things hanging over its streets').toBeGreaterThan(20)
+  })
+
+  it('sizes every letter off the fascia', () => {
+    const fascia = METRICS.building.groundFloorHeight - MODULE.height
+    let tallest = 0
+    for (const { signs } of planned) {
+      for (const sign of signs) {
+        for (const written of sign.glyphs) if (written.cell !== SOLID) tallest = Math.max(tallest, written.height)
+      }
+    }
+    expect(tallest).toBeLessThanOrEqual(fascia * LETTER_SHARE + 1e-9)
+    // and the cap is reached, so it is the cap and not a coincidence
+    expect(tallest).toBeCloseTo(fascia * LETTER_SHARE, 6)
+  })
+
+  it('lights the door with a lamp either side of it, never a column', () => {
+    const { doorHeight, doorWidth } = METRICS.building
+    for (const { plot, size, signs } of planned) {
+      const lamps = signs.filter((sign) => sign.kind === 'doorlamp')
+      expect(lamps, plot.id).toHaveLength(2)
+      const door = dressing.building(plot, size).getObjectByName('door')!
+      for (const lamp of lamps) {
+        // sized to the door: no taller than its head, a few centimetres wide, and never past its own colour
+        expect(lamp.origin[1] + lamp.height / 2, plot.id).toBeLessThanOrEqual(doorHeight + DOORLAMP.overhead + 1e-9)
+        expect(lamp.width, plot.id).toBeLessThanOrEqual(0.06)
+        expect(lamp.glow[0] * SIGN.glow, plot.id).toBeLessThanOrEqual(1)
+        // beside the frame, on the door's own wall
+        const beside = (lamp.origin[0] - door.position.x) * lamp.right[0] + (lamp.origin[2] - door.position.z) * lamp.right[1]
+        expect(Math.abs(beside), plot.id).toBeCloseTo(doorWidth / 2 + DOORLAMP.beside, 6)
+      }
+    }
+  })
+
+  it('publishes a light for everything it lit', () => {
+    for (const { plot, size, signs } of planned) {
+      const lights = lightsFor(plot, size)
+      expect(lights.map((light) => light.kind), plot.id).toEqual(signs.map((sign) => sign.kind))
+      expect(dressing.lights(plot, size), 'the dressing answers the same').toEqual(lights)
+      lights.forEach((light, at) => {
+        const sign = signs[at]!
+        const apart = Math.hypot(light.position[0] - sign.origin[0], light.position[1] - sign.origin[1], light.position[2] - sign.origin[2])
+        expect(apart, plot.id).toBeLessThanOrEqual(0.25)
+        expect(light.intensity, plot.id).toBeGreaterThan(0)
+        expect(light.radius, plot.id).toBeGreaterThan(1)
+        if (sign.glow[0] >= sign.glow[1]) expect(light.colour, 'a tube lights in its own colour').toBe(sign.ink)
+      })
+    }
+    // a lamp at the door is a fixture: one strength whatever the trade, and under the run of the neon
+    const lit = planned.flatMap(({ plot, size }) => lightsFor(plot, size))
+    const lamps = new Set(lit.filter((light) => light.kind === 'doorlamp').map((light) => light.intensity.toFixed(6)))
+    expect(lamps.size).toBe(1)
+    const neon = lit.filter((light) => light.kind !== 'doorlamp').map((light) => light.intensity).sort((a, b) => a - b)
+    expect(Number([...lamps][0])).toBeLessThan(neon[Math.floor(neon.length / 2)]!)
   })
 })
 
