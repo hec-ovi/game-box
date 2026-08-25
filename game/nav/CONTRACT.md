@@ -11,7 +11,7 @@ Walking routes across a generated city, read straight off its grid: who can get 
 | Param | Schema | Preconditions |
 |---|---|---|
 | `CityNav.from(world, costs?)` | a `@gb/world` `World` | `costs` may override the price of any cell kind |
-| `path(from, to)` / `reachable(from, to)` | cell coordinates | out-of-bounds or blocked cells are answered, not thrown |
+| `path(from, to)` / `reachable(from, to)` | cell coordinates: any walkable cell, a building's doorstep (`plot.entrance.cell`) included | out-of-bounds or blocked cells are answered, not thrown |
 | `reachableFrom(start)` | a cell coordinate | a start you cannot stand on reaches nothing |
 | `pathToDoor(world, from, plotId)` | a plot id | unknown ids return undefined |
 | `waypoints(path)` | a path from `path()` | |
@@ -39,12 +39,17 @@ A `Reach` is a lookup, never another search:
 
 None. Every question has an answer: no route is `undefined`, not an exception.
 
+## Doorsteps
+
+A doorstep is an ordinary walkable cell. A companion spawned at `plot.entrance.cell`, or a walker on any pavement cell, routes with the same `path(from, to)` as everyone else; `pathToDoor` is only `path` with the destination looked up by plot id. Nothing is registered ahead of time.
+
 ## Dependencies
 
 - `@gb/world` contract (game/world/CONTRACT.md): the grid and its cell kinds.
 
 ## Invariants
 
+- A `mountain` cell is impassable, the same as `building` and `water`: `WALK_COST` prices all three infinite, so no route starts, ends or passes there. `@gb/world` owns the cell vocabulary; this box only prices it.
 - Buildings, mountains and water are never crossed, and a diagonal step never squeezes between two blocked corners. `path`, `reachable` and `reachableFrom` all ask one cost grid the same question, so they cannot disagree about what is passable.
 - Sidewalks cost least and roadways cost most, so pedestrians walk the pavement and cross only when the detour would cost more. The heuristic is priced at the cheapest ground in the table it was given, so overriding `costs` keeps routes cheapest rather than merely valid.
 - The same world and the same question give the same route, always, however many other searches ran in between. Working memory is reused, never carried: each search stamps what it writes and reads nothing it did not stamp.

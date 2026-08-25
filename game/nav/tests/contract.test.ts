@@ -122,11 +122,12 @@ describe('CityNav', () => {
 
   it('walks to a building by id', () => {
     const nav = CityNav.from(world)
-    const bar = world.plotsOfKind('bar')[0]!
+    const plots = world.plots()
+    const target = plots[plots.length - 1]!
 
-    const path = nav.pathToDoor(world, world.plots()[0]!.entrance.cell, bar.id)
+    const path = nav.pathToDoor(world, plots[0]!.entrance.cell, target.id)
     expect(path).toBeDefined()
-    expect(path![path!.length - 1]).toEqual(bar.entrance.cell)
+    expect(path![path!.length - 1]).toEqual(target.entrance.cell)
     expect(nav.pathToDoor(world, world.plots()[0]!.entrance.cell, 'plot_9999')).toBeUndefined()
   })
 
