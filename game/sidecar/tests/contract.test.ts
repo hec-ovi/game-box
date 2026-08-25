@@ -87,9 +87,35 @@ describe('Sidecar.ask', () => {
     expect(await dead.ask(Name, ask())).toMatchObject({ ok: false, error: { code: 'unreachable' } })
   })
 
+  it('reports an engine that died before it could call the tool', async () => {
+    const { sidecar } = sidecarOver(() => Response.json({ choices: [{ message: { role: 'assistant', content: 'Cold' }, finish_reason: 'error' }] }))
+    expect(await sidecar.ask(Name, ask())).toMatchObject({ ok: false, error: { code: 'broken' } })
+  })
+
   function ask() {
     return { system: 's', user: 'u', toolName: 'name_city', toolDescription: 'd' }
   }
+})
+
+describe('pinning the draw', () => {
+  it('sends seed and temperature on every call that names them, and nothing for one that does not', async () => {
+    const { seen, sidecar } = sidecarOver((body) => (body.stream ? sseReply([chunk({}, 'stop')]) : toolCallReply('name_city', { name: 'Cold Harbour' })))
+    const ask = { system: 's', user: 'u', toolName: 'name_city', toolDescription: 'd' }
+    const converse = { system: 's', messages: [{ role: 'user' as const, content: 'hi' }] }
+
+    await sidecar.ask(Name, { ...ask, seed: 4294967294, temperature: 0 })
+    await sidecar.converse({ ...converse, seed: 7, temperature: 0.4 })
+    await sidecar.ask(Name, ask)
+    await sidecar.converse(converse)
+
+    expect(seen.map(({ seed, temperature }) => ({ seed, temperature }))).toEqual([
+      { seed: 4294967294, temperature: 0 },
+      { seed: 7, temperature: 0.4 },
+      { seed: undefined, temperature: undefined },
+      { seed: undefined, temperature: undefined },
+    ])
+    expect(seen.map((body) => 'seed' in body)).toEqual([true, true, false, false])
+  })
 })
 
 describe('Sidecar.converse', () => {
@@ -150,6 +176,17 @@ describe('Sidecar.converse', () => {
     const events = await drain(stream.value)
     expect(events.some((e) => e.kind === 'call')).toBe(false)
     expect(events).toContainEqual({ kind: 'text', text: 'here.' })
+  })
+
+  it('ends with an error, keeping the words said, when the engine dies mid-reply', async () => {
+    const { sidecar } = sidecarOver(() => sseReply([chunk({ content: 'We close ' }), chunk({}, 'error')]))
+    const stream = await sidecar.converse({ system: 's', messages: [{ role: 'user', content: 'hi' }] })
+    if (!stream.ok) throw new Error('stream did not open')
+
+    expect(await drain(stream.value)).toEqual([
+      { kind: 'text', text: 'We close ' },
+      { kind: 'error', error: { code: 'broken', message: expect.any(String) } },
+    ])
   })
 
   it('reports a stream that never opens', async () => {

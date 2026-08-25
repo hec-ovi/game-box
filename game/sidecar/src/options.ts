@@ -12,23 +12,28 @@ interface Cancellable {
   readonly signal?: AbortSignal | undefined
 }
 
-export interface AskOptions extends Cancellable {
+/** What pins the engine's draw. Both go out exactly when given; nothing is invented for a call that names neither. */
+export interface Sampling {
+  readonly temperature?: number | undefined
+  /** 0 to 4294967294, the sidecar's range. */
+  readonly seed?: number | undefined
+}
+
+export interface AskOptions extends Cancellable, Sampling {
   readonly system: string
   readonly user: string
   /** The tool the model must call. Its schema is both the contract and the constraint. */
   readonly toolName: string
   readonly toolDescription: string
-  readonly temperature?: number
   /** Whole call, request start to the last byte. Defaults to this `Sidecar`'s `askMs`. */
   readonly timeoutMs?: number | undefined
 }
 
-export interface ConverseOptions extends Cancellable {
+export interface ConverseOptions extends Cancellable, Sampling {
   readonly system: string
   readonly messages: ReadonlyArray<{ role: 'user' | 'assistant'; content: string }>
   /** What the speaker is allowed to do right now. Only these can be called. */
   readonly tools?: readonly ToolSpec[]
-  readonly temperature?: number
   /** Request start to the first byte of the reply. Defaults to this `Sidecar`'s `firstTokenMs`. */
   readonly firstTokenMs?: number | undefined
   /** Longest allowed gap between two pieces of the reply. Defaults to this `Sidecar`'s `idleMs`. */

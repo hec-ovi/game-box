@@ -1,8 +1,11 @@
 import { err, ok, type Contract, type Result } from '@gb/kit'
+import { BusySchedule, DEFAULT_BACKOFF, type Backoff, type BusyNotice } from './backoff.ts'
+import { busyAnswer } from './busy.ts'
 import { Deadline } from './deadline.ts'
 import { FetchDispatcher } from './dispatcher.ts'
-import type { SidecarError } from './errors.ts'
+import { broken, type SidecarError } from './errors.ts'
 import type { AskOptions, ConverseEvent, ConverseOptions } from './options.ts'
+import { pause } from './pause.ts'
 import { converseEvents } from './stream.ts'
 import { DEFAULT_TIMEOUTS, type Timeouts } from './timeouts.ts'
 import { askBody, converseBody, type ChatResponse } from './wire.ts'
@@ -15,6 +18,10 @@ export interface SidecarOptions {
   readonly fetch?: typeof fetch
   /** Defaults for every call this client makes. A single call can still override them. */
   readonly timeouts?: Partial<Timeouts>
+  /** How a call waits when the model is busy. */
+  readonly backoff?: Partial<Backoff>
+  /** Told before every wait on a busy model, so the screen can say so. */
+  readonly onBusy?: (notice: BusyNotice) => void
 }
 
 /**
@@ -25,13 +32,16 @@ export interface SidecarOptions {
  * speaker takes arriving as calls in the same stream.
  *
  * No call can hang. Each one runs against a clock and against the caller's own
- * `AbortSignal`, and reports which of the two stopped it.
+ * `AbortSignal`, and reports which of the two stopped it. A busy model is
+ * waited out inside that same clock, never past it.
  */
 export class Sidecar {
   #base: string
   #model: string
   #fetch: typeof fetch
   #timeouts: Timeouts
+  #schedule: BusySchedule
+  #onBusy: ((notice: BusyNotice) => void) | undefined
   #dispatcher = new FetchDispatcher()
 
   constructor(options: SidecarOptions = {}) {
@@ -39,6 +49,8 @@ export class Sidecar {
     this.#model = options.model ?? 'game-box/local'
     this.#fetch = options.fetch ?? globalThis.fetch.bind(globalThis)
     this.#timeouts = { ...DEFAULT_TIMEOUTS, ...options.timeouts }
+    this.#schedule = new BusySchedule({ ...DEFAULT_BACKOFF, ...options.backoff })
+    this.#onBusy = options.onBusy
   }
 
   get base(): string {
@@ -56,8 +68,10 @@ export class Sidecar {
       const stopped = deadline.failure()
       if (stopped) return err(stopped)
 
-      const call = payload?.choices?.[0]?.message?.tool_calls?.[0]
+      const choice = payload?.choices?.[0]
+      const call = choice?.message?.tool_calls?.[0]
       if (!call || call.function.name !== options.toolName) {
+        if (choice?.finish_reason === 'error') return err(broken())
         return err({ code: 'no-tool-call', message: 'the model answered without calling the tool' })
       }
 
@@ -98,8 +112,28 @@ export class Sidecar {
     return ok(converseEvents(body, deadline, idleMs))
   }
 
-  /** `ms` is the longest this call may run: the transport's clocks are set past it. */
+  /**
+   * Sends the call, and sends it again after a busy answer for as long as the
+   * schedule and the deadline both allow. `ms` is the longest this call may
+   * run: the transport's clocks are set past it.
+   */
   async #post(body: unknown, deadline: Deadline, ms: number): Promise<Result<Response, SidecarError>> {
+    const payload = JSON.stringify(body)
+    for (let attempt = 1; ; attempt += 1) {
+      const sent = await this.#send(payload, deadline, ms, attempt)
+      if (sent.ok || sent.error.code !== 'busy') return sent
+
+      const waitMs = this.#schedule.waitBefore(attempt + 1, sent.error.retryAfter)
+      if (waitMs === undefined || waitMs > deadline.remaining()) return sent
+
+      this.#onBusy?.({ attempt, retryAfter: sent.error.retryAfter, waitMs })
+      await pause(waitMs, deadline.signal)
+      const stopped = deadline.failure()
+      if (stopped) return err(stopped)
+    }
+  }
+
+  async #send(payload: string, deadline: Deadline, ms: number, attempt: number): Promise<Result<Response, SidecarError>> {
     const before = deadline.failure()
     if (before) return err(before)
 
@@ -108,18 +142,25 @@ export class Sidecar {
       response = await this.#fetch(`${this.#base}/v1/chat/completions`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(body),
+        body: payload,
         signal: deadline.signal,
         ...(await this.#dispatcher.forCall(ms)),
       } as RequestInit)
     } catch (cause) {
       return err(deadline.failure() ?? { code: 'unreachable', message: `${this.#base}: ${String(cause)}` })
     }
-    if (!response.ok) {
-      const text = await response.text().catch(() => '')
-      return err(deadline.failure() ?? { code: 'refused', status: response.status, message: text.slice(0, 400) })
+    if (response.ok) return ok(response)
+
+    const text = await response.text().catch(() => '')
+    const stopped = deadline.failure()
+    if (stopped) return err(stopped)
+
+    const busy = busyAnswer(response, text)
+    if (busy) {
+      const retryAfter = this.#schedule.retryAfter(attempt + 1, busy.retryAfter)
+      return err({ code: 'busy', retryAfter, message: busy.message })
     }
-    return ok(response)
+    return err({ code: 'refused', status: response.status, message: text.slice(0, 400) })
   }
 }
 

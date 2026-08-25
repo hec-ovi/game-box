@@ -1,4 +1,5 @@
 import type { Deadline } from './deadline.ts'
+import { broken } from './errors.ts'
 import type { ConverseEvent } from './options.ts'
 import { sseData } from './sse.ts'
 import type { StreamChunk } from './wire.ts'
@@ -11,8 +12,9 @@ import type { StreamChunk } from './wire.ts'
  * off, and a model that goes quiet is, in `idleMs`.
  *
  * A stream that breaks off ends with one `error` event carrying the reason,
- * and nothing follows it. However it ends, the deadline is released and the
- * body reader is cancelled.
+ * and nothing follows it: the connection dropped, a clock ran out, the caller
+ * left, or the sidecar itself said the engine died (`finish_reason: "error"`).
+ * However it ends, the deadline is released and the body reader is cancelled.
  */
 export async function* converseEvents(
   body: ReadableStream<Uint8Array>,
@@ -23,7 +25,10 @@ export async function* converseEvents(
   try {
     for await (const data of sseData(body, progressed)) {
       if (data === '[DONE]') return
-      for (const event of eventsIn(data)) yield event
+      for (const event of eventsIn(data)) {
+        yield event
+        if (event.kind === 'error') return
+      }
       progressed()
     }
   } catch (cause) {
@@ -54,5 +59,6 @@ function* eventsIn(data: string): Generator<ConverseEvent> {
     }
     yield { kind: 'call', name: call.function.name, arguments: args }
   }
-  if (choice?.finish_reason) yield { kind: 'end', reason: choice.finish_reason }
+  if (choice?.finish_reason === 'error') yield { kind: 'error', error: broken() }
+  else if (choice?.finish_reason) yield { kind: 'end', reason: choice.finish_reason }
 }

@@ -17,6 +17,7 @@ export class Deadline {
   readonly #caller: AbortSignal | undefined
   readonly #onCallerAbort: () => void
   #timer: ReturnType<typeof setTimeout> | undefined
+  #armedAt = 0
   #phase: TimeoutPhase
   #ms: number
   #reason: 'timeout' | 'aborted' | undefined
@@ -49,6 +50,12 @@ export class Deadline {
     this.#arm()
   }
 
+  /** How much of the running clock is left. Nothing once it has fired. */
+  remaining(): number {
+    if (this.#reason) return 0
+    return Math.max(0, this.#ms - (Date.now() - this.#armedAt))
+  }
+
   /** Why this call stopped, or nothing if it was the network or the model itself. */
   failure(): SidecarError | undefined {
     if (this.#reason === 'aborted') return { code: 'aborted', message: 'the caller aborted the call' }
@@ -73,6 +80,7 @@ export class Deadline {
 
   #arm(): void {
     this.#disarm()
+    this.#armedAt = Date.now()
     const timer = setTimeout(() => this.#fire('timeout'), this.#ms)
     // A pending timer must never be the reason a process stays alive.
     ;(timer as { unref?: () => void }).unref?.()
