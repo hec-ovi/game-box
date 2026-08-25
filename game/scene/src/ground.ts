@@ -1,10 +1,10 @@
-import { cellCentre, METRICS, type CellKind, type Grid, type Rect, type World } from '@gb/world'
+import { CELL_KINDS, cellCentre, METRICS, type CellKind, type Grid, type Rect, type World } from '@gb/world'
 import * as THREE from 'three'
 import type { Dressing } from './dressing.ts'
 import { QuadMesh, type Corner } from './quads.ts'
 
-/** The surfaces the city floor is made of. The verge is `@gb/land`'s, and gets no mesh here. */
-export const GROUND_KINDS: readonly CellKind[] = ['street', 'sidewalk', 'park', 'building', 'empty', 'water']
+/** The surfaces the city floor is made of: every cell kind `@gb/world` holds but the verge, which is `@gb/land`'s and gets no mesh here. */
+export const GROUND_KINDS: readonly CellKind[] = CELL_KINDS.filter((kind) => kind !== 'mountain')
 
 /** The surfaces rain lands on and rubbish gathers on: the street and the pavement beside it. */
 export const PAVED_KINDS: readonly CellKind[] = ['street', 'sidewalk']

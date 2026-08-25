@@ -2,7 +2,7 @@ import { METRICS, type World } from '@gb/world'
 import type { HeightField } from './height.ts'
 import { smoothstep01 } from './height.ts'
 
-/** Cell kinds whose top stands a kerb above the roadway. */
+/** The kinds the `@gb/world` cell table draws at pavement height (`curbHeight` above the roadway). */
 const RAISED = new Set(['sidewalk', 'park'])
 
 /** One corner of the apron lattice, in cell coordinates. */

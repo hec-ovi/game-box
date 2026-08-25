@@ -58,7 +58,7 @@ Builds the world the city stands in and the sky over it: kilometres of open, rol
 
 ## Dependencies
 
-- `@gb/world` contract: the grid, `cellSize`, `METRICS.street.curbHeight`, and the world's theme and seed.
+- `@gb/world` contract: the grid, `cellSize`, `METRICS.street.curbHeight`, and the world's theme and seed. Cell kinds are `CELL_KINDS` and the table "The cells a city is laid in" there: this box reads what each kind is drawn as (`mountain` is the verge it covers, `sidewalk` and `park` stand at pavement height, the rest at zero) and keeps no list of its own.
 - `@gb/kit` contract: `Rng` for determinism, `Result` for the answer.
 - `three`, `three/addons/objects/SkyMesh.js` for the sky and `three/tsl` for the night it wears.
 

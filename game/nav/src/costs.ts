@@ -1,7 +1,8 @@
 import type { CellKind } from '@gb/world'
 
 /**
- * What it costs to walk over each kind of ground. Sidewalks are cheapest, so
+ * What it costs to walk each kind in `CELL_KINDS` (see @gb/world CONTRACT.md,
+ * "The cells a city is laid in"). Sidewalks are cheapest, so
  * pedestrians use them and only cross the road when they have to.
  */
 export const WALK_COST: Record<CellKind, number> = {

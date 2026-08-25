@@ -45,12 +45,12 @@ A doorstep is an ordinary walkable cell. A companion spawned at `plot.entrance.c
 
 ## Dependencies
 
-- `@gb/world` contract (game/world/CONTRACT.md): the grid and its cell kinds.
+- `@gb/world` contract (game/world/CONTRACT.md): the grid, and `CELL_KINDS` with its table "The cells a city is laid in" (the walking column is what `WALK_COST` prices).
 
 ## Invariants
 
-- A `mountain` cell is impassable, the same as `building` and `water`: `WALK_COST` prices all three infinite, so no route starts, ends or passes there. `@gb/world` owns the cell vocabulary; this box only prices it.
-- Buildings, mountains and water are never crossed, and a diagonal step never squeezes between two blocked corners. `path`, `reachable` and `reachableFrom` all ask one cost grid the same question, so they cannot disagree about what is passable.
+- `WALK_COST` is typed over `CellKind`, so every kind in `CELL_KINDS` has exactly one price and a kind the world's table marks "never" for walking is priced infinite: no route starts, ends or passes there. This box keeps no list of kinds; the vocabulary is read from `@gb/world`.
+- An impassable cell is never crossed, and a diagonal step never squeezes between two blocked corners. `path`, `reachable` and `reachableFrom` all ask one cost grid the same question, so they cannot disagree about what is passable.
 - Sidewalks cost least and roadways cost most, so pedestrians walk the pavement and cross only when the detour would cost more. The heuristic is priced at the cheapest ground in the table it was given, so overriding `costs` keeps routes cheapest rather than merely valid.
 - The same world and the same question give the same route, always, however many other searches ran in between. Working memory is reused, never carried: each search stamps what it writes and reads nothing it did not stamp.
 - No navmesh is baked and nothing is cached across a world change: the grid the city was generated on is the navigation data, which is why adding a building needs no rebuild.
