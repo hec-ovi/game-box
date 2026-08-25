@@ -1,6 +1,9 @@
 import type { CityBrief } from './brief.ts'
+import { paintIcons } from './chrome.ts'
 import { CityForm } from './form.ts'
 import { LibraryView, type OnTheShelf } from './library-view.ts'
+import { enters, replays } from './motion.ts'
+import { Sections } from './sections.ts'
 
 export interface PanelHandlers {
   generate(brief: CityBrief): void
@@ -26,7 +29,8 @@ export interface PanelHandlers {
  */
 export type PanelFace = 'home' | 'make'
 
-/** What each face says under the title. */
+/** What each face calls itself, and what it says under that. */
+const TITLES: Record<PanelFace, string> = { home: 'game-box', make: 'A new city' }
 const SUBS: Record<PanelFace, string> = {
   home: 'Pick a city to play, open one somebody sent you, or make a new one.',
   make: 'Every field is optional. Left blank, the city decides for itself; the same answers make the same city every time.',
@@ -40,13 +44,16 @@ const SUBS: Record<PanelFace, string> = {
  */
 export class Panel {
   #root: HTMLElement
+  #card: HTMLElement
   #form: CityForm
   #library: LibraryView
+  #sections: Sections
   #open: HTMLInputElement
   #apply: HTMLInputElement
   #screens: HTMLInputElement
   #home: HTMLElement
   #make: HTMLElement
+  #title: HTMLElement
   #sub: HTMLElement
   #new: HTMLButtonElement
   #homeAgain: HTMLButtonElement
@@ -58,6 +65,8 @@ export class Panel {
   #status: HTMLElement
   #face: PanelFace = 'make'
   #playing = false
+  #shown = true
+  #leaving: ReturnType<typeof setTimeout> | undefined
   #handlers: PanelHandlers = {
     generate: () => {},
     open: () => {},
@@ -78,10 +87,16 @@ export class Panel {
       if (!found) throw new Error(`the boot panel has no ${name}`)
       return found
     }
+    // the markup declares an icon by name and this draws it, so the panel is
+    // one stylesheet and one sprite rather than a paragraph of svg per row
+    paintIcons(root)
+    this.#card = find('card')
     this.#form = new CityForm(find)
     this.#library = new LibraryView(find)
+    this.#sections = new Sections(find)
     this.#home = find('home')
     this.#make = find('make')
+    this.#title = find('title')
     this.#sub = find('sub')
     this.#new = find('new')
     this.#homeAgain = find('home-again')
@@ -139,7 +154,11 @@ export class Panel {
     return this.#face
   }
 
-  /** Show one face or the other. The other one leaves the page rather than being scrolled past. */
+  /**
+   * Show one face or the other. The other one leaves the page rather than
+   * being scrolled past, and the one arriving slides in with its rows landing
+   * one after another, so the swap reads as a move rather than a redraw.
+   */
   set face(face: PanelFace) {
     this.#face = face
     this.#root.dataset.face = face
@@ -148,7 +167,9 @@ export class Panel {
     this.#new.hidden = face !== 'home'
     this.#homeAgain.hidden = face !== 'make'
     this.#generate.hidden = face !== 'make'
+    this.#title.textContent = TITLES[face]
     this.#sub.textContent = SUBS[face]
+    this.#arrive(face === 'home' ? this.#home : this.#make)
   }
 
   /** What the player set that belongs to them rather than to any city. */
@@ -170,11 +191,19 @@ export class Panel {
   }
 
   get open(): boolean {
-    return !this.#root.hidden
+    return this.#shown
   }
 
   show(): void {
+    this.#shown = true
+    clearTimeout(this.#leaving)
+    this.#leaving = undefined
+    this.#root.removeAttribute('data-leaving')
+    this.#root.removeAttribute('aria-hidden')
+    this.#root.removeAttribute('inert')
     this.#root.hidden = false
+    replays(this.#root)
+    replays(this.#card)
     this.#focus()
   }
 
@@ -191,8 +220,19 @@ export class Panel {
     ;(first ?? this.#new).focus()
   }
 
+  /**
+   * Gone the moment it is asked to go: it stops taking clicks, leaves the
+   * accessible tree and lets the keyboard go at once, and only its pixels stay
+   * behind for as long as the veil takes to clear.
+   */
   hide(): void {
-    this.#root.hidden = true
+    if (!this.#shown) return
+    this.#shown = false
+    this.#root.dataset.leaving = 'true'
+    this.#root.setAttribute('aria-hidden', 'true')
+    this.#root.toggleAttribute('inert', true)
+    if (this.#root.contains(document.activeElement)) (document.activeElement as HTMLElement).blur()
+    this.#leaving = setTimeout(() => void (this.#root.hidden = true), this.#veil())
   }
 
   /**
@@ -228,7 +268,27 @@ export class Panel {
     this.#close.hidden = !what.playing
   }
 
+  /**
+   * A face arriving, with the rows on it landing one after another. The mark of
+   * the last arrival comes off the whole group first, in one go, so a face the
+   * player has been back and forth to still arrives rather than sitting there.
+   */
+  #arrive(fold: HTMLElement): void {
+    const rows = [...fold.querySelectorAll<HTMLElement>('.gb-boot-row')]
+    for (const node of [fold, ...rows]) node.classList.remove('gb-in')
+    void fold.offsetWidth
+    enters(fold)
+    for (const [index, row] of rows.entries()) enters(row, index)
+  }
+
+  /** How long the pixels stay, read from the durations declared on the panel itself. */
+  #veil(): number {
+    const token = getComputedStyle(this.#root).getPropertyValue('--gb-t-veil').trim()
+    return token.endsWith('ms') ? Number.parseFloat(token) : 0
+  }
+
   #busy(working: boolean): void {
+    this.#sections.quiet(working)
     this.#generate.disabled = working
     this.#open.disabled = working
     this.#grow.disabled = working || this.#grow.disabled

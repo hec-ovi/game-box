@@ -123,6 +123,7 @@ export class Game {
   #session: Session | undefined
   #target: Target | undefined
   #sinceKept = 0
+  #paused = false
 
   private constructor(input: {
     bundle: OpenedBundle
@@ -554,7 +555,18 @@ export class Game {
     return game
   }
 
+  /**
+   * Stand the city still, and set it going again. Nothing steps while the
+   * player is at the front door: no clock, no crowd, no traffic and nothing
+   * streamed in or out, so a city nobody is looking at costs nothing to leave
+   * standing. What was drawn last stays drawn.
+   */
+  pause(on: boolean): void {
+    this.#paused = on
+  }
+
   frame(seconds: number): void {
+    if (this.#paused) return
     // a ride lands under the veil, so the frame that dresses a neighbourhood
     // the city has never drawn is the one nobody sees
     this.#travel.update()

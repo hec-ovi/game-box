@@ -16,16 +16,18 @@ export interface CityBrief {
   readonly asks?: Asks
 }
 
-/** What the panel starts on, and what a bare address builds. */
-export const DEFAULTS: CityBrief = { theme: 'quiet coastal town', seed: 'town', blocks: 2, model: false }
+/** What the panel starts on, and what a bare address builds: `@gb/forge`'s own default size, a city rather than a hamlet. */
+export const DEFAULTS: CityBrief = { theme: 'quiet coastal town', seed: 'town', blocks: 20, model: false }
 
 /**
- * How much city the browser will take on. The generator will go further, up to
- * whatever fits its 1024-cell grid, but this is about what a person can cross:
- * twenty blocks is already 900 m corner to corner and an eleven minute walk.
- * Past that a city needs transport more than it needs more blocks.
+ * The size the generator will take, read straight off `@gb/forge`'s brief
+ * schema (`blocksX`, `blocksY`: 1 to 57, 20 by default). The upper end is the
+ * widest city its grid can found at the smallest block it cuts, so a typo of
+ * 400 is held at the top of the range rather than sent. Between the two, a
+ * brief that asks for more grid than the world will hold comes back refused
+ * with the grid it needed, which is a sentence on the panel.
  */
-export const BLOCKS = { min: 1, max: 24 } as const
+export const BLOCKS = { min: 1, max: 57 } as const
 
 /**
  * The style choices, each the closed list `@gb/world` will hold. The art is one

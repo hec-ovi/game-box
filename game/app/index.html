@@ -5,6 +5,76 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>game-box</title>
     <style>
+      /* The front door: the panel that is on screen with the first byte of the
+         page, seconds before the renderer and the city are ready. It is written
+         here rather than loaded because a second request would arrive after the
+         thing it is meant to cover.
+
+         `docs/UI.md` is the one specification behind both surfaces of this
+         game: the hud declares its palette, type and motion on `.gb-hud`, and
+         this declares the same names on `.gb-boot` from the same document.
+         Nothing below this block writes a colour, a duration or a curve of its
+         own: everything reads a token. */
+      :root,
+      .gb-boot {
+        /* ground */
+        --gb-void: #05080a;
+        --gb-panel: #0a1114;
+        --gb-solid: #0c1519;
+        --gb-lift: #132025;
+        --gb-well: #050b0e;
+        /* edges */
+        --gb-edge: #1d3038;
+        --gb-edge-lit: #2e555f;
+        --gb-edge-accent: rgba(47, 217, 230, 0.55);
+        /* the accent */
+        --gb-accent: #2fd9e6;
+        --gb-accent-lit: #7df3fa;
+        --gb-accent-dim: #14707a;
+        --gb-accent-ink: #04161a;
+        --gb-accent-glow: rgba(47, 217, 230, 0.3);
+        /* the second accent */
+        --gb-main: #e8b44a;
+        --gb-main-lit: #ffd07a;
+        --gb-main-dim: #6e5320;
+        --gb-main-ink: #171004;
+        /* text */
+        --gb-ink: #dceef2;
+        --gb-dim: #8ea8b0;
+        --gb-faint: #576e76;
+        /* states */
+        --gb-good: #35d48a;
+        --gb-warn: #ff8a2b;
+        --gb-danger: #ff4d5e;
+        --gb-off: #33454b;
+        --gb-off-ink: #5c7178;
+        /* composites */
+        --gb-frame: 0 18px 44px rgba(0, 0, 0, 0.6);
+        --gb-hatch: repeating-linear-gradient(135deg, rgba(47, 217, 230, 0.06) 0 3px, transparent 3px 7px);
+        --gb-scrim: rgba(4, 8, 10, 0.74);
+        /* type */
+        --gb-display: 'Archivo Narrow', 'Roboto Condensed', 'Liberation Sans Narrow', 'Arial Narrow', ui-sans-serif, system-ui, sans-serif;
+        --gb-body: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        --gb-mono: ui-monospace, 'JetBrains Mono', 'DejaVu Sans Mono', 'SF Mono', Menlo, Consolas, monospace;
+        /* motion */
+        --gb-in: cubic-bezier(0.2, 0.7, 0.2, 1);
+        --gb-out: cubic-bezier(0.5, 0, 0.9, 0.4);
+        --gb-t-press: 90ms;
+        --gb-t-state: 140ms;
+        --gb-t-value: 200ms;
+        --gb-t-leave: 200ms;
+        --gb-t-enter: 320ms;
+        --gb-t-veil: 400ms;
+        --gb-stagger: 24ms;
+        /* spacing */
+        --gb-s1: 4px;
+        --gb-s2: 8px;
+        --gb-s3: 12px;
+        --gb-s4: 16px;
+        --gb-s5: 22px;
+        --gb-s6: 32px;
+      }
+
       /* the canvas is sized to the window, so any margin on the page overflows
          it and the browser puts scrollbars round the game */
       html,
@@ -13,331 +83,927 @@
         padding: 0;
         height: 100%;
         overflow: hidden;
-        background: #000;
+        background: var(--gb-void);
       }
       #game {
         width: 100vw;
         height: 100vh;
       }
+      #game[hidden] {
+        display: none;
+      }
       #game canvas {
         display: block;
       }
 
-      /* The front door: the panel that is on screen with the first byte of the
-         page, seconds before the renderer and the city are ready. It is
-         written here rather than loaded because a second request would arrive
-         after the thing it is meant to cover.
+      /* ------------------------------------------------------------------
+         The panel language: the chamfer, the edge, the type steps.
+         Two opposite corners are cut on the diagonal facing the middle of the
+         view, and an edge is two layers because a border cannot follow a clip.
+         ------------------------------------------------------------------ */
+      .gb-boot .gb-cut,
+      .gb-boot .gb-edged,
+      .gb-boot .gb-edged > *,
+      .gb-boot .gb-btn,
+      .gb-boot .gb-btn > span {
+        clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+      }
+      .gb-boot .gb-cut-alt,
+      .gb-boot .gb-cut-alt > * {
+        clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut)));
+      }
+      .gb-c14 {
+        --cut: 14px;
+        --in: 13px;
+      }
+      .gb-c10 {
+        --cut: 10px;
+        --in: 9px;
+      }
+      .gb-c6 {
+        --cut: 6px;
+        --in: 5px;
+      }
+      .gb-c4 {
+        --cut: 4px;
+        --in: 3px;
+      }
+      .gb-boot .gb-edged {
+        padding: 1px;
+        background: var(--gb-edge);
+      }
+      .gb-boot .gb-edged > * {
+        --cut: var(--in);
+        display: block;
+        width: 100%;
+        height: 100%;
+        background: var(--gb-ground, var(--gb-lift));
+      }
 
-         The look belongs to @gb/hud. Its tokens are declared on `.gb-hud` by a
-         stylesheet its constructor installs, and that constructor has not run
-         yet at first paint, so the same names are declared here with the same
-         values from game/hud/src/style/tokens.ts. Nothing below writes a colour
-         of its own. */
+      .gb-t0,
+      .gb-t1,
+      .gb-t5,
+      .gb-t6,
+      .gb-t7 {
+        font-family: var(--gb-display);
+        text-transform: uppercase;
+        line-height: 1.2;
+      }
+      .gb-t0 {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+      }
+      .gb-t1 {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+      }
+      .gb-t2 {
+        font: 400 12px/1.45 var(--gb-body);
+      }
+      .gb-t3 {
+        font: 400 13px/1.45 var(--gb-body);
+      }
+      .gb-t4 {
+        font: 600 15px/1.2 var(--gb-body);
+        letter-spacing: 0.02em;
+      }
+      .gb-t5 {
+        font-size: 17px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+      }
+      .gb-t6 {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+      }
+      .gb-t7 {
+        font-size: 30px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+      }
+      /* every number is monospaced, so a count that changes moves nothing beside it */
+      .gb-num {
+        font-family: var(--gb-mono);
+        font-variant-numeric: tabular-nums;
+        font-weight: 500;
+      }
+
+      .gb-i {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        width: 1em;
+        height: 1em;
+        font-size: 20px;
+      }
+      .gb-i svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .gb-i-16 {
+        font-size: 16px;
+      }
+      .gb-i-14 {
+        font-size: 14px;
+      }
+      .gb-i-28 {
+        font-size: 28px;
+      }
+
+      /* a key cap: every option the keyboard can reach carries one */
+      .gb-key {
+        display: inline-block;
+        flex: none;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 3px;
+        background: var(--gb-lift);
+        color: var(--gb-dim);
+        font: 500 10px/18px var(--gb-mono);
+        letter-spacing: 0.04em;
+        text-align: center;
+      }
+      .gb-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--gb-s1);
+        padding: 3px 7px;
+        background: var(--gb-lift);
+        color: var(--gb-dim);
+      }
+
+      /* ------------------------------------------------------------------
+         The panel itself
+         ------------------------------------------------------------------ */
       .gb-boot {
-        --gb-ink: #f2efe6;
-        --gb-dim: rgba(242, 239, 230, 0.64);
-        --gb-faint: rgba(242, 239, 230, 0.4);
-        --gb-panel: rgba(10, 12, 17, 0.9);
-        --gb-solid: rgba(9, 11, 15, 0.96);
-        --gb-lift: rgba(30, 35, 45, 0.9);
-        --gb-well: rgba(0, 0, 0, 0.45);
-        --gb-edge: rgba(242, 239, 230, 0.16);
-        --gb-edge-lit: rgba(242, 239, 230, 0.38);
-        --gb-accent: #e9c178;
-        --gb-accent-deep: #9c6f30;
-        --gb-warn: #d8583a;
-        --gb-frame: 0 0 0 1px rgba(0, 0, 0, 0.72), inset 0 0 0 1px rgba(242, 239, 230, 0.07),
-          0 12px 34px rgba(0, 0, 0, 0.5);
-        --gb-display: 'Avenir Next Condensed', 'Roboto Condensed', 'Liberation Sans Narrow', 'Arial Narrow',
-          ui-sans-serif, system-ui, sans-serif;
-        --gb-body: ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif;
-        --gb-mono: ui-monospace, 'SFMono-Regular', 'JetBrains Mono', Menlo, Consolas, monospace;
-        --gb-s1: 4px;
-        --gb-s2: 8px;
-        --gb-s3: 12px;
-        --gb-s4: 16px;
-        --gb-s5: 22px;
-        --gb-s6: 32px;
-
         position: fixed;
         inset: 0;
         z-index: 40;
         display: grid;
         place-items: center;
-        background: rgba(0, 0, 0, 0.55);
-        font: 14px/1.55 var(--gb-body);
+        padding: var(--gb-s4);
+        box-sizing: border-box;
+        background: var(--gb-scrim);
         color: var(--gb-ink);
+        font: 400 13px/1.45 var(--gb-body);
+        contain: paint;
       }
       .gb-boot[hidden] {
         display: none;
       }
-      /* standing aside: a city being written has the loader under the panel,
-         so the form folds away and the step and Cancel sit along the foot */
+      /* closed the moment it is asked to close: no clicks, no keyboard, no
+         accessible tree, and only the pixels linger */
+      .gb-boot[data-leaving='true'] {
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity var(--gb-t-veil) var(--gb-out);
+      }
+      /* the landing screen is the game's own ground, not a frame over the city */
+      .gb-boot[data-face='home'] {
+        background-color: var(--gb-void);
+        background-image: linear-gradient(var(--gb-edge) 1px, transparent 1px), linear-gradient(90deg, var(--gb-edge) 1px, transparent 1px);
+        background-size: 48px 48px;
+        background-position: center;
+      }
+      /* standing aside: a city being written has the loader under the panel, so
+         the card folds down to the step it is on and the way to stop it */
       .gb-boot[data-aside='true'] {
         place-items: end center;
         background: transparent;
         pointer-events: none;
       }
       .gb-boot[data-aside='true'] .gb-boot-card {
+        width: auto;
+        height: auto;
+        margin-bottom: var(--gb-s5);
         pointer-events: auto;
-        margin-bottom: var(--gb-s6);
       }
-      .gb-boot[data-aside='true'] .gb-boot-fold {
+      .gb-boot[data-aside='true'] .gb-boot-fold,
+      .gb-boot[data-aside='true'] .gb-boot-crown,
+      .gb-boot[data-aside='true'] .gb-boot-foot button:not([data-boot='cancel']) {
         display: none;
       }
-      /* a face the panel is not showing is out of the page, not merely faded:
-         the folds are flex containers, so `hidden` needs saying again here */
+      /* a face the panel is not showing is out of the page, not scrolled past */
       .gb-boot [hidden] {
         display: none;
       }
+
       .gb-boot-card {
-        width: min(38rem, calc(100vw - var(--gb-s6)));
-        max-height: calc(100vh - var(--gb-s6));
-        overflow-y: auto;
-        padding: var(--gb-s5);
-        background: var(--gb-solid);
-        box-shadow: var(--gb-frame);
-      }
-      .gb-boot-card,
-      .gb-boot-card form,
-      .gb-boot-fold {
         display: flex;
         flex-direction: column;
-        gap: var(--gb-s3);
+        width: min(66rem, 100%);
+        height: min(48rem, 100%);
+        box-shadow: var(--gb-frame);
       }
-      /* the landing lays cities out side by side, so it is given the room */
+      .gb-boot .gb-boot-card > .gb-boot-card-in {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+        height: auto;
+        background: var(--gb-solid);
+      }
+      /* the landing is a ground with cards on it, so the frame gets out of the way */
       .gb-boot[data-face='home'] .gb-boot-card {
-        width: min(58rem, calc(100vw - var(--gb-s6)));
+        width: min(74rem, 100%);
+        background: transparent;
+        box-shadow: none;
+        clip-path: none;
+      }
+      .gb-boot[data-face='home'] .gb-boot-card > .gb-boot-card-in {
+        margin: 0;
+        background: transparent;
+        clip-path: none;
+      }
+
+      /* the header: hatch over the raised ground, an accent-led rule under it */
+      .gb-boot-crown {
+        display: flex;
+        align-items: center;
+        gap: var(--gb-s3);
+        flex: none;
+        height: 54px;
+        padding: 0 var(--gb-s4);
+        background-color: var(--gb-lift);
+        background-image: var(--gb-hatch);
+        color: var(--gb-ink);
+        position: relative;
+      }
+      .gb-boot-crown::after {
+        content: '';
+        position: absolute;
+        inset: auto 0 0 0;
+        height: 1px;
+        background: linear-gradient(90deg, var(--gb-accent) 0 48px, var(--gb-edge) 48px);
+      }
+      .gb-boot-crown .gb-i {
+        color: var(--gb-accent);
       }
       .gb-boot-title {
         margin: 0;
-        font: 600 1.15rem/1.2 var(--gb-display);
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
+        color: var(--gb-ink);
       }
       .gb-boot-sub {
-        margin: calc(-1 * var(--gb-s2)) 0 0;
-        color: var(--gb-dim);
+        margin: 0 0 0 auto;
+        max-width: 34rem;
+        color: var(--gb-faint);
+        text-align: right;
       }
-      .gb-boot-head {
-        margin: var(--gb-s2) 0 0;
-        padding-bottom: var(--gb-s1);
-        border-bottom: 1px solid var(--gb-edge);
-        font: 0.8rem/1.2 var(--gb-display);
-        color: var(--gb-accent);
-        text-transform: uppercase;
+      .gb-boot[data-face='home'] .gb-boot-crown {
+        height: auto;
+        padding: 0 0 var(--gb-s4);
+        background: none;
+      }
+      /* the landing screen's own title is the step above a frame's */
+      .gb-boot[data-face='home'] .gb-boot-title {
+        font-size: 30px;
         letter-spacing: 0.1em;
       }
-      .gb-boot-field {
+      .gb-boot[data-face='home'] .gb-boot-crown::after {
+        display: none;
+      }
+
+      .gb-boot-body {
         display: flex;
         flex-direction: column;
-        gap: var(--gb-s1);
+        flex: 1;
+        min-height: 0;
+      }
+      .gb-boot-fold {
+        display: flex;
+        flex: 1;
+        min-height: 0;
+      }
+
+      /* ------------------------------------------------------------------
+         The row: an icon tile, a label, a control at the right
+         ------------------------------------------------------------------ */
+      .gb-boot-row {
+        display: grid;
+        grid-template-columns: 36px 1fr minmax(0, 22rem);
+        align-items: center;
+        gap: var(--gb-s3);
+        min-height: 58px;
+        padding: var(--gb-s2) var(--gb-s3);
+        border-bottom: 1px solid var(--gb-edge);
+        position: relative;
+        transition:
+          transform var(--gb-t-press) var(--gb-in),
+          background-color var(--gb-t-press) var(--gb-in);
+      }
+      /* the accent tab down the left edge: the one thing being written to */
+      .gb-boot-row::before {
+        content: '';
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 2px;
+        background: transparent;
+        transition: background-color var(--gb-t-state) var(--gb-in);
+      }
+      .gb-boot-row:hover {
+        background-color: var(--gb-lift);
+        transform: translateX(2px);
+      }
+      .gb-boot-row:focus-within {
+        background-color: var(--gb-well);
+      }
+      .gb-boot-row:focus-within::before {
+        background: var(--gb-accent);
+      }
+      .gb-boot-row[data-tall='true'] {
+        grid-template-columns: 36px 1fr;
+        align-items: start;
+      }
+      .gb-boot-row[data-tall='true'] .gb-boot-control {
+        grid-column: 2;
+      }
+      .gb-boot-tile {
+        width: 36px;
+        height: 36px;
+        --gb-ground: var(--gb-lift);
+      }
+      .gb-boot .gb-boot-tile > span {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--gb-dim);
+        transition: color var(--gb-t-state) var(--gb-in);
+      }
+      .gb-boot-row:focus-within .gb-boot-tile {
+        background: var(--gb-edge-accent);
+      }
+      .gb-boot-row:focus-within .gb-boot-tile > span {
+        color: var(--gb-accent);
+      }
+      .gb-boot-label {
+        color: var(--gb-ink);
         min-width: 0;
       }
-      .gb-boot-field > span:first-child {
-        font: 0.75rem/1.2 var(--gb-display);
-        color: var(--gb-dim);
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-      }
-      .gb-boot-row {
+      .gb-boot-control {
         display: flex;
+        align-items: center;
         gap: var(--gb-s2);
-      }
-      .gb-boot-row > input {
-        flex: 1;
-      }
-      .gb-boot-three {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: var(--gb-s2);
+        min-width: 0;
       }
       .gb-boot-note {
         margin: 0;
+        padding: var(--gb-s2) var(--gb-s3) var(--gb-s4) calc(36px + 2 * var(--gb-s3));
         color: var(--gb-faint);
-        font-size: 0.85rem;
+        border-bottom: 1px solid var(--gb-edge);
+      }
+
+      /* fields: the sunken ground, an accent edge while they are being written to */
+      .gb-boot-field {
+        flex: 1;
+        min-width: 0;
+        --gb-ground: var(--gb-well);
+        transition: background-color var(--gb-t-state) var(--gb-in);
+      }
+      .gb-boot-field:has(:focus-visible),
+      .gb-boot-field:has(:focus) {
+        background: var(--gb-edge-accent);
       }
       .gb-boot input[type='text'],
       .gb-boot input[type='url'],
       .gb-boot input[type='number'],
+      .gb-boot input[type='file'],
       .gb-boot textarea,
       .gb-boot select {
+        box-sizing: border-box;
         padding: var(--gb-s2) var(--gb-s3);
-        background: var(--gb-well);
+        background: var(--gb-ground, var(--gb-well));
         color: var(--gb-ink);
-        border: 1px solid var(--gb-edge);
+        border: 0;
         border-radius: 0;
-        font: inherit;
+        font: 400 13px/1.45 var(--gb-body);
         min-width: 0;
+        outline: none;
+      }
+      .gb-boot ::placeholder {
+        color: var(--gb-faint);
       }
       .gb-boot textarea {
-        min-height: 4.5em;
+        min-height: 5.5em;
         resize: vertical;
       }
-      .gb-boot input[type='number'] {
+      .gb-boot input[type='number'],
+      .gb-boot .gb-boot-seed {
         font-family: var(--gb-mono);
         font-variant-numeric: tabular-nums;
-        width: 6rem;
       }
-      .gb-boot input:focus-visible,
-      .gb-boot textarea:focus-visible,
-      .gb-boot select:focus-visible,
-      .gb-boot button:focus-visible {
-        outline: 2px solid var(--gb-accent);
-        outline-offset: 1px;
+      .gb-boot select {
+        appearance: none;
+        text-align: center;
+        font-family: var(--gb-display);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--gb-ink);
+        cursor: pointer;
+      }
+      .gb-boot select option {
+        background: var(--gb-solid);
+        color: var(--gb-ink);
+        font-family: var(--gb-body);
+        letter-spacing: 0;
       }
       .gb-boot input[type='file'] {
-        padding: var(--gb-s2) var(--gb-s3);
-        background: var(--gb-well);
         color: var(--gb-dim);
-        border: 1px solid var(--gb-edge);
-        border-radius: 0;
-        font: inherit;
-        min-width: 0;
+        font-size: 12px;
+        width: 100%;
       }
       .gb-boot input[type='file']::file-selector-button {
         margin-right: var(--gb-s3);
         padding: var(--gb-s1) var(--gb-s3);
-        background: transparent;
+        background: var(--gb-lift);
         color: var(--gb-ink);
         border: 1px solid var(--gb-edge);
         border-radius: 0;
-        font: 0.8rem/1.2 var(--gb-display);
-        letter-spacing: 0.08em;
+        font-family: var(--gb-display);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
         text-transform: uppercase;
         cursor: pointer;
       }
-      .gb-boot-check {
+
+      /* the two-state toggle: the knob slides, the label changes at once */
+      .gb-boot-toggle {
         display: flex;
         align-items: center;
         gap: var(--gb-s2);
-        color: var(--gb-dim);
-      }
-      .gb-boot-check input {
-        accent-color: var(--gb-accent-deep);
-      }
-      .gb-boot-buttons {
-        display: flex;
-        flex-wrap: wrap;
-        gap: var(--gb-s2);
-        margin-top: var(--gb-s1);
-      }
-      .gb-boot button {
-        padding: var(--gb-s2) var(--gb-s4);
-        background: transparent;
-        color: var(--gb-ink);
-        border: 1px solid var(--gb-edge);
-        border-radius: 0;
-        font: 0.8rem/1.2 var(--gb-display);
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
         cursor: pointer;
       }
-      .gb-boot button:hover:not(:disabled) {
-        border-color: var(--gb-edge-lit);
+      .gb-boot-toggle input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
       }
-      .gb-boot button:disabled {
-        color: var(--gb-dim);
-        cursor: default;
-        opacity: 0.55;
+      .gb-boot-switch {
+        display: block;
+        position: relative;
+        width: 46px;
+        height: 22px;
+        --gb-ground: var(--gb-well);
       }
-      .gb-boot button[hidden] {
-        display: none;
-      }
-      .gb-boot button[data-boot='generate'] {
-        border-color: var(--gb-accent-deep);
-        color: var(--gb-accent);
-      }
-      .gb-boot-key {
-        display: inline-block;
-        margin-left: var(--gb-s1);
-        padding: 0 var(--gb-s1);
-        border: 1px solid var(--gb-edge);
-        font: inherit;
-        color: var(--gb-dim);
-      }
-      .gb-boot-status {
-        margin: 0;
-        min-height: 1.55em;
-        color: var(--gb-dim);
-      }
-      .gb-boot-status[data-trouble='true'] {
-        color: var(--gb-warn);
-      }
-      .gb-boot-status[data-working='true']::after {
+      .gb-boot .gb-boot-switch > span::after {
         content: '';
-        display: inline-block;
-        width: 0.5em;
-        height: 0.5em;
-        margin-left: 0.45em;
-        background: var(--gb-accent);
-        animation: gb-boot-pulse 1s steps(2, end) infinite;
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 16px;
+        height: 16px;
+        background: var(--gb-off);
+        transition: transform var(--gb-t-state) var(--gb-in), background-color var(--gb-t-state) var(--gb-in);
       }
-      @keyframes gb-boot-pulse {
-        50% {
-          opacity: 0.15;
-        }
+      .gb-boot-toggle input:checked + .gb-boot-switch {
+        background: var(--gb-edge-accent);
+      }
+      .gb-boot .gb-boot-toggle input:checked + .gb-boot-switch > span::after {
+        background: var(--gb-accent);
+        transform: translateX(22px);
+      }
+      .gb-boot-toggle input:focus-visible + .gb-boot-switch {
+        background: var(--gb-accent);
+      }
+      .gb-boot-state {
+        color: var(--gb-dim);
+        min-width: 3.5em;
       }
 
-      /* the shelf: one box per city, the last one played first and marked */
+      /* ------------------------------------------------------------------
+         Buttons
+         ------------------------------------------------------------------ */
+      .gb-btn {
+        padding: 1px;
+        border: 0;
+        background: var(--gb-edge);
+        font: inherit;
+        cursor: pointer;
+        transition:
+          transform var(--gb-t-press) var(--gb-in),
+          background-color var(--gb-t-press) var(--gb-in);
+      }
+      .gb-boot .gb-btn > span {
+        --cut: var(--in);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--gb-s2);
+        min-height: 28px;
+        padding: 0 var(--gb-s3);
+        background: var(--gb-lift);
+        color: var(--gb-ink);
+        font-family: var(--gb-display);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        transition:
+          background-color var(--gb-t-press) var(--gb-in),
+          color var(--gb-t-press) var(--gb-in);
+      }
+      .gb-btn:hover:not(:disabled) {
+        background: var(--gb-edge-lit);
+      }
+      .gb-btn:focus-visible {
+        background: var(--gb-accent);
+        outline: none;
+      }
+      .gb-btn:active:not(:disabled) {
+        transform: translateY(1px);
+      }
+      /* lit: the one thing to do here */
+      .gb-btn[data-lit='true'] {
+        background: var(--gb-accent);
+      }
+      .gb-btn[data-lit='true'] > span {
+        background: var(--gb-accent);
+        color: var(--gb-accent-ink);
+      }
+      .gb-btn[data-lit='true']:hover:not(:disabled) > span {
+        background: var(--gb-accent-lit);
+      }
+      .gb-btn[data-quiet='true'] > span {
+        color: var(--gb-dim);
+      }
+      .gb-btn[data-quiet='true']:hover:not(:disabled) {
+        background: var(--gb-danger);
+      }
+      .gb-btn[data-quiet='true']:hover:not(:disabled) > span {
+        color: var(--gb-danger);
+      }
+      .gb-btn:disabled {
+        cursor: default;
+        background: var(--gb-off);
+      }
+      .gb-btn:disabled > span {
+        background: var(--gb-lift);
+        color: var(--gb-off-ink);
+      }
+      .gb-btn[data-lit='true']:disabled > span {
+        background: var(--gb-lift);
+      }
+      .gb-btn[hidden] {
+        display: none;
+      }
+      .gb-btn .gb-key {
+        margin-left: var(--gb-s1);
+      }
+
+      /* a chevron step beside a value */
+      .gb-boot-step {
+        flex: none;
+        width: 26px;
+      }
+      .gb-boot .gb-boot-step > span {
+        padding: 0;
+        min-height: 26px;
+      }
+
+      /* ------------------------------------------------------------------
+         The creation form: sections down one side, rows in the panel
+         ------------------------------------------------------------------ */
+      .gb-boot-rail {
+        display: flex;
+        flex-direction: column;
+        flex: none;
+        width: 13rem;
+        padding: var(--gb-s3) 0;
+        border-right: 1px solid var(--gb-edge);
+        background: var(--gb-panel);
+      }
+      .gb-boot-rail-item {
+        display: flex;
+        align-items: center;
+        gap: var(--gb-s3);
+        position: relative;
+        padding: 0 var(--gb-s3);
+        min-height: 44px;
+        border: 0;
+        background: transparent;
+        color: var(--gb-dim);
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+        transition:
+          transform var(--gb-t-press) var(--gb-in),
+          background-color var(--gb-t-press) var(--gb-in),
+          color var(--gb-t-press) var(--gb-in);
+      }
+      .gb-boot-rail-item::before {
+        content: '';
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 2px;
+        background: transparent;
+        transition: background-color var(--gb-t-state) var(--gb-in);
+      }
+      .gb-boot-rail-item:hover {
+        background: var(--gb-lift);
+        color: var(--gb-ink);
+        transform: translateX(2px);
+      }
+      .gb-boot-rail-item[aria-current='true'] {
+        background: var(--gb-well);
+        color: var(--gb-accent);
+      }
+      .gb-boot-rail-item[aria-current='true']::before {
+        background: var(--gb-accent);
+      }
+      .gb-boot-rail-item:focus-visible {
+        outline: none;
+        color: var(--gb-accent-lit);
+      }
+      .gb-boot-rail-item:focus-visible::before {
+        background: var(--gb-accent-lit);
+      }
+      /* the sections go quiet while a city is being written */
+      .gb-boot-rail[data-quiet='true'] {
+        opacity: 0.5;
+        transition: opacity var(--gb-t-state) var(--gb-in);
+      }
+
+      .gb-boot-rows {
+        flex: 1;
+        min-width: 0;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--gb-edge-lit) transparent;
+      }
+      .gb-boot-section > h3 {
+        display: flex;
+        align-items: center;
+        gap: var(--gb-s2);
+        margin: 0;
+        padding: var(--gb-s3) var(--gb-s3) var(--gb-s2) var(--gb-s3);
+        color: var(--gb-accent);
+        background: var(--gb-panel);
+        border-bottom: 1px solid var(--gb-edge);
+      }
+
+      /* ------------------------------------------------------------------
+         The landing screen: one wide card per city
+         ------------------------------------------------------------------ */
       .gb-boot-shelf {
         list-style: none;
         margin: 0;
         padding: 0;
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+        display: flex;
+        flex-direction: column;
         gap: var(--gb-s3);
       }
       .gb-boot-shelved {
-        display: flex;
-        flex-direction: column;
-        gap: var(--gb-s1);
-        padding: var(--gb-s3);
-        border: 1px solid var(--gb-edge);
-        background: var(--gb-well);
+        --gb-ground: var(--gb-solid);
+        background: var(--gb-edge);
+        box-shadow: var(--gb-frame);
+        transition:
+          transform var(--gb-t-press) var(--gb-in),
+          background-color var(--gb-t-press) var(--gb-in);
+      }
+      .gb-boot-shelved:hover {
+        background: var(--gb-edge-lit);
+        transform: translateX(2px);
       }
       .gb-boot-shelved[data-last='true'] {
-        border-color: var(--gb-accent-deep);
-        background: var(--gb-lift);
+        background: var(--gb-edge-accent);
+      }
+      .gb-boot .gb-boot-shelved-in {
+        display: grid;
+        grid-template-columns: 160px minmax(0, 1fr) auto;
+        align-items: stretch;
+        gap: 0;
+      }
+      /* the band: what the save carries, in place of the imagery a picker shows */
+      .gb-boot-shelved-plate {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: var(--gb-s2);
+        padding: var(--gb-s3);
+        background-color: var(--gb-lift);
+        background-image: var(--gb-hatch);
+        border-right: 1px solid var(--gb-edge);
+        color: var(--gb-accent);
+        overflow: hidden;
+      }
+      .gb-boot-shelved-theme {
+        color: var(--gb-dim);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 100%;
+      }
+      .gb-boot-shelved-body {
+        display: flex;
+        flex-direction: column;
+        gap: var(--gb-s2);
+        padding: var(--gb-s3) var(--gb-s4);
+        min-width: 0;
       }
       .gb-boot-shelved-name {
-        font: 600 1rem/1.25 var(--gb-display);
-        letter-spacing: 0.03em;
+        color: var(--gb-ink);
       }
       .gb-boot-shelved[data-last='true'] .gb-boot-shelved-name {
         color: var(--gb-accent);
       }
       .gb-boot-shelved-about {
         color: var(--gb-dim);
-        font-size: 0.85rem;
         display: -webkit-box;
         -webkit-box-orient: vertical;
-        -webkit-line-clamp: 3;
+        -webkit-line-clamp: 2;
         overflow: hidden;
       }
-      .gb-boot-shelved-meta {
+      .gb-boot-shelved-readout {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--gb-s2);
         margin-top: auto;
-        padding-top: var(--gb-s2);
         color: var(--gb-faint);
-        font-size: 0.78rem;
         font-family: var(--gb-mono);
+        font-variant-numeric: tabular-nums;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
       }
       .gb-boot-shelved-playing {
+        color: var(--gb-good);
+      }
+      .gb-boot-shelved-last {
         color: var(--gb-accent);
-        font-size: 0.78rem;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
       }
       .gb-boot-shelved-buttons {
         display: flex;
+        flex-direction: column;
+        justify-content: center;
         gap: var(--gb-s2);
-        margin-top: var(--gb-s2);
+        padding: var(--gb-s3);
+        border-left: 1px solid var(--gb-edge);
       }
-      .gb-boot-shelved-buttons button:first-child {
-        flex: 1;
+      .gb-boot-shelved-buttons .gb-btn {
+        min-width: 8.5rem;
       }
-      .gb-boot-shelved-buttons button:last-child {
+
+      .gb-boot-heading {
+        display: flex;
+        align-items: center;
+        gap: var(--gb-s2);
+        margin: 0;
+        padding-bottom: var(--gb-s2);
+        color: var(--gb-accent);
+        border-bottom: 1px solid var(--gb-edge);
+      }
+      .gb-boot-home {
+        flex-direction: column;
+        gap: var(--gb-s4);
+        overflow-y: auto;
+        padding-right: var(--gb-s2);
+        scrollbar-width: thin;
+        scrollbar-color: var(--gb-edge-lit) transparent;
+      }
+      .gb-boot-block {
+        display: flex;
+        flex-direction: column;
+        gap: var(--gb-s3);
+      }
+      .gb-boot-block .gb-boot-row {
+        background: var(--gb-panel);
+        border: 0;
+        min-height: 44px;
+      }
+      .gb-boot-empty {
+        margin: 0;
+        padding: var(--gb-s4);
+        background: var(--gb-well);
         color: var(--gb-dim);
+      }
+
+      /* ------------------------------------------------------------------
+         The foot: what the panel offers, and what it is doing
+         ------------------------------------------------------------------ */
+      .gb-boot-foot {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--gb-s2);
+        flex: none;
+        padding: var(--gb-s3) var(--gb-s4);
+        border-top: 1px solid var(--gb-edge);
+        background: var(--gb-panel);
+      }
+      .gb-boot[data-face='home'] .gb-boot-foot {
+        margin-top: var(--gb-s4);
+        background: var(--gb-panel);
+        border: 1px solid var(--gb-edge);
+      }
+      .gb-boot-status {
+        margin: 0 0 0 auto;
+        display: flex;
+        align-items: center;
+        gap: var(--gb-s2);
+        min-height: 18px;
+        color: var(--gb-dim);
+        font-family: var(--gb-display);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        text-align: right;
+      }
+      /* a mark, not a spinner: nothing here loops */
+      .gb-boot-status::before {
+        content: '';
+        flex: none;
+        width: 7px;
+        height: 7px;
+        background: transparent;
+        transform: rotate(45deg);
+        transition: background-color var(--gb-t-state) var(--gb-in);
+      }
+      .gb-boot-status[data-working='true'] {
+        color: var(--gb-ink);
+      }
+      .gb-boot-status[data-working='true']::before {
+        background: var(--gb-accent);
+      }
+      .gb-boot-status[data-trouble='true'] {
+        color: var(--gb-danger);
+      }
+      .gb-boot-status[data-trouble='true']::before {
+        background: var(--gb-danger);
+      }
+
+      /* ------------------------------------------------------------------
+         Motion. Transform and opacity only: this panel is drawn over a scene
+         that redraws every frame, so nothing here may lay out or repaint per
+         frame. Nothing loops, and nothing waits on a click.
+         ------------------------------------------------------------------ */
+      @keyframes gb-veil {
+        from {
+          opacity: 0;
+        }
+      }
+      @keyframes gb-rise {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+      }
+      @keyframes gb-slide {
+        from {
+          opacity: 0;
+          transform: translateX(16px);
+        }
+      }
+      @keyframes gb-lift {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+      }
+      .gb-boot.gb-in {
+        animation: gb-veil var(--gb-t-veil) var(--gb-in) both;
+      }
+      .gb-boot-card.gb-in {
+        animation: gb-rise var(--gb-t-enter) var(--gb-in) both;
+        will-change: transform, opacity;
+      }
+      .gb-boot-fold.gb-in {
+        animation: gb-slide var(--gb-t-value) var(--gb-in) both;
+        will-change: transform, opacity;
+      }
+      /* a list arrives one row after another, capped so a long shelf is not a queue */
+      .gb-boot-shelved.gb-in,
+      .gb-boot-row.gb-in {
+        animation: gb-lift var(--gb-t-value) var(--gb-in) both;
+        animation-delay: calc(var(--gb-i, 0) * var(--gb-stagger));
+        will-change: transform, opacity;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .gb-boot {
+          --gb-t-press: 1ms;
+          --gb-t-state: 1ms;
+          --gb-t-value: 1ms;
+          --gb-t-leave: 1ms;
+          --gb-t-enter: 1ms;
+          --gb-t-veil: 1ms;
+          --gb-stagger: 0ms;
+        }
+        .gb-boot .gb-boot-row:hover,
+        .gb-boot .gb-boot-rail-item:hover,
+        .gb-boot .gb-boot-shelved:hover,
+        .gb-boot .gb-btn:active {
+          transform: none;
+        }
       }
     </style>
   </head>
@@ -345,116 +1011,192 @@
     <div id="game"></div>
 
     <section class="gb-boot" id="boot" data-face="make" aria-label="game-box">
-      <div class="gb-boot-card">
-        <form data-boot="form" novalidate>
-          <h1 class="gb-boot-title">game-box</h1>
-          <p class="gb-boot-sub" data-boot="sub">Every field is optional. Left blank, the city decides for itself; the same answers make the same city every time.</p>
+      <div class="gb-boot-card gb-c14 gb-edged" data-boot="card">
+        <div class="gb-boot-card-in">
+          <header class="gb-boot-crown">
+            <span class="gb-i" data-icon="city"></span>
+            <h1 class="gb-boot-title gb-t6" data-boot="title">game-box</h1>
+            <p class="gb-boot-sub gb-t2" data-boot="sub">Every field is optional. Left blank, the city decides for itself; the same answers make the same city every time.</p>
+          </header>
 
-          <section class="gb-boot-fold" data-boot="home" aria-label="Your cities" hidden>
-            <h2 class="gb-boot-head">Your cities</h2>
-            <p class="gb-boot-note" data-boot="library-empty">Nothing on the shelf yet. Every city you make or open is kept here, with its playthrough.</p>
-            <ul class="gb-boot-shelf" data-boot="library"></ul>
+          <form class="gb-boot-body" data-boot="form" novalidate>
+            <!-- the cities the player already has: the front door -->
+            <section class="gb-boot-fold gb-boot-home" data-boot="home" aria-label="Your cities" hidden>
+              <div class="gb-boot-block">
+                <h2 class="gb-boot-heading gb-t5"><span class="gb-i gb-i-16" data-icon="city"></span>Your cities</h2>
+                <p class="gb-boot-empty gb-cut gb-c10 gb-t3" data-boot="library-empty">Nothing on the shelf yet. Every city you make or open is kept here, with its playthrough.</p>
+                <ul class="gb-boot-shelf" data-boot="library"></ul>
+                <div class="gb-boot-row gb-c6 gb-cut">
+                  <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="door"></span></span>
+                  <label class="gb-boot-label gb-t4" for="boot-open">Open a city somebody sent you</label>
+                  <span class="gb-boot-control">
+                    <span class="gb-boot-field gb-c6 gb-edged"><input id="boot-open" data-boot="open" type="file" accept=".json,.gbworld.json,application/json" /></span>
+                  </span>
+                </div>
+              </div>
 
-            <label class="gb-boot-field">
-              <span>Open a city somebody sent you</span>
-              <input data-boot="open" type="file" accept=".json,.gbworld.json,application/json" />
-            </label>
+              <div class="gb-boot-block">
+                <h2 class="gb-boot-heading gb-t5"><span class="gb-i gb-i-16" data-icon="settings"></span>Your settings</h2>
+                <div class="gb-boot-row gb-c6 gb-cut">
+                  <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="screen"></span></span>
+                  <label class="gb-boot-label gb-t4" for="boot-screens">Video on the screens</label>
+                  <span class="gb-boot-control">
+                    <span class="gb-boot-field gb-c6 gb-edged"><input id="boot-screens" data-boot="screens" type="url" autocomplete="off" spellcheck="false" placeholder="https://... a video of your own" /></span>
+                  </span>
+                </div>
+                <p class="gb-boot-note gb-t2">
+                  Left blank, every television plays the schedule its town writes for itself. A source that will not play leaves that schedule running. It is kept in this browser and never written into a city, so a file you send somebody carries nothing of it.
+                </p>
+              </div>
 
-            <h2 class="gb-boot-head">Your settings</h2>
-            <label class="gb-boot-field">
-              <span>Video on the screens</span>
-              <input data-boot="screens" type="url" autocomplete="off" spellcheck="false" placeholder="https://... a video of your own" />
-            </label>
-            <p class="gb-boot-note">
-              Left blank, every television plays the schedule its town writes for itself. A source that will not play leaves that schedule running. It is kept in this browser and never written into a city, so a file you send somebody carries nothing of it.
-            </p>
+              <div class="gb-boot-block">
+                <h2 class="gb-boot-heading gb-t5"><span class="gb-i gb-i-16" data-icon="plus"></span>Add to a city</h2>
+                <div class="gb-boot-row gb-c6 gb-cut">
+                  <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="item"></span></span>
+                  <label class="gb-boot-label gb-t4" for="boot-apply">Open a pack onto the city on the shelf</label>
+                  <span class="gb-boot-control">
+                    <span class="gb-boot-field gb-c6 gb-edged"><input id="boot-apply" data-boot="apply" type="file" accept=".json,.gbpack.json,application/json" /></span>
+                  </span>
+                </div>
+                <p class="gb-boot-note gb-t2">
+                  A pack is what somebody built onto this city later. It applies to this one city and no other, and it comes back with what it added. Grow writes the next block of buildings and hands you the pack for it.
+                </p>
+              </div>
+            </section>
 
-            <h2 class="gb-boot-head">Add to a city</h2>
-            <label class="gb-boot-field">
-              <span>Open a pack onto the city on the shelf</span>
-              <input data-boot="apply" type="file" accept=".json,.gbpack.json,application/json" />
-            </label>
-            <p class="gb-boot-note">
-              A pack is what somebody built onto this city later. It applies to this one city and no other, and it comes back with what it added. Grow writes the next block of buildings and hands you the pack for it.
-            </p>
-          </section>
+            <!-- the city being made: sections down one side, rows in the panel -->
+            <div class="gb-boot-fold" data-boot="make">
+              <nav class="gb-boot-rail" data-boot="rail" aria-label="Sections">
+                <button type="button" class="gb-boot-rail-item" data-boot="section" data-section="city" aria-current="true">
+                  <span class="gb-i gb-i-16" data-icon="city"></span><span class="gb-t1">The city</span>
+                </button>
+                <button type="button" class="gb-boot-rail-item" data-boot="section" data-section="story" aria-current="false">
+                  <span class="gb-i gb-i-16" data-icon="quest-main"></span><span class="gb-t1">The story</span>
+                </button>
+                <button type="button" class="gb-boot-rail-item" data-boot="section" data-section="look" aria-current="false">
+                  <span class="gb-i gb-i-16" data-icon="settings"></span><span class="gb-t1">The look</span>
+                </button>
+                <button type="button" class="gb-boot-rail-item" data-boot="section" data-section="build" aria-current="false">
+                  <span class="gb-i gb-i-16" data-icon="seed"></span><span class="gb-t1">The build</span>
+                </button>
+              </nav>
 
-          <div class="gb-boot-fold" data-boot="make">
-            <label class="gb-boot-field">
-              <span>Theme</span>
-              <input data-boot="theme" type="text" maxlength="60" autocomplete="off" spellcheck="false" value="quiet coastal town" />
-            </label>
+              <div class="gb-boot-rows" data-boot="rows">
+                <section class="gb-boot-section" data-section="city">
+                  <h3 class="gb-t1"><span class="gb-i gb-i-14" data-icon="city"></span>The city</h3>
+                  <div class="gb-boot-row gb-c6">
+                    <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="city"></span></span>
+                    <label class="gb-boot-label gb-t4" for="boot-theme">Theme</label>
+                    <span class="gb-boot-control">
+                      <span class="gb-boot-field gb-c6 gb-edged"><input id="boot-theme" data-boot="theme" type="text" maxlength="60" autocomplete="off" spellcheck="false" value="quiet coastal town" /></span>
+                    </span>
+                  </div>
+                  <div class="gb-boot-row gb-c6" data-tall="true">
+                    <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="codex"></span></span>
+                    <label class="gb-boot-label gb-t4" for="boot-brief">What the city is about</label>
+                    <span class="gb-boot-control">
+                      <span class="gb-boot-field gb-c6 gb-edged"><textarea id="boot-brief" data-boot="brief" rows="3" spellcheck="false" placeholder="In your own words, as long as you like. Its history is written from this."></textarea></span>
+                    </span>
+                  </div>
+                </section>
 
-            <label class="gb-boot-field">
-              <span>What the city is about</span>
-              <textarea data-boot="brief" rows="3" spellcheck="false" placeholder="In your own words, as long as you like. Its history is written from this."></textarea>
-            </label>
+                <section class="gb-boot-section" data-section="story">
+                  <h3 class="gb-t1"><span class="gb-i gb-i-14" data-icon="quest-main"></span>The story</h3>
+                  <div class="gb-boot-row gb-c6">
+                    <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="quest-main"></span></span>
+                    <label class="gb-boot-label gb-t4" for="boot-main">The main quest</label>
+                    <span class="gb-boot-control">
+                      <span class="gb-boot-field gb-c6 gb-edged"><input id="boot-main" data-boot="main" type="text" autocomplete="off" spellcheck="false" placeholder="What the main line should be about" /></span>
+                    </span>
+                  </div>
+                  <div class="gb-boot-row gb-c6">
+                    <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="quest-side"></span></span>
+                    <label class="gb-boot-label gb-t4" for="boot-side">Side quests</label>
+                    <span class="gb-boot-control">
+                      <span class="gb-boot-field gb-c6 gb-edged"><input id="boot-side" data-boot="side" type="text" autocomplete="off" spellcheck="false" placeholder="What kind of errands the town hands out" /></span>
+                    </span>
+                  </div>
+                  <div class="gb-boot-row gb-c6">
+                    <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="person"></span></span>
+                    <label class="gb-boot-label gb-t4" for="boot-tone">Tone</label>
+                    <span class="gb-boot-control">
+                      <span class="gb-boot-field gb-c6 gb-edged"><input id="boot-tone" data-boot="tone" type="text" autocomplete="off" spellcheck="false" placeholder="Grim, warm, sly, weary" /></span>
+                    </span>
+                  </div>
+                </section>
 
-            <label class="gb-boot-field">
-              <span>The main quest</span>
-              <input data-boot="main" type="text" autocomplete="off" spellcheck="false" placeholder="What the main line should be about" />
-            </label>
+                <section class="gb-boot-section" data-section="look">
+                  <h3 class="gb-t1"><span class="gb-i gb-i-14" data-icon="settings"></span>The look</h3>
+                  <div class="gb-boot-row gb-c6">
+                    <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="screen"></span></span>
+                    <label class="gb-boot-label gb-t4" for="boot-neon">Neon</label>
+                    <span class="gb-boot-control" data-boot="step-neon">
+                      <span class="gb-boot-field gb-c6 gb-edged"><select id="boot-neon" data-boot="neon"></select></span>
+                    </span>
+                  </div>
+                  <div class="gb-boot-row gb-c6">
+                    <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="home"></span></span>
+                    <label class="gb-boot-label gb-t4" for="boot-density">Density</label>
+                    <span class="gb-boot-control" data-boot="step-density">
+                      <span class="gb-boot-field gb-c6 gb-edged"><select id="boot-density" data-boot="density"></select></span>
+                    </span>
+                  </div>
+                  <div class="gb-boot-row gb-c6">
+                    <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="item"></span></span>
+                    <label class="gb-boot-label gb-t4" for="boot-wear">Wear</label>
+                    <span class="gb-boot-control" data-boot="step-wear">
+                      <span class="gb-boot-field gb-c6 gb-edged"><select id="boot-wear" data-boot="wear"></select></span>
+                    </span>
+                  </div>
+                  <p class="gb-boot-note gb-t2">
+                    The look is one catalogue of buildings, facades and clothes, so those three are the whole of the style. A period or a look outside it (medieval, pastel, brutalist) cannot be drawn and is not offered.
+                  </p>
+                </section>
 
-            <label class="gb-boot-field">
-              <span>Side quests</span>
-              <input data-boot="side" type="text" autocomplete="off" spellcheck="false" placeholder="What kind of errands the town hands out" />
-            </label>
-
-            <label class="gb-boot-field">
-              <span>Tone</span>
-              <input data-boot="tone" type="text" autocomplete="off" spellcheck="false" placeholder="Grim, warm, sly, weary" />
-            </label>
-
-            <div class="gb-boot-three">
-              <label class="gb-boot-field">
-                <span>Neon</span>
-                <select data-boot="neon"></select>
-              </label>
-              <label class="gb-boot-field">
-                <span>Density</span>
-                <select data-boot="density"></select>
-              </label>
-              <label class="gb-boot-field">
-                <span>Wear</span>
-                <select data-boot="wear"></select>
-              </label>
+                <section class="gb-boot-section" data-section="build">
+                  <h3 class="gb-t1"><span class="gb-i gb-i-14" data-icon="seed"></span>The build</h3>
+                  <div class="gb-boot-row gb-c6">
+                    <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="map"></span></span>
+                    <label class="gb-boot-label gb-t4" for="boot-blocks">Blocks across and down</label>
+                    <span class="gb-boot-control">
+                      <span class="gb-boot-field gb-c6 gb-edged"><input id="boot-blocks" data-boot="blocks" type="number" min="1" max="57" step="1" value="20" /></span>
+                    </span>
+                  </div>
+                  <div class="gb-boot-row gb-c6">
+                    <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="seed"></span></span>
+                    <label class="gb-boot-label gb-t4" for="boot-seed">Seed</label>
+                    <span class="gb-boot-control">
+                      <span class="gb-boot-field gb-boot-seed gb-c6 gb-edged"><input id="boot-seed" data-boot="seed" type="text" maxlength="120" autocomplete="off" spellcheck="false" value="town" /></span>
+                      <button type="button" class="gb-btn gb-c6" data-boot="roll"><span><span class="gb-i gb-i-16" data-icon="seed"></span>Fresh seed</span></button>
+                    </span>
+                  </div>
+                  <div class="gb-boot-row gb-c6">
+                    <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="screen"></span></span>
+                    <label class="gb-boot-label gb-t4" for="boot-model">Write the history, the names, the people and the jobs with the local model</label>
+                    <span class="gb-boot-control">
+                      <label class="gb-boot-toggle">
+                        <input id="boot-model" data-boot="model" type="checkbox" />
+                        <span class="gb-boot-switch gb-c4 gb-edged"><span></span></span>
+                        <span class="gb-boot-state gb-t1" data-boot="model-state">Off</span>
+                      </label>
+                    </span>
+                  </div>
+                </section>
+              </div>
             </div>
-            <p class="gb-boot-note">
-              The look is one catalogue of buildings, facades and clothes, so those three are the whole of the style. A period or a look outside it (medieval, pastel, brutalist) cannot be drawn and is not offered.
-            </p>
 
-            <div class="gb-boot-row">
-              <label class="gb-boot-field">
-                <span>Blocks across and down</span>
-                <input data-boot="blocks" type="number" min="1" max="24" step="1" value="2" />
-              </label>
-              <label class="gb-boot-field" style="flex: 1">
-                <span>Seed</span>
-                <span class="gb-boot-row">
-                  <input data-boot="seed" type="text" maxlength="120" autocomplete="off" spellcheck="false" value="town" />
-                  <button type="button" data-boot="roll">Fresh seed</button>
-                </span>
-              </label>
+            <div class="gb-boot-foot">
+              <button type="button" class="gb-btn gb-c6" data-boot="new" hidden><span><span class="gb-i gb-i-16" data-icon="plus"></span>New city</span></button>
+              <button type="button" class="gb-btn gb-c6" data-boot="home-again" hidden><span><span class="gb-i gb-i-16" data-icon="city"></span>Your cities</span></button>
+              <button type="submit" class="gb-btn gb-c6" data-boot="generate" data-lit="true" disabled><span><span class="gb-i gb-i-16" data-icon="check"></span>Generate</span></button>
+              <button type="button" class="gb-btn gb-c6" data-boot="export" disabled><span><span class="gb-i gb-i-16" data-icon="door"></span>Export</span></button>
+              <button type="button" class="gb-btn gb-c6" data-boot="grow" disabled><span><span class="gb-i gb-i-16" data-icon="plus"></span>Grow and pack</span></button>
+              <button type="button" class="gb-btn gb-c6" data-boot="cancel" hidden><span><span class="gb-i gb-i-16" data-icon="close"></span>Cancel</span></button>
+              <button type="button" class="gb-btn gb-c6" data-boot="close" hidden><span><span class="gb-i gb-i-16" data-icon="leave"></span>Back to the city <kbd class="gb-key gb-cut gb-c4">Esc</kbd></span></button>
+              <p class="gb-boot-status" data-boot="status" role="status" data-working="true">Loading the game</p>
             </div>
-
-            <label class="gb-boot-check">
-              <input data-boot="model" type="checkbox" />
-              <span>Write the history, the names, the people and the jobs with the local model</span>
-            </label>
-          </div>
-
-          <div class="gb-boot-buttons">
-            <button type="button" data-boot="new" hidden>New city</button>
-            <button type="button" data-boot="home-again" hidden>Your cities</button>
-            <button type="submit" data-boot="generate" disabled>Generate</button>
-            <button type="button" data-boot="export" disabled>Export</button>
-            <button type="button" data-boot="grow" disabled>Grow and pack</button>
-            <button type="button" data-boot="cancel" hidden>Cancel</button>
-            <button type="button" data-boot="close" hidden>Back to the city <kbd class="gb-boot-key">Esc</kbd></button>
-          </div>
-
-          <p class="gb-boot-status" data-boot="status" role="status" data-working="true">Loading the game</p>
-        </form>
+          </form>
+        </div>
       </div>
     </section>
 

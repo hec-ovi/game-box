@@ -1,4 +1,6 @@
+import { button, chip, edged, icon, line } from './chrome.ts'
 import type { Shelved } from './library.ts'
+import { enters } from './motion.ts'
 
 /** One city as the landing screen draws it: the shelf's own row, and whether a playthrough is waiting in it. */
 export interface OnTheShelf {
@@ -7,11 +9,11 @@ export interface OnTheShelf {
 }
 
 /**
- * The landing screen's grid: one box per city the player has made or opened,
- * newest first, the one they were last in marked, each showing enough to know
- * it again and carrying the way back in and the way off the shelf. Nothing
- * here decides anything: the boxes are what the library lists, and a click is
- * reported by key.
+ * The landing screen's cities: one wide card each, newest first, the one they
+ * were last in marked, each showing enough to know it again at a glance and
+ * carrying the way back in and the way off the shelf. Nothing here decides
+ * anything: the cards are what the library lists, and a click is reported by
+ * key.
  */
 export class LibraryView {
   #list: HTMLElement
@@ -32,49 +34,55 @@ export class LibraryView {
   /** The shelf as it stands. The first city is the one the player was last in. */
   render(cities: readonly OnTheShelf[]): void {
     this.#empty.hidden = cities.length > 0
-    this.#list.replaceChildren(...cities.map((city, index) => this.#box(city, index === 0)))
+    this.#list.replaceChildren(...cities.map((city, index) => this.#card(city, index)))
   }
 
-  #box(city: OnTheShelf, last: boolean): HTMLLIElement {
+  #card(city: OnTheShelf, index: number): HTMLElement {
     const { entry } = city
-    const box = document.createElement('li')
-    box.className = 'gb-boot-shelved'
+    const { box, inner } = edged('li', 'gb-boot-shelved', 'c14')
     box.dataset.key = entry.key
-    box.dataset.last = String(last)
+    box.dataset.last = String(index === 0)
     box.dataset.played = String(city.played)
 
-    const name = line('gb-boot-shelved-name', entry.name)
-    const about = line('gb-boot-shelved-about', aboutOf(entry))
-    const meta = line('gb-boot-shelved-meta', metaOf(entry))
+    // the band: what a picker would put artwork on, carrying what the city was
+    // asked to be
+    const plate = document.createElement('div')
+    plate.className = 'gb-boot-shelved-plate'
+    plate.append(icon('city', 28), line('gb-boot-shelved-theme gb-t0', entry.theme))
+
+    const readout = document.createElement('span')
+    readout.className = 'gb-boot-shelved-readout'
+    readout.append(line('gb-boot-shelved-meta', metaOf(entry)))
+    if (index === 0) readout.append(chip('Last played', 'gb-boot-shelved-last'))
+    if (city.played) readout.append(chip('Playthrough in progress', 'gb-boot-shelved-playing'))
+
+    const body = document.createElement('div')
+    body.className = 'gb-boot-shelved-body'
+    body.append(line('gb-boot-shelved-name gb-t6', entry.name), line('gb-boot-shelved-about gb-t3', aboutOf(entry)), readout)
+
     const buttons = document.createElement('div')
     buttons.className = 'gb-boot-shelved-buttons'
     buttons.append(
-      button(last ? 'Continue' : 'Open', `Open ${entry.name}`, () => this.#open(entry.key)),
-      button('Remove', `Remove ${entry.name}`, () => this.#remove(entry.key)),
+      button({
+        text: index === 0 ? 'Continue' : 'Open',
+        icon: 'door',
+        label: `Open ${entry.name}`,
+        lit: true,
+        onClick: () => this.#open(entry.key),
+      }),
+      button({
+        text: 'Remove',
+        icon: 'close',
+        label: `Remove ${entry.name}`,
+        quiet: true,
+        onClick: () => this.#remove(entry.key),
+      }),
     )
 
-    box.append(name, about, meta)
-    // a city with a playthrough in it is the one to go back to, so it says so
-    if (city.played) box.append(line('gb-boot-shelved-playing', 'Playthrough in progress'))
-    box.append(buttons)
+    inner.append(plate, body, buttons)
+    enters(box, index)
     return box
   }
-}
-
-function line(className: string, text: string): HTMLSpanElement {
-  const made = document.createElement('span')
-  made.className = className
-  made.textContent = text
-  return made
-}
-
-function button(text: string, label: string, onClick: () => void): HTMLButtonElement {
-  const made = document.createElement('button')
-  made.type = 'button'
-  made.textContent = text
-  made.setAttribute('aria-label', label)
-  made.addEventListener('click', onClick)
-  return made
 }
 
 /** What the city is, in the player's own words if they gave any, and in its theme if they did not. */

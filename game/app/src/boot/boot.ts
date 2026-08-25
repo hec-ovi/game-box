@@ -18,6 +18,8 @@ import { Panel } from './panel.ts'
 export interface Playing {
   dispose(): void
   handOverKeys(away: boolean): void
+  /** Stand the city still while the player is at the front door, and set it going again. */
+  pause?(on: boolean): void
   keep(): void
   announce(notice: Notice): void
 }
@@ -256,9 +258,17 @@ export class Boot {
     this.#running?.abort()
   }
 
-  /** The way out of the game: the front door, on the player's own cities. */
+  /**
+   * The way out of the game: the front door, on the player's own cities, with
+   * the city off the screen behind it. The game is kept rather than disposed,
+   * because Continue is meant to be instant and a dispose would build the town
+   * again; opening a different city disposes the one that was up, which is
+   * where a game actually ends.
+   */
   showPanel(): void {
     this.#game?.handOverKeys(true)
+    this.#game?.pause?.(true)
+    this.#onScreen(false)
     this.#panel.face = 'home'
     this.#panel.show()
   }
@@ -266,7 +276,18 @@ export class Boot {
   hidePanel(): void {
     if (!this.#game) return
     this.#panel.hide()
+    this.#onScreen(true)
+    this.#game.pause?.(false)
     this.#game.handOverKeys(false)
+  }
+
+  /**
+   * The city on the screen, or off it. Everything the game draws hangs on the
+   * mount, its own interface included, so the mount is what goes: the player
+   * reading the panel is not also looking at the town behind it.
+   */
+  #onScreen(on: boolean): void {
+    this.#mount.hidden = !on
   }
 
   /**
@@ -275,6 +296,9 @@ export class Boot {
    * with the same pack rather than a second load of it.
    */
   async #run(make: (signal: AbortSignal) => Promise<Making>): Promise<void> {
+    // the loader and the city are both drawn on the mount, so whatever the
+    // panel did to it on the way out is undone before either goes up
+    this.#onScreen(true)
     const signal = this.#signal()
     let making: Making
     try {
