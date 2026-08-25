@@ -93,6 +93,38 @@ describe('the city history', () => {
     expect(sent[2]!.user).toContain('build.fewerOf')
   })
 
+  it('hands the owner\'s brief to the history verbatim, with the tone, the main errand and the look', async () => {
+    const brief = 'A port where the freight line shut and everybody pretends it is coming back. Keep it damp.'
+    const { sent, scribe } = scribeWith([WRITTEN])
+
+    await scribe.writePremise({
+      theme: THEME,
+      seed: SEED,
+      brief,
+      asks: { tone: 'dry, unsentimental', mainQuest: 'the missing manifest', style: { neon: 'lit', wear: 'run-down' } },
+    })
+
+    const asked = sent[0]!.user
+    expect(asked).toContain(`> ${brief}`)
+    expect(asked).toContain('The tone the owner asked for: dry, unsentimental')
+    expect(asked).toContain('the main errand to be about: the missing manifest')
+    expect(asked).toContain('neon lit, wear run-down')
+    expect(asked).not.toContain('density')
+    expect(asked).not.toContain('The owner left all of this to you')
+  })
+
+  it('asks for a good town when the owner left every field blank, and says nothing about the blanks', async () => {
+    const { sent, scribe } = scribeWith([WRITTEN])
+
+    await scribe.writePremise({ theme: THEME, seed: SEED, brief: '  ', asks: { tone: '', style: {} } })
+
+    const asked = sent[0]!.user
+    expect(asked).toContain('The owner left all of this to you')
+    expect(asked).not.toContain('undefined')
+    expect(asked).not.toContain('asked for:')
+    expect(asked).not.toContain('>  ')
+  })
+
   it('asks the same question for the same theme and seed, and a different one for another seed', async () => {
     const run = async (seed: string) => {
       const { sent, scribe } = scribeWith([WRITTEN])

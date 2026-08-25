@@ -3,6 +3,7 @@ import { REWARD_TABLE, validateQuest } from '@gb/quest'
 import { describe, expect, it } from 'vitest'
 import { Scribe } from '../src/index.ts'
 import { fakeModel, type Sent } from './fake-model.ts'
+import { backgroundOf, lifeOf, shellOf } from './people.ts'
 
 const CITY: WorldSummary = {
   cityName: 'Cold Harbour',
@@ -280,9 +281,11 @@ describe('writing quests', () => {
               {
                 postId: 'anchor_0001',
                 given: 'Mara',
-                family: `${/\^\[([A-Z])/.exec(String(((call.parameters as Record<string, Record<string, Record<string, Record<string, Record<string, Record<string, unknown>>>>>>)['properties']!)['people']!['items']!['properties']!['family']!['pattern']))![1]}oss`,
+                family: `${shellOf(call).letters[0]}oss`,
                 personality: 'Watches the door more than the glasses.',
                 knowledge: ['The tide is late.', 'Rook has not been in.'],
+                life: lifeOf('Mara'),
+                background: backgroundOf('Mara'),
               },
             ],
             things: [],
@@ -292,11 +295,43 @@ describe('writing quests', () => {
     const scribe = new Scribe({ sidecar, seed: 'harbour', concurrency: 1 })
 
     await scribe.writeInstances([
-      { kind: 'bar', theme: 'port', rooms: ['main'], posts: [{ postId: 'anchor_0001', role: 'bartender' }], things: [] },
+      { index: 0, kind: 'bar', theme: 'port', rooms: ['main'], posts: [{ postId: 'anchor_0001', role: 'bartender', index: 0 }], things: [] },
     ])
     await scribe.writeQuests({ summary: CITY, sideQuests: 0 })
 
     expect(sent.at(-1)!.user).toContain('what it is: A bar the harbour crews drink in before the early tide.')
+  })
+
+  it('tells every quest what the town is about, and what the owner asked of the errands', async () => {
+    const premise = {
+      livesOn: 'Container freight off the elevated line.',
+      happened: 'The line shut last winter.',
+      stake: 'Who gets the freight contract.',
+      sides: [
+        { name: 'the Vance yards', wants: 'the contract back' },
+        { name: 'the Dockhands Local', wants: 'the yards broken up' },
+      ],
+      common: ['Nothing has moved since November.'],
+      build: { moreOf: ['warehouse' as const], fewerOf: [], mustHave: [] },
+    }
+    const asks = { mainQuest: 'a missing ledger that both sides want', sideQuests: 'small favours between neighbours', tone: 'tired and funny' }
+    const { sent, sidecar } = fakeModel((call) => draft(idIn(call)))
+    await new Scribe({ sidecar, concurrency: 1 }).writeQuests({ summary: { ...CITY, premise, asks }, sideQuests: 1 })
+
+    const [main, side] = sent.map((call) => call.user)
+    expect(main).toContain('Lives on: Container freight off the elevated line.')
+    expect(main).toContain('a missing ledger that both sides want')
+    expect(main).not.toContain('small favours between neighbours')
+    expect(side).toContain('small favours between neighbours')
+    expect(side).not.toContain('a missing ledger that both sides want')
+    expect(main).toContain('The tone the owner asked for: tired and funny')
+    expect(side).toContain('The tone the owner asked for: tired and funny')
+
+    // and a town with nothing asked of it is asked nothing about it
+    const plain = fakeModel((call) => draft(idIn(call)))
+    await new Scribe({ sidecar: plain.sidecar, concurrency: 1 }).writeQuests({ summary: CITY, sideQuests: 0 })
+    expect(plain.sent[0]!.user).not.toContain('the owner')
+    expect(plain.sent[0]!.user).toContain('Nothing has been written about the city itself yet.')
   })
 
   it('refuses a step that points somewhere the summary cannot name', async () => {

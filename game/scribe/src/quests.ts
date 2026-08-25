@@ -1,16 +1,23 @@
-import type { Narrator, WorldSummary } from '@gb/forge'
+import type { Narrator } from '@gb/forge'
 import { sealQuest, validateQuest } from '@gb/quest'
+import { askedLines } from './asked.ts'
 import type { Asker, Violation } from './asker.ts'
 import { describeSlice, Neighbourhood } from './neighbourhood.ts'
 import type { Progress } from './progress.ts'
 import { bullets, lastFew, prompt } from './prompts.ts'
 import { rewardBands } from './reward-bands.ts'
-import { CitySummary, type SummaryView } from './summary.ts'
+import { CitySummary, type QuestSummary, type SummaryView } from './summary.ts'
 import { WRITE_QUEST, type QuestDraft } from './tools.ts'
 import type { Waves } from './waves.ts'
 
 /** How much of the city one quest is shown. Enough to write about, short enough to send on every call. */
 const PLACES_PER_QUEST = 8
+
+/** What the quest writer is asked: the city, and how many jobs beside the main one. */
+export interface QuestInput {
+  readonly summary: QuestSummary
+  readonly sideQuests: number
+}
 
 interface Written {
   readonly quest: unknown
@@ -56,7 +63,7 @@ export class QuestWriter {
     this.#characters = options.characters
   }
 
-  async write(input: { summary: WorldSummary; sideQuests: number }): Promise<unknown[]> {
+  async write(input: QuestInput): Promise<unknown[]> {
     const city = new CitySummary(input.summary)
     if (city.peopled().length === 0) return [...(await this.#offlineQuests(input))]
 
@@ -64,13 +71,14 @@ export class QuestWriter {
     const total = Math.max(1, input.sideQuests + 1)
     const slots = Array.from({ length: total }, (_, index) => index)
     const corners = new Neighbourhood(city.peopled(), this.#seed)
-    this.#progress.start('quests', total, `${total} to write`)
+    this.#progress.open('quests', total, `${total} to write`)
 
     const written = await this.#waves.run<number, Written | undefined>(slots, async (_, index, earlier) => {
       const id = questId(index)
       const draft = await this.#asker.ask(
         WRITE_QUEST,
         this.#brief(city, corners, index, total, earlier),
+        `quest:${index}`,
         (value) => problemsWith(value, id, view),
       )
       if (draft) {
@@ -93,14 +101,21 @@ export class QuestWriter {
     total: number,
     earlier: readonly (Written | undefined)[],
   ): string {
+    const owner = { asks: city.asks }
     const role =
       index === 0
-        ? prompt('quest-role-main')
-        : prompt('quest-role-side', { sideIndex: index, sideTotal: total - 1 })
+        ? prompt('quest-role-main', { asked: askedLines(owner, ['mainQuest']) })
+        : prompt('quest-role-side', {
+            sideIndex: index,
+            sideTotal: total - 1,
+            asked: askedLines(owner, ['sideQuests']),
+          })
     const slice = corners.for(index, PLACES_PER_QUEST)
     return prompt('write-quest', {
       cityName: city.cityName,
       theme: city.theme,
+      premise: city.history,
+      asked: askedLines(owner, ['tone']),
       questId: questId(index),
       questKind: index === 0 ? 'main' : 'side',
       questRole: role,
@@ -115,7 +130,7 @@ export class QuestWriter {
   }
 
   /** The offline narrator's whole set, asked for once and shared by every slot that needs one. */
-  #offlineQuests(input: { summary: WorldSummary; sideQuests: number }): Promise<readonly unknown[]> {
+  #offlineQuests(input: QuestInput): Promise<readonly unknown[]> {
     this.#offline ??= Promise.resolve(this.#fallback.writeQuests(input)).then((quests) => quests ?? [])
     return this.#offline
   }

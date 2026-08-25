@@ -1,5 +1,5 @@
-/** The three passes a city is written in, in the order they run. */
-export type ScribeStage = 'city' | 'instances' | 'quests'
+/** The stages a city is written in, in the order they run. */
+export type ScribeStage = 'history' | 'city' | 'places' | 'quests'
 
 /** Where a build has got to, published as it goes. */
 export interface ScribeProgress {
@@ -25,7 +25,7 @@ export type ProgressPort = (progress: ScribeProgress) => void
  */
 export class Progress {
   #port: ProgressPort | undefined
-  #stage: ScribeStage = 'city'
+  #stage: ScribeStage | undefined
   #total = 0
   #done = 0
 
@@ -33,11 +33,18 @@ export class Progress {
     this.#port = port
   }
 
-  /** A stage opens: this many answers to wait for, none of them in yet. */
-  start(stage: ScribeStage, total: number, what: string): void {
-    this.#stage = stage
-    this.#total = total
-    this.#done = 0
+  /**
+   * A stage opens with this many answers to wait for. The same stage opened
+   * again grows instead of starting over: the city stage is the name and then
+   * the signs, asked for in two calls, and a loader should see one bar.
+   */
+  open(stage: ScribeStage, total: number, what: string): void {
+    if (stage !== this.#stage) {
+      this.#stage = stage
+      this.#done = 0
+      this.#total = 0
+    }
+    this.#total += total
     this.#publish(what)
   }
 
@@ -48,7 +55,7 @@ export class Progress {
   }
 
   #publish(what: string): void {
-    if (!this.#port) return
+    if (!this.#port || !this.#stage) return
     try {
       this.#port({ stage: this.#stage, done: this.#done, total: this.#total, what })
     } catch {

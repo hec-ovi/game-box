@@ -2,7 +2,7 @@ import { contract, type Contract } from '@gb/kit'
 import { questDraftContract } from '@gb/quest'
 import { premiseContract, type Premise } from '@gb/world'
 import { z } from 'zod'
-import { familyPattern } from './claim.ts'
+import { personSchema, type WrittenPerson } from './person.ts'
 import { prompt } from './prompts.ts'
 import { compactSchema, type JsonSchema } from './schema/compact.ts'
 import { narrowToSummary } from './schema/narrow.ts'
@@ -20,11 +20,6 @@ export interface CityName {
 }
 export interface PlaceName {
   readonly name: string
-}
-export interface Person {
-  readonly name: string
-  readonly personality: string
-  readonly knowledge: readonly string[]
 }
 export interface Thing {
   readonly name: string
@@ -61,19 +56,6 @@ export const NAME_PLACE: Tool<PlaceName> = {
   contract: contract('name_place', z.object({ name: z.string().min(2).max(80) })),
 }
 
-export const DESCRIBE_NPC: Tool<Person> = {
-  name: 'describe_npc',
-  description: prompt('tool-describe-npc'),
-  contract: contract(
-    'describe_npc',
-    z.object({
-      name: z.string().min(2).max(60),
-      personality: z.string().min(10).max(400),
-      knowledge: z.array(z.string().min(4).max(300)).min(2).max(4),
-    }),
-  ),
-}
-
 export const DESCRIBE_ITEM: Tool<Thing> = {
   name: 'describe_item',
   description: prompt('tool-describe-item'),
@@ -83,17 +65,34 @@ export const DESCRIBE_ITEM: Tool<Thing> = {
   ),
 }
 
+/** One person, whole: their family name held to the letters their index was dealt. */
+export function describeNpcTool(letters: string): Tool<WrittenPerson> {
+  return {
+    name: 'describe_npc',
+    description: prompt('tool-describe-npc'),
+    contract: contract('describe_npc', personSchema(letters)),
+  }
+}
+
+/** The signs over a batch of buildings, each carrying the label it was asked under. */
+export interface WrittenSigns {
+  readonly signs: readonly { readonly building: string; readonly name: string }[]
+}
+
+export function signsTool(labels: readonly string[]): Tool<WrittenSigns> {
+  const sign = z.object({ building: oneOf(labels), name: z.string().min(2).max(80) })
+  return {
+    name: 'name_signs',
+    description: prompt('tool-name-signs'),
+    contract: contract('name_signs', z.object({ signs: exactly(sign, labels.length) })),
+  }
+}
+
 /** One place and everybody in it, as one answer. */
 export interface WrittenPlace {
   readonly name: string
   readonly character: string
-  readonly people: readonly {
-    readonly postId: string
-    readonly given: string
-    readonly family: string
-    readonly personality: string
-    readonly knowledge: readonly string[]
-  }[]
+  readonly people: readonly (WrittenPerson & { readonly postId: string })[]
   readonly things: readonly { readonly thingId: string; readonly name: string; readonly description: string }[]
 }
 
@@ -117,13 +116,7 @@ export interface Shell {
  * back at 430 characters against a 400 cap, and the cap cost the whole place.
  */
 export function instanceTool(shell: Shell): Tool<WrittenPlace> {
-  const people = z.object({
-    postId: oneOf(shell.postIds),
-    given: z.string().min(2).max(30),
-    family: z.string().regex(familyPattern(shell.letters)),
-    personality: z.string().min(10).max(400),
-    knowledge: z.array(z.string().min(4).max(300)).min(2).max(4),
-  })
+  const people = z.object({ postId: oneOf(shell.postIds), ...personSchema(shell.letters).shape })
   const things = z.object({
     thingId: oneOf(shell.thingIds),
     name: z.string().min(2).max(60),

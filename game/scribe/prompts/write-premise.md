@@ -9,6 +9,10 @@ This town's tag: {{seed}}
 The tag is not part of the story. It is there so that two towns under one theme
 come out as two towns, so let it push you off the first idea the theme suggests.
 
+## What the owner asked for
+
+{{asked}}
+
 Do not name the town. Its name is decided after this, out of what you write
 here, and a town that gets named twice is a town whose own people disagree about
 where they live.

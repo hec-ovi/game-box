@@ -16,7 +16,8 @@ building and no other.
 Then give it its name, the way its owner would have named it. A bar and an
 office are named very differently: one is a sign hung over a door, the other is
 a family name and a trade. Do not put the kind of building in the name unless
-that is really how such places are named around here.
+that is really how such places are named around here. No word may head two
+signs in this city, the head being the first word after any "The".
 
 ## The people
 
@@ -33,6 +34,30 @@ they stand: who owes what, who was in last night, what is late, what is broken.
 Every family name in this building starts with one of these letters:
 {{letters}}. No two people here share a family name.
 
+### Each one's life
+
+Every field of `life` is theirs alone, and two people in one room answer
+differently because of it:
+
+- `reason`: why they are at this spot at this hour, first person, a sentence
+  they could say out loud to a stranger who asked.
+- `errand`: what they are doing when they are out walking, first person, said
+  the same way, naming no place: where they are going is decided elsewhere.
+- `history`: where they came from, what they did before, and what the town's
+  own turn did to them, using the words of the town's story.
+- `interests`, `manner`, `cares`, `avoids`: what they talk about given the
+  chance, how they speak, what they will stand up for, and what they will not
+  be drawn on.
+
+### What the player earns of each
+
+`background` is the codex: staged facts, each with what earns it. Use every
+stage: `met` for what is plain from seeing them at their post, `talked` for
+their history a sentence at a time and the thing they like talking about,
+`quest` for what they care about, which only somebody who did their job learns,
+and `told` for the one thing about them that is only ever heard from somebody
+else.
+
 ## What is lying about
 
 Name each of these and say what it is made of and what this place has done to
@@ -42,6 +67,7 @@ it. Keep the `thingId` it came with:
 
 ## Names already spoken for in this city
 
-None of these may be used again, for this place or for anybody in it:
+None of these may be used again, for this place or for anybody in it, and no
+sign here may start with the same word as one of them:
 
 {{usedNames}}

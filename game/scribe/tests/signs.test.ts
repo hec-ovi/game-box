@@ -1,0 +1,123 @@
+import { describe, expect, it } from 'vitest'
+import { Scribe, type PlaceRequest } from '../src/index.ts'
+import { fakeModel, type Sent } from './fake-model.ts'
+
+const KINDS = ['bar', 'shop', 'office', 'warehouse', 'house'] as const
+
+/** `count` buildings that do not open, each on a street. */
+function frontage(count: number): PlaceRequest[] {
+  return Array.from({ length: count }, (_, i) => ({
+    index: i,
+    kind: KINDS[i % KINDS.length]!,
+    theme: 'rain-soaked port',
+    street: i % 2 ? 'Kettle Row' : 'Wharf Lane',
+    premise: 'Lives on: the freight line.',
+  }))
+}
+
+/** The labels the batch tool was built around. */
+function labelsOf(call: Sent): string[] {
+  const properties = (call.parameters as Record<string, Record<string, Record<string, Record<string, Record<string, Record<string, unknown>>>>>>)['properties']!
+  return properties['signs']!['items']!['properties']!['building']!['enum'] as unknown as string[]
+}
+
+/** A model that names every building in the batch, off a head word of its own per label unless told otherwise. */
+function answer(call: Sent, head: (label: string) => string = (label) => `Head${label.slice(1)}`) {
+  return { signs: labelsOf(call).map((label) => ({ building: label, name: `${head(label)} Supply` })) }
+}
+
+describe('naming the buildings that do not open', () => {
+  it('asks for twenty at a time, with the history, the trade and the street of each, and hands the names back in order', async () => {
+    const { sent, sidecar } = fakeModel((call) => (call.toolName === 'name_signs' ? answer(call) : { name: 'Cold Harbour' }))
+    const scribe = new Scribe({ sidecar, seed: 'harbour', concurrency: 2 })
+    await scribe.nameCity({ theme: 'rain-soaked port', seed: 'harbour' })
+
+    const names = await scribe.namePlaces(frontage(45))
+
+    expect(names).toHaveLength(45)
+    expect(names.slice(0, 3)).toEqual(['Head0 Supply', 'Head1 Supply', 'Head2 Supply'])
+    expect(names[44]).toBe('Head44 Supply')
+    // one call for the city's name, then three batches: 20, 20 and 5
+    expect(sent.slice(1).map((call) => call.toolName)).toEqual(['name_signs', 'name_signs', 'name_signs'])
+    expect(sent.slice(1).map((call) => labelsOf(call).length)).toEqual([20, 20, 5])
+    const batch = sent[1]!.user
+    expect(batch).toContain('City: Cold Harbour')
+    expect(batch).toContain('Lives on: the freight line.')
+    expect(batch).toContain('- b0: a bar on Wharf Lane')
+    expect(batch).toContain('- b1: a shop on Kettle Row')
+    expect(scribe.problems()).toEqual([])
+  })
+
+  it('tells a batch the words already heading a sign, and refuses one that starts a sign with any of them', async () => {
+    const { sent, sidecar } = fakeModel((call, index) =>
+      call.toolName === 'name_signs'
+        ? answer(call, (label) => (index === 2 && label === 'b21' ? 'Head3' : `Head${label.slice(1)}`))
+        : { name: 'Cold Harbour' },
+    )
+    const scribe = new Scribe({ sidecar, seed: 'harbour', concurrency: 1 })
+    await scribe.nameCity({ theme: 'rain-soaked port', seed: 'harbour' })
+
+    const names = await scribe.namePlaces(frontage(25))
+
+    // the second batch was told the first batch's heads, repeated one, and was asked again
+    expect(sent[2]!.user).toContain('- head3')
+    expect(sent).toHaveLength(4)
+    expect(sent[3]!.user).toContain('signs.1.name: Head3 Supply starts with head3, which already heads a sign in this city')
+    expect(names[21]).toBe('Head21 Supply')
+  })
+
+  it('refuses a batch that heads two of its own signs with one word', async () => {
+    const { sent, sidecar } = fakeModel((call, index) =>
+      answer(call, (label) => (index === 0 && label === 'b2' ? 'The Head1' : `Head${label.slice(1)}`)),
+    )
+    const scribe = new Scribe({ sidecar, seed: 'harbour' })
+
+    const names = await scribe.namePlaces(frontage(5))
+
+    expect(sent).toHaveLength(2)
+    expect(sent[1]!.user).toContain('signs.2.name: The Head1 Supply starts with head1, which already heads another sign in this batch')
+    expect(names[2]).toBe('Head2 Supply')
+  })
+
+  it('lets no word head two signs in the city, whatever the batches came back with', async () => {
+    // two batches in one wave cannot see each other, and this model has one favourite word
+    const { sidecar } = fakeModel((call) => answer(call, (label) => (Number(label.slice(1)) % 20 === 0 ? 'Kettle' : `Head${label.slice(1)}`)))
+    const scribe = new Scribe({ sidecar, seed: 'harbour', concurrency: 3, attempts: 1 })
+
+    const names = await scribe.namePlaces(frontage(45))
+
+    expect(names[0]).toBe('Kettle Supply')
+    const heads = names.map((name) => name.toLowerCase().replace(/^the /, '').split(' ')[0])
+    expect(new Set(heads).size).toBe(45)
+    // the lower index kept the word; the others were written by the offline composer
+    expect(names[20]).not.toMatch(/^Kettle/)
+    expect(names[40]).not.toMatch(/^Kettle/)
+  })
+
+  it('names every building from the offline composer when the model will not, still with no head twice', async () => {
+    const { sent, sidecar } = fakeModel(['no-call'])
+    const scribe = new Scribe({ sidecar, seed: 'harbour', attempts: 1 })
+
+    const names = await scribe.namePlaces(frontage(30))
+
+    expect(sent).toHaveLength(2)
+    expect(names).toHaveLength(30)
+    expect(names.every((name) => name.length > 2)).toBe(true)
+    const heads = names.map((name) => name.toLowerCase().replace(/^the /, '').split(' ')[0])
+    expect(new Set(heads).size).toBe(30)
+  })
+
+  it('writes the same signs on the same seed whatever order the batches landed in', async () => {
+    const runs = await Promise.all(
+      [1, 2].map(async () => {
+        const { sent, sidecar } = fakeModel(async (call, index) => {
+          await new Promise((resolve) => setTimeout(resolve, (3 - index) * 4))
+          return answer(call)
+        })
+        const names = await new Scribe({ sidecar, seed: 'harbour', concurrency: 3 }).namePlaces(frontage(45))
+        return { asked: sent.map((call) => call.user).sort(), names }
+      }),
+    )
+    expect(runs[0]).toEqual(runs[1])
+  })
+})

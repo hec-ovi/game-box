@@ -1,4 +1,5 @@
 import type { Sidecar, SidecarError } from '@gb/sidecar'
+import type { Pins } from './pins.ts'
 import { bullets, prompt } from './prompts.ts'
 import type { Tool } from './tools.ts'
 
@@ -19,6 +20,7 @@ export interface ScribeProblem {
 
 export interface AskerOptions {
   readonly sidecar: Sidecar
+  readonly pins: Pins
   readonly attempts: number
   /** Left out for the sidecar's own clock, set only where a call is genuinely longer than the rest. */
   readonly timeoutMs?: number | undefined
@@ -28,12 +30,15 @@ export interface AskerOptions {
 
 /**
  * Makes one tool call and keeps at it: a rejected answer comes back to the model
- * with the exact fields quoted, a call that ran out of time is tried again as it
- * was, and anything else gives up so a dead sidecar costs one answer rather than
- * the whole build.
+ * with the exact fields quoted, a call that ran out of time or came back as
+ * prose is tried again on the next attempt's seed, and anything else gives up
+ * so a dead sidecar costs one answer rather than the whole build. Every request
+ * carries the seed for its position and attempt, so a second try is a second
+ * draw rather than the same one over.
  */
 export class Asker {
   #sidecar: Sidecar
+  #pins: Pins
   #attempts: number
   #timeoutMs?: number | undefined
   #signal?: AbortSignal | undefined
@@ -41,13 +46,15 @@ export class Asker {
 
   constructor(options: AskerOptions) {
     this.#sidecar = options.sidecar
+    this.#pins = options.pins
     this.#attempts = Math.max(1, options.attempts)
     this.#timeoutMs = options.timeoutMs
     this.#signal = options.signal
     this.#record = options.record
   }
 
-  async ask<T>(tool: Tool<T>, user: string, check?: Check<T>): Promise<T | undefined> {
+  /** `at` is the call's place in the build (`quest:3`), which is what its seed is derived from. */
+  async ask<T>(tool: Tool<T>, user: string, at: string, check?: Check<T>): Promise<T | undefined> {
     let request = user
     for (let attempt = 0; attempt < this.#attempts; attempt++) {
       const answer = await this.#sidecar.ask(tool.contract, {
@@ -56,12 +63,13 @@ export class Asker {
         toolName: tool.name,
         toolDescription: tool.description,
         signal: this.#signal,
+        ...this.#pins.for(at, attempt),
         ...(this.#timeoutMs === undefined ? {} : { timeoutMs: this.#timeoutMs }),
       })
 
       if (!answer.ok) {
         this.#record({ task: tool.name, error: answer.error })
-        if (answer.error.code === 'timeout') continue
+        if (answer.error.code === 'timeout' || answer.error.code === 'no-tool-call') continue
         if (answer.error.code !== 'invalid-arguments') return undefined
         request = this.#again(user, answer.error.violations)
         continue

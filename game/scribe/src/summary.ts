@@ -1,6 +1,12 @@
 import type { WorldSummary } from '@gb/forge'
+import { premiseLines } from '@gb/forge'
+import type { Asks } from '@gb/world'
+import { prompt } from './prompts.ts'
 
 type Place = WorldSummary['places'][number]
+
+/** The summary as the quest writer takes it: the forge's, plus what the owner asked of the quests. */
+export type QuestSummary = WorldSummary & { readonly asks?: Asks | undefined }
 
 /** The five questions `@gb/quest` asks of a world, answered from the summary alone. */
 export interface SummaryView {
@@ -10,6 +16,7 @@ export interface SummaryView {
   hasItem(id: string): boolean
   hasAnchor(interiorId: string, anchorId: string): boolean
 }
+
 
 /**
  * The abstract city a quest writer reads.
@@ -21,12 +28,12 @@ export interface SummaryView {
  * the forge accepts.
  */
 export class CitySummary {
-  #summary: WorldSummary
+  #summary: QuestSummary
   #npcIds: Set<string>
   #plotIds: Set<string>
   #itemIds: Set<string>
 
-  constructor(summary: WorldSummary) {
+  constructor(summary: QuestSummary) {
     this.#summary = summary
     this.#plotIds = new Set(summary.places.map((place) => place.plotId))
     this.#npcIds = new Set(summary.places.flatMap((place) => place.npcs.map((npc) => npc.npcId)))
@@ -39,6 +46,15 @@ export class CitySummary {
 
   get theme(): string {
     return this.#summary.theme
+  }
+
+  get asks(): Asks | undefined {
+    return this.#summary.asks
+  }
+
+  /** The town's story as a prompt reads it. */
+  get history(): string {
+    return this.#summary.premise ? premiseLines(this.#summary.premise) : prompt('no-history')
   }
 
   view(): SummaryView {

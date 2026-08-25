@@ -2,6 +2,9 @@ Write one errand that somebody in this city hands to the player.
 
 City: {{cityName}}
 Theme: {{theme}}
+What the town is about:
+{{premise}}
+{{asked}}
 Give this quest the id {{questId}} and the kind {{questKind}}.
 {{questRole}}
 
@@ -121,10 +124,10 @@ If an item has an owner, taking it is stealing: set `allowSteal: true` on the
 ## The writing
 
 The `objective` lines are the words on the player's screen, so write them to the
-player and name the person and the place: "Take the unmarked ledger from Dunn
-Supply", "Give Hollis the envelope at the Copper Wheel". `title` is what the
-journal calls this quest. `summary` is the giver's own reason for asking, in
-their voice.
+player and name the person and the place, in the shape of "Take the [thing] from
+[place]" or "Give [person] the [thing] at [place]", with the brackets filled from
+the corner above. `title` is what the journal calls this quest. `summary` is the
+giver's own reason for asking, in their voice.
 
 Titles already used in this city, which this one must not repeat:
 

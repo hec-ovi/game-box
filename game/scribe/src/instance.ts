@@ -1,7 +1,8 @@
-import type { Narrator } from '@gb/forge'
-import type { BuildingKind, ItemArchetype, NpcRole, RoomKind } from '@gb/world'
+import type { Instance, InstancePerson, InstancePost, InstanceRequest, InstanceThing, Narrator } from '@gb/forge'
+import type { BuildingKind } from '@gb/world'
 import type { Asker, Violation } from './asker.ts'
 import { FamilyClaims } from './claim.ts'
+import { personProblems, profileOf } from './person.ts'
 import type { Progress } from './progress.ts'
 import { bullets, prompt } from './prompts.ts'
 import type { NameRegistry } from './registry.ts'
@@ -9,68 +10,13 @@ import { instanceTool, type WrittenPlace } from './tools.ts'
 import { UniqueNames, type Pass } from './unique.ts'
 import type { Waves } from './waves.ts'
 
-/** A place somebody stands and does a job, and the job. */
-export interface InstancePost {
-  readonly postId: string
-  readonly role: NpcRole
-}
-
-/** Something the place keeps lying about, and what shape it is. */
-export interface InstanceStock {
-  readonly thingId: string
-  readonly archetype: ItemArchetype
-}
-
-/**
- * One building, and nothing about any other.
- *
- * Everything here is either the city as a whole (its name, its theme, its
- * story) or this building's own shell. No other place, nobody else's people and
- * no other errand, because two places written in one context are two places
- * that read like one, and because a request that names its neighbours cannot be
- * sent at the same time as theirs.
- */
-export interface InstanceRequest {
-  readonly kind: BuildingKind
-  readonly theme: string
-  /** The rooms the shell was cut into, so the place is written into the building it has. */
-  readonly rooms: readonly RoomKind[]
-  readonly posts: readonly InstancePost[]
-  readonly things: readonly InstanceStock[]
-  /** The city's own story, once there is one to tell. */
-  readonly premise?: string
-}
-
-export interface InstancePerson {
-  readonly postId: string
-  readonly role: NpcRole
-  readonly name: string
-  readonly personality: string
-  readonly knowledge: readonly string[]
-}
-
-export interface InstanceThing {
-  readonly thingId: string
-  readonly name: string
-  readonly description: string
-}
-
-/** A place decided all at once: what it is, who is in it, and what is lying about. */
-export interface Instance {
-  readonly name: string
-  /** What this place is and what goes on in it. Empty when no model wrote it. */
-  readonly character: string
-  readonly people: readonly InstancePerson[]
-  readonly things: readonly InstanceThing[]
-}
-
 export interface InstanceWriterOptions {
   readonly asker: Asker
   readonly waves: Waves
   readonly fallback: Narrator
   readonly registry: NameRegistry
   readonly progress: Progress
-  readonly seed: string
+  readonly claims: FamilyClaims
 }
 
 /**
@@ -79,6 +25,7 @@ export interface InstanceWriterOptions {
  * two of them draw the same spare name.
  */
 const ATTEMPTS = 40
+
 
 /**
  * Writes a place and the people in it in one call.
@@ -97,22 +44,20 @@ export class InstanceWriter implements Pass<InstanceRequest, Instance> {
   #claims: FamilyClaims
   #unique: UniqueNames<InstanceRequest, Instance>
   #counted = new Set<number>()
-  #cityName = ''
 
   constructor(options: InstanceWriterOptions) {
     this.#asker = options.asker
     this.#fallback = options.fallback
     this.#registry = options.registry
     this.#progress = options.progress
-    this.#claims = new FamilyClaims(options.seed)
+    this.#claims = options.claims
     this.#unique = new UniqueNames(options.waves, options.registry, this)
   }
 
   /** Every place, several at a time, back in the order they were asked for. */
   async write(requests: readonly InstanceRequest[]): Promise<Instance[]> {
-    this.#cityName = this.#registry.cityName
     this.#counted.clear()
-    this.#progress.start('instances', requests.length, `${requests.length} places`)
+    this.#progress.open('places', requests.length, `${requests.length} places`)
     return this.#unique.write(requests)
   }
 
@@ -125,10 +70,10 @@ export class InstanceWriter implements Pass<InstanceRequest, Instance> {
     const answer = await this.#asker.ask(
       instanceTool(shell),
       prompt('write-instance', {
-        cityName: this.#cityName,
+        cityName: this.#registry.cityName,
         theme: request.theme,
         kind: request.kind,
-        premise: request.premise ?? 'Nothing has been written about the city itself yet.',
+        premise: request.premise ?? prompt('no-history'),
         rooms: request.rooms.length ? request.rooms.join(', ') : 'one room',
         letters: shell.letters.split('').join(', '),
         posts: bullets(
@@ -141,6 +86,7 @@ export class InstanceWriter implements Pass<InstanceRequest, Instance> {
         ),
         usedNames: bullets(taken, 'None yet.'),
       }),
+      `place:${request.index}`,
       (value) => problemsWith(value, shell),
     )
     if (!answer) return undefined
@@ -150,75 +96,69 @@ export class InstanceWriter implements Pass<InstanceRequest, Instance> {
   }
 
   namesIn(instance: Instance): readonly string[] {
-    return [instance.name, ...instance.people.map((person) => person.name)]
+    return instance.people.map((person) => person.name)
+  }
+
+  signsIn(instance: Instance): readonly string[] {
+    return [instance.name]
   }
 
   /** Every name the city has already spent is written again by the fallback narrator. */
   async repair(request: InstanceRequest, index: number, answer: Instance | undefined): Promise<Instance> {
-    const name = this.#free(answer?.name) ? answer!.name : await this.#spareName(request, index)
-    this.#registry.add(name)
+    const name = answer !== undefined && !this.#registry.signTaken(answer.name) ? answer.name : await this.#spareName(request)
+    this.#registry.hang(name)
 
     const people: InstancePerson[] = []
-    for (const [k, post] of request.posts.entries()) {
+    for (const post of request.posts) {
       const written = answer?.people.find((person) => person.postId === post.postId)
-      const person = this.#free(written?.name) ? written! : await this.#sparePerson(request, post, name, index, k)
+      const person = written !== undefined && !this.#registry.taken(written.name) ? written : await this.#sparePerson(request, post, name)
       this.#registry.add(person.name)
       people.push(person)
     }
 
-    const things = answer?.things.length ? answer.things : await this.#stock(request, index)
+    const things = answer?.things.length ? answer.things : await this.#stock(request)
     this.#count(index, name, request.kind)
     return { name, character: answer?.character ?? '', people, things }
   }
 
-  #free(name: string | undefined): boolean {
-    return name !== undefined && !this.#registry.taken(name)
-  }
-
-  /** Keeps asking the fallback narrator for one more sign until the city has not already hung it. */
-  async #spareName(request: InstanceRequest, index: number): Promise<string> {
-    const at = (attempt: number) => ({ kind: request.kind, theme: request.theme, index: index * ATTEMPTS + attempt })
+  /** Keeps asking the fallback narrator for one more sign until the city has not already hung its head word. */
+  async #spareName(request: InstanceRequest): Promise<string> {
+    const at = (attempt: number) => ({
+      kind: request.kind,
+      theme: request.theme,
+      index: request.index * ATTEMPTS + attempt,
+      ...(request.premise === undefined ? {} : { premise: request.premise }),
+    })
     let name = await this.#fallback.namePlace(at(0))
-    for (let attempt = 1; attempt <= ATTEMPTS && this.#registry.taken(name); attempt++) {
+    for (let attempt = 1; attempt <= ATTEMPTS && this.#registry.signTaken(name); attempt++) {
       name = await this.#fallback.namePlace(at(attempt))
     }
     return name
   }
 
-  async #sparePerson(
-    request: InstanceRequest,
-    post: InstancePost,
-    placeName: string,
-    index: number,
-    k: number,
-  ): Promise<InstancePerson> {
+  async #sparePerson(request: InstanceRequest, post: InstancePost, placeName: string): Promise<InstancePerson> {
     const at = (attempt: number) => ({
       role: post.role,
       placeKind: request.kind,
       placeName,
       theme: request.theme,
-      index: (index * request.posts.length + k) * ATTEMPTS + attempt,
+      index: post.index * ATTEMPTS + attempt,
+      ...(request.premise === undefined ? {} : { premise: request.premise }),
     })
     let profile = await this.#fallback.describeNpc(at(0))
     for (let attempt = 1; attempt <= ATTEMPTS && this.#registry.taken(profile.name); attempt++) {
       profile = await this.#fallback.describeNpc(at(attempt))
     }
-    return {
-      postId: post.postId,
-      role: post.role,
-      name: profile.name,
-      personality: profile.personality,
-      knowledge: [...profile.knowledge],
-    }
+    return { ...profile, postId: post.postId, role: post.role }
   }
 
-  async #stock(request: InstanceRequest, index: number): Promise<InstanceThing[]> {
+  async #stock(request: InstanceRequest): Promise<InstanceThing[]> {
     const things: InstanceThing[] = []
-    for (const [k, thing] of request.things.entries()) {
+    for (const thing of request.things) {
       const written = await this.#fallback.describeItem({
         archetype: thing.archetype,
         theme: request.theme,
-        index: index * ATTEMPTS + k,
+        index: thing.index,
       })
       things.push({ thingId: thing.thingId, ...written })
     }
@@ -240,13 +180,7 @@ function made(request: InstanceRequest, answer: WrittenPlace): Instance {
     character: answer.character,
     people: request.posts.map((post) => {
       const person = answer.people.find((one) => one.postId === post.postId)!
-      return {
-        postId: post.postId,
-        role: post.role,
-        name: `${person.given} ${person.family}`,
-        personality: person.personality,
-        knowledge: [...person.knowledge],
-      }
+      return { ...profileOf(person), postId: post.postId, role: post.role }
     }),
     things: request.things.map((thing) => {
       const written = answer.things.find((one) => one.thingId === thing.thingId)!
@@ -274,5 +208,6 @@ function problemsWith(answer: WrittenPlace, shell: { postIds: readonly string[];
   }
   repeats(answer.people.map((person) => person.family), 'people', 'is already a family name in this building')
   repeats(answer.things.map((thing) => thing.name), 'things', 'is already the name of something else in here')
+  for (const [i, person] of answer.people.entries()) problems.push(...personProblems(person, `people.${i}`))
   return problems
 }

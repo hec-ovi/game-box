@@ -6,8 +6,10 @@ import type { Waves } from './waves.ts'
 export interface Pass<Request, Answer> {
   /** Writes one of them, told nothing but its own request and the names already spent. */
   ask(request: Request, index: number, taken: readonly string[]): Promise<Answer | undefined>
-  /** The names this answer would spend. */
+  /** The people's and things' names this answer would spend. */
   namesIn(answer: Answer): readonly string[]
+  /** The signs this answer would hang, each spent by its head word as well. */
+  signsIn(answer: Answer): readonly string[]
   /** The same answer, with any name the city has already spent replaced by one the fallback narrator writes. */
   repair(request: Request, index: number, answer: Answer | undefined): Promise<Answer>
 }
@@ -39,7 +41,7 @@ export class UniqueNames<Request, Answer> {
   async write(requests: readonly Request[]): Promise<Answer[]> {
     const spent = this.#registry.names()
     const first = await this.#waves.run<Request, Answer | undefined>(requests, (request, index, earlier) =>
-      this.#pass.ask(request, index, lastFew([...spent, ...earlier.flatMap((answer) => this.#namesOf(answer))])),
+      this.#pass.ask(request, index, lastFew([...spent, ...earlier.flatMap((answer) => this.#allOf(answer))])),
     )
 
     const settled: Array<Answer | undefined> = requests.map((_, index) => this.#keep(first[index]))
@@ -76,16 +78,21 @@ export class UniqueNames<Request, Answer> {
   #keep(answer: Answer | undefined): Answer | undefined {
     if (answer === undefined) return undefined
     const names = this.#pass.namesIn(answer)
-    if (names.some((name, i) => this.#registry.taken(name) || names.indexOf(name) !== i)) return undefined
+    const signs = this.#pass.signsIn(answer)
+    const repeated = (list: readonly string[]) => list.some((name, i) => list.indexOf(name) !== i)
+    if (repeated([...names, ...signs])) return undefined
+    if (names.some((name) => this.#registry.taken(name))) return undefined
+    if (signs.some((sign) => this.#registry.signTaken(sign))) return undefined
     this.#spend(answer)
     return answer
   }
 
   #spend(answer: Answer): void {
     for (const name of this.#pass.namesIn(answer)) this.#registry.add(name)
+    for (const sign of this.#pass.signsIn(answer)) this.#registry.hang(sign)
   }
 
-  #namesOf(answer: Answer | undefined): readonly string[] {
-    return answer === undefined ? [] : this.#pass.namesIn(answer)
+  #allOf(answer: Answer | undefined): readonly string[] {
+    return answer === undefined ? [] : [...this.#pass.signsIn(answer), ...this.#pass.namesIn(answer)]
   }
 }

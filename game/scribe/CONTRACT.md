@@ -1,33 +1,34 @@
 # @gb/scribe contract
 
-contractVersion: 0.4.0
+contractVersion: 0.5.0
 
 ## Purpose
 
-The narrator backed by the local model: the city's history first, then its names, whole places and the people in them, what those people know, and the quests they hand out, each one a forced tool call validated against the schema the tool was built from.
+The narrator backed by the local model: the city's history first, written from the owner's own brief, then its name and the signs over its doors, whole places and the people in them with their lives, and the quests they hand out, each one a forced tool call validated against the schema the tool was built from, every call pinned to a seed of its own.
 
 ## Inputs
 
 | Param | Schema | Preconditions |
 |---|---|---|
-| `new Scribe(options?)` | `sidecar?`, `fallback?`, `seed?`, `attempts?`, `concurrency?`, `signal?`, `progress?` | defaults: a `Sidecar` on `GAME_BOX_URL` or `http://127.0.0.1:8976`, `OfflineNarrator` as the fallback, two attempts, as many calls at once as `GAME_BOX_SLOTS` says the engine has slots for (four if it says nothing), and no progress port |
-| `writePremise({ theme, seed })` | the theme the city was asked for and the build's seed | the first call of a build, made before a plot is placed |
-| `writeInstances(requests)` | `InstanceRequest[]`: for each place its `kind`, the `theme`, the `rooms` its shell was cut into, the `posts` to fill (an id and a role each), the `things` lying about (an id and an archetype each), and the city's `premise` once there is one | the ids are the caller's own handles and come straight back on the answer; nothing about any other place may be in a request |
-| `namePlaces(requests)` | `PlaceRequest[]`: a `kind` and the `theme` per building | for the buildings that do not open |
+| `new Scribe(options?)` | `sidecar?`, `fallback?`, `seed?`, `attempts?`, `concurrency?`, `temperature?`, `signal?`, `progress?` | defaults: a `Sidecar` on `GAME_BOX_URL` or `http://127.0.0.1:8976`, `OfflineNarrator` as the fallback, two attempts, as many calls at once as `GAME_BOX_SLOTS` says the engine has slots for (four if it says nothing), a temperature of 0.9, and no progress port |
+| `writePremise(input)` | `PremiseInput`: `theme`, `seed`, and the owner's `brief?` and `asks?` in `@gb/world`'s shapes | the first call of a build, made before a plot is placed |
+| `namePlaces(requests)` | `PlaceRequest[]`: per building its `kind`, the `theme`, its `index` in the town, the `street?` its door is on, and the city's `premise?` as `premiseLines` renders it | for the buildings that do not open |
+| `writeInstances(requests)` | `@gb/forge`'s `InstanceRequest[]`: for each place its `kind`, the `theme`, its `index`, the `rooms` its shell was cut into, the `posts` to fill (an id, a role and an index each), the `things` lying about (an id, an archetype and an index each), and the city's `premise` once there is one | the ids are the caller's own handles and come straight back on the answer; nothing about any other place may be in a request |
+| `writeQuests(input)` | `QuestInput`: `@gb/forge`'s `WorldSummary` with `asks?` on it, and `sideQuests` | the summary's `premise` is what the quests are written against |
 
-Scribe implements `@gb/forge`'s `Narrator`, so a `Forge` takes one and builds a city with it. `writeInstances` and `namePlaces` are the plural, fanned-out shapes of the same work and are not part of that interface yet.
+Scribe implements `@gb/forge`'s `Narrator`, so a `Forge` takes one and builds a city with it. What it takes beyond the interface is optional: a forge that hands over no brief, no asks and no sign requests gets the same city the interface promises.
 
 ## Outputs
 
 | Param | Schema | Postconditions |
 |---|---|---|
-| `writePremise` | `@gb/world`'s `Premise` | always answered, and always one a city can be built out of. What the model writes is checked against the premise contract and against whether the town could be built from it; a history it will not write is the one the seed composes |
-| `nameCity`, `namePlace`, `describeNpc`, `describeItem` | the `Narrator` shapes | always answered: the fallback covers whatever the model cannot. `nameCity` is shown the history, so the town is named after what it lives on |
-| `writeInstances` | `Instance[]`, in the order the places were asked for | each one carries the place's `name`, its `character` (what the place is, empty when the model wrote none of it), one person per post with the post's own role, and one named thing per thing handed in. No two places in a city share a name, and nobody in a city shares a name with anybody else |
-| `namePlaces` | names, in the order they were asked for | each one is a name nothing else in the city holds |
-| `writeQuests` | quest documents, sealed | one call per quest, every one of them already accepted by `@gb/quest` against the city it was written for; a slot the model cannot fill is filled by the fallback narrator's quest for that slot, so a model that will not write never costs a quest the offline narrator would have written |
+| `writePremise` | `@gb/world`'s `Premise` | always answered, and always one a city can be built out of. What the model writes is checked against the premise contract and against whether the town could be built from it; a history it will not write is the one the seed composes. The brief reaches the call verbatim, quoted; the tone, the main errand and the style choices reach it beside; a field left blank puts nothing in the prompt, and a form left wholly blank tells the model the choice is its own |
+| `nameCity`, `namePlace`, `describeNpc`, `describeItem` | the `Narrator` shapes | always answered: the fallback covers whatever the model cannot. `nameCity` is shown the history, so the town is named after what it lives on. `describeNpc` answers `life` and `background`, every part written, and a name whose family name starts with the letters its index was dealt |
+| `namePlaces` | signs, in the order they were asked for | one per request, twenty to a model call, the history in front of the model and each building's trade and street. No word heads two signs in the city: the head being the first word after any "The", possessives dropped. A sign the model repeats is written by the fallback composer |
+| `writeInstances` | `@gb/forge`'s `Instance[]`, in the order the places were asked for | each one carries the place's `name`, its `character` (what the place is, empty when the model wrote none of it), one person per post with the post's own role, their `life` (every field of `@gb/world`'s `Life`) and `background` (at least one fact behind each of the four unlocks), and one named thing per thing handed in. No two signs in a city share a head word, and nobody in a city shares a name with anybody else |
+| `writeQuests` | quest documents, sealed | one call per quest, every one of them already accepted by `@gb/quest` against the city it was written for; a slot the model cannot fill is filled by the fallback narrator's quest for that slot, so a model that will not write never costs a quest the offline narrator would have written. Every call is shown the town's history; the main line is shown `asks.mainQuest`, each side errand `asks.sideQuests`, and all of them `asks.tone` |
 | `problems()` | `ScribeProblem[]` | every call that failed, so a thin world can be explained rather than guessed at |
-| `progress` port | `ScribeProgress`: `stage` (`city`, `instances`, `quests`), `done`, `total`, `what` | published as each stage opens and each answer lands. Nothing reads it back, so a build with a loader writes the same city as one without, and a port that throws is dropped rather than failing the build |
+| `progress` port | `ScribeProgress`: `stage` (`history`, `city`, `places`, `quests`), `done`, `total`, `what` | published as each stage opens and each answer lands, and every stage ends with `done` equal to `total`. Nothing reads it back, so a build with a loader writes the same city as one without, and a port that throws is dropped rather than failing the build |
 
 ## Errors (closed set)
 
@@ -35,31 +36,39 @@ Scribe implements `@gb/forge`'s `Narrator`, so a `Forge` takes one and builds a 
 
 - `unreachable`: the sidecar could not be contacted.
 - `refused`: it answered with a non-2xx status.
-- `no-tool-call`: the model wrote prose instead of calling the tool.
-- `invalid-arguments`: the answer did not hold up, either against the tool's own contract or, for a quest, against `@gb/quest` and the city it names, for a place, against the posts and things it was handed, or for a history, against whether a town could be built out of it. The next attempt is told exactly which fields.
-- `timeout`: nothing came back in time. Tried again as it was.
+- `no-tool-call`: the model wrote prose instead of calling the tool. Tried again on the next attempt's seed, which is a different draw.
+- `invalid-arguments`: the answer did not hold up, either against the tool's own contract or, for a quest, against `@gb/quest` and the city it names, for a place, against the posts and things it was handed and the four unlocks its people's codices have to cover, for a batch of signs, against the labels it was handed and the head words already hung, or for a history, against whether a town could be built out of it. The next attempt is told exactly which fields.
+- `timeout`: nothing came back in time. Tried again on the next attempt's seed.
 - `aborted`: the caller stopped the call. Never tried again.
 
 `Scribe` itself never fails: an unanswerable call falls through to the fallback narrator.
 
 ## Dependencies
 
-- `@gb/kit` contract: contracts, results, the deterministic rng.
-- `@gb/sidecar` contract (game/sidecar/CONTRACT.md): the client that makes the call.
-- `@gb/forge` contract: the `Narrator` interface it implements and the `OfflineNarrator` it falls back to.
+- `@gb/kit` contract: contracts, results, the deterministic rng the per-call seeds are drawn with.
+- `@gb/sidecar` contract (game/sidecar/CONTRACT.md): the client that makes the call and carries the seed and the temperature.
+- `@gb/forge` contract: the `Narrator` interface it implements, the instance shapes, `premiseLines`, and the `OfflineNarrator` it falls back to.
 - `@gb/quest` contract: the quest draft shape a quest writer fills in, the validator every draft goes through, and the reward table the prompt is written from.
-- `@gb/world` contract: the closed vocabularies a narrator must choose from, and the premise contract the city's history is written against.
+- `@gb/world` contract: the closed vocabularies a narrator must choose from, the premise contract the city's history is written against, `Life` and `BackgroundFact` for a person, and `Asks` for what the owner typed.
 
 ## Invariants
 
 - The model is never asked for prose. Every call offers exactly one tool and names it in `tool_choice`, and the tool's parameters come from the contract's own JSON Schema, so what defines the shape and what checks it cannot drift apart.
 - Nothing caps how long an answer runs: no `max_tokens`, and no prompt asking for so many words.
 - A rejected call is retried with the exact violations quoted back, then given up on. Two failures cost one name, never the world.
+- **Every call is pinned.** Each request carries a `seed` and a `temperature`. The seed is drawn from the build's seed, the call's position (`premise`, `city-name`, `signs:2`, `place:12`, `person:4`, `thing:9`, `quest:3`) and the attempt number, never from a counter, so the same build sends the same seed to the same call however many calls were in the air and whichever order they landed in, and a second attempt is a second draw. Reproducibility is best effort: the engine decides whether a pinned request comes back the same, and the ones measured do not promise it (llama-server holds a seed only while nothing else shares the engine; the hosted router does not honour one at all). What the seed buys is that a draw which went wrong once is not the draw tried again.
+- **No example in a prompt can come back as an answer.** Measured: a house-style example name was hung over a bar. So a shape is shown with bracketed slots (`[first name]'s [trade]`) and never with a name, the system prompt says the brackets are slots, and the prompts test refuses a quoted proper name in any of them. Measured on one live 1x1 town (9 signs, 10 people, 3 quests, every string of the world and the quests scanned): no example and no slot came back; `pnpm --filter @gb/scribe run measure 10` scans ten.
 - Quests are written one per call: a small model writes a better single quest than a batch, and a failure costs one quest.
 - A place is written whole, in one call: what it is, everybody in it and everything lying about are one decision, because they are one decision in the world. That call is shown its own building and nothing else.
 - A quest is checked here before it is handed over, against the same ids the model was shown. A draft that will not hold up goes back to the model with the reason; a slot it still cannot fill is written by the offline narrator. A build with the model on therefore never ends up with fewer quests than the same build with it off.
-- Prompts live in `prompts/*.md` and are bundled into `src/prompts.generated.ts` by `pnpm --filter @gb/scribe run generate`. Edit the markdown, never the generated file.
+- Prompts live in `prompts/*.md` and are bundled into `src/prompts.generated.ts` by `pnpm --filter @gb/scribe run generate`. Edit the markdown, never the generated file. A line a prompt falls back to (the town has no history yet) is a prompt file too.
 - Nothing here decides geometry. The prompts say so, and the forge would ignore it anyway.
+
+### What the owner asked for
+
+The brief is the owner's own words and goes to the history writer verbatim, quoted, under "What the owner asked for". Beside it go the parts of `asks` that writer consumes: `tone`, `mainQuest` (the stake is the main errand's subject, so the history has to know what it is about), and `style` as one line of the choices made (`neon lit, wear run-down`). The quest writer gets `tone` on every call, `mainQuest` on the main line's call and `sideQuests` on each side errand's, with the town's history in front of all of them.
+
+Absence is silence. A field left blank puts nothing in the prompt, never a line saying it is blank, and a form left wholly blank is told that the choice is the model's and asked to commit to one town. `src/asked.ts` renders the parts; one prompt file per part carries the words.
 
 ### The city's history
 
@@ -87,12 +96,33 @@ is worth more care than the ones after it.
 - **A town always gets a history.** One the model will not write is the one the
   seed composes offline, so a build with the model on never leaves a town with
   less story than the same build with it off.
-- **The question is the same every time; the answer is not.** The prompt is a
-  pure function of the theme and the seed, so the same build asks the same
-  thing. Nothing pins the sampler behind the sidecar: there is no seed field in
-  the service's request shape, and no temperature is sent, so two runs of one
-  seed write two different histories. Same theme and seed, measured: every field
-  differed.
+- **The question is the same every time.** The prompt is a pure function of the
+  theme, the seed and the asks, so the same build asks the same thing and sends
+  the same seed with it. Whether the answer is the same is the engine's.
+
+### The signs over the doors that do not open
+
+Most of a city is frontage, and a sign is five tokens, so what naming it all
+cost was never the tokens but the round trips. `namePlaces` asks for twenty at a
+time: the call is shown the town's history, then each building by label with
+its trade and its street, and hands back one sign per label. Each batch is a
+wave's worth of independent calls, and the batches of one wave cannot see each
+other.
+
+- **No word heads two signs.** The head is the first word after any "The",
+  possessives dropped, so The Anchor, Anchor Supply and Anchor's are one head.
+  A batch is told the heads already hung and refused with the sign named if it
+  repeats one of them or one of its own. Then the answers are read in index
+  order: the lower index keeps a head, and a sign whose head is spent by then is
+  written by the fallback composer, so which sign keeps a word never depends on
+  which batch landed first.
+- **More than one shape.** The prompt shows five shapes as bracketed slots
+  (possessive, family firm, place word with the trade, numbered address, The X
+  Y) and asks for a mix. Measured on one live 1x1 town: 9 signs, 9 distinct
+  heads, all five shapes present.
+- **The offline composer stays the offline path.** A batch the model will not
+  write, and any sign it repeats, comes from `fallback.namePlace`, asked again
+  at the next index until its head is free.
 
 ### A place written whole
 
@@ -110,6 +140,23 @@ around the shell, so the only ids the model can decode are the ones it was
 handed, there is exactly one answer for each of them, and the role is never
 asked for, because which post is which job is a fact about the building.
 
+### Every person's life
+
+A person is written through `@gb/world`'s own schemas: `life` is `Life` with
+every field required (`history`, `interests`, `manner`, `cares`, `avoids`,
+`reason`, `errand`), and `background` is `BackgroundFact[]`, at least four
+facts and at most `MAX_BACKGROUND_FACTS`. What the schema cannot say is checked
+here: a codex has to have a fact behind each of the four unlocks (`met`,
+`talked`, `quest`, `told`), or a stage the player reaches earns them nothing,
+and the next attempt is told which stage is empty. `reason` and `errand` are
+asked for in the first person, as a sentence the person could say out loud,
+because that is how the conversation says them. `src/person.ts` is the one
+shape, shared by the whole-place tool and the single-person tool, and
+`profileOf` is the only way one becomes an `NpcProfile`.
+
+Measured on one live 1x1 town: 10 people, 10 with every field of a life, 10
+with a codex using all four stages.
+
 ### Unique names when nobody can see anybody else
 
 Two places written at the same time cannot be told about each other, so they
@@ -121,13 +168,17 @@ agreement moves into the request instead.
   The alphabet is shuffled once per build and dealt out four at a time, so any
   six places in a row hold disjoint letters, which covers every wave the engine
   can serve. Two people can only collide if their family names collide, so
-  inside that window a collision is not unlikely, it is unwritable.
+  inside that window a collision is not unlikely, it is unwritable. The
+  single-person call is dealt letters the same way, off the person's own index,
+  so a narrator asked one person at a time gets the same guarantee.
 - **Places and everything else.** Names are spent in index order once the wave
   has landed, never while it is in the air. The lower index keeps the name and
   the higher one is asked again with the taken names quoted at it; a second
   repeat is written by the fallback narrator rather than costing a third call.
-  So which of two answers keeps a name is decided by the index it was asked at,
-  and the same seed builds the same city whatever order the engine answered in.
+  A place's sign is spent by its head word as well as its name, the way a
+  batch's are. So which of two answers keeps a name is decided by the index it
+  was asked at, and the same seed builds the same city whatever order the
+  engine answered in.
 
 ### The corner of the city a quest is written about
 
@@ -153,8 +204,9 @@ Calls run in waves: `concurrency` of them go out together and all land before th
 - Answers are reassembled by index, never by arrival.
 - What a call is told about the answers before it is the previous waves' answers, never its own wave's, so it does not depend on which reply landed first.
 - The corner of the city a quest is set in is drawn from the build's seed and the quest's index.
+- The seed a call sends is drawn from its position, so it is the same however the waves fell.
 
-`writeInstances`, `namePlaces` and quest writing each fan out across the full width. `@gb/forge` still asks for names, people and things one at a time through the `Narrator` interface, and those run one call at a time until it moves to the plural shapes.
+`namePlaces`, `writeInstances` and quest writing each fan out across the full width. `@gb/forge` still asks for names, people and things one at a time through the `Narrator` interface, and those run one call at a time until it moves to the plural shapes.
 
 ### The schema the model is handed
 
@@ -167,14 +219,14 @@ Validation always runs against `@gb/quest`'s own contract, never against the sho
 
 ### What each call knows about the city
 
-A model cannot be specific about a world it cannot see. Every descriptive call is told the city's name and the names already spent, so the same city does not end up with four Vidals, and its people talk about the place they are standing in.
+A model cannot be specific about a world it cannot see. Every descriptive call is told the city's name, its history and the names already spent, so the same city does not end up with four Vidals, and its people talk about the place they are standing in.
 
 ## How to modify this blackbox safely
 
-A new authoring task is a new prompt file, a new tool in `src/tools.ts`, and a method that asks for it. A task that runs many at once also needs a `Pass` in `src/unique.ts`, which is what settles the names in index order. Changing a prompt needs no code change, only a regenerate. `GAME_BOX_SLOTS` is how many calls the engine behind the sidecar serves at once; llama-server reports it as `total_slots` and the sidecar does not pass it on, so it is set by hand or left at the default.
+A new authoring task is a new prompt file, a new tool in `src/tools.ts`, and a method that asks for it with a label for its position. A task that runs many at once also needs a `Pass` in `src/unique.ts`, which is what settles the names in index order. Changing a prompt needs no code change, only a regenerate. `GAME_BOX_SLOTS` is how many calls the engine behind the sidecar serves at once; llama-server reports it as `total_slots` and the sidecar does not pass it on, so it is set by hand or left at the default.
 
-One file per job: `src/premise.ts` writes the city's history, `src/instance.ts` writes a place whole, `src/place-names.ts` names the buildings that do not open, `src/quests.ts` writes the work, `src/neighbourhood.ts` cuts the city into corners a quest can be written about, `src/claim.ts` deals out the family names, `src/unique.ts` settles which answer keeps a name, and `src/progress.ts` says how far it has got.
+One file per job: `src/premise.ts` writes the city's history, `src/asked.ts` renders what the owner typed for each writer, `src/signs.ts` names the buildings that do not open in batches, `src/instance.ts` writes a place whole, `src/person.ts` is the one shape a person is written in, `src/quests.ts` writes the work, `src/neighbourhood.ts` cuts the city into corners a quest can be written about, `src/claim.ts` deals out the family names, `src/head.ts` says what word a sign is read by, `src/registry.ts` keeps what is spent, `src/unique.ts` settles which answer keeps a name, `src/pins.ts` draws the seed a call sends, and `src/progress.ts` says how far it has got.
 
 A length in a tool's schema is `@gb/world`'s own limit on the field the answer ends up in, never a limit on how much the model may write. The engine does not enforce `maxLength` anyway: it lets the answer run and the contract then throws the whole call away, which is why nothing has a cap the world does not already impose.
 
-Run `pnpm --filter @gb/scribe test`, which checks every outgoing request against the service's own published `chat-request.json`.
+Run `pnpm --filter @gb/scribe test`, which checks every outgoing request against the service's own published `chat-request.json`. `pnpm --filter @gb/scribe run measure [cities] [blockCells]` builds that many towns through the live sidecar and prints what came back: distinct head words and shapes over the signs, tokens and seconds per batch, who got a life and a codex, the quests, the problems by code, and whether any example from a prompt came back as output.

@@ -61,6 +61,15 @@ describe('Scribe', () => {
     expect(scribe.problems().length).toBeGreaterThan(0)
   })
 
+  it('asks again on the next seed when the model answers in prose, and takes the call it makes then', async () => {
+    const { sent, sidecar } = fakeModel(['no-call', { name: 'Saltmere' }])
+    const scribe = new Scribe({ sidecar })
+
+    expect(await scribe.nameCity({ theme: 'port', seed: 's' })).toBe('Saltmere')
+    expect(sent).toHaveLength(2)
+    expect(scribe.problems().map((problem) => problem.error.code)).toEqual(['no-tool-call'])
+  })
+
   it('records a refusal, an unreachable sidecar, and an answer that is not a call', async () => {
     const refused = fakeModel(['http-500'])
     const scribeA = new Scribe({ sidecar: refused.sidecar, attempts: 1 })
@@ -106,6 +115,39 @@ describe('Scribe', () => {
     expect(sent[2]!.user).toContain('- The Anchor')
   })
 
+  it('pins every call to a seed drawn from the city seed and its position, and a temperature', async () => {
+    const pinsOf = async (seed: string) => {
+      const pins: { seed?: number; temperature?: number }[] = []
+      const fetch = (async (_url: string, init: RequestInit) => {
+        const body = JSON.parse(String(init.body))
+        pins.push({ seed: body.seed, temperature: body.temperature })
+        const tool = body.tools[0].function
+        const reply = tool.name === 'name_city' ? { name: 'x' } : { name: 'Saltmere' }
+        return Response.json({
+          choices: [{ message: { role: 'assistant', tool_calls: [{ id: 'call_1', type: 'function', function: { name: tool.name, arguments: JSON.stringify(reply) } }] } }],
+        })
+      }) as unknown as typeof globalThis.fetch
+      const scribe = new Scribe({ sidecar: new Sidecar({ base: 'http://127.0.0.1:8976', fetch }), seed, attempts: 2 })
+      await scribe.nameCity({ theme: 'port', seed })
+      await scribe.namePlace({ kind: 'bar', theme: 'port', index: 3 })
+      await scribe.namePlace({ kind: 'bar', theme: 'port', index: 4 })
+      return pins
+    }
+
+    const [first, again, elsewhere] = await Promise.all([pinsOf('harbour'), pinsOf('harbour'), pinsOf('sandbar')])
+    // the city's name was refused once, so its two attempts are two calls at one position
+    expect(first).toHaveLength(4)
+    for (const pin of first) {
+      expect(pin.temperature).toBe(0.9)
+      expect(pin.seed).toBeGreaterThanOrEqual(0)
+      expect(pin.seed).toBeLessThanOrEqual(4294967294)
+    }
+    // by position: the same on every run of one city, every call its own, and another city another set
+    expect(first).toEqual(again)
+    expect(new Set(first.map((pin) => pin.seed)).size).toBe(4)
+    expect(elsewhere.map((pin) => pin.seed)).not.toEqual(first.map((pin) => pin.seed))
+  })
+
   it('tries again when a call ran out of time, and gives up on one the caller stopped', async () => {
     // the sidecar's own clock is its business; what this box owes is what it does with the answer
     const answers = (...codes: string[]) => {
@@ -147,7 +189,7 @@ describe('Scribe', () => {
       seed: 'scribe-city',
       blocksX: 1,
       blocksY: 1,
-      blockCells: 12,
+      blockCells: 16,
     })
     expect(built.ok).toBe(true)
     if (!built.ok) return

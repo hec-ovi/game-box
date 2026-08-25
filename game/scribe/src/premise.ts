@@ -1,8 +1,15 @@
 import { OfflineNarrator, type Narrator } from '@gb/forge'
 import { BUILDING_KINDS, type Premise } from '@gb/world'
+import { askedLines, type Asked } from './asked.ts'
 import type { Asker, Violation } from './asker.ts'
 import { prompt } from './prompts.ts'
 import { WRITE_PREMISE } from './tools.ts'
+
+/** The first question of a build: the theme, the seed, and whatever the owner typed beyond them. */
+export interface PremiseInput extends Asked {
+  readonly theme: string
+  readonly seed: string
+}
 
 export interface PremiseWriterOptions {
   readonly asker: Asker
@@ -30,10 +37,16 @@ export class PremiseWriter {
     this.#fallback = options.fallback
   }
 
-  async write(input: { theme: string; seed: string }): Promise<Premise> {
+  async write(input: PremiseInput): Promise<Premise> {
     const written = await this.#asker.ask(
       WRITE_PREMISE,
-      prompt('write-premise', { ...input, kinds: BUILDING_KINDS.join(', ') }),
+      prompt('write-premise', {
+        theme: input.theme,
+        seed: input.seed,
+        asked: askedLines(input, ['brief', 'tone', 'mainQuest', 'look']) || prompt('asked-nothing'),
+        kinds: BUILDING_KINDS.join(', '),
+      }),
+      'premise',
       problemsWith,
     )
     return written ?? (await this.#spare(input))
@@ -45,7 +58,7 @@ export class PremiseWriter {
    * A build with the model on never leaves a town with less story than the same
    * build with it off, the same way it never leaves one with fewer quests.
    */
-  async #spare(input: { theme: string; seed: string }): Promise<Premise> {
+  async #spare(input: PremiseInput): Promise<Premise> {
     const written = await this.#fallback.writePremise?.(input)
     return written ?? (await new OfflineNarrator(input.seed).writePremise(input))
   }

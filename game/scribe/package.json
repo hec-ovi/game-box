@@ -8,7 +8,8 @@
   },
   "scripts": {
     "test": "vitest run",
-    "generate": "node --experimental-strip-types tools/bundle-prompts.ts"
+    "generate": "node --experimental-strip-types tools/bundle-prompts.ts",
+    "measure": "node --experimental-strip-types tools/measure.ts"
   },
   "dependencies": {
     "@gb/forge": "workspace:*",

@@ -1,5 +1,7 @@
 import { PROMPTS, type PromptName } from './prompts.generated.ts'
 
+export type { PromptName }
+
 /**
  * Reads one prompt file and fills its `{{name}}` holes. A hole with no value is
  * left as it is, so a missing value shows up in the prompt instead of vanishing.
