@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { personSchema, type WrittenPerson } from './person.ts'
 import { prompt } from './prompts.ts'
 import { compactSchema, type JsonSchema } from './schema/compact.ts'
+import { pinToCorner, type CornerIds } from './schema/corner.ts'
 import { narrowToSummary } from './schema/narrow.ts'
 import { ToolContract } from './schema/tool-contract.ts'
 
@@ -160,12 +161,15 @@ function exactly<T>(item: z.ZodType<T>, count: number): z.ZodType<T[]> {
   return count === 0 ? z.array(item).max(0) : z.array(item).length(count)
 }
 
-/** The quest tool's parameters: the draft contract, cut to what a summary can name and written without repeats. */
-export const questToolSchema = (): JsonSchema =>
-  compactSchema(narrowToSummary(questDraftContract.jsonSchema() as JsonSchema))
+/** The quest tool's parameters: the draft contract, cut to what a summary can name, pinned to the corner's own ids, and written without repeats. */
+export const questToolSchema = (corner: CornerIds): JsonSchema =>
+  compactSchema(pinToCorner(narrowToSummary(questDraftContract.jsonSchema() as JsonSchema), corner))
 
-export const WRITE_QUEST: Tool<QuestDraft> = {
-  name: 'write_quest',
-  description: prompt('tool-write-quest'),
-  contract: new ToolContract(questDraftContract, questToolSchema()),
+/** One quest, written about one corner of the city: the only ids it can decode are that corner's. */
+export function questTool(corner: CornerIds): Tool<QuestDraft> {
+  return {
+    name: 'write_quest',
+    description: prompt('tool-write-quest'),
+    contract: new ToolContract(questDraftContract, questToolSchema(corner)),
+  }
 }

@@ -1,5 +1,6 @@
 import type { Instance, InstancePerson, InstancePost, InstanceRequest, InstanceThing, Narrator } from '@gb/forge'
 import type { Asker, Violation } from './asker.ts'
+import { briefLines } from './brief-lines.ts'
 import { charterLines } from './charter-lines.ts'
 import { FamilyClaims } from './claim.ts'
 import { personProblems, profileOf } from './person.ts'
@@ -76,6 +77,7 @@ export class InstanceWriter implements Pass<InstanceRequest, Instance> {
         charter: charterLines(request.charter),
         premise: request.premise ?? prompt('no-history'),
         rooms: request.rooms.length ? request.rooms.join(', ') : 'one room',
+        has: briefLines(request.has),
         letters: shell.letters.split('').join(', '),
         posts: bullets(
           request.posts.map((post) => `${post.postId}: the ${post.role}`),

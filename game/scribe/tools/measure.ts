@@ -1,20 +1,25 @@
 /**
  * Builds cities through the live sidecar and prints what the model wrote: the
- * kinds of place each history invented and whether the city has them, how many
+ * kinds of place each history invented and whether the city has them, the locks
+ * and screens the city placed and the quests written through them, how many
  * distinct head words and shapes the signs came out in, who got a life and a
  * codex, what each kind of call costs in tokens and seconds, and whether any
- * example from a prompt came back as output.
+ * slot a prompt shows came back as output.
  *
  * Every brief asks for a kind of place the presets lack, so every city measures
  * the charter path.
  *
- * Usage: pnpm --filter @gb/scribe run measure [cities] [blocks] [blockCells]
+ * Usage: pnpm --filter @gb/scribe run measure [cities] [blocks] [blockCells] [firstTown]
  */
-import { Forge } from '@gb/forge'
+import { Forge, summarise } from '@gb/forge'
 import { Sidecar } from '@gb/sidecar'
 import { SHIPPED_CHARTERS } from '@gb/world'
 import { headOf } from '../src/head.ts'
 import { Scribe } from '../src/index.ts'
+import { CityLocks } from '../src/locks.ts'
+import { PROMPTS } from '../src/prompts.generated.ts'
+import { reachProblems } from '../src/reach.ts'
+import type { QuestDraft } from '../src/tools.ts'
 
 const TOWNS = [
   {
@@ -57,14 +62,14 @@ const TOWNS = [
     theme: 'shipyard town in decline',
     brief: 'A dry dock with one hull in it, and a pawnbroker holding half the town\'s tools.',
   },
+  {
+    theme: 'neon port after the docks shut',
+    brief: 'A disco where the whole town ends up after dark, with a cellar nobody but the doorman gets into, and a shipping office with a locked back room where a terminal still holds the manifests.',
+  },
 ]
 
-/** What a prompt once showed as an example, and every bracketed slot the prompts show now. */
-const LEAKS = [
-  'copper wheel', 'mystical tavern', 'wonders', 'legendary', 'dunn supply', 'hollis',
-  '[first name]', '[family name]', '[trade]', '[place word]', '[number]', '[street]', '[adjective]', '[noun]',
-  '[thing]', '[place]', '[person]',
-]
+/** Every bracketed slot the prompts show, read off the prompts themselves: the one thing a prompt can hand back as an answer. */
+const LEAKS = [...new Set(Object.values(PROMPTS).flatMap((text) => text.match(/\[[a-z][a-z ]*\]/g) ?? []))]
 
 interface Usage {
   readonly tool: string
@@ -76,6 +81,7 @@ interface Usage {
 const cities = Number(process.argv[2] ?? 1)
 const blocks = Number(process.argv[3] ?? 1)
 const blockCells = Number(process.argv[4] ?? 16)
+const firstTown = Number(process.argv[5] ?? 0)
 const usage: Usage[] = []
 /** The start of every reply that came back as prose rather than the call. */
 const prose: string[] = []
@@ -137,10 +143,12 @@ let quests = 0
 let rejected = 0
 let invented = 0
 let raised = 0
+let throughLocks = 0
+let walkable = 0
 const problems = new Map<string, number>()
 
 for (let i = 0; i < cities; i++) {
-  const town = TOWNS[i % TOWNS.length]!
+  const town = TOWNS[(firstTown + i) % TOWNS.length]!
   const seed = `measure-${i}`
   const scribe = new Scribe({ sidecar: new Sidecar({ fetch }), seed })
   const started = Date.now()
@@ -169,8 +177,19 @@ for (let i = 0; i < cities; i++) {
   for (const problem of scribe.problems()) {
     const key = `${problem.task}:${problem.error.code}`
     problems.set(key, (problems.get(key) ?? 0) + 1)
-    if (problem.task === 'write_charter') console.log(`  ${problem.at}: ${problem.error.code}`)
+    const why = 'violations' in problem.error ? problem.error.violations.map((violation) => `${violation.path}: ${violation.message}`).join(' | ') : ''
+    console.log(`  ${problem.at}: ${problem.error.code}${why ? ` (${why})` : ''}`)
   }
+
+  const summary = summarise(world, world.premise())
+  const locks = summary.places.flatMap((place) => place.locks ?? [])
+  const screens = summary.places.flatMap((place) => place.machines ?? [])
+  const shipped: readonly QuestDraft[] = built.value.quests
+  const walk = new CityLocks(summary.places)
+  const used = shipped.filter((quest) => quest.steps.some((step) => ['unlock', 'hack', 'beat-game', 'buy'].includes(step.kind)))
+  const walked = shipped.filter((quest) => reachProblems(quest, walk).length === 0)
+  throughLocks += used.length
+  walkable += walked.length
 
   const text = JSON.stringify([world.toJSON(), built.value.quests]).toLowerCase()
   for (const leak of LEAKS) {
@@ -198,6 +217,22 @@ for (let i = 0; i < cities; i++) {
     console.log(`    in the city: ${of.length} plots, ${opened.length} open${of.length ? `: ${of.map((plot) => plot.name).join(' | ')}` : ''}`)
   }
   for (const dropped of built.value.dropped) console.log(`  dropped ${dropped.word}: ${dropped.reason}`)
+  console.log(
+    `  locks: ${locks.length} (${locks.filter((lock) => lock.street).length} street doors, ${locks.filter((lock) => lock.keyItemId).length} with a key, ${locks.filter((lock) => lock.password).length} with a code); ` +
+      `screens: ${screens.length} (${screens.filter((screen) => screen.locked).length} locked; ${[...new Set(screens.map((screen) => screen.program))].map((program) => `${program} ${screens.filter((screen) => screen.program === program).length}`).join(', ')}); ` +
+      `for sale: ${summary.places.filter((place) => place.forSale !== undefined).map((place) => `${place.name} at ${place.forSale}`).join(', ') || 'nothing'}`,
+  )
+  for (const place of summary.places.filter((place) => place.locks?.length || place.machines?.length)) {
+    const doors = (place.locks ?? []).map((lock) => `${lock.doorId} ${lock.street ? 'street door' : lock.room} by ${[lock.keyItemId && `key ${lock.keyItemId} (${lock.keeperNpcId})`, lock.password && `code ${lock.password}`].filter(Boolean).join(' or ')}`)
+    const machines = (place.machines ?? []).map((machine) => `${machine.machineId} ${machine.program}${machine.locked ? ` (${machine.password})` : ''}`)
+    console.log(`    ${place.name}, a ${place.kind}: ${[...doors, ...machines].join('; ')}`)
+  }
+  for (const quest of shipped) {
+    const kinds = quest.steps.map((step) => step.kind).join(' > ')
+    const extras = [quest.reward.access?.length && `access ${quest.reward.access.map((access) => Object.values(access)[0]).join(',')}`, quest.reward.car && `car ${quest.reward.car}`, quest.reward.deed && `deed ${quest.reward.deed}`].filter(Boolean).join(', ')
+    const problems = reachProblems(quest, walk)
+    console.log(`  ${quest.id} ${quest.kind} ${quest.difficulty} "${quest.title}": ${kinds}${extras ? `; ${extras}` : ''}${problems.length ? `; SHUT: ${problems.map((problem) => `${problem.path} ${problem.message}`).join(' | ')}` : ''}`)
+  }
   console.log(`  ${world.name}: ${allSigns.join(' | ')}`)
 }
 
@@ -205,7 +240,7 @@ const mean = (values: number[]) => (values.length ? Math.round(values.reduce((a,
 console.log(`\nkinds invented: ${invented}, with a plot in the city: ${raised}`)
 console.log(`signs: ${signs}, distinct heads: ${heads}, shapes: ${[...shapes].map(([shape, n]) => `${shape} ${n}`).join(', ')}`)
 console.log(`people: ${people}, with a whole life: ${lives}, with a codex: ${codices}, codex using all four stages: ${staged}`)
-console.log(`quests: ${quests}, rejected: ${rejected}`)
+console.log(`quests: ${quests}, rejected: ${rejected}, through a lock, a screen or a counter: ${throughLocks}, passing the lock walk: ${walkable}`)
 console.log('calls by tool: count, prompt tokens, completion tokens, seconds (means)')
 for (const tool of new Set(usage.map((entry) => entry.tool))) {
   const calls = usage.filter((entry) => entry.tool === tool)

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { Scribe, type PlaceRequest, type ScribeProgress } from '../src/index.ts'
 import { fakeModel, type Sent } from './fake-model.ts'
 import { backgroundOf, lifeOf, shellOf } from './people.ts'
-import { JAIL, charterOf } from './places.ts'
+import { JAIL, PLAIN, charterOf } from './places.ts'
 
 const CITY: WorldSummary = {
   cityName: 'Cold Harbour',
@@ -27,6 +27,7 @@ const PLACES: InstanceRequest[] = ['bar', 'shop'].map((kind, i) => ({
   rooms: ['main'],
   posts: [{ postId: `anchor_${i}`, role: 'clerk', index: i }],
   things: [],
+  has: PLAIN,
 }))
 
 const FRONTAGE: PlaceRequest[] = Array.from({ length: 3 }, (_, i) => ({ index: i + 2, kind: 'house', charter: charterOf('house'), theme: 'port' }))

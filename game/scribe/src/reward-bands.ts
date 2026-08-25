@@ -9,10 +9,14 @@ import { DIFFICULTIES, REWARD_TABLE } from '@gb/quest'
  */
 export function rewardBands(): string {
   const header =
-    '| tier | pay | standing swing, at most | items, at most | a typical one |\n|---|---|---|---|---|'
+    '| tier | pay | standing swing, at most | items, at most | doors opened, at most | a car | a home | a typical one |\n|---|---|---|---|---|---|---|---|'
   const rows = DIFFICULTIES.map((tier) => {
     const band = REWARD_TABLE[tier]
-    return `| \`${tier}\` | ${band.money.min} to ${band.money.max} | ${band.reputation} | ${band.items} | ${band.typical.money} and ${band.typical.reputation} standing |`
+    return `| \`${tier}\` | ${band.money.min} to ${band.money.max} | ${band.reputation} | ${band.items} | ${band.access} | ${yesNo(band.car)} | ${yesNo(band.deed)} | ${band.typical.money} and ${band.typical.reputation} standing |`
   })
   return [header, ...rows].join('\n')
+}
+
+function yesNo(allowed: boolean): string {
+  return allowed ? 'yes' : 'no'
 }

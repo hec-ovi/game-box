@@ -1,5 +1,7 @@
 import type { WorldSummary } from '@gb/forge'
 import { Rng } from '@gb/kit'
+import { placeLines } from './place-lines.ts'
+import type { CornerIds } from './schema/corner.ts'
 
 type Place = WorldSummary['places'][number]
 
@@ -87,9 +89,34 @@ export function walk(from: Place, to: Place): number | undefined {
   return Math.hypot(from.door.x - to.door.x, from.door.z - to.door.z)
 }
 
+/** The games a screen can run, so a `beat-game` is only ever played on one. */
+const GAMES: ReadonlySet<string> = new Set(['snake', 'tetris'])
+
+/** Every id the corner holds, by what it is: what the quest tool is pinned to. */
+export function idsOf(slice: Slice): CornerIds {
+  const places = slice.places
+  const locks = places.flatMap((place) => place.locks ?? [])
+  const machines = places.flatMap((place) => place.machines ?? [])
+  const items = places.flatMap((place) => place.items)
+  return {
+    npcs: places.flatMap((place) => place.npcs.map((npc) => npc.npcId)),
+    items: [...items.map((item) => item.itemId), ...locks.flatMap((lock) => (lock.keyItemId ? [lock.keyItemId] : []))],
+    plots: places.map((place) => place.plotId),
+    interiors: places.flatMap((place) => (place.interiorId ? [place.interiorId] : [])),
+    doors: locks.map((lock) => lock.doorId),
+    screens: machines.filter((machine) => machine.locked).map((machine) => machine.machineId),
+    games: machines.filter((machine) => GAMES.has(machine.program)).map((machine) => machine.machineId),
+    counters: items.filter((item) => item.value !== undefined && item.ownerNpcId !== undefined).map((item) => item.itemId),
+    codes: [...locks, ...machines].flatMap((locked) => (locked.password ? [locked.password] : [])),
+    homes: places.flatMap((place) => (place.forSale !== undefined && place.interiorId ? [place.interiorId] : [])),
+    bench: places.some((place) => place.work?.includes('bench')),
+  }
+}
+
 /**
  * The slice written out for the model: every place by id, who is in it, what is
- * lying about, and how far it is from the door the errand starts at.
+ * lying about and what it costs, its locks and screens, and how far it is from
+ * the door the errand starts at.
  */
 export function describeSlice(slice: Slice, characters: ReadonlyMap<string, string>): string {
   return slice.places
@@ -102,17 +129,11 @@ export function describeSlice(slice: Slice, characters: ReadonlyMap<string, stri
             ? ''
             : `, ${Math.round(away / STEP) * STEP} m from ${slice.home.name}.`
       const character = characters.get(place.name)
-      const people =
-        place.npcs.map((npc) => `${npc.name} (${npc.role}, ${npc.npcId})`).join('; ') || 'nobody'
-      const things =
-        place.items
-          .map((item) => `${item.name} (${item.itemId}${item.ownerNpcId ? `, owned by ${item.ownerNpcId}` : ''})`)
-          .join('; ') || 'nothing'
+      const ids = place.interiorId ? `${place.plotId}, ${place.interiorId}` : place.plotId
       return [
-        `- ${place.name}, a ${place.kind} (${place.plotId})${where}`,
+        `- ${place.name}, a ${place.kind} (${ids})${where}`,
         ...(character ? [`    what it is: ${character}`] : []),
-        `    people: ${people}`,
-        `    things: ${things}`,
+        ...placeLines(place),
       ].join('\n')
     })
     .join('\n')

@@ -1,14 +1,20 @@
 import type { JsonSchema } from './compact.ts'
 
 /** The step kinds the flow check refuses to let dangle: every one of them has to lead somewhere. */
-const MUST_LEAD_ON = new Set(['talk', 'goto', 'collect', 'deliver', 'escort', 'join', 'any-of'])
+const MUST_LEAD_ON = new Set(['talk', 'goto', 'collect', 'buy', 'deliver', 'escort', 'unlock', 'hack', 'beat-game', 'join', 'any-of'])
 
 /** The step kinds that end a quest: the flow check refuses a `next` on either of them. */
 const ENDS_IT = new Set(['complete', 'fail'])
 
 /** What a step decides first, and what it can only fill in once the rest is settled. */
 const FIRST = ['kind', 'id', 'objective']
-const LAST = ['next', 'markerLabel', 'hint', 'requires', 'effects', 'optional', 'hidden']
+const LAST = ['next', 'markerLabel', 'hint', 'requires', 'effects']
+
+/** The effects a small model gets wrong more often than right: a `reveal` on a step that is not hidden, a `pay` that breaks the band the reward already fills. */
+const CUT_EFFECTS = new Set(['reveal', 'pay'])
+
+/** The step kinds that open something: a code given on one of these lands after the door or the screen was tried. */
+const OPENS = new Set(['unlock', 'hack'])
 
 /**
  * Narrows the quest draft schema to what a model can get right, because the
@@ -23,6 +29,24 @@ const LAST = ['next', 'markerLabel', 'hint', 'requires', 'effects', 'optional', 
  *   two kinds that end a quest.** Measured: six drafts out of six left `next`
  *   off every step in the middle of the flow, and another put one on a
  *   `complete` step. The prompt asked for both in words.
+ * - **No secrets, no `pay`, no `difficulty`.** Measured on ten live drafts:
+ *   three revealed a step that was not hidden, and five paid outside the band
+ *   of the tier they named. So `hidden` and `reveal` are cut, `pay` is cut
+ *   (the reward is the pay), and `difficulty` is cut and read off what the
+ *   reward hands over instead (`tier.ts`).
+ * - **The pay is written, and it is never nothing.** Measured on ten live
+ *   drafts: two rewarded 0 credits while handing over an item or a door, which
+ *   puts the reward in a tier whose floor it cannot reach, and both were sent
+ *   back. `money` is required and starts at 1, so a quest that pays nothing is
+ *   a quest the grammar will not write.
+ * - **No step is optional, and a code is never given at the door.** Measured
+ *   on two live 3x3 towns: five of eighteen drafts hung the only path to
+ *   `complete` off a step they had marked optional, and none wrote a side
+ *   trip that rejoined; two earlier drafts marked the `complete` step itself
+ *   optional, which is a quest with no ending. So `optional` is not offered
+ *   at all. One draft put the `give-password` on the `hack` step itself,
+ *   where it lands after the screen was tried, so it is gone from the two
+ *   opening kinds.
  * - **Each step in writing order**, because the order properties appear in is
  *   the order a constrained model has to write them in. `kind` goes first, so a
  *   step commits to a mechanic before it writes the sentence the player reads,
@@ -41,8 +65,43 @@ export function narrowToSummary(schema: JsonSchema): JsonSchema {
 
   items!['oneOf'] = variants
     .filter((variant) => kindOf(variant as JsonSchema) !== 'stash')
-    .map((variant) => inWritingOrder(mustLead(plotsOnly(variant as JsonSchema))))
+    .map((variant) => inWritingOrder(mustLead(plotsOnly(noSideTrips(noSecrets(variant as JsonSchema))))))
+  delete (root['properties'] as Record<string, JsonSchema>)['difficulty']
+  mustPay((root['properties'] as Record<string, JsonSchema>)['reward'])
   return root
+}
+
+/** Makes the reward say what the job pays, and refuses nothing as an answer. */
+function mustPay(reward: JsonSchema | undefined): void {
+  const money = (reward?.['properties'] as Record<string, JsonSchema> | undefined)?.['money']
+  if (!money) return
+  money['minimum'] = 1
+  delete money['default']
+  const required: string[] = Array.isArray(reward!['required']) ? reward!['required'] : []
+  if (!required.includes('money')) reward!['required'] = [...required, 'money']
+}
+
+/** Takes `hidden` off the step and the `reveal` and `pay` effects out of its list, and the `give-password` off a step that opens something. */
+function noSecrets(variant: JsonSchema): JsonSchema {
+  const properties = variant['properties'] as Record<string, JsonSchema> | undefined
+  if (!properties) return variant
+  delete properties['hidden']
+  const cut = new Set(OPENS.has(kindOf(variant) ?? '') ? [...CUT_EFFECTS, 'give-password'] : CUT_EFFECTS)
+  const effects = (properties['effects']?.['items'] as JsonSchema | undefined)?.['oneOf']
+  if (Array.isArray(effects)) {
+    properties['effects']!['items'] = {
+      ...(properties['effects']!['items'] as JsonSchema),
+      oneOf: effects.filter((effect) => !cut.has(kindOf(effect as JsonSchema) ?? '')),
+    }
+  }
+  return variant
+}
+
+/** Takes the side trip off a step: a branch that rejoins the main line is one a model writes as a dead end. */
+function noSideTrips(variant: JsonSchema): JsonSchema {
+  const properties = variant['properties'] as Record<string, JsonSchema> | undefined
+  if (properties) delete properties['optional']
+  return variant
 }
 
 function kindOf(variant: JsonSchema): string | undefined {

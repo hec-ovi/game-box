@@ -1,10 +1,10 @@
 # @gb/scribe contract
 
-contractVersion: 0.6.0
+contractVersion: 0.7.0
 
 ## Purpose
 
-The narrator backed by the local model: the city's history first, written from the owner's own brief, with a charter for every kind of place that history invents, then its name and the signs over its doors, whole places and the people in them with their lives, and the quests they hand out, each one a forced tool call validated against the schema the tool was built from, every call pinned to a seed of its own.
+The narrator backed by the local model: the city's history first, written from the owner's own brief, with a charter for every kind of place that history invents, then its name and the signs over its doors, whole places and the people in them with their lives, each place written knowing the locks and screens the plan put in it, and the quests they hand out, through those locks, screens and counters where the town has them, each one a forced tool call validated against the schema the tool was built from, every call pinned to a seed of its own.
 
 ## Inputs
 
@@ -14,8 +14,8 @@ The narrator backed by the local model: the city's history first, written from t
 | `writePremise(input)` | `PremiseInput`: `theme`, `seed`, and the owner's `brief?` and `asks?` in `@gb/world`'s shapes | the first call of a build, made before a plot is placed |
 | `namePlaces(requests)` | `PlaceRequest[]`: per building its `kind` (the word of its charter), the `charter` itself, the `theme`, its `index` in the town, the `street?` its door is on, and the city's `premise?` as `premiseLines` renders it | for the buildings that do not open |
 | `namePlace(input)`, `describeNpc(input)` | the `Narrator` shapes: a place's `kind` and `charter`; a person's `role`, `placeKind`, `place` (the charter) and `placeName` | the single-place questions, each told what such a place is here |
-| `writeInstances(requests)` | `@gb/forge`'s `InstanceRequest[]`: for each place its `kind`, its `charter`, the `theme`, its `index`, the `rooms` its shell was cut into, the `posts` to fill (an id, a role and an index each), the `things` lying about (an id, an archetype and an index each), and the city's `premise` once there is one | the ids are the caller's own handles and come straight back on the answer; nothing about any other place may be in a request |
-| `writeQuests(input)` | `QuestInput`: `@gb/forge`'s `WorldSummary` with `asks?` on it, and `sideQuests` | the summary's `premise` is what the quests are written against |
+| `writeInstances(requests)` | `@gb/forge`'s `InstanceRequest[]`: for each place its `kind`, its `charter`, the `theme`, its `index`, the `rooms` its shell was cut into, the `posts` to fill (an id, a role and an index each), the `things` lying about (an id, an archetype and an index each), `has` (the instance brief: the rooms behind a lock and how each opens, the screens by room and program, whether a camera watches the door, and the price when the place is for sale), and the city's `premise` once there is one | the ids are the caller's own handles and come straight back on the answer; nothing about any other place may be in a request |
+| `writeQuests(input)` | `QuestInput`: `@gb/forge`'s `WorldSummary` with `asks?` on it, and `sideQuests` | the summary's `premise` is what the quests are written against; its places' `locks`, `machines`, `forSale` and prices are what a job through a door, a screen or a counter is written against |
 
 Scribe implements `@gb/forge`'s `Narrator`, so a `Forge` takes one and builds a city with it. What it takes beyond the interface is optional: a forge that hands over no brief, no asks and no sign requests gets the same city the interface promises.
 
@@ -26,8 +26,8 @@ Scribe implements `@gb/forge`'s `Narrator`, so a `Forge` takes one and builds a 
 | `writePremise` | `@gb/forge`'s `History`: `@gb/world`'s `Premise`, plus `charters` when the history invented a kind of place | always answered, and always one a city can be built out of. What the model writes is checked against the premise contract and against whether the town could be built from it; a history it will not write is the one the seed composes. Every word in `build` that no preset declares is asked for next as a charter, one call per word against `@gb/world`'s charter contract; a word the model then will not write is taken out of `build`, so `build` names only kinds the town can raise. The brief reaches the call verbatim, quoted; the tone, the main errand and the style choices reach it beside; a field left blank puts nothing in the prompt, and a form left wholly blank tells the model the choice is its own |
 | `nameCity`, `namePlace`, `describeNpc`, `describeItem` | the `Narrator` shapes | always answered: the fallback covers whatever the model cannot. `nameCity` is shown the history, so the town is named after what it lives on. `namePlace` and `describeNpc` are shown what the place's charter says such a place is here. `describeNpc` answers `life` and `background`, every part written, and a name whose family name starts with the letters its index was dealt |
 | `namePlaces` | signs, in the order they were asked for | one per request, twenty to a model call, the history in front of the model and each building's label (what its charter says a person calls it) and street. No word heads two signs in the city: the head being the first word after any "The", possessives dropped. A sign the model repeats is written by the fallback composer |
-| `writeInstances` | `@gb/forge`'s `Instance[]`, in the order the places were asked for | each one carries the place's `name`, its `character` (what the place is, empty when the model wrote none of it), one person per post with the post's own role, their `life` (every field of `@gb/world`'s `Life`) and `background` (at least one fact behind each of the four unlocks), and one named thing per thing handed in. No two signs in a city share a head word, and nobody in a city shares a name with anybody else |
-| `writeQuests` | quest documents, sealed | one call per quest, every one of them already accepted by `@gb/quest` against the city it was written for; a slot the model cannot fill is filled by the fallback narrator's quest for that slot, so a model that will not write never costs a quest the offline narrator would have written. Every call is shown the town's history; the main line is shown `asks.mainQuest`, each side errand `asks.sideQuests`, and all of them `asks.tone` |
+| `writeInstances` | `@gb/forge`'s `Instance[]`, in the order the places were asked for | each one carries the place's `name`, its `character` (what the place is, empty when the model wrote none of it), one person per post with the post's own role, their `life` (every field of `@gb/world`'s `Life`) and `background` (at least one fact behind each of the four unlocks), and one named thing per thing handed in, all of it written knowing what the plan put in the place (`has`). No two signs in a city share a head word, and nobody in a city shares a name with anybody else |
+| `writeQuests` | quest documents, sealed | one call per quest, every one of them already accepted by `@gb/quest` against the city it was written for and walked here the way the harness walks it (below); a slot the model cannot fill is filled by the fallback narrator's quest for that slot, so a model that will not write never costs a quest the offline narrator would have written. A job may go through a locked door (`unlock`), a locked screen (`hack`), a game screen (`beat-game`) or a counter (`buy`), hand out a password (`give-password`), and pay `access`, a `car` or a `deed` where the town has the thing. Every call is shown the town's history; the main line is shown `asks.mainQuest`, each side errand `asks.sideQuests`, and all of them `asks.tone` |
 | `problems()` | `ScribeProblem[]`: the `task` (the tool), `at` (the call's position, `charter:jail`, `quest:3`) and the `error` | every call that failed, so a thin world can be explained rather than guessed at |
 | `progress` port | `ScribeProgress`: `stage` (`history`, `city`, `places`, `quests`), `done`, `total`, `what` | published as each stage opens and each answer lands, and every stage ends with `done` equal to `total`. The history stage is the premise and then the charters it calls for, one bar that grows. Nothing reads it back, so a build with a loader writes the same city as one without, and a port that throws is dropped rather than failing the build |
 
@@ -38,7 +38,7 @@ Scribe implements `@gb/forge`'s `Narrator`, so a `Forge` takes one and builds a 
 - `unreachable`: the sidecar could not be contacted.
 - `refused`: it answered with a non-2xx status.
 - `no-tool-call`: the model wrote prose instead of calling the tool. Tried again on the next attempt's seed, which is a different draw.
-- `invalid-arguments`: the answer did not hold up, either against the tool's own contract or, for a quest, against `@gb/quest` and the city it names, for a place, against the posts and things it was handed and the four unlocks its people's codices have to cover, for a batch of signs, against the labels it was handed and the head words already hung, for a history, against whether a town could be built out of it, or for a charter, against a blade that spells nothing and a sign template with no slot in it. The next attempt is told exactly which fields.
+- `invalid-arguments`: the answer did not hold up, either against the tool's own contract or, for a quest, against `@gb/quest` and the city it names and then against what the harness holds it to at a lock, a screen or a counter, for a place, against the posts and things it was handed and the four unlocks its people's codices have to cover, for a batch of signs, against the labels it was handed and the head words already hung, for a history, against whether a town could be built out of it, or for a charter, against a blade that spells nothing and a sign template with no slot in it. The next attempt is told exactly which fields.
 - `timeout`: nothing came back in time. Tried again on the next attempt's seed.
 - `broken`: the engine died mid-reply. Tried again on the next attempt's seed.
 - `aborted`: the caller stopped the call. Never tried again.
@@ -50,8 +50,8 @@ Scribe implements `@gb/forge`'s `Narrator`, so a `Forge` takes one and builds a 
 - `@gb/kit` contract: contracts, results, the deterministic rng the per-call seeds are drawn with.
 - `@gb/sidecar` contract (game/sidecar/CONTRACT.md): the client that makes the call and carries the seed and the temperature.
 - `@gb/forge` contract: the `Narrator` interface it implements, the `History` it answers, the instance shapes, `premiseLines`, and the `OfflineNarrator` it falls back to.
-- `@gb/quest` contract: the quest draft shape a quest writer fills in, the validator every draft goes through, and the reward table the prompt is written from.
-- `@gb/world` contract: the closed vocabularies a narrator must choose from, the premise contract the city's history is written against, the charter contract a kind of place is written against and `SHIPPED_CHARTERS` (the kinds every town has), `Life` and `BackgroundFact` for a person, and `Asks` for what the owner typed.
+- `@gb/quest` contract: the quest draft shape a quest writer fills in, the validator every draft goes through with the seven questions of its `WorldView`, and the reward table the prompt is written from.
+- `@gb/world` contract: the closed vocabularies a narrator must choose from, the premise contract the city's history is written against, the charter contract a kind of place is written against and `SHIPPED_CHARTERS` (the kinds every town has), `Life` and `BackgroundFact` for a person, `MachineProgram` for what a screen runs, and `Asks` for what the owner typed.
 
 ## Invariants
 
@@ -59,7 +59,7 @@ Scribe implements `@gb/forge`'s `Narrator`, so a `Forge` takes one and builds a 
 - Nothing caps how long an answer runs: no `max_tokens`, and no prompt asking for so many words.
 - A rejected call is retried with the exact violations quoted back, then given up on. Two failures cost one name, never the world.
 - **Every call is pinned.** Each request carries a `seed` and a `temperature`. The seed is drawn from the build's seed, the call's position (`premise`, `charter:jail`, `city-name`, `signs:2`, `place:12`, `person:4`, `thing:9`, `quest:3`) and the attempt number, never from a counter, so the same build sends the same seed to the same call however many calls were in the air and whichever order they landed in, and a second attempt is a second draw. Reproducibility is best effort: the engine decides whether a pinned request comes back the same, and the ones measured do not promise it (llama-server holds a seed only while nothing else shares the engine; the hosted router does not honour one at all). What the seed buys is that a draw which went wrong once is not the draw tried again.
-- **No example in a prompt can come back as an answer.** Measured: a house-style example name was hung over a bar. So a shape is shown with bracketed slots (`[first name]'s [trade]`) and never with a name, the system prompt says the brackets are slots, and the prompts test refuses a quoted proper name in any of them. Measured on one live 1x1 town (9 signs, 10 people, 3 quests, every string of the world and the quests scanned): no example and no slot came back; `pnpm --filter @gb/scribe run measure 10` scans ten.
+- **No example in a prompt can come back as an answer.** Measured: a house-style example name was hung over a bar. So a shape is shown with bracketed slots (`[first name]'s [trade]`) and never with a name, the system prompt says the brackets are slots, and the prompts test refuses a quoted proper name in any of them. The live scan reads the slots off the prompts themselves, so it is always about what the prompts say today: measured on one live 3x3 town (61 signs, 25 people, 5 quests, every string of the world and the quests scanned), none of the eleven came back; `pnpm --filter @gb/scribe run measure 10` scans ten towns.
 - Quests are written one per call: a small model writes a better single quest than a batch, and a failure costs one quest.
 - A place is written whole, in one call: what it is, everybody in it and everything lying about are one decision, because they are one decision in the world. That call is shown its own building and nothing else.
 - A quest is checked here before it is handed over, against the same ids the model was shown. A draft that will not hold up goes back to the model with the reason; a slot it still cannot fill is written by the offline narrator. A build with the model on therefore never ends up with fewer quests than the same build with it off.
@@ -68,7 +68,7 @@ Scribe implements `@gb/forge`'s `Narrator`, so a `Forge` takes one and builds a 
 
 ### What the owner asked for
 
-The brief is the owner's own words and goes to the history writer verbatim, quoted, under "What the owner asked for". Beside it go the parts of `asks` that writer consumes: `tone`, `mainQuest` (the stake is the main errand's subject, so the history has to know what it is about), and `style` as one line of the choices made (`neon lit, wear run-down`). The quest writer gets `tone` on every call, `mainQuest` on the main line's call and `sideQuests` on each side errand's, with the town's history in front of all of them.
+The brief is the owner's own words and goes to the history writer verbatim, quoted, under "What the owner asked for". Beside it go the parts of `asks` that writer consumes: `tone`, `mainQuest` (the stake is the main errand's subject, so the history has to know what it is about), and `style` as one line of the choices made (`neon lit, wear run-down`). The charter writer gets the brief too, because the charter is where a lock is decided and a history that summarises the town does not carry the sentence that asked for one ("a cellar nobody but the doorman gets into" is `admitted`, `watch` and a `shut` room). The quest writer gets `tone` on every call, `mainQuest` on the main line's call and `sideQuests` on each side errand's, with the town's history in front of all of them.
 
 Absence is silence. A field left blank puts nothing in the prompt, never a line saying it is blank, and a form left wholly blank is told that the choice is the model's and asked to commit to one town. `src/asked.ts` renders the parts; one prompt file per part carries the words.
 
@@ -117,13 +117,18 @@ filling in, the word, and the preset words it is not.
   bounded text) and cannot answer a question about a jail with a charter for
   something else. `src/charters.ts` asks; `prompts/write-charter.md` says what
   each axis means in plain words, since a value on it is a routine the engine
-  runs, never a word the model gets to invent.
+  runs, never a word the model gets to invent, and what the engine then makes
+  of them: which values put a lock on a room, a camera over the door, a screen
+  on a desk, a game on a counter and a gate of bars across an inner door, so a
+  history that wants a cellar only the doorman gets into can write the charter
+  that produces one.
 - **What the schema cannot refuse is refused here.** A blade with no letter or
   digit on it, and a sign template with no `{family}`, `{adjective}` or
   `{noun}` slot (which would hang one sign over every door of the kind), go
-  back with the field named. What the contract refuses (storeys written high
-  before low, a value off an axis) goes back the same way, with the contract's
-  own message.
+  back with the field named, and the prompt says `work` and `holding` name each
+  value once, since a repeat is a list the contract throws away whole. What the
+  contract refuses (storeys written high before low, a value off an axis) goes
+  back the same way, with the contract's own message.
 - **A preset in the plural is the preset.** Measured: a history asked for
   "more of hotels, bars" and "fewer of shops, markets, cafes", five words that
   would each have cost a charter call and doubled a kind the town already had.
@@ -169,10 +174,14 @@ other.
 - **No word heads two signs.** The head is the first word after any "The",
   possessives dropped, so The Anchor, Anchor Supply and Anchor's are one head.
   A batch is told the heads already hung and refused with the sign named if it
-  repeats one of them or one of its own. Then the answers are read in index
-  order: the lower index keeps a head, and a sign whose head is spent by then is
-  written by the fallback composer, so which sign keeps a word never depends on
-  which batch landed first.
+  repeats one of them or one of its own, which buys a second draw and never
+  costs the batch: the last answer that named every building exactly once is
+  kept whatever its heads. Then the answers are read in index order: the lower
+  index keeps a head, and a sign whose head is spent by then is written by the
+  fallback composer, so which sign keeps a word never depends on which batch
+  landed first. Measured on one live 3x3 town: 2 of the 4 sign calls
+  were refused for one repeated head, which is a clash the mend settles one
+  sign at a time and no reason to lose the other nineteen.
 - **More than one shape.** The prompt shows five shapes as bracketed slots
   (possessive, family firm, place word with the trade, numbered address, The X
   Y) and asks for a mix. Measured on one live 1x1 town: 9 signs, 9 distinct
@@ -254,6 +263,91 @@ told what that bar is, in the words the bar's own agent used. The two are
 matched on the place's name, which is the only handle the two passes share and
 is unique across the city by the time either of them runs.
 
+### Locks, screens and counters
+
+The second wave puts things in a place a quest can be built on: a room behind
+a lock and what opens it, a screen and what it runs, a thing with a price over
+a counter, a home for sale. Both writers are told, and the quest writer is held
+to what the harness holds a player to.
+
+- **The place writer reads the plan.** `src/brief-lines.ts` renders
+  `InstanceRequest.has` as the lines the place prompt reads: the rooms behind a
+  lock and how each opens (a key or a card somebody here carries, a code typed
+  at the door), the screens by room and what each runs, the camera, the sale.
+  The prompt says who keeps the place carries every key and card, and asks for
+  that in the people (who holds the key, who is let through, what is on the
+  screen) and never for the code itself, which forge decides and a quest hands
+  out. A place the plan put nothing in is told so in one line.
+- **The quest writer sees every lock, screen and price.** `src/place-lines.ts`
+  writes each place of the corner with its people and where they stand, its
+  things with seller and price, its locked doors (id, room, the key by id and
+  whose pocket it is in, the code), its screens (id, what it runs, locked with
+  its code or open to anybody) and what it sells for with the interior id a
+  deed names; everything standing behind a lock says so on its own line. The
+  prompt's step table carries `unlock`, `hack`, `beat-game` and `buy`, the
+  effects carry `give-password`, and the reward section says what `access`,
+  `car` and `deed` may name, with the pay table showing each tier's allowance
+  of them off `REWARD_TABLE`.
+- **The tool is pinned to the corner.** `src/schema/corner.ts` rewrites every
+  id pattern in the quest schema as the corner's own list (`idsOf` in
+  `src/neighbourhood.ts`): the people, the things (the keys the locks name
+  among them), the plots, the places that open, the doors; a `hack` may only
+  name a locked screen, a `beat-game` a screen running a game, a `buy` a
+  thing with a price, a `give-password` a code the corner has, a `deed` a
+  place for sale, a `car` a corner with a bench somebody works at; and a step
+  kind the corner cannot serve is not offered at all. Measured on ten live drafts before: one named a door the city did not
+  have, and the retry rewrote the whole quest. Validation still runs against
+  the full draft contract, so the enum is the grammar's and the check is the
+  contract's.
+- **The model writes the pay; the tier follows.** `difficulty` is not in the
+  tool. `src/tier.ts` reads it off what the reward hands over: the lowest
+  tier that allows the car, the home, the things and the doors it carries and
+  holds its money and standing, so the bands table in the prompt says what a
+  car or a home costs rather than asking the model to name a tier and then
+  pay inside it. Measured on ten live drafts before: five paid outside the
+  band they named. `hidden`, `reveal` and `pay` are cut with it (three of the
+  ten revealed a step that was not hidden; the reward is the pay).
+- **The view answers the seven questions.** `CitySummary.view()` answers
+  `hasDoor` off the locks, `hasMachine` off the screens, `hasInterior` off the
+  places that open (what an access or a deed reward names), and `hasItem` for
+  a key a lock names even though it lies in a pocket and not on a shelf.
+- **A draft is walked the way the harness walks it.** `@gb/quest` proves a flow
+  is playable; the harness then opens a door only with its key in hand or its
+  code known, reaches nothing behind a locked door until it is open, hacks a
+  screen only with its code, plays a game only on a screen that runs one, and
+  buys only with the money. `src/locks.ts` reads the summary into what stands
+  between the street and every id (a street lock puts the whole place behind
+  it), and `src/reach.ts` walks an accepted draft in flow order carrying what
+  the player is guaranteed to hold on every path into each step (a `join`
+  keeps what its branches gathered). Each rule broken is a violation with the
+  step's path and the fix in it: the giver behind a lock, a person, thing or
+  screen named before its door is open, an `unlock` with neither the key
+  given nor the code, a `hack` on an open screen or without its code, a
+  `beat-game` on a screen that runs no game, a `buy` of a thing nobody sells,
+  and a bill no `money-at-least` on the quest covers. The model gets them
+  quoted back on the next attempt like any other violation.
+- **Measured on one live 3x3 town** (`pnpm --filter @gb/scribe run measure 1 3
+  16 10`, a brief asking for a disco with a cellar nobody but the doorman gets
+  into and a shipping office with a locked back room and a terminal in it): 61
+  plots, 8 open, 25 people, 5 quests, 29 model calls, 478 s. The history put
+  `disco` in `moreOf` and `mustHave` and its charter came back first time,
+  `admitted` with a `Back Room`, so the city raised 18 discos, opened one, and
+  locked its back room behind a key in the doorman's pocket: 1 locked door, 7
+  screens of which 5 locked, one house for sale at 1,330. Of the 5 quests 3
+  went through a screen (`hack`), one paid the run of the locked door as
+  `access`, three paid a `car` and two a `deed`, and 5 of 5 passed the lock
+  walk with 0 rejected. The walk fired on the model's drafts and was quoted
+  back ("nothing opens door_0015 yet: a give-item effect with item_0001 on a
+  talk step with npc_0016, who carries it"); 9 of the 10 quest attempts came
+  back with a violation, and 4 of the 5 slots ended on the offline narrator's
+  quest after two attempts, which is the thinnest part of the model path. 25
+  of 25 people had a whole life and a four-stage codex; 61 signs had 61
+  distinct heads in all five shapes, 2 of the 4 sign calls refused for one
+  repeated head with the rest of the batch kept; no slot came back. A premise
+  call is 2,359 prompt tokens and 343 back in 9 s, a charter 3,337 and 210 in
+  11 s, a batch of signs 1,607 and 219 in 34 s, a place 2,618 and 1,244 in 93
+  s, a quest 10,311 and 519 in 56 s.
+
 ### Determinism, with more than one call in flight
 
 Calls run in waves: `concurrency` of them go out together and all land before the next wave starts. That is the whole of the concurrency and the whole of the back-pressure, and it is what keeps the same seed producing the same city.
@@ -267,10 +361,11 @@ The charters, `namePlaces`, `writeInstances` and quest writing each fan out acro
 
 ### The schema the model is handed
 
-The quest draft's own JSON Schema is 41,994 characters, most of it the same six conditions and nine effects spelled out again inside every step kind. Two passes cut it to 10,779 before it goes on the wire, on every call:
+The quest draft's own JSON Schema is 58,937 characters, most of it the same six conditions and ten effects spelled out again inside every step kind. Three passes cut it to about 13,000 before it goes on the wire, on every call (a corner of 8 places, 24 people and 20 things measures 12,942):
 
-- **Narrowed** to what the model can get right, because the schema is what it decodes against and a rule that lives only in the prompt is a rule it can walk past. Nothing a `WorldSummary` cannot name, so `stash` steps and going into an interior are cut. `next` is required on every step kind whose dead end the flow check refuses, and gone from the two that end a quest. Each step is in writing order: `kind` first, so a step commits to a mechanic before it writes the sentence the player reads, then the fields that kind needs, then `next`. Everything the narrowed schema still allows, the full draft contract accepts.
-- **Written without repeats**: every subschema that appears more than once is hoisted into `$defs`. Dereference the result and the narrowed schema comes back exactly.
+- **Narrowed** to what the model can get right, because the schema is what it decodes against and a rule that lives only in the prompt is a rule it can walk past. Nothing a `WorldSummary` cannot name, so `stash` steps and going into an interior are cut; an interior id survives only where a reward names one. `next` is required on every step kind whose dead end the flow check refuses (`unlock`, `hack`, `beat-game` and `buy` among them), and gone from the two that end a quest. Each step is in writing order: `kind` first, so a step commits to a mechanic before it writes the sentence the player reads, then the fields that kind needs, then `next`. No step is `optional`: measured on two live 3x3 towns, five of eighteen drafts hung the only path to `complete` off a step they had marked optional and none wrote a side trip that rejoined, and two earlier drafts marked the `complete` step itself optional. The reward's `money` is required and starts at 1, because a job that pays nothing sits under the floor of any tier that carries a thing (measured on ten live drafts: two rewarded 0 while handing over an item or a door). Everything the narrowed schema still allows, the full draft contract accepts.
+- **Pinned** to the corner the quest is set in, above, so every id is an enum of what the model was shown.
+- **Written without repeats**: every subschema that appears more than once is hoisted into `$defs`. Dereference the result and the pinned schema comes back exactly.
 
 Validation always runs against `@gb/quest`'s own contract, never against the shortened copy.
 
@@ -282,8 +377,8 @@ A model cannot be specific about a world it cannot see. Every descriptive call i
 
 A new authoring task is a new prompt file, a new tool in `src/tools.ts`, and a method that asks for it with a label for its position. A task that runs many at once also needs a `Pass` in `src/unique.ts`, which is what settles the names in index order. Changing a prompt needs no code change, only a regenerate. `GAME_BOX_SLOTS` is how many calls the engine behind the sidecar serves at once; llama-server reports it as `total_slots` and the sidecar does not pass it on, so it is set by hand or left at the default.
 
-One file per job: `src/premise.ts` writes the city's history, `src/charters.ts` writes the charter behind each kind of place it invents, `src/charter-lines.ts` says what a charter is in the words a prompt reads, `src/asked.ts` renders what the owner typed for each writer, `src/signs.ts` names the buildings that do not open in batches, `src/instance.ts` writes a place whole, `src/person.ts` is the one shape a person is written in, `src/quests.ts` writes the work, `src/neighbourhood.ts` cuts the city into corners a quest can be written about, `src/claim.ts` deals out the family names, `src/head.ts` says what word a sign is read by, `src/registry.ts` keeps what is spent, `src/unique.ts` settles which answer keeps a name, `src/pins.ts` draws the seed a call sends, and `src/progress.ts` says how far it has got.
+One file per job: `src/premise.ts` writes the city's history, `src/charters.ts` writes the charter behind each kind of place it invents, `src/charter-lines.ts` says what a charter is in the words a prompt reads, `src/asked.ts` renders what the owner typed for each writer, `src/signs.ts` names the buildings that do not open in batches, `src/instance.ts` writes a place whole, `src/brief-lines.ts` says what the plan put in it, `src/person.ts` is the one shape a person is written in, `src/quests.ts` writes the work, `src/neighbourhood.ts` cuts the city into corners a quest can be written about, `src/place-lines.ts` writes one place of a corner out with its locks, screens and prices, `src/locks.ts` reads the city's locks, screens and counters by id, `src/reach.ts` walks a draft the way the harness plays it, `src/tier.ts` reads a quest's tier off its reward, `src/schema/narrow.ts` cuts the quest schema to what a summary can name and `src/schema/corner.ts` pins it to one corner's ids, `src/claim.ts` deals out the family names, `src/head.ts` says what word a sign is read by, `src/registry.ts` keeps what is spent, `src/unique.ts` settles which answer keeps a name, `src/pins.ts` draws the seed a call sends, and `src/progress.ts` says how far it has got.
 
 A length in a tool's schema is `@gb/world`'s own limit on the field the answer ends up in, never a limit on how much the model may write. The engine does not enforce `maxLength` anyway: it lets the answer run and the contract then throws the whole call away, which is why nothing has a cap the world does not already impose.
 
-Run `pnpm --filter @gb/scribe test`, which checks every outgoing request against the service's own published `chat-request.json`. `pnpm --filter @gb/scribe run measure [cities] [blocks] [blockCells]` builds that many towns through the live sidecar, each on a brief that calls for a kind of place the presets lack, and prints what came back: the charters the history invented and how many plots of each the city raised, distinct head words and shapes over the signs, who got a life and a codex, the quests, tokens and seconds per call by tool (counted through llama-server's `/tokenize`), the problems by code, and whether any example from a prompt came back as output.
+Run `pnpm --filter @gb/scribe test`, which checks every outgoing request against the service's own published `chat-request.json`. `pnpm --filter @gb/scribe run measure [cities] [blocks] [blockCells] [firstTown]` builds that many towns through the live sidecar, each on a brief that calls for a kind of place the presets lack (the eleventh asks for a disco and a locked office with a terminal), and prints what came back: the charters the history invented and how many plots of each the city raised, the locks and screens the city placed and every quest's chain of step kinds with what it pays beyond credits and whether the lock walk passes it, distinct head words and shapes over the signs, who got a life and a codex, tokens and seconds per call by tool (counted through llama-server's `/tokenize`), the problems by code, and whether any slot a prompt shows came back as output.

@@ -23,7 +23,7 @@ function isSchema(value: unknown): value is JsonSchema {
 }
 
 /** Walks only the places a schema can legally sit, so a `properties` bag is never mistaken for one. */
-function eachChild(node: JsonSchema, visit: (child: JsonSchema, replace: (next: JsonSchema) => void) => void): void {
+export function eachChild(node: JsonSchema, visit: (child: JsonSchema, replace: (next: JsonSchema) => void) => void): void {
   for (const key of ONE) {
     const value = node[key]
     if (isSchema(value)) visit(value, (next) => (node[key] = next))

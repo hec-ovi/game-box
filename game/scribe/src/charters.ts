@@ -1,5 +1,6 @@
 import { premiseLines } from '@gb/forge'
 import { MAX_CHARTERS, SHIPPED_CHARTERS, type Charter, type Premise, type Word } from '@gb/world'
+import { askedLines, type Asked } from './asked.ts'
 import type { Asker, Violation } from './asker.ts'
 import type { Progress } from './progress.ts'
 import { prompt } from './prompts.ts'
@@ -28,6 +29,11 @@ const MOST_INVENTED = MAX_CHARTERS - PRESETS.length
  * one call per word, with the history in front of it. The tool's parameters
  * are `@gb/world`'s own charter contract with the word pinned, so what the
  * model decodes against is what the file accepts.
+ *
+ * The owner's own brief goes to this call as well as to the history, because
+ * the charter is where the locks are decided: "a cellar nobody but the doorman
+ * gets into" is `admitted`, `watch` and a `shut` room, and the history that
+ * summarises the town does not carry the sentence that asked for it.
  */
 export class CharterWriter {
   #asker: Asker
@@ -41,7 +47,7 @@ export class CharterWriter {
   }
 
   /** One charter per invented word, in the order the history named them; a word the model will not write is left out. */
-  async write(premise: Premise, theme: string): Promise<Charter[]> {
+  async write(premise: Premise, theme: string, owner: Asked = {}): Promise<Charter[]> {
     const words = invented(premise)
     if (words.length === 0) return []
     this.#progress.open('history', words.length, words.join(', '))
@@ -49,7 +55,13 @@ export class CharterWriter {
     const written = await this.#waves.run<Word, Charter | undefined>(words, async (word) => {
       const charter = await this.#asker.ask(
         charterTool(word),
-        prompt('write-charter', { word, theme, premise: history, presets: PRESETS.join(', ') }),
+        prompt('write-charter', {
+          word,
+          theme,
+          premise: history,
+          asked: askedLines(owner, ['brief']),
+          presets: PRESETS.join(', '),
+        }),
         `charter:${word}`,
         problemsWith,
       )

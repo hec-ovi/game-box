@@ -79,7 +79,8 @@ does not match its own history.
 The kinds of place every town already has, each by its word: {{kinds}}. Write
 the word as it stands there, singular, whatever the count.
 
-The story may need a kind none of those is: a jail, a customs house, a bathhouse.
+The story may need a kind none of those is: a jail, a customs house, a
+bathhouse, a disco.
 Name it in `build` as one plain lowercase word, singular, and you will be asked
 next what such a place is here, and the town gets it. Invent a kind only when
 the story needs one and nothing above fits: a bar with a stranger name is still

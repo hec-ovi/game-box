@@ -16,13 +16,13 @@ everyone in them and everything lying about, by id, and the walk from
 
 {{places}}
 
-Use only the ids above. An id you invent throws the whole quest away. Pick the
-giver from the people above and put their id in `giverNpcId`.
+The tool offers these ids and no others. Pick the giver from the people above
+and put their id in `giverNpcId`.
 
 The metres are the walk between two doors. Most of these places are within
 shouting distance of each other, so an errand that sends the player a few
 hundred metres is a walk across town: say so in the objective, and let the
-difficulty and the pay carry it.
+pay carry it.
 
 ## How a quest is put together
 
@@ -46,6 +46,10 @@ nowhere is a dead end, and a dead end throws the quest away.
 | `collect` | `itemId`, optional `count`, `alternates`, `allowSteal` | picks the thing up and carries it |
 | `deliver` | `itemId`, `toNpcId`, optional `count`, `alternates` | hands what they are carrying to that person |
 | `escort` | `npcId`, `place: {"plotId": "..."}` | walks to that building with that person alongside |
+| `unlock` | `doorId` | opens that locked door, with its key in hand or its code known |
+| `hack` | `machineId` | opens that locked screen, with its code known |
+| `beat-game` | `machineId`, `score` | plays the game on that screen until it reaches that score |
+| `buy` | `itemId`, optional `count`, `alternates` | pays for the thing over its counter and carries it |
 | `choice` | `prompt`, `options` (each an `id`, a `label` and its own `next`) | is offered a fork and picks one |
 | `join` | `waitFor` | waits until every branch listed there has finished |
 | `any-of` | `oneOf` | whichever branch listed there finishes first wins, the rest are dropped |
@@ -73,16 +77,29 @@ An `escort` step is somebody walking with the player, so the person has to be
 somebody who would leave their post, and the step after it should be worth the
 walk.
 
-## Side work and secrets
+## Locks, screens and counters
 
-- Any step may be `optional: true`. The quest still finishes if the player never
-  touches it. Point its `next` at the step the main line was going to reach
-  anyway, so the side trip rejoins rather than stranding the player. Use it for
-  what a careful player finds and a hurried one misses.
-- Any step may be `hidden: true`. It stays off the player's board until a
-  `reveal` effect on an earlier step shows it. Every hidden step needs something
-  that reveals it, and if the quest cannot finish without that step, the reveal
-  has to sit on a step that always runs.
+The corner above says which doors are locked, what opens each, which screens
+are on and what opens those, and what each thing over a counter sells for. A
+job through one of them is written like this:
+
+- Anything marked as behind a locked door (a person, a thing, a screen) cannot
+  be named by a step until an `unlock` step for that door has run earlier on
+  the same path. The giver is never somebody behind a lock.
+- An `unlock` opens only with the key in hand or the code known. Before it,
+  put a `talk` step with whoever carries the key and a `give-item` effect
+  naming that key on it, or a `talk` step with somebody who would know the
+  code and a `give-password` effect with the door's own code. An `unlock`
+  with neither before it is a door the player stands in front of and cannot
+  open.
+- A `hack` opens a locked screen only with its code known: a `give-password`
+  effect with the screen's own code on an earlier `talk` step. A screen that
+  is open to anybody is nothing to hack.
+- A `beat-game` names a screen that runs snake or tetris and the score to
+  reach. It is somebody's bet, so let the giver say what beating it is worth.
+- A `buy` names a thing with a price and a seller. The player pays the price,
+  so put `money-at-least` for the whole bill in the quest's own `requires`,
+  and let the reward cover what they spent.
 
 ## What gates a step, and what a step changes
 
@@ -90,8 +107,9 @@ walk.
 `reputation-at-least`, `reputation-below`, `has-companion`.
 
 `effects` are the only way a quest changes the player: `give-item`, `take-item`,
-`pay`, `charge`, `reputation`, `set-flag`, `companion-join`, `companion-leave`,
-`reveal`.
+`charge`, `reputation`, `set-flag`, `companion-join`, `companion-leave`,
+`give-password` (the player learns that word). The `reward` is the pay: no
+step pays on its own.
 
 ## Ending badly
 
@@ -104,17 +122,25 @@ walk.
 Add one only when the errand really is against the clock or really does hang on
 one person or one object. Most errands have none.
 
-## Difficulty and pay
+## Pay
 
-`difficulty` says how much work this is, and the pay has to sit inside that
-tier's band. Everything the quest hands over is measured against it: the
-`reward` plus every `pay` effect on every step.
+Pay what the work is worth: the walk, the steps, whether it is a theft or
+against the clock. The tier follows from the pay, and the tier decides what
+else the reward may carry:
 
 {{rewardBands}}
 
-Paying nothing is refused. Pick the tier that matches the work, then pay
-somewhere inside its band. `reward.faction` is who the standing is with; the
+Paying nothing is refused. `reward.faction` is who the standing is with; the
 town itself is `town`.
+
+Beyond credits and standing, a reward may hand over what the corner holds,
+inside the tier's allowance: `access`, a list of doors the player may pass from
+now on (`{"doorId": "..."}` for one of the locked doors above, or
+`{"interiorId": "..."}` for a place's street door, the second id in its
+heading); `car`, one of the models the tool offers, off the bench of somebody
+in this corner who works at one; `deed`, the interior id of a place listed
+above as for sale, which makes it the player's. A job through a lock is worth
+the run of that door.
 
 ## Stealing
 

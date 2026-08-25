@@ -85,6 +85,19 @@ describe('the city history', () => {
     expect(scribe.problems()).toEqual([])
   })
 
+  it('shows the charter call the owner\'s own brief, because the charter is where the locks are decided', async () => {
+    const brief = 'A disco with a cellar nobody but the doorman gets into.'
+    const asked = scribeWith([WITH_JAIL, JAIL])
+    const blank = scribeWith([WITH_JAIL, JAIL])
+
+    await asked.scribe.writePremise({ theme: THEME, seed: SEED, brief })
+    await blank.scribe.writePremise({ theme: THEME, seed: SEED })
+
+    expect(asked.sent[1]!.user).toContain(`> ${brief}`)
+    // a brief nobody wrote puts nothing in the call, not a line saying it is blank
+    expect(blank.sent[1]!.user).not.toContain("in the owner's own words")
+  })
+
   it('sends a charter back with the reason when its blade spells nothing or a template puts one sign over every door', async () => {
     const { sent, scribe } = scribeWith([WITH_JAIL, { ...JAIL, blade: '  ', names: ['County Jail', '{family} Jail'] }, JAIL], 2)
 

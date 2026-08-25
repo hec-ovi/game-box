@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { Scribe } from '../src/index.ts'
 import { fakeModel, type Sent } from './fake-model.ts'
 import { backgroundOf, lifeOf, shellOf } from './people.ts'
-import { charterOf } from './places.ts'
+import { PLAIN, charterOf } from './places.ts'
 
 /** A model that writes whatever the shell asked for, with the family names it is allowed. */
 function answer(call: Sent, options: { name?: string; given?: string; stages?: readonly string[] } = {}) {
@@ -37,6 +37,7 @@ const bar: InstanceRequest = {
     { postId: 'anchor_0002', role: 'patron', index: 1 },
   ],
   things: [{ thingId: 'item_0001', archetype: 'ledger', index: 0 }],
+  has: PLAIN,
   premise: 'Lives on: the freight line.',
 }
 
@@ -53,6 +54,7 @@ function places(count: number): InstanceRequest[] {
       { postId: `anchor_${i}_2`, role: 'worker' as const, index: i * 2 + 1 },
     ],
     things: [{ thingId: `item_${i}`, archetype: 'box' as const, index: i }],
+    has: PLAIN,
   }))
 }
 
@@ -96,7 +98,30 @@ describe('writing a place and its people in one call', () => {
     expect(asked).toContain('main, storage')
     expect(asked).toContain('anchor_0001: the bartender')
     expect(asked).toContain('item_0001: a ledger')
+    expect(asked).toContain('Nothing here is locked and no screen is on.')
     expect(scribe.problems()).toEqual([])
+  })
+
+  it('tells the place what the plan put in it: the locks, the screens, the camera and the sale', async () => {
+    const { sent, sidecar } = fakeModel((call) => answer(call))
+    const office: InstanceRequest = {
+      ...bar,
+      has: {
+        locked: [{ room: 'Cellar', by: 'key' }, { room: 'Office', by: 'code' }, { room: 'Store', by: 'card' }],
+        machines: [{ room: 'Office', program: 'ledger' }, { room: 'Taproom', program: 'snake' }],
+        camera: true,
+        forSale: 4200,
+      },
+    }
+
+    await new Scribe({ sidecar, seed: 'harbour' }).writeInstances([office])
+
+    const asked = sent[0]!.user
+    expect(asked).toContain('Behind a lock: the Cellar (a key somebody here carries); the Office (a code typed at the door); the Store (a card somebody here carries).')
+    expect(asked).toContain('Screens: one in the Office running the ledger; one in the Taproom running a game of snake.')
+    expect(asked).toContain('A camera watches the front room.')
+    expect(asked).toContain('for sale at 4200 credits')
+    expect(asked).toContain('Never write the code itself')
   })
 
   it('writes every life and codex through the world\'s own schema, and hands them back on the person', async () => {
@@ -141,6 +166,7 @@ describe('writing a place and its people in one call', () => {
       rooms: ['main'],
       posts: [{ postId: 'anchor_9999', role: 'receptionist', index: 2 }],
       things: [{ thingId: 'item_9999', archetype: 'medkit', index: 1 }],
+      has: PLAIN,
     }
     const { sent, sidecar } = fakeModel((call) => answer(call))
     const scribe = new Scribe({ sidecar, seed: 'harbour', concurrency: 2 })

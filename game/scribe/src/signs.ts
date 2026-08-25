@@ -37,7 +37,6 @@ const BATCH = 20
 /** How far apart two facades' fallback streams sit, so no two of them draw the same spare sign. */
 const ATTEMPTS = 40
 
-
 /**
  * Names the buildings nobody walks into, a batch at a time.
  *
@@ -89,10 +88,20 @@ export class SignNamer {
     return out
   }
 
-  /** One batch: the names by label, or none of them when the model would not write the batch. */
+  /**
+   * One batch: the names by label, or none of them when the model would not
+   * write the batch at all.
+   *
+   * A repeated head is quoted back so the next draw is a better batch, but it
+   * never costs the batch: the last answer that named every building once is
+   * kept, and `write` mends the one sign whose head is spent. Measured on one
+   * live 3x3 town: 2 of the 4 sign calls were refused for one repeated head,
+   * which is a clash the mend settles one sign at a time.
+   */
   async #ask(batch: readonly PlaceRequest[], b: number, takenHeads: readonly string[]): Promise<ReadonlyMap<string, string>> {
     const labels = batch.map(label)
     const first = batch[0]
+    let mendable: WrittenSigns | undefined
     const answer = await this.#asker.ask(
       signsTool(labels),
       prompt('name-signs', {
@@ -106,13 +115,18 @@ export class SignNamer {
         usedHeads: bullets(takenHeads, 'None yet.'),
       }),
       `signs:${b}`,
-      (value) => problemsWith(value, labels, takenHeads),
+      (value) => {
+        const missed = labelProblems(value, labels)
+        if (missed.length === 0) mendable = value
+        return [...missed, ...headProblems(value, takenHeads)]
+      },
     )
-    if (!answer) return new Map()
-    for (const [k, sign] of answer.signs.entries()) {
+    const written = answer ?? mendable
+    if (!written) return new Map()
+    for (const [k, sign] of written.signs.entries()) {
       this.#count(b * BATCH + k, sign.name, batch[k]!.charter.label)
     }
-    return new Map(answer.signs.map((sign) => [sign.building, sign.name]))
+    return new Map(written.signs.map((sign) => [sign.building, sign.name]))
   }
 
   /** Keeps asking the offline composer for one more sign until its head is not already over a door. */
@@ -143,20 +157,19 @@ function label(request: PlaceRequest): string {
   return `b${request.index}`
 }
 
-/** Everything wrong with a batch that the schema alone could not refuse: a label missed or doubled, or a head used twice. */
-function problemsWith(answer: WrittenSigns, labels: readonly string[], takenHeads: readonly string[]): Violation[] {
-  const problems: Violation[] = []
-  for (const wanted of labels) {
+/** A batch with a building missed or named twice is a batch nothing can be zipped onto. */
+function labelProblems(answer: WrittenSigns, labels: readonly string[]): Violation[] {
+  return labels.flatMap((wanted) => {
     const times = answer.signs.filter((sign) => sign.building === wanted).length
-    if (times !== 1) problems.push({ path: 'signs', message: `name building ${wanted} exactly once, not ${times} times` })
-  }
+    return times === 1 ? [] : [{ path: 'signs', message: `name building ${wanted} exactly once, not ${times} times` }]
+  })
+}
+
+/** A head over two doors, which the next draw can do better and the mend settles either way. */
+function headProblems(answer: WrittenSigns, takenHeads: readonly string[]): Violation[] {
   const heads = answer.signs.map((sign) => headOf(sign.name))
-  for (const [i, head] of heads.entries()) {
-    if (heads.indexOf(head) !== i) {
-      problems.push({ path: `signs.${i}.name`, message: `${answer.signs[i]!.name} starts with ${head}, which already heads another sign in this batch` })
-    } else if (takenHeads.includes(head)) {
-      problems.push({ path: `signs.${i}.name`, message: `${answer.signs[i]!.name} starts with ${head}, which already heads a sign in this city` })
-    }
-  }
-  return problems
+  return heads.flatMap((head, i) => {
+    const where = heads.indexOf(head) !== i ? 'another sign in this batch' : takenHeads.includes(head) ? 'a sign in this city' : ''
+    return where ? [{ path: `signs.${i}.name`, message: `${answer.signs[i]!.name} starts with ${head}, which already heads ${where}` }] : []
+  })
 }

@@ -1,9 +1,13 @@
+import type { InstanceBrief } from '@gb/forge'
 import { SHIPPED_CHARTERS, type Charter, type Word } from '@gb/world'
 
 /** The preset charter behind a word, which is what the forge hands over for a kind every town has. */
 export function charterOf(word: Word): Charter {
   return SHIPPED_CHARTERS.find((charter) => charter.word === word)!
 }
+
+/** A plan that put nothing in the place: no lock, no screen, no camera, not for sale. */
+export const PLAIN: InstanceBrief = { locked: [], machines: [], camera: false }
 
 /** A kind of place no preset is, as a history would declare it. */
 export const JAIL: Charter = {

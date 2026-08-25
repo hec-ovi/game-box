@@ -7,7 +7,7 @@ them by arithmetic you never see.
 Theme: {{theme}}
 What the town is about:
 {{premise}}
-
+{{asked}}
 The kinds of place every town already has, which this one is not: {{presets}}.
 
 ## Words
@@ -54,7 +54,26 @@ as the front room only, `private` for nobody without a key. `service` is the
 post at the front, with somebody always on it: `counter`, `desk`, `stalls`, or
 `none`. `work` is what else people do in here, up to three: `desk`, `bench`,
 `cook`, `floor`, `watch`. `holding` is the classes of thing lying about, up to
-three. `finish` is the language the rooms are dressed in.
+three. `finish` is the language the rooms are dressed in. In `work` and in
+`holding`, name each value once: a list with the same word twice is thrown
+away.
+
+## What the engine makes of those
+
+`access` and `shut` are locks. An `admitted` or `private` place locks every
+service room marked `shut`, and the key is in the pocket of whoever keeps the
+place (the person at its front post, else the one on its door), with a keypad
+code beside it where the place does `desk` work; a `private` place locks its
+street door too, behind a card and a code. A place with `watch` in its `work`
+gets somebody on the door and a camera over the front room, and so does any
+place that is not `open`. Every desk in a `desk-floor` or `private-office`
+carries a locked screen; a `taproom` counter carries a game screen. A locked
+inner door in a `civic`, `industrial` or `worn` finish stands behind a gate of
+bars. So a place people are let into only so far, with a room they are kept
+out of and somebody on the door, is `admitted`, `watch`, and a `shut` room.
+If the owner asked for a room the player has to get into, this is where that
+room is decided: pick the `access` and the `shut` room that put a door in the
+way, and the town writes the key and the code behind it.
 
 ## Rooms
 

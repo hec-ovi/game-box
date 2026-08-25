@@ -81,6 +81,21 @@ describe('naming the buildings that do not open', () => {
     expect(names[2]).toBe('Head2 Supply')
   })
 
+  it('keeps a batch the model would not mend, and writes only the clashing sign offline', async () => {
+    // a repeat is worth a second draw, never the other nineteen signs the batch got right
+    const { sent, sidecar } = fakeModel((call) => answer(call, (label) => (label === 'b2' ? 'The Head1' : `Head${label.slice(1)}`)))
+    const scribe = new Scribe({ sidecar, seed: 'harbour' })
+
+    const names = await scribe.namePlaces(frontage(5))
+
+    expect(sent).toHaveLength(2)
+    expect(names[0]).toBe('Head0 Supply')
+    expect(names[4]).toBe('Head4 Supply')
+    expect(names[2]).not.toMatch(/^(The )?Head1/)
+    const heads = names.map((name) => name.toLowerCase().replace(/^the /, '').split(' ')[0])
+    expect(new Set(heads).size).toBe(5)
+  })
+
   it('lets no word head two signs in the city, whatever the batches came back with', async () => {
     // two batches in one wave cannot see each other, and this model has one favourite word
     const { sidecar } = fakeModel((call) => answer(call, (label) => (Number(label.slice(1)) % 20 === 0 ? 'Kettle' : `Head${label.slice(1)}`)))

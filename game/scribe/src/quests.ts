@@ -2,12 +2,14 @@ import type { Narrator } from '@gb/forge'
 import { sealQuest, validateQuest } from '@gb/quest'
 import { askedLines } from './asked.ts'
 import type { Asker, Violation } from './asker.ts'
-import { describeSlice, Neighbourhood } from './neighbourhood.ts'
+import { describeSlice, idsOf, Neighbourhood, type Slice } from './neighbourhood.ts'
 import type { Progress } from './progress.ts'
 import { bullets, lastFew, prompt } from './prompts.ts'
+import { reachProblems } from './reach.ts'
 import { rewardBands } from './reward-bands.ts'
-import { CitySummary, type QuestSummary, type SummaryView } from './summary.ts'
-import { WRITE_QUEST, type QuestDraft } from './tools.ts'
+import { CitySummary, type QuestSummary } from './summary.ts'
+import { tierFor } from './tier.ts'
+import { questTool, type QuestDraft } from './tools.ts'
 import type { Waves } from './waves.ts'
 
 /** How much of the city one quest is shown. Enough to write about, short enough to send on every call. */
@@ -67,7 +69,6 @@ export class QuestWriter {
     const city = new CitySummary(input.summary)
     if (city.peopled().length === 0) return [...(await this.#offlineQuests(input))]
 
-    const view = city.view()
     const total = Math.max(1, input.sideQuests + 1)
     const slots = Array.from({ length: total }, (_, index) => index)
     const corners = new Neighbourhood(city.peopled(), this.#seed)
@@ -75,15 +76,16 @@ export class QuestWriter {
 
     const written = await this.#waves.run<number, Written | undefined>(slots, async (_, index, earlier) => {
       const id = questId(index)
+      const slice = corners.for(index, PLACES_PER_QUEST)
       const draft = await this.#asker.ask(
-        WRITE_QUEST,
-        this.#brief(city, corners, index, total, earlier),
+        questTool(idsOf(slice)),
+        this.#brief(city, slice, index, total, earlier),
         `quest:${index}`,
-        (value) => problemsWith(value, id, view),
+        (value) => problemsWith(banded(value), id, city),
       )
       if (draft) {
         this.#progress.finished(draft.title)
-        return { quest: sealQuest(draft), title: draft.title }
+        return { quest: sealQuest(banded(draft)), title: draft.title }
       }
 
       const spare = (await this.#offlineQuests(input)).find((quest) => fieldOf(quest, 'id') === id)
@@ -96,7 +98,7 @@ export class QuestWriter {
 
   #brief(
     city: CitySummary,
-    corners: Neighbourhood,
+    slice: Slice,
     index: number,
     total: number,
     earlier: readonly (Written | undefined)[],
@@ -110,7 +112,6 @@ export class QuestWriter {
             sideTotal: total - 1,
             asked: askedLines(owner, ['sideQuests']),
           })
-    const slice = corners.for(index, PLACES_PER_QUEST)
     return prompt('write-quest', {
       cityName: city.cityName,
       theme: city.theme,
@@ -136,6 +137,11 @@ export class QuestWriter {
   }
 }
 
+/** The draft with its tier read off what it pays, since the model is asked for the pay alone. */
+function banded(draft: QuestDraft): QuestDraft {
+  return { ...draft, difficulty: tierFor(draft.reward) }
+}
+
 function questId(index: number): string {
   return `quest_${String(index + 1).padStart(4, '0')}`
 }
@@ -145,18 +151,21 @@ function fieldOf(quest: unknown, name: 'id' | 'title'): string {
   return typeof value === 'string' ? value : ''
 }
 
-/** Everything wrong with a draft, in the words the model gets back. */
-function problemsWith(draft: QuestDraft, id: string, view: SummaryView): Violation[] {
+/**
+ * Everything wrong with a draft, in the words the model gets back: first what
+ * the quest contract refuses, then, on a flow it accepts, what the harness
+ * would refuse at a lock, a screen or a counter.
+ */
+function problemsWith(draft: QuestDraft, id: string, city: CitySummary): Violation[] {
   const problems: Violation[] = []
   if (draft.id !== id) problems.push({ path: 'id', message: `this quest's id is ${id}` })
 
-  const checked = validateQuest(sealQuest(draft), view)
-  if (!checked.ok) {
-    const error = checked.error
-    if ('violations' in error) problems.push(...error.violations)
-    if ('problems' in error) {
-      problems.push(...error.problems.map((entry) => ({ path: entry.where, message: entry.message })))
-    }
+  const checked = validateQuest(sealQuest(draft), city.view())
+  if (checked.ok) return [...problems, ...reachProblems(draft, city.locks)]
+  const error = checked.error
+  if ('violations' in error) problems.push(...error.violations)
+  if ('problems' in error) {
+    problems.push(...error.problems.map((entry) => ({ path: entry.where, message: entry.message })))
   }
   return problems
 }

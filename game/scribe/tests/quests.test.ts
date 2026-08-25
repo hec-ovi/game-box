@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest'
 import { Scribe } from '../src/index.ts'
 import { fakeModel, type Sent } from './fake-model.ts'
 import { backgroundOf, lifeOf, shellOf } from './people.ts'
-import { charterOf } from './places.ts'
+import { HACK_JOB, HIGH_SCORE, KEY_RUN, LOCKED, SHOPPING, lockedDraft } from './locked-city.ts'
+import { PLAIN, charterOf } from './places.ts'
 
 const CITY: WorldSummary = {
   cityName: 'Cold Harbour',
@@ -60,6 +61,8 @@ const VIEW = {
   hasInterior: () => false,
   hasItem: (id: string) => id === 'item_0001',
   hasAnchor: () => false,
+  hasDoor: () => false,
+  hasMachine: () => false,
 }
 
 /** A quest that says what its steps do: talk, take the ledger, hand it over, done. */
@@ -158,17 +161,21 @@ describe('writing quests', () => {
     expect(scribe.problems().map((problem) => problem.error.code)).toEqual(['invalid-arguments'])
   })
 
-  it('quotes back pay that does not fit the difficulty and takes the corrected quest', async () => {
-    const unpaid = draft('quest_0001')
-    unpaid.reward.money = 0
-    const { sent, sidecar } = fakeModel([unpaid, draft('quest_0001')])
+  it('reads the tier off the pay, and quotes back a reward no tier holds whole', async () => {
+    const small = draft('quest_0001')
+    const cheapCar = { ...draft('quest_0001'), reward: { ...small.reward, car: 'SportsCar' } }
+    const { sent, sidecar } = fakeModel([cheapCar, { ...small, reward: { ...small.reward, money: 420 } }])
     const scribe = new Scribe({ sidecar, concurrency: 1 })
 
     const quests = await scribe.writeQuests({ summary: CITY, sideQuests: 0 })
 
+    // 45 credits with a car: a car is hard work, and hard work pays at least 200
     expect(sent[1]!.user).toContain('reward.money')
-    expect(sent[1]!.user).toContain('at least 10')
+    expect(sent[1]!.user).toContain('at least 200')
+    expect(quests[0]).toMatchObject({ difficulty: 'hard' })
     expect(validateQuest(quests[0], VIEW).ok).toBe(true)
+    // and the model was never asked for a tier
+    expect(JSON.stringify(sent[0]!.parameters)).not.toContain('difficulty')
   })
 
   it('quotes back an id it made up, because a step can only point at what is in the city', async () => {
@@ -296,7 +303,7 @@ describe('writing quests', () => {
     const scribe = new Scribe({ sidecar, seed: 'harbour', concurrency: 1 })
 
     await scribe.writeInstances([
-      { index: 0, kind: 'bar', charter: charterOf('bar'), theme: 'port', rooms: ['main'], posts: [{ postId: 'anchor_0001', role: 'bartender', index: 0 }], things: [] },
+      { index: 0, kind: 'bar', charter: charterOf('bar'), theme: 'port', rooms: ['main'], posts: [{ postId: 'anchor_0001', role: 'bartender', index: 0 }], things: [], has: PLAIN },
     ])
     await scribe.writeQuests({ summary: CITY, sideQuests: 0 })
 
@@ -348,5 +355,61 @@ describe('writing quests', () => {
     await new Scribe({ sidecar, concurrency: 1 }).writeQuests({ summary: CITY, sideQuests: 0 })
 
     expect(sent[1]!.user).toContain('interior_0001 is not in the world')
+  })
+})
+
+describe('writing quests through locks, screens and counters', () => {
+  it('shows the writer every lock, what opens it, every screen, every price and what is for sale', async () => {
+    const { sent, sidecar } = fakeModel(() => lockedDraft(KEY_RUN))
+    await new Scribe({ sidecar, concurrency: 1 }).writeQuests({ summary: LOCKED, sideQuests: 0 })
+
+    const user = sent[0]!.user
+    expect(user).toContain('locked doors: door_0003, the Cellar door, opened by the key item_0001 in Neve Vesper\'s pocket (npc_0002)')
+    expect(user).toContain('Vidya Sellers (guard, npc_0003, behind the locked Cellar door door_0003)')
+    expect(user).toContain('Worn glass (item_0002, owned by npc_0002, sells for 3, behind the locked Cellar door door_0003)')
+    expect(user).toContain('screens: machine_0001 runs snake, open to anybody')
+    expect(user).toContain('machine_0002 holds the mail, locked, code "bramble-80"')
+    expect(user).toContain('for sale: 4693 credits')
+    expect(user).toContain('interior_0003')
+    // and the tool offers the four steps, the password effect and the three new rewards
+    const parameters = JSON.stringify(sent[0]!.parameters)
+    for (const word of ['"unlock"', '"hack"', '"beat-game"', '"buy"', '"give-password"', '"access"', '"car"', '"deed"']) expect(parameters).toContain(word)
+    expect(user).toContain('doors opened, at most')
+  })
+
+  it.each([
+    ['a key run paid with the run of the door', KEY_RUN, { reward: { money: 45, reputation: 3, faction: 'town', items: [], access: [{ doorId: 'door_0003' }] } }],
+    ['a hack with the code given first', HACK_JOB, {}],
+    ['a bet on the bar screen', HIGH_SCORE, {}],
+    ['a purchase somebody funded', SHOPPING, { requires: [{ kind: 'money-at-least', amount: 21 }] }],
+    ['the finale that hands over the house', KEY_RUN, { difficulty: 'epic', reward: { money: 1200, reputation: 20, faction: 'town', items: [], deed: 'interior_0003' } }],
+  ])('takes %s first time', async (_name, steps, extra) => {
+    const { sent, sidecar } = fakeModel(() => lockedDraft(steps, extra))
+    const scribe = new Scribe({ sidecar, concurrency: 1 })
+
+    const quests = await scribe.writeQuests({ summary: LOCKED, sideQuests: 0 })
+
+    expect(sent).toHaveLength(1)
+    expect(scribe.problems()).toEqual([])
+    expect(quests).toHaveLength(1)
+  })
+
+  it.each([
+    ['a door opened with nothing in hand', KEY_RUN.filter((step) => step.id !== 'step_0001').map((step) => ({ ...step, ...(step.id === 'step_0002' ? { id: 'step_0001' } : {}) })), {}, 'steps.0.doorId: nothing opens door_0003 yet: a give-item effect with item_0001 on a talk step with npc_0002'],
+    ['a thing taken from behind a lock before the door is open', [KEY_RUN[0]!, { ...KEY_RUN[2]!, id: 'step_0002', next: ['step_0004'] }, KEY_RUN[3]!, KEY_RUN[4]!], {}, 'steps.1.itemId: item_0002 is behind the locked Cellar door at The Pulse (door_0003)'],
+    ['a screen hacked without its code', HACK_JOB.slice(1).map((step, i) => ({ ...step, id: `step_000${i + 1}`, ...(step.next ? { next: [`step_000${i + 2}`] } : {}) })), {}, 'steps.0.machineId: nothing opens machine_0002 yet: put a give-password effect with "bramble-80"'],
+    ['a game on a screen that runs none', HIGH_SCORE.map((step) => (step.kind === 'beat-game' ? { ...step, machineId: 'machine_0002' } : step)), {}, 'steps.0.machineId: machine_0002 runs mail, not a game'],
+    ['a purchase nobody funded', SHOPPING, {}, 'requires: the buy steps cost 21 credits: add {"kind":"money-at-least","amount":21}'],
+    ['a giver behind a lock', KEY_RUN, { giverNpcId: 'npc_0003' }, 'giverNpcId: npc_0003 stands behind the locked Cellar door'],
+  ])('quotes back %s and takes the corrected quest', async (_name, broken, extra, message) => {
+    const { sent, sidecar } = fakeModel([lockedDraft(broken, extra), lockedDraft(KEY_RUN)])
+    const scribe = new Scribe({ sidecar, concurrency: 1 })
+
+    const quests = await scribe.writeQuests({ summary: LOCKED, sideQuests: 0 })
+
+    expect(sent).toHaveLength(2)
+    expect(sent[1]!.user).toContain(message)
+    expect(quests).toHaveLength(1)
+    expect(scribe.problems().map((problem) => problem.error.code)).toEqual(['invalid-arguments'])
   })
 })

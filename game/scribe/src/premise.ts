@@ -62,7 +62,7 @@ export class PremiseWriter {
     )
     if (!written) return this.#spare(input)
     const folded = onPresets(written)
-    const charters = await this.#charters.write(folded, input.theme)
+    const charters = await this.#charters.write(folded, input.theme, input)
     const premise = declared(folded, charters)
     return charters.length ? { ...premise, charters } : premise
   }

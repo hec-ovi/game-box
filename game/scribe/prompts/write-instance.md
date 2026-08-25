@@ -7,6 +7,17 @@ The building: a {{label}}
 The rooms it was built with: {{rooms}}
 {{charter}}
 
+## What the plan put in it
+
+{{has}}
+
+Whoever keeps this place (the person at its counter, else the one on its door,
+else the first with a job here) carries every key and card to it. Write what
+that means into the people: who holds the key, who is let through and who is
+not, what is kept behind the door, what is on the screen and who knows its
+code. Never write the code itself: it is decided elsewhere and a quest hands
+it out.
+
 ## What the place is
 
 Decide what this particular {{label}} is: who runs it, what it lives off, what
