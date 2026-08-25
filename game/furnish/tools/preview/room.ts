@@ -18,9 +18,9 @@ const WALL_THICK = 0.1
 
 export function buildRoom(dressing: FurnishDressing, style: FurnishStyle, probe: boolean): THREE.Group {
   const root = new THREE.Group()
-  const floor = dressing.surface('floor')
-  const wall = dressing.surface('wall')
-  const ceiling = dressing.surface('ceiling')
+  const floor = dressing.surface('floor', { u: SIZE.width, v: SIZE.depth })
+  const wall = dressing.surface('wall', { u: SIZE.width, v: SIZE.height })
+  const ceiling = dressing.surface('ceiling', { u: SIZE.width, v: SIZE.depth })
   if (!probe) for (const material of [floor, wall, ceiling]) strip(material)
 
   root.add(slab(SIZE.width, WALL_THICK, SIZE.depth, 0, -WALL_THICK / 2, 0, floor))

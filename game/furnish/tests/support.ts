@@ -197,3 +197,6 @@ export function contactOf(object: THREE.Object3D, kind: 'rest' | 'work'): number
   const wide = found.filter((plate) => plate.area >= 0.25 * size.x * size.z)
   return Math.max(...(wide.length ? wide : found).map((plate) => plate.y))
 }
+
+/** The metres a surface spans, for a call that asks for a material and not a size. */
+export const ROOM_SIZE = { u: 6, v: 4 }

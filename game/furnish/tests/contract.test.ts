@@ -1,4 +1,4 @@
-import { Greybox } from '@gb/scene'
+import { Greybox, type BuildingSize, type SurfacePart } from '@gb/scene'
 import {
   FURNITURE_PROPS,
   METRICS,
@@ -10,6 +10,7 @@ import {
   type ItemArchetype,
   type Npc,
   type Plot,
+  type ResolvedCharter,
 } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
@@ -21,20 +22,20 @@ import {
   SURFACE_PARTS,
   furnishKit,
 } from '../src/index.ts'
-import { dressingIn, meshesOf, town, trianglesOf } from './support.ts'
+import { ROOM_SIZE, dressingIn, meshesOf, town, trianglesOf } from './support.ts'
 
 /** A dressing that writes down what it was asked, so a fall-through is visible. */
 class Behind extends Greybox {
   readonly asked: string[] = []
 
-  override surface(part: 'floor' | 'wall' | 'ceiling'): THREE.Material {
+  override surface(part: SurfacePart): THREE.Material {
     this.asked.push(`surface:${part}`)
     return super.surface(part)
   }
 
-  override building(plot: Plot, size: { width: number; depth: number; height: number }): THREE.Object3D {
+  override building(plot: Plot, size: BuildingSize, charter: ResolvedCharter): THREE.Object3D {
     this.asked.push(`building:${plot.id}`)
-    return super.building(plot, size)
+    return super.building(plot, size, charter)
   }
 
   override character(npc: Npc, doing: AnchorKind): THREE.Object3D {
@@ -194,7 +195,7 @@ describe('surface', () => {
     const behind = new Behind()
     const furnished = new FurnishDressing(furnishKit(), behind)
 
-    for (const part of SURFACE_PARTS) expect(furnished.surface(part)).toBeInstanceOf(THREE.Material)
+    for (const part of SURFACE_PARTS) expect(furnished.surface(part, ROOM_SIZE)).toBeInstanceOf(THREE.Material)
     expect(behind.asked).toEqual(['surface:floor', 'surface:wall', 'surface:ceiling'])
   })
 })
@@ -208,7 +209,7 @@ describe('the rest of the dressing', () => {
     const behind = new Behind()
     const furnished = new FurnishDressing(furnishKit(), behind)
 
-    furnished.building(plot, { width: 6, depth: 6, height: 4 })
+    furnished.building(plot, { width: 6, depth: 6, height: 4 }, world.charter(plot.kind)!)
     furnished.character(npc, 'stand')
     furnished.ground('street')
 

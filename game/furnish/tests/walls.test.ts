@@ -13,7 +13,7 @@ import {
   tasteOf,
   type PlacedBay,
 } from '../src/index.ts'
-import { dressingIn, meshesOf, plates, surfacedDressing, town } from './support.ts'
+import { ROOM_SIZE, dressingIn, meshesOf, plates, surfacedDressing, town } from './support.ts'
 
 let world: World
 let interiors: Interior[]
@@ -210,7 +210,7 @@ describe('the same seed is the same room', () => {
 
   it('gives two buildings in one town two different rooms', () => {
     const dressing = surfacedDressing('corpo')
-    const floors = new Set(interiors.map((interior) => dressing.room(interior).dressing.surface('floor')))
+    const floors = new Set(interiors.map((interior) => dressing.room(interior).dressing.surface('floor', ROOM_SIZE)))
     const kinds = new Set(interiors.map((interior) => dressing.room(interior).bays.map((bay) => bay.kind).join()))
 
     expect(floors.size, 'floors in one town').toBeGreaterThan(1)
@@ -222,7 +222,7 @@ describe('the same seed is the same room', () => {
     const materials = new Set<THREE.Material>()
     for (const interior of interiors) {
       const room = dressing.room(interior)
-      for (const part of ['floor', 'wall', 'ceiling'] as const) materials.add(room.dressing.surface(part))
+      for (const part of ['floor', 'wall', 'ceiling'] as const) materials.add(room.dressing.surface(part, ROOM_SIZE))
     }
     // four floors, three walls and one ceiling is the whole pool for a
     // language, and a town dresses its homes in one and its trade in the other

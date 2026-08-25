@@ -1,4 +1,4 @@
-import { Greybox, type Dressing } from '@gb/scene'
+import { Greybox, type BuildingSize, type Dressing, type SurfaceSize } from '@gb/scene'
 import type { AnchorKind, CellKind, FurnitureProp, Interior, Item, Npc, Plot, ResolvedCharter } from '@gb/world'
 import * as THREE from 'three'
 import type { FurnishLibrary } from './kit/library.ts'
@@ -91,12 +91,13 @@ export class FurnishDressing implements Dressing {
     return mesh
   }
 
-  surface(part: SurfacePart): THREE.Material {
-    return this.#kit.surfaces?.material(part, this.style, this.#choices[part]) ?? this.#rest.surface(part)
+  /** The material tiles in metres off where the surface stands, so the size is only handed on. */
+  surface(part: SurfacePart, size: SurfaceSize): THREE.Material {
+    return this.#kit.surfaces?.material(part, this.style, this.#choices[part]) ?? this.#rest.surface(part, size)
   }
 
-  building(plot: Plot, size: { width: number; depth: number; height: number }): THREE.Object3D {
-    return this.#rest.building(plot, size)
+  building(plot: Plot, size: BuildingSize, charter: ResolvedCharter): THREE.Object3D {
+    return this.#rest.building(plot, size, charter)
   }
 
   character(npc: Npc, doing: AnchorKind): THREE.Object3D {

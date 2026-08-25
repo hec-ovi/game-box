@@ -19,6 +19,7 @@ import {
   type SurfacePart,
 } from '../src/index.ts'
 import { SOURCE_IMAGES } from '../tools/pack.ts'
+import { ROOM_SIZE } from './support.ts'
 
 /**
  * A pack's worth of surfaces without the pack. What is in the images makes no
@@ -93,7 +94,7 @@ function readProbe(texture: THREE.DataTexture) {
 function wall(part: SurfacePart, length: number, height: number, turned: number): THREE.Mesh {
   const mesh = new THREE.Mesh(
     new THREE.BoxGeometry(length, height, METRICS.building.wallThickness),
-    dressing().surface(part),
+    dressing().surface(part, ROOM_SIZE),
   )
   mesh.rotation.y = turned
   mesh.position.set(7, height / 2, -3)
@@ -102,7 +103,7 @@ function wall(part: SurfacePart, length: number, height: number, turned: number)
 
 /** A floor or a ceiling: a plane over the whole room. */
 function slab(part: SurfacePart, width: number, depth: number, height: number): THREE.Mesh {
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), dressing().surface(part))
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), dressing().surface(part, ROOM_SIZE))
   mesh.rotation.x = part === 'ceiling' ? Math.PI / 2 : -Math.PI / 2
   mesh.position.set(-4, height, 11)
   return mesh
@@ -134,7 +135,7 @@ function tilesAcross(mesh: THREE.Mesh, facing: THREE.Vector3): THREE.Vector2 {
 
 describe('interior surfaces', () => {
   it('puts the same size stones on a small wall and a huge one, and stretches neither', () => {
-    const density = tilingOf(dressing().surface('wall'))!.perMetre
+    const density = tilingOf(dressing().surface('wall', ROOM_SIZE))!.perMetre
 
     // a cupboard-sized wall and the long side of a hall, one running east, one running north
     for (const [length, height, turned] of [
@@ -152,7 +153,7 @@ describe('interior surfaces', () => {
 
   it('lays the floor and the ceiling by the same rule, whatever shape the room is', () => {
     for (const part of ['floor', 'ceiling'] as const) {
-      const density = tilingOf(dressing().surface(part))!.perMetre
+      const density = tilingOf(dressing().surface(part, ROOM_SIZE))!.perMetre
 
       for (const [width, depth] of [[3, 3], [16, 5]] as const) {
         const facing = new THREE.Vector3(0, part === 'ceiling' ? -1 : 1, 0)
@@ -168,14 +169,14 @@ describe('interior surfaces', () => {
     for (const part of SURFACE_PARTS) {
       for (const style of FURNISH_STYLES) {
         const metres = SURFACE_TEXTURES[lookOf(style, part).map].metres
-        expect(tilingOf(new FurnishDressing(surfaced, undefined, style).surface(part))?.metres, part).toBe(metres)
+        expect(tilingOf(new FurnishDressing(surfaced, undefined, style).surface(part, ROOM_SIZE))?.metres, part).toBe(metres)
       }
     }
   })
 
   it('lays its coordinates where the renderer reads them, and lets a tile repeat', () => {
     for (const part of SURFACE_PARTS) {
-      const material = dressing().surface(part) as NodeMaterial & THREE.MeshStandardMaterial
+      const material = dressing().surface(part, ROOM_SIZE) as NodeMaterial & THREE.MeshStandardMaterial
 
       // the game draws with WebGPURenderer: a uv it cannot see is a texture blown up to the wall
       expect(material.isNodeMaterial, part).toBe(true)
@@ -258,7 +259,7 @@ describe("a room's own probe", () => {
   it('is on every surface, so no floor, wall or ceiling is a hole', () => {
     for (const style of FURNISH_STYLES) {
       for (const part of SURFACE_PARTS) {
-        const material = new FurnishDressing(surfaced, undefined, style).surface(part) as NodeMaterial
+        const material = new FurnishDressing(surfaced, undefined, style).surface(part, ROOM_SIZE) as NodeMaterial
         expect(material.envNode, `${style} ${part}`).toBeTruthy()
       }
     }
