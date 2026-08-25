@@ -109,7 +109,7 @@ describe('which way things point', () => {
 
       // the dressing puts the door on that wall
       const size = { width: plot.rect.w * world.cellSize, depth: plot.rect.h * world.cellSize, height: storeyHeight(plot.storeys) }
-      const door = new Greybox().building(plot, size).getObjectByName(`${plot.id}:door`)!
+      const door = new Greybox().building(plot, size, world.charter(plot.kind)!).getObjectByName(`${plot.id}:door`)!
       const out = door.position.clone().setY(0).normalize()
       expect(`${facing} ${out.dot(away).toFixed(3)}`).toBe(`${facing} 1.000`)
 

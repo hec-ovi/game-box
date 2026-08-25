@@ -1,14 +1,13 @@
-import { METRICS, type AnchorKind, type Interior, type World } from '@gb/world'
+import type { AnchorKind, Interior, World } from '@gb/world'
 import * as THREE from 'three'
 import { blockersOf } from './blockers.ts'
-import { DOOR_GAP } from './doorway.ts'
 import type { Dressing } from './dressing.ts'
+import { ceilingFill } from './fill.ts'
 import { PropFootprint } from './footprint.ts'
 import { Leaving } from './leaving.ts'
 import { Pickups } from './pickups.ts'
+import { shellOf } from './shell.ts'
 import { PropSurface } from './surface.ts'
-
-const CEILING_HEIGHT = METRICS.building.groundFloorHeight
 
 /**
  * A stored heading as a three.js yaw. The world writes compass degrees, 0
@@ -53,23 +52,8 @@ export function buildInterior(world: World, interior: Interior, dressing: Dressi
   const root = new THREE.Group()
   root.name = interior.id
 
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(interior.size.w, interior.size.h), dressing.surface('floor'))
-  floor.rotation.x = -Math.PI / 2
-  floor.position.set(interior.size.w / 2, 0, interior.size.h / 2)
-  floor.name = 'floor'
-  floor.receiveShadow = true
-  root.add(floor)
-
-  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(interior.size.w, interior.size.h), dressing.surface('ceiling'))
-  ceiling.rotation.x = Math.PI / 2
-  ceiling.position.set(interior.size.w / 2, CEILING_HEIGHT, interior.size.h / 2)
-  ceiling.name = 'ceiling'
-  root.add(ceiling)
-
-  const openings = interior.doors.map((door) => new THREE.Vector2(door.pos.x, door.pos.y))
-  for (const room of interior.rooms) {
-    for (const wall of wallsAround(room.rect, openings, dressing)) root.add(wall)
-  }
+  for (const surface of shellOf(interior, dressing)) root.add(surface)
+  ceilingFill(root)
 
   const props = new Map<string, THREE.Object3D>()
   const tops = new Map<string, PropSurface>()
@@ -140,62 +124,4 @@ export function buildInterior(world: World, interior: Interior, dressing: Dressi
     entrance,
     inward,
   }
-}
-
-/** Four walls around a room, split wherever a door sits on them. */
-function wallsAround(
-  rect: { x: number; y: number; w: number; h: number },
-  openings: readonly THREE.Vector2[],
-  dressing: Dressing,
-): THREE.Mesh[] {
-  const thickness = METRICS.building.wallThickness
-  const walls: THREE.Mesh[] = []
-  const runs: Array<{ horizontal: boolean; at: number; from: number; to: number }> = [
-    { horizontal: true, at: rect.y, from: rect.x, to: rect.x + rect.w },
-    { horizontal: true, at: rect.y + rect.h, from: rect.x, to: rect.x + rect.w },
-    { horizontal: false, at: rect.x, from: rect.y, to: rect.y + rect.h },
-    { horizontal: false, at: rect.x + rect.w, from: rect.y, to: rect.y + rect.h },
-  ]
-
-  for (const run of runs) {
-    for (const span of splitForDoors(run, openings)) {
-      const length = span.to - span.from
-      if (length <= 0.05) continue
-      const geometry = run.horizontal
-        ? new THREE.BoxGeometry(length, CEILING_HEIGHT, thickness)
-        : new THREE.BoxGeometry(thickness, CEILING_HEIGHT, length)
-      const wall = new THREE.Mesh(geometry, dressing.surface('wall'))
-      const middle = (span.from + span.to) / 2
-      wall.position.set(
-        run.horizontal ? middle : run.at,
-        CEILING_HEIGHT / 2,
-        run.horizontal ? run.at : middle,
-      )
-      wall.castShadow = true
-      wall.receiveShadow = true
-      walls.push(wall)
-    }
-  }
-  return walls
-}
-
-/** The pieces of one wall run that are left once the doorways are cut out. */
-function splitForDoors(
-  run: { horizontal: boolean; at: number; from: number; to: number },
-  openings: readonly THREE.Vector2[],
-): Array<{ from: number; to: number }> {
-  const onThisWall = openings
-    .filter((door) => Math.abs((run.horizontal ? door.y : door.x) - run.at) < 0.35)
-    .map((door) => (run.horizontal ? door.x : door.y))
-    .filter((along) => along > run.from - DOOR_GAP && along < run.to + DOOR_GAP)
-    .sort((a, b) => a - b)
-
-  const spans: Array<{ from: number; to: number }> = []
-  let cursor = run.from
-  for (const door of onThisWall) {
-    spans.push({ from: cursor, to: Math.max(cursor, door - DOOR_GAP / 2) })
-    cursor = Math.min(run.to, door + DOOR_GAP / 2)
-  }
-  spans.push({ from: cursor, to: run.to })
-  return spans
 }

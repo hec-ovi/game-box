@@ -1,27 +1,30 @@
 # @gb/scene contract
 
-contractVersion: 0.11.0
+contractVersion: 0.12.0
 
 ## Purpose
 
-Turns a city into something you can stand in: ground, marked streets, buildings and interiors as three.js objects, at the size and place the world says.
+Turns a city into something you can stand in: ground, marked streets, buildings and interiors as three.js objects, at the size and place the world says, lit by what the buildings throw onto the street and, indoors, by a fill that reaches the ceiling.
 
 ## Inputs
 
 | Param | Schema | Preconditions |
 |---|---|---|
 | `buildCity(world, dressing, options?)` | a `@gb/world` `World`, a `Dressing`, `CityOptions` | the world loaded, so its grid and plots agree |
-| `CityOptions` | `seed?`, `wetness?`, `night?`, `clutter?` | left out: the world's own seed, a dry street after dark, and the default amount of rubbish. `clutter: false` sweeps the streets |
+| `CityOptions` | `seed?`, `wetness?`, `night?`, `clutter?`, `lights?` | left out: the world's own seed, a dry street after dark, the default amount of rubbish and `LIVE_LIGHTS` live lights. `clutter: false` sweeps the streets |
 | `city.wetness` | 0 dry to 1 soaked | write `@gb/land`'s `wetness` into it, as often as you like: it is one uniform |
-| `city.night` | 0 by day to 1 after dark | the same reading the buildings light their windows on |
+| `city.night` | 0 by day to 1 after dark | the same reading the buildings light their windows on; the lights burn at their candela times it. Held to 0 to 1, and a reading that is not a number is day |
+| `city.lights.follow(x, z)` | metres on the ground: where the camera is | every frame, or whenever it moves; the emitters nearest it become the live lights |
 | `buildInterior(world, interior, dressing)` | one of that world's interiors | |
-| `Dressing` | `building`, `prop`, `ground`, `surface`, `marking?`, `clutter?` | every object it returns has its origin at the centre of its base and faces north (-Z) unturned |
+| `Dressing` | `building`, `lights?`, `prop`, `character`, `pickup`, `ground`, `surface`, `marking?`, `clutter?` | every object it returns has its origin at the centre of its base and faces north (-Z) unturned |
+| `Dressing.building(plot, size, charter)`, `Dressing.lights?(plot, size, charter)` | a `@gb/world` `Plot`, `BuildingSize` (`width`, `depth`, `height` in metres), the plot's `ResolvedCharter` | the charter is `world.charter(plot.kind)`, and a plot's kind is the word of a charter the world holds, so it is always there. `lights` is asked after `building` for that plot |
+| `Dressing.surface(part, size)` | `SurfacePart` (`floor`, `wall`, `ceiling`), `SurfaceSize` (`u`, `v`: the metres the surface spans along each texture axis) | the surface's UVs are in metres |
 
 ## Outputs
 
 | Param | Schema | Postconditions |
 |---|---|---|
-| `buildCity` | `{ root, buildings, doorsteps, add, spawn, markings, clutter, wetness, night }` | every plot standing at its footprint and height, and its doorstep in metres on the pavement in front of it |
+| `buildCity` | `{ root, buildings, doorsteps, add, spawn, markings, clutter, lights, wetness, night }` | every plot standing at its footprint and height, and its doorstep in metres on the pavement in front of it |
 | `spawn` | `Standing`: `x`, `z`, `heading` | a step off the first door in town that opens, standing on pavement and looking back at the door. `heading` is a three.js yaw in radians |
 | `buildings` | `ReadonlyMap<string, CityBuilding>` | one per plot, by plot id |
 | `CityBuilding` | `plotId`, `bounds`, `visible` | the box it occupies in city metres, and a switch that takes it out of the city or puts it back with no rebuild |
@@ -37,8 +40,14 @@ Turns a city into something you can stand in: ground, marked streets, buildings 
 | clutter mesh | `root.children` named `clutter` | one `THREE.BatchedMesh` holding every piece, one instance each |
 | `CLUTTER`, `BAND`, `CLEARANCE`, `CLUTTER_MAX_HEIGHT` | metres | how big each kind of rubbish is, how the pavement is divided across its width, what has to stay clear, and the tallest thing a street carries |
 | `CLUTTER_DENSITY` | chances, 0 to 1 | how much rubbish a street carries, per pavement cell and per paved cell |
+| `lights` | `CityLights`: `emitters`, `lights`, `follow(x, z)`, `night` | every `PlacedEmitter` in the city (a `LightEmitter` in city metres with its `plotId`), and the point lights the budget allows, under `root.children` named `lights`: `light:<n>`, decay 2, `distance` the emitter's radius, colour its colour, intensity its candela times `night`, `visible` only while it has an emitter |
+| `LightEmitter` | `kind`, `position` (`[x, y, z]` metres in the building's frame, just off the lit face), `colour` (packed `0xRRGGBB`), `intensity` (candela at full dark), `radius` (metres past which it is not worth drawing) | the shape a dressing publishes from `lights`; `@gb/kitbash` and `@gb/prefab` publish this one |
+| `LIVE_LIGHTS` | 16 | how many emitters are point lights at once, measured below |
+| `Greybox.lights(plot, size)` | one `LightEmitter` | a warm lamp (`0xffd2a0`, 20 cd, 14 m) 20 cm off the wall over the door, so a greybox street lights its doorsteps |
 | `SURFACE` | metres | the real-world size of every piece of street detail, from asphalt chippings to road repairs |
-| `buildInterior` | `{ root, anchors, props, people, pickups, leave, blockers, entrance, inward }` | floor, walls with the doorways cut out, ceiling, furniture standing where the world puts it (on the floor, or on the top it was lifted onto), an empty object at every anchor carrying its kind |
+| `buildInterior` | `{ root, anchors, props, people, pickups, leave, blockers, entrance, inward }` | floor, walls with the doorways cut out, ceiling, a light named `fill` under `root` that lights whatever looks down, furniture standing where the world puts it (on the floor, or on the top it was lifted onto), an empty object at every anchor carrying its kind |
+| interior surfaces | `root.children` named `floor` and `ceiling`, and one unnamed mesh per stretch of wall | position, normal and uv, the uv in metres |
+| `CEILING_FILL`, `CEILING_HEIGHT` | 1.6, and `METRICS.building.groundFloorHeight` (4 m) | what a face looking straight down is lit by, as the irradiance a white surface gets; how tall a room is |
 | `pickups` | `ReadonlyMap<string, THREE.Object3D>` | one handle per thing lying about, by item id: where it is, and what takes it out of the room. Remove the handle and the thing stops being drawn |
 | `leave(itemId, anchorId)` | the handle, or undefined | leaves that thing at that anchor once the room is standing, exactly where the room would have been built with it there. Undefined, and nothing drawn, for an anchor this room has not got or an item this world has not got |
 | pickup meshes | `root.children` named `pickups:<material>` | one `THREE.BatchedMesh` per material the things in that room are drawn with, one instance each |
@@ -60,8 +69,8 @@ None. Nothing here validates: a world that got this far already passed `@gb/worl
 ## Invariants
 
 - One world unit is one metre, and everything is sized from `METRICS`: 2 m cells, 2.1 m doors, a 4 m ground floor, kerbs 15 cm above the road.
-- Pavement and parks stand `METRICS.street.curbHeight` above the roadway; roads, land, water and building footprints are at zero. So is a `mountain` cell: it is the verge `@gb/land` lays flat outside the town, so the pavement that meets it is kerbed against zero and you cannot see under the edge of the city.
-- The ground is solid. Every drop from one cell to the next is closed by a kerb face wound to be seen from the low side, the edge of the grid included, so there is nowhere to look under the city and no gap where one surface stops and the next starts. Tops look up.
+- Pavement and parks stand `METRICS.street.curbHeight` above the roadway; roads, land, water and building footprints are at zero. A `mountain` cell is the valley wall (`@gb/world`, "What a mountain cell means"): `@gb/land` starts its rise at the top of whatever surface it meets, so there is never a drop to close and no kerb is drawn against it. The pavement meets the rise flush. Measured on a generated town: every edge where a pavement or a park meets the ring carries no kerb face.
+- The ground is solid. Every other drop from one cell to the next is closed by a kerb face wound to be seen from the low side, the edge of the grid included, so there is nowhere to look under the city and no gap where one surface stops and the next starts. Tops look up.
 - Ground is one mesh per surface, and runs of cells merge into as few quads as the grid allows, so a city of thousands of cells is a handful of draws and a road is a few triangles. The verge gets no ground here: `@gb/land` covers it. What stands on it is `mountains`, one instanced block per verge cell, a stand-in ring so a city built with no landscape around it still closes its view; a game with `@gb/land` in it hides that object.
 - The buildings are drawn out of one `THREE.BatchedMesh` per material, not one object each, so the city costs a draw per material however many buildings it has. Every building keeps its own transform, its own bounds and its own visibility inside the batch, so three still culls them one at a time and submits only what the frustum reaches, in the shadow pass as well as the frame. That is the whole reason it is a batch and not a merge: a merge costs the same one draw and hands the entire town to the rasteriser every time.
 - A batch holds indexed, single-material meshes. Anything a dressing returns that a batch cannot draw the same way (an instanced mesh, a sprite, a light, a mesh cut into material groups) makes that whole building stand on its own in the city rather than being half taken. Empties and other markers hung on the object are not carried into the city: whatever a dressing wants the city to know goes through the `Dressing` seam, not through an object it hangs on a building.
@@ -71,7 +80,11 @@ None. Nothing here validates: a world that got this far already passed `@gb/worl
 - Most of a city is shut, so the spawn goes to the first plot with an interior rather than the first plot: standing at a door nobody can go through means opening your eyes on a blank wall with nothing to press. The step off the doorstep is 2 m, inside arm's reach of the door, and it is taken onto pavement, so a one cell pavement is stepped along rather than backed off into the road. A city with no pavement at all still gets the plain step back.
 - Two headings meet here and they are not the same number. The world stores compass degrees, 0 north and 90 east, running clockwise seen from above; a three.js turn about +Y runs the other way, so furniture and anchors are placed at `-rot` radians. `spawn.heading` is already a three.js yaw in radians, the way the app turns its camera. Getting the sign wrong leaves north and south right and swaps east and west, which is why it is tested at all four points of the compass.
 - A dressing decides what things look like and nothing else. Where they go, how big they are and which way they face are decided here, so a building kit can replace the greybox without touching the builder.
+- What a building is built of, how loud its signage is, what its blade spells and what colour it is tinted are the plot's charter, which the world resolved once and this box hands through the seam whole: `building(plot, size, charter)` and `lights(plot, size, charter)`. No box on the seam holds a table of kinds; a `Greybox` building is a box in the charter's `tint`.
 - Every object a dressing returns has its origin at the centre of its base, so placing it on the floor cannot sink it.
+- The greybox draws every piece of furniture to `@gb/world`'s own table: the floor `footprintOf(prop)` claims, as tall as the contact or the height `PROP_SPECS` declares (a plant, which declares neither, 1.2 m). A thing you pick up is a cube by how it is carried: 20 cm in a pocket, 35 cm in a bag, 44 cm two-handed, which is a crate. Nothing the greybox draws is wider than the piece the world stands it on.
+- **A room's surfaces are laid out in metres.** The floor and the ceiling carry `u`, `v` as where the point is on the ground; a wall runs along itself and climbs, the same rule the ground uses, so a texture with `repeat` 1 tiles every metre whatever size the room is and the grain runs on from one wall into the next. `surface(part, size)` is told the metres each surface spans as well, so a dressing needs no shader rule to read a size off.
+- **A ceiling is lit.** Nothing else in the game reaches a face looking down: the prefiltered sky's lower half is black by design, and a room's own light strips are emissive geometry. So every interior carries one directional light, `fill`, shining straight up from the floor at `CEILING_FILL`: a face is lit by how far it looks down, and a wall or a floor gets nothing from it. It stands in for the bounce off the floor, and it is a light rather than a probe because a probe bright enough to do this would flood the room. Measured on the renderer the game uses, a lid painted the colour `@gb/furnish` publishes for a corpo ceiling (`0x4a4d52`, 0.069 to 0.084 linear) reads 0.043 to 0.051 linear (sRGB 0.23 to 0.25) under the fill alone, and 0 without it; the same room's walls in the owner's screenshot read sRGB 0.31, so the ceiling lands at about three quarters of the wall, which is a lit ceiling under a cove and not a white one.
 - A piece of furniture stands on the floor unless the world lifts it. `Furniture.lift` is the height of the top it stands on, so a till lands on the counter its base is placed at exactly, not near it. The lift is the object's transform and nothing else: the piece keeps the geometry and the material the dressing handed over, so it batches with every other copy of itself and costs no draw.
 - Interiors are built in their own coordinates, entered rather than carried: the city does not hold every room all the time.
 - **A thing you pick up stands on what it is left on, whether the generator left it there or the player did.** `leave` is the same rule the build runs, called again: the generator's own placements go through it while the room is being built, so a thing put down at an anchor afterwards lands where that thing would have been built. Nothing is re-derived off `blockers`, and nothing has to be, since the rule is one call. An anchor names the piece of furniture it belongs to, and the thing left there is put down on that piece: on it, so no part of it overhangs the edge, and at the height the piece is drawn to under that point. The height is measured with a ray, never looked up, for the same reason the collision is: a chair holds a cup at its seat and not at the top of its backrest, a counter holds one at the shelf it is really over, and a kit that draws a taller counter gets a taller counter with no table to keep in step. A round seat in a square footprint has corners with nothing drawn in them, so the place is walked in from the edge until there is something under it. An anchor with no furniture behind it leaves the thing on the floor, which is the only surface there is.
@@ -81,6 +94,13 @@ None. Nothing here validates: a world that got this far already passed `@gb/worl
 - `blockers` is in the same frame as `entrance` and the anchors: metres, interior coordinates, `rot` the three.js yaw the object carries. The half extents run across the prop's front and through it, so a turned counter is a turned rectangle and `contains(x, z, margin)` with the player's radius is the whole test. The caller needs no conversion.
 - What blocks: anything standing more than `STEP_OVER_HEIGHT` (0.25 m) off the floor. Below that you walk over it rather than into it, which is a rug at 2 cm; a bar counter at 1.1 m stops you. Nothing else is exempt. Whether staff may pass behind a counter, or an NPC may stand in the chair their anchor sits in, is the caller's decision: this box only says where the furniture is.
 - Nothing published can seal the player in. A rectangle that reaches into the floor a doorway needs (the door width plus 20 cm, the same hole cut in the wall) is left out, so furniture the generator parked on a door cannot lock the room; the prop is still drawn.
+
+### The light the buildings throw
+
+- **Every sign, lamp, screen and lit lobby is an emitter, and a few of them are lights.** A dressing publishes `LightEmitter`s from `lights(plot, size, charter)`; this box carries them into city metres and keeps every one. Every lit material pays for every point light in the frame, so `LIVE_LIGHTS` (16) `THREE.PointLight`s are made once and the nearest emitters to the camera get them; the rest stay emissive geometry until the camera comes closer. `follow(x, z)` is the whole of it, and a city is built with the lights round the spawn so the first frame is lit before the app has said where the camera is.
+- The lights stay in the scene whatever they are lighting. A light count is part of what a shader is compiled for, so a light that came and went would recompile every lit material as the camera moved; one that is only hidden does not.
+- A light falls off by the inverse square (decay 2) and is cut at the emitter's `radius`, the metres where it falls to 0.1 lux, so a lamp lights the wall round it and not the street two blocks away. Intensity is candela at full dark times `city.night`, so the same clock that lights the windows lights the walls beside them, and nothing glows at noon.
+- A dressing that publishes nothing lights nothing, and a building added to a standing city brings its emitters with it.
 
 ### The street surface
 
@@ -129,6 +149,20 @@ In the browser, on an AMD Radeon 8060S through ANGLE, `renderer.info.render.draw
 Attributes grow 10% because a batch's index buffer is 32 bit while a small building's own was 16 bit. Build time grows because every index is rewritten as it is copied into the shared buffer.
 
 The ground is a handful of draws whatever the size of the city, and the paint is two: a bigger city is more instances in the same two meshes.
+
+### What the lights cost
+
+Measured on the renderer the game uses in a headless Chromium on the Radeon 8060S, at 1920 by 937, standing at the spawn of the two block city the panel makes by default (27 plots, greyboxed, one lamp a building, the street wet, after dark), the render pass timed on the GPU, median of 240 frames:
+
+| live lights | render pass, WebGPU | render pass, WebGL2 |
+|---|---|---|
+| 0 | 0.90 ms | 1.06 ms |
+| 4 | 1.39 ms | 1.55 ms |
+| 8 | 1.76 ms | 1.80 ms |
+| 16 | 2.20 ms | 2.33 ms |
+| 27, every emitter live | 2.89 ms | 3.07 ms |
+
+About 0.08 ms a light on this screen, whichever backend, and it is per lit pixel rather than per building: a kit that costs more per fragment pays its own base and the same light term over it. Sixteen is 1.3 ms for the doorlamps, signs and screens of about three buildings round the camera, which is the end of a street canyon you are standing in; it is the budget, and `CityOptions.lights` moves it for a machine that wants another. `node game/scene/tools/bench/measure.ts street 0 4 8 16 32` is where the table comes from (`CHROME` names the browser, vite serves the repo root on 5312), `measure.ts ceiling 0 1.6` reads the ceiling back, and `SHOT=<dir>` keeps a screenshot of each run.
 
 ### What the wet street and the rubbish cost
 
@@ -188,14 +222,15 @@ const city = buildCity(world, dressing)
 scene.add(city.root)
 ```
 
-The street is built dry and after dark. Two numbers move it, both one uniform write, both safe every frame:
+The street is built dry and after dark. Two numbers move it, both one uniform write, both safe every frame, and one call hands the lights to whatever is nearest:
 
 ```ts
 city.wetness = land.wetness        // 0 dry to 1 soaked, straight from @gb/land
-city.night = nightLook(hour).level // 0 by day to 1 after dark, the hour the windows light up on
+city.night = nightLook(hour).level // 0 by day to 1 after dark, the hour the windows light up on, and the lamps with them
+city.lights.follow(camera.position.x, camera.position.z)
 ```
 
-Without them the street is a dark, grimy, dry road that reflects the neon: right for the hours the game is mostly played in, wrong at noon.
+Without them the street is a dark, grimy, dry road that reflects the neon and lights the spawn: right for the hours the game is mostly played in, wrong at noon.
 
 Taking a thing out of a room and leaving it somewhere in it:
 
@@ -207,4 +242,4 @@ room.leave(itemId, anchorId)                   // put down: on the surface that 
 
 ## How to modify this blackbox safely
 
-A real art kit is a new `Dressing`, not a change here. A dressing that wants its buildings batched has only to return indexed meshes on shared materials; welding a building's own pieces per material first, the way `@gb/kitbash` does, keeps the batch's instance count down but is not required. A kit that wants worn road paint implements `marking(paint)`, and one that wants its own rubbish material implements `clutter()`; leave either out and the street gets a plain one. What the ground is made of is the dressing's (`ground(kind)`); what the street has been through is this box's, and the two compose, so a pale kit surface will read pale through the film however dark the film is. Anything that needs the renderer, the camera, input or a frame loop belongs in the app, not in this box: everything here builds objects and returns them, which is why it is tested in Node with no browser. Where a thing left in a room lands is `src/surface.ts` and `src/leaving.ts` alone: the first measures the top of a piece off its triangles rather than off a table, so a kit that redraws a counter needs nothing here, and the second is the one rule both the build and `leave` go through. How a room's things are drawn together is `src/pickups.ts` alone. Retuning how much rubbish a street carries is `CLUTTER_DENSITY` alone; retuning what a piece of rubbish looks like is `src/clutter/models.ts` alone, and how big it is `src/clutter/catalog.ts`, which the placement reads. How big a piece of surface detail is in the real world is `src/street/sizes.ts` alone. Run `pnpm --filter @gb/scene test`.
+A real art kit is a new `Dressing`, not a change here. A dressing that wants its buildings batched has only to return indexed meshes on shared materials; welding a building's own pieces per material first, the way `@gb/kitbash` does, keeps the batch's instance count down but is not required. A kit that wants worn road paint implements `marking(paint)`, one that wants its own rubbish material implements `clutter()`, and one whose buildings should light the street implements `lights(plot, size, charter)`; leave any of them out and the street gets a plain one, or no light. How many emitters are live and how they are picked is `src/lights/city-lights.ts` alone; what a face looking down is lit by is `CEILING_FILL` in `src/fill.ts` alone; the shell of a room and its metre UVs are `src/shell.ts` and `src/metre-uv.ts`. What the ground is made of is the dressing's (`ground(kind)`); what the street has been through is this box's, and the two compose, so a pale kit surface will read pale through the film however dark the film is. Anything that needs the renderer, the camera, input or a frame loop belongs in the app, not in this box: everything here builds objects and returns them, which is why it is tested in Node with no browser. Where a thing left in a room lands is `src/surface.ts` and `src/leaving.ts` alone: the first measures the top of a piece off its triangles rather than off a table, so a kit that redraws a counter needs nothing here, and the second is the one rule both the build and `leave` go through. How a room's things are drawn together is `src/pickups.ts` alone. Retuning how much rubbish a street carries is `CLUTTER_DENSITY` alone; retuning what a piece of rubbish looks like is `src/clutter/models.ts` alone, and how big it is `src/clutter/catalog.ts`, which the placement reads. How big a piece of surface detail is in the real world is `src/street/sizes.ts` alone. Run `pnpm --filter @gb/scene test`.

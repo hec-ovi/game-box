@@ -30,15 +30,22 @@ const SIDES: readonly Side[] = [
   { x: 1, z: 0 },
 ]
 
-/**
- * Top of the ground in a cell, in metres. Past the edge of the grid the ground
- * has already ended. A `mountain` cell is the verge, and `@gb/land` lays it
- * flat at zero, so the pavement beside it is kerbed against zero like any other
- * drop rather than being left open against a wall that is not there.
- */
+/** Top of the ground in a cell, in metres. Past the edge of the grid the ground has already ended. */
 export function groundTop(kind: CellKind | undefined): number {
   if (kind === undefined) return GROUND_BASE
   return RAISED.has(kind) ? METRICS.street.curbHeight : 0
+}
+
+/**
+ * How far the ground falls from a cell of this height to the cell beside it,
+ * or nothing when it does not fall. A `mountain` cell is the valley wall:
+ * `@gb/land` starts its rise at the top of whatever surface it meets, so
+ * there is never a drop to close and never a kerb against it.
+ */
+function dropTo(top: number, beside: CellKind | undefined): number | undefined {
+  if (beside === 'mountain') return undefined
+  const low = groundTop(beside)
+  return low < top ? low : undefined
 }
 
 /**
@@ -164,8 +171,7 @@ class Surface {
   /** How far the ground beside this cell falls away, or nothing when it does not. */
   #dropBeside(x: number, y: number, side: Side): number | undefined {
     if (this.#grid.at(x, y) !== this.#kind) return undefined
-    const beside = groundTop(this.#grid.at(x + side.x, y + side.z))
-    return beside < this.#top ? beside : undefined
+    return dropTo(this.#top, this.#grid.at(x + side.x, y + side.z))
   }
 
   /** One vertical face, wound anticlockwise seen from the low side so the kerb reads from the road. */

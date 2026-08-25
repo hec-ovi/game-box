@@ -1,7 +1,23 @@
-import { METRICS, type AnchorKind, type BuildingKind, type CellKind, type FurnitureProp, type Item, type Npc, type Plot } from '@gb/world'
+import { footprintOf, METRICS, PROP_SPECS, type AnchorKind, type CellKind, type Facing, type FurnitureProp, type Item, type Npc, type Plot, type ResolvedCharter } from '@gb/world'
 import * as THREE from 'three'
 import { clutterMaterial } from './clutter/mesh.ts'
+import type { LightEmitter } from './lights/emitter.ts'
 import { PAINT_COLOUR, type MarkingPaint } from './markings.ts'
+
+/** A building's footprint and height in metres, the size the plot says. */
+export interface BuildingSize {
+  readonly width: number
+  readonly depth: number
+  readonly height: number
+}
+
+export type SurfacePart = 'floor' | 'wall' | 'ceiling'
+
+/** How many metres a surface spans along each of its texture axes: `u` across it, `v` up a wall or along the depth of a floor. */
+export interface SurfaceSize {
+  readonly u: number
+  readonly v: number
+}
 
 /**
  * Where art plugs in. The scene builder decides where everything goes and how
@@ -9,8 +25,10 @@ import { PAINT_COLOUR, type MarkingPaint } from './markings.ts'
  * building kit is one implementation of this and no change anywhere else.
  */
 export interface Dressing {
-  /** A building of this plot's kind, footprint and height, with its origin at the centre of its base. */
-  building(plot: Plot, size: { width: number; depth: number; height: number }): THREE.Object3D
+  /** A building of this plot's charter, footprint and height, with its origin at the centre of its base. */
+  building(plot: Plot, size: BuildingSize, charter: ResolvedCharter): THREE.Object3D
+  /** What that building throws light from, in its own frame. Asked after `building`. Left out, it lights nothing. */
+  lights?(plot: Plot, size: BuildingSize, charter: ResolvedCharter): readonly LightEmitter[]
   /** A piece of furniture, origin at the centre of its base, facing north. */
   prop(prop: FurnitureProp): THREE.Object3D
   /** A person, origin at their feet, facing north, doing what the anchor implies. */
@@ -19,8 +37,8 @@ export interface Dressing {
   pickup(item: Item): THREE.Object3D
   /** The surface of one kind of ground. */
   ground(kind: CellKind): THREE.Material
-  /** Interior floor, walls and ceiling. */
-  surface(part: 'floor' | 'wall' | 'ceiling'): THREE.Material
+  /** Interior floor, walls and ceiling, told how many metres the surface covers. Its UVs are in metres. */
+  surface(part: SurfacePart, size: SurfaceSize): THREE.Material
   /** Road paint. Left out, the street gets a plain white and yellow. */
   marking?(paint: MarkingPaint): THREE.Material
   /**
@@ -45,48 +63,28 @@ const PALETTE: Record<CellKind, number> = {
   empty: 0x1b1a17,
 }
 
-const BUILDING_TINT: Partial<Record<BuildingKind, number>> = {
-  bar: 0x8c5a3c,
-  cafe: 0x9a7a4a,
-  restaurant: 0x8a4a4a,
-  shop: 0x7a7a9a,
-  market: 0x9a8a5a,
-  office: 0x8a95a0,
-  workshop: 0x6a6a60,
-  warehouse: 0x5f5f58,
-  clinic: 0xa8a8a4,
-  hotel: 0x8a7a9a,
-  station: 0x707880,
-  chapel: 0x9a9a90,
-  house: 0x9a8a76,
-  apartment: 0x8a8276,
+/** How tall a piece nobody touches and nothing sizes is drawn: the plant. */
+const UNSIZED_HEIGHT = 1.2
+
+/** How big a thing you pick up is drawn, by how it is carried; the largest is a crate, 44 cm across. */
+const PICKUP_SIZE = { pocket: 0.2, bag: 0.35, 'two-handed': 0.44 } as const
+
+/** Which way out of the building each entrance wall looks. */
+const OUT: Record<Facing, { x: number; z: number }> = {
+  north: { x: 0, z: -1 },
+  south: { x: 0, z: 1 },
+  west: { x: -1, z: 0 },
+  east: { x: 1, z: 0 },
 }
 
-const PROP_SIZE: Record<FurnitureProp, [number, number, number]> = {
-  'bar-counter': [1.4, METRICS.furniture.barCounterHeight, 0.6],
-  'bar-stool': [0.4, METRICS.furniture.stoolHeight, 0.4],
-  table: [1.0, METRICS.furniture.tableHeight, 1.0],
-  chair: [0.45, 0.9, 0.45],
-  sofa: [1.8, 0.8, 0.8],
-  bed: [1.4, 0.5, 2.0],
-  desk: [1.4, METRICS.furniture.tableHeight, 0.7],
-  'office-chair': [0.5, 0.95, 0.5],
-  shelf: [1.0, 1.8, 0.4],
-  cabinet: [0.9, 1.2, 0.5],
-  wardrobe: [1.0, 2.0, 0.6],
-  fridge: [0.7, 1.8, 0.7],
-  stove: [0.8, 0.9, 0.6],
-  sink: [0.6, 0.9, 0.5],
-  counter: [1.4, METRICS.furniture.serviceCounterHeight, 0.6],
-  register: [0.4, 0.3, 0.4],
-  'display-case': [1.2, 1.1, 0.5],
-  'crate-stack': [0.9, 1.2, 0.9],
-  plant: [0.5, 1.2, 0.5],
-  lamp: [0.3, 1.5, 0.3],
-  rug: [2.0, 0.02, 1.4],
-  tv: [1.1, 0.65, 0.1],
-  'coffee-machine': [0.5, 0.6, 0.5],
-  jukebox: [0.8, 1.5, 0.5],
+const DOOR_THICKNESS = 0.12
+
+/** The one lamp a greybox building carries: warm, over the door, so a greybox street lights its doorsteps after dark. */
+const DOOR_LAMP = { colour: 0xffd2a0, candela: 20, above: 0.3, off: 0.2 }
+
+/** How far a lamp of that strength is worth drawing: where it falls to 0.1 lux, and never past 16 m. */
+function reachOf(candela: number): number {
+  return Math.min(16, Math.sqrt(candela / 0.1))
 }
 
 /**
@@ -97,11 +95,8 @@ const PROP_SIZE: Record<FurnitureProp, [number, number, number]> = {
 export class Greybox implements Dressing {
   #materials = new Map<number, THREE.Material>()
 
-  building(plot: Plot, size: { width: number; depth: number; height: number }): THREE.Object3D {
-    const shell = new THREE.Mesh(
-      new THREE.BoxGeometry(size.width, size.height, size.depth),
-      this.#material(BUILDING_TINT[plot.kind] ?? 0x8a8a8a),
-    )
+  building(plot: Plot, size: BuildingSize, charter: ResolvedCharter): THREE.Object3D {
+    const shell = new THREE.Mesh(new THREE.BoxGeometry(size.width, size.height, size.depth), this.#material(charter.tint))
     shell.position.y = size.height / 2
     shell.name = `${plot.id}:shell`
 
@@ -112,8 +107,29 @@ export class Greybox implements Dressing {
     return group
   }
 
+  /** One warm lamp over the door, just off the wall. */
+  lights(plot: Plot, size: BuildingSize): readonly LightEmitter[] {
+    const doorway = this.#doorway(plot, size)
+    return [
+      {
+        kind: 'doorlamp',
+        position: [
+          doorway.x + doorway.out.x * DOOR_LAMP.off,
+          METRICS.building.doorHeight + DOOR_LAMP.above,
+          doorway.z + doorway.out.z * DOOR_LAMP.off,
+        ],
+        colour: DOOR_LAMP.colour,
+        intensity: DOOR_LAMP.candela,
+        radius: reachOf(DOOR_LAMP.candela),
+      },
+    ]
+  }
+
+  /** A box filling the floor the world claims for it, as tall as the surface a body meets it at. */
   prop(prop: FurnitureProp): THREE.Object3D {
-    const [width, height, depth] = PROP_SIZE[prop]
+    const spec = PROP_SPECS[prop]
+    const { width, depth } = footprintOf(prop)
+    const height = spec.contact?.height ?? spec.height ?? UNSIZED_HEIGHT
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), this.#material(0x7d7468))
     mesh.position.y = height / 2
     mesh.castShadow = true
@@ -146,7 +162,7 @@ export class Greybox implements Dressing {
   }
 
   pickup(item: Item): THREE.Object3D {
-    const size = item.bulk === 'two-handed' ? 0.7 : item.bulk === 'bag' ? 0.35 : 0.2
+    const size = PICKUP_SIZE[item.bulk]
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(size, size, size), this.#material(0xd8b45a))
     mesh.position.y = size / 2
 
@@ -160,7 +176,7 @@ export class Greybox implements Dressing {
     return this.#material(PALETTE[kind])
   }
 
-  surface(part: 'floor' | 'wall' | 'ceiling'): THREE.Material {
+  surface(part: SurfacePart): THREE.Material {
     return this.#material(part === 'floor' ? 0x6a6258 : part === 'wall' ? 0xb0a99c : 0x8f8a80)
   }
 
@@ -173,33 +189,21 @@ export class Greybox implements Dressing {
   }
 
   /** A slab on the face the entrance is on, so you can see where to go in. */
-  #door(plot: Plot, size: { width: number; depth: number; height: number }): THREE.Mesh {
+  #door(plot: Plot, size: BuildingSize): THREE.Mesh {
     const { doorWidth, doorHeight } = METRICS.building
-    const thickness = 0.12
-    const door = new THREE.Mesh(new THREE.BoxGeometry(doorWidth, doorHeight, thickness), this.#material(0x3b2f26))
+    const door = new THREE.Mesh(new THREE.BoxGeometry(doorWidth, doorHeight, DOOR_THICKNESS), this.#material(0x3b2f26))
     door.name = `${plot.id}:door`
-    door.position.y = doorHeight / 2
-
-    const inset = thickness / 2
-    const halfWidth = size.width / 2 - inset
-    const halfDepth = size.depth / 2 - inset
-    switch (plot.entrance.facing) {
-      case 'north':
-        door.position.z = -halfDepth
-        break
-      case 'south':
-        door.position.z = halfDepth
-        break
-      case 'west':
-        door.position.x = -halfWidth
-        door.rotation.y = Math.PI / 2
-        break
-      case 'east':
-        door.position.x = halfWidth
-        door.rotation.y = Math.PI / 2
-        break
-    }
+    const doorway = this.#doorway(plot, size)
+    door.position.set(doorway.x, doorHeight / 2, doorway.z)
+    if (doorway.out.x !== 0) door.rotation.y = Math.PI / 2
     return door
+  }
+
+  /** The middle of the doorway on the entrance wall, flush with it, and the way out of it. */
+  #doorway(plot: Plot, size: BuildingSize): { x: number; z: number; out: { x: number; z: number } } {
+    const inset = DOOR_THICKNESS / 2
+    const out = OUT[plot.entrance.facing]
+    return { x: out.x * (size.width / 2 - inset), z: out.z * (size.depth / 2 - inset), out }
   }
 
   #material(colour: number): THREE.Material {

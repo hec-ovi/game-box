@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>scene bench</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #06080a;
+        overflow: hidden;
+        font: 12px/1.4 ui-monospace, monospace;
+        color: #cfe6ef;
+      }
+      canvas {
+        display: block;
+      }
+      #out {
+        position: fixed;
+        left: 10px;
+        top: 10px;
+        padding: 6px 9px;
+        background: #0b0f13cc;
+        white-space: pre;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="out">building</div>
+    <script type="module" src="./bench.ts"></script>
+  </body>
+</html>

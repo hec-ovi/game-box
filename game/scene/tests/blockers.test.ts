@@ -49,15 +49,16 @@ function clearFraction(built: InteriorBuild, size: { w: number; h: number }): nu
 }
 
 describe('what the player walks into', () => {
-  it('stops them at a table and lets them cross the open floor', async () => {
+  it('stops them at a piece of furniture and lets them cross the open floor', async () => {
     const world = await town()
-    const interior = world.interiors().find((i) => i.furniture.some((f) => f.prop === 'table'))!
+    const interior = world.interiors().find((i) => i.furniture.length > 0)!
     const built = buildInterior(world, interior, new Greybox())
-    const table = interior.furniture.find((f) => f.prop === 'table')!
-    const footprint = built.blockers.find((b) => b.propId === table.id)!
+    const footprint = built.blockers[0]!
+    expect(footprint, 'a furnished room with nothing in it that stops anyone').toBeDefined()
+    const piece = interior.furniture.find((f) => f.id === footprint.propId)!
 
-    // the table is solid where the table is drawn, in the coordinates the entrance is in
-    expect(solidAt(built, table.pos.x, table.pos.y)).toBe(true)
+    // the piece is solid where it is drawn, in the coordinates the entrance is in
+    expect(solidAt(built, piece.pos.x, piece.pos.y)).toBe(true)
     const beyond = across(footprint, footprint.halfWidth + 0.2)
     expect(footprint.contains(beyond.x, beyond.z)).toBe(false)
     expect(footprint.contains(beyond.x, beyond.z, METRICS.player.radius)).toBe(true)

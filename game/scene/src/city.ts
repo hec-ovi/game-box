@@ -6,6 +6,7 @@ import { clutterMesh } from './clutter/mesh.ts'
 import { CLUTTER_DENSITY, planClutter, type ClutterDensity, type ClutterPiece } from './clutter/plan.ts'
 import type { Dressing } from './dressing.ts'
 import { GROUND_KINDS, groundMesh, mountainMesh } from './ground.ts'
+import { CityLights, LIVE_LIGHTS } from './lights/city-lights.ts'
 import { markingMeshes } from './marking-mesh.ts'
 import { planMarkings, type Marking } from './markings.ts'
 import { RoadNetwork } from './roads.ts'
@@ -22,6 +23,8 @@ export interface CityOptions {
   readonly night?: number
   /** How much rubbish the streets carry, or `false` for a city that has been swept. */
   readonly clutter?: false | Partial<ClutterDensity>
+  /** How many of the buildings' emitters may be real lights at once. Left out, `LIVE_LIGHTS`. */
+  readonly lights?: number
 }
 
 export interface CityBuild {
@@ -38,6 +41,8 @@ export interface CityBuild {
   readonly markings: readonly Marking[]
   /** Everything lying on the streets, in metres. */
   readonly clutter: readonly ClutterPiece[]
+  /** What the buildings throw light from, and the few of them that are real lights at a time. */
+  readonly lights: CityLights
   /** How wet the streets are, 0 to 1: read `@gb/land`'s `wetness` into this. */
   wetness: number
   /** How dark it is, 0 by day to 1 after dark: the same hour the buildings light up on. */
@@ -77,6 +82,8 @@ export function buildCity(world: World, dressing: Dressing, options: CityOptions
   }
 
   const batcher = new CityBatcher(root)
+  const lights = new CityLights(options.night ?? 1, options.lights ?? LIVE_LIGHTS)
+  root.add(lights.group)
   const doorsteps = new Map<string, THREE.Vector3>()
   const cell = world.cellSize
 
@@ -86,14 +93,22 @@ export function buildCity(world: World, dressing: Dressing, options: CityOptions
       depth: plot.rect.h * cell,
       height: storeyHeight(plot.storeys),
     }
+    // a plot's kind is the word of a charter the world holds: that is what makes it a plot
+    const charter = world.charter(plot.kind)!
     const centre = cellCentre(plot.rect.x + plot.rect.w / 2 - 0.5, plot.rect.y + plot.rect.h / 2 - 0.5, cell)
+    const at = new THREE.Matrix4().makeTranslation(centre.x, 0, centre.z)
     const doorstep = cellCentre(plot.entrance.cell.x, plot.entrance.cell.y, cell)
     doorsteps.set(plot.id, new THREE.Vector3(doorstep.x, 0, doorstep.z))
-    return batcher.offer(plot.id, dressing.building(plot, size), new THREE.Matrix4().makeTranslation(centre.x, 0, centre.z))
+    const building = batcher.offer(plot.id, dressing.building(plot, size, charter), at)
+    lights.add(plot.id, dressing.lights?.(plot, size, charter) ?? [], at)
+    return building
   }
 
   for (const plot of world.plots()) put(plot)
   const buildings = batcher.seal()
+  const spawn = spawnAt(world, doorsteps)
+  // live round where the player opens their eyes, until the app says where the camera is
+  lights.follow(spawn.x, spawn.z)
 
   const clutter = litterOf(world, doorsteps, markings, seed, options.clutter)
   const rubbish = clutterMesh(clutter, seed, dressing)
@@ -104,9 +119,10 @@ export function buildCity(world: World, dressing: Dressing, options: CityOptions
     buildings,
     doorsteps,
     add: (plot) => put(plot)!,
-    spawn: spawnAt(world, doorsteps),
+    spawn,
     markings,
     clutter,
+    lights,
     get wetness(): number {
       return skin?.wetness ?? 0
     },
@@ -114,9 +130,10 @@ export function buildCity(world: World, dressing: Dressing, options: CityOptions
       if (skin) skin.wetness = wetness
     },
     get night(): number {
-      return skin?.night ?? 0
+      return lights.night
     },
     set night(darkness: number) {
+      lights.night = darkness
       if (skin) skin.night = darkness
     },
   }

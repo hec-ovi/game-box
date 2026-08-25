@@ -2,6 +2,7 @@ import { METRICS, World, type CellKind } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { buildCity, Greybox, type CityBuild } from '../src/index.ts'
+import { town } from './town.ts'
 
 const KERB = METRICS.street.curbHeight
 const SIDES = [
@@ -11,7 +12,12 @@ const SIDES = [
   { x: 0, z: -1 },
 ] as const
 
-/** What the ground is meant to do, said again here so the test does not take the builder's word for it. */
+/**
+ * What the ground is meant to do, said again here so the test does not take
+ * the builder's word for it. A `mountain` cell has no height of its own: it is
+ * the valley wall, and `@gb/land` starts its rise at the top of whatever
+ * surface it meets, so nothing is ever kerbed against it.
+ */
 const SURFACE_HEIGHT: Partial<Record<CellKind, number>> = {
   street: 0,
   empty: 0,
@@ -19,8 +25,6 @@ const SURFACE_HEIGHT: Partial<Record<CellKind, number>> = {
   water: 0,
   sidewalk: KERB,
   park: KERB,
-  // the verge @gb/land lays flat outside the city, which the pavement has to be kerbed against
-  mountain: 0,
 }
 
 /**
@@ -117,13 +121,37 @@ describe('the ground', () => {
     }
     expect(open).toEqual([])
     // and the street this was asked of really does put those cases next to each other
-    expect([...drops].sort()).toEqual([
-      'park -> empty',
-      'sidewalk -> building',
-      'sidewalk -> empty',
-      'sidewalk -> mountain',
-      'sidewalk -> street',
-    ])
+    expect([...drops].sort()).toEqual(['park -> empty', 'sidewalk -> building', 'sidewalk -> empty', 'sidewalk -> street'])
+  })
+
+  it('meets the valley wall flush: no kerb where a pavement runs into a mountain cell', async () => {
+    for (const world of [street(), await town()]) {
+      const city = buildCity(world, new Greybox())
+      const cell = world.cellSize
+      const kerbs = groundTriangles(city).filter((triangle) => Math.abs(triangle.normal.y) < 1e-6)
+      let edges = 0
+      const kerbed: string[] = []
+
+      for (let y = 0; y < world.grid.height; y++) {
+        for (let x = 0; x < world.grid.width; x++) {
+          if (world.grid.at(x, y) !== 'sidewalk' && world.grid.at(x, y) !== 'park') continue
+          for (const side of SIDES) {
+            if (world.grid.at(x + side.x, y + side.z) !== 'mountain') continue
+            edges++
+            // the edge between the two cells, seen from the mountain side
+            const at = side.x !== 0 ? (x + Math.max(side.x, 0)) * cell : (y + Math.max(side.z, 0)) * cell
+            const middle = side.x !== 0 ? new THREE.Vector3(at, KERB / 2, (y + 0.5) * cell) : new THREE.Vector3((x + 0.5) * cell, KERB / 2, at)
+            const face = kerbs.find(
+              (wall) => wall.normal.dot(new THREE.Vector3(side.x, 0, side.z)) > 0.99 && wall.box.clone().expandByScalar(1e-4).containsPoint(middle),
+            )
+            if (face) kerbed.push(`${x},${y} -> ${x + side.x},${y + side.z}`)
+          }
+        }
+      }
+      // measured: the hand-laid street has 12 such edges, the generated town its whole outer ring
+      expect(edges, world.name).toBeGreaterThan(0)
+      expect(kerbed, world.name).toEqual([])
+    }
   })
 
   it('closes the ground where the grid runs out, so the world has no open edge', () => {
