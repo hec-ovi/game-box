@@ -1,3 +1,4 @@
+import type { VisitorCell } from '@gb/scene'
 import type { PlayerState } from '@gb/play'
 import type { Npc, World } from '@gb/world'
 import type { Buildings } from './buildings.ts'
@@ -68,22 +69,57 @@ export class Companions {
   }
 
   /**
-   * Everybody still walking with the player, put back beside them. Two moments
-   * want it: coming out of a building, where they waited by the door rather
-   * than where they were standing when it closed, and opening the game again,
-   * where the save says who is with the player but the city has just put them
-   * back at their own post across town.
+   * Everybody still walking with the player, put back beside them: opening the
+   * game again says who is with the player, and the city has just put them
+   * back at their own post across town. Whoever is standing in a room with the
+   * player is left where they are, because that is already beside them.
    */
   regroup(at: Vec2): void {
+    const inside = this.#inside()
+    for (const npcId of this.#player.companions()) if (!inside.has(npcId)) this.#beside(npcId, at)
+  }
+
+  /**
+   * In through the door with the player. The room says where a visitor may
+   * stand, nearest the street door first, and `@gb/crowd` stands them there on
+   * the body they walked in with: one takes the first spot, the next the
+   * second. Anybody the room has no spot left for waits outside.
+   */
+  comeIn(interiorId: string, cells: readonly VisitorCell[], inward: Vec2): void {
+    // somebody the list holds but the street has not set off yet has no body
+    // to take inside, so the bodies are brought in line first
+    this.sync()
+    const heading = Math.atan2(-inward.x, -inward.z)
+    let spot = 0
     for (const npcId of this.#player.companions()) {
-      const npc = this.#world.npc(npcId)
-      if (!npc) continue
-      this.#street.stopFollowing(npcId)
-      this.#street.follow(npc, { at })
-      // and they are not also standing at their anchor, which is where a
-      // freshly built room draws them
-      this.#buildings.showPerson(npcId, false)
+      const cell = cells[spot]
+      if (!cell) return
+      spot += 1
+      this.#street.visit(npcId, { interiorId, at: { x: cell.x, z: cell.z }, heading })
     }
+  }
+
+  /** And out again with them: whoever came in is put back on the doorstep they came in by. */
+  comeOut(at: Vec2): void {
+    const inside = this.#inside()
+    for (const npcId of inside) this.#street.leave(npcId)
+    for (const npcId of this.#player.companions()) if (!inside.has(npcId)) this.#beside(npcId, at)
+  }
+
+  /** Whoever is standing in a building with the player rather than out on the pavement. */
+  #inside(): ReadonlySet<string> {
+    return new Set(this.#street.following().flatMap((person) => (person.interiorId === undefined ? [] : [person.id])))
+  }
+
+  /** One of them, set off again from beside the player. */
+  #beside(npcId: string, at: Vec2): void {
+    const npc = this.#world.npc(npcId)
+    if (!npc) return
+    this.#street.stopFollowing(npcId)
+    this.#street.follow(npc, { at })
+    // and they are not also standing at their anchor, which is where a freshly
+    // built room draws them
+    this.#buildings.showPerson(npcId, false)
   }
 
   /**

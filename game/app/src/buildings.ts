@@ -1,12 +1,15 @@
 import type { PlayerState } from '@gb/play'
-import { buildInterior, type Dressing, type CityBuild, type InteriorBuild } from '@gb/scene'
+import type { CityBuild, InteriorBuild } from '@gb/scene'
 import type { Interior, World } from '@gb/world'
 import { alsoBlockedBy } from './bodies.ts'
+import type { Locks } from './locks.ts'
 import type { Player } from './player.ts'
+import type { CityArt } from './rooms.ts'
 import type { Stage } from './stage.ts'
 import type { Sky } from './sky.ts'
 import type { RoomArt } from './pack.ts'
-import { furnishedSolid } from './solids.ts'
+import type { Screens } from './screens.ts'
+import { furnishedSolid, gated } from './solids.ts'
 import type { Street } from './street.ts'
 import type { Vec2 } from './walk.ts'
 
@@ -24,15 +27,19 @@ export interface AtTheirPost {
 export type Arrival = { plotId: string } | { interiorId: string }
 
 /**
- * Going into a building and coming back out. An interior is built the first
- * time somebody opens the door and kept after that, so the second visit is a
- * scene swap rather than a rebuild.
+ * Going into a building and coming back out. `@gb/scene` keeps the rooms: it
+ * builds one on the first entry and lets it go once the player has walked far
+ * enough from its building, so a room that is still standing is a scene swap
+ * and one that was let go is built again from the file, dressed in its own art
+ * and given back what this playthrough moved.
  */
 export class Buildings {
   #world: World
   #player: PlayerState
-  #dressing: Dressing
+  #locks: Locks
+  #art: CityArt
   #room: RoomArt | undefined
+  #screens: Screens | undefined
   #stage: Stage
   #body: Player
   #city: CityBuild
@@ -40,18 +47,21 @@ export class Buildings {
   #street: Street
   #announce: (text: string) => void
   #arrived: (at: Arrival) => void
+  #wentIn: (built: InteriorBuild, interior: Interior) => void
   #cameOut: (at: Vec2) => void
   #whoIsOut: () => Iterable<string>
 
-  #built = new Map<string, InteriorBuild>()
   #place: Place = { kind: 'city' }
   #away = new Set<string>()
 
   constructor(input: {
     world: World
     player: PlayerState
-    dressing: Dressing
+    locks: Locks
+    art: CityArt
     room?: RoomArt
+    /** A video of the player's own on the televisions. Without one they play the town's own schedule. */
+    screens?: Screens
     stage: Stage
     body: Player
     city: CityBuild
@@ -59,13 +69,17 @@ export class Buildings {
     street: Street
     announce: (text: string) => void
     arrived: (at: Arrival) => void
+    /** The player is standing in the room: whoever came in with them can be stood in it. */
+    wentIn?: (built: InteriorBuild, interior: Interior) => void
     cameOut: (at: Vec2) => void
     away: () => Iterable<string>
   }) {
     this.#world = input.world
     this.#player = input.player
-    this.#dressing = input.dressing
+    this.#locks = input.locks
+    this.#art = input.art
     this.#room = input.room
+    this.#screens = input.screens
     this.#stage = input.stage
     this.#body = input.body
     this.#city = input.city
@@ -73,6 +87,7 @@ export class Buildings {
     this.#street = input.street
     this.#announce = input.announce
     this.#arrived = input.arrived
+    this.#wentIn = input.wentIn ?? (() => {})
     this.#cameOut = input.cameOut
     this.#whoIsOut = input.away
   }
@@ -87,26 +102,25 @@ export class Buildings {
 
   /** The room the player is standing in, if they are standing in one. */
   get inside(): InteriorBuild | undefined {
-    return this.#place.kind === 'interior' ? this.#built.get(this.#place.interior.id) : undefined
+    return this.#place.kind === 'interior' ? this.room(this.#place.interior.id) : undefined
+  }
+
+  /** The room of an interior that is standing, for whoever draws a body under it. Nothing is built to answer. */
+  room(interiorId: string): InteriorBuild | undefined {
+    return this.#city.interiors.has(interiorId) ? this.#city.interior(interiorId) : undefined
   }
 
   enter(plotId: string): void {
     const plot = this.#world.plot(plotId)
     const interior = plot?.interiorId ? this.#world.interior(plot.interiorId) : undefined
     if (!interior) return
+    // the door onto the street is a door like any other: locked, it is a wall
+    // until the player has the key, the word or the deed
+    const street = this.#locks.streetDoor(interior)
+    if (street && !this.#locks.open(interior.id, street)) return
 
-    let built = this.#built.get(interior.id)
-    if (!built) {
-      // the shell is `@gb/scene`'s and the bays standing on its walls are the
-      // furniture's, so a room is built with its own dressing and then handed
-      // the run of bays that goes with it
-      const charter = this.#world.charter(interior.kind)
-      const room = charter ? this.#room?.(interior, charter) : undefined
-      built = buildInterior(this.#world, interior, room?.dressing ?? this.#dressing)
-      if (room) built.root.add(room.decor)
-      this.#asLeft(built, interior.id)
-      this.#built.set(interior.id, built)
-    }
+    const built = this.#build(interior)
+    if (!built) return
 
     // somebody out in the street or walking with the player is not also
     // standing behind their own counter. The street stops while the player is
@@ -115,10 +129,15 @@ export class Buildings {
     for (const [npcId, body] of built.people) body.visible = !this.#away.has(npcId)
 
     this.#place = { kind: 'interior', interior, plotId }
+    this.#screens?.dress(built, interior)
     this.#stage.show(built.root)
     this.#stage.indoors(true)
     this.#sky.visible = false
-    this.#body.setSolid(alsoBlockedBy(furnishedSolid(interior, built.blockers), () => this.peopleHere()))
+    // the gate of bars is not one of the room's own blockers: it stands while
+    // its door is locked and is walked through the moment it is not
+    const furniture = built.blockers.filter((piece) => piece.prop !== 'bars-door')
+    const inside = gated(furnishedSolid(interior, furniture), interior, (doorId) => this.#locks.locked(doorId))
+    this.#body.setSolid(alsoBlockedBy(inside, () => this.peopleHere()))
     this.#body.setGround(() => 0)
 
     const step = 1.2
@@ -132,6 +151,7 @@ export class Buildings {
     this.#player.discover({ place: interior.id })
     this.#arrived({ plotId })
     this.#arrived({ interiorId: interior.id })
+    this.#wentIn(built, interior)
   }
 
   leave(): void {
@@ -149,6 +169,27 @@ export class Buildings {
   }
 
   /**
+   * The room, standing or built again. `@gb/scene` builds it with the dressing
+   * the city was built with, so the art of this one interior is aimed at it for
+   * the length of the build: the shell is the scene's and the bays standing on
+   * its walls are the furniture's. A room that was let go comes back as the
+   * file wrote it, so everything this playthrough did to it goes on again.
+   */
+  #build(interior: Interior): InteriorBuild | undefined {
+    const standing = this.room(interior.id)
+    if (standing) return standing
+
+    const charter = this.#world.charter(interior.kind)
+    const room = charter ? this.#room?.(interior, charter) : undefined
+    const built = this.#art.inRoom(room?.dressing, () => this.#city.interior(interior.id))
+    if (!built) return undefined
+    if (room) built.root.add(room.decor)
+    this.#asLeft(built, interior.id)
+    for (const [npcId, body] of built.people) body.visible = !this.#away.has(npcId)
+    return built
+  }
+
+  /**
    * The room as this playthrough left it rather than as the city file wrote it.
    * `@gb/scene` builds every room from the world's own placements, which are
    * where things started: a thing in the player's pocket would be drawn on its
@@ -163,6 +204,12 @@ export class Buildings {
       built.pickups.get(left.itemId)?.removeFromParent()
       if (left.interiorId === interiorId) built.leave(left.itemId, left.anchorId)
     }
+  }
+
+  /** The player's own source came up while they were standing in a room: the sets in it get it now. */
+  dressScreens(): void {
+    const built = this.inside
+    if (built && this.#place.kind === 'interior') this.#screens?.dress(built, this.#place.interior)
   }
 
   /** Take a thing off the shelf it was drawn on. */
@@ -184,8 +231,8 @@ export class Buildings {
   showPerson(npcId: string, visible: boolean): void {
     if (visible) this.#away.delete(npcId)
     else this.#away.add(npcId)
-    for (const built of this.#built.values()) {
-      const body = built.people.get(npcId)
+    for (const interiorId of this.#city.interiors) {
+      const body = this.#city.interior(interiorId)?.people.get(npcId)
       if (body) body.visible = visible
     }
   }

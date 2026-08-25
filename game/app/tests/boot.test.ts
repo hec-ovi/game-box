@@ -16,7 +16,8 @@ import { Boot, type LoadArt, type Start } from '../src/boot/boot.ts'
 import { CityMaker } from '../src/boot/city-maker.ts'
 import { download, exportName } from '../src/boot/export.ts'
 import { Library, MemoryShelf, keyOf, type Shelved } from '../src/boot/library.ts'
-import { Panel } from '../src/boot/panel.ts'
+import { Packs } from '../src/boot/packs.ts'
+import { Panel, type PanelHandlers } from '../src/boot/panel.ts'
 import { Conditions } from '../src/conditions.ts'
 import { Greybox } from '@gb/scene'
 import type { Catalogue } from '@gb/prefab'
@@ -40,7 +41,18 @@ function panel(): Panel {
 
 const NEVER = new AbortController().signal
 const QUIET = { signal: NEVER, step: () => {} }
-const QUIET_HANDLERS = { generate: () => {}, open: () => {}, pick: () => {}, remove: () => {}, save: () => {}, cancel: () => {}, close: () => {} }
+const QUIET_HANDLERS: PanelHandlers = {
+  generate: () => {},
+  open: () => {},
+  apply: () => {},
+  grow: () => {},
+  pick: () => {},
+  remove: () => {},
+  save: () => {},
+  cancel: () => {},
+  close: () => {},
+  settings: () => {},
+}
 
 /** A sidecar nothing is listening on: every call fails at once and the offline writer covers. */
 const DOWN: SidecarOptions = { fetch: () => Promise.reject(new Error('nothing listening')) }
@@ -167,6 +179,43 @@ describe('the panel', () => {
     front.waiting('That will not build.', true)
     expect(screen.queryByRole('button', { name: /cancel/i })).toBeNull()
     expect(screen.getByRole('status').dataset.trouble).toBe('true')
+  })
+
+  it("takes the player's own screen source and keeps it out of the brief", async () => {
+    const user = userEvent.setup()
+    const settings: { screens: string }[] = []
+    const front = panel()
+    front.on({ ...QUIET_HANDLERS, settings: (set) => void settings.push(set) })
+    front.waiting()
+
+    await user.type(screen.getByLabelText(/video on the screens/i), '  https://example.invalid/loop.mp4  ')
+    await user.tab()
+
+    // it is the player's, not the city's: it never reaches a brief and so can
+    // never reach a world file
+    expect(settings.at(-1)).toEqual({ screens: 'https://example.invalid/loop.mp4' })
+    expect(JSON.stringify(front.brief)).not.toContain('example.invalid')
+  })
+
+  it('offers a pack onto the city that is open, and Grow beside Export, once there is one', () => {
+    const front = panel()
+    const applied: string[] = []
+    let grew = 0
+    front.on({ ...QUIET_HANDLERS, apply: (file) => void applied.push(file.name), grow: () => void grew++ })
+
+    // nothing to add to until a city is open
+    const field = screen.getByLabelText(/open a pack onto the city/i) as HTMLInputElement
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: /grow and pack/i }).disabled).toBe(true)
+    front.holding({ city: true, playing: true })
+    expect(field.disabled).toBe(false)
+
+    screen.getByRole('button', { name: /grow and pack/i }).click()
+    expect(grew).toBe(1)
+
+    const file = new File(['{}'], 'harbour.gbpack.json', { type: 'application/json' })
+    Object.defineProperty(field, 'files', { value: [file], configurable: true })
+    field.dispatchEvent(new Event('change'))
+    expect(applied).toEqual(['harbour.gbpack.json'])
   })
 
   it('offers Export once there is a city, and a way back once one is being played, on a key the button prints', async () => {
@@ -616,6 +665,73 @@ describe('the front door end to end', () => {
     await open(DOWN, shelf).boot.start(new URLSearchParams('?seed=comeback&theme=quiet%20coastal%20town&blocks=1'))
     expect(started).toEqual([other.value.bundle.world.name])
   }, 60_000)
+
+  it('grows the city on the shelf and hands back the pack for what went up', async () => {
+    const shelf = new MemoryShelf()
+    const { boot } = open(DOWN, shelf)
+    await boot.start(new URLSearchParams('?seed=grow&theme=quiet%20coastal%20town&blocks=2'))
+    const before = built[0]!.world.plots().length
+    const [filed] = await shelf.list()
+
+    await boot.grow()
+    if (built.length < 2) throw new Error(`grow said: ${document.querySelector('[data-boot="status"]')?.textContent}`)
+
+    // the city the player is standing in is the grown one, and it is the one on
+    // the shelf: the same row, so the playthrough carries into it
+    expect(built).toHaveLength(2)
+    expect(built[1]!.world.plots().length).toBeGreaterThan(before)
+    const rows = await shelf.list()
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.key).toBe(filed!.key)
+    expect(rows[0]!.hash).toBe(built[1]!.contentHash)
+    // and they are told what went up
+    expect(announced.some((note) => note.kind === 'note' && /^The pack added \d+ building/.test(note.text))).toBe(true)
+  }, 60_000)
+
+  it('opens a pack onto the city it was cut from, and refuses one cut from another', async () => {
+    const brief = { ...DEFAULTS, blocks: 2, seed: 'applied' }
+    const made = await new CityMaker(new Sidecar(DOWN)).build(brief, QUIET)
+    if (!made.ok) throw new Error(made.message)
+    const grown = await new Packs(new Sidecar(DOWN)).grow(made.value, QUIET)
+    if (!grown.ok) throw new Error(grown.message)
+    const elsewhere = await new CityMaker(new Sidecar(DOWN)).build({ ...DEFAULTS, blocks: 2, seed: 'elsewhere' }, QUIET)
+    if (!elsewhere.ok) throw new Error(elsewhere.message)
+    const other = await new Packs(new Sidecar(DOWN)).grow(elsewhere.value, QUIET)
+    if (!other.ok) throw new Error(other.message)
+
+    const shelf = new MemoryShelf()
+    const { boot } = open(DOWN, shelf)
+    await boot.start(new URLSearchParams('?seed=applied&theme=quiet%20coastal%20town&blocks=2'))
+    const before = built[0]!.world.plots().length
+
+    // a pack names the city it was cut from by world id and content hash, so
+    // one cut from another city goes nowhere and says so
+    await boot.applyPack(new File([JSON.stringify(other.pack)], 'elsewhere.gbpack.json', { type: 'application/json' }))
+    expect(built).toHaveLength(1)
+    expect(document.querySelector('[data-boot="status"]')!.textContent).toMatch(/another city/i)
+
+    await boot.applyPack(new File([JSON.stringify(grown.pack)], 'applied.gbpack.json', { type: 'application/json' }))
+    expect(built).toHaveLength(2)
+    expect(built[1]!.world.plots().length).toBeGreaterThan(before)
+    expect(built[1]!.contentHash).toBe(grown.value.bundle.contentHash)
+    expect(announced.some((note) => note.kind === 'note' && note.text.startsWith('The pack added'))).toBe(true)
+  }, 90_000)
+
+  it("keeps the player's own screen source out of every city they make", async () => {
+    const source = 'https://example.invalid/loop.mp4'
+    const shelf = new MemoryShelf()
+    const { boot } = open(DOWN, shelf)
+    boot.settings({ screens: source })
+    await boot.start(new URLSearchParams('?seed=screens&theme=quiet%20coastal%20town&blocks=1'))
+
+    // the game plays it
+    expect(options[0]!.screens).toBe(source)
+    // and the city carries nothing of it: a file sent to somebody else is that
+    // city and no part of this player's own settings
+    const [entry] = await shelf.list()
+    expect(JSON.stringify(await shelf.document(entry!.key))).not.toContain('example.invalid')
+    expect(JSON.stringify(built[0]!.world.toJSON())).not.toContain('example.invalid')
+  }, 30_000)
 
   it('keeps every city on the shelf with the last one marked, opens any of them, and takes one off with its save', async () => {
     const shelf = new MemoryShelf()

@@ -73,7 +73,9 @@ export class Playthrough {
     // door they were behind
     const inside = where.interiorId ? this.#world.interior(where.interiorId) : undefined
     if (inside) this.#buildings.enter(inside.plotId)
-    this.#body.placeAt(where.x, where.z, where.heading)
+    // a door that will not open for them any more leaves them out on the
+    // pavement: those three numbers are that room's metres and mean nothing here
+    if (!inside || !this.#buildings.outdoors) this.#body.placeAt(where.x, where.z, where.heading)
     // and whoever is with them sets off from beside them rather than from the
     // post the city just put them back on
     this.#companions.regroup(this.#buildings.cityPosition())

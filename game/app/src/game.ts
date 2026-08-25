@@ -19,25 +19,33 @@ import { Companions } from './companions.ts'
 import { Compass } from './compass.ts'
 import { Conditions } from './conditions.ts'
 import { CONTROLS } from './controls.ts'
+import { Counters } from './counters.ts'
 import { Escorts } from './escorts.ts'
+import { Garage } from './garage.ts'
 import { Gestures } from './gestures.ts'
 import { Guide } from './guide.ts'
 import { Intents } from './intents.ts'
 import { Interaction } from './interaction.ts'
+import { Locks } from './locks.ts'
+import { Machines } from './machines.ts'
 import type { RoomArt } from './pack.ts'
 import { Player } from './player.ts'
 import { createStage } from './renderer.ts'
 import { Playthrough } from './playthrough.ts'
 import { Reporting } from './reporting.ts'
+import { CityArt } from './rooms.ts'
 import { resumeNotice } from './resumed.ts'
+import { Rewards } from './rewards.ts'
+import { Screens } from './screens.ts'
 import { Session, type SaveStore } from './session.ts'
-import { atAnOpenDoor } from './spawn.ts'
+import { atAnOpenDoor, atTheKerb } from './spawn.ts'
 import { Sky } from './sky.ts'
 import type { MakeStage, Stage } from './stage.ts'
 import { Stashing } from './stashing.ts'
 import { tellStory } from './story.ts'
 import { Street } from './street.ts'
 import { Talking } from './talking.ts'
+import { Travel } from './travel.ts'
 import { pick, Targeting, type Target } from './targets.ts'
 
 export interface GameOptions {
@@ -50,6 +58,12 @@ export interface GameOptions {
   sidecar?: Sidecar
   /** Where the playthrough is kept, so a refresh picks it up where it left off. */
   save?: SaveStore
+  /**
+   * A video of the player's own for the televisions, by address. Set and
+   * reachable, it is what every set in town plays; anything else leaves them on
+   * the schedule the town writes for itself. It never reaches a world file.
+   */
+  screens?: string
   /** What leaving the game means: the interface reports it, whoever started the game decides. */
   leave?: () => void
   /**
@@ -81,17 +95,25 @@ export class Game {
   #companions: Companions
   #escorts: Escorts
   #stashing: Stashing
+  #locks: Locks
+  #machines: Machines
+  #counters: Counters
+  #garage: Garage
+  #rewards: Rewards
   #driving: Driving
   #attending: Attending
   #talking: Talking
   #report: Reporting
   #playthrough: Playthrough
   #chart: Chart
+  #travel: Travel
   #compass: Compass
   #targeting: Targeting
+  #art: CityArt
   #intents: Intents
   #interaction: Interaction
   #cast: Cast | undefined
+  #screens: Screens | undefined
   #riderCast: SceneCast | undefined
   #session: Session | undefined
   #target: Target | undefined
@@ -110,6 +132,7 @@ export class Game {
     session?: Session
     cast?: Cast
     kit?: KitDressing
+    screens?: Screens
   }) {
     this.#world = input.bundle.world
     this.#log = input.log
@@ -117,9 +140,13 @@ export class Game {
     this.#stage = input.stage
     this.#hud = input.hud
     this.#cast = input.cast
+    this.#screens = input.screens
     this.#session = input.session
 
-    this.#city = buildCity(this.#world, input.dressing)
+    // the city is built with the art the pack loaded, and a room with the art
+    // that interior asks for: `@gb/scene` builds both through the one seam
+    this.#art = new CityArt(input.dressing)
+    this.#city = buildCity(this.#world, this.#art.seam)
     // lamps are two draws for the whole city, and without them night is unreadable
     if (input.kit) this.#city.root.add(input.kit.streetlights(this.#world))
     this.#stage.show(this.#city.root)
@@ -159,6 +186,9 @@ export class Game {
       conditions,
       // a pin on somebody who is out walking goes where they are heading
       out: (npcId) => this.#street.whereabouts(npcId),
+      // a job that paid out a house or a car: the city is told whose the place
+      // is and the street is told where the car stands
+      paid: (reward) => this.#rewards.paid(reward),
       changed: () => {
         this.keep()
         this.#compass.dirty()
@@ -170,11 +200,17 @@ export class Game {
       },
     })
 
+    // the locks on the doors: what the file says, what the playthrough can get
+    // past, and the edges `@gb/nav` cuts while they are shut
+    this.#locks = new Locks({ world: this.#world, player: this.#player, nav, log: this.#log, report: this.#report })
+
     this.#buildings = new Buildings({
       world: this.#world,
       player: this.#player,
-      dressing: input.dressing,
+      locks: this.#locks,
+      art: this.#art,
       ...(input.room ? { room: input.room } : {}),
+      ...(input.screens ? { screens: input.screens } : {}),
       stage: this.#stage,
       body: this.#body,
       city: this.#city,
@@ -186,7 +222,10 @@ export class Game {
         // and whoever is walking with the player came in with them
         this.#escorts.entered(place, this.#player.companions())
       },
-      cameOut: (at) => this.#companions.regroup(at),
+      // and whoever is walking with the player comes in with them and goes
+      // back out with them
+      wentIn: (built, interior) => this.#companions.comeIn(interior.id, built.visitorCells, built.inward),
+      cameOut: (at) => this.#companions.comeOut(at),
       away: () => [...this.#street.walkers().map((walker) => walker.id), ...this.#player.companions()],
     })
 
@@ -232,11 +271,33 @@ export class Game {
       report: this.#report,
     })
 
+    // the screens on the desks and the counters people keep: what the crosshair
+    // offers, and what the interface is pushed when the player uses one
+    this.#machines = new Machines({
+      world: this.#world,
+      player: this.#player,
+      log: this.#log,
+      hud: this.#hud,
+      report: this.#report,
+      buildings: this.#buildings,
+    })
+    this.#counters = new Counters({
+      world: this.#world,
+      player: this.#player,
+      log: this.#log,
+      hud: this.#hud,
+      report: this.#report,
+      buildings: this.#buildings,
+      locks: this.#locks,
+    })
+
     if (input.cast) {
       const walkers = new THREE.Group()
       walkers.name = 'crowd'
       this.#city.root.add(walkers)
-      this.#riderCast = new SceneCast(input.cast, walkers)
+      // a companion who came in through the door is drawn under the room they
+      // are standing in, and nowhere at all while no such room is standing
+      this.#riderCast = new SceneCast(input.cast, walkers, { root: (interiorId) => this.#buildings.room(interiorId)?.root })
       this.#street.populate(this.#riderCast)
     }
 
@@ -250,7 +311,20 @@ export class Game {
       outdoors: () => this.#buildings.outdoors,
       ...(people && this.#riderCast ? { riders: new CrowdRiders({ crowd: people, cast: this.#riderCast }) } : {}),
     })
-    this.#street.setPlayerCar(this.#driving)
+    // a car a job paid out stands at the kerb outside the player's own door,
+    // on the same feed the town's cars are offered on, so getting into it is
+    // getting into any other car
+    this.#garage = new Garage({
+      player: this.#player,
+      driving: this.#driving,
+      where: () => {
+        const home = this.#world.home()
+        const kerb = home ? atTheKerb(this.#world, this.#city, home.plotId) : undefined
+        return kerb ?? this.#body.position
+      },
+    })
+    this.#rewards = new Rewards({ world: this.#world, player: this.#player, locks: this.#locks, garage: this.#garage, report: this.#report })
+    this.#street.setPlayerCar(this.#garage)
 
     // the crowd turns the people it is walking; the people at their posts in a
     // room are this box's own bodies, and with the art pack they come out of
@@ -283,6 +357,11 @@ export class Game {
       // also standing behind their own counter. Asked fresh every time, never
       // kept: bodies are recycled, and a held one is a stranger's arms
       gestures: new Gestures(() => this.#riderCast?.members(), () => heads),
+      // naming their stock opens the counter they keep; a word, a key or a
+      // door that changed hands is one the locks and the inventory read
+      wares: (npcId) => this.#counters.open(npcId),
+      granted: (grant) => this.#locks.handed(grant),
+      over: () => this.#counters.closed(),
       report: this.#report,
     })
 
@@ -293,12 +372,23 @@ export class Game {
     const steps = () => this.#report.following()
     const followed = () => this.#report.followed()
     const standing = () => ({ position: this.#buildings.cityPosition(), heading: this.#body.heading })
+    // where fast travel boards, off the city's own stations: the plan offers
+    // them, the crosshair opens the plan at one, and the ride is the game's
+    this.#travel = new Travel({
+      world: this.#world,
+      hud: this.#hud,
+      city: this.#city,
+      body: this.#body,
+      companions: this.#companions,
+    })
     this.#chart = new Chart({
       world: this.#world,
       hud: this.#hud,
       you: standing,
       goals: () => this.#report.goals(),
       entered: () => this.#player.discovered().places,
+      stations: this.#travel.marks,
+      boarding: () => (this.#buildings.outdoors ? this.#travel.boarding(this.#body.position) : undefined),
     })
     const guide = new Guide({ world: this.#world, nav, from: () => this.#buildings.cityPosition(), goals: followed, steps })
     this.#compass = new Compass({
@@ -316,6 +406,9 @@ export class Game {
       stashing: this.#stashing,
       street: this.#street,
       driving: this.#driving,
+      locks: this.#locks,
+      machines: this.#machines,
+      travel: this.#travel,
     })
 
     this.#intents = new Intents({
@@ -326,6 +419,9 @@ export class Game {
       body: this.#body,
       chart: this.#chart,
       conditions,
+      machines: this.#machines,
+      counters: this.#counters,
+      travel: this.#travel,
       leave: input.leave,
       // a page with no pointer lock to give back has nothing to release
       releasePointer: () => document.exitPointerLock?.(),
@@ -343,6 +439,9 @@ export class Game {
       talking: this.#talking,
       companions: this.#companions,
       driving: this.#driving,
+      locks: this.#locks,
+      machines: this.#machines,
+      chart: this.#chart,
       guide,
       conditions,
       report: this.#report,
@@ -360,13 +459,19 @@ export class Game {
     this.#report.refresh()
 
     // the city is built the same way every time, so everything a playthrough
-    // knows that the city does not is put back last, over the top of it
+    // knows that the city does not is put back last, over the top of it: the
+    // locks first, because a room the player has the key to is a room they may
+    // be standing in, and the car they left out after it
+    this.#locks.restore()
+    this.#rewards.restore()
     this.#playthrough.resume()
+    this.#garage.restore()
   }
 
   static async start(mount: HTMLElement, bundle: OpenedBundle, options: GameOptions): Promise<Game> {
     const stage = await (options.stage ?? createStage)(mount)
     const session = options.save ? new Session(bundle, options.save) : undefined
+    const screens = options.screens ? new Screens(options.screens) : undefined
     const restored = session?.restore()
     const player = restored?.player ?? PlayerState.create(bundle.world.id, 5)
     const log = restored?.log ?? QuestLog.create(bundle.quests, player)
@@ -387,6 +492,7 @@ export class Game {
         ...(session ? { session } : {}),
         ...(options.cast ? { cast: options.cast } : {}),
         ...(options.kit ? { kit: options.kit } : {}),
+        ...(screens ? { screens } : {}),
       })
     } catch (cause) {
       // half a game is worse than none: a stage and an interface with nothing
@@ -404,24 +510,36 @@ export class Game {
     if (options.cars) {
       await game.#street.openRoads(options.cars, game.#city.root, game.#body.position)
       const roads = game.#street.roads
-      if (roads) game.#driving.open(roads.traffic, roads.bodies)
+      if (roads) {
+        game.#garage.open(roads.bodies)
+        game.#driving.open(game.#garage.over(roads.traffic), roads.bodies)
+      }
     }
+    // the player's own source may take a moment or never come up, so the city
+    // is not held for it: every room built after it plays gets it, and the one
+    // they are standing in when it does gets it there and then
+    if (screens) void screens.open().then((playing) => void (playing && game && game.#buildings.dressScreens()))
     stage.start((seconds) => game!.frame(seconds))
     return game
   }
 
   frame(seconds: number): void {
+    // a ride lands under the veil, so the frame that dresses a neighbourhood
+    // the city has never drawn is the one nobody sees
+    this.#travel.update()
     const clock = this.#player.clock
     clock.advance(seconds)
     this.#report.tick()
     this.#keepTheClock(seconds)
     this.#sky.follow(seconds, clock, this.#buildings.outdoors, this.#city)
     this.#street.setTime(clock)
-    // the lights the city can afford go to the buildings round the player;
-    // indoors that is the door they came in by, so the street is lit when
-    // they step back out
+    // what the city draws round the player: the lights go to the nearest
+    // emitters, the buildings that came near are dressed and the ones that
+    // went far fall back to their shells, and a room nobody is near is let go.
+    // Indoors that point is the door they came in by, so the street outside
+    // stays dressed and lit and the room stays built
     const near = this.#buildings.cityPosition()
-    this.#city.lights.follow(near.x, near.z)
+    this.#city.follow(near.x, near.z)
 
     this.#body.update(seconds)
     this.#driving.update(seconds)
@@ -514,6 +632,7 @@ export class Game {
   /** Take the game off the page: every listener, every timer, the renderer. */
   dispose(): void {
     this.keep()
+    this.#screens?.close()
     this.#interaction.dispose()
     this.#body.dispose()
     this.#hud.destroy()

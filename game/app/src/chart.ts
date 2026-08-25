@@ -1,4 +1,4 @@
-import type { Hud, MapMark, MapPlot } from '@gb/hud'
+import type { Hud, MapMark, MapPlot, MapStation } from '@gb/hud'
 import type { World } from '@gb/world'
 import { interiorPlot, type Marked } from './places.ts'
 import type { Vec2 } from './walk.ts'
@@ -30,6 +30,8 @@ export class Chart {
   #you: () => Pose
   #goals: () => readonly Marked[]
   #entered: () => readonly string[]
+  #stations: readonly MapStation[]
+  #boarding: () => string | undefined
   #plan: MapPlot[]
   #landmarks: readonly string[]
   #named: MapPlot[] | undefined
@@ -37,12 +39,23 @@ export class Chart {
   #open = false
   #since = EVERY
 
-  constructor(input: { world: World; hud: Hud; you: () => Pose; goals: () => readonly Marked[]; entered: () => readonly string[] }) {
+  constructor(input: {
+    world: World
+    hud: Hud
+    you: () => Pose
+    goals: () => readonly Marked[]
+    entered: () => readonly string[]
+    /** Where fast travel boards, and the one the player is standing at. A city with no stations lists none. */
+    stations?: readonly MapStation[]
+    boarding?: () => string | undefined
+  }) {
     this.#world = input.world
     this.#hud = input.hud
     this.#you = input.you
     this.#goals = input.goals
     this.#entered = input.entered
+    this.#stations = input.stations ?? []
+    this.#boarding = input.boarding ?? (() => undefined)
     this.#plan = this.#world.plots().map((plot) => {
       const prominence = this.#world.charter(plot.kind)?.prominence
       return { id: plot.id, rect: plot.rect, label: plot.name, ...(prominence ? { prominence } : {}) }
@@ -65,15 +78,25 @@ export class Chart {
     this.draw()
   }
 
+  /** Put the plan up and draw it now: what walking up to a subway entrance opens. */
+  show(): void {
+    this.open = true
+    this.#hud.show({ window: 'map' })
+    this.draw()
+  }
+
   /** Measure the city and push it, whatever the map face is doing. */
   draw(): void {
     const goals = this.#goals()
+    const boarding = this.#boarding()
     this.#hud.show({
       map: {
         width: this.#world.grid.width,
         height: this.#world.grid.height,
         plots: this.#plots(goals),
         marks: [this.#here(), ...goals.map((goal) => this.#pin(goal))],
+        stations: this.#stations,
+        ...(boarding ? { boarding } : {}),
       },
     })
   }

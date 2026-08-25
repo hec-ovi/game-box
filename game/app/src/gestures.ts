@@ -1,4 +1,4 @@
-import { Cast, CLIPS, type CastMember } from '@gb/cast'
+import type { CastMember } from '@gb/cast'
 import type { Answer } from '@gb/talk'
 
 /** A set of bodies by NPC id, as `@gb/crowd` and `@gb/cast` both publish it. */
@@ -22,10 +22,11 @@ const DIRECTIONS: readonly { means: Answer; said: RegExp }[] = [
 ]
 
 /**
- * Talking with their hands. `@gb/cast` lays a gesture over the upper body on
- * top of whatever the person is already doing, so somebody leaning on their
- * counter keeps leaning on it and moves their arms while they speak. One
- * person gestures at a time, because one person is being talked to.
+ * Somebody speaking. `@gb/cast` mimics a line rather than lip syncing one: the
+ * talk that suits the stance they hold goes over their upper body for as long
+ * as the line is open, and their head beats to the chunks of it arriving, so
+ * somebody leaning on their counter keeps leaning on it while they talk. One
+ * person speaks at a time, because one person is being talked to.
  */
 export class Gestures {
   #where: readonly Bodies[]
@@ -40,14 +41,23 @@ export class Gestures {
     this.#where = where
   }
 
-  /** They have started saying something. Their hands go until it stops. */
+  /** They have started saying something. The line is open until it stops. */
   start(npcId: string): void {
     if (this.#going === npcId) return
     this.stop()
     const member = this.#member(npcId)
     if (!member) return
-    member.gesture(talkFor(member))
+    member.speak(true)
     this.#going = npcId
+  }
+
+  /**
+   * A piece of the line arriving. The beat picks up on each one and decays in
+   * between, so a stream that stalls goes still while the hands keep going.
+   */
+  pulse(npcId: string): void {
+    if (this.#going !== npcId) return
+    this.#member(npcId)?.pulse()
   }
 
   /**
@@ -71,10 +81,12 @@ export class Gestures {
     this.#going = npcId
   }
 
-  /** They have finished. Their hands come back to whatever they were doing. */
+  /** They have finished. The line closes and their hands come back to whatever they were doing. */
   stop(): void {
     if (this.#going === undefined) return
-    this.#member(this.#going)?.stopGesture()
+    const member = this.#member(this.#going)
+    member?.speak(false)
+    member?.stopGesture()
     this.#going = undefined
   }
 
@@ -90,13 +102,4 @@ export class Gestures {
     }
     return undefined
   }
-}
-
-/**
- * The talk that suits the pose they are holding. A gesture is added to the
- * base clip rather than replacing it, so the seated talk is the one to lay
- * over somebody doing what a person at a chair does.
- */
-function talkFor(member: CastMember): string {
-  return member.playing === Cast.doingAt('sit') ? CLIPS.talkSeated : CLIPS.talk
 }

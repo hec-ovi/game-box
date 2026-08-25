@@ -7,12 +7,18 @@ export interface PanelHandlers {
   generate(brief: CityBrief): void
   /** A city file the player picked off their own machine. */
   open(file: File): void
+  /** A pack file, onto the city that is open. */
+  apply(file: File): void
+  /** Build onto the city that is open, and hand back the pack for what went up. */
+  grow(): void
   /** A city off the shelf, by the library's key. */
   pick(key: string): void
   remove(key: string): void
   save(): void
   cancel(): void
   close(): void
+  /** The player's own settings changed: what their televisions play. */
+  settings(settings: { screens: string }): void
 }
 
 /**
@@ -25,8 +31,11 @@ export class Panel {
   #form: CityForm
   #library: LibraryView
   #open: HTMLInputElement
+  #apply: HTMLInputElement
+  #screens: HTMLInputElement
   #generate: HTMLButtonElement
   #export: HTMLButtonElement
+  #grow: HTMLButtonElement
   #cancel: HTMLButtonElement
   #close: HTMLButtonElement
   #status: HTMLElement
@@ -34,11 +43,14 @@ export class Panel {
   #handlers: PanelHandlers = {
     generate: () => {},
     open: () => {},
+    apply: () => {},
+    grow: () => {},
     pick: () => {},
     remove: () => {},
     save: () => {},
     cancel: () => {},
     close: () => {},
+    settings: () => {},
   }
 
   constructor(root: HTMLElement) {
@@ -51,8 +63,11 @@ export class Panel {
     this.#form = new CityForm(find)
     this.#library = new LibraryView(find)
     this.#open = find('open')
+    this.#apply = find('apply')
+    this.#screens = find('screens')
     this.#generate = find('generate')
     this.#export = find('export')
+    this.#grow = find('grow')
     this.#cancel = find('cancel')
     this.#close = find('close')
     this.#status = find('status')
@@ -61,14 +76,21 @@ export class Panel {
       event.preventDefault()
       this.#handlers.generate(this.brief)
     })
+    // cleared straight away, so picking the same file twice is two openings
     this.#open.addEventListener('change', () => {
       const file = this.#open.files?.[0]
-      // cleared straight away, so picking the same file twice is two openings
       this.#open.value = ''
       if (file) this.#handlers.open(file)
     })
+    this.#apply.addEventListener('change', () => {
+      const file = this.#apply.files?.[0]
+      this.#apply.value = ''
+      if (file) this.#handlers.apply(file)
+    })
+    this.#screens.addEventListener('change', () => this.#handlers.settings(this.settings))
     this.#library.on({ open: (key) => this.#handlers.pick(key), remove: (key) => this.#handlers.remove(key) })
     this.#export.addEventListener('click', () => this.#handlers.save())
+    this.#grow.addEventListener('click', () => this.#handlers.grow())
     this.#cancel.addEventListener('click', () => this.#handlers.cancel())
     this.#close.addEventListener('click', () => this.#handlers.close())
     // the way back is a key as well as a button, and the button prints it
@@ -85,6 +107,15 @@ export class Panel {
 
   get brief(): CityBrief {
     return this.#form.brief
+  }
+
+  /** What the player set that belongs to them rather than to any city. */
+  get settings(): { screens: string } {
+    return { screens: this.#screens.value.trim() }
+  }
+
+  set settings(settings: { screens: string }) {
+    this.#screens.value = settings.screens
   }
 
   set brief(brief: CityBrief) {
@@ -137,12 +168,16 @@ export class Panel {
   holding(what: { city: boolean; playing: boolean }): void {
     this.#playing = what.playing
     this.#export.disabled = !what.city
+    this.#grow.disabled = !what.city
+    this.#apply.disabled = !what.city
     this.#close.hidden = !what.playing
   }
 
   #busy(working: boolean): void {
     this.#generate.disabled = working
     this.#open.disabled = working
+    this.#grow.disabled = working || this.#grow.disabled
+    this.#apply.disabled = working || this.#apply.disabled
     this.#cancel.hidden = !working
     for (const button of this.#root.querySelectorAll<HTMLButtonElement>('.gb-boot-shelved button')) button.disabled = working
   }

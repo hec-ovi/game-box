@@ -2,9 +2,12 @@ import type { Hud, HudIntent } from '@gb/hud'
 import type { QuestLog } from '@gb/quest'
 import type { Chart } from './chart.ts'
 import type { Conditions } from './conditions.ts'
+import type { Counters } from './counters.ts'
+import type { Machines } from './machines.ts'
 import type { Player } from './player.ts'
 import type { Reporting } from './reporting.ts'
 import type { Talking } from './talking.ts'
+import type { Travel } from './travel.ts'
 
 /**
  * What the player did in the interface, carried to whoever owns it. `@gb/hud`
@@ -19,6 +22,9 @@ export class Intents {
   #body: Player
   #chart: Chart
   #conditions: Conditions
+  #machines: Machines
+  #counters: Counters
+  #travel: Travel
   #leave: () => void
   #releasePointer: () => void
 
@@ -30,6 +36,9 @@ export class Intents {
     body: Player
     chart: Chart
     conditions: Conditions
+    machines: Machines
+    counters: Counters
+    travel: Travel
     /** The way out of the game, which the game itself does not decide. */
     leave: () => void
     releasePointer: () => void
@@ -41,6 +50,9 @@ export class Intents {
     this.#body = input.body
     this.#chart = input.chart
     this.#conditions = input.conditions
+    this.#machines = input.machines
+    this.#counters = input.counters
+    this.#travel = input.travel
     this.#leave = input.leave
     this.#releasePointer = input.releasePointer
   }
@@ -106,6 +118,32 @@ export class Intents {
         return
       case 'weather':
         this.#set(this.#conditions.setWeather(intent.weather))
+        return
+      // the counter: the hud names the offer and this box pays for it, takes
+      // the thing and pushes the counter again without it
+      case 'buy':
+        this.#counters.buy(intent.itemId)
+        return
+      case 'counter-closed':
+        this.#counters.closed()
+        return
+      // the machine: the word typed at a locked screen, and the score a game
+      // on it ended with. The hud holds neither
+      case 'unlock':
+        this.#machines.unlock(intent.machineId, intent.password)
+        return
+      case 'score':
+        this.#machines.score(intent.machineId, intent.game, intent.score)
+        return
+      case 'screen-closed':
+        this.#machines.closed()
+        return
+      // the train: the plan comes down, the veil goes up, and the ride puts
+      // the player and whoever is with them down at the other station
+      case 'travel':
+        this.#chart.open = false
+        this.#hud.show({ window: null })
+        this.#travel.board(intent.stationId)
         return
       case 'exit':
         this.#leave()

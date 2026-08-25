@@ -10,7 +10,11 @@ import * as THREE from 'three'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Buildings } from '../src/buildings.ts'
 import type { Companions } from '../src/companions.ts'
+import type { Counters } from '../src/counters.ts'
+import type { Locks } from '../src/locks.ts'
+import type { Machines } from '../src/machines.ts'
 import { Conditions } from '../src/conditions.ts'
+import type { Chart } from '../src/chart.ts'
 import type { Guide } from '../src/guide.ts'
 import { Interaction } from '../src/interaction.ts'
 import { Player } from '../src/player.ts'
@@ -22,6 +26,8 @@ import type { Street } from '../src/street.ts'
 import type { Talking } from '../src/talking.ts'
 import { pick, Targeting, type Target } from '../src/targets.ts'
 import type { Vec2 } from '../src/walk.ts'
+import { CityArt } from '../src/rooms.ts'
+import { anyWorld, doorwaysOnly, fittings, lockUp } from './support/parts.ts'
 
 const nowhere = () => false
 let close: Array<() => void> = []
@@ -111,6 +117,9 @@ describe('the keys the player presses', () => {
       talking: { active: false } as Talking,
       companions: {} as Companions,
       driving: { act: () => void got++ } as unknown as Driving,
+      locks: {} as Locks,
+      machines: {} as Machines,
+      chart: {} as Chart,
       guide: { say: () => 'The Copper Wheel: 40 m, head east' } as Guide,
       conditions: new Conditions(clock),
       report: { note: (text: string) => void notes.push(text) } as unknown as Reporting,
@@ -263,8 +272,7 @@ function tidyingUp() {
       { id: 'step_0003', objective: 'Done', kind: 'complete' },
     ],
   }
-  const anything = { hasNpc: () => true, hasPlot: () => true, hasInterior: () => true, hasItem: () => true, hasAnchor: () => true }
-  const checked = validateQuest(doc, anything)
+  const checked = validateQuest(doc, anyWorld)
   if (!checked.ok) throw new Error(JSON.stringify(checked.error))
   return checked.value
 }
@@ -289,12 +297,16 @@ function inTheBar(kept?: { player: unknown; quests: unknown }) {
     announce: (notice: Notice) => void notices.push(notice),
   } as unknown as Hud
 
-  const city = { doorsteps: new Map([[plotId, { x: 11, z: 13 }]]) } as unknown as CityBuild
+  const art = new CityArt(new Greybox())
+  const city = doorwaysOnly(world, new Map([[plotId, { x: 11, z: 13 }]]), art)
   const street = { solid: () => () => false, floor: () => () => 0, walkers: () => [] } as unknown as Street
+  const report = new Reporting({ world, log, player, hud, conditions: new Conditions(player.clock) })
+  const locks = lockUp({ world, player, log, report })
   const buildings = new Buildings({
     world,
     player,
-    dressing: new Greybox(),
+    locks,
+    art,
     stage: { show: () => {}, indoors: () => {} } as unknown as Stage,
     body: { setSolid: () => {}, setGround: () => {}, placeAt: () => {}, position: { x: 11, z: 13 } } as unknown as Player,
     city,
@@ -307,10 +319,10 @@ function inTheBar(kept?: { player: unknown; quests: unknown }) {
   })
   buildings.enter(plotId)
 
-  const report = new Reporting({ world, log, player, hud, conditions: new Conditions(player.clock) })
   const stashing = new Stashing({ world, log, player, buildings, report })
   const driving = { aboard: false, target: () => undefined, act: () => {} } as unknown as Driving
-  const targeting = new Targeting({ world, city, buildings, stashing, street, driving })
+  const { machines, counters } = fittings({ world, player, log, hud, report, buildings, locks })
+  const targeting = new Targeting({ world, city, buildings, stashing, street, driving, locks, machines })
 
   const { camera, element } = stage()
   // where the player is standing and which way they are looking, so the key
@@ -328,6 +340,9 @@ function inTheBar(kept?: { player: unknown; quests: unknown }) {
     talking: { active: false } as Talking,
     companions: {} as Companions,
     driving,
+    locks,
+    machines,
+    chart: {} as Chart,
     guide: { say: () => undefined } as unknown as Guide,
     conditions: new Conditions(player.clock),
     report,

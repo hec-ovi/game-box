@@ -1,4 +1,4 @@
-import { Crowd, CROWD_DEFAULTS, type Attention, type Companion, type CrowdCast, type Hazard, type Hazards } from '@gb/crowd'
+import { Crowd, CROWD_DEFAULTS, type Attention, type Companion, type CrowdCast, type Hazard, type Hazards, type Visit } from '@gb/crowd'
 import type { CityNav } from '@gb/nav'
 import { CarPack, LaneGraph, Traffic, type Obstacle } from '@gb/traffic'
 import { METRICS, type Npc, type World } from '@gb/world'
@@ -241,9 +241,23 @@ export class Street {
     return this.#crowd?.walkers() ?? []
   }
 
-  /** Whoever is walking with the player, in the order they joined. */
-  following(): readonly { id: string; x: number; z: number }[] {
+  /**
+   * Whoever is walking with the player, in the order they joined. Somebody
+   * inside a building with them carries the interior they are in, and their
+   * metres are that room's, not the city's.
+   */
+  following(): readonly { id: string; x: number; z: number; interiorId?: string }[] {
     return this.#crowd?.following() ?? []
+  }
+
+  /** A companion in through the door with the player, standing where the room says a visitor may stand. */
+  visit(npcId: string, stay: Visit): void {
+    this.#crowd?.visit(npcId, stay)
+  }
+
+  /** And back out with them, onto the doorstep of the building they were in. */
+  leave(npcId: string): void {
+    this.#crowd?.leave(npcId)
   }
 
   /**

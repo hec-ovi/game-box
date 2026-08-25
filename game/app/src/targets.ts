@@ -2,15 +2,18 @@ import type { Driving } from '@gb/drive'
 import type { CityBuild } from '@gb/scene'
 import { METRICS, type World } from '@gb/world'
 import type { Buildings } from './buildings.ts'
+import type { Locks } from './locks.ts'
+import type { Machines } from './machines.ts'
 import type { Stashing } from './stashing.ts'
 import type { Street } from './street.ts'
+import type { Travel } from './travel.ts'
 import type { Vec2 } from './walk.ts'
 
-export type TargetKind = 'enter' | 'leave' | 'talk' | 'take' | 'stash' | 'drive'
+export type TargetKind = 'enter' | 'leave' | 'talk' | 'take' | 'stash' | 'drive' | 'door' | 'machine' | 'station'
 
 export interface Target {
   readonly kind: TargetKind
-  /** The plot, npc, item or anchor this points at. */
+  /** The plot, npc, item, anchor, door, machine or station this points at. */
   readonly id: string
   /** What the prompt says, without the key. */
   readonly label: string
@@ -51,14 +54,31 @@ export class Targeting {
   #stashing: Stashing
   #street: Street
   #driving: Driving
+  #locks: Locks
+  #machines: Machines
+  #travel: Travel | undefined
 
-  constructor(input: { world: World; city: CityBuild; buildings: Buildings; stashing: Stashing; street: Street; driving: Driving }) {
+  constructor(input: {
+    world: World
+    city: CityBuild
+    buildings: Buildings
+    stashing: Stashing
+    street: Street
+    driving: Driving
+    locks: Locks
+    machines: Machines
+    /** Where fast travel boards. A city with no stations offers none. */
+    travel?: Travel
+  }) {
     this.#world = input.world
     this.#city = input.city
     this.#buildings = input.buildings
     this.#stashing = input.stashing
     this.#street = input.street
     this.#driving = input.driving
+    this.#locks = input.locks
+    this.#machines = input.machines
+    this.#travel = input.travel
   }
 
   list(): Target[] {
@@ -81,7 +101,15 @@ export class Targeting {
       if (!npc) return []
       return [{ kind: 'talk' as const, id: walker.id, label: `Talk to ${npc.name}`, at: { x: walker.x, z: walker.z } }]
     })
-    return [...doors, ...passers]
+    // and the subway entrances, which open the plan on the stations rather
+    // than going anywhere themselves
+    const stations = (this.#travel?.entrances() ?? []).map((station) => ({
+      kind: 'station' as const,
+      id: station.id,
+      label: `Take the subway from ${station.name}`,
+      at: station.at,
+    }))
+    return [...doors, ...passers, ...stations]
   }
 
   #inTheRoom(): Target[] {
@@ -109,6 +137,22 @@ export class Targeting {
     // the player is carrying the thing it asked for
     for (const spot of this.#stashing.spots()) {
       targets.push({ kind: 'stash', id: spot.anchorId, label: `Leave the ${spot.itemName.toLowerCase()} here`, at: spot.at })
+    }
+    // a door still locked is something to open; one whose lock has come off is
+    // a doorway like any other and is nothing to press
+    for (const door of place.interior.doors) {
+      if (door.from === 'outside' || !this.#locks.locked(door.id)) continue
+      const room = place.interior.rooms.find((each) => each.id === door.to)
+      targets.push({
+        kind: 'door',
+        id: door.id,
+        label: `Unlock the door to ${room?.name ?? 'the next room'}`,
+        at: { x: door.pos.x, z: door.pos.y },
+      })
+    }
+    // and the screens on the desks, which are sat at rather than picked up
+    for (const screen of this.#machines.here()) {
+      targets.push({ kind: 'machine', id: screen.machineId, label: screen.label, at: screen.at })
     }
     return targets
   }

@@ -1,6 +1,6 @@
-import type { Carried, Hud } from '@gb/hud'
+import type { Carried, Hud, OwnedPlace } from '@gb/hud'
 import type { PlayerState } from '@gb/play'
-import type { Change, Objective, QuestKind, QuestLog } from '@gb/quest'
+import type { Change, Objective, QuestKind, QuestLog, Reward } from '@gb/quest'
 import type { World } from '@gb/world'
 import { codexOf } from './codex.ts'
 import type { Conditions } from './conditions.ts'
@@ -24,6 +24,7 @@ export class Reporting {
   #conditions: Conditions
   #out: Whereabouts
   #changed: () => void
+  #paid: (reward: Reward) => void
   #tracked: string | null | undefined
   #pushedAt = Number.NaN
   #timed = false
@@ -37,6 +38,8 @@ export class Reporting {
     /** Where somebody out walking is, for the pins. Nobody is out by default. */
     out?: Whereabouts
     changed?: () => void
+    /** A job paid out: what the city and the street have to be told about it. */
+    paid?: (reward: Reward) => void
   }) {
     this.#world = input.world
     this.#log = input.log
@@ -45,6 +48,7 @@ export class Reporting {
     this.#conditions = input.conditions
     this.#out = input.out ?? (() => undefined)
     this.#changed = input.changed ?? (() => {})
+    this.#paid = input.paid ?? (() => {})
   }
 
   /**
@@ -98,6 +102,9 @@ export class Reporting {
     const title = (id: string) => this.#log.quests().find((quest) => quest.id === id)?.title ?? 'a job'
     if (change.kind === 'quest-started') this.#hud.announce({ kind: 'quest-started', title: title(change.questId) })
     if (change.kind === 'quest-complete') {
+      // the playthrough was paid by the quest log; the house it handed over and
+      // the car it put on the street are the city's and are written here
+      this.#paid(change.reward)
       this.#hud.announce({ kind: 'quest-complete', title: title(change.questId), reward: { money: change.reward.money } })
     }
     if (change.kind === 'quest-failed') this.#hud.announce({ kind: 'quest-failed', title: title(change.questId) })
@@ -133,11 +140,7 @@ export class Reporting {
   }
 
   refresh(): void {
-    const carrying: Carried[] = this.#player.inventory().map((id) => ({
-      id,
-      name: this.#world.item(id)?.name ?? id,
-      quest: this.#log.isQuestItem(id),
-    }))
+    const carrying: Carried[] = this.#player.inventory().map((id) => this.#carried(id))
     // the quests tab is the quest log's own journal page, pushed as it stands:
     // a page carries what the engine kept, secrets, timers and endings and all
     const quests = this.#log.journal()
@@ -148,8 +151,34 @@ export class Reporting {
       carrying,
       quests,
       codex: codexOf(this.#world, this.#player),
+      homes: this.#homes(),
       settings: this.#conditions.view(),
     })
     this.#changed()
+  }
+
+  /** A thing in hand, with what it is worth and whether a live job wants it. */
+  #carried(itemId: string): Carried {
+    const item = this.#world.item(itemId)
+    return {
+      id: itemId,
+      name: item?.name ?? itemId,
+      quest: this.#log.isQuestItem(itemId),
+      ...(item?.value !== undefined ? { value: item.value } : {}),
+    }
+  }
+
+  /** The places the player holds the deed to, and what they have left standing in each. */
+  #homes(): OwnedPlace[] {
+    return this.#world.homes().map((interior) => {
+      const plot = this.#world.plot(interior.plotId)
+      const label = this.#world.charter(interior.kind)?.label
+      return {
+        id: interior.id,
+        name: plot?.name ?? interior.id,
+        ...(label ? { text: `Your ${label}` } : {}),
+        placed: this.#player.placedIn(interior.id).map((left) => this.#carried(left.itemId)),
+      }
+    })
   }
 }

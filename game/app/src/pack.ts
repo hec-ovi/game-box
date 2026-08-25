@@ -1,4 +1,4 @@
-import { Cast, CastDressing, parseWardrobe } from '@gb/cast'
+import { Cast, CastDressing, parseWardrobe, type CastMember } from '@gb/cast'
 import { FurnishDressing, loadFurnish } from '@gb/furnish'
 import { KitDressing, loadKit, type CityNight } from '@gb/kitbash'
 import { PrefabDressing, loadPrefab, type Catalogue } from '@gb/prefab'
@@ -48,21 +48,46 @@ export async function loadDressing(theme: string, base = ''): Promise<ArtPack> {
 
   // the people go outside the furniture in the chain, so a room built for one
   // interior still has the cast answering for whoever is standing in it
-  const chain = (inside: Dressing): Dressing => guarded(cast ? new CastDressing(cast, inside) : inside)
+  const withCast = (inside: Dressing): Dressing => (cast ? new CastDressing(cast, inside) : inside)
   const room: RoomArt | undefined = furnish
     ? (interior, charter) => {
         const dressed = furnish.room(interior, charter)
-        return { dressing: chain(dressed.dressing), decor: dressed.decor }
+        return { dressing: guarded(withCast(dressed.dressing)), decor: dressed.decor }
       }
     : undefined
 
   return {
-    dressing: chain(furnish ?? outside),
+    dressing: guarded(overBuildings(withCast(furnish ?? outside), outside)),
     ...(room ? { room } : {}),
     ...(cast ? { cast } : {}),
     ...(kit ? { kit } : {}),
     ...(buildings?.catalogue ? { catalogue: buildings.catalogue } : {}),
   }
+}
+
+/**
+ * One dressing out of two. How a building looks from far off and what light it
+ * throws onto the street are the building dressing's own answers, and neither
+ * the furniture nor the people layered over it carries them through, so the
+ * city takes those two off the building layer and everything else off the front
+ * of the chain. Without them `@gb/scene` dresses every building in town whole
+ * at open and lights the street from nothing.
+ */
+function overBuildings(front: Dressing, buildings: Dressing): Dressing {
+  const composed: Dressing = {
+    building: (plot, size, charter) => front.building(plot, size, charter),
+    prop: (prop) => front.prop(prop),
+    character: (npc, doing) => front.character(npc, doing),
+    pickup: (item) => front.pickup(item),
+    ground: (kind) => front.ground(kind),
+    surface: (part, size) => front.surface(part, size),
+  }
+  if (buildings.shell) composed.shell = (plot, size, charter) => buildings.shell!(plot, size, charter)
+  if (buildings.lights) composed.lights = (plot, size, charter) => buildings.lights!(plot, size, charter)
+  if (front.marking) composed.marking = (paint) => front.marking!(paint)
+  if (front.clutter) composed.clutter = () => front.clutter!()
+  const bodies = (front as { members?: () => ReadonlyMap<string, CastMember> }).members
+  return bodies ? Object.assign(composed, { members: () => bodies.call(front) }) : composed
 }
 
 async function loadPeople(base: string): Promise<Cast | undefined> {

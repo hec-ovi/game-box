@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { Bundle, type OpenedBundle } from '@gb/bundle'
-import { Cast, CastDressing, CLIPS, type CastMember } from '@gb/cast'
+import { Cast, CastDressing, type CastMember } from '@gb/cast'
 import { Greybox } from '@gb/scene'
 import { Sidecar } from '@gb/sidecar'
 import * as THREE from 'three'
@@ -10,6 +10,7 @@ import { CityMaker } from '../src/boot/city-maker.ts'
 import { Game } from '../src/game.ts'
 import type { SaveStore } from '../src/session.ts'
 import type { Stage } from '../src/stage.ts'
+import type { Vec2 } from '../src/walk.ts'
 
 /**
  * The stage with the GPU taken out: a real camera, a real scene and a real
@@ -52,7 +53,15 @@ class Bench implements Stage {
   }
 }
 
-/** Everything anybody's arms were asked to do, and whose body did it. */
+/**
+ * The window the interface opens on a key. The counter is a second frame with
+ * the same chrome, so the room it stands in is what tells the two apart.
+ */
+function windowOn(mount: HTMLElement): Element {
+  return mount.querySelector('.gb-window-room:not(.gb-counter-room) .gb-window')!
+}
+
+/** Everything anybody's body was asked to do while somebody was talking to them, and whose body did it. */
 const moved: { object: THREE.Object3D; clip: string }[] = []
 
 /** A body, the shape the art pack hands one over in, with nothing inside it. */
@@ -60,10 +69,12 @@ function body(npcId: string): CastMember {
   const object = new THREE.Object3D()
   let playing: string | undefined
   let gesturing: string | undefined
+  let speaking = false
   return {
     npcId,
     object,
     outfit: 'plain',
+    build: 'regular',
     play: (clip: string) => void (playing = clip),
     get playing() {
       return playing
@@ -77,6 +88,14 @@ function body(npcId: string): CastMember {
       return gesturing
     },
     holding: undefined,
+    speak: (on: boolean) => {
+      speaking = on
+      moved.push({ object, clip: on ? 'speaking' : 'quiet' })
+    },
+    pulse: () => void moved.push({ object, clip: 'pulse' }),
+    get speaking() {
+      return speaking
+    },
     pace: () => {},
     attend: () => {},
     resume: () => {},
@@ -289,7 +308,7 @@ describe('what the interface is handed', () => {
     // on the plan, each read through the interface's own key, the way the
     // player reads them
     const name = String(door).slice('Go into '.length)
-    const page = mount.querySelector('.gb-window')!
+    const page = windowOn(mount)
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'm', code: 'KeyM' }))
     game.frame(1 / 60)
     expect(page.getAttribute('data-state')).toBe('open')
@@ -307,7 +326,7 @@ describe('what the interface is handed', () => {
     // the way the player reads it: the interface's own key opens the codex
     const known = bundle.world.premise()!.common[0]!
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'x', code: 'KeyX' }))
-    const page = mount.querySelector('.gb-window')!
+    const page = windowOn(mount)
     expect(page.getAttribute('data-state')).toBe('open')
     expect(page.textContent).toContain('History')
     expect(page.textContent).toContain(known)
@@ -335,6 +354,53 @@ describe('what the interface is handed', () => {
     const handedOn = lit().filter((lamp) => !atTheSpawn.includes(`${lamp.x.toFixed(1)},${lamp.z.toFixed(1)}`))
     expect(handedOn.length).toBeGreaterThan(0)
     expect(nearest()).toBeLessThan(10)
+  })
+
+  it('rides between stations under a veil, and lands the player a step off the other doorstep', async () => {
+    const bundle = await city()
+    const { game, mount } = await playPlain({ bundle })
+    game.frame(1 / 60)
+
+    // every station in town is on the plan, read the way the player reads it
+    const stations = bundle.world.stations()
+    expect(stations.length).toBeGreaterThan(1)
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'm', code: 'KeyM' }))
+    game.frame(1 / 60)
+    const page = windowOn(mount)
+    for (const station of stations) expect(page.textContent).toContain(station.name)
+
+    // the one furthest from where they are standing, so the ride is a ride
+    const size = bundle.world.cellSize
+    const doorstep = (station: (typeof stations)[number]) => ({
+      x: (station.entrance.cell.x + 0.5) * size,
+      z: (station.entrance.cell.y + 0.5) * size,
+    })
+    const here = game.look().at as Vec2
+    const away = stations
+      .map((station) => ({ station, gap: Math.hypot(doorstep(station).x - here.x, doorstep(station).z - here.z) }))
+      .toSorted((a, b) => b.gap - a.gap)[0]!
+    expect(away.gap).toBeGreaterThan(20)
+
+    game.intent({ kind: 'travel', stationId: away.station.id })
+    // the veil is up before anything has moved
+    const veil = mount.querySelector<HTMLElement>('.gb-loader')!
+    expect(veil.dataset.state).toBe('open')
+    expect(veil.textContent).toContain(`To ${away.station.name}`)
+    expect(game.look().at).toEqual(here)
+
+    // the landing frame is the one the veil covers, and every frame the player
+    // sees after it is a frame like any other
+    const frames: number[] = []
+    for (let frame = 0; frame < 30; frame++) {
+      const began = performance.now()
+      game.frame(1 / 60)
+      frames.push(performance.now() - began)
+    }
+    const landed = game.look().at as Vec2
+    const stop = doorstep(away.station)
+    expect(Math.hypot(landed.x - stop.x, landed.z - stop.z)).toBeLessThan(2.5)
+    expect(veil.dataset.state).not.toBe('open')
+    expect(Math.max(...frames.slice(1))).toBeLessThan(100)
   })
 
   it('says what a save lost coming back into a city written again since, by name', async () => {
@@ -375,7 +441,7 @@ describe('talking to somebody out on the pavement', () => {
     // somebody out walking is not also standing behind their own counter, so
     // the body that talks with its hands is the one on the pavement. Asking the
     // room's dressing first finds the copy it drew and waves that instead
-    await vi.waitFor(() => expect(moved.map((arms) => arms.clip)).toContain(CLIPS.talk))
+    await vi.waitFor(() => expect(moved.map((arms) => arms.clip)).toContain('speaking'))
     expect(moved.every((arms) => arms.object.parent === crowd)).toBe(true)
   }, 30_000)
 

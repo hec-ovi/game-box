@@ -1,6 +1,7 @@
 import type { SaveStore } from '../session.ts'
 
 const SAVE = 'game-box.save'
+const SETTINGS = 'game-box.settings'
 
 /**
  * The browser's own store, or nothing at all. A private window throws on the
@@ -15,6 +16,33 @@ function store(): Storage | undefined {
   } catch {
     return undefined
   }
+}
+
+/**
+ * What the player set that belongs to them rather than to any city: the source
+ * their televisions play, when they gave one. It is kept here and nowhere else,
+ * so a city they send somebody carries nothing of it.
+ */
+export interface Settings {
+  readonly screens: string
+}
+
+const NOTHING_SET: Settings = { screens: '' }
+
+/** What this browser remembers about the player. Anything it cannot read is nothing set. */
+export function localSettings(): Settings {
+  const raw = store()?.getItem(SETTINGS)
+  if (!raw) return NOTHING_SET
+  try {
+    const held = JSON.parse(raw) as Partial<Settings>
+    return { screens: typeof held.screens === 'string' ? held.screens : '' }
+  } catch {
+    return NOTHING_SET
+  }
+}
+
+export function keepSettings(settings: Settings): void {
+  store()?.setItem(SETTINGS, JSON.stringify(settings))
 }
 
 /**

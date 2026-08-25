@@ -4,10 +4,13 @@ import type { PlayerState } from '@gb/play'
 import type { QuestLog } from '@gb/quest'
 import type { World } from '@gb/world'
 import type { Buildings } from './buildings.ts'
+import type { Chart } from './chart.ts'
 import { typingSomewhere } from './focus.ts'
 import type { Companions } from './companions.ts'
 import type { Conditions } from './conditions.ts'
 import type { Guide } from './guide.ts'
+import type { Locks } from './locks.ts'
+import type { Machines } from './machines.ts'
 import type { Player } from './player.ts'
 import type { Reporting } from './reporting.ts'
 import type { Stashing } from './stashing.ts'
@@ -32,6 +35,9 @@ export class Interaction {
   #talking: Talking
   #companions: Companions
   #driving: Driving
+  #locks: Locks
+  #machines: Machines
+  #chart: Chart
   #guide: Guide
   #conditions: Conditions
   #report: Reporting
@@ -50,6 +56,9 @@ export class Interaction {
     talking: Talking
     companions: Companions
     driving: Driving
+    locks: Locks
+    machines: Machines
+    chart: Chart
     guide: Guide
     conditions: Conditions
     report: Reporting
@@ -66,6 +75,9 @@ export class Interaction {
     this.#talking = input.talking
     this.#companions = input.companions
     this.#driving = input.driving
+    this.#locks = input.locks
+    this.#machines = input.machines
+    this.#chart = input.chart
     this.#guide = input.guide
     this.#conditions = input.conditions
     this.#report = input.report
@@ -151,7 +163,24 @@ export class Interaction {
       case 'drive':
         this.#driving.act()
         break
+      case 'door':
+        this.#unlock(target.id)
+        break
+      case 'machine':
+        this.#machines.use(target.id)
+        break
+      // a subway entrance is not somewhere to go: it puts the plan up with the
+      // stations on it, and the ride is the one the player picks there
+      case 'station':
+        this.#chart.show()
+        break
     }
+  }
+
+  /** A locked door inside a building: it opens for a key, a card, a word or the deed. */
+  #unlock(doorId: string): void {
+    const site = this.#world.door(doorId)
+    if (site) this.#locks.open(site.interiorId, site.door)
   }
 
   #take(itemId: string): void {
@@ -160,7 +189,9 @@ export class Interaction {
 
     this.#buildings.lift(itemId)
     const stolen = item.ownerNpcId !== undefined
-    this.#player.take(itemId, { stolen })
+    // a key or a card carries what it opens, so the door it is for opens while
+    // it is in hand and shuts again if it is put down
+    this.#player.take(itemId, { stolen, ...(item.opens ? { opens: item.opens } : {}) })
     this.#hud.announce({ kind: 'item-taken', item: item.name })
     this.#report.report(this.#log.handle({ kind: 'acquired', itemId, stolen }))
   }

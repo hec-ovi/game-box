@@ -11,6 +11,8 @@ export interface Walking {
   readonly id: string
   readonly x: number
   readonly z: number
+  /** The building they are standing in with the player, whose metres these are. */
+  readonly interiorId?: string
 }
 
 /** A step that wants somebody walked somewhere: who, where, and the key it is reported under. */
@@ -65,7 +67,9 @@ export class Escorts {
     if (escorts.length === 0) return
     const walking = this.#walking()
     for (const escort of escorts) {
-      const body = walking.find((person) => person.id === escort.npcId)
+      // somebody inside a building is measured in that room's own metres, and
+      // going in through the door has already been credited as arriving
+      const body = walking.find((person) => person.id === escort.npcId && person.interiorId === undefined)
       const door = body && this.#doorstep(escort.plotId)
       const there = body && door ? Math.hypot(body.x - door.x, body.z - door.z) <= ARRIVED : false
       if (there) this.#report(escort)

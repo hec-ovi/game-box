@@ -1,11 +1,11 @@
 // @vitest-environment node
 import type { Driving } from '@gb/drive'
 import type { Hud, HudPatch, Notice } from '@gb/hud'
-import { Cast, CLIPS, GESTURES, type CastMember } from '@gb/cast'
+import { CLIPS, GESTURES, type CastMember } from '@gb/cast'
 import { CityNav } from '@gb/nav'
 import { PlayerState } from '@gb/play'
 import { QuestLog, rewardFor, validateQuest, type Objective } from '@gb/quest'
-import { Greybox, PropFootprint, type CityBuild } from '@gb/scene'
+import { buildCity, Greybox, PropFootprint, type CityBuild, type Dressing } from '@gb/scene'
 import { METRICS, World, type Interior } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
@@ -15,6 +15,8 @@ import { cityGround, citySolid, furnishedSolid } from '../src/solids.ts'
 import { Attending, type Post } from '../src/attending.ts'
 import { Buildings } from '../src/buildings.ts'
 import { Chart } from '../src/chart.ts'
+import { guarded } from '../src/guarded.ts'
+import { Travel } from '../src/travel.ts'
 import { Compass } from '../src/compass.ts'
 import { Conditions } from '../src/conditions.ts'
 import { Escorts } from '../src/escorts.ts'
@@ -39,11 +41,15 @@ import type { Stage } from '../src/stage.ts'
 import type { Sky } from '../src/sky.ts'
 import type { Vec2 } from '../src/walk.ts'
 import { CLOSE_FOV, WIDE_FOV, Zoom } from '../src/zoom.ts'
+import type { Counters } from '../src/counters.ts'
+import type { Locks } from '../src/locks.ts'
+import type { Machines } from '../src/machines.ts'
+import { CityArt } from '../src/rooms.ts'
+import { anyWorld, doorwaysOnly, fittings, lockUp } from './support/parts.ts'
 
 /** A quest doc, run past the same door the game runs one past, on a world that has everything. */
 function checked(doc: unknown) {
-  const anything = { hasNpc: () => true, hasPlot: () => true, hasInterior: () => true, hasItem: () => true, hasAnchor: () => true }
-  const validated = validateQuest(doc, anything)
+  const validated = validateQuest(doc, anyWorld)
   if (!validated.ok) throw new Error(JSON.stringify(validated.error))
   return validated.value
 }
@@ -643,13 +649,19 @@ function anchorage(): { world: World; plotId: string; doorstep: Vec2 } {
 /** The bar, opened: a real `Buildings` with the renderer and the street stubbed out. */
 function walkIn(away: () => string[]): { buildings: Buildings; targeting: Targeting; world: World; player: PlayerState } {
   const { world, plotId, doorstep } = anchorage()
-  const city = { doorsteps: new Map([[plotId, doorstep]]) } as unknown as CityBuild
+  const art = new CityArt(new Greybox())
+  const city = doorwaysOnly(world, new Map([[plotId, doorstep]]), art)
   const street = { solid: () => () => false, floor: () => () => 0, walkers: () => [] } as unknown as Street
   const player = PlayerState.create(world.id)
+  const log = QuestLog.create([], player)
+  const { hud } = screenful()
+  const report = new Reporting({ world, log, player, hud, conditions: new Conditions(player.clock) })
+  const locks = lockUp({ world, player, log, report })
   const buildings = new Buildings({
     world,
     player,
-    dressing: new Greybox(),
+    locks,
+    art,
     stage: { show: () => {}, indoors: () => {} } as unknown as Stage,
     body: { setSolid: () => {}, setGround: () => {}, placeAt: () => {}, position: { x: 5, z: 21 } } as unknown as Player,
     city,
@@ -662,9 +674,10 @@ function walkIn(away: () => string[]): { buildings: Buildings; targeting: Target
   })
   buildings.enter(plotId)
   const driving = { aboard: false, target: () => undefined } as unknown as Driving
-  const log = QuestLog.create([], player)
-  const stashing = new Stashing({ world, log, player, buildings, report: new Reporting({ world, log, player, hud: screenful().hud, conditions: new Conditions(player.clock) }) })
-  return { buildings, targeting: new Targeting({ world, city, buildings, stashing, street, driving }), world, player }
+  const stashing = new Stashing({ world, log, player, buildings, report })
+  const { machines, counters } = fittings({ world, player, log, hud, report, buildings, locks })
+  const targeting = new Targeting({ world, city, buildings, stashing, street, driving, locks, machines })
+  return { buildings, targeting, world, player }
 }
 
 describe('what is in reach inside a room', () => {
@@ -778,11 +791,15 @@ describe('coming back to where the playthrough left off', () => {
       heading: 0,
       placeAt: (x: number, z: number, heading?: number) => void stood.push({ x, z, heading }),
     } as unknown as Player
-    const city = { doorsteps: new Map([[plotId, doorstep]]) } as unknown as CityBuild
+    const art = new CityArt(new Greybox())
+    const city = doorwaysOnly(world, new Map([[plotId, doorstep]]), art)
+    const { pushed, hud } = screenful()
+    const report = new Reporting({ world, log, player, hud, conditions: new Conditions(player.clock) })
     const buildings = new Buildings({
       world,
       player,
-      dressing: new Greybox(),
+      locks: lockUp({ world, player, log, report }),
+      art,
       stage: { show: () => {}, indoors: () => {} } as unknown as Stage,
       body,
       city,
@@ -793,8 +810,6 @@ describe('coming back to where the playthrough left off', () => {
       cameOut: () => {},
       away: () => [],
     })
-    const { pushed, hud } = screenful()
-    const report = new Reporting({ world, log, player, hud, conditions: new Conditions(player.clock) })
     const companions = new Companions({ world, player, street, buildings, riding: () => [], note: () => {} })
     const playthrough = new Playthrough({ world, player, log, buildings, body, companions, report })
     const resumed = kept ? playthrough.resume() : false
@@ -1375,6 +1390,9 @@ describe('what the player did in the interface', () => {
       body: { setTyping: (away: boolean) => void handed.push(away) } as unknown as Player,
       chart: { open: false } as unknown as Chart,
       conditions,
+      machines: {} as Machines,
+      counters: {} as Counters,
+      travel: {} as Travel,
       leave: () => void left++,
       releasePointer: () => void released++,
     })
@@ -1526,8 +1544,21 @@ describe('what is in reach out in the street', () => {
   // out in the street there is nothing to put anything down on
   const nowhereToLeaveIt = { spots: () => [] } as unknown as Stashing
 
+  // out in the street a door of the city is the only lock, and neither a screen
+  // nor a counter is in reach of anybody standing on the pavement
+  const nothingInside = { here: () => [] }
+
   function targeting(driving: Partial<Driving>) {
-    return new Targeting({ world, city, buildings: outside, stashing: nowhereToLeaveIt, street: empty, driving: driving as Driving })
+    return new Targeting({
+      world,
+      city,
+      buildings: outside,
+      stashing: nowhereToLeaveIt,
+      street: empty,
+      driving: driving as Driving,
+      locks: {} as Locks,
+      machines: nothingInside as unknown as Machines,
+    })
   }
 
   it('offers a door only for a building that opens', () => {
@@ -1713,11 +1744,13 @@ describe('a conversation you can click through', () => {
     return { world, npcId: 'npc_0001', itemId: 'item_0001' }
   }
 
-  /** Somebody the art pack has drawn, who records what their arms were asked to do. */
+  /** Somebody the art pack has drawn, who records what their body was asked to do. */
   function body(doing: string): { member: CastMember; moved: string[] } {
     const moved: string[] = []
     const member = {
       playing: doing,
+      speak: (on: boolean) => void moved.push(on ? 'speaking' : 'quiet'),
+      pulse: () => void moved.push('pulse'),
       gesture: (clip: string) => void moved.push(clip),
       stopGesture: () => void moved.push('stop'),
     } as unknown as CastMember
@@ -1891,35 +1924,36 @@ describe('a conversation you can click through', () => {
     expect(does().at(-1)).toBe('takes what you were carrying')
   })
 
-  it('moves their hands while they are speaking and puts them down after', async () => {
+  it('opens a line, beats to it and closes it, so a speaker visibly talks', async () => {
     const { npcId, talking, moved } = chatting()
     await talking.start(npcId)
 
     // the opening line is a string, not a stream: nothing is being said out
-    // loud yet, so there is nothing for their arms to be doing
+    // loud yet, so there is nothing for their body to be doing
     expect(moved).toEqual([])
 
-    // a turn their reply is neither a yes nor a no to: only the talking hands
+    // a turn their reply is neither a yes nor a no to: the line opens, beats to
+    // the piece that arrived, and closes
     await talking.say('and what do I get for it?')
-    expect(moved).toEqual([CLIPS.talk, 'stop'])
-    expect(GESTURES).toContain(moved[0])
+    expect(moved).toEqual(['speaking', 'pulse', 'quiet', 'stop'])
 
-    // and once for the turn, however many pieces the line arrives in
+    // opened once per turn, however many pieces the line arrives in
     await talking.say('and what do I get for it?')
-    expect(moved).toEqual([CLIPS.talk, 'stop', CLIPS.talk, 'stop'])
+    expect(moved.slice(4)).toEqual(['speaking', 'pulse', 'quiet', 'stop'])
   })
 
   it('nods when they go along with what was put to them, and shakes its head when they will not', async () => {
     const { npcId, talking, menu, moved } = chatting()
     await talking.start(npcId)
 
-    // carrying a move out is a yes, so handing the job over is them agreeing
+    // carrying a move out is a yes, so handing the job over is them agreeing.
+    // The nod goes over the open line, not instead of it
     await talking.choose(menu()[0]!.key)
-    expect(moved).toEqual([CLIPS.talk, 'Idle_Yes_Loop', 'stop'])
+    expect(moved).toEqual(['speaking', 'pulse', 'Idle_Yes_Loop', 'quiet', 'stop'])
 
     // and asked for something she has not got, she says so and means it
     await talking.say('what have you got for me?')
-    expect(moved.slice(3)).toEqual([CLIPS.talk, 'Idle_No_Loop', 'stop'])
+    expect(moved.slice(5)).toEqual(['speaking', 'pulse', 'Idle_No_Loop', 'quiet', 'stop'])
     expect(GESTURES).toEqual(expect.arrayContaining(['Idle_Yes_Loop', 'Idle_No_Loop']))
   })
 
@@ -1932,25 +1966,16 @@ describe('a conversation you can click through', () => {
 
     // somebody out walking is not also standing behind their own counter
     gestures.start('npc_0001')
-    expect(pavement.moved).toEqual([CLIPS.talk])
+    expect(pavement.moved).toEqual(['speaking'])
     expect(counter.moved).toEqual([])
 
     // and the crowd hands a retired walker's body to the next person out, so a
-    // member kept from the start of the turn puts the hands on a stranger
+    // member kept from the start of the turn puts the line on a stranger
     const stranger = body(CLIPS.idle)
     outside = new Map([['npc_0001', stranger.member]])
     gestures.stop()
-    expect(stranger.moved).toEqual(['stop'])
-    expect(pavement.moved).toEqual([CLIPS.talk])
-  })
-
-  it('lays the seated talk over somebody who is sitting down', async () => {
-    const sitting = body(Cast.doingAt('sit'))
-    new Gestures(() => new Map([['npc_0001', sitting.member]])).start('npc_0001')
-
-    // a standing talk added to a sitting pose is a person waving from a chair
-    // they are not really in: the gesture is laid over the base clip, not instead
-    expect(sitting.moved).toEqual([CLIPS.talkSeated])
+    expect(stranger.moved).toEqual(['quiet', 'stop'])
+    expect(pavement.moved).toEqual(['speaking'])
   })
 
   it('credits a step that names a subject when the subject is raised, through the conversation alone', async () => {
@@ -2161,7 +2186,7 @@ describe('walking somebody somewhere', () => {
     log.start('quest_0005')
     log.handle({ kind: 'talked', npcId: 'npc_0001' })
     expect(player.isCompanion('npc_0001')).toBe(true)
-    let body = { id: 'npc_0001', x: 40, z: 40 }
+    let body: { id: string; x: number; z: number; interiorId?: string } = { id: 'npc_0001', x: 40, z: 40 }
     const sent: { npcId: string; place: unknown }[] = []
     const escorts = new Escorts({
       world,
@@ -2173,7 +2198,14 @@ describe('walking somebody somewhere', () => {
         log.handle({ kind: 'companion-arrived', npcId, place })
       },
     })
-    return { log, player, escorts, sent, move: (x: number, z: number) => void (body = { id: 'npc_0001', x, z }) }
+    return {
+      log,
+      player,
+      escorts,
+      sent,
+      move: (x: number, z: number) => void (body = { id: 'npc_0001', x, z }),
+      inside: (x: number, z: number) => void (body = { id: 'npc_0001', x, z, interiorId: 'interior_0001' }),
+    }
   }
 
   it('credits the escort when their body reaches the door, and not when they only agreed', () => {
@@ -2208,6 +2240,15 @@ describe('walking somebody somewhere', () => {
     const alone = escorting()
     alone.escorts.entered({ plotId: 'plot_0001' }, [])
     expect(alone.sent).toEqual([])
+  })
+
+  it('does not measure somebody standing indoors against a doorstep out in the city', () => {
+    const { escorts, sent, inside } = escorting()
+    // a companion who came in through the door stands in the room's own metres
+    // from its own corner, and those numbers are nowhere near the city's
+    inside(11, 13)
+    escorts.update()
+    expect(sent).toEqual([])
   })
 })
 
@@ -2284,5 +2325,194 @@ describe('what a stage direction does to the body', () => {
     gestures.direct('npc_0001', 'Idle_Torch_Loop')
     expect(moved).toEqual(['Idle_Yes_Loop', 'Idle_No_Loop'])
     expect(GESTURES).toEqual(expect.arrayContaining(moved))
+  })
+})
+
+describe('fast travel', () => {
+  /** Two subway entrances at either end of one pavement, and the city built round them. */
+  function line() {
+    const world = World.create({ name: 'Fordwater', theme: 'plain', seed: 'transit', width: 40, height: 12 })
+    world.paint({ x: 0, y: 3, w: 40, h: 2 }, 'sidewalk')
+    const plots = [
+      { name: "Mirek's Terminal", rect: { x: 2, y: 1, w: 3, h: 2 }, cell: { x: 3, y: 3 } },
+      { name: 'Cobb Brothers', rect: { x: 30, y: 1, w: 3, h: 2 }, cell: { x: 31, y: 3 } },
+    ].map((plot) => {
+      const added = world.addPlot({
+        kind: 'station',
+        name: plot.name,
+        rect: plot.rect,
+        entrance: { cell: plot.cell, facing: 'south' },
+        storeys: 1,
+        style: 'brick',
+      })
+      if (!added.ok) throw new Error(JSON.stringify(added.error))
+      return added.value
+    })
+    return { world, city: buildCity(world, new Greybox()), plots }
+  }
+
+  function riding(at: Vec2 = { x: 7, z: 7 }) {
+    const { world, city, plots } = line()
+    const { pushed, hud } = screenful()
+    const stood: { x: number; z: number; heading: number | undefined }[] = []
+    const regrouped: Vec2[] = []
+    const body = {
+      get position() {
+        return stood.at(-1) ?? at
+      },
+      placeAt: (x: number, z: number, heading?: number) => void stood.push({ x, z, heading }),
+    } as unknown as Player
+    const companions = { regroup: (spot: Vec2) => void regrouped.push(spot) } as unknown as Companions
+    return { world, city, plots, pushed, hud, stood, regrouped, travel: new Travel({ world, hud, city, body, companions }) }
+  }
+
+  it('draws every station on the plan and marks the one the player is standing at', () => {
+    const { world, city, plots, pushed, hud, travel } = riding()
+    // the player is at the first entrance; the plan is the game's own chart
+    const chart = new Chart({
+      world,
+      hud,
+      you: () => ({ position: city.doorsteps.get(plots[0]!.id)!, heading: 0 }),
+      goals: () => [],
+      entered: () => [],
+      stations: travel.marks,
+      boarding: () => travel.boarding(city.doorsteps.get(plots[0]!.id)!),
+    })
+    chart.draw()
+
+    const map = pushed.at(-1)!.map!
+    expect(map.stations).toEqual([
+      { id: plots[0]!.id, name: "Mirek's Terminal", x: 3, y: 3 },
+      { id: plots[1]!.id, name: 'Cobb Brothers', x: 31, y: 3 },
+    ])
+    expect(map.boarding).toBe(plots[0]!.id)
+  })
+
+  it('offers the entrance to the crosshair, so a station is walked up to rather than found on a menu', () => {
+    const { world, city, plots, travel } = riding()
+    const targeting = new Targeting({
+      world,
+      city,
+      buildings: { outdoors: true } as unknown as Buildings,
+      stashing: { spots: () => [] } as unknown as Stashing,
+      street: { walkers: () => [] } as unknown as Street,
+      driving: { aboard: false, target: () => undefined } as unknown as Driving,
+      locks: {} as Locks,
+      machines: { here: () => [] } as unknown as Machines,
+      travel,
+    })
+    const doorstep = city.doorsteps.get(plots[0]!.id)!
+    const aimed = pick({ x: doorstep.x, z: doorstep.z + 2 }, 0, targeting.list())
+    expect(aimed).toMatchObject({ kind: 'station', id: plots[0]!.id, label: "Take the subway from Mirek's Terminal" })
+  })
+
+  it('rides under the veil: the player and everybody with them land a step off the other doorstep', () => {
+    const { city, plots, pushed, stood, regrouped, travel } = riding()
+    travel.board(plots[1]!.id)
+
+    // the veil is the loader with a title and no stages, and it is up before
+    // anything moves: the frame that dresses a neighbourhood nobody has been in
+    // is the one it covers
+    expect(pushed.at(-1)!.loading).toEqual({ title: 'To Cobb Brothers', stages: [] })
+    expect(stood).toEqual([])
+
+    travel.update()
+    const doorstep = city.doorsteps.get(plots[1]!.id)!
+    // a step off the doorstep, onto the pavement, looking back at the entrance
+    expect(stood).toHaveLength(1)
+    expect(Math.hypot(stood[0]!.x - doorstep.x, stood[0]!.z - doorstep.z)).toBeCloseTo(2, 6)
+    // and whoever was walking with them got on the same train
+    expect(regrouped).toEqual([{ x: stood[0]!.x, z: stood[0]!.z }])
+    // still veiled: the city catches up on this frame
+    expect(pushed.at(-1)!.loading).toEqual({ title: 'To Cobb Brothers', stages: [] })
+
+    travel.update()
+    expect(pushed.at(-1)!.loading).toBeNull()
+  })
+
+  it('will not sell a ticket to the station the player is already standing at', () => {
+    const { plots, pushed, stood, travel } = riding()
+    const before = pushed.length
+    travel.board(plots[0]!.id)
+    travel.update()
+    expect(pushed.length).toBe(before)
+    expect(stood).toEqual([])
+  })
+})
+
+describe('the city round the player', () => {
+  /** The bar, with `@gb/scene`'s own city under it rather than a stub, so the rooms are its to keep. */
+  function street() {
+    const { world, plotId } = anchorage()
+    const art = new CityArt(new Greybox())
+    const city = buildCity(world, art.seam)
+    const player = PlayerState.create(world.id)
+    const log = QuestLog.create([], player)
+    const { hud } = screenful()
+    const report = new Reporting({ world, log, player, hud, conditions: new Conditions(player.clock) })
+    const buildings = new Buildings({
+      world,
+      player,
+      locks: lockUp({ world, player, log, report }),
+      art,
+      stage: { show: () => {}, indoors: () => {} } as unknown as Stage,
+      body: { setSolid: () => {}, setGround: () => {}, placeAt: () => {}, position: { x: 5, z: 21 } } as unknown as Player,
+      city,
+      sky: { visible: true } as unknown as Sky,
+      street: { solid: () => () => false, floor: () => () => 0, walkers: () => [] } as unknown as Street,
+      announce: () => {},
+      arrived: () => {},
+      cameOut: () => {},
+      away: () => [],
+    })
+    return { world, city, player, buildings, plotId }
+  }
+
+  it('lets a room go once the player is a long way off, and builds it back as the playthrough left it', () => {
+    const { city, player, buildings, plotId } = street()
+
+    buildings.enter(plotId)
+    expect([...city.interiors]).toEqual(['interior_0001'])
+    // the glass off the counter, into the player's hands
+    buildings.lift('item_0001')
+    player.take('item_0001')
+    expect(buildings.inside!.pickups.get('item_0001')!.parent).toBeNull()
+    buildings.leave()
+
+    // and away across town, which is where the room goes
+    city.follow(400, 400)
+    expect([...city.interiors]).toEqual([])
+
+    // back through the same door: the room is the file's room again, and what
+    // the player is carrying is not drawn on the shelf it came off
+    buildings.enter(plotId)
+    expect([...city.interiors]).toEqual(['interior_0001'])
+    expect(buildings.inside!.pickups.get('item_0001')!.parent).toBeNull()
+  })
+
+  it('keeps the far look and the light a building throws through the art chain', () => {
+    const { world } = anchorage()
+    const plain = new Greybox()
+    // what a kit answers: the whole building near the player, its shell far off,
+    // and what it throws onto the street
+    const kit: Dressing = {
+      building: (plot, size, charter) => plain.building(plot, size, charter),
+      shell: (plot, size, charter) => plain.building(plot, size, charter),
+      lights: (plot, size) => plain.lights(plot, size),
+      prop: (prop) => plain.prop(prop),
+      character: (npc, doing) => plain.character(npc, doing),
+      pickup: (item) => plain.pickup(item),
+      ground: (kind) => plain.ground(kind),
+      surface: (part) => plain.surface(part),
+    }
+    const guarding = guarded(kit)
+    expect(guarding.shell).toBeDefined()
+    expect(guarding.lights).toBeDefined()
+
+    const city = buildCity(world, new CityArt(guarding).seam)
+    // a dressing that answers for the light gets lights: dropped anywhere in
+    // the chain, the whole town is unlit and every building is dressed whole
+    expect(city.lights.emitters.length).toBeGreaterThan(0)
+    expect(city.root.children.some((child) => child.name.startsWith('city:'))).toBe(true)
   })
 })

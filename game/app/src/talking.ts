@@ -2,7 +2,7 @@ import type { Hud, TalkTurn } from '@gb/hud'
 import type { PlayerState } from '@gb/play'
 import type { QuestLog } from '@gb/quest'
 import type { Sidecar } from '@gb/sidecar'
-import { Conversation, Sessions, type ActionName, type TalkEvent, type TalkMove, type Turn } from '@gb/talk'
+import { Conversation, Sessions, type ActionName, type Grant, type TalkEvent, type TalkMove, type Turn } from '@gb/talk'
 import type { World } from '@gb/world'
 import type { Attending } from './attending.ts'
 import type { Gestures } from './gestures.ts'
@@ -22,6 +22,8 @@ const DONE: Record<ActionName, string> = {
   hand_over: 'hands something over',
   follow_player: 'comes with you',
   stop_following: 'stays here',
+  show_wares: 'shows you what they have',
+  invite_home: 'opens their door to you',
   end_talk: 'says goodbye',
 }
 
@@ -44,6 +46,9 @@ export class Talking {
   #attending: Attending
   #gestures: Gestures | undefined
   #report: Reporting
+  #wares: (npcId: string) => void
+  #granted: (grant: Grant) => void
+  #over: () => void
   #sessions = new Sessions()
   #open: Conversation | undefined
   #speakerId = ''
@@ -58,6 +63,12 @@ export class Talking {
     attending: Attending
     /** Without an art pack there is nobody to move, and the conversation is the same. */
     gestures?: Gestures
+    /** They named their stock: the counter is where it is bought. */
+    wares?: (npcId: string) => void
+    /** A word, a key or a door changed hands. */
+    granted?: (grant: Grant) => void
+    /** The conversation is over, and so is anything it opened. */
+    over?: () => void
     report: Reporting
   }) {
     this.#world = input.world
@@ -68,6 +79,9 @@ export class Talking {
     this.#body = input.body
     this.#attending = input.attending
     this.#gestures = input.gestures
+    this.#wares = input.wares ?? (() => {})
+    this.#granted = input.granted ?? (() => {})
+    this.#over = input.over ?? (() => {})
     this.#report = input.report
   }
 
@@ -92,6 +106,9 @@ export class Talking {
     this.#attending.hold(npcId)
     // meeting them is what the codex earns first, and the person goes in it
     this.#report.report({ ok: true, value: opened.value.changes })
+    // a step credited on the way in has already paid: whatever it paid out is
+    // in the player's hands before the first line is on the panel
+    for (const grant of opened.value.granted) this.#granted(grant)
     // they speak first: the opening line is built off the game's own data and
     // costs no model call, and it is already the last turn of the transcript,
     // so the panel has the whole history in it the instant it appears
@@ -128,6 +145,8 @@ export class Talking {
     this.#open = undefined
     this.#hud.show({ talk: null })
     this.#body.setTyping(false)
+    // the counter they opened goes with them: it is theirs, not the room's
+    this.#over()
   }
 
   /** One turn, however the player gave it: the reply, then the next menu. */
@@ -145,16 +164,23 @@ export class Talking {
         // the turn, never read as dialogue
         directed = event.does !== undefined
         this.#hud.show({ talk: { does: event.does ?? null, replyChunk: event.says } })
-        // their hands go while the words are arriving, and stop with them; a
-        // direction that reads as a nod or a shake is played as one, and any
-        // other is words alone, because the model never names a clip
+        // their hands go while the words are arriving and their head beats to
+        // each piece of the line; a direction that reads as a nod or a shake is
+        // played as one, and any other is words alone, because the model never
+        // names a clip
         this.#gestures?.start(this.#speakerId)
+        this.#gestures?.pulse(this.#speakerId)
         if (event.does) this.#gestures?.direct(this.#speakerId, event.does)
       }
       // how their reply came down, on most turns not at all. It arrives with
       // the action, so it lands over the talking hands rather than under them
       if (event.kind === 'answered') this.#gestures?.answer(this.#speakerId, event.answer)
       if (event.kind === 'did' && !directed) this.#hud.show({ talk: { does: DONE[event.action] } })
+      // naming their stock is not selling it: the counter is where that happens
+      if (event.kind === 'did' && event.action === 'show_wares') this.#wares(this.#speakerId)
+      // a word, a key or a door handed over: the inventory and the locks read
+      // it, and it is the conversation that says so out loud
+      if (event.kind === 'granted') this.#granted(event)
       // a fact about themselves let slip: the codex has a line more
       if (event.kind === 'learned') this.#report.refresh()
       if (event.kind === 'changed') this.#report.announce(event.change)

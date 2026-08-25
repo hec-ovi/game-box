@@ -149,6 +149,7 @@
         font-size: 0.85rem;
       }
       .gb-boot input[type='text'],
+      .gb-boot input[type='url'],
       .gb-boot input[type='number'],
       .gb-boot textarea,
       .gb-boot select {
@@ -392,11 +393,30 @@
               <span>Or open a city file</span>
               <input data-boot="open" type="file" accept=".json,.gbworld.json,application/json" />
             </label>
+
+            <h2 class="gb-boot-head">Your settings</h2>
+            <label class="gb-boot-field">
+              <span>Video on the screens</span>
+              <input data-boot="screens" type="url" autocomplete="off" spellcheck="false" placeholder="https://... a video of your own" />
+            </label>
+            <p class="gb-boot-note">
+              Left blank, every television plays the schedule its town writes for itself. A source that will not play leaves that schedule running. It is kept in this browser and never written into a city, so a file you send somebody carries nothing of it.
+            </p>
+
+            <h2 class="gb-boot-head">Add to a city</h2>
+            <label class="gb-boot-field">
+              <span>Open a pack onto the city on the shelf</span>
+              <input data-boot="apply" type="file" accept=".json,.gbpack.json,application/json" />
+            </label>
+            <p class="gb-boot-note">
+              A pack is what somebody built onto this city later. It applies to this one city and no other, and it comes back with what it added. Grow writes the next block of buildings and hands you the pack for it.
+            </p>
           </div>
 
           <div class="gb-boot-buttons">
             <button type="submit" data-boot="generate" disabled>Generate</button>
             <button type="button" data-boot="export" disabled>Export</button>
+            <button type="button" data-boot="grow" disabled>Grow and pack</button>
             <button type="button" data-boot="cancel" hidden>Cancel</button>
             <button type="button" data-boot="close" hidden>Back to the city <kbd class="gb-boot-key">Esc</kbd></button>
           </div>

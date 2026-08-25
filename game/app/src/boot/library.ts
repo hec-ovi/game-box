@@ -96,6 +96,16 @@ export class Library {
     return this.#file(city.bundle.contentHash, brief, 'opened', city)
   }
 
+  /**
+   * The same city with more of it: a pack went on, so the document under that
+   * key is replaced and everything else about the row is kept. The save is
+   * keyed the same way, so the playthrough carries into the grown city and
+   * `@gb/bundle` reconciles whatever moved.
+   */
+  async grew(entry: Shelved, city: { bundle: OpenedBundle; document: unknown }): Promise<Shelved> {
+    return this.#file(entry.key, briefOf(entry), entry.source, city)
+  }
+
   /** The player went back into a city already on the shelf. */
   async touch(entry: Shelved): Promise<void> {
     const document = await this.#shelf.document(entry.key)

@@ -1,6 +1,6 @@
 import type { PropFootprint } from '@gb/scene'
 import type { Interior, World } from '@gb/world'
-import { METRICS } from '@gb/world'
+import { footprintOf, METRICS } from '@gb/world'
 import type { Solid } from './walk.ts'
 
 /** The little the city needs to know about the land it stands on. */
@@ -83,4 +83,33 @@ export function furnishedSolid(interior: Interior, blockers: readonly PropFootpr
   const shell = interiorSolid(interior)
   if (blockers.length === 0) return shell
   return (x, z) => shell(x, z) || blockers.some((footprint) => footprint.contains(x, z))
+}
+
+/**
+ * The gate of bars across a locked door. `@gb/world` says how much floor the
+ * gate stands on and where the piece is; whether it stops you is the lock,
+ * asked fresh, so a door unlocked in the middle of a room is walked through
+ * without the room being rebuilt. A room with no gate in it costs nothing.
+ */
+export function gated(base: Solid, interior: Interior, locked: (doorId: string) => boolean): Solid {
+  const size = footprintOf('bars-door')
+  const gates = interior.furniture.flatMap((piece) =>
+    piece.prop === 'bars-door' && piece.doorId !== undefined
+      ? [{ doorId: piece.doorId, x: piece.pos.x, z: piece.pos.y, turn: (piece.rot * Math.PI) / 180 }]
+      : [],
+  )
+  if (gates.length === 0) return base
+
+  return (x, z) => {
+    if (base(x, z)) return true
+    for (const gate of gates) {
+      if (!locked(gate.doorId)) continue
+      const dx = x - gate.x
+      const dz = z - gate.z
+      const sin = Math.sin(-gate.turn)
+      const cos = Math.cos(-gate.turn)
+      if (Math.abs(dx * cos - dz * sin) < size.width / 2 && Math.abs(dx * sin + dz * cos) < size.depth / 2) return true
+    }
+    return false
+  }
 }

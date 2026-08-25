@@ -5,11 +5,12 @@ import { Game, type GameOptions } from '../game.ts'
 import { loadCars, loadDressing, type ArtPack } from '../pack.ts'
 import { briefFromQuery, briefToQuery, DEFAULTS, sameBrief, type CityBrief } from './brief.ts'
 import { CityMaker, type City, type Made } from './city-maker.ts'
-import { download, exportName } from './export.ts'
-import { localSaves } from './kept.ts'
+import { download, exportName, packName } from './export.ts'
+import { keepSettings, localSaves, localSettings, type Settings } from './kept.ts'
 import { briefOf, type Library, type Shelved } from './library.ts'
 import { Loader } from './loader.ts'
 import { Notices } from './notices.ts'
+import { Packs } from './packs.ts'
 import { painted } from './painted.ts'
 import { Panel } from './panel.ts'
 
@@ -45,6 +46,7 @@ export class Boot {
   #panel: Panel
   #library: Library
   #maker: CityMaker
+  #packs: Packs
   #loader: Loader
   #notices = new Notices()
   #sidecar: Sidecar
@@ -52,6 +54,9 @@ export class Boot {
   #art: LoadArt
   #game: Playing | undefined
   #city: City | undefined
+  #shelved: Shelved | undefined
+  #loaded: ArtPack | undefined
+  #settings: Settings = localSettings()
   #asked = new URLSearchParams()
   #running: AbortController | undefined
 
@@ -72,16 +77,21 @@ export class Boot {
     this.#start = input.start ?? Game.start
     this.#art = input.art ?? loadDressing
     this.#maker = new CityMaker(this.#sidecar)
+    this.#packs = new Packs(this.#sidecar)
     this.#loader = new Loader(input.mount)
 
+    this.#panel.settings = this.#settings
     this.#panel.on({
       generate: (brief) => void this.generate(brief),
       open: (file) => void this.openFile(file),
+      apply: (file) => void this.applyPack(file),
+      grow: () => void this.grow(),
       pick: (key) => void this.pick(key),
       remove: (key) => void this.remove(key),
       save: () => this.export(),
       cancel: () => this.cancel(),
       close: () => this.hidePanel(),
+      settings: (settings) => this.settings(settings),
     })
     addEventListener('pagehide', () => this.#game?.keep())
   }
@@ -165,6 +175,58 @@ export class Boot {
     })
   }
 
+  /**
+   * A pack somebody built onto this city, applied to it. The city that gives is
+   * filed under the key it was already on, so the playthrough carries over: it
+   * is the same city with more of it, and `@gb/bundle` reconciles what a save
+   * says over a city that has moved.
+   */
+  async applyPack(file: File): Promise<void> {
+    const city = this.#city
+    const shelved = this.#shelved
+    if (!city || !shelved) return this.#panel.waiting('Open a city first, then a pack for it.', true)
+    await this.#run(async (signal) => {
+      await this.#step(`Opening ${file.name}`)
+      return { made: await this.#packs.apply(city, file, { signal, step: this.#step }), file: (grown) => this.#library.grew(shelved, grown) }
+    })
+  }
+
+  /**
+   * Build onto this city and hand back the pack for what went up: the same two
+   * steps `gb extend` and `gb pack` take, and the pack is applied straight back
+   * so what the player walks into is what anybody else opening that pack gets.
+   */
+  async grow(): Promise<void> {
+    const city = this.#city
+    const shelved = this.#shelved
+    if (!city || !shelved) return this.#panel.waiting('Open a city first, then grow it.', true)
+    const model = this.#panel.brief.model
+    await this.#run(async (signal) => {
+      await this.#step(`Building onto ${city.bundle.world.name}`)
+      if (model) {
+        this.#loader.begin(`Building onto ${city.bundle.world.name}`)
+        this.#panel.aside(true)
+        this.#notices.aim(this.#loader)
+      }
+      const grown = await this.#packs.grow(city, {
+        signal,
+        step: this.#step,
+        model,
+        progress: (event) => this.#loader.progress(event),
+        ...(this.#loaded?.catalogue ? { catalogue: this.#loaded.catalogue } : {}),
+      })
+      // the pack is the file, and the grown city is what the player walks into
+      if (grown.ok) download(grown.pack, packName(grown.value.bundle.world))
+      return { made: grown, ...(this.#loaded ? { art: this.#loaded } : {}), file: (grew) => this.#library.grew(shelved, grew) }
+    })
+  }
+
+  /** What the player set that belongs to them rather than to any city. */
+  settings(settings: Settings): void {
+    this.#settings = settings
+    keepSettings(settings)
+  }
+
   /** Take a city off the shelf, and its playthrough with it. */
   async remove(key: string): Promise<void> {
     await this.#library.remove(key)
@@ -215,6 +277,7 @@ export class Boot {
     if (!making.made.ok) return this.#panel.waiting(making.made.message, true)
 
     const entry = await making.file(making.made.value)
+    this.#shelved = entry
     await this.#shelve()
     await this.#play(making.made.value, entry, signal, making.art)
   }
@@ -229,6 +292,7 @@ export class Boot {
     if (!loaded) await this.#step('Loading the art')
     const [art, cars] = await Promise.all([loaded ?? this.#art(city.bundle.world.theme), loadCars()])
     if (signal.aborted) return this.#panel.waiting('Stopped.')
+    this.#loaded = art
 
     // the city is made and sealed; it can be kept from here on whether or not
     // the renderer manages to draw it
@@ -249,6 +313,7 @@ export class Boot {
         ...(art.cast ? { cast: art.cast } : {}),
         ...(art.kit ? { kit: art.kit } : {}),
         ...(cars ? { cars } : {}),
+        ...(this.#settings.screens ? { screens: this.#settings.screens } : {}),
       })
     } catch (cause) {
       // the city is sound, so this is the renderer or the art: say so and leave
