@@ -1,5 +1,4 @@
 import type { Rng } from '@gb/kit'
-import type { BuildingKind } from '@gb/world'
 import type { Face } from '../compose/faces.ts'
 import type { Fascia } from './fascia.ts'
 import { MARKS, SOLID } from './glyphs.ts'
@@ -7,7 +6,6 @@ import type { Neon } from './palette.ts'
 import { backing } from './palette.ts'
 import { between, wallOf, within, type Panel } from './place.ts'
 import { across, bladeFor, down, edging, lettersOf, panelFor } from './text.ts'
-import { TRADE_WORD } from './trade.ts'
 
 /**
  * The small lit things up the front: a strip of marks, a tube up the corner, a
@@ -62,14 +60,14 @@ export function tube(front: Face, height: number, fascia: Fascia, hue: Neon, rng
 }
 
 /** A board high on the wall, so the facade is lit all the way up rather than only where somebody can reach it. */
-export function board(kind: BuildingKind, front: Face, height: number, fascia: Fascia, hue: Neon, rng: Rng): Panel[] {
+export function board(word: string, front: Face, height: number, fascia: Fascia, hue: Neon, rng: Rng): Panel[] {
   const wide = Math.min(wallOf(front) * 0.62, 2.7)
   const tall = panelFor(fascia.letter)
   const up = between(fascia.top + 2.4 + rng.float() * Math.max(0, height - fascia.top - 4.2), tall, height)
   if (up === undefined || height - fascia.top < 3.2) return []
   const written = rng.chance(0.45)
     ? across(Array.from({ length: 3 + rng.int(0, 2) }, () => rng.pick(MARKS)), wide, tall)
-    : across(lettersOf(TRADE_WORD[kind]), wide, tall)
+    : across(lettersOf(word), wide, tall)
   const side = rng.chance(0.5) ? 1 : -1
   const back = backing(rng)
   const glyphs = [...written, ...edging(wide, tall)]

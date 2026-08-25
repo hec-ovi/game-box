@@ -10,6 +10,7 @@ import { windowMaterial } from '../night/windows.ts'
 import { signAtlas } from '../sign/atlas.ts'
 import { signMaterial } from '../sign/material.ts'
 import { SIGN } from '../sign/sign.ts'
+import { KitUnknownPiece } from './error.ts'
 
 /** The kind of town a kit is dressed for when nobody says: this one is a neon city. */
 export const DEFAULT_THEME = 'neon'
@@ -60,8 +61,11 @@ export class KitLibrary {
     return (Object.keys(PIECES) as PieceId[]).filter((id) => !parts.has(id))
   }
 
+  /** Geometry per material for one piece. A piece the library cannot draw is refused, never drawn as a hole. */
   parts(piece: PieceId): readonly KitPart[] {
-    return this.#parts.get(piece) ?? []
+    const found = this.#parts.get(piece)
+    if (!found?.length) throw new KitUnknownPiece(piece)
+    return found
   }
 
   material(name: string): THREE.Material {

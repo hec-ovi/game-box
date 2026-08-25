@@ -1,13 +1,13 @@
 import { Rng } from '@gb/kit'
-import { BUILDING_KINDS, World, type Plot } from '@gb/world'
+import { SHIPPED_CHARTERS, World, type Plot, type ResolvedCharter } from '@gb/world'
 import * as THREE from 'three'
-import { SIGN } from '../src/index.ts'
+import { RECIPES, SIGN } from '../src/index.ts'
 
 export const CELL = 2
 
-/** A plot on its own, so a test can say exactly what shape of building it wants. */
-export function plotOf(spec: Partial<Plot> & Pick<Plot, 'kind' | 'rect' | 'entrance'>): Plot {
-  const world = World.create({ name: 'kitbash', theme: 'test', seed: 'kitbash', width: 40, height: 40 })
+/** A plot on its own, so a test can say exactly what shape of building it wants. A word no preset declares needs its charter. */
+export function plotOf(spec: Partial<Plot> & Pick<Plot, 'kind' | 'rect' | 'entrance'>, charter?: ResolvedCharter): Plot {
+  const world = World.create({ name: 'kitbash', theme: 'test', seed: 'kitbash', width: 40, height: 40, ...(charter ? { charters: [charter] } : {}) })
   const added = world.addPlot({
     kind: spec.kind,
     name: spec.name ?? 'A place',
@@ -18,6 +18,32 @@ export function plotOf(spec: Partial<Plot> & Pick<Plot, 'kind' | 'rect' | 'entra
   })
   if (!added.ok) throw new Error(JSON.stringify(added.error))
   return added.value
+}
+
+/** The preset charter a word names: what `world.charter(plot.kind)` answers for a city built from the presets. */
+export function presetOf(word: string): ResolvedCharter {
+  const found = SHIPPED_CHARTERS.find((charter) => charter.word === word)
+  if (!found) throw new Error(`no preset charter is called ${word}`)
+  return found
+}
+
+export function charterOf(plot: Plot): ResolvedCharter {
+  return presetOf(plot.kind)
+}
+
+/** A charter no preset declares: a windowless block spelling JAIL, which is what a generated city hands over for a word the engine has never heard of. */
+export function inventedCharter(): ResolvedCharter {
+  const base = presetOf('office')
+  return {
+    ...base,
+    word: 'jail',
+    label: 'jail',
+    blade: 'JAIL',
+    street: { ...base.street, frontage: 'blank', openness: 'sparse' },
+    built: RECIPES.blank.sparse,
+    signage: { blade: 1, hanging: 0.2, accents: 3, nameplate: 0.8 },
+    suits: ['blank', 'jail'],
+  }
 }
 
 export function sizeOf(plot: Plot, height: number): { width: number; depth: number; height: number } {
@@ -76,6 +102,7 @@ export function fingerprint(object: THREE.Object3D): string {
  */
 export function townOf(seed: string, count: number): Plot[] {
   const world = World.create({ name: 'town', theme: 'test', seed, width: TOWN, height: TOWN })
+  const words = SHIPPED_CHARTERS.map((charter) => charter.word)
   const rng = new Rng(seed)
   const plots: Plot[] = []
   let [x, y] = [2, 2]
@@ -84,7 +111,7 @@ export function townOf(seed: string, count: number): Plot[] {
     if (x + w + 2 > TOWN - 2) [x, y] = [2, y + 8]
     const facing = FACINGS[at % FACINGS.length]!
     const cell = facing === 'south' ? { x, y: y + h } : facing === 'north' ? { x, y: y - 1 } : facing === 'east' ? { x: x + w, y } : { x: x - 1, y }
-    const added = world.addPlot({ kind: BUILDING_KINDS[at % BUILDING_KINDS.length]!, name: `Place ${at} Of The Town`, rect: { x, y, w, h }, entrance: { cell, facing }, storeys: 1 + (at % 6), style: 'plain' })
+    const added = world.addPlot({ kind: words[at % words.length]!, name: `Place ${at} Of The Town`, rect: { x, y, w, h }, entrance: { cell, facing }, storeys: 1 + (at % 6), style: 'plain' })
     if (!added.ok) throw new Error(JSON.stringify(added.error))
     plots.push(added.value)
     x += w + 2

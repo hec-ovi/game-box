@@ -1,8 +1,8 @@
-import { BUILDING_KINDS, METRICS, type BuildingKind } from '@gb/world'
+import { METRICS, SHIPPED_CHARTERS } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { cellAt, cellUv, DOORLAMP, GLYPH_KEYS, KitDressing, LETTER_SHARE, lightsFor, MODULE, nightLook, placeholderKit, SIGN, SIGN_ATTRIBUTES, signsFor, SOLID, TONES, type Sign } from '../src/index.ts'
-import { fingerprint, plotOf, signMesh, sizeOf, townOf, wallBounds } from './support.ts'
+import { charterOf, fingerprint, inventedCharter, plotOf, signMesh, sizeOf, townOf, wallBounds } from './support.ts'
 
 const kit = placeholderKit()
 const dressing = new KitDressing(kit)
@@ -10,8 +10,13 @@ const dressing = new KitDressing(kit)
 const heightOf = (storeys: number) => METRICS.building.groundFloorHeight + (storeys - 1) * METRICS.building.storeyHeight
 
 /** A plot of a kind, with a name of its own, standing on a street to the south. */
-function place(kind: BuildingKind, name: string, storeys = 3, at = 4): ReturnType<typeof plotOf> {
+function place(kind: string, name: string, storeys = 3, at = 4): ReturnType<typeof plotOf> {
   return plotOf({ kind, name, storeys, rect: { x: at, y: at, w: 3, h: 3 }, entrance: { cell: { x: at + 1, y: at + 3 }, facing: 'south' } })
+}
+
+/** The building a plot gets, built to its storeys from its preset charter. */
+function built(plot: ReturnType<typeof plotOf>, storeys: number): THREE.Object3D {
+  return dressing.building(plot, sizeOf(plot, heightOf(storeys)), charterOf(plot))
 }
 
 /** What the signs on a building actually spell, read back off the geometry. */
@@ -31,25 +36,31 @@ describe('signs', () => {
   it('writes the building its own name over its door', () => {
     const anchor = place('bar', 'The Rusty Anchor')
 
-    expect(readSigns(dressing.building(anchor, sizeOf(anchor, heightOf(3))))).toContain('THE RUSTY ANCHOR')
+    expect(readSigns(built(anchor, 3))).toContain('THE RUSTY ANCHOR')
     // and it is the plot's name, not a fixture: rename the place and the wall changes
     const other = place('bar', 'Kettle & Coil')
-    expect(readSigns(dressing.building(other, sizeOf(other, heightOf(3))))).toContain('KETTLE & COIL')
+    expect(readSigns(built(other, 3))).toContain('KETTLE & COIL')
   })
 
-  it('spells out what kind of place it is where the trade shouts', () => {
+  it('spells the word its charter gave it down the blade', () => {
     const hotel = place('hotel', 'Marlow House')
     // the blade carries the trade, which is the wayfinding: name over the door, trade down the wall
-    expect(readSigns(dressing.building(hotel, sizeOf(hotel, heightOf(5))))).toContain('HOTEL')
+    expect(readSigns(built(hotel, 5))).toContain('HOTEL')
+    // a word no preset knows spells what its own charter says, with no table in between
+    const jail = inventedCharter()
+    const plot = plotOf({ kind: jail.word, name: 'The Old Bridewell', storeys: 5, rect: { x: 4, y: 4, w: 3, h: 3 }, entrance: { cell: { x: 5, y: 7 }, facing: 'south' } }, jail)
+    const written = readSigns(dressing.building(plot, sizeOf(plot, heightOf(5)), jail))
+    expect(written).toContain('JAIL')
+    expect(written).toContain('THE OLD BRIDEWELL')
   })
 
   it('gives every building a sign and only the loud ones a wall full of them', () => {
-    const counts = new Map<BuildingKind, number>()
-    for (const kind of BUILDING_KINDS) {
-      const plot = place(kind, 'Somewhere Or Other', 4)
-      const signs = signsFor(plot, sizeOf(plot, heightOf(4)))
-      expect(signs.length, kind).toBeGreaterThan(0)
-      counts.set(kind, signs.length)
+    const counts = new Map<string, number>()
+    for (const charter of SHIPPED_CHARTERS) {
+      const plot = place(charter.word, 'Somewhere Or Other', 4)
+      const signs = signsFor(plot, sizeOf(plot, heightOf(4)), charter)
+      expect(signs.length, charter.word).toBeGreaterThan(0)
+      counts.set(charter.word, signs.length)
     }
     expect(counts.get('bar')!).toBeGreaterThan(counts.get('house')!)
     expect(counts.get('restaurant')!).toBeGreaterThan(counts.get('chapel')!)
@@ -59,8 +70,8 @@ describe('signs', () => {
     const materials = new Set<THREE.Material>()
     const shapes = new Set<string>()
     for (let at = 0; at < 24; at++) {
-      const plot = place(BUILDING_KINDS[at % BUILDING_KINDS.length]!, `Number ${at} Street`, 2 + (at % 5))
-      const mesh = signMesh(dressing.building(plot, sizeOf(plot, heightOf(2 + (at % 5)))))
+      const plot = place(SHIPPED_CHARTERS[at % SHIPPED_CHARTERS.length]!.word, `Number ${at} Street`, 2 + (at % 5))
+      const mesh = signMesh(built(plot, 2 + (at % 5)))
       if (!mesh) continue
       materials.add(mesh.material as THREE.Material)
       shapes.add(Object.keys(mesh.geometry.attributes).sort().join(','))
@@ -74,11 +85,11 @@ describe('signs', () => {
   })
 
   it('hangs nothing further off the wall than it says, or over the parapet', () => {
-    for (const kind of BUILDING_KINDS) {
+    for (const { word: kind } of SHIPPED_CHARTERS) {
       for (const storeys of [1, 3, 6]) {
         const plot = place(kind, 'The Long Way Round', storeys)
         const size = sizeOf(plot, heightOf(storeys))
-        const building = dressing.building(plot, size)
+        const building = built(plot, storeys)
         const walls = wallBounds(building)
         const mesh = signMesh(building)
         if (!mesh) continue
@@ -101,11 +112,11 @@ describe('signs', () => {
     const size = sizeOf(plot, heightOf(4))
     const again = new KitDressing(placeholderKit())
 
-    expect(signsFor(plot, size)).toEqual(signsFor(plot, size))
-    expect(fingerprint(again.building(plot, size))).toBe(fingerprint(dressing.building(plot, size)))
+    expect(signsFor(plot, size, charterOf(plot))).toEqual(signsFor(plot, size, charterOf(plot)))
+    expect(fingerprint(again.building(plot, size, charterOf(plot)))).toBe(fingerprint(dressing.building(plot, size, charterOf(plot))))
     // a different place is different signage, so this is not passing on an empty wall
     const other = place('cafe', 'Ashgate Kitchen', 4)
-    expect(signsFor(other, size)).not.toEqual(signsFor(plot, size))
+    expect(signsFor(other, size, charterOf(other))).not.toEqual(signsFor(plot, size, charterOf(plot)))
   })
 
   it('is dark at noon and burns after it', () => {
@@ -127,7 +138,7 @@ describe('signage on a generated town', () => {
   const town = townOf('signage', 120)
   const planned = town.map((plot) => {
     const size = sizeOf(plot, heightOf(plot.storeys))
-    return { plot, size, signs: signsFor(plot, size) }
+    return { plot, size, signs: signsFor(plot, size, charterOf(plot)) }
   })
 
   /** The outward normal of each wall, and how far its plane is from the building's middle. */
@@ -194,7 +205,7 @@ describe('signage on a generated town', () => {
     for (const { plot, size, signs } of planned) {
       const lamps = signs.filter((sign) => sign.kind === 'doorlamp')
       expect(lamps, plot.id).toHaveLength(2)
-      const door = dressing.building(plot, size).getObjectByName('door')!
+      const door = dressing.building(plot, size, charterOf(plot)).getObjectByName('door')!
       for (const lamp of lamps) {
         // sized to the door: no taller than its head, a few centimetres wide, and never past its own colour
         expect(lamp.origin[1] + lamp.height / 2, plot.id).toBeLessThanOrEqual(doorHeight + DOORLAMP.overhead + 1e-9)
@@ -209,9 +220,9 @@ describe('signage on a generated town', () => {
 
   it('publishes a light for everything it lit', () => {
     for (const { plot, size, signs } of planned) {
-      const lights = lightsFor(plot, size)
+      const lights = lightsFor(plot, size, charterOf(plot))
       expect(lights.map((light) => light.kind), plot.id).toEqual(signs.map((sign) => sign.kind))
-      expect(dressing.lights(plot, size), 'the dressing answers the same').toEqual(lights)
+      expect(dressing.lights(plot, size, charterOf(plot)), 'the dressing answers the same').toEqual(lights)
       lights.forEach((light, at) => {
         const sign = signs[at]!
         const apart = Math.hypot(light.position[0] - sign.origin[0], light.position[1] - sign.origin[1], light.position[2] - sign.origin[2])
@@ -222,7 +233,7 @@ describe('signage on a generated town', () => {
       })
     }
     // a lamp at the door is a fixture: one strength whatever the trade, and under the run of the neon
-    const lit = planned.flatMap(({ plot, size }) => lightsFor(plot, size))
+    const lit = planned.flatMap(({ plot, size }) => lightsFor(plot, size, charterOf(plot)))
     const lamps = new Set(lit.filter((light) => light.kind === 'doorlamp').map((light) => light.intensity.toFixed(6)))
     expect(lamps.size).toBe(1)
     const neon = lit.filter((light) => light.kind !== 'doorlamp').map((light) => light.intensity).sort((a, b) => a - b)

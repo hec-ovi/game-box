@@ -2,6 +2,7 @@ import { Greybox, type Dressing } from '@gb/scene'
 import type { AnchorKind, CellKind, FurnitureProp, Item, Npc, Plot, World } from '@gb/world'
 import * as THREE from 'three'
 import { assemble } from './assemble.ts'
+import type { PlotCharter } from './charter.ts'
 import { planBuilding, type BuildingSize } from './compose/plan.ts'
 import type { KitLibrary } from './kit/library.ts'
 import { buildSigns } from './sign/build.ts'
@@ -24,8 +25,8 @@ export class KitDressing implements Dressing {
     this.#rest = rest
   }
 
-  building(plot: Plot, size: BuildingSize): THREE.Object3D {
-    const plan = planBuilding(plot, size, size.width / plot.rect.w)
+  building(plot: Plot, size: BuildingSize, charter: PlotCharter): THREE.Object3D {
+    const plan = planBuilding(plot, size, size.width / plot.rect.w, charter)
     const building = assemble(plan.placements, this.#kit, plot.id)
 
     // every sign in the city is one material, so the lot is one more draw
@@ -46,8 +47,8 @@ export class KitDressing implements Dressing {
    * A light for every sign, strip and door lamp on that plot, in the building's
    * own frame, so the walls can be lit from what burns on them.
    */
-  lights(plot: Plot, size: BuildingSize): readonly LightEmitter[] {
-    return planBuilding(plot, size, size.width / plot.rect.w).lights
+  lights(plot: Plot, size: BuildingSize, charter: PlotCharter): readonly LightEmitter[] {
+    return planBuilding(plot, size, size.width / plot.rect.w, charter).lights
   }
 
   /**

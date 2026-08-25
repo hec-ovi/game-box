@@ -1,8 +1,10 @@
 import type { Rng } from '@gb/kit'
 import type { Plot } from '@gb/world'
+import type { PlotCharter } from '../charter.ts'
 import type { Band } from '../compose/bands.ts'
 import type { Face } from '../compose/faces.ts'
 import { board, stripOfMarks, tube } from './accents.ts'
+import { checkSignage } from './bounds.ts'
 import { WallClaims } from './claims.ts'
 import { doorLamps } from './doorlamp.ts'
 import { fasciaOf, type Fascia } from './fascia.ts'
@@ -10,13 +12,13 @@ import { againstNeon, backing, houseNeon, type Neon } from './palette.ts'
 import { alongOf, between, place, wallOf, within, type Panel } from './place.ts'
 import { SIGN, type Sign } from './sign.ts'
 import { across, bladeFor, down, edging, lettersOf, panelFor, widthFor } from './text.ts'
-import { SIGNAGE, TRADE_WORD } from './trade.ts'
 
 /**
  * Where a building's signs go. Every plot gets its own name over the door and
  * a lamp either side of it; a trade gets a blade down the front, something
  * hanging out over the street and a few small lit things up the wall, as often
- * as its trade shouts.
+ * as its charter says it shouts, and the blade spells the word the charter
+ * gave it.
  *
  * Every letter is sized off the fascia, and every panel claims its patch of
  * wall before it is drawn, so nothing is drawn through anything else. Nothing
@@ -30,8 +32,9 @@ const BLADE = { widest: 0.95, clear: 0.55, shortest: 2.4 } as const
 /** What hangs out over the street: how high above the shopfront, and how deep. */
 const HANGING = { high: 0.95, tall: 0.64, longest: 3.1 } as const
 
-export function planSigns(plot: Plot, height: number, faces: readonly Face[], front: Face, doorModule: number, bands: readonly Band[], rng: Rng): Sign[] {
-  const trade = SIGNAGE[plot.kind]
+export function planSigns(plot: Plot, charter: PlotCharter, height: number, faces: readonly Face[], front: Face, doorModule: number, bands: readonly Band[], rng: Rng): Sign[] {
+  checkSignage(charter.signage)
+  const { signage: trade, blade: word } = charter
   const hue = houseNeon(rng)
   const fascia = fasciaOf(bands[0] ?? { base: 0, height })
   const doorAlong = alongOf(front, doorModule)
@@ -47,16 +50,16 @@ export function planSigns(plot: Plot, height: number, faces: readonly Face[], fr
 
   if (rng.chance(trade.blade)) {
     const wall = rng.chance(0.72) ? front : rng.pick(faces.filter((face) => face.id !== front.id))
-    hang(wall, blade(plot, wall, fascia, height, againstNeon(rng, hue), rng))
+    hang(wall, blade(word, wall, fascia, height, againstNeon(rng, hue), rng))
   }
-  if (rng.chance(trade.hanging)) hang(front, boxOverTheStreet(plot, front, fascia, height, doorAlong, hue, rng))
+  if (rng.chance(trade.hanging)) hang(front, boxOverTheStreet(plot.name, word, front, fascia, height, doorAlong, hue, rng))
 
   // the door lamps are the first accent every trade carries; the rest come as loud as the trade is
   for (let at = 1; at < trade.accents; at++) {
     const colour = againstNeon(rng, hue)
     if (at === 1) hang(front, stripOfMarks(front, height, fascia, doorAlong, colour, rng))
     else if (at === 2) hang(front, tube(front, height, fascia, colour, rng))
-    else hang(front, board(plot.kind, front, height, fascia, colour, rng))
+    else hang(front, board(word, front, height, fascia, colour, rng))
   }
 
   return signs
@@ -84,7 +87,7 @@ function nameplate(plot: Plot, front: Face, fascia: Fascia, wallHeight: number, 
 }
 
 /** A tall blade spelling what kind of place this is: flat on the wall, or hung off it. Either end of the wall will do. */
-function blade(plot: Plot, wall: Face, fascia: Fascia, height: number, hue: Neon, rng: Rng): Panel[] {
+function blade(word: string, wall: Face, fascia: Fascia, height: number, hue: Neon, rng: Rng): Panel[] {
   const bottom = fascia.top + 0.35
   const finish = height - BLADE.clear
   if (finish - bottom < BLADE.shortest) return []
@@ -94,14 +97,13 @@ function blade(plot: Plot, wall: Face, fascia: Fascia, height: number, hue: Neon
   const width = Math.min(deep, bladeFor(fascia.letter))
   const side = rng.chance(0.5) ? 1 : -1
   const tall = finish - bottom
-  const word = lettersOf(TRADE_WORD[plot.kind])
   const back = backing(rng)
   const hung = rng.chance(0.45)
   const hang = Math.min(tall, HANGING.longest)
   const [mount, long, high, up] = hung
     ? ['hung' as const, deep, hang, finish - hang / 2]
     : ['flat' as const, width, tall, (bottom + finish) / 2]
-  const glyphs = [...down(word, width, high), ...edging(long, high)]
+  const glyphs = [...down(lettersOf(word), width, high), ...edging(long, high)]
 
   return [side, -side].map((way) => ({
     kind: 'sign' as const,
@@ -118,7 +120,7 @@ function blade(plot: Plot, wall: Face, fascia: Fascia, height: number, hue: Neon
 }
 
 /** The box out over the pavement, which is what gives a street its depth. Either side of the door will do. */
-function boxOverTheStreet(plot: Plot, front: Face, fascia: Fascia, height: number, doorAlong: number, hue: Neon, rng: Rng): Panel[] {
+function boxOverTheStreet(name: string, word: string, front: Face, fascia: Fascia, height: number, doorAlong: number, hue: Neon, rng: Rng): Panel[] {
   const tall = Math.min(HANGING.tall, panelFor(fascia.letter))
   const up = between(fascia.top + HANGING.high, tall, height)
   if (up === undefined) return []
@@ -126,10 +128,10 @@ function boxOverTheStreet(plot: Plot, front: Face, fascia: Fascia, height: numbe
   const side = rng.chance(0.5) ? 1 : -1
   const long = SIGN.reach
   // the name only if the whole of it fits: half a name is worse than no name
-  const name = lettersOf(plot.name)
-  const word = rng.chance(0.5) && widthFor(name, tall) <= long ? name : lettersOf(TRADE_WORD[plot.kind])
+  const letters = lettersOf(name)
+  const written = rng.chance(0.5) && widthFor(letters, tall) <= long ? letters : lettersOf(word)
   const back = backing(rng)
-  const glyphs = [...across(word, long, tall), ...edging(long, tall)]
+  const glyphs = [...across(written, long, tall), ...edging(long, tall)]
   return [side, -side].map((way) => ({
     kind: 'sign' as const,
     mount: 'hung' as const,

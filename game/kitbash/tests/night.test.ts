@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { FAKE_INTERIOR, GLASS, KitDressing, nightLook, placeholderKit, ROOM_ATTRIBUTES } from '../src/index.ts'
-import { fingerprint, meshesOf, plotOf, sizeOf } from './support.ts'
+import { charterOf, fingerprint, meshesOf, plotOf, sizeOf } from './support.ts'
 
 const kit = placeholderKit()
 const dressing = new KitDressing(kit)
@@ -13,7 +13,7 @@ const glassOf = (building: THREE.Object3D): THREE.Mesh =>
 describe('windows', () => {
   it('gives every pane a room to look into, and no draw of its own', () => {
     const plot = office()
-    const building = dressing.building(plot, sizeOf(plot, 14))
+    const building = dressing.building(plot, sizeOf(plot, 14), charterOf(plot))
     const glass = glassOf(building)
     const position = glass.geometry.getAttribute('position')
     const offset = glass.geometry.getAttribute(ROOM_ATTRIBUTES.offset)
@@ -41,7 +41,7 @@ describe('windows', () => {
 
   it('drops the flat plane the kit paints behind its glass', () => {
     const plot = office()
-    const names = meshesOf(dressing.building(plot, sizeOf(plot, 14))).map((mesh) => (mesh.material as THREE.Material).name)
+    const names = meshesOf(dressing.building(plot, sizeOf(plot, 14), charterOf(plot))).map((mesh) => (mesh.material as THREE.Material).name)
 
     expect(names).toContain(GLASS)
     expect(names, 'the pane draws a real room now').not.toContain(FAKE_INTERIOR)
@@ -52,10 +52,10 @@ describe('windows', () => {
     const size = sizeOf(plot, 14)
     // the fingerprint folds in the room attributes, so a window that would
     // light up at a different hour changes it
-    expect(fingerprint(dressing.building(plot, size))).toBe(fingerprint(dressing.building(plot, size)))
+    expect(fingerprint(dressing.building(plot, size, charterOf(plot)))).toBe(fingerprint(dressing.building(plot, size, charterOf(plot))))
     // and a different place is a different set of rooms
     const other = plotOf({ kind: 'office', storeys: 4, style: 'grand', rect: { x: 4, y: 4, w: 4, h: 3 }, entrance: { cell: { x: 5, y: 7 }, facing: 'south' } })
-    expect(fingerprint(dressing.building(other, size))).not.toBe(fingerprint(dressing.building(plot, size)))
+    expect(fingerprint(dressing.building(other, size, charterOf(other)))).not.toBe(fingerprint(dressing.building(plot, size, charterOf(plot))))
   })
 })
 

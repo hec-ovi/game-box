@@ -1,7 +1,8 @@
 import { Rng } from '@gb/kit'
 import type { Plot } from '@gb/world'
 import { isGlazed, MODULE, type PieceId } from '../catalog/pieces.ts'
-import { RECIPES, type Course } from '../catalog/recipes.ts'
+import type { Course } from '../catalog/recipes.ts'
+import type { PlotCharter } from '../charter.ts'
 import type { Room } from '../night/room.ts'
 import { lightsOf, type LightEmitter } from '../sign/light.ts'
 import { planSigns } from '../sign/plan.ts'
@@ -38,16 +39,16 @@ export interface BuildingPlan {
 
 /**
  * Turns a plot into the pieces that build it: walls module by module on every
- * face, the door on the face the entrance says, a flat deck on top, the room
- * every glazed module looks into, the signs hung on its walls and the light
- * each of them throws.
+ * face out of the courses its charter was resolved to, the door on the face
+ * the entrance says, a flat deck on top, the room every glazed module looks
+ * into, the signs hung on its walls and the light each of them throws.
  *
  * Every draw comes from the plot's own seed, forked per feature, so the same
  * plot is the same building every time and adding a feature here cannot move
  * the windows an existing city already has.
  */
-export function planBuilding(plot: Plot, size: BuildingSize, cellSize: number): BuildingPlan {
-  const recipe = RECIPES[plot.kind]
+export function planBuilding(plot: Plot, size: BuildingSize, cellSize: number, charter: PlotCharter): BuildingPlan {
+  const recipe = charter.built
   const rng = new Rng(`${plot.id}:${plot.kind}:${plot.style}`)
   const rhythm = rng.fork('rhythm')
   const interiors = rng.fork('rooms')
@@ -76,7 +77,7 @@ export function planBuilding(plot: Plot, size: BuildingSize, cellSize: number): 
     }
   }
   placements.push(...deck(size))
-  const signs = planSigns(plot, size.height, Object.values(faces), front, doorIndex, bands, signage)
+  const signs = planSigns(plot, charter, size.height, Object.values(faces), front, doorIndex, bands, signage)
   return { placements, door: { position: [doorX, 0, doorZ], rotationY: front.rotationY }, signs, lights: lightsOf(signs) }
 }
 

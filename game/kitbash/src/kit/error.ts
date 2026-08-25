@@ -29,3 +29,15 @@ export class KitUnmergeable extends Error {
     this.pieces = pieces
   }
 }
+
+/** A piece was asked for that the library has nothing drawable for: a wall with a hole in it is never built. */
+export class KitUnknownPiece extends Error {
+  readonly code = 'kit-unknown-piece' as const
+  readonly piece: string
+
+  constructor(piece: string) {
+    super(`kitbash: the kit has no piece named ${piece}`)
+    this.name = 'KitUnknownPiece'
+    this.piece = piece
+  }
+}

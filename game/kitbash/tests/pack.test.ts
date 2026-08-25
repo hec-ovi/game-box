@@ -1,10 +1,10 @@
 import { existsSync } from 'node:fs'
-import { BUILDING_KINDS, METRICS } from '@gb/world'
+import { METRICS, SHIPPED_CHARTERS } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { KitDressing, PIECES, PIECE_IDS, RELIEF, type PieceId } from '../src/index.ts'
 import { KIT_FILE, loadPackedKit } from './pack.ts'
-import { meshesOf, plotOf, sizeOf, trianglesOf, wallBounds } from './support.ts'
+import { charterOf, meshesOf, plotOf, sizeOf, trianglesOf, wallBounds } from './support.ts'
 
 // the pack arrives with tools/fetch-assets.mjs and tools/build-kit.ts; without it there is nothing to build from
 const packed = existsSync(KIT_FILE)
@@ -15,9 +15,10 @@ const heightOf = (storeys: number) => METRICS.building.groundFloorHeight + (stor
 
 describe.skipIf(!packed)('the shipped kit', () => {
   it('builds every kind of place out of real pieces', () => {
-    for (const kind of BUILDING_KINDS) {
+    for (const charter of SHIPPED_CHARTERS) {
+      const kind = charter.word
       const plot = plotOf({ kind, storeys: 3, rect: { x: 4, y: 4, w: 3, h: 3 }, entrance: { cell: { x: 5, y: 7 }, facing: 'south' } })
-      const building = dressing!.building(plot, sizeOf(plot, heightOf(3)))
+      const building = dressing!.building(plot, sizeOf(plot, heightOf(3)), charter)
       const meshes = meshesOf(building)
 
       expect(trianglesOf(building), kind).toBeGreaterThan(0)
@@ -37,7 +38,7 @@ describe.skipIf(!packed)('the shipped kit', () => {
     ] as const) {
       const plot = plotOf({ kind: 'shop', storeys, rect, entrance: { cell: { x: rect.x, y: rect.y + rect.h }, facing: 'south' } })
       const size = sizeOf(plot, heightOf(storeys))
-      const bounds = wallBounds(dressing!.building(plot, size))
+      const bounds = wallBounds(dressing!.building(plot, size, charterOf(plot)))
       const measured = bounds.getSize(new THREE.Vector3())
 
       expect(measured.x).toBeGreaterThanOrEqual(size.width - 1e-3)
