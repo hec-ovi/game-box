@@ -158,3 +158,18 @@ The model behind NPC dialogue is llama.cpp serving Qwen3.8-27B. Measured on it: 
 So a conversation turn runs two tracks: the voice track, which never waits on a decision, and an action track that is a forced choice among the actions that are legal at that moment plus an explicit "do nothing". The sidecar carries both halves of a reply, because a character who says something while doing it must not lose either.
 
 The ids an NPC may name are written into the tool's schema as an enum, so an illegal action is not something they can say, and every action is checked again before it is carried out.
+
+## D19. Work is distributed by path, not by box (2026-08-25)
+
+A box is the right unit to own code and the wrong unit to own a feature. A feature is a path across several boxes: a key press reaches the app, the app asks talk, talk answers, cast moves a body, the screen shows it. Split that path by box and every agent proves its own segment, every suite passes, and the thing does not happen.
+
+Measured twice on one day. `@gb/cast` shipped `attend()` and `resume()` so a person at a post leaves their stance, with tests; `@gb/app` never called them, and its own `guarded()` rebuilt the dressing without `members()`, so the capability could not be reached. `@gb/land` shipped a daylight curve in its own units; the grade, exposure and shadow belong to `@gb/app`, which tuned them without ever seeing a facade under them.
+
+Four rules, in the order they bite:
+
+1. **One reported thing, one owner, the whole path.** The unit of work is what the player meets, not the folder it lives in. An owner may scope agents per box underneath, and is accountable for the result at the far end.
+2. **A capability ships with its caller.** No box lands a published capability unless the change that lands it also lands the call, or the owner of the path lands it in the same pass. A capability nobody calls is not a feature, it reads as one.
+3. **Done is measured at the end of the path.** Anything visible is proven with a frame from the running game. Anything behavioural is proven through the outermost box's real entry point. A box's own suite is necessary and never sufficient.
+4. **A wrapper is total.** Anything that wraps a seam forwards every member it does not implement itself. Seams decide behaviour by asking whether a member is there, so a dropped one is a silent feature loss. When a seam gains an optional member, every wrapper of that seam moves in the same change.
+
+Alongside the rules, the repo keeps a record per box of claims that failed verification (`docs/CLAIMS.md`). It is not a score on an agent, which has no memory to punish: it is what the next agent scoped to that box is handed, and it raises the bar there to proof rather than assertion.
