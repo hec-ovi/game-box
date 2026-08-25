@@ -2,10 +2,11 @@ import { el } from '../dom.ts'
 import { Gestures } from '../map/gestures.ts'
 import { Legend, type Bearing } from '../map/legend.ts'
 import { Plan } from '../map/plan.ts'
+import { StationList } from '../map/stations.ts'
 import { MapTools, type MapTool } from '../map/tools.ts'
 import { Viewport, ZOOM_STEP, type Cell } from '../map/viewport.ts'
 import { kindOf, stepsOf, trackedQuest } from '../tracked.ts'
-import type { HudState, HudWindowName, MapMark } from '../types.ts'
+import type { HudIntent, HudState, HudWindowName, MapMark } from '../types.ts'
 import type { Tab } from './tab.ts'
 
 /** How far one arrow key pans: a tenth of what is on show. */
@@ -15,7 +16,8 @@ const KEY_PAN = 0.1
  * The city from above, filling the frame, and where the player is headed on
  * it. The plan zooms and pans inside the frame by wheel, drag, key or button;
  * the bearings under it name the places the quests point at and swing the
- * plan onto one when it is clicked.
+ * plan onto one when it is clicked, and beside them the stations offer a
+ * ride while the player stands at one.
  */
 export class MapTab implements Tab {
   readonly name: HudWindowName = 'map'
@@ -23,16 +25,20 @@ export class MapTab implements Tab {
   #plan = new Plan()
   #tools = new MapTools((tool) => this.#run(tool))
   #legend = new Legend((at) => this.#centre(at))
+  #stations: StationList
   #gestures: Gestures
   #view: Viewport | undefined
   #you: Cell | undefined
 
-  constructor() {
+  constructor(emit: (intent: HudIntent) => void) {
+    this.#stations = new StationList((stationId) => emit({ kind: 'travel', stationId }))
     this.node.tabIndex = 0
     this.node.setAttribute('aria-label', 'Map')
     this.node.addEventListener('keydown', (event) => this.#key(event))
     this.#plan.node.append(this.#tools.node)
-    this.node.append(this.#plan.node, this.#legend.node)
+    const foot = el('div', 'gb-map-foot')
+    foot.append(this.#legend.node, this.#stations.node)
+    this.node.append(this.#plan.node, foot)
     this.#gestures = new Gestures(this.#plan.node, {
       zoom: (factor, at) => {
         const view = this.#view
@@ -55,11 +61,13 @@ export class MapTab implements Tab {
       this.#plan.clear()
     }
     this.#legend.set(read(state))
+    this.#stations.set(map?.stations ?? [], map?.boarding)
   }
 
   clear(): void {
     this.#plan.clear()
     this.#legend.clear()
+    this.#stations.clear()
   }
 
   dispose(): void {

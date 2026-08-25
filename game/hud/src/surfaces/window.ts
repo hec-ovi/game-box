@@ -19,7 +19,8 @@ export class HudWindow {
   #reveal: Reveal
   #focus = new FocusReturn()
 
-  constructor(input: { lead: HTMLElement; onClose: () => void; onClosed?: () => void }) {
+  constructor(input: { lead: HTMLElement; className?: string; onClose: () => void; onClosed?: () => void }) {
+    if (input.className) this.frame.classList.add(input.className)
     this.frame.setAttribute('role', 'dialog')
     this.frame.setAttribute('aria-modal', 'true')
     this.frame.tabIndex = -1

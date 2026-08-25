@@ -1,16 +1,18 @@
 import { el } from './dom.ts'
 import { HudError } from './errors.ts'
-import { Keys, type KeyAction } from './keys.ts'
+import { Keys, type KeyAction, type KeyHold } from './keys.ts'
 import { dwell } from './phrase.ts'
 import { HudStore } from './store.ts'
 import { installStyle } from './style/index.ts'
 import { BarSurface } from './surfaces/bar.ts'
 import { CompassSurface } from './surfaces/compass.ts'
+import { CounterSurface } from './surfaces/counter.ts'
 import { LoaderSurface } from './surfaces/loader.ts'
 import { NoticesSurface } from './surfaces/notices.ts'
 import { ObjectivesSurface } from './surfaces/objectives.ts'
 import { PanelSurface } from './surfaces/panel.ts'
 import { PromptSurface } from './surfaces/prompt.ts'
+import { ScreenSurface } from './surfaces/screen.ts'
 import { ScrimSurface } from './surfaces/scrim.ts'
 import type { Surface } from './surfaces/surface.ts'
 import { TalkSurface } from './surfaces/talk.ts'
@@ -38,9 +40,14 @@ export class Hud {
   #store: HudStore
   #surfaces: readonly Surface[]
   #talk: TalkSurface
+  #counter: CounterSurface
   #panel: PanelSurface
+  #screen: ScreenSurface
   #keys: Keys
   #handlers: HudHandlers
+  /** True while focus is somewhere in the conversation. */
+  #talkHeld = false
+  /** What was last reported: the conversation or a screen holding the keyboard. */
   #typing = false
   #alive = true
 
@@ -49,7 +56,9 @@ export class Hud {
     this.#store = new HudStore(() => this.#render())
     const emit = (intent: HudIntent): void => this.#dispatch(intent)
     this.#talk = new TalkSurface(emit)
+    this.#counter = new CounterSurface(emit)
     this.#panel = new PanelSurface(emit)
+    this.#screen = new ScreenSurface(emit)
     this.#surfaces = [
       new ObjectivesSurface(),
       new PromptSurface(),
@@ -58,7 +67,9 @@ export class Hud {
       new BarSurface(emit, () => this.#typing),
       this.#talk,
       new ScrimSurface(() => this.#closeTop()),
+      this.#counter,
       this.#panel,
+      this.#screen,
       new LoaderSurface(),
     ]
 
@@ -66,7 +77,11 @@ export class Hud {
     installStyle(doc)
     this.#root.append(el('div', 'gb-crosshair'), ...this.#surfaces.map((surface) => surface.node))
     mount.append(this.#root)
-    this.#keys = new Keys(doc.defaultView ?? doc, () => this.#typing, (action) => this.#act(action))
+    this.#keys = new Keys(
+      doc.defaultView ?? doc,
+      () => this.#hold(),
+      (action, event) => this.#act(action, event),
+    )
     this.#render()
   }
 
@@ -84,7 +99,7 @@ export class Hud {
     this.#store.announce(notice, notice.ms ?? dwell(notice))
   }
 
-  /** True while the player is writing, which is when the game must let its keys go. */
+  /** True while the conversation or a screen holds the keyboard, which is when the game must let its keys go. */
   get typing(): boolean {
     return this.#typing
   }
@@ -97,35 +112,48 @@ export class Hud {
     this.#root.remove()
   }
 
+  /** Who has the keyboard right now. */
+  #hold(): KeyHold {
+    if (this.#store.state.screen) return 'screen'
+    return this.#talkHeld ? 'typing' : 'free'
+  }
+
   /** A key the interface claims. False hands it back to the game. */
-  #act(action: KeyAction): boolean {
-    const open = this.#store.state.window
+  #act(action: KeyAction, event: KeyboardEvent): boolean {
+    const state = this.#store.state
     switch (action) {
+      case 'screen':
+        return this.#screen.key(event)
       case 'close':
         return this.#closeTop()
       case 'send':
         return this.#talk.submit()
       case 'tab':
-      case 'shift-tab':
-        // The window in front takes it; failing that the conversation, which
-        // has a ring of its own as soon as it has moves to step through.
-        return open
-          ? this.#panel.trap(action === 'shift-tab')
-          : this.#store.state.talk !== undefined && this.#talk.cycle(action === 'shift-tab')
+      case 'shift-tab': {
+        // Whatever is in front takes it: the window, then the counter, then
+        // the conversation, which has a ring of its own as soon as it has
+        // moves to step through.
+        const back = action === 'shift-tab'
+        if (state.window) return this.#panel.trap(back)
+        if (state.counter) return this.#counter.trap(back)
+        return state.talk !== undefined && this.#talk.cycle(back)
+      }
       case 'leave':
         this.#dispatch({ kind: 'exit' })
         return true
       default:
         // The key of the window already up puts it away; any other switches.
-        this.#dispatch({ kind: 'window', window: open === action ? null : action })
+        this.#dispatch({ kind: 'window', window: state.window === action ? null : action })
         return true
     }
   }
 
-  /** Close the window in front of the player, and only that one. */
+  /** Close what is in front of the player, and only that: the screen, the window, the counter, the conversation. */
   #closeTop(): boolean {
     const state = this.#store.state
-    if (state.window) this.#dispatch({ kind: 'window', window: null })
+    if (state.screen) this.#dispatch({ kind: 'screen-closed', machineId: state.screen.machineId })
+    else if (state.window) this.#dispatch({ kind: 'window', window: null })
+    else if (state.counter) this.#dispatch({ kind: 'counter-closed' })
     else if (state.talk) this.#dispatch({ kind: 'talk-closed' })
     else return false
     return true
@@ -137,13 +165,19 @@ export class Hud {
     // game's to act on, so it goes out as it is.
     switch (intent.kind) {
       case 'typing':
-        if (intent.typing === this.#typing) return
-        this.#typing = intent.typing
-        break
+        this.#talkHeld = intent.typing
+        this.#syncTyping()
+        return
       case 'talk-closed':
         // Closing the panel lets the box go, which reports typing off, so the
         // game has its keys back before it hears the conversation ended.
         this.#store.apply({ talk: null })
+        break
+      case 'counter-closed':
+        this.#store.apply({ counter: null })
+        break
+      case 'screen-closed':
+        this.#store.apply({ screen: null })
         break
       case 'window':
         this.#store.apply({ window: intent.window })
@@ -168,11 +202,20 @@ export class Hud {
     return this.#store.state.talk?.moves.find((move) => move.key === key)?.label ?? ''
   }
 
+  /** Reported on change only: the conversation with focus, or a screen up, holds the keyboard. */
+  #syncTyping(): void {
+    const typing = this.#talkHeld || this.#store.state.screen !== undefined
+    if (typing === this.#typing) return
+    this.#typing = typing
+    this.#handlers.onIntent({ kind: 'typing', typing })
+  }
+
   #render(): void {
     const state = this.#store.state
-    this.#root.dataset.modal = String(state.window !== null)
+    this.#root.dataset.modal = String(state.window !== null || state.counter !== undefined || state.screen !== undefined)
     this.#root.dataset.talk = String(state.talk !== undefined)
     this.#root.dataset.reach = String(state.prompt !== undefined)
     for (const surface of this.#surfaces) surface.render(state)
+    this.#syncTyping()
   }
 }

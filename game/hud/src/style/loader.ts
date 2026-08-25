@@ -1,8 +1,9 @@
 import { LAYERS } from './layout.ts'
 
 /**
- * A city being written. It covers the view, so nothing half-built shows under
- * it, and lists the stages with the one under way in brass.
+ * A city being written, or a ride between stations. It covers the view, so
+ * nothing half-built shows under it, and lists the stages with the one under
+ * way in brass; a veil has no stages and carries its title alone.
  */
 export const LOADER = `
 .gb-loader {
@@ -29,6 +30,7 @@ export const LOADER = `
   color: var(--gb-accent);
   font-size: 14px;
 }
+.gb-loader[data-veil='true'] .gb-loader-card h2 { margin: 0; padding: 0; border: none; text-align: center; }
 .gb-stages { display: flex; flex-direction: column; gap: var(--gb-s3); }
 .gb-stage-line { display: flex; justify-content: space-between; gap: var(--gb-s3); margin-bottom: var(--gb-s1); }
 .gb-stage[data-state='waiting'] { color: var(--gb-faint); }

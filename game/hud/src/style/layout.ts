@@ -2,9 +2,10 @@
  * Where everything sits, in pixels, and which is in front. The screen is cut
  * into regions that never cross: the objectives corner top left, the compass
  * strip and the notices band beside it, the conversation down the right, the
- * bar along the foot, and the window in the room those leave. Every rule that
- * places a surface reads these numbers, so the regions stay disjoint by
- * construction.
+ * bar along the foot, and the window and the counter in the room those leave.
+ * The screen sits in the middle of the whole view, in front of them all. Every
+ * rule that places a surface reads these numbers, so the regions stay disjoint
+ * by construction.
  */
 export const LAYOUT = {
   /** Air between any surface and the edge of the screen. */
@@ -21,6 +22,8 @@ export const LAYOUT = {
   foot: 88,
   /** The window frame, one size for every face; the room clamps it on a small screen. */
   window: { width: 760, height: 600 },
+  /** The counter, a smaller frame in the same room. */
+  counter: { width: 520, height: 460 },
 } as const
 
 /** Left edge of everything to the right of the objectives corner. */
@@ -40,6 +43,8 @@ export const LAYERS = {
   notices: 4,
   bar: 5,
   scrim: 6,
-  window: 7,
-  loader: 8,
+  counter: 7,
+  window: 8,
+  screen: 9,
+  loader: 10,
 } as const

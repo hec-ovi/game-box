@@ -3,7 +3,18 @@ import { fireEvent, getByRole, getByText, queryByRole, queryByText, waitFor, wit
 import userEvent from '@testing-library/user-event'
 import type { JournalEntry, Objective } from '@gb/quest'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { HUD_CSS, HUD_KEYS, Hud, HudError, type ControlHint, type HudIntent, type LoaderView, type MapView, type QuestEntry } from '../src/index.ts'
+import {
+  HUD_CSS,
+  HUD_KEYS,
+  Hud,
+  HudError,
+  type ControlHint,
+  type HudIntent,
+  type LoaderView,
+  type MapView,
+  type QuestEntry,
+  type ScreenView,
+} from '../src/index.ts'
 
 const huds: Hud[] = []
 
@@ -291,10 +302,7 @@ describe('conversation', () => {
     hud.show({ talk: { does: null } })
     expect(queryByText(screen, 'goes back to the glass')).toBeNull()
     getByText(screen, 'Come in.')
-
-    // The older name lands on the same line.
-    hud.show({ talk: { acted: 'nods' } })
-    expect(getByText(screen, 'nods').className).toBe('gb-does')
+    expect(screen.querySelector('.gb-does:not([hidden])')).toBeNull()
   })
 
   it('keeps the whole conversation, the player\'s turns and the speaker\'s apart', async () => {
@@ -860,13 +868,13 @@ describe('the quests tab', () => {
 })
 
 describe('the inventory tab', () => {
-  it('holds the coin and what is in hand, quest items first', () => {
+  it('holds the credits and what is in hand, quest items first, each with its value', () => {
     const { hud, screen } = mount()
     hud.show({
       window: 'inventory',
       money: 128,
       carrying: [
-        { id: 'i1', name: 'Green bottle' },
+        { id: 'i1', name: 'Green bottle', value: 3 },
         { id: 'i2', name: 'Brass ledger', quest: true },
       ],
     })
@@ -878,6 +886,31 @@ describe('the inventory tab', () => {
     const names = [...panel.querySelectorAll('.gb-carried .gb-what')].map((node) => node.textContent)
     expect(names).toEqual(['Brass ledger', 'Green bottle'])
     within(panel).getByText('Quest')
+    // What a thing is worth sits on its row; a thing with no value says nothing.
+    expect(within(panel).getByText('3 credits').closest('li')?.textContent).toContain('Green bottle')
+    expect(panel.querySelectorAll('.gb-carried .gb-value')).toHaveLength(1)
+  })
+
+  it('lists the places the player owns and what they left in each', () => {
+    const { hud, screen } = mount()
+    hud.show({ window: 'inventory' })
+    const panel = getByRole(screen, 'dialog', { name: 'Inventory' })
+    within(panel).getByText('No place of your own yet.')
+
+    hud.show({
+      homes: [
+        { id: 'in1', name: 'The flat over Lantern Row', text: 'Two rooms and a balcony.', placed: [{ id: 'i3', name: 'Oil painting', value: 300 }] },
+        { id: 'in2', name: 'The dock house', placed: [] },
+      ],
+    })
+    within(panel).getByText('Your places')
+    const flat = within(panel).getByText('The flat over Lantern Row').closest('.gb-home') as HTMLElement
+    within(flat).getByText('Two rooms and a balcony.')
+    within(flat).getByText('Oil painting')
+    within(flat).getByText('300 credits')
+    const dock = within(panel).getByText('The dock house').closest('.gb-home') as HTMLElement
+    within(dock).getByText('Nothing placed here yet.')
+    expect(queryByText(panel, 'No place of your own yet.')).toBeNull()
   })
 
   it('says so plainly when there is nothing to carry', () => {
@@ -1115,6 +1148,234 @@ describe('the map tab', () => {
   })
 })
 
+describe('the stations on the map', () => {
+  const CITY: MapView = {
+    width: 40,
+    height: 30,
+    plots: [{ id: 'p1', rect: { x: 4, y: 4, w: 8, h: 6 }, label: 'The Copper Wheel' }],
+    stations: [
+      { id: 'p9', name: 'Northgate', x: 30, y: 25 },
+      { id: 'p10', name: 'Dock Street', x: 5, y: 5 },
+    ],
+  }
+
+  it('marks and lists every station, and offers a ride only from one the player stands at', async () => {
+    const user = userEvent.setup()
+    const { hud, screen, intents } = mount()
+    hud.show({ window: 'map', map: CITY })
+    const panel = getByRole(screen, 'dialog', { name: 'Map' })
+
+    const marks = [...panel.querySelectorAll('.gb-plan .gb-station')]
+    expect(marks.map((node) => node.querySelector('text')?.textContent)).toEqual(['Northgate', 'Dock Street'])
+    expect(marks[0]?.getAttribute('transform')).toMatch(/^translate\(30 25\) scale\(/)
+    const list = within(panel).getByText('Stations').closest('.gb-station-list') as HTMLElement
+    within(list).getByText('Northgate')
+    within(list).getByText('Dock Street')
+    within(list).getByText('Walk up to a station entrance to ride.')
+    expect(within(list).queryAllByRole('button')).toHaveLength(0)
+
+    // At a station, the others can be ridden to; this one says it is here.
+    hud.show({ map: { ...CITY, boarding: 'p10' } })
+    expect(within(list).getByText('Walk up to a station entrance to ride.').hidden).toBe(true)
+    within(within(list).getByText('Dock Street').closest('li') as HTMLElement).getByText('Here')
+    await user.click(within(list).getByRole('button', { name: 'Travel to Northgate' }))
+    expect(intents).toContainEqual({ kind: 'travel', stationId: 'p9' })
+
+    // The ride: a veil with the title alone, gone when the game has moved the player.
+    hud.show({ window: null, loading: { title: 'Riding to Northgate', stages: [] } })
+    const veil = getByRole(screen, 'status', { name: '' })
+    getByText(veil, 'Riding to Northgate')
+    expect(veil.dataset.veil).toBe('true')
+    hud.show({ loading: null })
+    expect(veil.getAttribute('aria-hidden')).toBe('true')
+
+    // A city with no stations lists none.
+    hud.show({ window: 'map', map: { ...CITY, stations: [] } })
+    expect((panel.querySelector('.gb-station-list') as HTMLElement).hidden).toBe(true)
+  })
+})
+
+describe('the counter', () => {
+  it('lists what is on offer at its price against the player\'s credits, buys on a click, and closes both ways', async () => {
+    const user = userEvent.setup()
+    const { hud, screen, intents } = mount()
+    hud.show({
+      money: 50,
+      counter: {
+        seller: 'Mara Quill',
+        offers: [
+          { id: 'i1', name: 'Green bottle', price: 3 },
+          { id: 'i2', name: 'A cut gem', price: 300 },
+        ],
+      },
+    })
+
+    const counter = getByRole(screen, 'dialog', { name: 'Mara Quill' })
+    within(counter).getByText('Your credits')
+    within(counter).getByText('50')
+    within(counter).getByText('3 credits')
+    await user.click(within(counter).getByRole('button', { name: 'Buy Green bottle, 3 credits' }))
+    expect(intents).toContainEqual({ kind: 'buy', itemId: 'i1' })
+
+    // What costs more than the player holds stays on the counter to read, with its button off.
+    const gem = within(counter).getByRole('button', { name: 'Buy A cut gem, 300 credits, not enough credits' }) as HTMLButtonElement
+    expect(gem.disabled).toBe(true)
+    expect(gem.closest('li')?.dataset.short).toBe('true')
+    hud.show({ money: 400 })
+    expect((within(counter).getByRole('button', { name: 'Buy A cut gem, 300 credits' }) as HTMLButtonElement).disabled).toBe(false)
+
+    // Nothing is taken off the counter here: a thing sold is gone on the next push.
+    hud.show({ counter: { seller: 'Mara Quill', offers: [] } })
+    within(counter).getByText('Nothing for sale today.')
+
+    // Escape closes it, and so does the button that carries the key.
+    await user.keyboard('{Escape}')
+    expect(intents).toContainEqual({ kind: 'counter-closed' })
+    expect(counter.getAttribute('aria-hidden')).toBe('true')
+    hud.show({ counter: { seller: 'Mara Quill', offers: [] } })
+    expect(counter.getAttribute('aria-hidden')).toBeNull()
+    await user.click(within(counter).getByRole('button', { name: 'Close (Escape)' }))
+    expect(intents.filter((intent) => intent.kind === 'counter-closed')).toHaveLength(2)
+    hud.show({ counter: { seller: 'Hollis', offers: [] } })
+    hud.show({ counter: null })
+    expect(counter.getAttribute('aria-hidden')).toBe('true')
+  })
+})
+
+describe('the screen', () => {
+  const LEDGER: ScreenView = {
+    machineId: 'machine_0001',
+    title: 'Front desk terminal',
+    locked: true,
+    program: { kind: 'text', title: 'Ledger', lines: Array.from({ length: 30 }, (_, at) => `Entry ${at + 1}`) },
+  }
+
+  function glass(screen: HTMLElement): string {
+    return screen.querySelector('.gb-screen-text')?.textContent ?? ''
+  }
+
+  /** What the glass says, row by row, without the padding that squares it. */
+  function rows(screen: HTMLElement): string[] {
+    return glass(screen).split('\n').map((row) => row.trim())
+  }
+
+  function press(...keys: string[]): void {
+    for (const key of keys) fireEvent.keyDown(document.body, { key })
+  }
+
+  it('asks a locked machine\'s password, hands it to the game, and runs the program once the game opens it', () => {
+    const { hud, screen, intents } = mount()
+    hud.show({ screen: LEDGER })
+    getByRole(screen, 'dialog', { name: 'Front desk terminal' })
+    expect(glass(screen)).toContain('LOCKED')
+    expect(glass(screen)).toContain('Password: _')
+
+    // Typed characters go in as stars; Enter hands the line over.
+    press('o', 'p', 'e', 'n')
+    expect(glass(screen)).toContain('Password: ****_')
+    press('Enter')
+    expect(intents).toContainEqual({ kind: 'unlock', machineId: 'machine_0001', password: 'open' })
+    expect(glass(screen)).toContain('Password: _')
+
+    hud.show({ screen: { ...LEDGER, refused: true } })
+    expect(glass(screen)).toContain('Wrong password. Try again.')
+
+    // Open, it reads the program: the title, the lines, and the arrows scroll what does not fit.
+    hud.show({ screen: { ...LEDGER, locked: false } })
+    expect(glass(screen)).not.toContain('LOCKED')
+    expect(rows(screen)[0]).toBe('Ledger')
+    expect(rows(screen)).toContain('Entry 1')
+    expect(rows(screen)).not.toContain('Entry 30')
+    press('ArrowDown')
+    expect(rows(screen)).not.toContain('Entry 1')
+    expect(rows(screen)[2]).toBe('Entry 2')
+  })
+
+  it('takes every key while it is up, and Escape closes it after the keyboard is handed back', () => {
+    const { hud, screen, intents } = mount()
+    const heard: string[] = []
+    const game = (event: Event): void => {
+      heard.push((event as KeyboardEvent).key)
+    }
+    window.addEventListener('keydown', game)
+    try {
+      hud.show({ screen: { ...LEDGER, locked: false } })
+      expect(hud.typing).toBe(true)
+      press('j', 'w', 'ArrowUp')
+      expect(heard).toEqual([])
+      expect(intents.some((intent) => intent.kind === 'window')).toBe(false)
+
+      press('Escape')
+      expect(intents.slice(-2)).toEqual([
+        { kind: 'typing', typing: false },
+        { kind: 'screen-closed', machineId: 'machine_0001' },
+      ])
+      expect(hud.typing).toBe(false)
+      expect((screen.querySelector('.gb-screen') as HTMLElement).getAttribute('aria-hidden')).toBe('true')
+      press('w')
+      expect(heard).toEqual(['w'])
+    } finally {
+      window.removeEventListener('keydown', game)
+    }
+  })
+
+  it('plays snake with the arrows, draws the best score it was given, and reports the score when the game ends', () => {
+    vi.useFakeTimers()
+    try {
+      const { hud, screen, intents } = mount()
+      hud.show({ screen: { machineId: 'machine_0002', title: 'Laptop', locked: false, program: { kind: 'snake', best: 120 } } })
+      expect(glass(screen)).toContain('SNAKE')
+      expect(glass(screen)).toContain('Best 120')
+      const at = (): number => glass(screen).split('\n').find((row) => row.includes('@'))?.indexOf('@') ?? -1
+
+      // The first arrow sets it going; a step later the head has moved that way.
+      press('ArrowRight')
+      const start = at()
+      expect(start).toBeGreaterThan(0)
+      vi.advanceTimersByTime(120)
+      expect(at()).toBe(start + 1)
+
+      // Straight into the east wall: the game is over and the score goes out once.
+      vi.advanceTimersByTime(120 * 30)
+      expect(glass(screen)).toContain('GAME OVER')
+      const scores = intents.filter((intent) => intent.kind === 'score')
+      expect(scores).toEqual([{ kind: 'score', machineId: 'machine_0002', game: 'snake', score: expect.any(Number) }])
+
+      // The game draws the best the playthrough pushes back, without starting over.
+      hud.show({ screen: { machineId: 'machine_0002', title: 'Laptop', locked: false, program: { kind: 'snake', best: 200 } } })
+      expect(glass(screen)).toContain('Best 200')
+      expect(glass(screen)).toContain('GAME OVER')
+      press('Enter')
+      expect(glass(screen)).toContain('Arrows to start')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('plays tetris with the arrows and Space, draws the best score it was given, and reports the score when the well fills', () => {
+    vi.useFakeTimers()
+    try {
+      const { hud, screen, intents } = mount()
+      hud.show({ screen: { machineId: 'machine_0003', title: 'Monitor', locked: false, program: { kind: 'tetris', best: 1200 } } })
+      expect(glass(screen)).toContain('TETRIS')
+      expect(glass(screen)).toContain('BEST  1200')
+      expect(glass(screen)).toContain('NEXT')
+
+      press('ArrowLeft')
+      vi.advanceTimersByTime(500)
+      expect(glass(screen)).toContain('[]')
+      // Dropping every piece on the same column fills the well in the middle.
+      for (let drop = 0; drop < 40; drop += 1) press(' ')
+      expect(glass(screen)).toContain('GAME OVER')
+      expect(intents.filter((intent) => intent.kind === 'score')).toEqual([
+        { kind: 'score', machineId: 'machine_0003', game: 'tetris', score: expect.any(Number) },
+      ])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
+
 describe('the compass', () => {
   it('slides the points as the player turns, marks the tracked goal at its bearing with how far, and pins it to an edge behind them', () => {
     const { hud, screen } = mount()
@@ -1230,7 +1491,7 @@ describe('announcements', () => {
       const small = getByText(screen, 'Picked up Green bottle').closest('.gb-notice') as HTMLElement
       expect(big.dataset.tone).toBe('major')
       expect(small.dataset.tone).toBe('minor')
-      getByText(screen, '+40 coin · Brass key')
+      getByText(screen, '+40 credits · Brass key')
 
       // The quiet one is gone while the loud one is still being read.
       vi.advanceTimersByTime(2700)
@@ -1272,7 +1533,7 @@ describe('announcements', () => {
     }
   })
 
-  it('words every kind of event, and says nothing for coin that did not move', () => {
+  it('words every kind of event, and says nothing for credits that did not move', () => {
     vi.useFakeTimers()
     try {
       const { hud, screen } = mount()
@@ -1285,9 +1546,9 @@ describe('announcements', () => {
         ['New quest: The Copper Wheel', 'major'],
         ['Done: Talk to Mara', 'minor'],
         ['Quest failed: Salt and Lamp Oil', 'major'],
-        ['-12 coin', 'minor'],
+        ['-12 credits', 'minor'],
       ])
-      expect((getByText(screen, '-12 coin').closest('.gb-notice') as HTMLElement).dataset.sign).toBe('down')
+      expect((getByText(screen, '-12 credits').closest('.gb-notice') as HTMLElement).dataset.sign).toBe('down')
 
       hud.announce({ kind: 'money', delta: 0 })
       expect(screen.querySelectorAll('.gb-notice')).toHaveLength(4)
@@ -1315,7 +1576,18 @@ describe('the layers', () => {
     const { hud, screen } = mount()
     hud.show({ talk: { speaker: 'Mara Quill' }, window: 'quests', loading: { title: 'Writing', stages: [] }, compass: { facing: 0 } })
     const z = (selector: string): number => Number(getComputedStyle(screen.querySelector(selector) as HTMLElement).zIndex)
-    const order = ['.gb-objectives', '.gb-compass', '.gb-talk', '.gb-notices', '.gb-bar', '.gb-scrim', '.gb-window-room', '.gb-loader'].map(z)
+    const order = [
+      '.gb-objectives',
+      '.gb-compass',
+      '.gb-talk',
+      '.gb-notices',
+      '.gb-bar',
+      '.gb-scrim',
+      '.gb-counter-room',
+      '.gb-window-room:not(.gb-counter-room)',
+      '.gb-screen-room',
+      '.gb-loader',
+    ].map(z)
     for (const layer of order) expect(Number.isFinite(layer)).toBe(true)
     expect([...order].sort((a, b) => a - b)).toEqual(order)
     expect(new Set(order).size).toBe(order.length)

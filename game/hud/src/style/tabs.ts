@@ -84,7 +84,7 @@ export const TABS = `
 }
 .gb-option:hover, .gb-option:focus-visible { border-color: var(--gb-accent); background: var(--gb-accent); color: var(--gb-accent-ink); }
 
-/* Inventory: what can be spent, then what is in hand. */
+/* Inventory: what can be spent, what is in hand, then the places that are the player's. */
 .gb-inventory .gb-coin {
   display: flex;
   align-items: baseline;
@@ -100,6 +100,19 @@ export const TABS = `
 .gb-carried .gb-what { flex: 1; }
 .gb-carried .gb-quest-item .gb-mark { color: var(--gb-accent); }
 .gb-carried .gb-quest-item .gb-tag { border-color: var(--gb-accent-deep); color: var(--gb-accent); }
+.gb-carried .gb-value { color: var(--gb-dim); font-size: 12px; }
+.gb-homes { margin-top: var(--gb-s5); }
+.gb-homes h3 {
+  padding-bottom: var(--gb-s1);
+  margin-bottom: var(--gb-s2);
+  border-bottom: 1px solid var(--gb-edge);
+  color: var(--gb-accent);
+}
+.gb-home { padding: var(--gb-s2) 0; border-top: 1px solid rgba(242, 239, 230, 0.07); }
+.gb-home:first-child { border-top: none; }
+.gb-home h4 { margin: 0 0 2px; font-family: var(--gb-display); font-size: 14px; letter-spacing: 0.04em; color: var(--gb-ink); }
+.gb-home p { color: var(--gb-dim); font-size: 13px; }
+.gb-placed { margin-top: var(--gb-s1); padding-left: var(--gb-s3); border-left: 1px solid var(--gb-edge); }
 
 /* Codex: what has been found out, under one heading per kind of thing. A
    person carries how they stand towards the player and what has been learned

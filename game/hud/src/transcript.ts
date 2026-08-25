@@ -31,12 +31,7 @@ export function withYours(turns: readonly TalkTurn[], says: string): readonly Ta
 }
 
 function editsTurn(patch: TalkPatch): boolean {
-  return patch.reply !== undefined || patch.replyChunk !== undefined || doesOf(patch) !== undefined
-}
-
-/** `does`, under either of its names. */
-function doesOf(patch: TalkPatch): string | null | undefined {
-  return patch.does !== undefined ? patch.does : patch.acted
+  return patch.reply !== undefined || patch.replyChunk !== undefined || patch.does !== undefined
 }
 
 function withTheirs(turns: readonly TalkTurn[], patch: TalkPatch): readonly TalkTurn[] {
@@ -44,8 +39,7 @@ function withTheirs(turns: readonly TalkTurn[], patch: TalkPatch): readonly Talk
   const theirs = last?.who === 'them'
   const from: TalkTurn = theirs ? last : { who: 'them', says: '' }
   const says = (patch.reply ?? from.says) + (patch.replyChunk ?? '')
-  const sent = doesOf(patch)
-  const does = sent === undefined ? from.does : (sent ?? undefined)
+  const does = patch.does === undefined ? from.does : (patch.does ?? undefined)
   const turn: TalkTurn = { who: 'them', says, ...(does ? { does } : {}) }
   return theirs ? [...turns.slice(0, -1), turn] : [...turns, turn]
 }

@@ -6,11 +6,60 @@ export interface Prompt {
   readonly text: string
 }
 
-/** One thing in the player's hands. `quest` marks it as wanted by a live quest. */
+/**
+ * One thing in the player's hands, or left in a place of theirs. `quest` marks
+ * it as wanted by a live quest; `value` is what it is worth, in whole credits.
+ */
 export interface Carried {
   readonly id: string
   readonly name: string
   readonly quest?: boolean
+  readonly value?: number
+}
+
+/** A place the player owns, and what they have put in it. */
+export interface OwnedPlace {
+  readonly id: string
+  readonly name: string
+  /** One line on what it is: "A flat over Lantern Row." */
+  readonly text?: string
+  readonly placed: readonly Carried[]
+}
+
+/** One thing a seller has on the counter, at the price they ask for it. */
+export interface CounterOffer {
+  readonly id: string
+  readonly name: string
+  /** Whole credits. */
+  readonly price: number
+}
+
+/** A counter the player is standing at: who keeps it and what is on it. */
+export interface CounterView {
+  readonly seller: string
+  readonly offers: readonly CounterOffer[]
+}
+
+/** The two games a screen can run. */
+export type ScreenGame = 'snake' | 'tetris'
+
+/**
+ * What a screen runs once it is open: pages of text the generator wrote, or a
+ * game with the best score the playthrough keeps for it.
+ */
+export type ScreenProgram =
+  | { readonly kind: 'text'; readonly title: string; readonly lines: readonly string[] }
+  | { readonly kind: ScreenGame; readonly best?: number }
+
+/** A machine the player sits at. Locked, it asks for a password before it runs anything. */
+export interface ScreenView {
+  readonly machineId: string
+  /** What the machine is called: "Front desk terminal". */
+  readonly title: string
+  readonly locked: boolean
+  /** True after the game turned a password down, so the prompt says so. */
+  readonly refused?: boolean
+  readonly program: ScreenProgram
 }
 
 /**
@@ -112,12 +161,23 @@ export interface MapMark {
   readonly line?: QuestKind
 }
 
+/** Where fast travel boards: a station on the plan, in cells. */
+export interface MapStation {
+  readonly id: string
+  readonly name: string
+  readonly x: number
+  readonly y: number
+}
+
 /** The city from above, in grid cells. The game measures it; the map draws it. */
 export interface MapView {
   readonly width: number
   readonly height: number
   readonly plots: readonly MapPlot[]
   readonly marks?: readonly MapMark[]
+  readonly stations?: readonly MapStation[]
+  /** The station the player is standing at, which is when the others can be ridden to. */
+  readonly boarding?: string
 }
 
 /** The place the strip points at: where it is from here, and how far along the walk. */
@@ -254,8 +314,6 @@ export interface TalkPatch {
   readonly replyChunk?: string
   /** What the speaker does this turn, apart from the words. `null` takes it away. */
   readonly does?: string | null
-  /** The older name for `does`; read the same way. */
-  readonly acted?: string | null
   /** The moves legal right now, in the order they read. Replaces the menu. */
   readonly moves?: readonly TalkMove[]
 }
@@ -308,6 +366,12 @@ export type HudIntent =
   | { readonly kind: 'skip-time' }
   | { readonly kind: 'weather'; readonly weather: string }
   | { readonly kind: 'exit' }
+  | { readonly kind: 'buy'; readonly itemId: string }
+  | { readonly kind: 'counter-closed' }
+  | { readonly kind: 'unlock'; readonly machineId: string; readonly password: string }
+  | { readonly kind: 'score'; readonly machineId: string; readonly game: ScreenGame; readonly score: number }
+  | { readonly kind: 'screen-closed'; readonly machineId: string }
+  | { readonly kind: 'travel'; readonly stationId: string }
 
 export interface HudHandlers {
   onIntent(intent: HudIntent): void
@@ -315,14 +379,18 @@ export interface HudHandlers {
 
 /**
  * A push of interface state. Fields left out keep the value already on screen;
- * `null` clears the prompt, closes the conversation, shuts the window, stops
- * following a quest, takes the survey, the compass or the loader away.
+ * `null` clears the prompt, closes the conversation, the counter or the screen,
+ * shuts the window, stops following a quest, takes the survey, the compass or
+ * the loader away.
  */
 export interface HudPatch {
   readonly objectives?: readonly Objective[]
   readonly prompt?: Prompt | null
   readonly money?: number
   readonly carrying?: readonly Carried[]
+  readonly homes?: readonly OwnedPlace[]
+  readonly counter?: CounterView | null
+  readonly screen?: ScreenView | null
   readonly talk?: TalkPatch | null
   readonly quests?: readonly QuestEntry[]
   readonly trackedQuestId?: string | null
@@ -348,6 +416,9 @@ export interface HudState {
   readonly prompt: Prompt | undefined
   readonly money: number
   readonly carrying: readonly Carried[]
+  readonly homes: readonly OwnedPlace[]
+  readonly counter: CounterView | undefined
+  readonly screen: ScreenView | undefined
   readonly talk: TalkState | undefined
   readonly quests: readonly QuestEntry[]
   readonly trackedQuestId: string | undefined

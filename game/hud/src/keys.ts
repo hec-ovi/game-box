@@ -1,8 +1,14 @@
 /// <reference lib="dom" />
 import type { HudWindowName } from './types.ts'
 
-/** What a key press means to the interface. A window name opens that window. */
-export type KeyAction = 'close' | 'send' | 'tab' | 'shift-tab' | 'leave' | HudWindowName
+/** What a key press means to the interface. A window name opens that window; `screen` hands the key to the screen. */
+export type KeyAction = 'close' | 'send' | 'tab' | 'shift-tab' | 'leave' | 'screen' | HudWindowName
+
+/**
+ * Who has the keyboard: nobody, the conversation (its box or its moves), or a
+ * screen, which takes every key but the one that closes it.
+ */
+export type KeyHold = 'free' | 'typing' | 'screen'
 
 /** The letter that brings up each window. `?`, `/` and F1 all reach the controls. */
 const OPENS: Record<string, KeyAction> = {
@@ -18,17 +24,17 @@ const OPENS: Record<string, KeyAction> = {
  * One listener for the whole interface, on the window in the capture phase, so
  * it runs before anything the game has bound anywhere. Two things follow from
  * that: a window can always be closed with a key whatever else is listening,
- * and while the player is writing the game hears nothing at all. Keys the
- * interface does not use pass straight through untouched.
+ * and while the player is writing or at a screen the game hears nothing at
+ * all. Keys the interface does not use pass straight through untouched.
  */
 export class Keys {
   #on: Window | Document
-  #typing: () => boolean
-  #run: (action: KeyAction) => boolean
+  #hold: () => KeyHold
+  #run: (action: KeyAction, event: KeyboardEvent) => boolean
 
-  constructor(on: Window | Document, typing: () => boolean, run: (action: KeyAction) => boolean) {
+  constructor(on: Window | Document, hold: () => KeyHold, run: (action: KeyAction, event: KeyboardEvent) => boolean) {
     this.#on = on
-    this.#typing = typing
+    this.#hold = hold
     this.#run = run
     this.#on.addEventListener('keydown', this.#handle, true)
   }
@@ -40,21 +46,24 @@ export class Keys {
   #handle = (event: Event): void => {
     const key = event as KeyboardEvent
     if (key.defaultPrevented) return
-    const action = this.#action(key)
+    const hold = this.#hold()
+    const action = this.#action(key, hold)
 
-    // A held key must not flap a window open and shut, but it stays ours.
-    const used = action ? (key.repeat ? true : this.#run(action)) : false
+    // A held key must not flap a window open and shut, but it stays ours; a
+    // screen wants the repeats, because a piece is held down.
+    const used = action ? (key.repeat && action !== 'screen' ? true : this.#run(action, key)) : false
     if (used) {
       key.preventDefault()
       key.stopImmediatePropagation()
       return
     }
     // Everything typed into the conversation stops here.
-    if (this.#typing()) key.stopImmediatePropagation()
+    if (hold !== 'free') key.stopImmediatePropagation()
   }
 
-  #action(event: KeyboardEvent): KeyAction | undefined {
-    if (this.#typing()) {
+  #action(event: KeyboardEvent, hold: KeyHold): KeyAction | undefined {
+    if (hold === 'screen') return event.key === 'Escape' ? 'close' : 'screen'
+    if (hold === 'typing') {
       if (event.key === 'Escape') return 'close'
       if (event.key === 'Enter') return 'send'
       if (event.key === 'Tab') return event.shiftKey ? 'shift-tab' : 'tab'

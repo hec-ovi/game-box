@@ -4,10 +4,11 @@ import type { HudState, LoadStage } from '../types.ts'
 import type { Surface } from './surface.ts'
 
 /**
- * A city being written: what it is called and each stage of the build with
- * how far it has got, so minutes of model work read as progress rather than
- * one line that does not move. It covers the whole view while it is up and
- * goes the moment the game takes it away.
+ * The view covered while the game is busy. A city being written: what it is
+ * called and each stage of the build with how far it has got, so minutes of
+ * model work read as progress rather than one line that does not move. With
+ * no stages it is a veil, the title alone: a ride between stations. It goes
+ * the moment the game takes it away.
  */
 export class LoaderSurface implements Surface {
   readonly node = el('section', 'gb-loader')
@@ -29,6 +30,7 @@ export class LoaderSurface implements Surface {
     const loading = state.loading
     if (loading) {
       setText(this.#title, loading.title)
+      this.node.dataset.veil = String(loading.stages.length === 0)
       this.#stages(loading.stages)
     }
     this.#reveal.set(loading !== undefined)

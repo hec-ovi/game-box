@@ -33,7 +33,7 @@ export class PanelSurface implements Surface {
     })
     this.#tabs = [
       new QuestsTab(emit),
-      new MapTab(),
+      new MapTab(emit),
       new InventoryTab(),
       new CodexTab(),
       new SettingsTab(emit),

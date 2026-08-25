@@ -42,6 +42,9 @@ export const MAP = `
 .gb-plan .gb-goal path, .gb-plan .gb-goal circle { fill: var(--gb-accent); stroke: rgba(0, 0, 0, 0.7); stroke-width: 1.2; }
 .gb-plan .gb-goal[data-line='side'] circle { fill: var(--gb-accent-deep); stroke: var(--gb-accent); }
 .gb-plan .gb-goal text { fill: var(--gb-accent); }
+/* A station is a square of ink: the one mark that is neither the player nor a goal. */
+.gb-plan .gb-station rect { fill: var(--gb-ink); stroke: rgba(0, 0, 0, 0.7); stroke-width: 1.2; }
+.gb-plan .gb-station text { fill: var(--gb-dim); }
 
 .gb-map-tools {
   position: absolute;
@@ -66,18 +69,42 @@ export const MAP = `
 }
 .gb-map-tool:hover { background: var(--gb-lift); color: var(--gb-ink); }
 
-/* The places to head for, laid along the foot of the plan. */
-.gb-map .gb-bearing-list {
+/* The foot of the plan: the places to head for, and beside them the stations. */
+.gb-map-foot {
   flex: none;
+  display: flex;
   max-height: 132px;
-  overflow-y: auto;
-  padding: var(--gb-s2) var(--gb-s5) var(--gb-s3);
   border-top: 1px solid var(--gb-edge);
   background: var(--gb-solid);
+}
+.gb-map-foot > section {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: var(--gb-s2) var(--gb-s5) var(--gb-s3);
   scrollbar-width: thin;
   scrollbar-color: var(--gb-accent-deep) transparent;
 }
-.gb-bearing-list h3 { margin-bottom: var(--gb-s1); color: var(--gb-faint); }
+.gb-map-foot > section + section { border-left: 1px solid var(--gb-edge); }
+.gb-map-foot h3 { margin-bottom: var(--gb-s1); color: var(--gb-faint); }
+.gb-stations li { display: flex; align-items: center; gap: var(--gb-s2); padding: 2px 0; }
+.gb-stations li::before { content: '■'; flex: none; width: 12px; color: var(--gb-ink); font-size: 9px; text-align: center; }
+.gb-stations .gb-what { flex: 1; }
+.gb-station-list .gb-note { margin-top: var(--gb-s1); font-size: 12px; color: var(--gb-faint); }
+.gb-travel {
+  padding: 2px var(--gb-s2);
+  border: 1px solid var(--gb-accent-deep);
+  background: transparent;
+  color: var(--gb-accent);
+  font-family: var(--gb-display);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color var(--gb-t) var(--gb-ease), background var(--gb-t) var(--gb-ease),
+    color var(--gb-t) var(--gb-ease);
+}
+.gb-travel:hover { border-color: var(--gb-accent); background: var(--gb-accent); color: var(--gb-accent-ink); }
 .gb-bearings li {
   display: flex;
   align-items: baseline;

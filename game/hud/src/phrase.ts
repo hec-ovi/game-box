@@ -141,8 +141,65 @@ export function distanceText(metres: number): string {
 export const MAP_TOOLS = { in: 'Zoom in', out: 'Zoom out', fit: 'Fit', you: 'You' } as const
 export const MAP_KEYS = { in: '+', out: '-', fit: '0', you: 'Y' } as const
 
+/** The unit money is counted in, wherever a number of it is read. */
+export const CREDITS = 'credits'
+
+/** "40 credits": a price or a value beside the thing it belongs to. */
+export function priceText(value: number): string {
+  return `${value} ${CREDITS}`
+}
+
 /** The inventory with nothing in it. */
 export const NO_ITEMS = 'Your pockets are empty.'
+
+/** The inventory's second heading, and its two empty lines: no place owned, a place with nothing in it. */
+export const HOMES = {
+  head: 'Your places',
+  none: 'No place of your own yet.',
+  empty: 'Nothing placed here yet.',
+} as const
+
+/** The counter's words: what the player has to spend, the button, and a counter with nothing on it. */
+export const COUNTER = {
+  credits: 'Your credits',
+  buy: 'Buy',
+  short: 'Not enough credits',
+  none: 'Nothing for sale today.',
+} as const
+
+/** The map's second list: where fast travel boards, and how to use it. */
+export const STATIONS = {
+  head: 'Stations',
+  travel: 'Travel',
+  here: 'Here',
+  walk: 'Walk up to a station entrance to ride.',
+} as const
+
+/** What a screen says: the lock, the reader, and the two games. */
+export const SCREEN_WORDS = {
+  lock: {
+    title: 'LOCKED',
+    ask: 'Password',
+    wrong: 'Wrong password. Try again.',
+    status: 'Type the password, Enter to try',
+  },
+  read: { status: 'Arrows scroll', end: 'End of file' },
+  snake: {
+    title: 'SNAKE',
+    start: 'Arrows to start',
+    over: 'GAME OVER',
+    again: 'Enter to play again',
+    keys: 'Arrows steer',
+  },
+  tetris: {
+    title: 'TETRIS',
+    start: 'Any key to start',
+    over: 'GAME OVER',
+    again: 'Enter to play again',
+    keys: 'Arrows move, Up turns, Space drops',
+    next: 'NEXT',
+  },
+} as const
 
 /** The map with no survey and no step pointing anywhere. */
 export const NO_BEARINGS = 'Nothing to head for yet.'
@@ -177,5 +234,5 @@ function reward(value: Reward | undefined): string | undefined {
 }
 
 function coin(delta: number): string {
-  return `${delta > 0 ? '+' : '-'}${Math.abs(delta)} coin`
+  return `${delta > 0 ? '+' : '-'}${Math.abs(delta)} ${CREDITS}`
 }
