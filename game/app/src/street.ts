@@ -26,8 +26,8 @@ const LANE_PER_CAR = 110
 
 /** The player's own car: solid to walk into, something traffic brakes for, and something nobody walks through. */
 export interface PlayerCar {
-  /** The car, driving or parked; nothing while the player has none. */
-  readonly car: Rolling | undefined
+  /** The car, driving or parked, with its speed in metres per second along its heading (0 parked); nothing while the player has none. */
+  readonly car: (Rolling & { readonly speed: number }) | undefined
   rolling(): readonly Rolling[]
   inTheRoad(): readonly { x: number; z: number; radius: number }[]
 }
@@ -295,10 +295,11 @@ export class Street {
   /**
    * What a pedestrian has to look out for before stepping off the kerb, and
    * cannot walk through: every car on the road as the box it is, and the
-   * player's own car, parked or driving, standing still to the crowd because
-   * `@gb/drive` publishes no speed. `@gb/traffic` points a nose down +Z, so a
-   * car at `heading` is going the way `(sin, cos)` of it points. Answered into
-   * the same array every frame: the crowd reads it once and keeps nothing.
+   * player's own car at the speed `@gb/drive` publishes, so one they are
+   * driving at a kerb reads as coming and one they parked reads as stopped.
+   * `@gb/traffic` and `@gb/drive` both point a nose down +Z, so a car at
+   * `heading` is going the way `(sin, cos)` of it points. Answered into the
+   * same array every frame: the crowd reads it once and keeps nothing.
    */
   hazards(): Hazards {
     return { near: (x, z, radius) => this.#carsNear(x, z, radius) }
@@ -328,7 +329,7 @@ export class Street {
     }
     for (const car of this.#traffic?.cars() ?? []) consider(car, car.speed)
     const own = this.#playerCar?.car
-    if (own) consider(own, 0)
+    if (own) consider(own, own.speed)
     this.#onTheRoad.length = used
     return this.#onTheRoad
   }

@@ -1,12 +1,14 @@
 import type { CodexView } from '@gb/hud'
 import type { PlayerState } from '@gb/play'
 import type { World } from '@gb/world'
+import { storyNotes } from './story.ts'
 
 /**
  * What the player has found out, in words. `@gb/play` keeps the record as ids
  * and which facts are earned; the names, the lines and the facts themselves
  * are the world file's. A fact's id is its place in the person's background,
- * counted from 0, which is how `@gb/talk` earns them.
+ * counted from 0, which is how `@gb/talk` earns them. What the player was
+ * told of the city is the History heading.
  */
 export function codexOf(world: World, player: PlayerState): CodexView {
   const found = player.discovered()
@@ -35,5 +37,6 @@ export function codexOf(world: World, player: PlayerState): CodexView {
         },
       ]
     }),
+    history: storyNotes(player),
   }
 }

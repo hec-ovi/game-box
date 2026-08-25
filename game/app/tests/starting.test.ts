@@ -285,14 +285,56 @@ describe('what the interface is handed', () => {
     // asked to close the moment the door shuts behind them; only its pixels linger
     expect(strip.dataset.state).not.toBe('open')
 
-    // walking through the door found the place: it is in the codex and written on the plan
+    // walking through the door found the place: it is in the codex and written
+    // on the plan, each read through the interface's own key, the way the
+    // player reads them
     const name = String(door).slice('Go into '.length)
-    game.intent({ kind: 'window', window: 'map' })
+    const page = mount.querySelector('.gb-window')!
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'm', code: 'KeyM' }))
     game.frame(1 / 60)
-    const plan = mount.querySelector('.gb-hud')!.textContent ?? ''
-    expect(plan).toContain(name)
-    game.intent({ kind: 'window', window: 'codex' })
-    expect(mount.querySelector('.gb-hud')!.textContent).toContain(name)
+    expect(page.getAttribute('data-state')).toBe('open')
+    expect(page.textContent).toContain(name)
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'x', code: 'KeyX' }))
+    expect(page.textContent).toContain('Places')
+    expect(page.textContent).toContain(name)
+  })
+
+  it('tells the player the town\'s story on the way in, under the codex\'s History heading', async () => {
+    const bundle = await city()
+    const { game, mount } = await playPlain({ bundle })
+    game.frame(1 / 60)
+    // what everybody in town knows is what the player arrives knowing, read
+    // the way the player reads it: the interface's own key opens the codex
+    const known = bundle.world.premise()!.common[0]!
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'x', code: 'KeyX' }))
+    const page = mount.querySelector('.gb-window')!
+    expect(page.getAttribute('data-state')).toBe('open')
+    expect(page.textContent).toContain('History')
+    expect(page.textContent).toContain(known)
+  })
+
+  it('hands the live lights to the buildings round the player as they walk', async () => {
+    const { game, bench } = await playPlain()
+    const lamps = bench.showing!.getObjectByName('lights')!
+    const at = () => game.look().at as { x: number; z: number }
+    const lit = () => lamps.children.filter((lamp) => lamp.visible).map((lamp) => lamp.getWorldPosition(new THREE.Vector3()))
+    const nearest = () => Math.min(...lit().map((lamp) => Math.hypot(lamp.x - at().x, lamp.z - at().z)))
+    game.frame(1 / 60)
+    const start = at()
+    const atTheSpawn = lit().map((lamp) => `${lamp.x.toFixed(1)},${lamp.z.toFixed(1)}`)
+    expect(atTheSpawn.length).toBeGreaterThan(0)
+
+    // ten seconds along the pavement, the way the player leaves the spawn
+    for (const code of ['KeyD', 'ShiftLeft']) document.dispatchEvent(new KeyboardEvent('keydown', { code }))
+    for (let step = 0; step < 600; step++) game.frame(1 / 60)
+    for (const code of ['KeyD', 'ShiftLeft']) document.dispatchEvent(new KeyboardEvent('keyup', { code }))
+    expect(Math.hypot(at().x - start.x, at().z - start.z)).toBeGreaterThan(25)
+
+    // the lights were handed on as they went: some stand where none stood at
+    // the spawn, and the nearest is at the door beside them, not back at the spawn
+    const handedOn = lit().filter((lamp) => !atTheSpawn.includes(`${lamp.x.toFixed(1)},${lamp.z.toFixed(1)}`))
+    expect(handedOn.length).toBeGreaterThan(0)
+    expect(nearest()).toBeLessThan(10)
   })
 
   it('says what a save lost coming back into a city written again since, by name', async () => {

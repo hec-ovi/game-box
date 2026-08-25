@@ -178,7 +178,7 @@ export class Talking {
   }
 }
 
-/** A line of the transcript as the panel draws one: whose it was, and what was said. */
+/** A line of the transcript as the panel draws one: whose it was, what was said, and what they did saying it. */
 function turnOf(turn: Turn): TalkTurn {
-  return { who: turn.role === 'user' ? 'you' : 'them', says: turn.content }
+  return { who: turn.role === 'user' ? 'you' : 'them', says: turn.content, ...(turn.does ? { does: turn.does } : {}) }
 }

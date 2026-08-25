@@ -35,6 +35,7 @@ import { atAnOpenDoor } from './spawn.ts'
 import { Sky } from './sky.ts'
 import type { MakeStage, Stage } from './stage.ts'
 import { Stashing } from './stashing.ts'
+import { tellStory } from './story.ts'
 import { Street } from './street.ts'
 import { Talking } from './talking.ts'
 import { pick, Targeting, type Target } from './targets.ts'
@@ -349,6 +350,9 @@ export class Game {
     })
 
     this.#hud.show({ controls: CONTROLS })
+    // the town's story is what everybody in it knows, so the player arrives
+    // told it: it is the codex's History heading from the first push
+    tellStory(this.#world, this.#player)
     // the quest log hears the clock before any job can be taken: a timer
     // counts from the last reading it heard, and one that heard none fails on
     // its first
@@ -413,6 +417,11 @@ export class Game {
     this.#keepTheClock(seconds)
     this.#sky.follow(seconds, clock, this.#buildings.outdoors, this.#city)
     this.#street.setTime(clock)
+    // the lights the city can afford go to the buildings round the player;
+    // indoors that is the door they came in by, so the street is lit when
+    // they step back out
+    const near = this.#buildings.cityPosition()
+    this.#city.lights.follow(near.x, near.z)
 
     this.#body.update(seconds)
     this.#driving.update(seconds)

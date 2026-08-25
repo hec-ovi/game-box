@@ -1132,16 +1132,24 @@ describe('what the interface is pushed', () => {
     expect(pushed.at(-1)).toMatchObject({ money: 7, settings: { hour: 8, minute: 0, locked: false, weather: 'clear' } })
   })
 
-  it('pushes the codex as places and people in words, the facts learned in text and the rest as still to learn', () => {
+  it('pushes the codex as places, people and history in words, the facts learned in text and the rest as still to learn', () => {
     const { pushed, player, report } = pushing()
     player.discover({ place: 'interior_0001' })
     player.discover({ npc: 'npc_0002' })
     player.warm('npc_0002')
+    // what the player was told carries its heading before a colon, the way
+    // the town's story is told; a line with none is drawn as heard
+    player.told('Everybody knows: the freight comes through at night')
+    player.told('the harbour master keeps two ledgers')
     report.refresh()
 
     expect(pushed.at(-1)!.codex).toEqual({
       places: [{ id: 'interior_0001', name: 'The Bright Anchor', text: 'A bar.' }],
       people: [{ id: 'npc_0002', name: 'Mab Tolliver', role: 'bartender', disposition: 'warm', facts: [] }],
+      history: [
+        { id: '0', title: 'Everybody knows', text: 'the freight comes through at night' },
+        { id: '1', title: 'Heard', text: 'the harbour master keeps two ledgers' },
+      ],
     })
   })
 
@@ -1573,7 +1581,7 @@ describe('how many cars a town is worth', () => {
 
 describe('the car the player parked', () => {
   const world = town()
-  const parked = { x: 20, z: 21, heading: 0 }
+  const parked = { x: 20, z: 21, heading: 0, speed: 0 }
 
   function street() {
     const laid = new Street({ world, nav: CityNav.from(world), playerOutdoors: () => undefined })
@@ -1716,7 +1724,24 @@ describe('a conversation you can click through', () => {
     return { member, moved }
   }
 
-  function chatting() {
+  /**
+   * A model that answers the turn call with this turn and nothing else: the
+   * action call gets prose, which `@gb/talk` settles off the player's words.
+   */
+  function speaks(turn: { does: string; says: string }): typeof fetch {
+    return (_url, init) => {
+      const asked = JSON.parse(String(init?.body)) as { tools?: { function: { name: string } }[] }
+      const tool = asked.tools?.[0]?.function.name
+      const message =
+        tool === 'take_turn'
+          ? { role: 'assistant', tool_calls: [{ id: 'call_1', type: 'function', function: { name: tool, arguments: JSON.stringify(turn) } }] }
+          : { role: 'assistant', content: 'nothing' }
+      const reply = { id: 'r', object: 'chat.completion', created: 1, model: 'test', choices: [{ index: 0, message, finish_reason: 'stop' }] }
+      return Promise.resolve(new Response(JSON.stringify(reply), { status: 200, headers: { 'content-type': 'application/json' } }))
+    }
+  }
+
+  function chatting(model?: { does: string; says: string }) {
     const { world, npcId, itemId } = bar()
     const player = PlayerState.create(world.id)
     const log = QuestLog.create([errand], player)
@@ -1727,11 +1752,12 @@ describe('a conversation you can click through', () => {
       world,
       log,
       player,
-      // nothing is listening on the sidecar, so neither track can reach a model
+      // nothing is listening on the sidecar unless a model was handed in, so
+      // neither track can reach one and every line is the city's own
       sidecar: new Sidecar({
-        fetch: () => {
+        fetch: (url, init) => {
           reached += 1
-          return Promise.reject(new Error('nothing listening'))
+          return model ? speaks(model)(url, init) : Promise.reject(new Error('nothing listening'))
         },
       }),
       hud,
@@ -1781,6 +1807,22 @@ describe('a conversation you can click through', () => {
     // her greeting, what the player said, her answer, and a new greeting on top
     expect(again.turns!.map((turn) => turn.who)).toEqual(['them', 'you', 'them', 'them'])
     expect(again.turns![1]!.says).toBe('and what do I get for it?')
+  })
+
+  it('reopens the transcript with what they did as well as what they said', async () => {
+    const { npcId, talking, pushed, does } = chatting({ does: 'taps the counter', says: 'Well? Out with it.' })
+    await talking.start(npcId)
+    await talking.say('hello')
+    expect(does()).toContain('taps the counter')
+    talking.end()
+
+    // the stage direction of a past turn is on the transcript the panel is
+    // handed, so it is not lost between two openings of the same person
+    pushed.length = 0
+    await talking.start(npcId)
+    const again = pushed.find((patch) => patch.talk?.speaker !== undefined)!.talk!
+    expect(again.turns).toContainEqual({ who: 'them', says: 'Well? Out with it.', does: 'taps the counter' })
+    expect(again.turns!.filter((turn) => turn.does)).toHaveLength(1)
   })
 
   it('puts them in the codex on meeting, with the fact that seeing them earns', async () => {
@@ -1971,24 +2013,28 @@ describe('a conversation you can click through', () => {
 
 describe('what a pedestrian keeps out of', () => {
   const world = town()
-  const parked = { x: 20, z: 21, heading: 0.4 }
 
-  it('reports the player\'s car as the box it is, standing still, into the same array every frame', () => {
+  it('reports the player\'s car as the box it is, coming at the speed the wheel says, into the same array every frame', () => {
     const laid = new Street({ world, nav: CityNav.from(world), playerOutdoors: () => undefined })
-    laid.setPlayerCar({ car: parked, rolling: () => [parked], inTheRoad: () => [] })
+    const driven = { x: 20, z: 21, heading: 0.4, speed: 12 }
+    laid.setPlayerCar({ car: driven, rolling: () => [], inTheRoad: () => [] })
     const hazards = laid.hazards()
 
+    // the speed goes in along the heading, so a walker at a kerb reads the
+    // car the player is driving at them as coming rather than as parked
     const first = hazards.near(20, 21, 6)
-    expect(first).toEqual([
-      {
-        x: 20,
-        z: 21,
-        vx: 0,
-        vz: 0,
-        radius: METRICS.vehicle.carLength / 2,
-        footprint: { length: METRICS.vehicle.carLength, width: METRICS.vehicle.carWidth, heading: 0.4 },
-      },
-    ])
+    expect(first).toHaveLength(1)
+    expect(first[0]).toMatchObject({
+      x: 20,
+      z: 21,
+      radius: METRICS.vehicle.carLength / 2,
+      footprint: { length: METRICS.vehicle.carLength, width: METRICS.vehicle.carWidth, heading: 0.4 },
+    })
+    expect(first[0]!.vx).toBeCloseTo(Math.sin(0.4) * 12)
+    expect(first[0]!.vz).toBeCloseTo(Math.cos(0.4) * 12)
+    // parked, it stands still to the crowd
+    driven.speed = 0
+    expect(hazards.near(20, 21, 6)[0]).toMatchObject({ vx: 0, vz: 0 })
     // read once a frame and nothing kept, so the cars are a pool
     expect(hazards.near(20, 21, 6)).toBe(first)
     // and out of reach is out of the answer, not left standing in it
