@@ -10,4 +10,6 @@ export interface Tab {
   readonly node: HTMLElement
   render(state: HudState): void
   clear(): void
+  /** Let go of anything listening outside its own node. Only tabs that do need one. */
+  dispose?(): void
 }

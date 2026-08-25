@@ -1,22 +1,28 @@
+import { INNER_LEFT, LAYERS, LAYOUT, NOTICES_TOP, SIDE_RIGHT } from './layout.ts'
+
 /**
  * What just happened. A finished quest lands as a brass slab across the top of
  * the view and stays long enough to read; picking up a bottle is a thin dark
- * line that is gone before it is in the way.
+ * line that is gone before it is in the way. The column lives in the band
+ * beside the objectives corner, under the compass strip, and stops short of
+ * the conversation.
  */
 export const NOTICES = `
 .gb-notices {
   position: absolute;
-  z-index: 5;
-  left: 50%;
-  top: 76px;
-  transform: translateX(-50%);
+  z-index: ${LAYERS.notices};
+  left: ${INNER_LEFT}px;
+  right: ${LAYOUT.margin}px;
+  top: ${NOTICES_TOP}px;
+  max-height: ${LAYOUT.top - NOTICES_TOP}px;
   display: flex;
   flex-direction: column;
   gap: 6px;
   align-items: center;
-  max-width: min(580px, calc(100vw - 48px));
 }
+.gb-hud[data-talk='true'] .gb-notices { right: ${SIDE_RIGHT}px; }
 .gb-notice {
+  max-width: 580px;
   padding: 6px var(--gb-s3);
   background: var(--gb-panel);
   border-left: 2px solid var(--gb-edge-lit);
@@ -57,6 +63,11 @@ export const NOTICES = `
 .gb-notice[data-sign='up'] { border-left-color: var(--gb-accent); color: var(--gb-accent); }
 .gb-notice[data-sign='down'] { border-left-color: var(--gb-warn); color: var(--gb-warn); }
 .gb-notice[data-sign] .gb-what { font-family: var(--gb-mono); font-variant-numeric: tabular-nums; }
+/* A wait is quiet and patient: dim edge, the clock in brass. Something that
+   went wrong is warned, so the two never read as one. */
+.gb-notice[data-mood='wait'] { border-left-color: var(--gb-edge); color: var(--gb-dim); }
+.gb-notice[data-mood='wait'] .gb-num { color: var(--gb-accent); }
+.gb-notice[data-mood='fault'] { border-left-color: var(--gb-warn); color: var(--gb-warn); }
 .gb-notice[data-leaving='true'] { opacity: 0; transform: translateY(-6px); }
 @keyframes gb-notice-in {
   from { opacity: 0; transform: translateY(-10px); }

@@ -1,20 +1,20 @@
 import { questFirst } from '../carried.ts'
 import { el } from '../dom.ts'
+import { NO_ITEMS } from '../phrase.ts'
 import type { Carried, HudState, HudWindowName } from '../types.ts'
 import type { Tab } from './tab.ts'
 
-const NONE = 'Your pockets are empty.'
-
-/** What the player is carrying, in full, and what they can spend. */
-export class ItemsTab implements Tab {
-  readonly name: HudWindowName = 'items'
-  readonly node = el('div', 'gb-items')
+/** Everything the player carries: the coin they can spend, then what is in hand. */
+export class InventoryTab implements Tab {
+  readonly name: HudWindowName = 'inventory'
+  readonly node = el('div', 'gb-inventory')
   #coin = el('span', 'gb-num')
   #list = el('ul', 'gb-carried')
   #key: string | null = null
 
   constructor() {
     const purse = el('p', 'gb-coin')
+    purse.setAttribute('aria-label', 'Coin')
     purse.append(this.#coin, el('span', 'gb-unit', 'coin'))
     this.node.append(purse, this.#list)
   }
@@ -25,7 +25,7 @@ export class ItemsTab implements Tab {
     this.#key = key
     this.#coin.textContent = String(state.money)
     const order = questFirst(state.carrying)
-    this.#list.replaceChildren(...(order.length ? order.map(row) : [el('li', 'gb-empty', NONE)]))
+    this.#list.replaceChildren(...(order.length ? order.map(row) : [el('li', 'gb-empty', NO_ITEMS)]))
   }
 
   clear(): void {

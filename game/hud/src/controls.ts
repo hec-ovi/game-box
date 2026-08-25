@@ -1,4 +1,5 @@
 import { el, kbd } from './dom.ts'
+import { MAP_KEYS, MAP_TOOLS } from './phrase.ts'
 import type { ControlHint } from './types.ts'
 import { WINDOW_TABS } from './windows.ts'
 
@@ -9,12 +10,18 @@ import { WINDOW_TABS } from './windows.ts'
 export const HUD_KEYS = {
   quests: 'J',
   map: 'M',
-  items: 'I',
+  inventory: 'I',
+  codex: 'X',
+  settings: 'O',
   controls: '?',
+  leave: 'N',
   close: 'Esc',
   send: 'Enter',
   pick: 'Tab',
 } as const
+
+/** The way out of the game, on the bar beside the windows. */
+export const LEAVE = { title: 'Leave', key: HUD_KEYS.leave } as const
 
 /** Under the conversation box, where the player is looking while they type. */
 export const TALK_HINTS: readonly ControlHint[] = [
@@ -28,9 +35,14 @@ export const TALK_PICK_HINT: ControlHint = { keys: [HUD_KEYS.pick], text: 'Pick 
 /** The interface's own keys, listed last in the controls tab. */
 export const HUD_HINTS: readonly ControlHint[] = [
   ...WINDOW_TABS.map((tab) => ({ keys: [tab.key], text: tab.title, group: 'Interface' })),
+  { keys: [LEAVE.key], text: 'Leave the game', group: 'Interface' },
   { keys: [HUD_KEYS.send], text: 'Send what you typed', group: 'Interface' },
   { keys: [HUD_KEYS.pick], text: 'Step through a conversation or a window', group: 'Interface' },
   { keys: [HUD_KEYS.close], text: 'Close the window in front of you', group: 'Interface' },
+  { keys: [MAP_KEYS.in, MAP_KEYS.out], text: `${MAP_TOOLS.in}, ${MAP_TOOLS.out}`, group: 'Map' },
+  { keys: [MAP_KEYS.fit], text: 'Fit the whole city', group: 'Map' },
+  { keys: [MAP_KEYS.you], text: 'Centre on yourself', group: 'Map' },
+  { keys: ['Arrows'], text: 'Pan', group: 'Map' },
 ]
 
 /** One "these keys do this" row. */

@@ -4,7 +4,8 @@
  * interface is retuning this file.
  *
  * The palette is warm ink on lacquered black with brass for anything the player
- * can act on. It has to hold over a noon sky and a night street, so no panel
+ * can act on, and three fills for the plan: a background plot, a notable one,
+ * a landmark. It has to hold over a noon sky and a night street, so no panel
  * ever puts text straight on the scene: the panel carries the contrast, with a
  * black hairline outside it and a pale hairline inside.
  */
@@ -23,6 +24,10 @@ export const TOKENS = `
   --gb-accent-deep: #9c6f30;
   --gb-accent-ink: #15110a;
   --gb-warn: #d8583a;
+
+  --gb-plot: rgba(233, 214, 186, 0.3);
+  --gb-plot-notable: rgba(233, 193, 120, 0.55);
+  --gb-plot-landmark: rgba(233, 193, 120, 0.85);
 
   --gb-frame: 0 0 0 1px rgba(0, 0, 0, 0.72), inset 0 0 0 1px rgba(242, 239, 230, 0.07),
     0 12px 34px rgba(0, 0, 0, 0.5);

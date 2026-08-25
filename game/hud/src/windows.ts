@@ -8,14 +8,16 @@ export interface WindowTab {
 }
 
 /**
- * The four faces of the one window, in the order they sit in the tab strip and
- * in the bar. Everything that names a window reads this list, so adding a fifth
+ * The six faces of the one window, in the order they sit in the tab strip and
+ * in the bar. Everything that names a window reads this list, so adding a face
  * is one entry here plus its tab.
  */
 export const WINDOW_TABS: readonly WindowTab[] = [
   { name: 'quests', title: 'Quests', key: 'J' },
   { name: 'map', title: 'Map', key: 'M' },
-  { name: 'items', title: 'Items', key: 'I' },
+  { name: 'inventory', title: 'Inventory', key: 'I' },
+  { name: 'codex', title: 'Codex', key: 'X' },
+  { name: 'settings', title: 'Settings', key: 'O' },
   { name: 'controls', title: 'Controls', key: '?' },
 ]
 

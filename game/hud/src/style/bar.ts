@@ -1,15 +1,17 @@
+import { LAYERS, LAYOUT } from './layout.ts'
+
 /**
- * The controls the player clicks: the bar into the window, the close button
- * that carries its own key, and the "these keys do this" rows. They share one
- * hover, one focus ring and one pressed state, so every control in the
- * interface answers the pointer the same way.
+ * The controls the player clicks: the bar into the window and out of the
+ * game, the close button that carries its own key, and the "these keys do
+ * this" rows. They share one hover, one focus ring and one pressed state, so
+ * every control in the interface answers the pointer the same way.
  */
 export const BAR = `
 .gb-bar {
   position: absolute;
-  z-index: 4;
-  left: var(--gb-s5);
-  bottom: var(--gb-s5);
+  z-index: ${LAYERS.bar};
+  left: ${LAYOUT.margin}px;
+  bottom: ${LAYOUT.margin}px;
   display: flex;
   gap: 1px;
   background: rgba(0, 0, 0, 0.55);
@@ -38,6 +40,9 @@ export const BAR = `
   background: var(--gb-lift);
   color: var(--gb-accent);
 }
+/* The way out sits apart from the windows and is warned, not brass. */
+.gb-bar-leave { margin-left: var(--gb-s2); }
+.gb-bar-leave:hover { color: var(--gb-warn); }
 .gb-bar[data-keys-off='true'] kbd { opacity: 0.25; }
 
 .gb-close {
@@ -66,4 +71,8 @@ export const BAR = `
 .gb-hints { display: flex; flex-wrap: wrap; gap: var(--gb-s3); margin-top: var(--gb-s3); }
 .gb-hint { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--gb-faint); }
 .gb-keys { display: flex; gap: 3px; }
+
+/* A bar that fills: how far a stage or a timer has got. */
+.gb-bar-track { height: 3px; background: var(--gb-well); border: 1px solid var(--gb-edge); }
+.gb-bar-fill { height: 100%; background: var(--gb-accent); transition: width var(--gb-t) var(--gb-ease); }
 `

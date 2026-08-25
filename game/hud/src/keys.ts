@@ -2,10 +2,17 @@
 import type { HudWindowName } from './types.ts'
 
 /** What a key press means to the interface. A window name opens that window. */
-export type KeyAction = 'close' | 'send' | 'tab' | 'shift-tab' | HudWindowName
+export type KeyAction = 'close' | 'send' | 'tab' | 'shift-tab' | 'leave' | HudWindowName
 
 /** The letter that brings up each window. `?`, `/` and F1 all reach the controls. */
-const OPENS: Record<string, HudWindowName> = { j: 'quests', m: 'map', i: 'items' }
+const OPENS: Record<string, KeyAction> = {
+  j: 'quests',
+  m: 'map',
+  i: 'inventory',
+  x: 'codex',
+  o: 'settings',
+  n: 'leave',
+}
 
 /**
  * One listener for the whole interface, on the window in the capture phase, so

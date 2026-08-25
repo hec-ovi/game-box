@@ -5,11 +5,12 @@ import { dwell } from './phrase.ts'
 import { HudStore } from './store.ts'
 import { installStyle } from './style/index.ts'
 import { BarSurface } from './surfaces/bar.ts'
+import { CompassSurface } from './surfaces/compass.ts'
+import { LoaderSurface } from './surfaces/loader.ts'
 import { NoticesSurface } from './surfaces/notices.ts'
 import { ObjectivesSurface } from './surfaces/objectives.ts'
 import { PanelSurface } from './surfaces/panel.ts'
 import { PromptSurface } from './surfaces/prompt.ts'
-import { PurseSurface } from './surfaces/purse.ts'
 import { ScrimSurface } from './surfaces/scrim.ts'
 import type { Surface } from './surfaces/surface.ts'
 import { TalkSurface } from './surfaces/talk.ts'
@@ -23,6 +24,8 @@ const KINDS = new Set<NoticeKind>([
   'item-taken',
   'money',
   'note',
+  'model-busy',
+  'error',
 ])
 
 /**
@@ -49,13 +52,14 @@ export class Hud {
     this.#panel = new PanelSurface(emit)
     this.#surfaces = [
       new ObjectivesSurface(),
-      new PurseSurface(),
       new PromptSurface(),
+      new CompassSurface(),
       new NoticesSurface(),
       new BarSurface(emit, () => this.#typing),
       this.#talk,
       new ScrimSurface(() => this.#closeTop()),
       this.#panel,
+      new LoaderSurface(),
     ]
 
     const doc = mount.ownerDocument
@@ -108,6 +112,9 @@ export class Hud {
         return open
           ? this.#panel.trap(action === 'shift-tab')
           : this.#store.state.talk !== undefined && this.#talk.cycle(action === 'shift-tab')
+      case 'leave':
+        this.#dispatch({ kind: 'exit' })
+        return true
       default:
         // The key of the window already up puts it away; any other switches.
         this.#dispatch({ kind: 'window', window: open === action ? null : action })
@@ -126,6 +133,8 @@ export class Hud {
 
   #dispatch(intent: HudIntent): void {
     // The hud owns its own view state: what the player opens here opens here.
+    // Everything else, the clock, the sky and the way out included, is the
+    // game's to act on, so it goes out as it is.
     switch (intent.kind) {
       case 'typing':
         if (intent.typing === this.#typing) return
@@ -162,6 +171,7 @@ export class Hud {
   #render(): void {
     const state = this.#store.state
     this.#root.dataset.modal = String(state.window !== null)
+    this.#root.dataset.talk = String(state.talk !== undefined)
     this.#root.dataset.reach = String(state.prompt !== undefined)
     for (const surface of this.#surfaces) surface.render(state)
   }

@@ -1,125 +1,136 @@
-import { el, svg } from '../dom.ts'
-import { stepsOf, trackedQuest } from '../tracked.ts'
-import type { HudState, HudWindowName, MapMark, MapView } from '../types.ts'
+import { el } from '../dom.ts'
+import { Gestures } from '../map/gestures.ts'
+import { Legend, type Bearing } from '../map/legend.ts'
+import { Plan } from '../map/plan.ts'
+import { MapTools, type MapTool } from '../map/tools.ts'
+import { Viewport, ZOOM_STEP, type Cell } from '../map/viewport.ts'
+import { kindOf, stepsOf, trackedQuest } from '../tracked.ts'
+import type { HudState, HudWindowName, MapMark } from '../types.ts'
 import type { Tab } from './tab.ts'
 
-const NONE = 'Nothing to head for yet.'
+/** How far one arrow key pans: a tenth of what is on show. */
+const KEY_PAN = 0.1
 
 /**
- * The city from above and where the player is headed on it. The plan is drawn
- * from whatever the game has surveyed; the bearings underneath are the places
- * the tracked quest points at, numbered to match the pips on the plan.
+ * The city from above, filling the frame, and where the player is headed on
+ * it. The plan zooms and pans inside the frame by wheel, drag, key or button;
+ * the bearings under it name the places the quests point at and swing the
+ * plan onto one when it is clicked.
  */
 export class MapTab implements Tab {
   readonly name: HudWindowName = 'map'
   readonly node = el('div', 'gb-map')
-  #plan = el('div', 'gb-plan')
-  #list = el('ol', 'gb-bearings')
-  /** The survey already on screen. `null` is "nothing drawn", which a real
-   *  absent survey is not, so reopening an unsurveyed map still redraws. */
-  #drawn: MapView | null | undefined = null
-  #key: string | null = null
+  #plan = new Plan()
+  #tools = new MapTools((tool) => this.#run(tool))
+  #legend = new Legend((at) => this.#centre(at))
+  #gestures: Gestures
+  #view: Viewport | undefined
+  #you: Cell | undefined
 
   constructor() {
-    const heading = el('section', 'gb-bearing-list')
-    heading.append(el('h3', undefined, 'Bearings'), this.#list)
-    this.node.append(this.#plan, heading)
+    this.node.tabIndex = 0
+    this.node.setAttribute('aria-label', 'Map')
+    this.node.addEventListener('keydown', (event) => this.#key(event))
+    this.#plan.node.append(this.#tools.node)
+    this.node.append(this.#plan.node, this.#legend.node)
+    this.#gestures = new Gestures(this.#plan.node, {
+      zoom: (factor, at) => {
+        const view = this.#view
+        if (!view) return
+        view.zoomBy(factor, view.cellAt(this.#plan.frame(), at.x, at.y))
+        this.#plan.look(view)
+      },
+      pan: (dx, dy) => this.#pan(dx, dy),
+    })
   }
 
   render(state: HudState): void {
-    if (state.map !== this.#drawn) {
-      this.#drawn = state.map
-      this.#plan.replaceChildren(...(state.map ? [plan(state.map)] : []))
+    const map = state.map
+    this.#plan.node.hidden = map === undefined
+    if (map) {
+      if (this.#view?.width !== map.width || this.#view.height !== map.height) this.#view = new Viewport(map.width, map.height)
+      this.#you = map.marks?.find((mark) => mark.kind === 'you')
+      this.#plan.draw(map, this.#view)
+    } else {
+      this.#plan.clear()
     }
-    const bearings = read(state)
-    const key = bearings.map((line) => `${line.pip ?? ''}:${line.text}:${line.note ?? ''}`).join('|')
-    if (key === this.#key) return
-    this.#key = key
-    this.#list.replaceChildren(...(bearings.length ? bearings.map(bearing) : [el('li', 'gb-empty', NONE)]))
+    this.#legend.set(read(state))
   }
 
   clear(): void {
-    this.#drawn = null
-    this.#key = null
-    this.#plan.replaceChildren()
-    this.#list.replaceChildren()
+    this.#plan.clear()
+    this.#legend.clear()
+  }
+
+  dispose(): void {
+    this.#gestures.dispose()
+  }
+
+  #run(tool: MapTool): void {
+    const view = this.#view
+    if (!view) return
+    if (tool === 'in') view.zoomBy(ZOOM_STEP)
+    else if (tool === 'out') view.zoomBy(1 / ZOOM_STEP)
+    else if (tool === 'fit') view.fit()
+    else if (this.#you) view.centreOn(this.#you)
+    this.#plan.look(view)
+  }
+
+  #pan(dxPx: number, dyPx: number): void {
+    const view = this.#view
+    if (!view) return
+    const unit = 1 / view.scale(this.#plan.frame())
+    view.panBy(dxPx * unit, dyPx * unit)
+    this.#plan.look(view)
+  }
+
+  #centre(at: Cell): void {
+    const view = this.#view
+    if (!view) return
+    view.centreOn(at)
+    this.#plan.look(view)
+  }
+
+  /** The keys the plan answers to while the map has focus: tools, and arrows to pan. */
+  #key(event: KeyboardEvent): void {
+    if (!this.#view) return
+    const tool = MapTools.toolFor(event.key)
+    const arrow = ARROWS[event.key]
+    if (!tool && !arrow) return
+    event.preventDefault()
+    event.stopPropagation()
+    if (tool) this.#run(tool)
+    else if (arrow) {
+      const frame = this.#plan.frame()
+      this.#pan(arrow.x * frame.w * KEY_PAN, arrow.y * frame.h * KEY_PAN)
+    }
   }
 }
 
-interface Bearing {
-  readonly pip: number | undefined
-  readonly text: string
-  readonly note: string | undefined
+const ARROWS: Record<string, Cell> = {
+  ArrowLeft: { x: -1, y: 0 },
+  ArrowRight: { x: 1, y: 0 },
+  ArrowUp: { x: 0, y: -1 },
+  ArrowDown: { x: 0, y: 1 },
 }
 
 /**
- * Where to go: from the survey when it names places, from the open steps when
- * it does not, so the tab answers the question either way.
+ * Where to go: from the plan's goal marks when the game has surveyed, from
+ * the tracked quest's open steps when it has not, so the tab answers either way.
  */
 function read(state: HudState): readonly Bearing[] {
   const marks = state.map?.marks?.filter((mark) => mark.kind === 'goal') ?? []
-  if (marks.length) return marks.map((mark, at) => ({ pip: at + 1, text: mark.label, note: undefined }))
-  return stepsOf(state, trackedQuest(state)).map((step) => ({
-    pip: undefined,
+  if (marks.length) return marks.map(fromMark)
+  const tracked = trackedQuest(state)
+  const line = kindOf(state, tracked)
+  return stepsOf(state, tracked).map((step) => ({
     text: step.markerLabel ?? step.text,
     note: step.hint,
+    line,
+    at: undefined,
   }))
 }
 
-function bearing(line: Bearing): HTMLLIElement {
-  const node = el('li')
-  if (line.pip !== undefined) node.append(el('span', 'gb-pip', String(line.pip)))
-  node.append(el('span', 'gb-what', line.text))
-  if (line.note) node.append(el('span', 'gb-note', line.note))
-  return node
-}
-
-function plan(map: MapView): SVGSVGElement {
-  const root = svg('svg', {
-    viewBox: `0 0 ${map.width} ${map.height}`,
-    preserveAspectRatio: 'xMidYMid meet',
-    role: 'img',
-    'aria-label': 'City plan',
-  })
-  root.append(svg('rect', { class: 'gb-ground', x: 0, y: 0, width: map.width, height: map.height }))
-  for (const plot of map.plots) {
-    root.append(
-      svg('rect', { class: 'gb-block', x: plot.rect.x, y: plot.rect.y, width: plot.rect.w, height: plot.rect.h }),
-    )
-  }
-  let pip = 0
-  for (const mark of map.marks ?? []) {
-    if (mark.kind === 'goal') pip += 1
-    root.append(mark.kind === 'you' ? you(mark) : goal(mark, pip))
-  }
-  return root
-}
-
-function you(mark: MapMark): SVGElement {
-  const arrow = svg('path', {
-    class: 'gb-you',
-    d: 'M 0 -2.4 L 1.7 2.1 L 0 1.1 L -1.7 2.1 Z',
-    transform: `translate(${mark.x} ${mark.y}) rotate(${degrees(mark.facing)})`,
-  })
-  arrow.append(named(mark.label))
-  return arrow
-}
-
-function goal(mark: MapMark, pip: number): SVGElement {
-  const group = svg('g', { class: 'gb-goal', transform: `translate(${mark.x} ${mark.y})` })
-  const number = svg('text', { y: 0.9, 'text-anchor': 'middle' })
-  number.textContent = String(pip)
-  group.append(svg('circle', { r: 2 }), number, named(mark.label))
-  return group
-}
-
-/** What hovering a pip says, which is the only place a name fits at this scale. */
-function named(label: string): SVGTitleElement {
-  const node = svg('title')
-  node.textContent = label
-  return node
-}
-
-function degrees(facing: number | undefined): number {
-  return facing === undefined ? 0 : Math.round((facing * 180) / Math.PI)
+function fromMark(mark: MapMark): Bearing {
+  return { text: mark.label, note: undefined, line: mark.line ?? 'side', at: { x: mark.x, y: mark.y } }
 }

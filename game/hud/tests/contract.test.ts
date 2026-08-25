@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
-import { getByRole, getByText, queryByRole, queryByText, waitFor, within } from '@testing-library/dom'
+import { fireEvent, getByRole, getByText, queryByRole, queryByText, waitFor, within } from '@testing-library/dom'
 import userEvent from '@testing-library/user-event'
 import type { JournalEntry, Objective } from '@gb/quest'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { Hud, HudError, type ControlHint, type HudIntent, type MapView, type QuestEntry } from '../src/index.ts'
+import { Hud, HudError, type ControlHint, type HudIntent, type LoaderView, type MapView, type QuestEntry } from '../src/index.ts'
 
 const huds: Hud[] = []
 
@@ -161,12 +161,9 @@ describe('objectives', () => {
 
   it('scrolls inside its corner rather than running off the screen', () => {
     const { screen } = mount()
-    for (const selector of ['.gb-objectives', '.gb-purse']) {
-      const panel = screen.querySelector(selector) as HTMLElement
-      const style = getComputedStyle(panel)
-      expect(style.overflowY).toBe('auto')
-      expect(Number.parseFloat(style.maxHeight)).toBeGreaterThan(0)
-    }
+    const style = getComputedStyle(screen.querySelector('.gb-objectives') as HTMLElement)
+    expect(style.overflowY).toBe('auto')
+    expect(Number.parseFloat(style.maxHeight)).toBeGreaterThan(0)
   })
 })
 
@@ -183,39 +180,6 @@ describe('the looked-at prompt', () => {
     hud.show({ prompt: null })
     expect(screen.querySelector('.gb-hud')?.getAttribute('data-reach')).toBe('false')
     await waitFor(() => expect(queryByText(screen, 'Go into The Copper Wheel')).toBeNull())
-  })
-})
-
-describe('the purse', () => {
-  it('shows money, what is being carried, and which way the money moved', () => {
-    const { hud, screen } = mount()
-    hud.show({ money: 42, carrying: [{ id: 'i1', name: 'Brass ledger', quest: true }] })
-    const purse = screen.querySelector('.gb-purse') as HTMLElement
-    within(purse).getByText('42')
-    within(purse).getByText('Brass ledger')
-    expect((purse.querySelector('.gb-more') as HTMLElement).hidden).toBe(true)
-
-    hud.show({ money: 60 })
-    expect((purse.querySelector('.gb-coin') as HTMLElement).dataset.flash).toBe('up')
-    hud.show({ money: 5 })
-    expect((purse.querySelector('.gb-coin') as HTMLElement).dataset.flash).toBe('down')
-  })
-
-  it('keeps the corner short and points at the items tab for the rest', () => {
-    const { hud, screen } = mount()
-    hud.show({
-      carrying: [
-        ...Array.from({ length: 9 }, (_, at) => ({ id: `i${at}`, name: `Green bottle ${at}` })),
-        { id: 'q', name: 'Brass ledger', quest: true },
-      ],
-    })
-
-    const purse = screen.querySelector('.gb-purse') as HTMLElement
-    // What a quest wants survives the cut, because it is the one not to sell.
-    within(purse).getByText('Brass ledger')
-    expect(purse.querySelectorAll('li')).toHaveLength(4)
-    within(purse).getByText('6 more in hand')
-    within(purse).getByText('I')
   })
 })
 
@@ -297,33 +261,79 @@ describe('conversation', () => {
     }
   })
 
-  it('appends a streamed reply into the same node and notes what the speaker did', () => {
+  it('appends a streamed reply into the same node and draws what the speaker did apart', () => {
     const { hud, screen } = mount()
     hud.show({ talk: { speaker: 'Mara Quill' } })
 
     hud.show({ talk: { replyChunk: 'The crate ' } })
     const reply = getByText(screen, 'The crate')
     hud.show({ talk: { replyChunk: 'is at the docks.' } })
-    hud.show({ talk: { acted: 'gave you a job' } })
+    hud.show({ talk: { does: 'wipes the counter' } })
 
     expect(reply.textContent).toBe('The crate is at the docks.')
     expect(getByText(screen, 'The crate is at the docks.')).toBe(reply)
-    getByText(screen, 'gave you a job')
+    // Stage direction is not dialogue: it sits on the same turn, drawn apart.
+    const turn = reply.closest('.gb-turn') as HTMLElement
+    expect(turn.dataset.who).toBe('them')
+    expect(within(turn).getByText('wipes the counter').className).toBe('gb-does')
+    expect(reply.className).toBe('gb-says')
   })
 
-  it('carries what the speaker did this turn, and only this turn', () => {
+  it('carries what the speaker does this turn, and only this turn', () => {
     const { hud, screen } = mount()
-    hud.show({ talk: { speaker: 'Mara Quill', acted: 'gave you a job' } })
-    getByText(screen, 'gave you a job')
+    hud.show({ talk: { speaker: 'Mara Quill', reply: 'Come in.', does: 'waves you over' } })
+    getByText(screen, 'waves you over')
 
-    // A line that piled up would read as a list of turns the player has left
-    // behind, inside a panel where everything else is the turn in front of them.
-    hud.show({ talk: { acted: 'took the ledger' } })
-    expect(queryByText(screen, 'gave you a job')).toBeNull()
-    getByText(screen, 'took the ledger')
+    hud.show({ talk: { does: 'goes back to the glass' } })
+    expect(queryByText(screen, 'waves you over')).toBeNull()
+    getByText(screen, 'goes back to the glass')
 
-    hud.show({ talk: { acted: null } })
-    expect(queryByText(screen, 'took the ledger')).toBeNull()
+    hud.show({ talk: { does: null } })
+    expect(queryByText(screen, 'goes back to the glass')).toBeNull()
+    getByText(screen, 'Come in.')
+  })
+
+  it('keeps the whole conversation, the player\'s turns and the speaker\'s apart', async () => {
+    const user = userEvent.setup()
+    const { hud, screen } = mount()
+    hud.show({ talk: { speaker: 'Mara Quill', reply: 'What do you want?' } })
+    await user.keyboard('Where is the crate?{Enter}')
+    hud.show({ talk: { replyChunk: 'At the docks.' } })
+    await user.keyboard('Thanks.{Enter}')
+    hud.show({ talk: { reply: 'Go on, then.' } })
+
+    // Every turn stays on screen, oldest first, so the player can read back
+    // what they asked and what they were told two turns ago.
+    const turns = [...screen.querySelectorAll('.gb-turn')].map((turn) => [
+      (turn as HTMLElement).dataset.who,
+      turn.querySelector('.gb-says')?.textContent,
+    ])
+    expect(turns).toEqual([
+      ['them', 'What do you want?'],
+      ['you', 'Where is the crate?'],
+      ['them', 'At the docks.'],
+      ['you', 'Thanks.'],
+      ['them', 'Go on, then.'],
+    ])
+
+    // The game may hand the transcript over whole, as it keeps it.
+    hud.show({ talk: { turns: [{ who: 'them', says: 'Still here?', does: 'looks up' }] } })
+    expect(screen.querySelectorAll('.gb-turn')).toHaveLength(1)
+    getByText(screen, 'looks up')
+  })
+
+  it('is a side panel of one width, and the transcript scrolls inside it', () => {
+    const { hud, screen } = mount()
+    hud.show({ talk: { speaker: 'Mara Quill' } })
+    const panel = screen.querySelector('.gb-talk') as HTMLElement
+    const before = getComputedStyle(panel).width
+
+    hud.show({ talk: { replyChunk: 'A long reply. '.repeat(200) } })
+    // Text arriving does not move the frame: the width is a number, not the content.
+    expect(getComputedStyle(panel).width).toBe(before)
+    expect(Number.parseFloat(before)).toBeGreaterThan(0)
+    expect(getComputedStyle(panel).right).toBe(getComputedStyle(panel).top)
+    expect(getComputedStyle(screen.querySelector('.gb-transcript') as HTMLElement).overflowY).toBe('auto')
   })
 })
 
@@ -365,7 +375,7 @@ describe('the moves on the table', () => {
       { kind: 'choose', key: 'give_quest#q_ledger' },
     ])
     // and it reads as something the player said, not a silent state change
-    getByText(screen, 'Take the job: The Ledger', { selector: '.gb-you' })
+    getByText(screen, 'Take the job: The Ledger', { selector: '[data-who="you"] .gb-says' })
   })
 
   it('keeps the keyboard when the move it just took goes quiet', async () => {
@@ -416,7 +426,7 @@ describe('the moves on the table', () => {
 
     await user.keyboard('what have you got?{Enter}')
     expect(intents).toContainEqual({ kind: 'say', text: 'what have you got?' })
-    getByText(screen, 'what have you got?', { selector: '.gb-you' })
+    getByText(screen, 'what have you got?', { selector: '[data-who="you"] .gb-says' })
     expect((getByRole(screen, 'button', { name: 'Hand over the ledger' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
@@ -447,7 +457,7 @@ describe('the moves on the table', () => {
 
     hud.show({ talk: { speaker: 'Dorn Sela' } })
     expect(options(screen)).toEqual([])
-    expect((screen.querySelector('.gb-you') as HTMLElement).textContent).toBe('')
+    expect(screen.querySelector('.gb-turn')).toBeNull()
     expect(queryByText(screen, "Here. Don't lose it.")).toBeNull()
   })
 })
@@ -521,13 +531,34 @@ describe('the window', () => {
     await user.click(opener)
     const panel = getByRole(screen, 'dialog', { name: 'Quests' })
 
-    await user.click(within(panel).getByRole('tab', { name: 'Items I' }))
-    getByRole(screen, 'dialog', { name: 'Items' })
-    expect(within(panel).getByRole('tab', { name: 'Items I' }).getAttribute('aria-selected')).toBe('true')
+    await user.click(within(panel).getByRole('tab', { name: 'Inventory I' }))
+    getByRole(screen, 'dialog', { name: 'Inventory' })
+    expect(within(panel).getByRole('tab', { name: 'Inventory I' }).getAttribute('aria-selected')).toBe('true')
     expect(within(panel).getByRole('tab', { name: 'Quests J' }).getAttribute('aria-selected')).toBe('false')
 
     await user.click(within(panel).getByRole('button', { name: 'Close (Escape)' }))
     expect(queryByRole(screen, 'dialog')).toBeNull()
+  })
+
+  it('is one frame whatever face is up, and the face scrolls inside it', async () => {
+    const user = userEvent.setup()
+    const { hud, screen } = mount()
+    hud.show({ quests: QUESTS, controls: CONTROLS, window: 'quests' })
+    const frame = getByRole(screen, 'dialog') as HTMLElement
+    const size = (): [string, string] => [getComputedStyle(frame).width, getComputedStyle(frame).height]
+    const first = size()
+    expect(Number.parseFloat(first[0])).toBeGreaterThan(0)
+    expect(Number.parseFloat(first[1])).toBeGreaterThan(0)
+
+    // A tab with one line and a tab with fifty are the same shape: nothing in
+    // the window sizes itself to what is on the face.
+    for (const key of ['m', 'i', 'x', 'o', '?']) {
+      await user.keyboard(key)
+      expect(size()).toEqual(first)
+    }
+    const body = frame.querySelector('.gb-window-body') as HTMLElement
+    expect(getComputedStyle(body).overflowY).toBe('auto')
+    expect(getComputedStyle(frame).height).not.toBe('auto')
   })
 
   it('keeps Tab inside itself while it is up, all the way round', async () => {
@@ -593,14 +624,14 @@ describe('the quests tab', () => {
     const objectives = screen.querySelector('.gb-objectives') as HTMLElement
     within(objectives).getByText('Carry the crate to the docks')
 
-    await user.click(getByRole(screen, 'button', { name: 'Follow Salt and Lamp Oil' }))
+    await user.click(getByRole(screen, 'button', { name: 'Track Salt and Lamp Oil' }))
     expect(intents).toContainEqual({ kind: 'track', questId: 'q2' })
 
     within(objectives).getByText('Buy lamp oil')
     within(objectives).getByText('Salt and Lamp Oil')
     expect(within(objectives).queryByText('Carry the crate to the docks')).toBeNull()
 
-    await user.click(getByRole(screen, 'button', { name: 'Stop following Salt and Lamp Oil' }))
+    await user.click(getByRole(screen, 'button', { name: 'Stop tracking Salt and Lamp Oil' }))
     expect(intents).toContainEqual({ kind: 'track', questId: null })
   })
 
@@ -656,7 +687,7 @@ describe('the quests tab', () => {
 
     const panel = getByRole(screen, 'dialog', { name: 'Quests' })
     getByText(panel, 'The Copper Wheel')
-    await user.click(getByRole(panel, 'button', { name: 'Follow The Copper Wheel' }))
+    await user.click(getByRole(panel, 'button', { name: 'Track The Copper Wheel' }))
     expect(intents).toContainEqual({ kind: 'track', questId: 'q1' })
     getByRole(panel, 'button', { name: 'Give up The Copper Wheel' })
   })
@@ -746,6 +777,58 @@ describe('the quests tab', () => {
     expect(marked).toEqual([true, false, false])
   })
 
+  it('shows a failed quest as failed, with the reason, and a finished one as done', () => {
+    const { hud, screen } = mount()
+    // A quest that is simply gone reads as a bug; one that says it failed and
+    // why is a story the player can read.
+    hud.show({
+      window: 'quests',
+      quests: [
+        { questId: 'q1', title: 'The Copper Wheel', status: 'failed', failReason: 'time-limit', steps: [] },
+        { questId: 'q2', title: 'Salt and Lamp Oil', status: 'complete', steps: [] },
+        { questId: 'q3', title: 'Lamps for the Alley', steps: [] },
+      ],
+    })
+
+    const panel = getByRole(screen, 'dialog', { name: 'Quests' })
+    const failed = getByText(panel, 'The Copper Wheel').closest('.gb-quest-entry') as HTMLElement
+    expect(failed.dataset.status).toBe('failed')
+    within(failed).getByText('Failed')
+    within(failed).getByText('Ran out of time')
+    // Nothing on a finished page can be tracked or given up: it would do nothing.
+    expect(within(failed).queryByRole('button')).toBeNull()
+    within(getByText(panel, 'Salt and Lamp Oil').closest('.gb-quest-entry') as HTMLElement).getByText('Done')
+    getByRole(panel, 'button', { name: 'Give up Lamps for the Alley' })
+  })
+
+  it('counts a timed quest down from the values the journal gives', () => {
+    const { hud, screen } = mount()
+    const page = (remaining: number): QuestEntry => ({
+      questId: 'q1',
+      title: 'The Copper Wheel',
+      timer: { remaining, total: 10800 },
+      steps: [{ stepId: 's1', text: 'Carry the crate to the docks' }],
+    })
+    hud.show({ window: 'quests', quests: [page(4320)] })
+
+    const panel = getByRole(screen, 'dialog', { name: 'Quests' })
+    within(panel).getByText('Time left')
+    const timer = panel.querySelector('.gb-quest-timer') as HTMLElement
+    const clock = timer.querySelector('.gb-num') as HTMLElement
+    expect(clock.textContent).toBe('1 h 12 min')
+    expect(timer.dataset.low).toBe('false')
+    expect((panel.querySelector('.gb-quest-timer .gb-bar-fill') as HTMLElement).style.width).toBe('40%')
+
+    // The timer runs on the game clock, so each push of the journal moves it,
+    // written into the node already there: the page is not rebuilt around it.
+    hud.show({ quests: [page(540)] })
+    expect(panel.querySelector('.gb-quest-timer .gb-num')).toBe(clock)
+    expect(clock.textContent).toBe('9 min')
+    expect(timer.dataset.low).toBe('true')
+    hud.show({ quests: [page(45)] })
+    expect(clock.textContent).toBe('45 s')
+  })
+
   it('asks a second time before it gives a quest up', async () => {
     const user = userEvent.setup()
     const { hud, screen, intents } = mount()
@@ -768,11 +851,11 @@ describe('the quests tab', () => {
   })
 })
 
-describe('the items tab', () => {
-  it('shows what can be spent and what is in hand, quest items first', () => {
+describe('the inventory tab', () => {
+  it('holds the coin and what is in hand, quest items first', () => {
     const { hud, screen } = mount()
     hud.show({
-      window: 'items',
+      window: 'inventory',
       money: 128,
       carrying: [
         { id: 'i1', name: 'Green bottle' },
@@ -780,8 +863,10 @@ describe('the items tab', () => {
       ],
     })
 
-    const panel = getByRole(screen, 'dialog', { name: 'Items' })
+    // Money is a thing the player carries, so it is read here and nowhere else.
+    const panel = getByRole(screen, 'dialog', { name: 'Inventory' })
     within(panel).getByText('128')
+    expect(screen.querySelectorAll('.gb-coin')).toHaveLength(1)
     const names = [...panel.querySelectorAll('.gb-carried .gb-what')].map((node) => node.textContent)
     expect(names).toEqual(['Brass ledger', 'Green bottle'])
     within(panel).getByText('Quest')
@@ -789,8 +874,113 @@ describe('the items tab', () => {
 
   it('says so plainly when there is nothing to carry', () => {
     const { hud, screen } = mount()
-    hud.show({ window: 'items' })
-    within(getByRole(screen, 'dialog', { name: 'Items' })).getByText('Your pockets are empty.')
+    hud.show({ window: 'inventory' })
+    within(getByRole(screen, 'dialog', { name: 'Inventory' })).getByText('Your pockets are empty.')
+  })
+})
+
+describe('the codex tab', () => {
+  it('files the places entered and the people met, each person with their standing and their facts, locked ones marked', async () => {
+    const user = userEvent.setup()
+    const { hud, screen } = mount()
+    hud.show({
+      codex: {
+        places: [{ id: 'i1', name: 'The Copper Wheel', text: 'A bar on Lantern Row.' }],
+        people: [
+          {
+            id: 'n1',
+            name: 'Mara Quill',
+            role: 'Keeps the bar at The Copper Wheel.',
+            disposition: 'warm',
+            facts: [{ id: 'f1', text: 'Came up from the docks.' }, { id: 'f2' }],
+          },
+        ],
+        history: [{ id: 'h1', title: 'The flood', text: 'The river took the old docks.' }],
+      },
+    })
+
+    await user.keyboard('x')
+    const panel = getByRole(screen, 'dialog', { name: 'Codex' })
+    const heads = [...panel.querySelectorAll('.gb-codex-group h3')].map((node) => node.textContent)
+    expect(heads).toEqual(['Places', 'People', 'History'])
+    within(panel).getByText('A bar on Lantern Row.')
+    within(panel).getByText('The river took the old docks.')
+
+    const mara = within(panel).getByText('Mara Quill').closest('.gb-person') as HTMLElement
+    within(mara).getByText('Keeps the bar at The Copper Wheel.')
+    expect(within(mara).getByLabelText('Disposition: Warm').getAttribute('data-disposition')).toBe('warm')
+    within(mara).getByText('1 of 2 known')
+    within(mara).getByText('Came up from the docks.')
+    // A fact not yet earned is a line that says so, never a gap.
+    const locked = within(mara).getByText('Not learned yet').closest('li') as HTMLElement
+    expect(locked.className).toBe('gb-fact-locked')
+
+    // A standing that moved reads as moved on the next push.
+    hud.show({
+      codex: {
+        places: [],
+        people: [{ id: 'n1', name: 'Mara Quill', disposition: 'hostile', facts: [] }],
+      },
+    })
+    within(panel).getByLabelText('Disposition: Hostile')
+    expect(queryByText(panel, 'Places')).toBeNull()
+  })
+
+  it('says what it is for before anything is in it', () => {
+    const { hud, screen } = mount()
+    hud.show({ window: 'codex' })
+    within(getByRole(screen, 'dialog', { name: 'Codex' })).getByText(/Nothing recorded yet/)
+  })
+})
+
+describe('the settings tab', () => {
+  it('shows the hour, locks and skips the clock, picks the weather, and leaves', async () => {
+    const user = userEvent.setup()
+    const { hud, screen, intents } = mount()
+    hud.show({ settings: { hour: 7, minute: 5, locked: false, weather: 'rain', weathers: ['clear', 'overcast', 'rain'] } })
+
+    await user.keyboard('o')
+    const panel = getByRole(screen, 'dialog', { name: 'Settings' })
+    expect(within(panel).getByLabelText('Hour').textContent).toBe('07:05')
+
+    await user.click(within(panel).getByRole('button', { name: 'Lock time' }))
+    expect(intents).toContainEqual({ kind: 'lock-time', locked: true })
+    // The hud decides nothing: the button reads locked once the game says so.
+    hud.show({ settings: { hour: 7, minute: 5, locked: true, weather: 'rain', weathers: ['clear', 'overcast', 'rain'] } })
+    expect(within(panel).getByRole('button', { name: 'Time locked' }).getAttribute('aria-pressed')).toBe('true')
+
+    await user.click(within(panel).getByRole('button', { name: 'Skip ahead' }))
+    expect(intents).toContainEqual({ kind: 'skip-time' })
+
+    expect(within(panel).getByRole('button', { name: 'rain' }).getAttribute('aria-pressed')).toBe('true')
+    await user.click(within(panel).getByRole('button', { name: 'overcast' }))
+    expect(intents).toContainEqual({ kind: 'weather', weather: 'overcast' })
+
+    await user.click(within(panel).getByRole('button', { name: 'Exit game' }))
+    expect(intents).toContainEqual({ kind: 'exit' })
+  })
+
+  it('offers the way out before the game has pushed the clock', () => {
+    const { hud, screen } = mount()
+    hud.show({ window: 'settings' })
+    const panel = getByRole(screen, 'dialog', { name: 'Settings' })
+    getByRole(panel, 'button', { name: 'Exit game' })
+    expect(queryByText(panel, 'Lock time')).toBeNull()
+    within(panel).getByText(/once the city is running/)
+  })
+})
+
+describe('the bar', () => {
+  it('names the way out, and its key does the same', async () => {
+    const user = userEvent.setup()
+    const { screen, intents } = mount()
+    const leave = getByRole(screen, 'button', { name: 'Leave (N)' })
+    within(leave).getByText('N')
+    await user.click(leave)
+    expect(intents).toEqual([{ kind: 'exit' }])
+
+    await user.keyboard('n')
+    expect(intents).toEqual([{ kind: 'exit' }, { kind: 'exit' }])
   })
 })
 
@@ -798,23 +988,108 @@ describe('the map tab', () => {
   const MAP: MapView = {
     width: 40,
     height: 30,
-    plots: [{ id: 'p1', rect: { x: 4, y: 4, w: 8, h: 6 } }],
+    plots: [
+      { id: 'p1', rect: { x: 4, y: 4, w: 8, h: 6 }, label: 'The Copper Wheel', named: true, prominence: 'landmark' },
+      { id: 'p2', rect: { x: 20, y: 4, w: 8, h: 6 }, label: 'A warehouse' },
+      { id: 'p3', rect: { x: 4, y: 16, w: 8, h: 6 }, prominence: 'notable' },
+    ],
     marks: [
-      { x: 6, y: 20, label: 'You', kind: 'you', facing: 0 },
-      { x: 8, y: 7, label: 'The Copper Wheel', kind: 'goal' },
+      { x: 6, y: 20, label: 'You', kind: 'you', facing: Math.PI / 2 },
+      { x: 8, y: 7, label: 'The Copper Wheel', kind: 'goal', line: 'main' },
+      { x: 30, y: 7, label: 'The docks', kind: 'goal', line: 'side' },
     ],
   }
 
-  it('draws the survey and numbers what to head for', () => {
+  function viewBox(panel: HTMLElement): number[] {
+    return (panel.querySelector('.gb-plan svg')?.getAttribute('viewBox') ?? '').split(' ').map(Number)
+  }
+
+  it('draws the city with three fills, the player facing their way, the names it was told to write, and the story marked apart from an errand', () => {
     const { hud, screen } = mount()
     hud.show({ window: 'map', map: MAP })
 
     const panel = getByRole(screen, 'dialog', { name: 'Map' })
-    expect(panel.querySelectorAll('.gb-plan svg .gb-block')).toHaveLength(1)
-    expect(panel.querySelectorAll('.gb-plan svg .gb-you')).toHaveLength(1)
+    const fills = [...panel.querySelectorAll('.gb-plan svg .gb-block')].map((node) => node.getAttribute('data-prominence'))
+    expect(fills).toEqual(['landmark', 'background', 'notable'])
+
+    const you = panel.querySelector('.gb-plan .gb-you') as SVGElement
+    expect(you.getAttribute('transform')).toMatch(/^translate\(6 20\) rotate\(90\) scale\(/)
+
+    // Only the plot marked named is written on the plan; the other keeps its name for hovering.
+    const names = [...panel.querySelectorAll('.gb-plan .gb-name text')].map((node) => node.textContent)
+    expect(names).toEqual(['The Copper Wheel'])
+    expect(panel.querySelector('.gb-plan .gb-block:nth-child(2) title')?.textContent).toBe('A warehouse')
+
+    const goals = [...panel.querySelectorAll('.gb-plan .gb-goal')]
+    expect(goals.map((node) => node.getAttribute('data-line'))).toEqual(['main', 'side'])
+    expect(goals[0]?.querySelector('path')).not.toBeNull()
+    expect(goals[1]?.querySelector('circle')).not.toBeNull()
+    expect(goals.map((node) => node.querySelector('text')?.textContent)).toEqual(['The Copper Wheel', 'The docks'])
+
+    // The bearings under the plan say the same, the story first with its tag.
     const bearings = panel.querySelector('.gb-bearings') as HTMLElement
-    within(bearings).getByText('The Copper Wheel')
-    expect(bearings.querySelector('.gb-pip')?.textContent).toBe('1')
+    const rows = [...bearings.querySelectorAll('li')]
+    expect(rows.map((row) => row.getAttribute('data-line'))).toEqual(['main', 'side'])
+    within(rows[0] as HTMLElement).getByText('Main')
+  })
+
+  it('fills the frame at first, then zooms and pans inside it by wheel, drag, button and key, and finds a bearing on a click', async () => {
+    const user = userEvent.setup()
+    const { hud, screen } = mount()
+    hud.show({ window: 'map', map: MAP })
+    const panel = getByRole(screen, 'dialog', { name: 'Map' })
+    const plan = panel.querySelector('.gb-plan') as HTMLElement
+
+    // Fit: the whole city framed to the plan's aspect, so nothing is cropped.
+    const [x0, y0, w0, h0] = viewBox(panel) as [number, number, number, number]
+    expect(x0).toBeLessThanOrEqual(0)
+    expect(y0).toBeLessThanOrEqual(0)
+    expect(x0 + w0).toBeGreaterThanOrEqual(40)
+    expect(y0 + h0).toBeGreaterThanOrEqual(30)
+
+    // The wheel zooms in about the pointer; the corner under it stays put.
+    fireEvent.wheel(plan, { deltaY: -100, clientX: 0, clientY: 0 })
+    const [x1, , w1] = viewBox(panel) as [number, number, number, number]
+    expect(w1).toBeCloseTo(w0 / 1.5, 5)
+    expect(x1).toBeCloseTo(x0, 5)
+
+    // A drag to the left pans the view to the right, in the plan's own cells.
+    await user.pointer([
+      { keys: '[MouseLeft>]', target: plan, coords: { clientX: 200, clientY: 100 } },
+      { coords: { clientX: 100, clientY: 100 } },
+      { keys: '[/MouseLeft]' },
+    ])
+    const [x2] = viewBox(panel) as [number, number, number, number]
+    expect(x2).toBeGreaterThan(x1)
+
+    // The buttons carry their keys and do the same as the keys.
+    await user.click(within(panel).getByRole('button', { name: 'Zoom in (+)' }))
+    expect((viewBox(panel)[2] as number)).toBeCloseTo(w1 / 1.5, 5)
+    await user.click(within(panel).getByRole('button', { name: 'Fit (0)' }))
+    expect(viewBox(panel)).toEqual([x0, y0, w0, h0])
+    ;(panel.querySelector('.gb-map') as HTMLElement).focus()
+    await user.keyboard('+')
+    expect((viewBox(panel)[2] as number)).toBeCloseTo(w0 / 1.5, 5)
+    await user.keyboard('{ArrowRight}')
+    expect((viewBox(panel)[0] as number)).toBeGreaterThan(x0)
+    await user.keyboard('0')
+    expect(viewBox(panel)).toEqual([x0, y0, w0, h0])
+
+    // Zoomed well in and centred on the player, the player is mid-frame; a bearing clicked swings it onto the goal.
+    await user.keyboard('++++')
+    await user.click(within(panel).getByRole('button', { name: 'You (Y)' }))
+    let [x, y, w, h] = viewBox(panel) as [number, number, number, number]
+    expect(x + w / 2).toBeCloseTo(6, 5)
+    expect(y + h / 2).toBeCloseTo(20, 5)
+    await user.click(within(panel).getByRole('button', { name: 'The docks' }))
+    ;[x, y, w, h] = viewBox(panel) as [number, number, number, number]
+    expect(x + w / 2).toBeCloseTo(30, 5)
+    expect(y + h / 2).toBeCloseTo(7, 5)
+
+    // The view survives the next push of the survey: the player moved, the zoom did not.
+    hud.show({ map: { ...MAP, marks: [{ x: 7, y: 20, label: 'You', kind: 'you', facing: 0 }] } })
+    expect(viewBox(panel)[2]).toBeCloseTo(w, 5)
+    expect(panel.querySelectorAll('.gb-plan .gb-goal')).toHaveLength(0)
   })
 
   it('points at the tracked steps while there is no survey', () => {
@@ -827,24 +1102,110 @@ describe('the map tab', () => {
     const panel = getByRole(screen, 'dialog', { name: 'Map' })
     within(panel).getByText('The docks')
     within(panel).getByText('Past the bridge')
-    expect(panel.querySelector('.gb-plan svg')).toBeNull()
+    expect((panel.querySelector('.gb-plan') as HTMLElement).hidden).toBe(true)
+  })
+})
+
+describe('the compass', () => {
+  it('slides the points as the player turns, marks the tracked goal at its bearing with how far, and pins it to an edge behind them', () => {
+    const { hud, screen } = mount()
+    expect(queryByRole(screen, 'region', { name: 'Compass' })).toBeNull()
+
+    const east = Math.PI / 2
+    hud.show({ compass: { facing: 0, goal: { label: 'The Copper Wheel', bearing: east / 2, distance: 140, line: 'main' } } })
+    const compass = screen.querySelector('.gb-compass') as HTMLElement
+    expect(compass.hidden).toBe(false)
+    const track = compass.querySelector('.gb-compass-track') as HTMLElement
+    const mark = compass.querySelector('.gb-compass-mark') as HTMLElement
+    const points = [...compass.querySelectorAll('.gb-compass-tick[data-point]')].map((node) => node.getAttribute('data-point'))
+    expect(points.slice(0, 4)).toEqual(['S', 'W', 'N', 'E'])
+    // Facing north, a goal to the north-east sits 45 degrees right of centre: the strip shows 120 degrees over 360 px.
+    expect(mark.style.left).toBe('315px')
+    expect(mark.getAttribute('data-line')).toBe('main')
+    expect(mark.hasAttribute('data-edge')).toBe(false)
+    getByText(compass, 'The Copper Wheel')
+    getByText(compass, '140 m')
+    const at0 = track.style.transform
+
+    // Turning to face east slides the track by ninety degrees and brings the mark to centre.
+    hud.show({ compass: { facing: east, goal: { label: 'The Copper Wheel', bearing: east, distance: 1240, line: 'main' } } })
+    expect(mark.style.left).toBe('180px')
+    expect(track.style.transform).not.toBe(at0)
+    getByText(compass, '1.2 km')
+
+    // A goal behind the player is pinned to the nearer edge; an errand wears the other mark.
+    hud.show({ compass: { facing: 0, goal: { label: 'The docks', bearing: Math.PI * 1.2, distance: 80, line: 'side' } } })
+    expect(mark.style.left).toBe('0px')
+    expect(mark.getAttribute('data-edge')).toBe('left')
+    expect(mark.getAttribute('data-line')).toBe('side')
+
+    // No goal: the points stay, the mark and the line go.
+    hud.show({ compass: { facing: 0 } })
+    expect(mark.hidden).toBe(true)
+    expect(queryByText(compass, 'The docks')).toBeNull()
+
+    hud.show({ compass: null })
+    expect(compass.getAttribute('aria-hidden')).toBe('true')
   })
 })
 
 describe('the controls tab', () => {
-  it('shows what the game says its keys do next to the ones the interface owns', async () => {
+  it('lists every key the game declared next to the ones the interface owns', async () => {
     const user = userEvent.setup()
     const { hud, screen, intents } = mount()
-    hud.show({ controls: CONTROLS })
+    hud.show({
+      controls: [
+        ...CONTROLS,
+        { keys: ['G'], text: 'Say the way to the tracked quest', group: 'World' },
+        { keys: ['T'], text: 'Turn the time of day', group: 'World' },
+        { keys: ['K'], text: 'Change the weather', group: 'World' },
+        { keys: ['P'], text: 'Hold the clock', group: 'World' },
+      ],
+    })
 
     await user.keyboard('?')
     expect(intents).toContainEqual({ kind: 'window', window: 'controls' })
     const panel = getByRole(screen, 'dialog', { name: 'Controls' })
     within(panel).getByText('Move')
     within(panel).getByText('Walk')
-    within(panel).getByText('Close the window in front of you')
-    // The interface lists its own keys here too, next to the game's.
-    within(panel.querySelector('.gb-window-body') as HTMLElement).getByText('Map')
+    const body = panel.querySelector('.gb-window-body') as HTMLElement
+    const keys = [...body.querySelectorAll('.gb-hint kbd')].map((node) => node.textContent)
+    for (const key of ['W', 'G', 'T', 'K', 'P', 'N', 'I', 'J', 'M', 'X', 'O', '?', 'Esc']) expect(keys).toContain(key)
+    within(body).getByText('Leave the game')
+    within(body).getByText('Inventory')
+    within(body).getByText('Close the window in front of you')
+  })
+})
+
+describe('the loader', () => {
+  it('names each stage of a build and how far it has got, and goes when the city is ready', () => {
+    const { hud, screen } = mount()
+    const build = (places: number, state: LoaderView['stages'][number]['state']): LoaderView => ({
+      title: 'Writing Gullhaven',
+      stages: [
+        { id: 'history', label: 'Writing the history', state: 'done' },
+        { id: 'city', label: 'Laying out the city', state: 'done' },
+        { id: 'places', label: 'Writing the places', state, done: places, total: 8 },
+        { id: 'quests', label: 'Writing the quests', state: 'waiting' },
+      ],
+    })
+    hud.show({ loading: build(3, 'running') })
+
+    const loader = getByRole(screen, 'status', { name: '' })
+    getByText(loader, 'Writing Gullhaven')
+    const places = getByRole(loader, 'progressbar', { name: 'Writing the places' })
+    expect(places.getAttribute('aria-valuenow')).toBe('38')
+    within(places).getByText('3/8')
+    expect((places.querySelector('.gb-bar-fill') as HTMLElement).style.width).toBe('38%')
+    expect(getByRole(loader, 'progressbar', { name: 'Writing the quests' }).getAttribute('aria-valuenow')).toBe('0')
+
+    // The next push fills the bar already there rather than drawing a new one.
+    hud.show({ loading: build(8, 'done') })
+    expect(getByRole(loader, 'progressbar', { name: 'Writing the places' })).toBe(places)
+    expect(places.getAttribute('aria-valuenow')).toBe('100')
+
+    hud.show({ loading: null })
+    expect(loader.hidden || loader.getAttribute('aria-hidden') === 'true').toBe(true)
   })
 })
 
@@ -874,6 +1235,34 @@ describe('announcements', () => {
     }
   })
 
+  it('says the model is busy with the seconds counting down, and reads apart from an error', () => {
+    vi.useFakeTimers()
+    try {
+      const { hud, screen } = mount()
+      hud.announce({ kind: 'model-busy', retryIn: 12 })
+      hud.announce({ kind: 'error', text: 'The sidecar is not running' })
+
+      const busy = getByText(screen, 'The model is busy').closest('.gb-notice') as HTMLElement
+      const fault = getByText(screen, 'The sidecar is not running').closest('.gb-notice') as HTMLElement
+      expect(busy.dataset.mood).toBe('wait')
+      expect(fault.dataset.mood).toBe('fault')
+      expect(busy.dataset.tone).toBe('minor')
+
+      const clock = busy.querySelector('.gb-num') as HTMLElement
+      within(busy).getByText(/Trying again in/)
+      expect(clock.textContent).toBe('0:12')
+      vi.advanceTimersByTime(5000)
+      expect(clock.textContent).toBe('0:07')
+      // It stays for the whole wait, so it does not vanish before the retry.
+      vi.advanceTimersByTime(4000)
+      getByText(screen, 'The model is busy')
+      vi.advanceTimersByTime(3200)
+      expect(queryByText(screen, 'The model is busy')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('keeps the stack readable when everything happens at once', () => {
     vi.useFakeTimers()
     try {
@@ -885,6 +1274,42 @@ describe('announcements', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+describe('the layers', () => {
+  it('gives every surface its own layer, front to back, with nothing shared', () => {
+    const { hud, screen } = mount()
+    hud.show({ talk: { speaker: 'Mara Quill' }, window: 'quests', loading: { title: 'Writing', stages: [] }, compass: { facing: 0 } })
+    const z = (selector: string): number => Number(getComputedStyle(screen.querySelector(selector) as HTMLElement).zIndex)
+    const order = ['.gb-objectives', '.gb-compass', '.gb-talk', '.gb-notices', '.gb-bar', '.gb-scrim', '.gb-window-room', '.gb-loader'].map(z)
+    for (const layer of order) expect(Number.isFinite(layer)).toBe(true)
+    expect([...order].sort((a, b) => a - b)).toEqual(order)
+    expect(new Set(order).size).toBe(order.length)
+  })
+
+  it('keeps the objectives corner, the notices column, the conversation and the window in disjoint regions', () => {
+    const { hud, screen } = mount()
+    hud.show({ talk: { speaker: 'Mara Quill' }, compass: { facing: 0 } })
+    hud.announce({ kind: 'note', text: 'A note' })
+    const px = (selector: string, prop: string): number =>
+      Number.parseFloat(getComputedStyle(screen.querySelector(selector) as HTMLElement).getPropertyValue(prop))
+
+    // Left to right along the top band: the corner, then the notices, then the
+    // side panel, each ending before the next begins.
+    const cornerRight = px('.gb-objectives', 'left') + px('.gb-objectives', 'width')
+    expect(px('.gb-compass', 'left')).toBeGreaterThan(cornerRight)
+    expect(px('.gb-notices', 'left')).toBeGreaterThan(cornerRight)
+    // The compass strip sits at the top of the band and the notices start under it.
+    expect(px('.gb-notices', 'top')).toBeGreaterThanOrEqual(px('.gb-compass', 'top') + px('.gb-compass', 'height'))
+    const sideWidth = px('.gb-talk', 'width') + px('.gb-talk', 'right')
+    expect(px('.gb-notices', 'right')).toBeGreaterThan(sideWidth)
+    // The window's room starts under the notices band and right of the corner.
+    expect(px('.gb-window-room', 'left')).toBeGreaterThan(cornerRight)
+    expect(px('.gb-window-room', 'top')).toBeGreaterThanOrEqual(px('.gb-notices', 'top') + px('.gb-notices', 'max-height'))
+    expect(px('.gb-window-room', 'right')).toBeGreaterThan(sideWidth)
+    // And the side panel stops above the bar's band.
+    expect(px('.gb-talk', 'bottom')).toBeGreaterThan(px('.gb-bar', 'bottom'))
   })
 })
 

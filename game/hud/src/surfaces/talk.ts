@@ -4,26 +4,27 @@ import { FocusReturn, cycleFocus } from '../focus.ts'
 import { Reveal } from '../reveal.ts'
 import type { HudIntent, HudState, TalkMove } from '../types.ts'
 import type { Surface } from './surface.ts'
+import { Transcript } from './transcript.ts'
 
 const PLACEHOLDER = 'Say something'
 
 /**
- * The conversation: who is speaking, their reply as it arrives, what they just
- * did, the moves the player can take without saying a word, and the box they
- * answer in. Clicking a move and typing a line are the same thing said two
- * ways, so both put the player's own line on screen and both quiet the menu
- * until the game publishes the next one.
+ * The conversation, as a panel of fixed width down one side of the view: who
+ * is speaking, everything said so far, the moves the player can take without
+ * saying a word, and the box they answer in. It comes up when a conversation
+ * starts and goes when it ends, and never changes size for what is in it: the
+ * transcript scrolls inside it.
  *
- * It is the one part of the interface that holds the keyboard, so it says how
- * to leave in two places (the close button and the line under the box) and lets
- * go the instant focus leaves it.
+ * Clicking a move and typing a line are the same thing said two ways, so both
+ * put the player's own line on the transcript and both quiet the menu until
+ * the game publishes the next one. It is the one part of the interface that
+ * holds the keyboard, so it says how to leave in two places (the close button
+ * and the line under the box) and lets go the instant focus leaves it.
  */
 export class TalkSurface implements Surface {
   readonly node = el('section', 'gb-talk gb-bracket')
   #speaker = el('h3')
-  #you = el('p', 'gb-you')
-  #reply = el('p', 'gb-reply')
-  #acted = el('p', 'gb-acted')
+  #transcript = new Transcript()
   #moves = el('ul', 'gb-moves')
   #input = el('input', 'gb-say')
   #close: HTMLButtonElement
@@ -37,7 +38,6 @@ export class TalkSurface implements Surface {
     this.#emit = emit
     this.node.setAttribute('role', 'group')
     this.node.setAttribute('aria-label', 'Conversation')
-    this.#reply.setAttribute('aria-live', 'polite')
     this.#moves.setAttribute('aria-label', 'What you can do')
     this.#input.type = 'text'
     this.#input.placeholder = PLACEHOLDER
@@ -47,8 +47,10 @@ export class TalkSurface implements Surface {
     this.#close.addEventListener('click', () => this.#emit({ kind: 'talk-closed' }))
     const head = el('header', 'gb-talk-head')
     head.append(this.#speaker, this.#close)
+    const foot = el('div', 'gb-talk-foot')
+    foot.append(this.#moves, this.#input, this.#hints)
 
-    this.node.append(head, this.#you, this.#reply, this.#acted, this.#moves, this.#input, this.#hints)
+    this.node.append(head, this.#transcript.node, foot)
     // The whole panel holds the keyboard, not just the box: the player can be
     // on a move button, and the game must still not hear a walk key.
     this.node.addEventListener('focusin', () => this.#emit({ kind: 'typing', typing: true }))
@@ -64,9 +66,7 @@ export class TalkSurface implements Surface {
     const talk = state.talk
     if (talk) {
       setText(this.#speaker, talk.speaker)
-      setText(this.#you, talk.you)
-      setText(this.#reply, talk.reply)
-      setText(this.#acted, talk.acted)
+      this.#transcript.render(talk.turns)
       this.#menu(talk.moves, talk.pending)
     }
     if (talk && !this.#reveal.open) this.#start()
@@ -145,9 +145,7 @@ export class TalkSurface implements Surface {
     this.#input.value = ''
     this.#drawn = undefined
     setText(this.#speaker, '')
-    setText(this.#you, '')
-    setText(this.#reply, '')
-    setText(this.#acted, '')
+    this.#transcript.clear()
     this.#moves.replaceChildren()
     this.#hints.replaceChildren()
   }

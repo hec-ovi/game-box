@@ -1,4 +1,4 @@
-import type { QuestEntry, QuestStep, QuestStepState } from '../types.ts'
+import type { QuestEntry, QuestStatus, QuestStep, QuestStepState } from '../types.ts'
 
 /**
  * Reading a quest page whichever shape it arrived in. The game may send a
@@ -7,6 +7,11 @@ import type { QuestEntry, QuestStep, QuestStepState } from '../types.ts'
  */
 export function titleOf(quest: QuestEntry): string {
   return quest.questTitle ?? quest.title ?? ''
+}
+
+/** A page that says nothing about its status is a quest under way. */
+export function statusOf(quest: QuestEntry): QuestStatus {
+  return quest.status ?? 'active'
 }
 
 /**

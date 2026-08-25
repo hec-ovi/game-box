@@ -1,5 +1,8 @@
 import { BAR } from './bar.ts'
 import { BASE } from './base.ts'
+import { COMPASS } from './compass.ts'
+import { LOADER } from './loader.ts'
+import { MAP } from './map.ts'
 import { NOTICES } from './notices.ts'
 import { PANELS } from './panels.ts'
 import { TABS } from './tabs.ts'
@@ -12,7 +15,7 @@ import { WINDOW } from './window.ts'
  * one public entry, so an app that bundles it cannot import a css file; it is
  * written in pieces so no one file holds more than one concern.
  */
-export const HUD_CSS = [TOKENS, BASE, PANELS, BAR, NOTICES, WINDOW, TABS, TALK].join('\n')
+export const HUD_CSS = [TOKENS, BASE, PANELS, COMPASS, BAR, NOTICES, WINDOW, TABS, MAP, TALK, LOADER].join('\n')
 
 const STYLE_ID = 'gb-hud-style'
 

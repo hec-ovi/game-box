@@ -1,5 +1,5 @@
-import { HudError } from './errors.ts'
-import type { HudPatch, HudState, LiveNotice, Notice, TalkPatch, TalkState } from './types.ts'
+import { mergeTalk, withYours } from './transcript.ts'
+import type { HudPatch, HudState, LiveNotice, Notice } from './types.ts'
 
 const EMPTY: HudState = {
   objectives: [],
@@ -10,8 +10,12 @@ const EMPTY: HudState = {
   quests: [],
   trackedQuestId: undefined,
   map: undefined,
+  compass: undefined,
+  codex: { places: [], people: [] },
+  settings: undefined,
   controls: [],
   window: null,
+  loading: undefined,
   notices: [],
   hadQuest: false,
 }
@@ -53,8 +57,12 @@ export class HudStore {
       ...(patch.quests ? { quests: patch.quests } : {}),
       ...(patch.trackedQuestId !== undefined ? { trackedQuestId: patch.trackedQuestId ?? undefined } : {}),
       ...(patch.map !== undefined ? { map: patch.map ?? undefined } : {}),
+      ...(patch.compass !== undefined ? { compass: patch.compass ?? undefined } : {}),
+      ...(patch.codex ? { codex: patch.codex } : {}),
+      ...(patch.settings ? { settings: patch.settings } : {}),
       ...(patch.controls ? { controls: patch.controls } : {}),
       ...(patch.window !== undefined ? { window: patch.window } : {}),
+      ...(patch.loading !== undefined ? { loading: patch.loading ?? undefined } : {}),
       hadQuest: before.hadQuest || hasWork(patch),
     }
     this.#onChange()
@@ -68,7 +76,10 @@ export class HudStore {
   answered(you: string): void {
     const talk = this.#state.talk
     if (!talk) return
-    this.#state = { ...this.#state, talk: { ...talk, you, pending: talk.moves.length > 0 } }
+    this.#state = {
+      ...this.#state,
+      talk: { ...talk, turns: withYours(talk.turns, you), pending: talk.moves.length > 0 },
+    }
     this.#onChange()
   }
 
@@ -120,26 +131,4 @@ export class HudStore {
  */
 function hasWork(patch: HudPatch): boolean {
   return (patch.objectives?.length ?? 0) > 0 || (patch.quests?.length ?? 0) > 0
-}
-
-function mergeTalk(current: TalkState | undefined, patch: TalkPatch | null): TalkState | undefined {
-  if (patch === null) return undefined
-
-  const fresh = patch.speaker !== undefined && patch.speaker !== current?.speaker
-  if (!fresh && !current) throw new HudError('no-conversation')
-
-  const blank: TalkState = { speaker: patch.speaker ?? '', you: '', reply: '', acted: '', moves: [], pending: false }
-  const base: TalkState = fresh || !current ? blank : current
-  const reply = (patch.reply ?? base.reply) + (patch.replyChunk ?? '')
-  return {
-    speaker: patch.speaker ?? base.speaker,
-    you: base.you,
-    reply,
-    // One turn, one line: what the speaker did is replaced each time it is sent
-    // and taken off with `null`, so it never reads as a list of old turns.
-    acted: patch.acted !== undefined ? (patch.acted ?? '') : base.acted,
-    moves: patch.moves ?? base.moves,
-    // A menu arriving is the turn being over, so what is on it is live again.
-    pending: patch.moves === undefined && base.pending,
-  }
 }

@@ -1,26 +1,26 @@
+import { LAYERS, LAYOUT, SIDE_RIGHT } from './layout.ts'
+
 /**
- * The three things that stay on screen while the player walks: what they are
- * meant to be doing, what they are carrying, and what the thing in front of
- * them would do. They frame the view from the corners and never cross it.
+ * The two things that stay on screen while the player walks: what they are
+ * meant to be doing, in the corner, and what the thing in front of them would
+ * do, low and central. Neither crosses the view.
  */
 export const PANELS = `
-.gb-objectives, .gb-purse {
+.gb-objectives {
   position: absolute;
-  top: var(--gb-s5);
-  background: var(--gb-panel);
-  box-shadow: var(--gb-frame);
-  backdrop-filter: blur(10px) saturate(0.85);
+  z-index: ${LAYERS.corner};
+  left: ${LAYOUT.margin}px;
+  top: ${LAYOUT.margin}px;
+  width: ${LAYOUT.corner}px;
   max-height: min(42vh, 340px);
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: var(--gb-accent-deep) transparent;
-}
-
-.gb-objectives {
-  left: var(--gb-s5);
-  width: min(330px, 32vw);
+  background: var(--gb-panel);
   border-left: 3px solid var(--gb-accent);
+  box-shadow: var(--gb-frame);
+  backdrop-filter: blur(10px) saturate(0.85);
 }
 /* The head is the panel's label plate: it stays put while the steps scroll. */
 .gb-objectives-head {
@@ -91,25 +91,13 @@ export const PANELS = `
   color: var(--gb-dim);
 }
 
-.gb-purse {
-  right: var(--gb-s5);
-  min-width: 132px;
-  padding: var(--gb-s3) var(--gb-s4);
-  border-right: 3px solid var(--gb-accent);
-  text-align: right;
-}
-.gb-purse .gb-coin { display: block; font-weight: 400; }
-.gb-purse .gb-num { font-size: 22px; letter-spacing: -0.01em; }
-.gb-purse .gb-unit { margin-left: 5px; color: var(--gb-faint); }
-.gb-purse ul { margin-top: var(--gb-s2); font-size: 13px; color: var(--gb-dim); }
-.gb-purse li { padding: 1px 0; }
-.gb-purse .gb-quest-item { color: var(--gb-accent); }
-
-/* "E  Go into The Copper Wheel", low and central, where the eye already is. */
+/* "E  Go into The Copper Wheel", low and central, where the eye already is;
+   central in what the conversation leaves while one is up. */
 .gb-prompt {
   position: absolute;
+  z-index: ${LAYERS.corner};
   left: 50%;
-  bottom: 124px;
+  bottom: ${LAYOUT.foot + 36}px;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
@@ -121,6 +109,7 @@ export const PANELS = `
   backdrop-filter: blur(10px) saturate(0.85);
   white-space: nowrap;
 }
+.gb-hud[data-talk='true'] .gb-prompt { left: calc((100% - ${SIDE_RIGHT}px) / 2); }
 .gb-prompt[data-state='opening'], .gb-prompt[data-state='closing'] { transform: translateX(-50%) translateY(6px); }
 .gb-prompt[data-state='open'] { transform: translateX(-50%) translateY(0); }
 .gb-prompt kbd {
