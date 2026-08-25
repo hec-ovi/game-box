@@ -1,5 +1,5 @@
 import { GLYPH_ASPECT } from './atlas.ts'
-import { BLANK, cellFor, SOLID } from './glyphs.ts'
+import { BLANK, cellFor } from './glyphs.ts'
 import type { Written } from './sign.ts'
 
 /**
@@ -76,15 +76,4 @@ export function down(letters: readonly string[], width: number, height: number):
   const advance = glyph
   const from = (cells.length * advance - advance) / 2
   return cells.map((cell, at) => ({ cell, u: 0, v: from - at * advance, width: glyph * GLYPH_ASPECT, height: glyph }))
-}
-
-/** Four thin tubes round the edge of a panel: a lit box rather than a painted one. */
-export function edging(width: number, height: number): Written[] {
-  const thick = Math.min(0.05, height * 0.1)
-  return [
-    { cell: SOLID, u: 0, v: (height - thick) / 2, width, height: thick },
-    { cell: SOLID, u: 0, v: -(height - thick) / 2, width, height: thick },
-    { cell: SOLID, u: (width - thick) / 2, v: 0, width: thick, height },
-    { cell: SOLID, u: -(width - thick) / 2, v: 0, width: thick, height },
-  ]
 }

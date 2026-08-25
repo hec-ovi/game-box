@@ -2,7 +2,7 @@ import type { Plot } from '@gb/world'
 import { doorstepOf, type Face } from '../../compose/faces.ts'
 import { TRANSIT } from '../../sign/palette.ts'
 import { SIGN, type Sign } from '../../sign/sign.ts'
-import { across, edging, lettersOf } from '../../sign/text.ts'
+import { across, lettersOf } from '../../sign/text.ts'
 import type { Standing } from '../fixture.ts'
 import { standing } from '../shape.ts'
 import { SUBWAY, wellOf } from './design.ts'
@@ -44,6 +44,6 @@ export function subwaySign(entrance: SubwayEntrance, word: string, front: Face):
     ink: TRANSIT.ink,
     panel: 0x0b0e16,
     glow: [TRANSIT.glow, 0],
-    glyphs: [...across(lettersOf(word), wide, tall), ...edging(wide, tall)],
+    glyphs: across(lettersOf(word), wide, tall),
   }
 }

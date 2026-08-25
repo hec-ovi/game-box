@@ -155,6 +155,18 @@ describe('signage on a generated town', () => {
     return { a0: along - width / 2, a1: along + width / 2, u0: sign.origin[1] - sign.height / 2, u1: sign.origin[1] + sign.height / 2 }
   }
 
+  /** The ways a sign is read: a flat one from the street, a hung one from either end of it. */
+  const facings = (sign: Sign): ReadonlyArray<readonly [number, number]> =>
+    sign.mount === 'hung' ? [sign.right, [-sign.right[0], -sign.right[1]]] : [sign.right]
+
+  /** One quad of a sign in the plane it is drawn on: where it sits across and up, and how far out it stands. */
+  const quadOf = (sign: Sign, right: readonly [number, number], written: { u: number; v: number; width: number; height: number }, layer: number) => {
+    const out = [-right[1], right[0]] as const
+    const [x, z] = [sign.origin[0] + right[0] * written.u + out[0] * layer, sign.origin[2] + right[1] * written.u + out[1] * layer]
+    const along = x * right[0] + z * right[1]
+    return { a0: along - written.width / 2, a1: along + written.width / 2, v0: sign.origin[1] + written.v - written.height / 2, v1: sign.origin[1] + written.v + written.height / 2, depth: x * out[0] + z * out[1] }
+  }
+
   it('claims its wall, so no two lit things overlap and every one lies on the wall it names', () => {
     let [flat, hung] = [0, 0]
     for (const { plot, size, signs } of planned) {
@@ -201,6 +213,50 @@ describe('signage on a generated town', () => {
     expect(tallest).toBeCloseTo(fascia * LETTER_SHARE, 6)
   })
 
+  it('writes its letters on its panel and lays nothing thin over it', () => {
+    // a bar drawn across a panel is a few pixels tall from the pavement (5 cm reads 15 px at 5 m, 4 px at 20 m)
+    // and it sits a centimetre off the surface behind it, which is what a dotted rule under a fascia is made of
+    let full = 0
+    for (const { plot, signs } of planned) {
+      for (const sign of signs) {
+        for (const written of sign.glyphs) {
+          if (written.cell !== SOLID) continue
+          full++
+          // the only full-cover quad is a sign that is itself a bar of light: the lamp at a door, a tube up a corner
+          expect(written.width, `${plot.id}: a bar across a ${sign.kind}`).toBeGreaterThanOrEqual(sign.width - 1e-9)
+          expect(written.height, `${plot.id}: a bar across a ${sign.kind}`).toBeGreaterThanOrEqual(sign.height - 1e-9)
+        }
+        // and no two quads of a sign lie in the same plane over each other, whichever way it is read
+        for (const face of facings(sign)) {
+          const laid = [quadOf(sign, face, { u: 0, v: 0, width: sign.width, height: sign.height }, 0), ...sign.glyphs.map((written) => quadOf(sign, face, written, SIGN.layer))]
+          for (let i = 0; i < laid.length; i++) {
+            for (let j = i + 1; j < laid.length; j++) {
+              const [a, b] = [laid[i]!, laid[j]!]
+              const over = Math.min(a.a1, b.a1) - Math.max(a.a0, b.a0) > 1e-9 && Math.min(a.v1, b.v1) - Math.max(a.v0, b.v0) > 1e-9
+              expect(over && Math.abs(a.depth - b.depth) < 1e-9, `${plot.id}: two quads of a ${sign.kind} in one plane`).toBe(false)
+            }
+          }
+        }
+      }
+    }
+    expect(full, 'the town has bars of light on it').toBeGreaterThan(200)
+  })
+
+  it('never burns a lit surface past its own colour', () => {
+    let boxes = 0
+    for (const { plot, size, signs } of planned) {
+      const lights = lightsFor(plot, size, charterOf(plot))
+      signs.forEach((sign, at) => {
+        if (sign.glow[1] <= 0) return
+        boxes++
+        // a whole panel alight is a surface, not a tube: it lands on its colour and the halo over it is the bloom pass
+        expect(sign.glow[1] * SIGN.glow, plot.id).toBeLessThanOrEqual(1)
+        expect(lights[at]!.intensity, plot.id).toBeLessThanOrEqual(sign.width * sign.height * 20)
+      })
+    }
+    expect(boxes, 'the town has nameplates lit from behind').toBeGreaterThan(5)
+  })
+
   it('lights the door with a lamp either side of it, never a column', () => {
     const { doorHeight, doorWidth } = METRICS.building
     for (const { plot, size, signs } of planned) {
@@ -233,12 +289,12 @@ describe('signage on a generated town', () => {
         if (sign.glow[0] >= sign.glow[1]) expect(light.colour, 'a tube lights in its own colour').toBe(sign.ink)
       })
     }
-    // a lamp at the door is a fixture: one strength whatever the trade, and under the run of the neon
-    const lit = planned.flatMap(({ plot, size }) => lightsFor(plot, size, charterOf(plot)))
-    const lamps = new Set(lit.filter((light) => light.kind === 'doorlamp').map((light) => light.intensity.toFixed(6)))
+    // a lamp at the door is a fixture: one strength whatever the trade, and under the name it stands beside
+    const lit = planned.map(({ plot, size }) => lightsFor(plot, size, charterOf(plot)))
+    const lamps = new Set(lit.flat().filter((light) => light.kind === 'doorlamp').map((light) => light.intensity.toFixed(6)))
     expect(lamps.size).toBe(1)
-    const neon = lit.filter((light) => light.kind !== 'doorlamp').map((light) => light.intensity).sort((a, b) => a - b)
-    expect(Number([...lamps][0])).toBeLessThan(neon[Math.floor(neon.length / 2)]!)
+    const names = lit.map((lights) => lights[0]!.intensity).sort((a, b) => a - b)
+    expect(Number([...lamps][0])).toBeLessThan(names[Math.floor(names.length / 2)]!)
   })
 })
 

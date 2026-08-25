@@ -5,7 +5,7 @@ import { MARKS, SOLID } from './glyphs.ts'
 import type { Neon } from './palette.ts'
 import { backing } from './palette.ts'
 import { between, wallOf, within, type Panel } from './place.ts'
-import { across, bladeFor, down, edging, lettersOf, panelFor } from './text.ts'
+import { across, bladeFor, down, lettersOf, panelFor } from './text.ts'
 
 /**
  * The small lit things up the front: a strip of marks, a tube up the corner, a
@@ -70,7 +70,6 @@ export function board(word: string, front: Face, height: number, fascia: Fascia,
     : across(lettersOf(word), wide, tall)
   const side = rng.chance(0.5) ? 1 : -1
   const back = backing(rng)
-  const glyphs = [...written, ...edging(wide, tall)]
   return [side, -side].map((way) => ({
     kind: 'sign' as const,
     mount: 'flat' as const,
@@ -81,6 +80,6 @@ export function board(word: string, front: Face, height: number, fascia: Fascia,
     ink: hue.ink,
     panel: back,
     glow: [hue.glow, 0],
-    glyphs,
+    glyphs: written,
   }))
 }

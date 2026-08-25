@@ -11,7 +11,7 @@ import { fasciaOf, type Fascia } from './fascia.ts'
 import { againstNeon, backing, houseNeon, type Neon } from './palette.ts'
 import { alongOf, between, place, wallOf, within, type Panel } from './place.ts'
 import { SIGN, type Sign } from './sign.ts'
-import { across, bladeFor, down, edging, lettersOf, panelFor, widthFor } from './text.ts'
+import { across, bladeFor, down, lettersOf, panelFor, widthFor } from './text.ts'
 
 /**
  * Where a building's signs go. Every plot gets its own name over the door and
@@ -32,6 +32,15 @@ const BLADE = { widest: 0.95, clear: 0.55, shortest: 2.4 } as const
 
 /** What hangs out over the street: how high above the shopfront, and how deep. */
 const HANGING = { high: 0.95, tall: 0.64, longest: 3.1 } as const
+
+/**
+ * How hard a nameplate lit from behind burns, as a share of its hue's own
+ * glow. A lit box is a surface, not a tube: at the loudest hue it lands on its
+ * own colour and never past it, the way the lamp at the door does, and the
+ * halo over it is the bloom pass. A tube may go brighter because a tube is a
+ * few centimetres wide; a board four metres long may not.
+ */
+const LIGHTBOX = 0.4
 
 export function planSigns(plot: Plot, charter: PlotCharter, height: number, faces: readonly Face[], front: Face, doorModule: number, bands: readonly Band[], rng: Rng, claims: WallClaims): Sign[] {
   checkSignage(charter.signage)
@@ -81,8 +90,8 @@ function nameplate(plot: Plot, front: Face, fascia: Fascia, wallHeight: number, 
     height,
     ink: lightbox ? 0x0b0c10 : hue.ink,
     panel: lightbox ? hue.ink : backing(rng),
-    glow: lightbox ? [0, hue.glow * 1.4 * loud] : [hue.glow * loud, 0],
-    glyphs: [...across(name, width, height), ...(rng.chance(0.42) ? edging(width, height) : [])],
+    glow: lightbox ? [0, hue.glow * LIGHTBOX * loud] : [hue.glow * loud, 0],
+    glyphs: across(name, width, height),
   }
 }
 
@@ -103,7 +112,7 @@ function blade(word: string, wall: Face, fascia: Fascia, height: number, hue: Ne
   const [mount, long, high, up] = hung
     ? ['hung' as const, deep, hang, finish - hang / 2]
     : ['flat' as const, width, tall, (bottom + finish) / 2]
-  const glyphs = [...down(lettersOf(word), width, high), ...edging(long, high)]
+  const glyphs = down(lettersOf(word), width, high)
 
   return [side, -side].map((way) => ({
     kind: 'sign' as const,
@@ -131,7 +140,7 @@ function boxOverTheStreet(name: string, word: string, front: Face, fascia: Fasci
   const letters = lettersOf(name)
   const written = rng.chance(0.5) && widthFor(letters, tall) <= long ? letters : lettersOf(word)
   const back = backing(rng)
-  const glyphs = [...across(written, long, tall), ...edging(long, tall)]
+  const glyphs = across(written, long, tall)
   return [side, -side].map((way) => ({
     kind: 'sign' as const,
     mount: 'hung' as const,

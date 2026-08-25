@@ -61,8 +61,13 @@ export const SIGN = {
    * the brightness past this belongs to the bloom pass, not to the surface.
    */
   glow: 2,
-  /** How far each layer sits in front of the one behind, so coplanar quads do not fight. */
-  layer: 0.005,
+  /**
+   * How far a letter sits in front of the panel it is written on. A centimetre
+   * is the same lift `@gb/scene` puts road paint on: far enough that a letter
+   * and its panel are two surfaces at every distance a sign is read from, and
+   * far under the 8 cm the panel itself stands off the wall.
+   */
+  layer: 0.01,
 } as const
 
 /** The outward normal of a wall whose panels run along `right`. */

@@ -1,6 +1,6 @@
 # @gb/kitbash contract
 
-contractVersion: 0.10.0
+contractVersion: 0.11.0
 
 ## Purpose
 
@@ -48,7 +48,7 @@ Builds a plot into a building made of Downtown City MegaKit pieces on a 2 m grid
 | `fixtureParts(fixtures)` | `Fixture[]` | the geometry of those fixtures in the building's frame, one buffer per kit material (`piece`, `material`, `geometry`), in the same shape as a kit part, for a dressing that builds its own buildings and wants the same entrance on them |
 | `SUBWAY`, `wellOf(cellSize)`, `CAMERA` | the entrance's numbers and the well it cuts on a cell of that size; the camera's numbers | every material named is in the shipped pack |
 | `lightsFor(plot, size, charter)`, `lights(plot, size, charter)` | `LightEmitter[]` | one per sign, in the same order and the same frame: `kind`, `position` just off the lit face, `colour` (what burns, packed `0xRRGGBB`), `intensity` in candela at full dark, and `radius`, the metres past which it is not worth drawing (where it falls to 0.1 lux, at most 16). Nothing draws them here: the scene that owns the lights does |
-| `SIGN` | the material name, how far a panel stands off the wall and hangs over the street, how much wall a hung one's bracket takes, and how hard a tube burns | |
+| `SIGN` | the material name, how far a panel stands off the wall and hangs over the street, how much wall a hung one's bracket takes, how far a letter stands off its panel, and how hard a tube burns | |
 | `Standing` | `position`, `rotationY`: where a fixture stands and the turn that points its own +Z out | |
 | `DOORLAMP`, `LETTER_SHARE` | the door lamp's line: its width, where it starts and how far past the door head it reaches; and the share of the fascia's height one letter may take | |
 | `MOST_ACCENTS` | 4: the door lamps, a strip, a tube and a board are all the small lit things a wall has room for | |
@@ -90,10 +90,12 @@ Every plot gets its own name over the door and a lamp either side of it, whateve
 - **It is a font, not a sheet of finished signs.** A sign is a run of quads, one per letter, each pointing at its own cell. A thousand buildings with a thousand different names read the same fixed-size texture, so the atlas does not grow with the city.
 - **Every letter is sized off the fascia.** The ground floor's fascia is the kit's own metre-tall closer over the shopfront, and the tallest letter on the building is `LETTER_SHARE` of its height: 0.5 m on a 4 m ground floor. The nameplate sits in that band, and the blade, the strip, the board and the box over the street take their panel sizes from the same letter, so nothing on a wall is bigger than the wall has room for.
 - **A sign claims its wall before it is drawn.** Every panel takes the patch it stands on, with 12 cm of air round it, and a later one landing on a held patch is not drawn; a hung box claims the width of its bracket. Each of the small lit things offers both ends of its wall and the first free one is taken. Measured on a town of 160 plots and 785 signs: no two of them overlap, where before the claim 96 pairs did.
-- **The door has a lamp, not a column.** Two warm lines, `DOORLAMP.width` (5 cm) wide, from 35 cm above the pavement to 15 cm past the door head, standing 22 cm outside either edge of the door, burning at 0.9 of their own colour. A lamp is bounded by the door it lights and never past white; anything taller or brighter beside a door is not this box's.
+- **The door has a lamp, not a column.** Two warm lines, `DOORLAMP.width` (5 cm) wide, from 35 cm above the pavement to 15 cm past the door head, standing 22 cm outside either edge of the door, burning at 0.9 of their own colour. A lamp is bounded by the door it lights and never past white; anything taller or brighter beside a door is not this box's. It throws 10.3 cd, half what the name over it throws at the median.
 - **The name and the word come from the world.** `plot.name` goes over the door and the charter's `blade` goes down the blade, so a sign is wayfinding rather than decoration: the name tells you which place it is, the blade tells you what it is, and a place the engine has never heard of spells whatever its charter wrote. A name that will not fit is shrunk first and cut short only when shrinking would make it a smear.
 - **Colour is per sign, seeded per building.** `src/sign/palette.ts` is cyan and teal heavy with magenta, amber, crimson, lime and violet against them. A building draws one hue and its later signs draw against that one, so no two signs on a facade wear the same colour and a run of buildings is not one long stripe.
 - **A panel is opaque and so are the letters on it.** A letter quad paints the panel colour where the letter is not, so panel and letters are one surface with no blending and nothing to sort. The colours ride on the vertices (`signInk`, `signPanel`, `signGlow`), which is what lets one material draw every sign in the city.
+- **A sign is its panel and its letters, and nothing else is laid over it.** A letter stands `SIGN.layer` (1 cm) off the panel, the lift `@gb/scene` puts road paint on, so the two are separate surfaces at every distance a sign is read from. Nothing thin lies on a panel: a 5 cm bar is 15 px at 5 m and 4 px at 20 m, and a line that thin over a surface a centimetre behind it reads as a dotted rule down the facade rather than as a sign. What is a bar of light (the lamp at a door, a tube up a corner) is a sign of its own and covers its whole panel.
+- **A nameplate lit from behind is a surface, not a tube.** A trade that shouts lights one nameplate in three from behind: the panel burns and the letters are dark on it. A tube is a few centimetres wide and runs past its own colour, 1.7 to 2.75 times it once the hue's own glow goes through `SIGN.glow`; a panel four metres long may not, so a lit box lands on its own colour and never past it, 0.4 of the hue's glow through the same `SIGN.glow`. The biggest one in a town of 120 plots is 5.3 square metres and throws 107 cd.
 - **Nothing glows in daylight.** The emissive is the ink through the letter, the panel behind it, times the city's own night level, so at noon a sign is a painted panel lit by the sun and `setTime` brings the tubes up with everything else. The halo round a lit tube is the app's bloom pass, never geometry.
 - **Every sign is a light.** `lightsFor` answers one emitter per sign, strip and door lamp: its colour is whatever burns, its candela is the lit area times the emissive (20 cd a square metre for a tube, 120 for a lamp), and it sits 20 cm off a flat panel so it reaches the wall round it. The scene draws them; this box only says where they are.
 
@@ -135,6 +137,7 @@ The kit is authored bright: red brick and pale concrete. `flavourOf(theme)` read
 - One world unit is one metre. Wall pieces are 2 m across and 3 m tall; the ground floor is `METRICS.building.groundFloorHeight` and closes with the kit's own metre-tall band, and storeys above stretch their module the 7% it takes to reach `METRICS.building.storeyHeight`.
 - A building's walls stand on the plot boundary. Window and trim relief reaches up to `RELIEF` (0.05 m) past it on each face, a flat sign stands `SIGN.stand` (0.08 m) off it, a sign hanging over the street reaches `SIGN.stand + SIGN.reach` (1.23 m), a camera reaches 0.38 m off the front, and a station's entrance covers its doorstep cell, one cell past the front and no wider than the cell, down to `SUBWAY.well.depth` under the pavement. Nothing else does.
 - Every sign lies on the wall it names: a flat one looks the way the wall does and stands `SIGN.stand` off its plane, a hung one starts there and reaches out at a right angle. No two signs on one wall overlap, no letter is taller than `LETTER_SHARE` of the fascia, and a door lamp is no wider than `DOORLAMP.width`, no taller than the door head plus `DOORLAMP.overhead`, and never brighter than its own colour. All four are measured over a generated town in `tests/signs.test.ts`.
+- No two quads of a sign lie in one plane over each other, and every full-cover quad is a sign of its own rather than a bar across a panel. A whole panel alight never burns past its own colour. All three are measured over a generated town in `tests/signs.test.ts`.
 - Every sign has a light, in the same order `signsFor` lists them, so the two can be read side by side. The subway box is the last sign in a station's list.
 - A camera is hung only where its charter is `private`, an entrance only where it is `transit: subway`, and each stands where the door and the doorstep put it: same plot, same fixtures, whatever else changes. Both are measured over a generated town in `tests/fixtures.test.ts`.
 - A building is exactly as tall as the height it was given: the roof deck sits 0.2 m below the wall top, so the walls read as a parapet round it.
@@ -169,7 +172,7 @@ Measured headless in Node on 350 buildings round 49 blocks of a 157 by 147 town,
 | | meshes | draws at the spawn | triangles at the spawn |
 |---|---|---|---|
 | buildings, in `@gb/scene`'s batches | 5 | 5 | 1,925,087 of 2,941,704 |
-| every sign in the city, in one more batch | 1 | 1 | 2,088 of 31,312 |
+| every sign in the city, in one more batch | 1 | 1 | one instance a building, culled with it |
 
 A building is 8,405 triangles over 4.2 kit materials. It costs no draw of its own: `@gb/scene` puts every building on one material into one buffer, so a town of any size is a draw per material. What this box owes that arrangement is indexed meshes on shared materials, which is what welding a building's pieces per material already produces.
 
@@ -196,7 +199,7 @@ Windows and their rooms add no draw and no triangle: they ride on the panes the 
 
 A subway entrance is 192 triangles on three kit materials and a camera is 36 on one, welded into the building's own meshes; the box over the entrance is a sign like any other, so a station adds no draw to the town.
 
-Signage is one draw for the city and about 1% of its triangles. A building carries 4.9 signs (two of them the door lamps) and 40.5 quads, 81 triangles, against the 8,405 the walls cost: a house has three signs on it and a bar has seven. The one draw is the whole design. A sign per building as its own mesh would have been 350 draws and would have undone the batching; instead every letter is a quad on one shared material, the colours ride on the vertices, and the count is one however large the town is. Measured on the same street, hiding the sign batch takes the frame from 22 draws and 440,080 triangles to 21 and 437,342.
+Signage is one draw for the city and well under 1% of its triangles. Measured on a town of 350 plots: a building carries 5.1 signs (two of them the door lamps) and 37.2 quads, 74.5 triangles, 26,066 for the town, against the 8,405 the walls cost: a house has three signs on it and a bar has seven. The one draw is the whole design. A sign per building as its own mesh would have been 350 draws and would have undone the batching; instead every letter is a quad on one shared material, the colours ride on the vertices, and the count is one however large the town is.
 
 The tone costs nothing extra: it is the same materials with a tint and two texture fetches on them, so the buildings draw with exactly the materials they drew with before.
 
