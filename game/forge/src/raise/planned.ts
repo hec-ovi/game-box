@@ -1,5 +1,5 @@
 import type { Rng } from '@gb/kit'
-import type { Anchor, BodyKind, BuildingKind, ItemArchetype, NpcRole } from '@gb/world'
+import type { Anchor, BodyKind, ItemArchetype, NpcRole, ResolvedCharter } from '@gb/world'
 import type { InteriorPlan } from '../interior/plan.ts'
 import type { PlotSite } from '../layout/plots.ts'
 
@@ -10,7 +10,8 @@ import type { PlotSite } from '../layout/plots.ts'
  */
 export interface Chosen {
   readonly site: PlotSite
-  readonly kind: BuildingKind
+  /** What kind of place goes up here. */
+  readonly charter: ResolvedCharter
   readonly storeys: number
   /** Whether its door is on one of the town's avenues. */
   readonly onAvenue: boolean

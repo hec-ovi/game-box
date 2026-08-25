@@ -1,4 +1,4 @@
-import type { BuildingKind } from '@gb/world'
+import type { Word } from '@gb/world'
 import type { Flavour } from '../theme/flavour.ts'
 import { TRADES, TURNS } from './wording.generated.ts'
 
@@ -10,11 +10,13 @@ import { TRADES, TURNS } from './wording.generated.ts'
  * `wording.generated.ts`; nothing here is written in code.
  */
 
-/** How one entry moves the mix: kinds it wants more of, fewer of, and one the town has to hold. */
+/** How one entry moves the mix: kinds it wants more of, fewer of, one the town has to hold, and any it declares itself. */
 export interface Kinds {
-  readonly more: readonly BuildingKind[]
-  readonly fewer: readonly BuildingKind[]
-  readonly must: readonly BuildingKind[]
+  readonly more: readonly Word[]
+  readonly fewer: readonly Word[]
+  readonly must: readonly Word[]
+  /** Kinds of place from `premise/places.ts` this entry founds the town with. */
+  readonly declares: readonly Word[]
 }
 
 /** What a town lives on: why it is here, and the noun it is often named after. */

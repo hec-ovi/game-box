@@ -1,5 +1,5 @@
 import { Rng } from '@gb/kit'
-import type { BuildingKind } from '@gb/world'
+import type { Charter } from '@gb/world'
 import { flavourOf } from '../theme/flavour.ts'
 import { wordsFor } from '../theme/words.ts'
 import { NamePool } from './name-pool.ts'
@@ -26,8 +26,8 @@ export class Signs {
   }
 
   /** The sign over one door. Same seed, same theme, same story, same index: same sign. */
-  over(kind: BuildingKind, theme: string, index: number, premise?: string): string {
-    return placeName(kind, index, this.#pool(theme, premise), this.#rng.fork(`place/${index}`))
+  over(charter: Charter, theme: string, index: number, premise?: string): string {
+    return placeName(charter, index, this.#pool(theme, premise), this.#rng.fork(`place/${index}`))
   }
 
   /** One pool per town: the same theme and story deal the same heads. */

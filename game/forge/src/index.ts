@@ -6,6 +6,9 @@ export { premiseLines } from './premise/render.ts'
 export { questTargets } from './quests/targets.ts'
 /** The history's own shape is `@gb/world`'s. Passed through here while `@gb/scribe` still reads it off this box. */
 export { premiseContract, type Premise } from '@gb/world'
+/** What a narrator writes as a history: the premise, and the kinds of place it declares. */
+export { historyContract, HistorySchema, type History } from './premise/shape.ts'
+export type { Dropped } from './charters/resolve.ts'
 export type {
   Instance,
   InstancePerson,
@@ -16,6 +19,7 @@ export type {
   ItemProfile,
   Narrator,
   NpcProfile,
+  PlaceRequest,
   WorldSummary,
 } from './narrator.ts'
 export { BANDS, MOUNTAIN_CELLS, RoadBand, type BandKind } from './layout/bands.ts'

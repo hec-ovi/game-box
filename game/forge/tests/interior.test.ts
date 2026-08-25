@@ -1,5 +1,5 @@
 import { Rng } from '@gb/kit'
-import { BUILDING_KINDS, type Anchor, type BuildingKind, type Furniture, type FurnitureProp, type Interior, type Room } from '@gb/world'
+import { SHIPPED_CHARTERS, type Anchor, type Charter, type Furniture, type FurnitureProp, type Interior, type Room, type Word } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { DOORSTEP } from '../src/interior/doors.ts'
 import { boxAt, dirOf, holds, inBox, inward, overlaps, SIDES, type Box, type Side, type Vec } from '../src/interior/geometry.ts'
@@ -24,20 +24,23 @@ const SIZES = [
 const FACINGS: Side[] = ['north', 'east', 'south', 'west']
 const SEEDS = ['alpha', 'bravo', 'charlie', 'delta', 'echo']
 
-function plan(kind: BuildingKind, seed: string, size = SIZES[1]!, entrance: Side = 'north'): InteriorPlan {
+/** The preset charter behind a word. */
+const charterOf = (word: Word): Charter => SHIPPED_CHARTERS.find((charter) => charter.word === word)!
+
+function plan(charter: Charter, seed: string, size = SIZES[1]!, entrance: Side = 'north'): InteriorPlan {
   let minted = 0
   const mint = (thing: string) => `${thing}_${String(++minted).padStart(4, '0')}`
-  return planInterior({ kind, size, entrance, wants: { dancing: false }, mint, rng: new Rng(seed) })
+  return planInterior({ charter, size, entrance, wants: { dancing: false }, mint, rng: new Rng(seed) })
 }
 
 /** Every plan a sweep over kinds, seeds, shapes and which way the door faces. */
-function everyPlan(): Array<{ kind: BuildingKind; seed: string; size: { w: number; h: number }; entrance: Side; made: InteriorPlan }> {
+function everyPlan(): Array<{ kind: Word; seed: string; size: { w: number; h: number }; entrance: Side; made: InteriorPlan }> {
   const all = []
-  for (const kind of BUILDING_KINDS) {
+  for (const charter of SHIPPED_CHARTERS) {
     for (const [index, seed] of SEEDS.entries()) {
       const size = SIZES[index % SIZES.length]!
       const entrance = FACINGS[index % FACINGS.length]!
-      all.push({ kind, seed, size, entrance, made: plan(kind, seed, size, entrance) })
+      all.push({ kind: charter.word, seed, size, entrance, made: plan(charter, seed, size, entrance) })
     }
   }
   return all
@@ -459,7 +462,7 @@ describe('interior plans', () => {
     for (const seed of SEEDS) {
       let minted = 0
       const mint = (thing: string) => `${thing}_${String(++minted).padStart(4, '0')}`
-      const club = planInterior({ kind: 'bar', size: SIZES[2]!, entrance: 'north', wants: { dancing: true }, mint, rng: new Rng(seed) })
+      const club = planInterior({ charter: charterOf('bar'), size: SIZES[2]!, entrance: 'north', wants: { dancing: true }, mint, rng: new Rng(seed) })
       const dancers = club.anchors.filter((anchor) => anchor.kind === 'dance')
       dancing += dancers.length
       for (const dancer of dancers) {
@@ -473,12 +476,12 @@ describe('interior plans', () => {
   })
 
   it('gives the same interior for the same seed and a different one otherwise', () => {
-    for (const kind of BUILDING_KINDS) {
-      const once = JSON.stringify(plan(kind, 'repeat'))
-      const twice = JSON.stringify(plan(kind, 'repeat'))
-      const other = JSON.stringify(plan(kind, 'elsewhere'))
-      expect(once, `${kind} is not repeatable`).toEqual(twice)
-      expect(once, `${kind} ignores its seed`).not.toEqual(other)
+    for (const charter of SHIPPED_CHARTERS) {
+      const once = JSON.stringify(plan(charter, 'repeat'))
+      const twice = JSON.stringify(plan(charter, 'repeat'))
+      const other = JSON.stringify(plan(charter, 'elsewhere'))
+      expect(once, `${charter.word} is not repeatable`).toEqual(twice)
+      expect(once, `${charter.word} ignores its seed`).not.toEqual(other)
     }
 
     // and the whole sweep, so nothing shared between plans can leak from one into the next
@@ -486,7 +489,7 @@ describe('interior plans', () => {
   })
 
   it('makes each kind of building recognisable from the inside', () => {
-    const signature: Record<BuildingKind, { props: string[]; anchors: string[] }> = {
+    const signature: Record<Word, { props: string[]; anchors: string[] }> = {
       bar: { props: ['bar-counter', 'bar-stool'], anchors: ['serve', 'sit-drink'] },
       cafe: { props: ['counter', 'table'], anchors: ['serve', 'sit'] },
       restaurant: { props: ['table', 'chair'], anchors: ['serve', 'sit'] },
@@ -503,10 +506,11 @@ describe('interior plans', () => {
       chapel: { props: ['chair'], anchors: ['sit', 'stand'] },
     }
 
-    for (const kind of BUILDING_KINDS) {
-      const want = signature[kind]
+    for (const charter of SHIPPED_CHARTERS) {
+      const kind = charter.word
+      const want = signature[kind]!
       for (const seed of SEEDS) {
-        const made = plan(kind, seed, { w: 9.6, h: 11.6 })
+        const made = plan(charter, seed, { w: 9.6, h: 11.6 })
         const props = new Set(made.furniture.map((piece) => piece.prop))
         const anchors = new Set(made.anchors.map((anchor) => anchor.kind))
         for (const prop of want.props) expect([...props], `${kind}/${seed} has no ${prop}`).toContain(prop)

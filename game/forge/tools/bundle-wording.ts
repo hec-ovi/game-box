@@ -7,6 +7,7 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { PLACES } from '../src/premise/places.ts'
 import { FLAVOURS } from '../src/theme/flavour.ts'
 
 const root = join(import.meta.dirname, '..')
@@ -59,8 +60,15 @@ function fits(entry: Entry): string[] {
 const quote = (value: string): string => JSON.stringify(value)
 const quoted = (values: readonly string[]): string => `[${values.map(quote).join(', ')}]`
 
+/** The kinds an entry declares have to exist in `premise/places.ts`, or the composer would found a town on nothing. */
+function declares(entry: Entry): string[] {
+  const words = list(entry, 'declares')
+  for (const word of words) if (!PLACES[word]) throw new Error(`${entry.handle}: declares ${word}, which premise/places.ts does not hold`)
+  return words
+}
+
 function kinds(entry: Entry): string {
-  return `more: ${quoted(list(entry, 'more'))}, fewer: ${quoted(list(entry, 'fewer'))}, must: ${quoted(list(entry, 'must'))}`
+  return `more: ${quoted(list(entry, 'more'))}, fewer: ${quoted(list(entry, 'fewer'))}, must: ${quoted(list(entry, 'must'))}, declares: ${quoted(declares(entry))}`
 }
 
 function trade(entry: Entry): string {

@@ -1,5 +1,5 @@
 import type { Rng } from '@gb/kit'
-import type { BuildingKind } from '@gb/world'
+import type { ResolvedCharter, Word } from '@gb/world'
 import { DoorBudget } from './budget.ts'
 import { drawOf, NEEDS, pullOf } from './draw.ts'
 
@@ -26,14 +26,6 @@ const NUDGE = 5
 const SPINE = 1
 
 /**
- * What a door the town's own history demands is worth: as much as a counter
- * with somebody permanently behind it. A surgery the flood put there is a door
- * the story means the player to walk into, so it is ranked like one rather than
- * left to the odds of a lock-up.
- */
-const STORIED = 3
-
-/**
  * What each door of a kind the town already opens costs the next one of the
  * same kind. A player meets a town one door at a time, and six restaurants is
  * one restaurant met six times.
@@ -52,7 +44,8 @@ const MOST_AGAIN = 2
 export interface Frontage {
   /** The caller's handle for it; it is what comes back in the set. */
   readonly id: string
-  readonly kind: BuildingKind
+  /** What kind of place it is. */
+  readonly charter: ResolvedCharter
   /** How near the middle of town it stands, 1 at the centre and 0 at the edge. */
   readonly nearness: number
   /** Whether its door is on an avenue: the spine everybody walks and drives. */
@@ -66,7 +59,7 @@ export interface Town {
   /** Buildings already standing, this batch not counted. */
   readonly built: number
   /** The kinds of place already open, which is what the town's needs are measured against. */
-  readonly open: readonly BuildingKind[]
+  readonly open: readonly ResolvedCharter[]
 }
 
 /**
@@ -80,7 +73,9 @@ export interface Town {
  * same town twice over is not the same list of shops. Whatever the ranking says,
  * a town still ends up with somewhere to sit, buy, sleep and work, because those
  * come out of the allowance first, and any of them the town already has open is
- * not bought twice.
+ * not bought twice; and a kind of place its history demands opens one door
+ * next, because a lock-up the story is about is a door the player is meant to
+ * try, and the rest of that kind then compete on what they hold like any other.
  */
 export function openDoors(frontages: readonly Frontage[], rng: Rng, town: Town): ReadonlySet<string> {
   if (!frontages.length) return new Set()
@@ -90,32 +85,39 @@ export function openDoors(frontages: readonly Frontage[], rng: Rng, town: Town):
     frontage,
     at,
     score:
-      pullOf(frontage.kind) +
+      pullOf(frontage.charter) +
       frontage.nearness * 2 +
       (frontage.onAvenue ? SPINE : 0) +
-      (frontage.storied ? STORIED : 0) +
       rng.range(0, NUDGE),
   }))
   // two doors worth exactly the same open in the order they were put up
   scored.sort((a, b) => b.score - a.score || a.at - b.at)
 
   const open = new Set<string>()
-  const already = new Map<BuildingKind, number>()
-  for (const kind of town.open) already.set(kind, (already.get(kind) ?? 0) + 1)
+  const already = new Map<Word, number>()
+  for (const charter of town.open) already.set(charter.word, (already.get(charter.word) ?? 0) + 1)
 
   const standing = town.open.map(drawOf)
 
   for (const [, met] of NEEDS) {
     if (open.size >= budget.spare) break
     if (standing.some(met)) continue
-    const best = scored.find((candidate) => !open.has(candidate.frontage.id) && met(drawOf(candidate.frontage.kind)))
+    const best = scored.find((candidate) => !open.has(candidate.frontage.id) && met(drawOf(candidate.frontage.charter)))
     if (!best) continue
     open.add(best.frontage.id)
     // a place bought for one need answers the next one too: a shop with chairs
     // in it is somewhere to sit as well as somewhere to buy something, and a
     // town of six doors cannot spend four of them twice over
-    standing.push(drawOf(best.frontage.kind))
-    already.set(best.frontage.kind, (already.get(best.frontage.kind) ?? 0) + 1)
+    standing.push(drawOf(best.frontage.charter))
+    already.set(best.frontage.charter.word, (already.get(best.frontage.charter.word) ?? 0) + 1)
+  }
+
+  for (const candidate of scored) {
+    if (open.size >= budget.spare) break
+    const word = candidate.frontage.charter.word
+    if (!candidate.frontage.storied || open.has(candidate.frontage.id) || already.has(word)) continue
+    open.add(candidate.frontage.id)
+    already.set(word, 1)
   }
 
   spread(scored, open, already, budget.spare)
@@ -136,20 +138,20 @@ interface Ranked {
  * of that kind it already opens.
  *
  * The ranking is walked kind by kind rather than straight down, so the cost of
- * a repeat is paid once per pick against fourteen heads and not against the
+ * a repeat is paid once per pick against a head per kind and not against the
  * whole town: a city of six thousand buildings picks its doors in the same time
  * a hamlet does.
  */
-function spread(scored: readonly Ranked[], open: Set<string>, already: Map<BuildingKind, number>, allowance: number): void {
-  const queues = new Map<BuildingKind, Ranked[]>()
+function spread(scored: readonly Ranked[], open: Set<string>, already: Map<Word, number>, allowance: number): void {
+  const queues = new Map<Word, Ranked[]>()
   for (const candidate of scored) {
     if (open.has(candidate.frontage.id)) continue
-    const queue = queues.get(candidate.frontage.kind)
+    const queue = queues.get(candidate.frontage.charter.word)
     if (queue) queue.push(candidate)
-    else queues.set(candidate.frontage.kind, [candidate])
+    else queues.set(candidate.frontage.charter.word, [candidate])
   }
 
-  const heads = new Map<BuildingKind, number>()
+  const heads = new Map<Word, number>()
   while (open.size < allowance) {
     let best: Ranked | undefined
     let worth = -Infinity
@@ -163,7 +165,7 @@ function spread(scored: readonly Ranked[], open: Set<string>, already: Map<Build
       }
     }
     if (!best) return
-    const kind = best.frontage.kind
+    const kind = best.frontage.charter.word
     open.add(best.frontage.id)
     heads.set(kind, (heads.get(kind) ?? 0) + 1)
     already.set(kind, (already.get(kind) ?? 0) + 1)

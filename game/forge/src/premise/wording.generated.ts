@@ -2,21 +2,21 @@
 import type { Trade, Turn } from './wording.ts'
 
 export const TRADES: readonly Trade[] = [
-  { handle: "the seam", fits: ["frontier"], lives: "the ore still coming out of the hill", word: "Seam", more: ["workshop", "warehouse", "bar"], fewer: ["office", "cafe"], must: ["workshop"] },
-  { handle: "the freight road", fits: ["frontier"], lives: "the freight road, and everybody who has to stop on it", word: "Halt", more: ["hotel", "bar", "station"], fewer: ["office", "apartment"], must: ["hotel"] },
-  { handle: "the harbour", fits: ["coastal"], lives: "the harbour, and whatever still ties up at it", word: "Wharf", more: ["warehouse", "market", "cafe"], fewer: ["office"], must: ["market"] },
-  { handle: "the fleet", fits: ["coastal"], lives: "the boats that go out before light and the market that meets them", word: "Slip", more: ["market", "restaurant", "bar"], fewer: ["office", "apartment"], must: ["restaurant"] },
-  { handle: "the works", fits: ["industrial"], lives: "the works at the end of the street, and the shifts it keeps", word: "Kiln", more: ["workshop", "warehouse", "apartment"], fewer: ["hotel", "chapel"], must: ["workshop"] },
-  { handle: "the marshalling yard", fits: ["industrial"], lives: "the yard where everything the region makes is put on a train", word: "Gantry", more: ["station", "warehouse", "bar"], fewer: ["chapel", "restaurant"], must: ["station"] },
-  { handle: "the towers", fits: ["neon"], lives: "the towers, and the people stacked up around them who keep them lit", word: "Tier", more: ["apartment", "office", "cafe"], fewer: ["house", "chapel"], must: ["office"] },
-  { handle: "the clinics", fits: ["neon"], lives: "the clinics that will put anything in you, and the money that comes to them", word: "Ward", more: ["clinic", "apartment", "bar"], fewer: ["house", "chapel"], must: ["clinic"] },
-  { handle: "the pass", fits: ["alpine"], lives: "the pass, and the traffic that has to wait for it to clear", word: "Refuge", more: ["hotel", "cafe", "chapel"], fewer: ["office", "warehouse"], must: ["hotel"] },
-  { handle: "the timber", fits: ["alpine"], lives: "the timber coming down off the slope all winter", word: "Stack", more: ["workshop", "warehouse", "bar"], fewer: ["office", "clinic"], must: ["workshop"] },
-  { handle: "the fields", fits: ["agrarian"], lives: "the fields either side of it, and the one road their harvest goes out on", word: "Grange", more: ["market", "warehouse", "chapel"], fewer: ["office", "apartment"], must: ["market"] },
-  { handle: "the market day", fits: ["agrarian"], lives: "one market day a week that the rest of the county comes to", word: "Cross", more: ["market", "restaurant", "hotel"], fewer: ["office", "workshop"], must: ["hotel"] },
-  { handle: "the crossroads", fits: ["plain"], lives: "the crossroads, and the trade that stops here because it has to", word: "Turn", more: ["shop", "hotel", "bar"], fewer: ["warehouse"], must: ["shop"] },
-  { handle: "the college", fits: ["plain"], lives: "the college on the hill, and everything that grew up to feed it", word: "Campus", more: ["cafe", "apartment", "shop", "office"], fewer: ["warehouse", "workshop"], must: ["cafe"] },
-  { handle: "the clubs", fits: ["neon"], lives: "the clubs that open at midnight, and the dancing that keeps the street lit till the trains start", word: "Beat", more: ["bar", "apartment", "hotel"], fewer: ["chapel", "house"], must: ["bar"] },
+  { handle: "the seam", fits: ["frontier"], lives: "the ore still coming out of the hill", word: "Seam", more: ["workshop", "warehouse", "bar"], fewer: ["office", "cafe"], must: ["workshop"], declares: [] },
+  { handle: "the freight road", fits: ["frontier"], lives: "the freight road, and everybody who has to stop on it", word: "Halt", more: ["hotel", "bar", "station"], fewer: ["office", "apartment"], must: ["hotel"], declares: [] },
+  { handle: "the harbour", fits: ["coastal"], lives: "the harbour, and whatever still ties up at it", word: "Wharf", more: ["warehouse", "market", "cafe"], fewer: ["office"], must: ["market"], declares: [] },
+  { handle: "the fleet", fits: ["coastal"], lives: "the boats that go out before light and the market that meets them", word: "Slip", more: ["market", "restaurant", "bar"], fewer: ["office", "apartment"], must: ["restaurant"], declares: [] },
+  { handle: "the works", fits: ["industrial"], lives: "the works at the end of the street, and the shifts it keeps", word: "Kiln", more: ["workshop", "warehouse", "apartment"], fewer: ["hotel", "chapel"], must: ["workshop"], declares: [] },
+  { handle: "the marshalling yard", fits: ["industrial"], lives: "the yard where everything the region makes is put on a train", word: "Gantry", more: ["station", "warehouse", "bar"], fewer: ["chapel", "restaurant"], must: ["station"], declares: [] },
+  { handle: "the towers", fits: ["neon"], lives: "the towers, and the people stacked up around them who keep them lit", word: "Tier", more: ["apartment", "office", "cafe"], fewer: ["house", "chapel"], must: ["office"], declares: [] },
+  { handle: "the clinics", fits: ["neon"], lives: "the clinics that will put anything in you, and the money that comes to them", word: "Ward", more: ["clinic", "apartment", "bar"], fewer: ["house", "chapel"], must: ["clinic"], declares: [] },
+  { handle: "the pass", fits: ["alpine"], lives: "the pass, and the traffic that has to wait for it to clear", word: "Refuge", more: ["hotel", "cafe", "chapel"], fewer: ["office", "warehouse"], must: ["hotel"], declares: [] },
+  { handle: "the timber", fits: ["alpine"], lives: "the timber coming down off the slope all winter", word: "Stack", more: ["workshop", "warehouse", "bar"], fewer: ["office", "clinic"], must: ["workshop"], declares: [] },
+  { handle: "the fields", fits: ["agrarian"], lives: "the fields either side of it, and the one road their harvest goes out on", word: "Grange", more: ["market", "warehouse", "chapel"], fewer: ["office", "apartment"], must: ["market"], declares: [] },
+  { handle: "the market day", fits: ["agrarian"], lives: "one market day a week that the rest of the county comes to", word: "Cross", more: ["market", "restaurant", "hotel"], fewer: ["office", "workshop"], must: ["hotel"], declares: [] },
+  { handle: "the crossroads", fits: ["plain"], lives: "the crossroads, and the trade that stops here because it has to", word: "Turn", more: ["shop", "hotel", "bar"], fewer: ["warehouse"], must: ["shop"], declares: [] },
+  { handle: "the college", fits: ["plain"], lives: "the college on the hill, and everything that grew up to feed it", word: "Campus", more: ["cafe", "apartment", "shop", "office"], fewer: ["warehouse", "workshop"], must: ["cafe"], declares: [] },
+  { handle: "the clubs", fits: ["neon"], lives: "the clubs that open at midnight, and the dancing that keeps the street lit till the trains start", word: "Beat", more: ["bar", "disco", "apartment", "hotel"], fewer: ["chapel", "house"], must: ["disco"], declares: ["disco"] },
 ]
 
 export const TURNS: readonly Turn[] = [
@@ -27,7 +27,7 @@ export const TURNS: readonly Turn[] = [
     stake: "who ends up holding the empty sheds",
     sides: [{ name: "the families who worked it", wants: "the sheds kept shut until the work comes back" }, { name: "the receivers holding the debt", wants: "the whole lot sold on before it rots" }],
     known: ["half the buildings on the water belong to somebody who has never been here", "the last load out went eleven months ago and people still date things from it"],
-    more: ["warehouse", "bar"], fewer: ["hotel", "office"], must: ["warehouse"],
+    more: ["warehouse", "bar"], fewer: ["hotel", "office"], must: ["warehouse"], declares: [],
   },
   {
     handle: "the fire",
@@ -36,7 +36,7 @@ export const TURNS: readonly Turn[] = [
     stake: "who gets to say what goes up on the burnt ground",
     sides: [{ name: "the people who lost the streets", wants: "their own houses back on their own ground" }, { name: "the developers rebuilding it", wants: "something on that ground worth more than what burned" }],
     known: ["the burnt ground is still fenced, and the fence is a shortcut everybody uses", "nobody has been told how the fire started"],
-    more: ["workshop", "clinic", "chapel"], fewer: ["hotel"], must: ["clinic"],
+    more: ["workshop", "clinic", "chapel"], fewer: ["hotel"], must: ["clinic"], declares: [],
   },
   {
     handle: "the sickness",
@@ -45,7 +45,7 @@ export const TURNS: readonly Turn[] = [
     stake: "whether the town admits it is smaller than it was",
     sides: [{ name: "the people who kept the surgery open", wants: "the town counted honestly and helped" }, { name: "the council", wants: "the whole thing behind them and the visitors back" }],
     known: ["the ward at the clinic has been full since before the winter", "a third of the doors on some streets have nobody behind them"],
-    more: ["clinic", "chapel", "apartment"], fewer: ["restaurant", "hotel"], must: ["clinic"],
+    more: ["clinic", "chapel", "apartment"], fewer: ["restaurant", "hotel"], must: ["clinic"], declares: [],
   },
   {
     handle: "the new money",
@@ -54,7 +54,7 @@ export const TURNS: readonly Turn[] = [
     stake: "who the town is going to belong to",
     sides: [{ name: "the people who were already here", wants: "rents that somebody who works here can pay" }, { name: "the buyers", wants: "every corner of it worth what they paid for it" }],
     known: ["three of the best corners changed hands in one week and nobody local was told", "the rent on a room has doubled since the spring"],
-    more: ["office", "hotel", "cafe"], fewer: ["workshop", "house"], must: ["office"],
+    more: ["office", "hotel", "cafe"], fewer: ["workshop", "house"], must: ["office"], declares: [],
   },
   {
     handle: "the strike",
@@ -63,7 +63,7 @@ export const TURNS: readonly Turn[] = [
     stake: "whether the work starts again on the old terms",
     sides: [{ name: "the ones out on strike", wants: "the terms they had back, in writing" }, { name: "the owners", wants: "the gates open on Monday, whoever walks through them" }],
     known: ["the gates have been chained since the second week", "somebody is paying for the food outside the gates and nobody will say who"],
-    more: ["bar", "workshop", "chapel"], fewer: ["office", "hotel"], must: ["bar"],
+    more: ["bar", "workshop", "chapel"], fewer: ["office", "hotel"], must: ["bar"], declares: [],
   },
   {
     handle: "the flood",
@@ -72,7 +72,7 @@ export const TURNS: readonly Turn[] = [
     stake: "whether the low streets are worth saving",
     sides: [{ name: "the low streets", wants: "the wall built and their houses kept" }, { name: "the high streets", wants: "everybody moved up and the low ground given back" }],
     known: ["the tide mark is painted on the chapel wall, above the door", "the pumps have run every night since March"],
-    more: ["clinic", "warehouse", "workshop"], fewer: ["apartment", "office"], must: ["clinic"],
+    more: ["clinic", "warehouse", "workshop"], fewer: ["apartment", "office"], must: ["clinic"], declares: [],
   },
   {
     handle: "the find",
@@ -81,7 +81,7 @@ export const TURNS: readonly Turn[] = [
     stake: "who has the right to what is under the ground",
     sides: [{ name: "the people who live over it", wants: "a share for the street it runs under" }, { name: "the company with the paperwork", wants: "the claim worked before the season turns" }],
     known: ["there are more strangers in town than there are beds", "two families have stopped speaking over one boundary line"],
-    more: ["workshop", "bar", "hotel"], fewer: ["chapel", "cafe"], must: ["hotel"],
+    more: ["workshop", "bar", "hotel"], fewer: ["chapel", "cafe"], must: ["hotel"], declares: [],
   },
   {
     handle: "the shutdown",
@@ -90,7 +90,7 @@ export const TURNS: readonly Turn[] = [
     stake: "who gets trusted to hold the town's records now",
     sides: [{ name: "the people who kept paper", wants: "everything written down where a person can read it" }, { name: "the operators", wants: "the system back up and everybody on it again" }],
     known: ["nine days of records are simply gone, and nobody agrees what was in them", "half the town is being asked to prove things it proved years ago"],
-    more: ["office", "shop", "clinic"], fewer: ["station", "warehouse"], must: ["office"],
+    more: ["office", "shop", "clinic"], fewer: ["station", "warehouse"], must: ["office"], declares: [],
   },
   {
     handle: "the road out",
@@ -99,7 +99,7 @@ export const TURNS: readonly Turn[] = [
     stake: "whether being on the way is worth what it costs",
     sides: [{ name: "the people who trade with the traffic", wants: "more of it, and faster" }, { name: "the old streets", wants: "the traffic put round the town rather than through it" }],
     known: ["the freight comes through at night and nobody on that street sleeps well", "two shops that had stood thirty years shut in the same month"],
-    more: ["hotel", "cafe", "station", "shop"], fewer: ["house", "chapel"], must: ["station"],
+    more: ["hotel", "cafe", "station", "shop"], fewer: ["house", "chapel"], must: ["station"], declares: [],
   },
   {
     handle: "the arrival",
@@ -108,6 +108,6 @@ export const TURNS: readonly Turn[] = [
     stake: "where the people who came are supposed to go",
     sides: [{ name: "the ones who arrived", wants: "somewhere to live that is not temporary" }, { name: "the streets that were here first", wants: "the arrangement kept to what was agreed" }],
     known: ["the old station hall has people sleeping in it", "the market has doubled in size and half of it is new"],
-    more: ["apartment", "clinic", "market"], fewer: ["office", "restaurant"], must: ["apartment"],
+    more: ["apartment", "clinic", "market"], fewer: ["office", "restaurant"], must: ["apartment"], declares: [],
   },
 ]

@@ -1,12 +1,8 @@
 import type { Rng } from '@gb/kit'
-import type { BuildingKind } from '@gb/world'
 import { clamp, round, type Box, type Side } from './geometry.ts'
-import { PROGRAMMES, type Programme, type RoomRole, type ServiceSpec } from './recipes.ts'
+import type { Programme, RoomSpec, ServiceSpec } from './recipes.ts'
 
-export interface RoomBox {
-  readonly kind: Programme['main']['kind']
-  readonly name: string
-  readonly role: RoomRole
+export interface RoomBox extends RoomSpec {
   readonly rect: Box
 }
 
@@ -59,8 +55,7 @@ class Frame {
  * either across the back or down one side. Which of those happens depends on the
  * seed and on what actually fits, so two bars of the same size read differently.
  */
-export function cutRooms(kind: BuildingKind, size: { w: number; h: number }, entrance: Side, rng: Rng): RoomBox[] {
-  const programme = PROGRAMMES[kind]
+export function cutRooms(programme: Programme, size: { w: number; h: number }, entrance: Side, rng: Rng): RoomBox[] {
   const frame = new Frame(size, entrance)
   const { front, depth } = frame
 
@@ -78,20 +73,20 @@ export function cutRooms(kind: BuildingKind, size: { w: number; h: number }, ent
 
   const boxes: RoomBox[] = []
   if (hallDepth > 0 && programme.hall) {
-    boxes.push({ kind: programme.hall.kind, name: programme.hall.name, role: 'hall', rect: frame.rect(0, 0, front, hallDepth) })
+    boxes.push({ ...spec(programme.hall), rect: frame.rect(0, 0, front, hallDepth) })
   }
 
   if (band === 0) {
-    boxes.push({ ...programme.main, role: 'main', rect: frame.rect(0, hallDepth, front, bodyDepth) })
+    boxes.push({ ...spec(programme.main), rect: frame.rect(0, hallDepth, front, bodyDepth) })
     return boxes
   }
 
   if (alongBack) {
     const mainDepth = bodyDepth - band
-    boxes.push({ ...programme.main, role: 'main', rect: frame.rect(0, hallDepth, front, mainDepth) })
+    boxes.push({ ...spec(programme.main), rect: frame.rect(0, hallDepth, front, mainDepth) })
     let at = 0
     for (const room of order(wanted, front, rng)) {
-      boxes.push({ kind: room.spec.kind, name: room.spec.name, role: 'service', rect: frame.rect(at, hallDepth + mainDepth, room.span, band) })
+      boxes.push({ ...spec(room.spec), rect: frame.rect(at, hallDepth + mainDepth, room.span, band) })
       at += room.span
     }
     return boxes
@@ -100,22 +95,19 @@ export function cutRooms(kind: BuildingKind, size: { w: number; h: number }, ent
   const stripLow = rng.chance(0.5)
   const mainFront = front - band
   boxes.push({
-    ...programme.main,
-    role: 'main',
+    ...spec(programme.main),
     rect: frame.rect(stripLow ? band : 0, hallDepth, mainFront, bodyDepth),
   })
   let at = hallDepth
   for (const room of order(wanted, bodyDepth, rng)) {
-    boxes.push({
-      kind: room.spec.kind,
-      name: room.spec.name,
-      role: 'service',
-      rect: frame.rect(stripLow ? 0 : mainFront, at, band, room.span),
-    })
+    boxes.push({ ...spec(room.spec), rect: frame.rect(stripLow ? 0 : mainFront, at, band, room.span) })
     at += room.span
   }
   return boxes
 }
+
+/** The three fields a room is cut with, and nothing a spec carries beyond them. */
+const spec = ({ kind, use, name }: RoomSpec): RoomSpec => ({ kind, use, name })
 
 /** How deep the entrance hall is, or zero when the building is too shallow for one. */
 function hallFor(programme: Programme, front: number, depth: number, rng: Rng): number {

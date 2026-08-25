@@ -8,9 +8,11 @@ import {
   type Item,
   type Premise,
   type Rect,
+  type ResolvedCharter,
   type WorldError,
 } from '@gb/world'
 import { briefContract, type Brief } from './brief.ts'
+import type { Dropped } from './charters/resolve.ts'
 import { Avenues } from './layout/avenues.ts'
 import { planStreets, type StreetPlan } from './layout/plan.ts'
 import { sitesInBlock, storeysFor, type PlotSite } from './layout/plots.ts'
@@ -19,11 +21,11 @@ import { paintStreets } from './layout/streets.ts'
 import type { Narrator, WorldSummary } from './narrator.ts'
 import { writeEachPlace } from './narrator/one-at-a-time.ts'
 import { Signs } from './narrator/signs.ts'
-import { premiseOf } from './premise/check.ts'
+import { readHistory } from './premise/history.ts'
 import { surfacesOf } from './populate.ts'
 import { questDemand } from './quests/demand.ts'
 import { assemble } from './raise/assemble.ts'
-import { instanceRequests, planRaise, type RaiseSetup } from './raise/plan.ts'
+import { hangSigns, instanceRequests, planRaise, signRequests, type RaiseSetup } from './raise/plan.ts'
 import type { Chosen } from './raise/planned.ts'
 import { flavourOf } from './theme/flavour.ts'
 import { kindWeights, stapleKinds } from './theme/plot-mix.ts'
@@ -37,6 +39,8 @@ export interface ForgeResult {
   readonly quests: readonly QuestDoc[]
   /** Quests the narrator wrote that did not hold up, and why. Kept, not hidden. */
   readonly rejected: ReadonlyArray<{ readonly index: number; readonly problems: readonly QuestProblem[] }>
+  /** Kinds of place the history invented that the city would not take, and why. */
+  readonly dropped: readonly Dropped[]
 }
 
 const GENERATOR_VERSION = '0.1.0'
@@ -67,9 +71,14 @@ export class Forge {
     const rng = new Rng(brief.seed)
 
     const streets = planStreets(brief, rng.fork('streets'))
-    // the town's history, before a plot is placed: it decides the mix, which
-    // doors open, how every place is written and what the main line is about
-    const premise = premiseOf(await this.#narrator.writePremise?.({ theme: brief.theme, seed: brief.seed }))
+    // the town's history, before a plot is placed: it decides the kinds of
+    // place the town has, the mix, which doors open, how every place is
+    // written and what the main line is about
+    const { brief: owner, asks } = brief
+    const history = readHistory(
+      await this.#narrator.writePremise?.({ theme: brief.theme, seed: brief.seed, ...(owner ? { brief: owner } : {}), ...(asks ? { asks } : {}) }),
+    )
+    const premise = history.premise
     const cityName = await this.#narrator.nameCity({ theme: brief.theme, seed: brief.seed, ...(premise ? { premise } : {}) })
     const found = World.found({
       name: cityName,
@@ -77,9 +86,13 @@ export class Forge {
       seed: brief.seed,
       width: streets.size.width,
       height: streets.size.height,
-      // the history goes into the file, so a city somebody is sent still knows
-      // what it is about and growing it later grows it against the same story
+      // the history and the kinds of place go into the file, so a city somebody
+      // is sent still knows what it is about and what each place is, and
+      // growing it later grows it against the same story
       ...(premise ? { premise } : {}),
+      charters: history.charters,
+      ...(owner ? { brief: owner } : {}),
+      ...(asks ? { asks } : {}),
       generator: { name: 'forge', version: GENERATOR_VERSION },
     })
     if (!found.ok) return err({ code: 'invalid-brief', violations: violationsOf(found.error) })
@@ -87,7 +100,7 @@ export class Forge {
     paintStreets(world, streets)
 
     layRoads(world, streets.crossings, streets.exits)
-    await this.#raise(world, this.#townSites(brief, streets, rng, premise), {
+    await this.#raise(world, this.#townSites(brief, streets, rng, premise, world.charters()), {
       theme: brief.theme,
       ...(premise ? { premise } : {}),
       density: brief.density,
@@ -100,7 +113,7 @@ export class Forge {
     if (problems.length) return err({ code: 'unsound-world', problems })
 
     const { quests, rejected } = await this.#writeQuests(world, premise, rng.fork('quests'))
-    return ok({ world, quests, rejected })
+    return ok({ world, quests, rejected, dropped: history.dropped })
   }
 
   /**
@@ -128,7 +141,8 @@ export class Forge {
 
   /**
    * Puts buildings up: plan the whole town with no awaits, ask about every place
-   * that opens in one call, then write it all in the order it was planned.
+   * that opens in one call and every sign over a shut door in another, both in
+   * the air at once, then write it all in the order it was planned.
    *
    * The three steps are apart because the middle one is the only slow one, and
    * because a town that is planned before anything is asked can ask about all of
@@ -137,8 +151,11 @@ export class Forge {
   async #raise(world: World, chosen: readonly Chosen[], setup: RaiseSetup): Promise<string[]> {
     const planned = planRaise(world, chosen, setup)
     const requests = instanceRequests(planned, setup)
-    const written = await (this.#narrator.writeInstances?.(requests) ?? writeEachPlace(this.#narrator, requests))
-    return assemble(world, planned, written)
+    const [written, signs] = await Promise.all([
+      this.#narrator.writeInstances?.(requests) ?? writeEachPlace(this.#narrator, requests),
+      this.#narrator.namePlaces?.(signRequests(planned, setup)) ?? [],
+    ])
+    return assemble(world, hangSigns(planned, signs), written)
   }
 
   /**
@@ -147,15 +164,16 @@ export class Forge {
    * places the town is known for, the ones the history demands included, are
    * dropped on seeded sites before the rest is rolled.
    */
-  #townSites(brief: Brief, streets: StreetPlan, rng: Rng, premise: Premise | undefined): Chosen[] {
+  #townSites(brief: Brief, streets: StreetPlan, rng: Rng, premise: Premise | undefined, charters: readonly ResolvedCharter[]): Chosen[] {
     const sites = streets.blocks.flatMap((block, index) => sitesInBlock(block, rng.fork(`block/${index}`)))
     const avenues = Avenues.from(streets.columns, streets.rows)
     const mix = rng.fork('plots')
     const flavour = flavourOf(brief.theme)
-    const weights = kindWeights(flavour, mix, premise?.build)
-    const wanted = stapleKinds(flavour, mix, premise?.build.mustHave)
+    const weights = kindWeights(flavour, mix, charters, premise?.build)
+    const wanted = stapleKinds(flavour, mix, charters, premise?.build.mustHave)
     const spots = mix.shuffle(sites.map((_, index) => index)).slice(0, wanted.length)
     const staples = new Map(spots.map((site, order) => [site, wanted[order]!]))
+    const byWord = new Map(charters.map((charter) => [charter.word, charter]))
 
     const chosen: Chosen[] = []
     for (const [index, site] of sites.entries()) {
@@ -163,10 +181,10 @@ export class Forge {
       // both draws happen either way, so whether a site is a staple cannot shift the rest
       const built = siteRng.chance(brief.density)
       const rolled = siteRng.weighted(weights)
-      const kind = staples.get(index) ?? (built ? rolled : undefined)
-      if (!kind) continue
+      const charter = byWord.get(staples.get(index) ?? (built ? rolled : ''))
+      if (!charter) continue
       const onAvenue = avenues.has(site.entrance)
-      chosen.push({ site, kind, onAvenue, storeys: storeysFor(kind, brief.maxStoreys, siteRng, onAvenue), rng: siteRng })
+      chosen.push({ site, charter, onAvenue, storeys: storeysFor(charter, brief.maxStoreys, siteRng, onAvenue), rng: siteRng })
     }
     return chosen
   }
@@ -175,13 +193,15 @@ export class Forge {
   #gapSites(world: World, count: number, rng: Rng, premise: Premise | undefined): Chosen[] {
     const chosen: Chosen[] = []
     const taken: Rect[] = []
+    const charters = world.charters()
     for (let i = 0; i < count; i++) {
       const site = this.#freeSite(world, rng, taken)
       if (!site) break
       taken.push(site.rect)
-      const kind = rng.weighted(kindWeights(flavourOf(world.theme), rng.fork(`extend/mix/${i}`), premise?.build))
+      const word = rng.weighted(kindWeights(flavourOf(world.theme), rng.fork(`extend/mix/${i}`), charters, premise?.build))
+      const charter = charters.find((one) => one.word === word)!
       const siteRng = rng.fork(`extend/${i}`)
-      chosen.push({ site, kind, onAvenue: false, storeys: storeysFor(kind, EXTEND_STOREYS, siteRng, false), rng: siteRng })
+      chosen.push({ site, charter, onAvenue: false, storeys: storeysFor(charter, EXTEND_STOREYS, siteRng, false), rng: siteRng })
     }
     return chosen
   }
@@ -249,10 +269,12 @@ function violationsOf(error: WorldError): readonly SchemaViolation[] {
  * measure a walk.
  */
 export function summarise(world: World, premise?: Premise): WorldSummary {
+  const asks = world.asks()
   return {
     cityName: world.name,
     theme: world.theme,
     ...(premise ? { premise } : {}),
+    ...(asks ? { asks } : {}),
     places: world.plots().map((plot) => {
       const interior = world.interiors().find((i) => i.plotId === plot.id)
       const npcs = interior ? world.npcs().filter((n) => n.station?.interiorId === interior.id) : []

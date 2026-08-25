@@ -1,5 +1,5 @@
 import { Rng } from '@gb/kit'
-import type { BuildingKind, ItemArchetype, NpcRole, Premise } from '@gb/world'
+import type { Charter, ItemArchetype, NpcRole, Premise, Word } from '@gb/world'
 import { backgroundOf } from './narrator/background.ts'
 import { knowledgeOf, personalityOf } from './narrator/knowledge.ts'
 import { lifeOf } from './narrator/lives.ts'
@@ -8,6 +8,7 @@ import { writeEachPlace } from './narrator/one-at-a-time.ts'
 import { Roster } from './narrator/roster.ts'
 import { Signs } from './narrator/signs.ts'
 import type { Instance, InstanceRequest, ItemProfile, Narrator, NpcProfile, WorldSummary } from './narrator.ts'
+import type { History } from './premise/shape.ts'
 import { composePremise, type Written } from './premise/write.ts'
 import { QuestWriter } from './quests/write.ts'
 import { flavourOf, type Flavour } from './theme/flavour.ts'
@@ -59,10 +60,10 @@ export class OfflineNarrator implements Narrator {
     return roster.nameAt(index)
   }
 
-  /** What the town lives on and what happened to it, drawn from the seed. */
-  async writePremise(input: { theme: string; seed: string }): Promise<Premise> {
+  /** What the town lives on, what happened to it, and any kind of place that calls for, drawn from the seed. */
+  async writePremise(input: { theme: string; seed: string }): Promise<History> {
     this.#written = composePremise(input.theme, this.#rng.fork(`premise/${input.seed}`))
-    return this.#written.premise
+    return this.#written.history
   }
 
   /** A town with a history is often named after what it lives on. */
@@ -71,8 +72,8 @@ export class OfflineNarrator implements Narrator {
     return cityName(wordsFor(flavourOf(input.theme)), this.#rng.fork(`city/${input.seed}`), livesOn)
   }
 
-  async namePlace(input: { kind: BuildingKind; theme: string; index: number; premise?: string }): Promise<string> {
-    return this.#signs.over(input.kind, input.theme, input.index, input.premise)
+  async namePlace(input: { charter: Charter; theme: string; index: number; premise?: string }): Promise<string> {
+    return this.#signs.over(input.charter, input.theme, input.index, input.premise)
   }
 
   /** The plural, one place at a time: nothing here is slow, so nothing here fans out. */
@@ -81,14 +82,14 @@ export class OfflineNarrator implements Narrator {
   }
 
   /** A person written whole: name, character, what they know, their life and the codex the player earns of them. */
-  async describeNpc(input: { role: NpcRole; placeKind: BuildingKind; placeName: string; theme: string; index: number }): Promise<NpcProfile> {
+  async describeNpc(input: { role: NpcRole; placeKind: Word; place: Charter; placeName: string; theme: string; index: number }): Promise<NpcProfile> {
     const rng = this.#rng.fork(`npc/${input.index}`)
-    const premise = this.#written?.premise
+    const premise = this.#written?.history
     const life = lifeOf(input.role, input.placeName, rng.fork('life'), premise)
     return {
       name: this.#nameAt(input.index, input.theme),
       personality: personalityOf(input.role, input.placeName, rng),
-      knowledge: knowledgeOf(input.role, input.placeKind, input.placeName, rng, premise?.common ?? []),
+      knowledge: knowledgeOf(input.role, input.place, input.placeName, rng, premise?.common ?? []),
       life,
       background: backgroundOf(input.role, input.placeName, life, rng.fork('background')),
     }

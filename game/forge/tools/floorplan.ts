@@ -1,5 +1,5 @@
-/** Draws generated interiors as ASCII floor plans, one per building kind. */
-import { BUILDING_KINDS, type Interior, type World } from '@gb/world'
+/** Draws generated interiors as ASCII floor plans, one per kind of place the city declares. */
+import type { Interior, World } from '@gb/world'
 import { Forge, OfflineNarrator } from '../src/index.ts'
 import { footprintOf } from '../src/interior/props.ts'
 
@@ -38,8 +38,8 @@ const built = await forge.build({ theme: 'dusty western mining town', seed, bloc
 if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 500))
 const world = built.value.world
 
-for (const kind of BUILDING_KINDS) {
-  const plot = world.plotsOfKind(kind)[0]
+for (const charter of world.charters()) {
+  const plot = world.plotsOfKind(charter.word)[0]
   if (!plot) continue
   const interior = world.interiors().find((i) => i.plotId === plot.id)
   if (interior) draw(world, interior)

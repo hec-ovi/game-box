@@ -21,13 +21,13 @@ export async function writeEachPlace(narrator: Singular, requests: readonly Inst
 }
 
 async function writePlace(narrator: Singular, request: InstanceRequest): Promise<Instance> {
-  const { kind, theme } = request
+  const { kind, charter, theme } = request
   const story = request.premise ? { premise: request.premise } : {}
-  const name = await narrator.namePlace({ kind, theme, index: request.index, ...story })
+  const name = await narrator.namePlace({ kind, charter, theme, index: request.index, ...story })
   const [people, things] = await Promise.all([
     Promise.all(
       request.posts.map(async (post): Promise<InstancePerson> => {
-        const profile = await narrator.describeNpc({ role: post.role, placeKind: kind, placeName: name, theme, index: post.index, ...story })
+        const profile = await narrator.describeNpc({ role: post.role, placeKind: kind, place: charter, placeName: name, theme, index: post.index, ...story })
         return { postId: post.postId, role: post.role, ...profile }
       }),
     ),

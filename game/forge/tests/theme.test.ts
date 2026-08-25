@@ -1,14 +1,17 @@
-import type { BuildingKind } from '@gb/world'
+import type { World } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { flavourOf } from '../src/theme/flavour.ts'
-import { stapleSet } from '../src/theme/plot-mix.ts'
+import { keystoneOf, stapleSet } from '../src/theme/plot-mix.ts'
 import { buildTown } from './support.ts'
 
-const mixOf = (kinds: readonly BuildingKind[]) => {
-  const counts = new Map<BuildingKind, number>()
+const mixOf = (kinds: readonly string[]) => {
+  const counts = new Map<string, number>()
   for (const kind of kinds) counts.set(kind, (counts.get(kind) ?? 0) + 1)
   return [...counts.entries()].sort().map(([kind, n]) => `${kind}:${n}`).join(' ')
 }
+
+/** How many of the kinds a town can be known for it actually holds. */
+const known = (world: World): number => stapleSet(world.charters()).filter((charter) => world.plotsOfKind(charter.word).length > 0).length
 
 describe('a town reads as the kind of town it was asked for', () => {
   it('reads a free-text theme as one of the kinds of town it knows', () => {
@@ -28,7 +31,7 @@ describe('a town reads as the kind of town it was asked for', () => {
     const mixes = built.map((town) => mixOf(town.world.plots().map((plot) => plot.kind)))
     expect(new Set(mixes).size).toBe(built.length)
 
-    const count = (theme: string, kind: BuildingKind) =>
+    const count = (theme: string, kind: string) =>
       built.filter((town) => town.world.theme === theme).reduce((total, town) => total + town.world.plotsOfKind(kind).length, 0)
 
     // a neon city stacks people up and works in offices; a mining town spreads out and has chapels
@@ -37,10 +40,7 @@ describe('a town reads as the kind of town it was asked for', () => {
     expect(count('dusty western mining town', 'house')).toBeGreaterThan(count('dusty western mining town', 'apartment') * 3)
     expect(count('dusty western mining town', 'chapel')).toBeGreaterThan(count('dense neon port city', 'chapel'))
 
-    for (const town of built) {
-      const staples = stapleSet(flavourOf(town.world.theme))
-      expect(staples.filter((kind) => town.world.plotsOfKind(kind).length > 0).length).toBeGreaterThanOrEqual(2)
-    }
+    for (const town of built) expect(known(town.world)).toBeGreaterThanOrEqual(2)
   })
 
   it('does not put the same two places on the same two sites in every town', async () => {
@@ -53,10 +53,10 @@ describe('a town reads as the kind of town it was asked for', () => {
     expect(new Set(mixes).size).toBe(seeds.length)
 
     for (const { world } of towns) {
-      // its bar, and one to three more places the theme is known for
+      // its keystone, which is its bar until a history declares something ahead of it, and one to three more places the theme is known for
+      expect(keystoneOf(world.charters())?.word).toBe('bar')
       expect(world.plotsOfKind('bar').length).toBeGreaterThanOrEqual(1)
-      const staples = stapleSet(flavourOf(world.theme)).filter((kind) => world.plotsOfKind(kind).length > 0)
-      expect(staples.length).toBeGreaterThanOrEqual(2)
+      expect(known(world)).toBeGreaterThanOrEqual(2)
     }
   })
 

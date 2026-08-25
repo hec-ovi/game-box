@@ -5,8 +5,10 @@ as. It is the first half of the premise: why the place is here at all, the noun
 the town is often named after, and the buildings that follow from the trade.
 
 Format: `## handle`, then `- key: value` lines. `fits` is one or more flavours
-or `any`. `more`, `fewer` and `must` are `@gb/world` building kinds: more of,
-fewer of, and one the town has to contain whatever the mix rolls.
+or `any`. `more`, `fewer` and `must` are words of charters: more of, fewer of,
+and one the town has to contain whatever the mix rolls. `declares` names a
+kind of place from `src/premise/places.ts` the town is founded with, so a
+`must` may name it.
 
 ## the seam
 - fits: frontier
@@ -124,6 +126,7 @@ fewer of, and one the town has to contain whatever the mix rolls.
 - fits: neon
 - lives: the clubs that open at midnight, and the dancing that keeps the street lit till the trains start
 - word: Beat
-- more: bar, apartment, hotel
+- declares: disco
+- more: bar, disco, apartment, hotel
 - fewer: chapel, house
-- must: bar
+- must: disco

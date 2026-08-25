@@ -20,7 +20,7 @@ export function assemble(world: World, planned: readonly PlannedSite[], written:
   for (const one of planned) {
     const instance = one.inside ? written[answer++] : undefined
     const plot = world.addPlot({
-      kind: one.kind,
+      kind: one.charter.word,
       name: instance?.name || one.sign,
       rect: one.site.rect,
       entrance: { cell: one.site.entrance, facing: one.site.facing },
@@ -31,7 +31,7 @@ export function assemble(world: World, planned: readonly PlannedSite[], written:
     added.push(plot.value.id)
     if (!one.inside) continue
 
-    world.addInterior({ id: one.inside.interiorId, plotId: plot.value.id, kind: one.kind, size: one.inside.size, ...one.inside.plan })
+    world.addInterior({ id: one.inside.interiorId, plotId: plot.value.id, kind: one.charter.word, finish: one.charter.finish, size: one.inside.size, ...one.inside.plan })
     fill(world, one.inside, plot.value.id, instance)
   }
   return added

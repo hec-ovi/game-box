@@ -1,62 +1,58 @@
-import { Rng } from '@gb/kit'
-import type { Anchor, AnchorKind, BodyKind, BuildingKind, ItemArchetype, NpcRole } from '@gb/world'
+import { HOLDING_ARCHETYPES, type Anchor, type AnchorKind, type BodyKind, type Charter, type ItemArchetype, type NpcRole } from '@gb/world'
+import type { Rng } from '@gb/kit'
 
-/** Who stands at an anchor of this kind, in this kind of building. */
-export function roleFor(anchor: AnchorKind, building: BuildingKind): NpcRole | undefined {
+/**
+ * Who stands at an anchor of this kind, in this kind of place. The anchor
+ * decides first; where it does not, the charter's service and work do, so a
+ * counter that pours has a bartender and a bench a mechanic whatever the place
+ * is called. Every answer is one of `@gb/world`'s closed roles.
+ */
+export function roleFor(anchor: AnchorKind, charter: Charter): NpcRole | undefined {
   switch (anchor) {
     case 'serve':
-      if (building === 'bar' || building === 'cafe' || building === 'restaurant') return 'bartender'
-      if (building === 'shop') return 'clerk'
-      if (building === 'market') return 'vendor'
-      if (building === 'workshop') return 'mechanic'
-      return 'receptionist'
-    case 'sit-drink':
-      return 'patron'
+      if (charter.service === 'stalls') return 'vendor'
+      if (charter.service === 'desk') return 'receptionist'
+      if (charter.work.includes('bench')) return 'mechanic'
+      if (charter.holding.includes('drink') || charter.holding.includes('food')) return 'bartender'
+      return 'clerk'
     case 'sit':
-      return building === 'house' || building === 'apartment' ? 'resident' : 'patron'
+      return charter.residential ? 'resident' : 'patron'
+    case 'sit-drink':
     case 'browse':
+    case 'dance':
       return 'patron'
     case 'work-desk':
     case 'work-bench':
-      return building === 'workshop' ? 'mechanic' : 'worker'
+      return charter.work.includes('bench') ? 'mechanic' : 'worker'
     case 'cook':
       return 'cook'
     case 'sleep':
-      return building === 'clinic' ? 'patron' : 'resident'
+      return charter.holding.includes('medicine') ? 'patron' : 'resident'
     case 'guard':
       return 'guard'
     case 'stand':
-      return building === 'warehouse' ? 'guard' : 'worker'
+      return charter.work.includes('watch') ? 'guard' : 'worker'
     case 'lean':
       return 'wanderer'
-    case 'dance':
-      return 'patron'
   }
 }
 
-/** Roles whose work can put a hero body on the floor: the ones on their feet, watching or lifting. */
-const HERO_ROLES: readonly NpcRole[] = ['guard', 'worker', 'mechanic']
-
-/** How many of those get one. */
-const HERO_SHARE = 0.25
-
-/**
- * Which body somebody has. Everybody is one of the two plain bodies, drawn from
- * the interior's own stream; a minority of the guards and the people who work on
- * their feet get the hero build instead, decided off their own index in the town
- * so the same person is the same build every time the city is opened.
- */
-export function bodyFor(role: NpcRole, index: number, rng: Rng): BodyKind {
-  const plain = rng.pick(['male', 'female'] as const)
-  const hero = HERO_ROLES.includes(role) && new Rng(`hero/${index}`).chance(HERO_SHARE)
-  return hero ? `hero-${plain}` : plain
+/** Which body somebody has: one of the two the pack ships, drawn from the interior's own stream. */
+export function bodyFor(rng: Rng): BodyKind {
+  return rng.pick(['male', 'female'] as const)
 }
 
-/** How likely an anchor of this kind has somebody on it. Staff posts are always filled. */
-export function occupancy(anchor: AnchorKind): number {
+/**
+ * How likely an anchor of this kind has somebody on it, in this kind of place.
+ * Staff posts are always filled, and a place that keeps watch has its guard on
+ * the door the way a counter has somebody behind it.
+ */
+export function occupancy(anchor: AnchorKind, charter: Charter): number {
   switch (anchor) {
     case 'serve':
       return 1
+    case 'guard':
+      return charter.work.includes('watch') ? 1 : 0.25
     case 'work-desk':
     case 'work-bench':
       return 0.7
@@ -83,32 +79,15 @@ export function surfacesOf(anchors: readonly Anchor[]): readonly Anchor[] {
   return surfaces.length ? surfaces : anchors
 }
 
-/** What a kind of building keeps lying about. */
-const STOCK: Partial<Record<BuildingKind, readonly ItemArchetype[]>> = {
-  bar: ['bottle', 'glass', 'ledger', 'cash'],
-  cafe: ['cup', 'plate', 'ledger'],
-  restaurant: ['plate', 'bottle', 'ledger'],
-  shop: ['box', 'parcel', 'cash', 'key'],
-  market: ['crate', 'parcel', 'cash'],
-  house: ['book', 'phone', 'painting', 'key'],
-  apartment: ['book', 'radio', 'key'],
-  office: ['ledger', 'envelope', 'briefcase', 'keycard'],
-  workshop: ['toolbox', 'wrench', 'fuelcan'],
-  warehouse: ['crate', 'box', 'parcel'],
-  clinic: ['medkit', 'ledger'],
-  hotel: ['key', 'bag', 'envelope'],
-  station: ['bag', 'parcel'],
-  chapel: ['book', 'statue'],
+/** Everything this kind of place could have lying about: every archetype of every class it holds. */
+export function stockOf(charter: Charter): readonly ItemArchetype[] {
+  return charter.holding.flatMap((holding) => HOLDING_ARCHETYPES[holding])
 }
 
-/** Everything this kind of building could have lying about. */
-export function stockOf(building: BuildingKind): readonly ItemArchetype[] {
-  return STOCK[building] ?? ['box']
-}
-
-/** What is lying around in one of them, and whether it belongs to someone. */
-export function itemsFor(building: BuildingKind, rng: Rng): ItemArchetype[] {
-  const pool = stockOf(building)
+/** What is lying around in one of them. */
+export function itemsFor(charter: Charter, rng: Rng): ItemArchetype[] {
+  const pool = stockOf(charter)
+  if (!pool.length) return []
   const count = rng.int(1, Math.min(4, pool.length + 1))
   return rng.shuffle(pool).slice(0, count)
 }

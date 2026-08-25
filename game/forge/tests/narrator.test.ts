@@ -1,7 +1,7 @@
 import { Rng } from '@gb/kit'
 import { describe, expect, it } from 'vitest'
 import { Forge, OfflineNarrator } from '../src/index.ts'
-import type { Instance, InstanceRequest, Narrator, NpcProfile, WorldSummary } from '../src/narrator.ts'
+import type { Instance, InstanceRequest, Narrator, NpcProfile, PlaceRequest, WorldSummary } from '../src/narrator.ts'
 import { headOf } from '../src/narrator/places.ts'
 import type { Premise } from '@gb/world'
 import { buildTown, digest } from './support.ts'
@@ -191,6 +191,63 @@ describe('a town written by a narrator answering many places at once', () => {
 })
 
 describe('the signs over the doors', () => {
+  it('asks a narrator that hangs signs for every shut door at once, and keeps its answers in order', async () => {
+    const asked: PlaceRequest[][] = []
+    const offline = new OfflineNarrator('hung')
+    const narrator: Narrator = {
+      writePremise: (input) => offline.writePremise(input),
+      nameCity: (input) => offline.nameCity(input),
+      namePlace: (input) => offline.namePlace(input),
+      describeNpc: (input) => offline.describeNpc(input),
+      describeItem: (input) => offline.describeItem(input),
+      writeQuests: (input) => offline.writeQuests(input),
+      namePlaces: async (requests) => {
+        asked.push([...requests])
+        // one left blank, to prove the sign written here stays over that door
+        return requests.map((request, at) => (at === 1 ? '' : `Sign ${request.index} ${request.charter.label}`))
+      },
+    }
+    const built = await new Forge(narrator).build({ ...BRIEF, seed: 'hung' })
+    if (!built.ok) throw new Error('the town would not build')
+    const { world } = built.value
+    const shut = world.plots().filter((plot) => !world.interiors().some((interior) => interior.plotId === plot.id))
+    expect(asked.length).toBe(1)
+    expect(asked[0]!.map((request) => request.kind)).toEqual(shut.map((plot) => plot.kind))
+    expect(shut[0]!.name).toBe(`Sign ${asked[0]![0]!.index} ${world.charter(shut[0]!.kind)!.label}`)
+    expect(shut[1]!.name).not.toMatch(/^Sign /)
+    expect(shut.slice(2).every((plot, at) => plot.name === `Sign ${asked[0]![at + 2]!.index} ${world.charter(plot.kind)!.label}`)).toBe(true)
+    // and no open door was named that way
+    for (const interior of world.interiors()) expect(world.plot(interior.plotId)!.name).not.toMatch(/^Sign /)
+  })
+
+  it("hands the owner's brief and asks to the history writer, and the asks on to the quest writer", async () => {
+    const offline = new OfflineNarrator('asked')
+    let history: Parameters<NonNullable<Narrator['writePremise']>>[0] | undefined
+    let summary: WorldSummary | undefined
+    const narrator: Narrator = {
+      writePremise: (input) => {
+        history = input
+        return offline.writePremise(input)
+      },
+      nameCity: (input) => offline.nameCity(input),
+      namePlace: (input) => offline.namePlace(input),
+      describeNpc: (input) => offline.describeNpc(input),
+      describeItem: (input) => offline.describeItem(input),
+      writeInstances: (requests) => offline.writeInstances(requests),
+      writeQuests: (input) => {
+        summary = input.summary
+        return offline.writeQuests(input)
+      },
+    }
+    const asks = { mainQuest: 'find out who owns the wharves', tone: 'dry', style: { neon: 'dark' as const } }
+    const built = await new Forge(narrator).build({ ...BRIEF, seed: 'asked', brief: 'A port town that lost its trade.', asks })
+    if (!built.ok) throw new Error('the town would not build')
+    expect(history).toEqual({ theme: BRIEF.theme, seed: 'asked', brief: 'A port town that lost its trade.', asks })
+    expect(summary?.asks).toEqual(asks)
+    expect(built.value.world.brief()).toBe('A port town that lost its trade.')
+    expect(built.value.world.asks()).toEqual(asks)
+  })
+
   it('lets no word head two names in a town, and hangs more than one shape of sign', async () => {
     const themes = ['dusty western mining town', 'quiet coastal town', 'dense neon port city', 'cold industrial rail town', 'snowy alpine ski town']
     const towns = await Promise.all(themes.flatMap((theme, at) => [buildTown(`signs-${at}`, { theme, blocksX: 3, blocksY: 3 }), buildTown(`signs-${at}-b`, { theme, blocksX: 4, blocksY: 4 })]))

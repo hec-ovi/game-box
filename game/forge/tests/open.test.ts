@@ -1,5 +1,5 @@
 import { Rng } from '@gb/kit'
-import { BUILDING_KINDS, type World } from '@gb/world'
+import { SHIPPED_CHARTERS, type ResolvedCharter, type World } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { DoorBudget, mostOpen } from '../src/interior/budget.ts'
 import { drawOf, NEEDS, pullOf } from '../src/interior/draw.ts'
@@ -65,10 +65,7 @@ describe('a town of frontage with a few doors that open', () => {
     for (const built of [...range, small, big, other]) {
       // a town with as many doors as it has needs has to meet all of them
       if (built.world.interiors().length < NEEDS.length) continue
-      const kinds = built.world
-        .interiors()
-        .map((interior) => interior.kind)
-        .map(drawOf)
+      const kinds = built.world.interiors().map((interior) => drawOf(built.world.charter(interior.kind)!))
       for (const [need, met] of NEEDS) {
         expect(kinds.some(met), `${built.world.name} has nowhere ${need.replace('somewhere ', '')}`).toBe(true)
       }
@@ -132,25 +129,26 @@ describe('a town of frontage with a few doors that open', () => {
   it('opens what a place has to offer rather than what it is called', () => {
     // the ranking has to beat picking at random: the doors that open are the
     // ones worth opening, near the top of what a door can be worth at all
-    const pull = (plots: readonly { kind: (typeof BUILDING_KINDS)[number] }[]) =>
-      plots.reduce((sum, plot) => sum + pullOf(plot.kind), 0) / Math.max(1, plots.length)
     for (const built of [small, big, other]) {
+      const pull = (plots: readonly { kind: string }[]) =>
+        plots.reduce((sum, plot) => sum + pullOf(built.world.charter(plot.kind)!), 0) / Math.max(1, plots.length)
       const open = openPlots(built.world)
       const chosen = pull(built.world.plots().filter((plot) => open.has(plot.id)))
       expect(chosen, `${built.world.name} opens middling doors`).toBeGreaterThan(6)
-      expect(chosen, `${built.world.name} opens what the street happens to hold`).toBeGreaterThan(pull(built.world.plots()) * 1.3)
+      // a whole tier above the street: a door a place is worth is a counter, staff, stock or seats
+      expect(chosen, `${built.world.name} opens what the street happens to hold`).toBeGreaterThan(pull(built.world.plots()) + 1)
     }
   })
 
   it('weighs a kind of building by what its own interior turns out to hold', () => {
-    for (const kind of BUILDING_KINDS) {
-      const draw = drawOf(kind)
-      expect(draw.staff + draw.seats + draw.beds + draw.stock, `${kind} offers nothing at all`).toBeGreaterThan(0)
-      expect(drawOf(kind), `${kind} is weighed differently on a second look`).toEqual(draw)
+    for (const charter of SHIPPED_CHARTERS) {
+      const draw = drawOf(charter)
+      expect(draw.staff + draw.seats + draw.beds + draw.stock, `${charter.word} offers nothing at all`).toBeGreaterThan(0)
+      expect(drawOf(charter), `${charter.word} is weighed differently on a second look`).toEqual(draw)
     }
     // a place with staff and stock outranks one with neither, whatever either is called
-    const rich = BUILDING_KINDS.filter((kind) => drawOf(kind).staff > 0 && drawOf(kind).stock > 0)
-    const bare = BUILDING_KINDS.filter((kind) => drawOf(kind).staff === 0)
+    const rich = SHIPPED_CHARTERS.filter((charter) => drawOf(charter).staff > 0 && drawOf(charter).stock > 0)
+    const bare = SHIPPED_CHARTERS.filter((charter) => drawOf(charter).staff === 0)
     expect(rich.length).toBeGreaterThan(0)
     expect(bare.length).toBeGreaterThan(0)
     for (const kind of rich) for (const other of bare) expect(pullOf(kind)).toBeGreaterThan(pullOf(other))
@@ -160,8 +158,8 @@ describe('a town of frontage with a few doors that open', () => {
     // fifty shops on the avenue and three flats out at the edge: the ranking
     // would take the shops and leave the town with nowhere to sleep
     const frontages: Frontage[] = [
-      ...Array.from({ length: 50 }, (_, i) => ({ id: `shop_${i}`, kind: 'shop' as const, nearness: 1, onAvenue: true, storied: false })),
-      ...Array.from({ length: 3 }, (_, i) => ({ id: `flat_${i}`, kind: 'apartment' as const, nearness: 0, onAvenue: false, storied: false })),
+      ...Array.from({ length: 50 }, (_, i) => ({ id: `shop_${i}`, charter: preset('shop'), nearness: 1, onAvenue: true, storied: false })),
+      ...Array.from({ length: 3 }, (_, i) => ({ id: `flat_${i}`, charter: preset('apartment'), nearness: 0, onAvenue: false, storied: false })),
     ]
     for (const seed of ['a', 'b', 'c', 'd', 'e']) {
       const open = openDoors(frontages, new Rng(seed), FRESH)
@@ -183,11 +181,13 @@ describe('a town of frontage with a few doors that open', () => {
 /** A town nothing has been built in yet. */
 const FRESH = { built: 0, open: [] }
 
+const preset = (word: string): ResolvedCharter => SHIPPED_CHARTERS.find((charter) => charter.word === word)!
+
 /** A batch of buildings to hand the ranking, one of every kind and then round again. */
 const many = (count: number): Frontage[] =>
   Array.from({ length: count }, (_, i) => ({
     id: `plot_${i}`,
-    kind: BUILDING_KINDS[i % BUILDING_KINDS.length]!,
+    charter: SHIPPED_CHARTERS[i % SHIPPED_CHARTERS.length]!,
     nearness: 1 - i / count,
     onAvenue: i % 3 === 0,
     storied: false,

@@ -9,7 +9,8 @@ two counters the main line forks between, so a choice in a quest is a choice
 about this.
 
 Format: `## handle`, then `- key: value` lines. `fits` is one or more flavours
-or `any`. `more`, `fewer` and `must` are `@gb/world` building kinds. `side` is
+or `any`. `more`, `fewer` and `must` are words of charters, and `declares`
+names a kind of place from `src/premise/places.ts` the town is founded with. `side` is
 `who they are / what they want`, and repeats. `known` repeats.
 
 ## the trade went

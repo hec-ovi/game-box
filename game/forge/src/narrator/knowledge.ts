@@ -1,5 +1,5 @@
 import type { Rng } from '@gb/kit'
-import type { BuildingKind, NpcRole } from '@gb/world'
+import type { Charter, NpcRole } from '@gb/world'
 
 /** The one line that says how somebody carries themselves. */
 const ROLE_TRAITS: Record<NpcRole, readonly string[]> = {
@@ -53,24 +53,6 @@ const ROLE_KNOWLEDGE: Record<NpcRole, readonly string[]> = {
   wanderer: ['Has walked in from the next town and seen the road.', 'Knows which places will let you sleep out of the rain.', 'Hears things in three towns and repeats them in the fourth.'],
 }
 
-/** What the walls of this kind of place tell somebody who stands in them all day. */
-const PLACE_KNOWLEDGE: Record<BuildingKind, readonly string[]> = {
-  bar: ['The back room is booked on the same night every week.', 'The cellar door sticks unless you lift it.'],
-  cafe: ['The morning crowd and the evening crowd never overlap.', 'Somebody left a bag here a week ago and never came back.'],
-  restaurant: ['The kitchen orders more than the tables can eat.', 'One table is kept free most nights, for nobody in particular.'],
-  shop: ['Stock goes missing in ones, never in fives.', 'The good goods come in on the same day as the post.'],
-  market: ['The best stalls are gone by mid morning.', 'Two traders here refuse to stand next to each other.'],
-  office: ['The upstairs office has not been used in months.', 'Papers go out of here in a locked case.'],
-  workshop: ['There is a job on the bench nobody has paid for.', 'The forge is lit before anyone else in the street is awake.'],
-  warehouse: ['Half the crates in the back are addressed to one buyer.', 'The night door is used more than the day one.'],
-  clinic: ['People come in at night with injuries they will not explain.', 'The medicine cupboard is counted twice a day now.'],
-  hotel: ['One room has been paid for a month in advance and never slept in.', 'The register has more names than there are guests.'],
-  station: ['Freight comes through at hours the timetable does not mention.', 'People wait here who never board anything.'],
-  chapel: ['The collection box is emptied by somebody who does not attend.', 'The bell is rung on days that are not holy.'],
-  house: ['The neighbours argue on the same night each week.', 'A room in this house is kept locked.'],
-  apartment: ['Nobody knows who lives on the top floor.', 'The stairwell light has been out since spring.'],
-}
-
 /** Talk of the town: what anybody standing in the street would know. */
 const STREET_KNOWLEDGE: readonly string[] = [
   'The road out of town is slower than it looks on a map.',
@@ -92,24 +74,22 @@ export function personalityOf(role: NpcRole, placeName: string, rng: Rng): strin
 
 /**
  * What one person can tell you: their post, something their trade taught them,
- * something the building knows, and now and then what the street is saying.
+ * a rumour of the kind of place they stand in, and now and then what the
+ * street is saying.
  *
- * In a town with a history, what the street is saying is that history: the
- * generic talk is what a town falls back on when nobody has written it one.
+ * The rumour is the charter's own; a charter with none falls through to what
+ * everybody in town knows. In a town with a history, what the street is saying
+ * is that history: the generic talk is what a town falls back on when nobody
+ * has written it one.
  */
-export function knowledgeOf(
-  role: NpcRole,
-  placeKind: BuildingKind,
-  placeName: string,
-  rng: Rng,
-  common: readonly string[] = [],
-): string[] {
+export function knowledgeOf(role: NpcRole, place: Charter, placeName: string, rng: Rng, common: readonly string[] = []): string[] {
+  const said = common.length ? common : STREET_KNOWLEDGE
   const lines = [
     `Works at ${placeName} as the ${role}.`,
     rng.pick(ROLE_KNOWLEDGE[role]),
-    rng.pick(PLACE_KNOWLEDGE[placeKind]),
+    sentence(rng.pick(place.rumours.length ? place.rumours : said)),
   ]
-  if (rng.chance(0.5)) lines.push(sentence(rng.pick(common.length ? common : STREET_KNOWLEDGE)))
+  if (rng.chance(0.5)) lines.push(sentence(rng.pick(said)))
   return lines
 }
 

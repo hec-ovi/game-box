@@ -1,5 +1,5 @@
 import type { Rng } from '@gb/kit'
-import { PLOT_BAND, type BuildingKind, type Facing, type Rect } from '@gb/world'
+import { PLOT_BAND, type Charter, type Facing, type Rect } from '@gb/world'
 
 /** A building-shaped hole in a block, before anything is named or built. */
 export interface PlotSite {
@@ -98,21 +98,14 @@ function doorstep(rect: Rect, facing: Facing): { x: number; y: number } {
 }
 
 /**
- * How tall a building of this kind gets, within the brief's limit and the
- * band's. A building on an avenue stands a storey taller than the same
- * building on a side street: the spine is where a town puts its frontage.
+ * How tall a building of this kind gets: the charter's own range, within the
+ * brief's limit and the band's. A building on an avenue stands a storey taller
+ * than the same building on a side street: the spine is where a town puts its
+ * frontage.
  */
-export function storeysFor(kind: BuildingKind, briefStoreys: number, rng: Rng, onAvenue = false): number {
+export function storeysFor(charter: Charter, briefStoreys: number, rng: Rng, onAvenue = false): number {
   const maxStoreys = Math.min(briefStoreys, PLOT_BAND.storeys.max)
-  const ranges: Partial<Record<BuildingKind, [number, number]>> = {
-    house: [1, 2],
-    apartment: [3, maxStoreys],
-    office: [2, maxStoreys],
-    hotel: [2, maxStoreys],
-    warehouse: [1, 2],
-    chapel: [1, 2],
-  }
-  const [low, high] = ranges[kind] ?? [1, 2]
+  const [low, high] = charter.size.storeys
   const lift = onAvenue ? 1 : 0
   const floor = Math.min(maxStoreys, low + lift)
   const ceiling = Math.max(floor, Math.min(high + lift, maxStoreys))

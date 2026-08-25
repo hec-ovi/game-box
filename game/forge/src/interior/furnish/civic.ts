@@ -4,6 +4,12 @@ import type { RoomPlan } from '../room-plan.ts'
 import { standoff } from '../stance.ts'
 import { cornerPiece, servePost, standAt, tableField, wallRow, wallScreen } from './pieces.ts'
 
+/** Floor one bed and the room to walk round it take: how many a ward holds is its area over this. */
+const FLOOR_PER_BED = 12
+
+/** The most beds one ward is worth, however big the room. */
+const MOST_BEDS = 8
+
 /** A room you wait in: a desk to report to, chairs along the wall. */
 export function waitingRoom(plan: RoomPlan): void {
   plan.crowdLimit = 3
@@ -13,15 +19,16 @@ export function waitingRoom(plan: RoomPlan): void {
   cornerPiece(plan, 'plant')
 }
 
-/** A treatment room: beds with room to walk round them, a sink, a cabinet. */
-export function treatmentRoom(plan: RoomPlan): void {
+/** A ward: beds along the walls with room to walk round them, as many as the floor holds, a sink, a cabinet. */
+export function ward(plan: RoomPlan): void {
+  const wanted = Math.max(1, Math.min(MOST_BEDS, Math.floor((plan.bounds.w * plan.bounds.h) / FLOOR_PER_BED)))
   let beds = 0
   for (const side of plan.openSides()) {
-    const bed = plan.againstWall('bed', side, { prefer: 'any', approach: 0.7 })
-    if (!bed) continue
-    beds++
-    plan.anchor('sleep', bed.pos, bed.rot, bed.id)
-    if (beds >= 2) break
+    for (const bed of wallRow(plan, 'bed', side, wanted - beds, 0.7)) {
+      beds++
+      plan.anchor('sleep', bed.pos, bed.rot, bed.id)
+    }
+    if (beds >= wanted) break
   }
   const side = plan.openSides()[0]
   if (side) {
@@ -59,24 +66,24 @@ export function concourse(plan: RoomPlan): void {
   cornerPiece(plan, 'plant')
 }
 
-/** A nave: rows of pews all facing the altar, and somewhere to stand in front of it. */
-export function nave(plan: RoomPlan): void {
+/** An assembly: ranks of seats all facing a piece at the front, and somebody standing at it facing them. */
+export function assembly(plan: RoomPlan): void {
   plan.crowdLimit = 8
   const front = plan.backSide()
-  const altar = plan.againstWall('table', front, { prefer: 'centre', approach: 1.2 })
+  const piece = plan.againstWall('table', front, { prefer: 'centre', approach: 1.2 })
   const outwards = inward(front)
-  if (altar) {
-    // in front of the altar, facing the pews rather than the wall behind it
-    const spot = step(altar.pos, outwards, specOf(altar.prop).d / 2 + standoff('stand'))
-    plan.post('stand', spot, step(spot, outwards, 2), altar.id)
+  if (piece) {
+    // in front of the piece, facing the ranks rather than the wall behind it
+    const spot = step(piece.pos, outwards, specOf(piece.prop).d / 2 + standoff('stand'))
+    plan.post('stand', spot, step(spot, outwards, 2), piece.id)
   }
-  let pews = 0
+  let seats = 0
   for (const spot of plan.lattice(shrinkFrom(plan.bounds, front, 2), { x: 1.1, y: 1.1 })) {
-    if (pews >= 16) break
-    const pew = plan.at('chair', spot, norm(outwards + 180))
-    if (!pew) continue
-    pews++
-    plan.anchor('sit', pew.pos, pew.rot, pew.id)
+    if (seats >= 16) break
+    const seat = plan.at('chair', spot, norm(outwards + 180))
+    if (!seat) continue
+    seats++
+    plan.anchor('sit', seat.pos, seat.rot, seat.id)
   }
   cornerPiece(plan, 'lamp')
 }

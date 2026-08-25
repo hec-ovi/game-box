@@ -45,6 +45,56 @@
       "type": "integer",
       "minimum": 1,
       "maximum": 4
+    },
+    "brief": {
+      "type": "string",
+      "minLength": 1
+    },
+    "asks": {
+      "type": "object",
+      "properties": {
+        "mainQuest": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sideQuests": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tone": {
+          "type": "string",
+          "minLength": 1
+        },
+        "style": {
+          "type": "object",
+          "properties": {
+            "neon": {
+              "type": "string",
+              "enum": [
+                "dark",
+                "some",
+                "lit"
+              ]
+            },
+            "density": {
+              "type": "string",
+              "enum": [
+                "sparse",
+                "mixed",
+                "dense"
+              ]
+            },
+            "wear": {
+              "type": "string",
+              "enum": [
+                "kept",
+                "lived-in",
+                "run-down"
+              ]
+            }
+          }
+        }
+      }
     }
   },
   "required": [

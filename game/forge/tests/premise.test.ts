@@ -1,5 +1,5 @@
 import { Rng } from '@gb/kit'
-import { World, type BuildingKind, type Premise } from '@gb/world'
+import { World, type Premise } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { Forge, OfflineNarrator, premiseLines } from '../src/index.ts'
 import type { Instance, InstanceRequest, Narrator } from '../src/narrator.ts'
@@ -90,8 +90,8 @@ async function build(narrator: Narrator, overrides: Record<string, unknown> = {}
   return built.value
 }
 
-const counts = (kinds: readonly BuildingKind[]): Map<BuildingKind, number> => {
-  const held = new Map<BuildingKind, number>()
+const counts = (kinds: readonly string[]): Map<string, number> => {
+  const held = new Map<string, number>()
   for (const kind of kinds) held.set(kind, (held.get(kind) ?? 0) + 1)
   return held
 }
@@ -110,8 +110,11 @@ describe('a city written against a history', () => {
     expect(digest(again.quests)).toBe(digest(shipping.quests))
     expect(digest(campus.world.toJSON()), 'two histories built one town').not.toBe(digest(shipping.world.toJSON()))
 
-    const port = counts(shipping.world.plots().map((plot) => plot.kind))
-    const college = counts(campus.world.plots().map((plot) => plot.kind))
+    // the push is measured over a few seeds: one town's dice can halve a kind on their own
+    const seeds = [SEED, 'two-histories', 'three-histories']
+    const towns = await Promise.all(seeds.flatMap((seed) => [SHIPPING, CAMPUS].map((premise) => build(new Told(seed, premise), { seed }))))
+    const port = counts(towns.filter((_, at) => at % 2 === 0).flatMap((town) => town.world.plots().map((plot) => plot.kind)))
+    const college = counts(towns.filter((_, at) => at % 2 === 1).flatMap((town) => town.world.plots().map((plot) => plot.kind)))
     expect(port.get('warehouse')!, 'the port has no more sheds than the campus town').toBeGreaterThan(college.get('warehouse')! * 2)
     expect(port.get('market')!, 'the port has no more of a market than the campus town').toBeGreaterThan(college.get('market')! * 2)
     expect(college.get('cafe')!, 'the campus town has no more cafes than the port').toBeGreaterThan(port.get('cafe')! * 2)
@@ -169,7 +172,7 @@ describe('a city written against a history', () => {
       }),
     )
 
-    const wharf = (held: Map<BuildingKind, number>) => (held.get('warehouse') ?? 0) + (held.get('market') ?? 0)
+    const wharf = (held: Map<string, number>) => (held.get('warehouse') ?? 0) + (held.get('market') ?? 0)
     expect(wharf(added[0]!), 'the city grew the same either way').toBeGreaterThan(wharf(added[1]!) * 2)
   })
 
@@ -230,13 +233,13 @@ describe('a city written against a history', () => {
       expect(tradesFor(flavour).length, `${flavour} lives on nothing`).toBeGreaterThan(0)
       expect(turnsFor(flavour).length, `nothing has ever happened to a ${flavour} town`).toBeGreaterThan(1)
     }
-    const written = composePremise('dense neon port city', new Rng('offline'))
-    expect(written.premise.sides.length).toBe(2)
-    expect(written.premise.build.mustHave.length).toBeGreaterThan(0)
+    const written = composePremise('dense neon port city', new Rng('offline')).history
+    expect(written.sides.length).toBe(2)
+    expect(written.build.mustHave.length).toBeGreaterThan(0)
     // and what the trade wants more of is never also what it wants less of
-    for (const kind of written.premise.build.fewerOf) {
-      expect(written.premise.build.moreOf, `${kind} is both wanted and not`).not.toContain(kind)
-      expect(written.premise.build.mustHave).not.toContain(kind)
+    for (const kind of written.build.fewerOf) {
+      expect(written.build.moreOf, `${kind} is both wanted and not`).not.toContain(kind)
+      expect(written.build.mustHave).not.toContain(kind)
     }
   })
 

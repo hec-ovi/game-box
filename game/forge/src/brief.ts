@@ -1,4 +1,5 @@
 import { contract } from '@gb/kit'
+import { AsksSchema } from '@gb/world'
 import { z } from 'zod'
 import { MAX_BLOCK, MIN_BLOCK, mostBlocks, widestBlock, widestGrid } from './layout/plan.ts'
 
@@ -30,6 +31,10 @@ export const BriefSchema = z
     maxStoreys: z.number().int().min(1).max(40).default(3),
     /** How many roads leave through the mountains. Left out, the seed picks it. */
     exits: z.number().int().min(1).max(4).optional(),
+    /** What the city is about, in the owner's own words. Written into the file and read by the history writer. */
+    brief: z.string().min(1).optional(),
+    /** What the owner asked of the writing and the look, in `@gb/world`'s `Asks`. */
+    asks: AsksSchema.optional(),
   })
   .superRefine((brief, ctx) => {
     // blocks times cells is a grid, and a grid has a size the world will not go past

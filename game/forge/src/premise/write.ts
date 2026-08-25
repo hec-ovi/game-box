@@ -1,15 +1,17 @@
 import type { Rng } from '@gb/kit'
-import type { BuildingKind, Premise } from '@gb/world'
+import type { Charter, Word } from '@gb/world'
 import { flavourOf } from '../theme/flavour.ts'
 import type { PremiseBuild } from './check.ts'
+import { PLACES } from './places.ts'
+import type { History } from './shape.ts'
 import { tradesFor, turnsFor, type Kinds } from './wording.ts'
 
 /** How many of the turn's facts everybody in town has heard. */
 const FACTS = 2
 
-/** A premise, and the noun a town that lives on this can be named after. */
+/** A history, and the noun a town that lives on this can be named after. */
 export interface Written {
-  readonly premise: Premise
+  readonly history: History
   readonly word: string
 }
 
@@ -18,23 +20,26 @@ export interface Written {
  *
  * Two halves: what the place lives on, which comes from the kind of town the
  * theme reads as, and what happened to it, which is drawn from what can happen
- * to a town like this. Both halves push the same building mix, so the history
- * and the architecture are one decision rather than two. The wording is in
- * `premise/*.md`; this only picks and joins.
+ * to a town like this. Both halves push the same building mix, and either may
+ * declare a kind of place of its own, so the history and the architecture are
+ * one decision rather than two. The wording is in `premise/*.md`; this only
+ * picks and joins.
  */
 export function composePremise(theme: string, rng: Rng): Written {
   const flavour = flavourOf(theme)
   const trade = rng.pick(tradesFor(flavour))
   const turn = rng.pick(turnsFor(flavour))
+  const charters = unique([...trade.declares, ...turn.declares]).map((word) => PLACES[word]).filter((charter): charter is Charter => charter !== undefined)
   return {
     word: trade.word,
-    premise: {
+    history: {
       livesOn: trade.lives,
       happened: turn.happened,
       stake: turn.stake,
       sides: turn.sides.map((side) => ({ ...side })),
       common: rng.shuffle([...turn.known]).slice(0, FACTS),
       build: merge(trade, turn),
+      ...(charters.length ? { charters } : {}),
     },
   }
 }
@@ -50,4 +55,4 @@ function merge(trade: Kinds, turn: Kinds): PremiseBuild {
   return { moreOf, fewerOf, mustHave }
 }
 
-const unique = (kinds: readonly BuildingKind[]): BuildingKind[] => [...new Set(kinds)]
+const unique = (words: readonly Word[]): Word[] => [...new Set(words)]

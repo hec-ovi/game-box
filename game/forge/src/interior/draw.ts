@@ -1,16 +1,16 @@
 import { Rng } from '@gb/kit'
-import type { Anchor, BuildingKind } from '@gb/world'
+import type { Anchor, Charter } from '@gb/world'
+import { charterHash } from '../charters/hash.ts'
 import { occupancy, roleFor, stockOf } from '../populate.ts'
 import { planInterior } from './plan.ts'
 
 /**
  * What a kind of place has to offer somebody who tries its door.
  *
- * Nothing here reads a list of building kinds. A door is worth opening for what
- * the place has to offer, which this asks the interior planner: somebody
- * stationed at a post, somewhere to sit, somewhere to sleep, something lying
- * about. A kind added to `@gb/world` next week is weighed the same way without
- * anybody coming back here.
+ * Nothing here reads a list of kinds. A door is worth opening for what the
+ * place has to offer, which this asks the interior planner: somebody stationed
+ * at a post, somewhere to sit, somewhere to sleep, something lying about. A
+ * kind a history invents tomorrow is weighed the same way.
  */
 
 /** An anchor somebody is stationed at to do a job, rather than to pass the time. */
@@ -31,41 +31,47 @@ export interface Draw {
   readonly beds: number
   /** Kinds of loose stock the place carries. */
   readonly stock: number
+  /** Every place a body stands, sits or lies: none means nobody can be in it at all. */
+  readonly posts: number
 }
 
-const draws = new Map<BuildingKind, Draw>()
+const draws = new Map<string, Draw>()
 
 /**
- * What this kind of building holds, read off an interior its own dresser makes
- * rather than off a table somebody has to maintain. Drawn once per kind from a
- * stream of its own, so it is the same everywhere and no town's seed moves it.
+ * What this kind of place holds, read off an interior its own rooms make rather
+ * than off a table somebody has to maintain. Drawn once per charter from a
+ * stream seeded on its word, so it is the same everywhere and no town's seed
+ * moves it; the memo is keyed on the word and the charter's own digest, so two
+ * cities in one process that invent the same word differently share nothing.
  */
-export function drawOf(kind: BuildingKind): Draw {
-  const known = draws.get(kind)
+export function drawOf(charter: Charter): Draw {
+  const key = `${charter.word}:${charterHash(charter)}`
+  const known = draws.get(key)
   if (known) return known
   let minted = 0
   const plan = planInterior({
-    kind,
+    charter,
     size: PROBE,
     entrance: 'north',
     wants: { dancing: false },
     mint: (thing) => `${thing}_${++minted}`,
-    rng: new Rng(`open/${kind}`),
+    rng: new Rng(`open/${charter.word}`),
   })
   const draw: Draw = {
-    counter: plan.anchors.filter((anchor) => works(anchor, kind) && occupancy(anchor.kind) === 1).length,
-    staff: plan.anchors.filter((anchor) => works(anchor, kind)).length,
+    counter: plan.anchors.filter((anchor) => works(anchor, charter) && occupancy(anchor.kind, charter) === 1).length,
+    staff: plan.anchors.filter((anchor) => works(anchor, charter)).length,
     seats: plan.anchors.filter((anchor) => anchor.kind === 'sit' || anchor.kind === 'sit-drink').length,
     beds: plan.anchors.filter((anchor) => anchor.kind === 'sleep').length,
-    stock: stockOf(kind).length,
+    stock: stockOf(charter).length,
+    posts: plan.anchors.length,
   }
-  draws.set(kind, draw)
+  draws.set(key, draw)
   return draw
 }
 
 /** Somebody is stationed here often enough that it is their post, not a seat they took. */
-function works(anchor: Anchor, kind: BuildingKind): boolean {
-  return roleFor(anchor.kind, kind) !== undefined && occupancy(anchor.kind) >= WORKING
+function works(anchor: Anchor, charter: Charter): boolean {
+  return roleFor(anchor.kind, charter) !== undefined && occupancy(anchor.kind, charter) >= WORKING
 }
 
 /**
@@ -76,8 +82,8 @@ function works(anchor: Anchor, kind: BuildingKind): boolean {
  * a shop, a bar and a surgery well above a flat, a lock-up and a chapel, which
  * is the shape a town of frontage wants.
  */
-export function pullOf(kind: BuildingKind): number {
-  const draw = drawOf(kind)
+export function pullOf(charter: Charter): number {
+  const draw = drawOf(charter)
   return (draw.counter ? 3 : 0) + (draw.staff ? 2 : 0) + (draw.stock >= 3 ? 1 : 0) + (draw.seats + draw.beds >= 3 ? 1 : 0)
 }
 
