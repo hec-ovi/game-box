@@ -16,14 +16,17 @@ const SIZE = 1024
  *
  * A fabric marked to glow is painted into a second sheet as well, black
  * everywhere else, which the material emits from: that is the one lit accent
- * each person carries.
+ * each person carries. A third sheet carries how rough each fabric is with the
+ * weave dipped into it, which is what keeps a black coat from reading as wet.
  */
 export class GarmentPainter {
   #palette
+  #finish
   #families = new Map()
 
-  constructor(palette) {
+  constructor(palette, finish) {
     this.#palette = palette
+    this.#finish = finish
   }
 
   /**
@@ -67,7 +70,16 @@ export class GarmentPainter {
           changed.set(fabric, (changed.get(fabric) ?? 0) + count)
         }
       }
-      sheets.set(family, { png: await sheet.atlas.toPng(), glow: await sheet.atlas.toGlowPng(), changed })
+      // the range is read before the flood, which fills the whole sheet
+      const [lowest, highest] = sheet.atlas.roughRange()
+      sheets.set(family, {
+        glow: await sheet.atlas.toGlowPng(),
+        rough: await sheet.atlas.toRoughPng(),
+        png: await sheet.atlas.toPng(),
+        changed,
+        lowest,
+        highest,
+      })
     }
     return sheets
   }
@@ -87,7 +99,7 @@ export class GarmentPainter {
     if (ready) return ready
     const texture = material.getBaseColorTexture()
     if (!texture) throw new Error(`${part.name}: ${material.getName()} has no base colour texture to repaint`)
-    const sheet = { atlas: await OutfitAtlas.load(Buffer.from(texture.getImage()), SIZE), jobs: [] }
+    const sheet = { atlas: await OutfitAtlas.load(Buffer.from(texture.getImage()), SIZE, this.#finish), jobs: [] }
     this.#families.set(family, sheet)
     return sheet
   }

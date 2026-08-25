@@ -1,12 +1,12 @@
 # @gb/cast contract
 
-contractVersion: 0.10.0
+contractVersion: 0.11.0
 
 ## Purpose
 
 The people: one clip library and one dressed character per outfit, loaded once, cloned per NPC, wearing what their role suits and the hair their id draws, built to the size their id draws, playing what the anchor they stand on implies with the thing that clip is posed around in their hand, leaving that stance to face whoever talks to them, and talking with their hands and their head for as long as their line is arriving.
 
-The city is cyberpunk at night, so the clothes are near-black coated garments with one lit accent each, and the hair is as often dyed as grown. Twelve outfits cover the twelve `NPC_ROLES` across the pack's two bodies.
+The city is cyberpunk at night, so the clothes are near-black woven garments with one lit accent each, and the hair is as often dyed as grown. Twelve outfits cover the twelve `NPC_ROLES` across the pack's two bodies.
 
 ## Inputs
 
@@ -65,9 +65,11 @@ Built by `node tools/build-anims.mjs && node tools/build-pack.mjs && node tools/
 
 - `anims.glb`: every clip, on one skeleton, no meshes. 1.31 MB over the wire, 47 clips.
 - `wardrobe.json`: `{ characters: [{ id, body, file, roles, themes, styles, brows, beard? }] }`.
-- `characters/<id>.glb`: one finished person, body, clothes, every hairstyle and both pairs of eyebrows already merged. Twelve files, 1.08 to 1.15 MB each, 13.47 MB together.
+- `characters/<id>.glb`: one finished person, body, clothes, every hairstyle and both pairs of eyebrows already merged. Twelve files, 1.11 to 1.21 MB each, 14.01 MB together.
 
 Dressing happens in the build, never at runtime: the outfit parts and the hair are refitted to the body's rest pose, moved onto its skin, and the body geometry under the clothes is dropped. There is no `SkinnedMesh.bind` call anywhere in this box. `spawn` only shows one hairstyle and one pair of eyebrows out of the ones the file already carries, and puts a colour on them.
+
+Everything worn over the head and neck is then held outside the bare skin that is left (`tools/wardrobe/settle.mjs`): the packs are cut for a narrower body than this one, so a collar's rim sat up to 50 mm inside the nape and the neck came through the cloth in ragged holes. Each vertex is moved out along the skin's own normal until it is clear (10 mm for a garment, 3 mm for hair), and the move is smoothed over the piece's own edges first, so a buried rim opens as one piece instead of tearing into shards. Through the stance a person spawns in, on both builds, no cloth reaches more than 6 mm back inside the skin (`tests/looks.test.ts`).
 
 The clothes are recut fantasy art. The only CC0 wardrobe on this skeleton is Quaternius's fantasy outfits pack, four outfits on two texture sheets, so the build takes them apart: belts, bracers and pauldrons are separate nodes and are not worn, the knee boots are cut off above the shoe and the trousers taken down over them, and every fabric on the sheet is repainted per outfit. What the pack painted on as hardware is settled into the cloth around it. `tools/wardrobe/` holds that work; `game/cast/wardrobe.json` is what it reads.
 
@@ -109,22 +111,22 @@ Twelve, six per body, cut from the fantasy pack's Peasant and Ranger parts and r
 
 | Id | Garments | Accent | Roles | Theme words | MB |
 |---|---|---|---|---|---|
-| `male-office` | Peasant body and legs, Ranger arms, Peasant shoes | cyan | clerk, receptionist, resident | office, downtown, business, finance, tower | 1.15 |
-| `male-service` | Peasant body, Ranger arms and legs, Peasant shoes | violet | bartender, cook, patron | bar, cafe, restaurant, hotel, nightlife | 1.15 |
-| `male-casual` | Peasant body, arms, legs and shoes | lime | patron, resident, wanderer | city, neighbourhood, residential, suburb, quiet | 1.08 |
-| `male-works` | Ranger body, arms and legs, Ranger boots cut to shoes | amber | worker, mechanic, resident | industrial, docks, works, depot, yard, construction | 1.12 |
-| `male-courier` | Ranger body and arms, Peasant legs and shoes | magenta | courier, wanderer, patron | downtown, traffic, delivery, market, rush | 1.15 |
-| `male-guard` | Ranger body, arms and legs, Ranger boots cut to shoes | crimson | guard, vendor, resident | security, precinct, station, port, night | 1.11 |
-| `female-office` | Peasant body and legs, Ranger arms, Peasant shoes | violet | clerk, receptionist, resident | office, downtown, business, finance, tower | 1.14 |
-| `female-service` | Peasant body, Ranger arms and legs, Peasant shoes | magenta | bartender, cook, patron | bar, cafe, restaurant, hotel, nightlife | 1.13 |
-| `female-casual` | Peasant body and legs, Ranger arms, Peasant shoes | teal | patron, resident, wanderer | city, neighbourhood, residential, suburb, quiet | 1.14 |
-| `female-works` | Ranger body, arms and legs, Ranger boots cut to shoes | amber | worker, mechanic, resident | industrial, docks, works, depot, yard, construction | 1.09 |
-| `female-courier` | Ranger body and arms, Peasant legs and shoes | cyan | courier, wanderer, patron | downtown, traffic, delivery, market, rush | 1.13 |
-| `female-guard` | Ranger body, arms and legs, Ranger boots cut to shoes | crimson | guard, vendor, resident | security, precinct, station, port, night | 1.09 |
+| `male-office` | Peasant body and legs, Ranger arms, Peasant shoes | cyan | clerk, receptionist, resident | office, downtown, business, finance, tower | 1.19 |
+| `male-service` | Peasant body, Ranger arms and legs, Peasant shoes | violet | bartender, cook, patron | bar, cafe, restaurant, hotel, nightlife | 1.19 |
+| `male-casual` | Peasant body, arms, legs and shoes | lime | patron, resident, wanderer | city, neighbourhood, residential, suburb, quiet | 1.11 |
+| `male-works` | Ranger body, arms and legs, Ranger boots cut to shoes | amber | worker, mechanic, resident | industrial, docks, works, depot, yard, construction | 1.16 |
+| `male-courier` | Ranger body and arms, Peasant legs and shoes | magenta | courier, wanderer, patron | downtown, traffic, delivery, market, rush | 1.21 |
+| `male-guard` | Ranger body, arms and legs, Ranger boots cut to shoes | crimson | guard, vendor, resident | security, precinct, station, port, night | 1.15 |
+| `female-office` | Peasant body and legs, Ranger arms, Peasant shoes | violet | clerk, receptionist, resident | office, downtown, business, finance, tower | 1.19 |
+| `female-service` | Peasant body, Ranger arms and legs, Peasant shoes | magenta | bartender, cook, patron | bar, cafe, restaurant, hotel, nightlife | 1.18 |
+| `female-casual` | Peasant body and legs, Ranger arms, Peasant shoes | teal | patron, resident, wanderer | city, neighbourhood, residential, suburb, quiet | 1.19 |
+| `female-works` | Ranger body, arms and legs, Ranger boots cut to shoes | amber | worker, mechanic, resident | industrial, docks, works, depot, yard, construction | 1.13 |
+| `female-courier` | Ranger body and arms, Peasant legs and shoes | cyan | courier, wanderer, patron | downtown, traffic, delivery, market, rush | 1.19 |
+| `female-guard` | Ranger body, arms and legs, Ranger boots cut to shoes | crimson | guard, vendor, resident | security, precinct, station, port, night | 1.13 |
 
 ### The hair
 
-The hair is cut for a smaller head than this body's. Worn as it comes, two fifths of a buzz cut lies up to 12 mm under the scalp and only a patch of it shows, which reads as a bald head with something on it; the build holds every hairstyle, beard and added pair of brows 3 mm outside the bare skin (`tools/wardrobe/scalp.mjs`), and `tests/looks.test.ts` reads the rest-pose geometry back against the skin's normals so no piece is more than 2 percent under it.
+The hair is cut for a smaller head than this body's. Worn as it comes, two fifths of a buzz cut lies up to 12 mm under the scalp and only a patch of it shows, which reads as a bald head with something on it; the build holds every hairstyle, beard and added pair of brows 3 mm outside the bare skin (`tools/wardrobe/settle.mjs`, the same pass that opens a collar over the neck), and `tests/looks.test.ts` reads the rest-pose geometry back against the skin's normals so no piece is more than 2 percent under it.
 
 ## What the library holds
 
@@ -329,6 +331,9 @@ The bed `@gb/forge` places is 1.84 m of pad and a body with boots on is 1.90 m e
 - Nobody stands in the rest pose. `spawn` falls back to the idle when it is handed a clip the library has not got, and `load` refuses a library with no clips in it, so a typo is a wrong animation rather than a T-posing NPC.
 - No limb ends up inside the head, through any clip the game plays or any gesture layered over it.
 - Every material a character renders with carries its base colour texture, so nobody comes out the white of a missing map.
+- **Nothing worn crosses the skin it is worn over.** Every garment, hairstyle, beard and pair of brows is held outside the bare head and neck in the build, and through the stance a person spawns in, on both builds, no cloth reaches more than 6 mm back inside it. A garment that crosses the skin reads as a hole with torn edges, because the skin covers the cloth in one triangle and the cloth covers the skin in the next.
+- **Cloth is cloth.** Every garment renders between 0.40 and 0.86 roughness at metalness 0, off a weave sheet built for that outfit, so a near-black coat catches a broken sheen that moves rather than one hard highlight.
+- **A garment gives off light only where it asked to.** The lit accent is one fabric of one outfit; the sheet a family emits from carries that garment's own accent and nothing an earlier garment left on the pixels they share, so a boot painted with no accent does not glow.
 - Everybody has hair, or is bald on purpose: the hairstyle, the eyebrows, the beard and the colour of all three are drawn from the NPC's id, and the eyebrows always match the hair. Every piece sits outside the skin, so a buzz cut shows as a buzz cut. Tinted materials are shared across the whole cast, so a crowd costs one material per colour per hair texture, not one per person.
 - The same NPC id gets the same outfit, the same hair, the same build, the same walk and the same point in the loop every time the city is opened, so a shared world file looks the same to everyone.
 - A build is the rig scaled, never a second body: it reaches the skin of the bones it names and nothing hanging off them, no clip carries a scale channel that could undo it, and through every clip the heavy body's feet, hips and back land where the regular body's do.
@@ -363,7 +368,11 @@ Per part:
 - `hem` pulls a garment's bottom rim down to that height, stretching its lowest 20 cm, which is how a trouser reaches the shoe the boot used to cover. Keep `hem` a little under the boot's `cut` so the cut rim tucks under the trouser.
 - `paint` gives every fabric of that part's source sheet a colour from the `fabrics` block. A rule may instead be `{ colour, flatten, glow }`: `flatten` pulls the fabric towards one even tone (that is how painted-on hardware is erased), and `glow` makes it the one lit accent the person carries. `tools/wardrobe/fabrics.mjs` names the fabrics each source sheet is made of and how much each settles by default.
 
-`finish` sets the roughness and metalness every garment renders with: low roughness and a trace of metal is what makes them read as coated rather than woven.
+`finish` is what every garment renders as cloth with, and it is one block for the whole wardrobe:
+
+- `roughness` (0.86) is the roughest any of them gets, and the factor the material ships; `metalness` (0) is what cloth is, because a dielectric is the difference between a coat and a wet coat.
+- `threads` (210 across the sheet) and `depth` (0.2) are the weave the roughness map is dipped by (`tools/wardrobe/weave.mjs`), generated from the pixel's own coordinates. Each fabric of the source sheet also carries its own level (`tools/wardrobe/fabrics.mjs`): cloth and linen at the ceiling, straps and leather at 0.82 of it, the hardware at 0.62. Together they put every garment between **0.40 and 0.86 roughness at metalness 0**, so a black coat answers the street unevenly and the highlight moves with the body instead of standing on it.
+- `accent` (0.55) is how hard the one lit fabric emits. A fabric marked to glow also keeps its own light and shade rather than settling flat, so the accent reads as a stud on a coat rather than as an even patch of colour.
 
 `roles` are `@gb/world` `NPC_ROLES`; `themes` are words looked for in the world's theme text. An outfit made for the NPC's role scores 2, a theme word scores 1, and the best score wins; ties are broken by the NPC's id. Give an outfit no roles and no themes and it becomes a fallback that only gets worn when nothing else fits the body.
 

@@ -17,6 +17,15 @@ const LOW = 0.08
 const HIGH = 0.92
 
 /**
+ * How much a fabric settles when it is the outfit's lit accent. The studs
+ * settle almost flat by default, which is how painted-on hardware disappears
+ * into the cloth; do that to the one fabric that gives off light and the accent
+ * comes out as an even patch of colour with hard edges, which reads as a stray
+ * face rather than as a stud on a coat.
+ */
+const ACCENT = 0.25
+
+/**
  * Gives one garment new colours without losing the shading baked into it.
  *
  * Each fabric is measured across the garment first, so a repaint knows what
@@ -45,18 +54,17 @@ export class Repaint {
     return this.#fabrics.names.filter((name) => !this.#recipe[name])
   }
 
-  /** Whether any fabric in this recipe gives off light. */
-  glows() {
-    return Object.values(this.#recipe).some((rule) => rule.glow)
-  }
-
   /**
-   * Repaints `pixels` (raw RGB) wherever `mask` is set: one pass to sort the
-   * pixels by fabric and learn each one's range, one to paint. A fabric with
-   * `glow` also writes itself into `lit`, the sheet the material emits from,
-   * which is black everywhere else.
+   * Repaints a sheet wherever `mask` is set: one pass to sort the pixels by
+   * fabric and learn each one's range, one to paint.
+   *
+   * `sheet.pixels` is the raw RGB the garment is drawn from. A fabric with
+   * `glow` also writes itself into `sheet.lit`, the sheet the material emits
+   * from, which is black everywhere else. Every fabric writes how rough it is
+   * into `sheet.rough`, so one coat is woven cloth with hardware on it rather
+   * than one polished surface.
    */
-  apply(pixels, mask, lit) {
+  apply({ pixels, lit, rough }, mask) {
     const names = this.#fabrics.names
     const fabric = new Uint8Array(mask.size * mask.size)
     const levels = new Map(names.map((name) => [name, []]))
@@ -73,11 +81,13 @@ export class Repaint {
     for (const [name, list] of levels) range.set(name, spread(list))
     const band = new Map()
     const settling = new Map()
+    const roughness = new Map()
     for (const name of names) {
       const rule = this.#recipe[name]
       if (!rule) continue
       band.set(name, swing(rule))
-      settling.set(name, rule.flatten ?? this.#fabrics.settle(name))
+      settling.set(name, rule.flatten ?? (rule.glow ? ACCENT : this.#fabrics.settle(name)))
+      roughness.set(name, Math.round(this.#fabrics.rough(name) * 255))
     }
 
     const painted = new Map()
@@ -98,6 +108,7 @@ export class Repaint {
         pixels[at * 3 + channel] = value
         if (rule.glow && lit) lit[at * 3 + channel] = clamp(Math.round(value * rule.glow), 0, 255)
       }
+      if (rough) rough[at] = roughness.get(name)
       painted.set(name, (painted.get(name) ?? 0) + 1)
     }
     return painted

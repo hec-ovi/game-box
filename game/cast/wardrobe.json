@@ -331,5 +331,5 @@
       "themes": ["security", "precinct", "station", "port", "night"]
     }
   ],
-  "finish": { "roughness": 0.34, "metalness": 0.16 }
+  "finish": { "roughness": 0.86, "metalness": 0, "threads": 210, "depth": 0.2, "accent": 0.55 }
 }

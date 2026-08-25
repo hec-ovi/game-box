@@ -1,5 +1,6 @@
 import sharp from 'sharp'
 import { UvMask } from './uv-mask.mjs'
+import { Weave } from './weave.mjs'
 
 /** How far a repainted island bleeds outwards, in pixels, so seams stay clean. */
 const BLEED = 4
@@ -22,19 +23,22 @@ const BLEED = 4
 export class OutfitAtlas {
   #pixels
   #lit
+  #rough
+  #weave
   #size
   #used
-  #glowing = false
 
-  /** `source` is a path or the bytes of a PNG. */
-  static async load(source, size) {
+  /** `source` is a path or the bytes of a PNG; `finish` is the outfit's roughness ceiling and weave. */
+  static async load(source, size, finish) {
     const pixels = await sharp(source).resize(size, size).removeAlpha().raw().toBuffer()
-    return new OutfitAtlas(pixels, size)
+    return new OutfitAtlas(pixels, size, finish)
   }
 
-  constructor(pixels, size) {
+  constructor(pixels, size, finish) {
     this.#pixels = pixels
     this.#lit = Buffer.alloc(size * size * 3)
+    this.#rough = new Uint8Array(size * size).fill(255)
+    this.#weave = new Weave(size, finish)
     this.#size = size
     this.#used = new Uint8Array(size * size)
   }
@@ -51,18 +55,26 @@ export class OutfitAtlas {
   /** Repaints one garment. Returns how many pixels of each fabric changed. */
   paint(mask, repaint) {
     mask.grow(BLEED)
-    for (let at = 0; at < this.#used.length; at++) if (mask.at(at)) this.#used[at] = 1
-    this.#glowing ||= repaint.glows()
-    return repaint.apply(this.#pixels, mask, this.#lit)
+    for (let at = 0; at < this.#used.length; at++) {
+      if (!mask.at(at)) continue
+      this.#used[at] = 1
+      // a garment's own pixels carry its own accent and no one else's: without
+      // this a boot painted with no accent still emits wherever it lands on an
+      // island the jacket lit
+      this.#lit[at * 3] = 0
+      this.#lit[at * 3 + 1] = 0
+      this.#lit[at * 3 + 2] = 0
+    }
+    return repaint.apply({ pixels: this.#pixels, lit: this.#lit, rough: this.#rough }, mask)
   }
 
   /**
    * The sheet the garment emits from, or nothing if this outfit has no lit
-   * accent. Black everywhere but the accent, so it costs almost nothing to
-   * ship and nothing to look at where it is not wanted.
+   * accent left standing. Black everywhere but the accent, so it costs almost
+   * nothing to ship and nothing to look at where it is not wanted.
    */
   async toGlowPng() {
-    if (!this.#glowing) return undefined
+    if (!this.#lit.some((level) => level)) return undefined
     return sharp(this.#lit, { raw: { width: this.#size, height: this.#size, channels: 3 } })
       .png({ compressionLevel: 9 })
       .toBuffer()
@@ -74,6 +86,34 @@ export class OutfitAtlas {
     return sharp(this.#pixels, { raw: { width: this.#size, height: this.#size, channels: 3 } })
       .png({ compressionLevel: 9 })
       .toBuffer()
+  }
+
+  /**
+   * The sheet the garment's roughness is read off, as glTF wants it: nothing in
+   * red, roughness in green, metal in blue. Every fabric's own level with the
+   * weave dipped into it, so one coat answers the street unevenly.
+   */
+  async toRoughPng() {
+    const map = Buffer.alloc(this.#size * this.#size * 3)
+    for (let at = 0; at < this.#rough.length; at++) {
+      map[at * 3 + 1] = Math.round(this.#rough[at] * this.#weave.at(at))
+    }
+    return sharp(map, { raw: { width: this.#size, height: this.#size, channels: 3 } })
+      .png({ compressionLevel: 9 })
+      .toBuffer()
+  }
+
+  /** The lowest and highest roughness this sheet ships, as shares of the ceiling. */
+  roughRange() {
+    let low = 1
+    let high = 0
+    for (let at = 0; at < this.#rough.length; at++) {
+      if (!this.#used[at]) continue
+      const level = (this.#rough[at] / 255) * this.#weave.at(at)
+      low = Math.min(low, level)
+      high = Math.max(high, level)
+    }
+    return [low, high]
   }
 
   /**

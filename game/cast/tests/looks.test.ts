@@ -1,9 +1,25 @@
-import type { BodyKind } from '@gb/world'
+import type { BodyKind, NpcRole } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
+import { buildFor, type Build, type CastMember } from '../src/index.ts'
 import { BODIES, loadCast, person, wardrobe } from './pack.ts'
+import { posed, skinsOf, type Skin } from './posing.ts'
 
 const cast = await loadCast()
+
+/** The band a garment renders in: woven cloth, with the hardware the only thing allowed to shine. */
+const FINISH = { roughest: 0.95, smoothest: 0.6 }
+
+/**
+ * How far into the bare skin a garment may reach, in metres. The build holds
+ * them clear in the rest pose; a clip shears the cloth and the skin under it by
+ * a few millimetres more, which is a collar tucked under the neck's bottom
+ * edge rather than a neck coming through the cloth.
+ */
+const THROUGH = 0.006
+
+/** How near the skin a garment vertex has to be before it is worth asking whether it is inside it. */
+const OVER = 0.05
 
 interface Look {
   readonly outfit: string
@@ -68,6 +84,128 @@ function surfaceOf(skin: THREE.Mesh) {
   }
 }
 
+/**
+ * The bare skin as a closed shape: where its vertices land in the pose, its
+ * triangles, a cap over the cut edge the build trimmed it to, and the height
+ * that cut reaches. Capped, so "inside the body" is a question with an answer;
+ * open, every test against it reads cloth hanging below the neck as buried.
+ */
+function posedSkin(skin: Skin) {
+  const points = Array.from({ length: skin.position.count }, (_, vertex) => posed(skin, vertex))
+  const index = skin.mesh.geometry.getIndex()!
+  // welded by position: a UV seam splits one vertex in two and would read as a cut
+  const at = new Map<string, number>()
+  const welded = points.map((point) => {
+    const key = point.toArray().map((one) => one.toFixed(5)).join(',')
+    if (!at.has(key)) at.set(key, at.size)
+    return at.get(key)!
+  })
+  const tris: Array<[number, number, number]> = []
+  const uses = new Map<string, number>()
+  for (let corner = 0; corner < index.count; corner += 3) {
+    const face: [number, number, number] = [index.getX(corner), index.getX(corner + 1), index.getX(corner + 2)]
+    tris.push(face)
+    for (const [one, two] of [[face[0], face[1]], [face[1], face[2]], [face[2], face[0]]]) {
+      const key = [welded[one!]!, welded[two!]!].sort((x, y) => x - y).join('/')
+      uses.set(key, (uses.get(key) ?? 0) + 1)
+    }
+  }
+
+  const rim: Array<[number, number]> = []
+  const onRim = new Set<number>()
+  for (const [key, count] of uses) {
+    if (count !== 1) continue
+    const [one, two] = key.split('/').map(Number)
+    rim.push([one!, two!])
+    onRim.add(one!).add(two!)
+  }
+  const first = new Map<number, number>()
+  for (let vertex = 0; vertex < points.length; vertex++) if (!first.has(welded[vertex]!)) first.set(welded[vertex]!, vertex)
+  const middle = new THREE.Vector3()
+  let cut = -Infinity
+  for (const one of onRim) {
+    const at = points[first.get(one)!]!
+    middle.add(at)
+    cut = Math.max(cut, at.y)
+  }
+  middle.divideScalar(onRim.size || 1)
+  points.push(middle)
+  for (const [one, two] of rim) tris.push([first.get(one)!, first.get(two)!, points.length - 1])
+
+  return { points, tris, cut }
+}
+
+/** Whether a point is inside a closed shape: an odd number of its faces stand between it and away. */
+function inside({ points, tris }: ReturnType<typeof posedSkin>, point: THREE.Vector3): boolean {
+  const away = new THREE.Vector3(0.3145, 0.7231, 0.6147).normalize()
+  const edge1 = new THREE.Vector3()
+  const edge2 = new THREE.Vector3()
+  const across = new THREE.Vector3()
+  const to = new THREE.Vector3()
+  const up = new THREE.Vector3()
+  let crossings = 0
+  for (const [a, b, c] of tris) {
+    edge1.subVectors(points[b]!, points[a]!)
+    edge2.subVectors(points[c]!, points[a]!)
+    across.crossVectors(away, edge2)
+    const face = edge1.dot(across)
+    if (Math.abs(face) < 1e-12) continue
+    to.subVectors(point, points[a]!)
+    const u = to.dot(across) / face
+    if (u < 0 || u > 1) continue
+    up.crossVectors(to, edge1)
+    const v = away.dot(up) / face
+    if (v < 0 || u + v > 1) continue
+    if (edge2.dot(up) / face > 1e-9) crossings++
+  }
+  return crossings % 2 === 1
+}
+
+/**
+ * How far inside the bare skin the deepest garment vertex sits, in metres, and
+ * where. Zero is a garment wholly outside the body, which is what a worn
+ * garment is. Cloth that crosses the skin shows as a hole with torn edges: the
+ * skin covers the cloth in one triangle and the cloth covers the skin in the
+ * next.
+ *
+ * Only the cloth above the skin's own cut edge is asked about. Below that the
+ * build kept no skin, so nothing there can be covered by any.
+ */
+function throughTheSkin(member: CastMember) {
+  member.object.updateMatrixWorld(true)
+  const skins = skinsOf(member.object).filter((skin) => skin.mesh.visible)
+  const bare = skins.filter((skin) => /^Super/i.test(skin.mesh.name)).map(posedSkin)
+  const worn = skins.filter((skin) => !/^(hair|beard|brows|Eyes|Super)/i.test(skin.mesh.name))
+  let deepest = 0
+  let where: THREE.Vector3 | undefined
+  for (const skin of worn) {
+    for (let vertex = 0; vertex < skin.position.count; vertex++) {
+      const point = posed(skin, vertex)
+      for (const body of bare) {
+        if (point.y < body.cut) continue
+        let best = Infinity
+        for (const one of body.points) best = Math.min(best, one.distanceToSquared(point))
+        // only the cloth that meets the skin at all: the rest is a sleeve, a boot, a hem
+        if (best > OVER * OVER || !inside(body, point)) continue
+        const depth = Math.sqrt(best)
+        if (depth <= deepest) continue
+        deepest = depth
+        where = point
+      }
+    }
+  }
+  return { deepest, where }
+}
+
+/** An id of somebody in this role built this way, or nothing if the role never is. */
+function someone(role: NpcRole, build: Build): string | undefined {
+  for (let n = 0; n < 400; n++) {
+    const id = `npc_${role}_${n}`
+    if (buildFor({ id, role }) === build) return id
+  }
+  return undefined
+}
+
 const street = (count: number, base: BodyKind) =>
   Array.from({ length: count }, (_, index) =>
     look(cast.spawn(person({ id: `npc_${base}_${index}`, role: 'resident', appearance: { base, variant: index % 8 } }))),
@@ -114,6 +252,61 @@ describe('what a person is made of', () => {
           if (surface.depthOf(point.fromBufferAttribute(position, vertex)) < -0.002) under++
         }
         expect(under / position.count, `${entry.id}: ${(100 * under / position.count).toFixed(0)}% of ${piece} is under the skin`).toBeLessThan(0.02)
+      }
+    }
+  })
+
+  /**
+   * What the owner saw as a coat torn open: the pack's collars are cut for a
+   * narrower neck than this body's, so the ranger coat's rim crossed the nape
+   * and the neck came through the cloth in ragged holes. Every outfit, on every
+   * build the game can put it on, measured in the pose it is spawned in.
+   */
+  it('closes every collar over the neck, on both builds, so nothing comes through the cloth', () => {
+    const seen = new Map<string, number>()
+    for (const entry of wardrobe.characters) {
+      for (const role of entry.roles) {
+        for (const build of ['regular', 'heavy'] as const) {
+          const id = someone(role as NpcRole, build)
+          if (!id) continue
+          const member = cast.spawn(person({ id, role: role as NpcRole, appearance: { base: entry.body, variant: 1 } }))
+          cast.update(0.001)
+          const { deepest, where } = throughTheSkin(member)
+          seen.set(`${member.outfit}/${member.build}`, deepest)
+          expect(
+            deepest,
+            `${member.outfit}/${member.build}: the cloth is ${(deepest * 1000).toFixed(1)} mm inside the bare skin at ` +
+              `${where?.toArray().map((one) => one.toFixed(3)).join(', ')}`,
+          ).toBeLessThan(THROUGH)
+        }
+      }
+    }
+    const outfits = new Set([...seen.keys()].map((key) => key.split('/')[0]))
+    expect(outfits.size, `only ${outfits.size} of ${wardrobe.characters.length} outfits were measured`).toBe(wardrobe.characters.length)
+    expect([...seen.keys()].some((key) => key.endsWith('/heavy')), 'no heavy build was measured').toBe(true)
+  })
+
+  /**
+   * What the owner saw as wet patent leather: the garments shipped one flat
+   * roughness with a trace of metal in it, so a black coat answered the street
+   * with one hard highlight. Cloth is a dielectric, and its roughness comes off
+   * this outfit's own weave sheet.
+   */
+  it('gives every garment a woven finish rather than a coated one', () => {
+    for (const entry of wardrobe.characters) {
+      const member = cast.spawn(person({ id: `npc_finish_${entry.id}`, appearance: { base: entry.body, variant: 1 } }))
+      const garments = new Set<THREE.MeshStandardMaterial>()
+      member.object.traverse((child) => {
+        const mesh = child as THREE.Mesh
+        if (!mesh.isMesh || Array.isArray(mesh.material)) return
+        if (/^MI_(Peasant|Ranger)$/.test(mesh.material.name)) garments.add(mesh.material as THREE.MeshStandardMaterial)
+      })
+      expect(garments.size, `${entry.id} renders no garment material`).toBeGreaterThan(0)
+      for (const material of garments) {
+        expect(material.roughness, `${entry.id}: ${material.name} renders at roughness ${material.roughness}`).toBeGreaterThan(FINISH.smoothest)
+        expect(material.roughness, `${entry.id}: ${material.name} renders at roughness ${material.roughness}`).toBeLessThan(FINISH.roughest)
+        expect(material.metalness, `${entry.id}: ${material.name} renders with ${material.metalness} of metal in it`).toBe(0)
+        expect(material.roughnessMap, `${entry.id}: ${material.name} has no weave to break its highlight up`).toBeTruthy()
       }
     }
   })

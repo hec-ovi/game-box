@@ -18,8 +18,7 @@ export function agree(skin, other, what) {
  * off the shoulder. Each vertex is blended through its bones' rest difference,
  * which is what lets every part share the body's one skin.
  *
- * Returns how far the furthest vertex moved and the highest point of the part,
- * both in metres.
+ * Returns how far the furthest vertex moved, in metres.
  */
 export function refit(part, skin, partSkin) {
   const body = skin.getInverseBindMatrices().getArray()
@@ -30,7 +29,6 @@ export function refit(part, skin, partSkin) {
   }
 
   let shifted = 0
-  let top = -Infinity
   for (const mesh of part.getRoot().listMeshes()) {
     for (const prim of mesh.listPrimitives()) {
       const position = prim.getAttribute('POSITION')
@@ -45,7 +43,6 @@ export function refit(part, skin, partSkin) {
         const after = apply(blended, before, 1)
         shifted = Math.max(shifted, Math.hypot(after[0] - before[0], after[1] - before[1], after[2] - before[2]))
         position.setElement(vertex, after)
-        top = Math.max(top, after[1])
         if (normal) normal.setElement(vertex, unit(apply(blended, normal.getElement(vertex, []), 0)))
         if (tangent) {
           const t = tangent.getElement(vertex, [])
@@ -54,7 +51,7 @@ export function refit(part, skin, partSkin) {
       }
     }
   }
-  return { shifted, top }
+  return { shifted }
 }
 
 /**

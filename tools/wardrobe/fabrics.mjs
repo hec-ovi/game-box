@@ -13,6 +13,10 @@
  * nearly all of it, because that shading is what makes it look like cloth.
  * Studs lose nearly all of it, which is how a painted-on buckle disappears
  * into the garment around it.
+ *
+ * And how rough it is, as a share of the outfit's ceiling: woven fabric sits
+ * at the ceiling, a coated shell catches a little more of the street, and the
+ * hardware is the only thing on a person that is allowed to shine.
  */
 
 /** Hue in degrees, saturation and value both 0 to 1. */
@@ -45,16 +49,16 @@ const FAMILIES = {
   // painted with grime, so it settles hard: left alone a white shirt comes out
   // blotched.
   Peasant: [
-    { name: 'linen', is: (h, s, v) => s < 0.4 && v > 0.3, settle: 0.65 },
-    { name: 'leather', is: () => true, settle: 0.32 },
+    { name: 'linen', is: (h, s, v) => s < 0.4 && v > 0.3, settle: 0.65, rough: 1 },
+    { name: 'leather', is: () => true, settle: 0.32, rough: 0.82 },
   ],
   // The pale grey-green of the studs first, then cloth by hue, then the straps
   // and harness. The straps settle halfway: enough to stop reading as a strap,
   // little enough to leave a seam where one was.
   Ranger: [
-    { name: 'stud', is: (h, s, v) => s < 0.18 && v > 0.4, settle: 0.88 },
-    { name: 'cloth', is: (h) => h >= 55 && h <= 175, settle: 0.12 },
-    { name: 'leather', is: () => true, settle: 0.55 },
+    { name: 'stud', is: (h, s, v) => s < 0.18 && v > 0.4, settle: 0.88, rough: 0.62 },
+    { name: 'cloth', is: (h) => h >= 55 && h <= 175, settle: 0.12, rough: 1 },
+    { name: 'leather', is: () => true, settle: 0.55, rough: 0.82 },
   ],
 }
 
@@ -81,6 +85,11 @@ export class FabricSet {
   /** How much this fabric settles when an outfit does not say. */
   settle(name) {
     return this.#rules.find((rule) => rule.name === name)?.settle ?? 0
+  }
+
+  /** How rough this fabric is, as a share of the outfit's ceiling. */
+  rough(name) {
+    return this.#rules.find((rule) => rule.name === name)?.rough ?? 1
   }
 
   classify(r, g, b) {
