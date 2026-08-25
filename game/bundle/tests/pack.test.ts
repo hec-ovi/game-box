@@ -1,5 +1,5 @@
 import { Forge, OfflineNarrator } from '@gb/forge'
-import { World } from '@gb/world'
+import { cellRows, World } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { Bundle, Pack, stableJson, type OpenedBundle, type PackDoc } from '../src/index.ts'
 
@@ -74,6 +74,30 @@ describe('Pack', () => {
     if (!again.ok) return
     expect(stableJson(again.value.world.toJSON())).toBe(stableJson(applied.value.world.toJSON()))
     expect(again.value.contentHash).toBe(applied.value.contentHash)
+  })
+
+  it('leaves a base written one char a cell in the bytes it was sealed with', async () => {
+    // a file shared before the grid could be run length encoded carries rows,
+    // and applying a pack to it must not rewrite the picture into runs: the
+    // hash every other pack names it by is over those bytes
+    const { forge, built } = await build('rows-town')
+    const doc = built.world.toJSON()
+    const old = World.load({ ...doc, grid: { width: doc.grid.width, height: doc.grid.height, rows: cellRows(doc.grid) } })
+    if (!old.ok) throw new Error(JSON.stringify(old.error).slice(0, 300))
+    const opened = await Bundle.open(await Bundle.pack(old.value, built.quests, { requires: ART }), ART)
+    if (!opened.ok) throw new Error(JSON.stringify(opened.error).slice(0, 300))
+
+    const extension = await forge.extend(old.value, 30)
+    if (!extension.ok) throw new Error(JSON.stringify(extension.error).slice(0, 300))
+    const pack = await cut(opened.value, { world: old.value, quests: built.quests })
+
+    const applied = await Pack.apply(opened.value, JSON.parse(JSON.stringify(pack)), ART)
+    expect(applied.ok, JSON.stringify('error' in applied ? applied.error : '').slice(0, 300)).toBe(true)
+    if (!applied.ok) return
+    const grid = applied.value.world.toJSON().grid
+    expect(grid.rows, 'the pack rewrote the base picture into runs').toBeDefined()
+    expect(grid.runs).toBeUndefined()
+    expect(stableJson(applied.value.world.toJSON())).toBe(stableJson(old.value.toJSON()))
   })
 
   it('refuses a pack cut from another city, one edited after it was sealed, and one that is not a pack', async () => {

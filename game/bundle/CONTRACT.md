@@ -1,6 +1,6 @@
 # @gb/bundle contract
 
-contractVersion: 0.5.0
+contractVersion: 0.6.0
 
 ## Purpose
 
@@ -130,6 +130,30 @@ against the whole city. Ids continue from the base's counters, so nothing a
 pack adds can collide with what the base has, and applying never writes into
 the base handed in.
 
+**The base's own bytes.** A document carries its grid as one character a cell
+(`grid.rows`) or run length encoded (`grid.runs`), and keeps the form it was
+written in. Both doors go through `@gb/world`: `cut` reads either form with
+`cellRows`, and `apply` writes the picture back with `gridField(rows, base)`,
+in the base's form. A pack applied to a file somebody already holds gives back
+the bytes they were sent.
+
+**What a pack costs.** The pack is the ground the growth built on, not the
+grid, so its size follows the growth and the grid only moves what reading the
+picture costs. Measured on a 30-plot growth of a loose town
+(`pnpm --filter @gb/bundle run measure [blocks] [blockCells]`):
+
+| city | grid | world file | picture | as runs | pack cells | pack | cut | apply |
+|---|---|---|---|---|---|---|---|---|
+| 3x3 of 14 cells | 89x85 | 103 KB | 8 KB | 2 KB | 485 | 62 KB | 4 ms | 11 ms |
+| 20x20 | 567x551 | 556 KB | 307 KB | 86 KB | 900 | 84 KB | 28 ms | 37 ms |
+| 57x57 of 6 cells | 922x921 | 1,547 KB | 832 KB | 289 KB | 900 | 91 KB | 84 ms | 121 ms |
+| 116x116 of 6 cells | 1,868x1,861 | 5,208 KB | 3,400 KB | 981 KB | 900 | 72 KB | 425 ms | 365 ms |
+
+At the widest grid a world holds, a pack is still under 100 KB: 900 cells is
+what 30 plots stand on wherever they stand. Cutting and applying do read the
+whole picture twice over to prove the base was not moved, which is the 425 ms
+and the 365 ms in the last row.
+
 **Determinism.** The pack is a diff in the base's terms and the world reads a
 document to the same bytes at both doors, so the same base and the same pack
 give the same world, and the same `contentHash`, on every machine.
@@ -241,6 +265,7 @@ the art it was designed against.
 - Static world data and playthrough state never mix: sharing a bundle shares no progress.
 - A pack only ever adds. `cut` refuses a city that changed anything the base had, `apply` appends to the base's lists and builds only on ground that was empty, and every base record comes out of `apply` byte for byte as it went in.
 - A pack applies to the city it was cut from and no other, by world id and content hash.
+- Applying a pack leaves the base's grid in the form the file was written in, so a city already shared keeps the bytes its hash was taken over.
 - The published schemas are what this box generates today. Most of what is in them belongs to `@gb/world`, `@gb/quest` and `@gb/play`, so they go stale when one of those boxes adds a field and nothing here changes; `tests/published-schema.test.ts` is what notices, and it costs a file read.
 
 ## How to modify this blackbox safely

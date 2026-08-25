@@ -16,13 +16,13 @@
       "default": 20,
       "type": "integer",
       "minimum": 1,
-      "maximum": 57
+      "maximum": 116
     },
     "blocksY": {
       "default": 20,
       "type": "integer",
       "minimum": 1,
-      "maximum": 57
+      "maximum": 116
     },
     "openPlaces": {
       "default": 3,

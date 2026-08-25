@@ -1,4 +1,4 @@
-import { World } from '@gb/world'
+import { cellRows, World } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { Forge, OfflineNarrator, type Growth } from '../src/index.ts'
 import { line, playEvery } from './playable.ts'
@@ -105,10 +105,11 @@ describe('a growth leaves the city somebody already played alone', () => {
   it('builds only on ground that was empty', () => {
     const after = grown.world.toJSON()
     expect(after.grid.width).toBe(base.doc.grid.width)
-    for (const [y, row] of base.doc.grid.rows.entries()) {
+    const rows = cellRows(after.grid)
+    for (const [y, row] of cellRows(base.doc.grid).entries()) {
       for (let x = 0; x < row.length; x++) {
         if (row[x] === '.') continue
-        expect(after.grid.rows[y]![x], `the growth built over ${row[x]} at ${x},${y}`).toBe(row[x])
+        expect(rows[y]![x], `the growth built over ${row[x]} at ${x},${y}`).toBe(row[x])
       }
     }
   })

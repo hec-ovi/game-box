@@ -1,4 +1,4 @@
-import type { World } from '@gb/world'
+import { cellRows, type GridField, type World } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { BANDS, MOUNTAIN_CELLS } from '../src/index.ts'
 import { buildTown, digest } from './support.ts'
@@ -27,7 +27,7 @@ const KERB = [HALF + 1, HALF + BANDS.exit.pavement]
 const town = (overrides: Record<string, unknown> = {}) => buildTown('town', overrides)
 
 interface CityDoc extends Record<string, unknown> {
-  grid: { width: number; height: number; rows: string[] }
+  grid: GridField
   roads: { nodes: RoadNode[]; segments: RoadSegment[] }
   idCounters: Record<string, number>
 }
@@ -170,9 +170,10 @@ describe('the roads out of the valley', () => {
     // pavement of the ring road where the mouth of the new road cuts through it
     const reach = MOUNTAIN_CELLS + BANDS.street.pavement
     const toEdge = (cell: Cell) => Math.min(cell.x, cell.y, after.grid.width - 1 - cell.x, after.grid.height - 1 - cell.y)
-    after.grid.rows.forEach((row, y) => {
+    const was = cellRows(before.grid)
+    cellRows(after.grid).forEach((row, y) => {
       for (let x = 0; x < row.length; x++) {
-        if (row[x] === before.grid.rows[y]![x]) continue
+        if (row[x] === was[y]![x]) continue
         expect(toEdge({ x, y }), `${x},${y}`).toBeLessThanOrEqual(reach)
       }
     })

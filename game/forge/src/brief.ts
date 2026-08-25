@@ -1,18 +1,16 @@
 import { contract } from '@gb/kit'
-import { AsksSchema } from '@gb/world'
+import { AsksSchema, MAX_GRID_SIDE } from '@gb/world'
 import { z } from 'zod'
 import { MOST_PLACES, OPEN_PLACES } from './interior/budget.ts'
 import { MAX_BLOCK, MIN_BLOCK, mostBlocks, widestBlock, widestGrid } from './layout/plan.ts'
 
-/** The widest grid `@gb/world` accepts, a side. Ask for more and nothing is built. */
-const GRID_MAX = 1024
-
 /**
  * The most blocks a side anything can ask for. It is the grid bound expressed
  * in blocks rather than a number of its own: how many of the smallest block
- * fit across the widest grid. Bigger blocks hit the grid check below first.
+ * fit across the widest grid `@gb/world` accepts. Bigger blocks hit the grid
+ * check below first.
  */
-export const BLOCKS_MAX = mostBlocks(GRID_MAX)
+export const BLOCKS_MAX = mostBlocks(MAX_GRID_SIDE)
 
 /** What you ask for when you want a city. Everything else is derived from it. */
 export const BriefSchema = z
@@ -43,10 +41,10 @@ export const BriefSchema = z
     // blocks times cells is a grid, and a grid has a size the world will not go past
     const { width, height } = widestGrid(brief)
     const side = Math.max(width, height)
-    if (side > GRID_MAX) {
+    if (side > MAX_GRID_SIDE) {
       ctx.addIssue({
         code: 'custom',
-        message: `${brief.blocksX}x${brief.blocksY} blocks of ${widestBlock(brief.blockCells)} cells needs a ${side}-cell grid; a city is at most ${GRID_MAX} cells a side`,
+        message: `${brief.blocksX}x${brief.blocksY} blocks of ${widestBlock(brief.blockCells)} cells needs a ${side}-cell grid; a city is at most ${MAX_GRID_SIDE} cells a side`,
       })
     }
   })

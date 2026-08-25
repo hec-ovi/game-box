@@ -1,6 +1,6 @@
 # @gb/forge contract
 
-contractVersion: 0.26.0
+contractVersion: 0.27.0
 
 ## Purpose
 
@@ -23,11 +23,12 @@ Builds a whole city from one brief: its history first, with the kinds of place t
 | `extend` | plot ids added | the ids of the buildings put up on empty land, and nothing else: a facade that opened is a plot the city already had, and which ones opened is read off the world (`world.interiors()` the base had not). Every base record is byte for byte as it was, the city's history included, but for the one field a facade gains when its door opens (`plot.interiorId`) |
 | `extendQuests` | `{ quests, rejected }` | every quest passed `@gb/quest` validation against the whole grown city, so a pack's errand may name the base's people and places; `rejected` lists the drafts that did not, with why. Ids continue past the ones handed in |
 | `summarise(world, premise?)` | `WorldSummary` | the abstract world a quest writer reads: what the town is about, what the owner asked of the writing (`asks`, off `world.asks()`), its places by the word of their kind, who is in them and which room, what is there and what it costs, where each street door stands in metres, a surface inside each place something can be left on, its `locks` (each with the room behind it, its key and who carries it, its code, and what lies behind it), its `machines` (program, lock, code), what it is `forSale` for, and the `work` done in it |
+| `BLOCKS_MAX` | a number | the most blocks a side a brief may ask for, 116 today. It is `@gb/world`'s `MAX_GRID_SIDE` read in blocks, so anything putting a limit in front of a person reads it here rather than writing a number of its own |
 | `questTargets(objectives)` | a set of npc ids | who a quest is waiting on right now: every person named on an open line of `QuestLog.objectives()`. The running game keeps them at their posts whatever share of the town it sends out walking, and the harness measures it against that rule |
 
 ## Errors (closed set)
 
-- `invalid-brief`: the brief failed its schema, or the city it asks for is one no world will hold (the widest grid those blocks could need is over 1024 cells a side). Nothing is built, and no world constructor throws. The size bound is not expressible in JSON Schema, so it lives in the brief's own check rather than in `schema/brief.json`.
+- `invalid-brief`: the brief failed its schema, or the city it asks for is one no world will hold (the widest grid those blocks could need is over `@gb/world`'s `MAX_GRID_SIDE`, 2,048 cells a side). Nothing is built, and no world constructor throws. The size bound is not expressible in JSON Schema, so it lives in the brief's own check rather than in `schema/brief.json`.
 - `unsound-world`: the generator produced a world that fails its own integrity check. Carries the problems; this is a bug in the generator, never a bad brief.
 
 A narrator writing an unusable quest is not an error: those quests are dropped and reported in `rejected`. A narrator writing an unusable history is not an error either: each charter it declares is checked on its own and dropped with its reason (reported in `dropped`), and the premise is salvaged field by field against `@gb/world`'s `premiseContract` (a kind no charter declares is dropped from `build`, a side without both its parts is dropped, a line that is not a line is dropped); one nothing can be salvaged from is dropped whole and the town is built without one.
@@ -81,7 +82,7 @@ A narrator writing an unusable quest is not an error: those quests are dropped a
 - A body **propped against a wall** is not at the wall either. The lean clips hold it 0.414 m behind its own root, measured off all three `Idle_Wall*` clips skinned onto all twelve dressed characters, so a root on the wall is a body through it. The anchor goes 0.44 m out from the inside face instead, facing the room, which leaves 2.6 cm. Nothing stands under a propped body, so it claims its own floor rather than a piece's: 0.79 m out from the wall by 0.76 m along it, out of the doorway band, clear of anything already against that wall, and kept for it so a chair drawn up afterwards does not land on its feet. The number lives in `src/interior/stance.ts` beside the seat offsets, and `@gb/cast` measures the same one from the clips.
 - Whether a seat is a place somebody can sit is a question about the seat, so nothing about which anchors are accepted turns on that offset: reachability, doorways and other people's furniture are all judged at the seat, exactly as they were when the body sat on its centre. Moving a body onto its seat properly cannot cost a town a single anchor.
 - A city is mostly frontage. Every plot is a building with a door, a sign and a name; a fixed handful of them also have an interior, and the rest cannot be walked into. A plot without an interior is closed all the way through: nobody is stationed in it, nothing is lying about in it, and no quest step points into it, so a closed door offers the player nothing rather than teasing them with something they cannot reach.
-- **A city's size is scenery: the places it opens are an absolute number.** `openPlaces` is the brief's, three by default, and it is the same three in a hamlet and in a city of seven thousand buildings. Everything a player meets follows from it, so a big city costs about what a small one costs to build, to send to somebody and to learn. Measured on one seed at 2, 10, 20 and 32 blocks: 38, 785, 3,199 and 7,486 buildings, 3 places every time, 13 to 14 people, 9 quests, 0.11 s to 0.65 s, 0.07 MB to 2.57 MB. The number is the town's, never the batch's, so building a city bigger opens no more doors. A town too small to hold three and still be mostly frontage opens fewer, and a town of one or two buildings opens one anyway, because a town with no door at all is not a town. Growing a finished city is the other case, below: a growth is an authored addition and it says how many more doors the city opens.
+- **A city's size is scenery: the places it opens are an absolute number.** `openPlaces` is the brief's, three by default, and it is the same three in a hamlet and in a city of seven thousand buildings. Everything a player meets follows from it, so a big city costs about what a small one costs to build, to send to somebody and to learn. Measured on one seed at 2, 10, 20, 32 and 50 blocks: 38, 785, 3,199, 7,486 and 20,523 buildings, 3 places every time, 13 to 14 people, 9 quests, 0.08 s to 1.56 s, 0.07 MB to 4.84 MB. The number is the town's, never the batch's, so building a city bigger opens no more doors. A town too small to hold three and still be mostly frontage opens fewer, and a town of one or two buildings opens one anyway, because a town with no door at all is not a town. Growing a finished city is the other case, below: a growth is an authored addition and it says how many more doors the city opens.
 - Which doors open is never a list of kinds. Each charter is weighed by what its own rooms turn out to make (`src/interior/draw.ts`, memoised on the word and the charter's digest, so two cities in one process that invent one word differently share nothing): a counter that is always staffed counts most, then anybody else who works there, then loose stock, then whether the place reads as somewhere people are. A kind a history invents is weighed the same way. On top of that a plot with room behind its door scores higher, because three places have to hold a whole city's cast, its stock and its work; a plot near the middle of town scores higher, and a plot on an avenue higher again, because those are the doors a player tries; and a seeded nudge wide enough to let a chapel on the square in ahead of a shop at the ring road, so a town is not a list of its businesses. Measured on one 8x8 frontier seed: 555 plots, 3 doors, a workshop, a bar and a home.
 - **The doors that open stand a walk apart.** Every pick has to be further from the doors already open than the town's longest side divided by one more than the number of places, so three places are three parts of the city rather than three shops on one corner. The spacing gives way where the town has nothing else to offer, because a door on the wrong corner beats no door at all. Measured on a 20-block city: three places 308, 360 and 572 m apart in 1,210 m of town.
 - **A city's doors are as many different places as it can manage.** Every door of a kind already open charges the next one of that kind, up to one tier of what a place has to offer, so a brief that asks for more places spends them across the town rather than down one column of the ranking. The charge is capped for a reason: a repeat gives way to the shop or the surgery that has not opened yet, never to a lock-up. Six restaurants is one restaurant met six times. Measured on one 6x6 seed: a brief asking for 9 places gets 8 kinds, one asking for 24 gets 12.
@@ -150,7 +151,7 @@ A place's plan says what it contains beyond its people and its stock, so a quest
 
 ### Where fast travel boards
 
-`stationsWanted(metres)` in `src/layout/stations.ts`: one station for every 500 m of the city's longest side, about ten blocks, rounded. It is a distance and not a share, so a city has a handful of entrances however many plots it holds and a town under 250 m across has none. The kind that boards (`transit: subway` in the charter, the shipped `station` preset) is never rolled by the mix (`src/theme/plot-mix.ts`), only placed: they go on seeded sites spread across the town, each the site furthest from every one already picked, before the rest of the town is rolled. Measured on one seed: 2 blocks (156 m) none, 10 blocks (626 m) one, 20 blocks (1,210 m) two, 32 blocks (1,916 m) four, 50 blocks of 8 cells (1,758 m) four. A share of the plots put 26 entrances in an 8x8 town and 157 in a 20x20.
+`stationsWanted(metres)` in `src/layout/stations.ts`: one station for every 500 m of the city's longest side, about ten blocks, rounded. It is a distance and not a share, so a city has a handful of entrances however many plots it holds and a town under 250 m across has none. The kind that boards (`transit: subway` in the charter, the shipped `station` preset) is never rolled by the mix (`src/theme/plot-mix.ts`), only placed: they go on seeded sites spread across the town, each the site furthest from every one already picked, before the rest of the town is rolled. Measured on one seed: 2 blocks (156 m) none, 10 blocks (626 m) one, 20 blocks (1,210 m) two, 32 blocks (1,916 m) four, 50 blocks (2,970 m) six, 116 blocks of 6 cells (3,768 m) eight. A share of the plots put 26 entrances in an 8x8 town and 157 in a 20x20.
 
 ### The quests
 
@@ -187,20 +188,47 @@ A city is generated, played, and later added to as an authored step. `extend` is
 
 ### How big a city can be
 
-Nothing here holds the number of blocks down. `@gb/world` will not hold a grid over 1024 cells a side, and the brief's block limit is that bound read in blocks: how many of the smallest block the planner cuts fit across it, which is 57. Ask for more than the grid holds at the block size you named and the brief is refused before a cell is allocated, with the grid it would have needed in the message. That is why 50 blocks of 8 cells builds and 50 blocks of the default size does not (it would need a 1,587-cell grid): blocks are not a size, cells are, and a road takes cells too. The default block size fits 32 blocks a side; past that a brief has to name a smaller block.
+Nothing here holds the number of blocks down. The ceiling is `@gb/world`'s
+`MAX_GRID_SIDE`, read from it rather than written here, and the brief's block
+limit is that bound expressed in blocks: how many of the smallest block the
+planner cuts fit across it, which is 116 at 2,048 cells. Ask for more than the
+grid holds at the block size you named and the brief is refused before a cell
+is allocated, with the grid it would have needed in the message. That is why
+116 blocks of 6 cells builds and 116 of the default size does not (it would
+need a 3,659-cell grid): blocks are not a size, cells are, and a road takes
+cells too. The default block size fits 64 blocks a side, so the 50x50 city the
+owner asked for builds without naming a block at all; past 64 a brief has to
+name a smaller one.
 
-What the sizes cost, on one seed (`city-50`, the default theme, `pnpm run measure city-50 2,10,20,32`) with the offline narrator. Another seed moves the building count and the quest count, because the plan and the appetite are both drawn:
+What the sizes cost, on one seed (`city-50`, the default theme,
+`pnpm run measure city-50 2,10,20,32,50`, and the small-block rows with a
+`blockCells` argument) with the offline narrator. Another seed moves the
+building count and the quest count, because the plan and the appetite are both
+drawn:
 
 | blocks | grid | metres | avenues | buildings | open | people | things | quests | stations | build | world file |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 2x2 | 78x77 | 156 | 2 | 38 | 3 | 14 | 17 | 9 | 0 | 0.11 s | 0.07 MB |
-| 10x10 | 313x312 | 626 | 4 | 785 | 3 | 13 | 15 | 9 | 1 | 0.08 s | 0.32 MB |
-| 20x20 | 605x611 | 1,210 | 7 | 3,199 | 3 | 14 | 16 | 9 | 2 | 0.23 s | 1.10 MB |
-| 32x32 | 958x975 | 1,916 | 11 | 7,486 | 3 | 13 | 16 | 9 | 4 | 0.65 s | 2.57 MB |
-| 50x50 of 8 cells | 879x899 | 1,758 | 20 | 3,300 | 3 | 13 | 16 | 9 | 4 | 0.74 s | 1.99 MB |
-| 57x57 of 6 cells | 922x947 | 1,844 | 22 | 3,103 | 3 | 14 | 15 | 9 | 4 | 0.89 s | 2.19 MB |
+| 2x2 | 78x77 | 156 | 2 | 38 | 3 | 14 | 17 | 9 | 0 | 0.12 s | 0.07 MB |
+| 10x10 | 313x312 | 626 | 4 | 785 | 3 | 13 | 15 | 9 | 1 | 0.08 s | 0.24 MB |
+| 20x20 | 605x611 | 1,210 | 7 | 3,199 | 3 | 14 | 16 | 9 | 2 | 0.20 s | 0.82 MB |
+| 32x32 | 958x975 | 1,916 | 11 | 7,486 | 3 | 13 | 16 | 9 | 4 | 0.52 s | 1.86 MB |
+| 50x50 | 1,485x1,501 | 2,970 | 17 | 20,523 | 3 | 13 | 15 | 9 | 6 | 1.56 s | 4.84 MB |
+| 50x50 of 8 cells | 879x899 | 1,758 | 20 | 3,300 | 3 | 13 | 16 | 9 | 4 | 0.57 s | 1.44 MB |
+| 80x80 of 6 cells | 1,297x1,304 | 2,594 | 32 | 6,856 | 3 | 14 | 15 | 9 | 5 | 3.48 s | 3.19 MB |
+| 116x116 of 6 cells | 1,884x1,867 | 3,768 | 46 | 15,218 | 3 | 13 | 15 | 9 | 8 | 12.80 s | 6.84 MB |
 
-Avenues are counted across and down together. About 0.09 ms and 0.34 KB a building, flat, all the way up: a building that does not open is a footprint, an entrance and a name, and the places, the people, the stock and the work are the same handful whatever the size, which is what makes the cost of a city its scenery alone. Nothing in the generator degrades before the grid wall; what runs out first is the player. A 20x20 city is 1,210 m corner to corner, a fourteen-minute walk at 1.4 m/s, and it is what a brief that names no size builds; 32x32 is 1.9 km, twenty-three minutes. Somewhere past twenty blocks a side, a city stops being a place you cross on foot and starts being a place you live in one part of, which is what the stations are for.
+Avenues are counted across and down together. At the default block a city runs
+about 0.07 ms and 0.24 KB a building all the way up, because a building that
+does not open is a footprint, an entrance and a name, and the places, the
+people, the stock and the work are the same handful whatever the size. What
+does not stay flat is the ground: a brief that names a small block buys many
+more streets per building, and the last two rows are the price of that, up to
+12.8 s at the widest brief there is. What runs out first is still the player. A
+20x20 city is 1,210 m corner to corner, a fourteen-minute walk at 1.4 m/s, and
+it is what a brief that names no size builds; 50x50 is 3 km, half an hour.
+Somewhere past twenty blocks a side, a city stops being a place you cross on
+foot and starts being a place you live in one part of, which is what the
+stations are for.
 
 ### The town plan
 

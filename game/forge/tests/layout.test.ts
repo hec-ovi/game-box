@@ -1,8 +1,7 @@
 import { Rng } from '@gb/kit'
-import { World, type CellKind } from '@gb/world'
+import { MAX_GRID_SIDE, World, type CellKind } from '@gb/world'
 import { describe, expect, it } from 'vitest'
-import { BANDS, briefContract, Forge, MOUNTAIN_CELLS, OfflineNarrator } from '../src/index.ts'
-import { BLOCKS_MAX } from '../src/brief.ts'
+import { BANDS, BLOCKS_MAX, briefContract, Forge, MOUNTAIN_CELLS, OfflineNarrator } from '../src/index.ts'
 import { avenueCount, Avenues } from '../src/layout/avenues.ts'
 import { streetLines } from '../src/layout/lines.ts'
 import { MAX_BLOCK, MIN_BLOCK, planStreets, widestGrid } from '../src/layout/plan.ts'
@@ -197,25 +196,29 @@ describe('the street plan', () => {
   })
 
   it('refuses a brief that asks for more city than a world can hold', async () => {
+    // the ceiling is the world's, read from it, so raising the world raises this
+    const over = { theme: 'sprawl', seed: 'too-big', blocksX: 42, blocksY: 1, blockCells: MAX_BLOCK }
     // the brief says no on its own, before a single cell is allocated
-    const big = briefContract.parse({ theme: 'sprawl', seed: 'too-big', blocksX: 24, blocksY: 1, blockCells: 40 })
+    const big = briefContract.parse(over)
     expect(big.ok).toBe(false)
-    if (!big.ok) expect(big.error[0]!.message).toContain('1024')
+    if (!big.ok) expect(big.error[0]!.message).toContain(String(MAX_GRID_SIDE))
 
     const wordy = briefContract.parse({ theme: 'a rain-soaked port city '.repeat(4), seed: 'wordy' })
     expect(wordy.ok).toBe(false)
     if (!wordy.ok) expect(wordy.error[0]!.path).toBe('theme')
 
     // and the forge hands it back as an error instead of throwing out of a world constructor
-    const built = await new Forge(new OfflineNarrator('too-big')).build({
-      theme: 'sprawl',
-      seed: 'too-big',
-      blocksX: 24,
-      blocksY: 1,
-      blockCells: 40,
-    })
+    const built = await new Forge(new OfflineNarrator('too-big')).build(over)
     expect(built.ok).toBe(false)
     if (!built.ok) expect(built.error.code).toBe('invalid-brief')
+  })
+
+  it('takes the fifty-block city the owner asked for', () => {
+    // 50 blocks of ordinary cells is 1,587 a side: under the world's ceiling and
+    // over the one the brief used to carry
+    const fifty = briefContract.parse({ theme: 'sprawl', seed: 'fifty', blocksX: 50, blocksY: 50 })
+    expect(fifty.ok, JSON.stringify(fifty.ok ? null : fifty.error)).toBe(true)
+    expect(widestGrid({ blocksX: 50, blocksY: 50 }).width).toBeLessThanOrEqual(MAX_GRID_SIDE)
   })
 })
 
