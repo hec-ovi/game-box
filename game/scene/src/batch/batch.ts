@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import type { Part } from './parts.ts'
 
 /** How much room a batch leaves when it has to grow, so growing is not once per building. */
-const GROWTH = 1.5
+export const GROWTH = 2
 
 /** One piece of geometry standing in a batch: the buffer it went into and the copy that draws it. */
 export interface Placed {
@@ -22,9 +22,12 @@ export interface Placed {
  * A piece taken out leaves its range behind; the range is reclaimed, by packing
  * the buffer once, only when the next piece would not fit otherwise, so a batch
  * that things come and go from settles at the size of what it holds at once.
+ * Packing keeps the buffers it has; growing does not, which is why growing says
+ * so.
  */
 export class MaterialBatch {
   readonly mesh: THREE.BatchedMesh
+  readonly #material: THREE.Material
   /** Vertices and indices written so far, freed ranges included. */
   #used = { vertices: 0, indices: 0 }
   /** What has been taken out and not packed away yet. */
@@ -34,6 +37,7 @@ export class MaterialBatch {
   constructor(name: string, material: THREE.Material, room: { instances: number; vertices: number; indices: number }) {
     this.mesh = new THREE.BatchedMesh(room.instances, room.vertices, room.indices, material)
     this.mesh.name = name
+    this.#material = material
     this.#room = { vertices: room.vertices, indices: room.indices }
   }
 
@@ -70,6 +74,7 @@ export class MaterialBatch {
   place(geometry: number, at: THREE.Matrix4): number {
     if (this.mesh.instanceCount >= this.mesh.maxInstanceCount) {
       this.mesh.setInstanceCount(Math.ceil(this.mesh.maxInstanceCount * GROWTH) + 1)
+      this.#grown()
     }
     const id = this.mesh.addInstance(geometry)
     this.mesh.setMatrixAt(id, at)
@@ -100,6 +105,22 @@ export class MaterialBatch {
       indices: Math.ceil((this.#used.indices + indices) * GROWTH),
     }
     this.mesh.setGeometrySize(this.#room.vertices, this.#room.indices)
+    this.#grown()
+  }
+
+  /**
+   * Growing hands the renderer different buffers to read. `setInstanceCount`
+   * replaces the textures an instance's matrix and its place in the draw order
+   * are read from, and `setGeometrySize` replaces the geometry. The renderer
+   * reads those textures through the material's own program and looks at them
+   * again only when the material's version moves, so a batch that grew while it
+   * was on screen would go on drawing through the copies it threw away: every
+   * building placed after the growth is drawn from a matrix that is not there,
+   * and every building already in it from whichever matrix the stale draw order
+   * points at. Moving the version is what makes the renderer read the new ones.
+   */
+  #grown(): void {
+    this.#material.needsUpdate = true
   }
 
   #fits(vertices: number, indices: number): boolean {

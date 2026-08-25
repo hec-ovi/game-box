@@ -5,7 +5,8 @@ import { CLUTTER, type ClutterKind } from './catalog.ts'
 
 /**
  * The rubbish itself, generated rather than downloaded: a bin, a skip, a crate,
- * a pallet, a sack, a coil of cable and the scraps blowing about between them.
+ * a pallet, a bin bag standing and another one split flat, a coil of cable and
+ * the scraps blowing about between them.
  *
  * Every model has its origin at the centre of its base and faces -Z, the same
  * rule everything else in the city is placed by. Colours are dark and dirty and
@@ -78,9 +79,10 @@ function crumple(shape: THREE.BufferGeometry, rng: Rng, amount: number): THREE.B
 }
 
 /**
- * Dirty and desaturated, but not black: the street is lit by the moon and a
- * night sky and nothing else, so rubbish painted as dark as it really is would
- * be a hole rather than a shape.
+ * Dirty and desaturated: the street is lit by the moon, the lamps and what the
+ * signs throw, so most rubbish is painted a little above what it really is, or
+ * it reads as a hole rather than a shape. Polythene is the exception and is
+ * painted near black, because that is what makes a bag read as a bag.
  */
 function grubby(rng: Rng, hue: number, saturation: number, lightness: number): THREE.Color {
   return new THREE.Color().setHSL(
@@ -88,6 +90,11 @@ function grubby(rng: Rng, hue: number, saturation: number, lightness: number): T
     Math.max(0, saturation * rng.range(0.6, 1.1)),
     Math.max(0.02, lightness * rng.range(0.7, 1.25)),
   )
+}
+
+/** Black bin liner: near black, with the faint green or blue cast the plastic has. */
+function polythene(rng: Rng): THREE.Color {
+  return grubby(rng, rng.pick([0.45, 0.6, 0.0]), rng.pick([0.03, 0.1]), 0.055)
 }
 
 const MAKE: Record<ClutterKind, (rng: Rng) => THREE.BufferGeometry> = {
@@ -151,16 +158,33 @@ const MAKE: Record<ClutterKind, (rng: Rng) => THREE.BufferGeometry> = {
     return assembly.geometry()
   },
 
-  /** A refuse sack: one lump, knocked about. */
+  /** A refuse sack put out whole: one lump of black polythene, knocked about. */
   bag(rng) {
     const { width, depth, height } = CLUTTER.bag
-    const skin = grubby(rng, rng.pick([0.0, 0.3, 0.62]), rng.pick([0.04, 0.26]), 0.16)
     const lump = crumple(new THREE.IcosahedronGeometry(0.5, 0), rng, 0.3)
     const at = new THREE.Matrix4()
       .makeRotationY(rng.float() * Math.PI)
       .scale(new THREE.Vector3(width, height, depth))
       .setPosition(0, height / 2, 0)
-    return new Assembly().add(lump, at, skin).geometry()
+    return new Assembly().add(lump, at, polythene(rng)).geometry()
+  },
+
+  /**
+   * The same sack split and trodden flat, with the torn end spread out beside
+   * it. Six triangles, because a pavement carries hundreds of them.
+   */
+  sack(rng) {
+    const { width, depth, height } = CLUTTER.sack
+    const skin = polythene(rng)
+    const lump = crumple(new THREE.TetrahedronGeometry(0.5, 0), rng, 0.36)
+    const at = new THREE.Matrix4()
+      .makeRotationY(rng.float() * Math.PI)
+      .scale(new THREE.Vector3(width * 0.8, height, depth * 0.8))
+      .setPosition(0, height / 2, 0)
+    return new Assembly()
+      .add(lump, at, skin)
+      .plate(width * rng.range(0.5, 0.9), depth * rng.range(0.4, 0.8), { x: width * 0.24, y: 0.004, z: depth * rng.range(-0.2, 0.2) }, skin, rng.float() * Math.PI)
+      .geometry()
   },
 
   /** A coil of cable or hose, dumped where the last job left it. */
@@ -176,7 +200,7 @@ const MAKE: Record<ClutterKind, (rng: Rng) => THREE.BufferGeometry> = {
   /** A scrap of paper or card, flat on the ground. */
   scrap(rng) {
     const { width, depth, height } = CLUTTER.scrap
-    const paper = grubby(rng, rng.pick([0.1, 0.55, 0.0]), rng.pick([0.04, 0.24]), rng.range(0.3, 0.52))
+    const paper = grubby(rng, rng.pick([0.1, 0.55, 0.0]), rng.pick([0.03, 0.16]), rng.range(0.1, 0.2))
     return new Assembly()
       .plate(width * rng.range(0.6, 1), depth * rng.range(0.6, 1), { x: 0, y: height, z: 0 }, paper, rng.float() * Math.PI)
       .geometry()

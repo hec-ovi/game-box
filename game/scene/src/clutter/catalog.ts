@@ -1,5 +1,5 @@
 /** What can be lying on a street. */
-export type ClutterKind = 'bin' | 'skip' | 'crate' | 'pallet' | 'bag' | 'cable' | 'scrap' | 'can'
+export type ClutterKind = 'bin' | 'skip' | 'crate' | 'pallet' | 'bag' | 'sack' | 'cable' | 'scrap' | 'can'
 
 /** Where a kind is allowed to end up. */
 export type ClutterBand = 'wall' | 'kerb' | 'litter'
@@ -20,6 +20,10 @@ export interface ClutterSpec {
  * one 2 m cell it is put in and leaves the rest of that cell walkable. What is
  * bigger than that in a real street (a skip) is long rather than deep: it sits
  * along the wall, not out into the pavement.
+ *
+ * A `bag` is a sack put out whole and standing; a `sack` is one that has split
+ * and been trodden flat, under `STEP_OVER_HEIGHT` so it lies with the litter and
+ * is walked over rather than into.
  */
 export const CLUTTER: Record<ClutterKind, ClutterSpec> = {
   bin: { width: 0.62, depth: 0.48, height: 1.05, variants: 3 },
@@ -27,6 +31,7 @@ export const CLUTTER: Record<ClutterKind, ClutterSpec> = {
   crate: { width: 0.5, depth: 0.44, height: 0.38, variants: 3 },
   pallet: { width: 1.05, depth: 0.3, height: 1.1, variants: 2 },
   bag: { width: 0.46, depth: 0.42, height: 0.46, variants: 3 },
+  sack: { width: 0.5, depth: 0.44, height: 0.18, variants: 3 },
   cable: { width: 0.44, depth: 0.44, height: 0.09, variants: 2 },
   scrap: { width: 0.26, depth: 0.2, height: 0.012, variants: 4 },
   can: { width: 0.13, depth: 0.08, height: 0.08, variants: 3 },
@@ -35,19 +40,20 @@ export const CLUTTER: Record<ClutterKind, ClutterSpec> = {
 /** What each band will take, and how often, out of the kinds that fit it. */
 const BAND_WEIGHTS: Record<ClutterBand, ReadonlyArray<readonly [ClutterKind, number]>> = {
   wall: [
-    ['bag', 5],
+    ['bag', 9],
     ['bin', 4],
-    ['crate', 4],
+    ['crate', 3],
     ['pallet', 2],
     ['skip', 1],
   ],
   kerb: [
-    ['bag', 6],
-    ['crate', 2],
+    ['bag', 10],
     ['cable', 2],
+    ['crate', 1],
   ],
   litter: [
-    ['scrap', 8],
+    ['sack', 6],
+    ['scrap', 4],
     ['can', 1],
   ],
 }

@@ -158,7 +158,7 @@ export function buildCity(world: World, dressing: Dressing, options: CityOptions
   // live round where the player opens their eyes, until the app says where the camera is
   lights.follow(spawn.x, spawn.z)
 
-  const details = new CityBatcher(root, 'detail')
+  const details = new CityBatcher(root, 'detail', true)
   const detail = splits ? new CityDetail(world, details, lights, buildings, dress, radius) : undefined
   if (detail) {
     for (const plot of plots) if (detail.isNear(plot, standing)) detail.build(plot)

@@ -1,16 +1,53 @@
-import type { Plot, World } from '@gb/world'
+import type { Plot, ResolvedCharter, World } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { buildCity, Greybox, type CityBuild, type Dressing } from '../src/index.ts'
+import { buildCity, Greybox, type BuildingSize, type CityBuild, type Dressing, type LightEmitter } from '../src/index.ts'
+import { drawn, inView, looking } from './seen.ts'
 import { otherTown, town } from './town.ts'
 
 /**
- * Streaming a city round the player, over every shape of dressing a chain of
- * wrappers can hand over. A dressing decides what a building looks like; it
- * never decides whether there is one. So whatever it publishes, every plot the
- * world holds is standing on the ground at every step of a walk, and no
- * building's light is left burning over ground its building is not on.
+ * Streaming a city round the player, judged the way a camera judges it.
+ *
+ * A dressing decides what a building looks like; it never decides whether there
+ * is one. So whatever it publishes, a camera standing anywhere in the town and
+ * turned any way draws every building its frustum reaches, and no light burns
+ * over ground its building is not on.
+ *
+ * The camera is the whole point of the test. A ray ignores the frustum and a
+ * `BatchedMesh` culls each instance against its own bounds, so a town can be
+ * culled off the screen entirely and still answer every ray: what is measured
+ * here is what three would put in the draw.
  */
+
+/**
+ * A greybox that draws a building the way a kit does: a lit sign and its panes
+ * on materials of their own, so a near building lands in several batches and
+ * each of them is small enough to have to grow as the player walks.
+ */
+class Kit extends Greybox {
+  readonly #sign = new THREE.MeshStandardMaterial({ color: 0x40e0ff, emissive: 0x40e0ff, name: 'sign' })
+  readonly #pane = new THREE.MeshStandardMaterial({ color: 0x203040, emissive: 0x506070, name: 'pane' })
+
+  override building(plot: Plot, size: BuildingSize, charter: ResolvedCharter): THREE.Object3D {
+    const group = super.building(plot, size, charter)
+    for (let storey = 0; storey < plot.storeys; storey++) {
+      const y = 3 * storey + 2.5
+      const sign = new THREE.Mesh(new THREE.BoxGeometry(size.width * 0.6, 0.6, 0.1), this.#sign)
+      sign.position.set(0, y, -size.depth / 2 - 0.1)
+      group.add(sign)
+      for (let pane = -1; pane <= 1; pane++) {
+        const glass = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.4, 0.05), this.#pane)
+        glass.position.set(pane * 2.5, y + 0.5, -size.depth / 2)
+        group.add(glass)
+      }
+    }
+    return group
+  }
+
+  override lights(plot: Plot, size: BuildingSize): readonly LightEmitter[] {
+    return [...super.lights(plot, size), { kind: 'sign', position: [0, 2.5, -size.depth / 2 - 0.3], colour: 0x40e0ff, intensity: 30, radius: 12 }]
+  }
+}
 
 /** A `Greybox` with one seam member answered differently, the way a wrapper does. */
 function greyboxWith(over: Partial<Dressing>): Dressing {
@@ -41,28 +78,10 @@ const CHAINS: ReadonlyArray<{ how: string; dressing: () => Dressing }> = [
   { how: 'carries a shell that answers nothing', dressing: () => greyboxWith({ shell: () => undefined as unknown as THREE.Object3D }) },
   { how: 'carries a shell that answers an empty object', dressing: () => greyboxWith({ shell: () => new THREE.Group() }) },
   { how: 'answers an empty object for the whole building', dressing: () => greyboxWith({ building: () => new THREE.Group() }) },
+  { how: 'draws a building out of several materials, the way a kit does', dressing: () => new Kit() },
 ]
 
-const RAY = new THREE.Raycaster()
-const DOWN = new THREE.Vector3(0, -1, 0)
-
-/** What the city has in it that is not a building: the ground, the paint and what lies on it. */
-const STREET = /^(ground:|markings:|street:|clutter$|mountains$|lights$)/
-
-/** Which plots the city is drawing right now, measured with a ray at the scene it built. */
-function standing(city: CityBuild, world: World, plots: readonly Plot[]): Set<string> {
-  const built = city.root.children.filter((child) => !STREET.test(child.name))
-  const drawn = new Set<string>()
-  for (const plot of plots) {
-    const x = (plot.rect.x + plot.rect.w / 2) * world.cellSize
-    const z = (plot.rect.y + plot.rect.h / 2) * world.cellSize
-    RAY.set(new THREE.Vector3(x, 400, z), DOWN)
-    if (RAY.intersectObjects(built, true).length > 0) drawn.add(plot.id)
-  }
-  return drawn
-}
-
-/** A walk that crosses the town cell by cell: east along the middle, then south down it. */
+/** Where the player stands, crossing the town cell by cell: east along the middle, then south down it. */
 function* walk(world: World): Generator<{ x: number; z: number }> {
   const step = world.cellSize * 3
   const width = world.grid.width * world.cellSize
@@ -71,27 +90,80 @@ function* walk(world: World): Generator<{ x: number; z: number }> {
   for (let z = step; z < depth; z += step) yield { x: width / 2, z }
 }
 
+/** Turning on the spot: the owner's frames are seconds apart from one place. */
+const TURNS = [0, Math.PI / 2, Math.PI, -Math.PI / 2]
+const PITCHES = [0, 0.5, -0.35, 0.25]
+
 describe('streaming a city round the player', () => {
   for (const chain of CHAINS) {
-    it(`draws every building at every distance, and lights only the ones it draws, when the dressing ${chain.how}`, async () => {
+    it(`draws every building a camera reaches, and lights only the ones it draws, when the dressing ${chain.how}`, async () => {
       for (const world of [await town(), await otherTown()]) {
         const city = buildCity(world, chain.dressing(), { clutter: false })
-        const plots = world.plots()
-        expect(plots.length).toBeGreaterThan(0)
+        expect(world.plots().length).toBeGreaterThan(0)
 
         for (const at of [{ x: city.spawn.x, z: city.spawn.z }, ...walk(world)]) {
           city.follow(at.x, at.z)
-          const where = `${world.id} from ${at.x.toFixed(0)},${at.z.toFixed(0)}`
-          const drawn = standing(city, world, plots)
-          for (const plot of plots) {
-            expect(city.buildings.has(plot.id), `${plot.id} has no building, ${where}`).toBe(true)
-            expect(drawn.has(plot.id), `${plot.id} is not drawn, ${where}`).toBe(true)
+          for (const [turn, yaw] of TURNS.entries()) {
+            const camera = looking(at.x, at.z, yaw, PITCHES[turn]!)
+            const where = `${world.id} from ${at.x.toFixed(0)},${at.z.toFixed(0)} facing ${((yaw * 180) / Math.PI).toFixed(0)}`
+            const drawing = drawn(city, camera)
+            for (const plotId of inView(city, camera)) {
+              expect(drawing.has(plotId), `${plotId} is in view and not drawn, ${where}`).toBe(true)
+            }
           }
-          for (const emitter of city.lights.emitters) {
-            expect(drawn.has(emitter.plotId), `a ${emitter.kind} burns over the undrawn ${emitter.plotId}, ${where}`).toBe(true)
+          // a light burning over ground its building is not on is what the player sees first
+          for (const light of city.lights.lights) {
+            if (!light.visible) continue
+            const plotId = (light.userData['emitter'] as { plotId: string }).plotId
+            const camera = looking(at.x, at.z, 0)
+            camera.lookAt(light.position)
+            camera.updateMatrixWorld(true)
+            expect(drawn(city, camera).has(plotId), `a light burns over the undrawn ${plotId}, ${world.id} at ${at.x.toFixed(0)},${at.z.toFixed(0)}`).toBe(true)
           }
         }
       }
     })
   }
+
+  it('never swaps the buffers a batch is drawn through without telling the renderer', async () => {
+    const world = await otherTown()
+    const city = buildCity(world, new Kit(), { clutter: false })
+    new THREE.Scene().add(city.root)
+
+    let grew = 0
+    let before = readings(city)
+    for (const at of [...walk(world)].flatMap((one, index, all) => [one, all[all.length - 1 - index]!])) {
+      city.follow(at.x, at.z)
+      const after = readings(city)
+      for (const [name, now] of after) {
+        const was = before.get(name)
+        if (!was || was.buffers === now.buffers) continue
+        grew++
+        expect(now.version, `${name} grew at ${at.x.toFixed(0)},${at.z.toFixed(0)} and the renderer was not told`).not.toBe(was.version)
+      }
+      before = after
+    }
+    // a walk that never grew a batch would prove nothing about what growing does
+    expect(grew, 'no batch grew on this walk, so nothing was proved').toBeGreaterThan(0)
+  })
 })
+
+/**
+ * What a renderer reads a batch through, and the program version it reads them
+ * with. Growing a batch replaces the textures an instance's matrix and its
+ * place in the draw order live in; a renderer that captured them into a
+ * material's program only looks again when that material's version moves, so a
+ * growth that says nothing leaves the batch drawing through what it threw away.
+ */
+function readings(city: CityBuild): Map<string, { buffers: string; version: number }> {
+  const now = new Map<string, { buffers: string; version: number }>()
+  for (const child of city.root.children) {
+    const batch = child as THREE.BatchedMesh & { _matricesTexture: THREE.Texture; _indirectTexture: THREE.Texture }
+    if (!batch.isBatchedMesh) continue
+    now.set(batch.name, {
+      buffers: `${batch._matricesTexture.uuid}|${batch._indirectTexture.uuid}|${batch.geometry.id}`,
+      version: (batch.material as THREE.Material).version,
+    })
+  }
+  return now
+}

@@ -49,9 +49,13 @@ export function clutterMesh(pieces: readonly ClutterPiece[], seed: string, dress
   return batch.mesh
 }
 
-/** What rubbish looks like when a dressing has not said otherwise: dull, dark and unlit by itself. */
+/**
+ * What rubbish looks like when a dressing has not said otherwise: dull, dark and
+ * unlit by itself, with enough sheen that black polythene on a wet street picks
+ * up the lamps and the signs instead of going flat.
+ */
 export function clutterMaterial(): THREE.Material {
-  const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.86, metalness: 0.06 })
+  const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.72, metalness: 0.06 })
   material.name = 'clutter'
   return material
 }

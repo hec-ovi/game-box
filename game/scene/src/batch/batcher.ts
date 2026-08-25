@@ -1,6 +1,13 @@
 import * as THREE from 'three'
-import { batchFor, keyOf, MaterialBatch, type Placed } from './batch.ts'
+import { batchFor, GROWTH, keyOf, MaterialBatch, type Placed } from './batch.ts'
 import { partsOf, type Part } from './parts.ts'
+
+/**
+ * How many copies a batch opened after the city is standing is cut for. A
+ * material first seen as the player walks up to it is one a whole street of
+ * buildings is about to be drawn with, so it is cut for a street.
+ */
+const FIRST_COPIES = 32
 
 /** One material's share of the city, waiting to be put in a buffer. */
 interface Bucket {
@@ -77,15 +84,22 @@ class Piece {
 export class CityBatcher {
   readonly #root: THREE.Group
   readonly #prefix: string
+  readonly #room: number
   #buckets = new Map<string, Bucket>()
   #batches = new Map<string, MaterialBatch>()
   readonly #touched = new Set<MaterialBatch>()
   #sealed = false
 
-  /** `prefix` names the batches: `<prefix>:<material>`. */
-  constructor(root: THREE.Group, prefix: string) {
+  /**
+   * `prefix` names the batches: `<prefix>:<material>`. `churns` cuts the buffers
+   * with room to spare, for a batcher objects keep coming and going from: a batch
+   * cut to fit grows on the next object it is handed, and growing costs the
+   * renderer its program for that material.
+   */
+  constructor(root: THREE.Group, prefix: string, churns = false) {
     this.#root = root
     this.#prefix = prefix
+    this.#room = churns ? GROWTH : 1
   }
 
   /**
@@ -131,9 +145,9 @@ export class CityBatcher {
 
     for (const [key, bucket] of this.#buckets) {
       const batch = new MaterialBatch(this.#name(bucket.material, ordinal++), bucket.material, {
-        instances: bucket.entries.length,
-        vertices: bucket.vertices,
-        indices: bucket.indices,
+        instances: Math.ceil(bucket.entries.length * this.#room),
+        vertices: Math.ceil(bucket.vertices * this.#room),
+        indices: Math.ceil(bucket.indices * this.#room),
       })
       batch.mesh.castShadow = bucket.castShadow
       batch.mesh.receiveShadow = bucket.receiveShadow
@@ -201,7 +215,7 @@ export class CityBatcher {
   /** The batch this part belongs in, opened if the city has not seen its material yet. */
   #batchFor(part: Part): MaterialBatch {
     const key = keyOf(part)
-    return this.#batches.get(key) ?? this.#open(key, batchFor(this.#name(part.material, this.#batches.size), part, 8))
+    return this.#batches.get(key) ?? this.#open(key, batchFor(this.#name(part.material, this.#batches.size), part, FIRST_COPIES))
   }
 
   #open(key: string, batch: MaterialBatch): MaterialBatch {
