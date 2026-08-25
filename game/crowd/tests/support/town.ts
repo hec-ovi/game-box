@@ -48,7 +48,8 @@ export function testTown(seed = 'crowd-town'): World {
         kind: 'house',
         name: `House ${bx}-${by}`,
         rect,
-        entrance: { cell: { x: rect.x, y: rect.y }, facing: 'north' },
+        // the doorstep is the pavement cell in front of the door, the way a generated city lays it
+        entrance: { cell: { x: rect.x, y: rect.y - 1 }, facing: 'north' },
         storeys: 2,
         style: 'plain',
       })

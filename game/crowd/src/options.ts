@@ -11,9 +11,14 @@ export interface CrowdOptions {
   /** How far a walker heads on one trip, in metres. */
   tripMin: number
   tripMax: number
-  /** How long a walker stands still after arriving, in seconds. */
+  /** How long a walker stands still after arriving somewhere that is nowhere in particular, in seconds. */
   pauseMin: number
   pauseMax: number
+  /** How long a walker stands at the door they were heading for before going on, in seconds. */
+  dwellMin: number
+  dwellMax: number
+  /** Further than this from somebody being talked to, having once been within it, and the conversation is over, in metres. */
+  talkRadius: number
   /** Walking speed spread, as a fraction of METRICS walk speed. 0.15 is 1.19-1.61 m/s. */
   speedSpread: number
   /** How fast a walker swings round to face where they are going, radians per second. */
@@ -62,6 +67,9 @@ export const CROWD_DEFAULTS: CrowdOptions = {
   tripMax: 60,
   pauseMin: 1,
   pauseMax: 5,
+  dwellMin: 4,
+  dwellMax: 12,
+  talkRadius: 5,
   speedSpread: 0.15,
   turnRate: 8,
   personalSpace: 0.7,
@@ -99,6 +107,8 @@ export function resolveOptions(given: Partial<CrowdOptions> = {}): CrowdOptions 
     retireRadius: Math.max(merged.retireRadius, spawnFar + 5),
     tripMax: Math.max(merged.tripMax, merged.tripMin),
     pauseMax: Math.max(merged.pauseMax, merged.pauseMin),
+    dwellMax: Math.max(merged.dwellMax, merged.dwellMin),
+    talkRadius: Math.max(merged.talkRadius, personalSpace),
     personalSpace,
     avoidRadius: Math.max(merged.avoidRadius, personalSpace * 1.5),
     catchUp: Math.max(merged.catchUp, merged.followGap),

@@ -32,8 +32,15 @@ export interface CrowdActor {
 export interface Companion {
   /** Who they are. Their id is what `stopFollowing` takes, and what `following()` reports. */
   readonly npc: Npc
-  /** Where they are standing when they set off. Defaults to where the player is. */
+  /** Where they are standing when they set off. Defaults to the doorstep of `door`, or to where the player is. */
   readonly at?: Point
+  /**
+   * The building they are coming out of, by plot id: they set off from its
+   * doorstep. For somebody stationed indoors, who has no spot on the pavement
+   * to be read off `walkers()`. A plot nobody knows, or one whose doorstep is
+   * not on the pavement, is the same as naming none.
+   */
+  readonly door?: string
   /** A body the game already has for them. With none, the crowd asks its cast for one and gives it back later. */
   readonly actor?: CrowdActor
 }
@@ -76,10 +83,23 @@ export interface CrowdCast {
 }
 
 /**
- * Something moving on the road that a walker should not step in front of: a
- * car, a tram, a runaway barrel. Velocity is metres per second along the
- * ground; from a heading and a speed it is `(-sin(heading), -cos(heading))`
- * times the speed, the same yaw convention the crowd uses.
+ * The ground a vehicle covers: a box `length` by `width` in metres, turned to
+ * `heading`. The heading is the thing's own three.js `rotation.y`; a box is
+ * the same box nose first or tail first, so it does not matter which way the
+ * model's nose points.
+ */
+export interface Footprint {
+  readonly length: number
+  readonly width: number
+  readonly heading: number
+}
+
+/**
+ * Something on the road that a walker should not step in front of, and cannot
+ * walk through: a car, a tram, a runaway barrel. Velocity is metres per second
+ * along the ground; from a heading and a speed it is
+ * `(-sin(heading), -cos(heading))` times the speed, the same yaw convention
+ * the crowd uses.
  */
 export interface Hazard {
   /** Where it is now, in metres. */
@@ -87,17 +107,20 @@ export interface Hazard {
   readonly z: number
   readonly vx: number
   readonly vz: number
-  /** How much room it needs around that point, in metres. */
+  /** How much room it needs around that point, in metres: the circle it fits in. Its outline, when it has no `footprint`. */
   readonly radius: number
+  /** Its outline on the ground. With none, the outline is the circle `radius` draws. */
+  readonly footprint?: Footprint
 }
 
 /**
- * What is moving on the road near a point. The game feeds this from
- * `@gb/traffic`; give the crowd none and walkers cross without looking, which
- * is what a city with no traffic in it wants.
+ * What is on the road near a point, moving or stopped. The game feeds this
+ * from `@gb/traffic`; give the crowd none and walkers cross without looking
+ * and have nothing to walk round, which is what a city with no traffic in it
+ * wants. The array may be the same one every call: nothing here keeps it.
  */
 export interface Hazards {
-  /** Everything moving within this many metres of a point. */
+  /** Everything within this many metres of a point. */
   near(x: number, z: number, radius: number): readonly Hazard[]
 }
 
@@ -106,6 +129,12 @@ export interface CrowdNav {
   walkable(cell: Cell): boolean
   path(from: Cell, to: Cell): Cell[] | undefined
   waypoints(path: readonly Cell[]): Point[]
+}
+
+/** Where a walker is going: the building whose door they are heading for, and whether they are standing at it yet. */
+export interface Destination {
+  readonly plotId: string
+  readonly arrived: boolean
 }
 
 /** Walking a route, held at a kerb by traffic, or standing about with nowhere to go. */

@@ -4,6 +4,7 @@ import { Follower } from './follower.ts'
 import type { Ground } from './ground.ts'
 import type { Kerb } from './kerb.ts'
 import type { CrowdOptions } from './options.ts'
+import type { Places } from './places.ts'
 import type { Companion, CrowdCast, CrowdNav, Point, WalkerView } from './ports.ts'
 import type { Body, Space } from './space.ts'
 import { Walker } from './walker.ts'
@@ -20,6 +21,7 @@ export interface EscortDeps {
   readonly space: Space
   readonly kerb: Kerb
   readonly cast: CrowdCast
+  readonly places: Places
   readonly options: CrowdOptions
   readonly rng: Rng
 }
@@ -74,19 +76,31 @@ export class Escort {
       ground: this.#deps.ground,
       space: this.#deps.space,
       kerb: this.#deps.kerb,
-      at: who.at ?? { x: this.#deps.space.viewer.x, z: this.#deps.space.viewer.z },
+      at: who.at ?? this.#setsOff(who.door),
       speed: METRICS.player.walkSpeed,
       turnRate: options.turnRate,
       stuckSeconds: options.stuckSeconds,
       rng: this.#deps.rng.fork(`companion/${who.npc.id}`),
       pauseMin: 0,
       pauseMax: 0,
+      dwellMin: 0,
+      dwellMax: 0,
+      talkRadius: options.talkRadius,
+      // the spot beside the player is a spot, and is stood on
+      arrival: 0.3,
       // they follow the player rather than the crossings, so talking to one stops them where they stand
       finishesCrossings: false,
     })
     this.#followers.push(new Follower(who.npc.id, walker, { ...this.#deps, owned: !who.actor }))
     this.#bodies.push(walker)
     this.#people.set(who.npc.id, who.npc)
+  }
+
+  /** The doorstep of the building they are coming out of, or where the player is when there is no such door. */
+  #setsOff(door: string | undefined): Point {
+    const cell = door === undefined ? undefined : this.#deps.places.doorstep(door)
+    if (cell) return this.#deps.ground.centreOf(cell)
+    return { x: this.#deps.space.viewer.x, z: this.#deps.space.viewer.z }
   }
 
   /** A body the crowd spawned goes back to the cast; one the game handed over is left alone. */
@@ -122,9 +136,9 @@ export class Escort {
 
   /**
    * Behind the player, fanned out, and moved along the fan if that spot is
-   * inside a wall. Nowhere in the fan is open, nobody is placed: standing
-   * still is a companion waiting a moment, and standing on the player is a
-   * companion inside their head.
+   * inside a wall or under a car. Nowhere in the fan is open, nobody is
+   * placed: standing still is a companion waiting a moment, and standing on
+   * the player is a companion inside their head.
    */
   #spotFor(index: number, player: Body): Point | undefined {
     const gap = this.#deps.options.followGap
@@ -134,7 +148,7 @@ export class Escort {
       const sin = Math.sin(angle)
       this.#slot.x = player.x - (this.#wayX * cos - this.#wayZ * sin) * gap
       this.#slot.z = player.z - (this.#wayX * sin + this.#wayZ * cos) * gap
-      if (this.#deps.space.open(this.#slot.x, this.#slot.z)) return this.#slot
+      if (this.#deps.space.free(this.#slot.x, this.#slot.z)) return this.#slot
     }
     return undefined
   }

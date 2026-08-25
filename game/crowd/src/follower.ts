@@ -145,7 +145,7 @@ export class Follower {
     const steps = Math.ceil(span / (this.#ground.cellSize * SAMPLE))
     for (let i = 1; i <= steps; i++) {
       const at = i / steps
-      if (!this.#space.open(this.walker.x + dx * at, this.walker.z + dz * at)) return false
+      if (!this.#space.free(this.walker.x + dx * at, this.walker.z + dz * at)) return false
     }
     return true
   }

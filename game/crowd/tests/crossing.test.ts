@@ -96,7 +96,8 @@ describe('crossing the road', () => {
 
     // it started at the west kerb and it reached the far side, which is only possible over the roadways
     expect(reached.west).toBeLessThan(town * 0.15)
-    expect(reached.east).toBeGreaterThan(town * 0.85)
+    // the far side of town is the last row of doors: every trip ends at one, and none is on the very edge
+    expect(reached.east).toBeGreaterThan(town * 0.8)
     expect(steps.length).toBeGreaterThanOrEqual(4)
     expect(steps.filter((step) => !step.at)).toEqual([])
   })

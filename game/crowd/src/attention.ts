@@ -26,9 +26,10 @@ export interface Spot {
 
 /**
  * A hold on somebody: they stand still and face the point you give them until
- * you let go, and then they carry on with whatever they were doing. Holding
- * somebody who has since gone home does nothing, so a hold is safe to keep for
- * as long as the conversation lasts.
+ * you let go, or until the player walks out of `talkRadius`, and then they
+ * carry on with whatever they were doing. Holding somebody who has since gone
+ * home does nothing, so a hold is safe to keep for as long as the conversation
+ * lasts.
  *
  * It is not a handle on their body: `SceneCast.members()` is the one of those,
  * keyed by the same id, so a body is reached the same way indoors and out.
@@ -38,7 +39,7 @@ export interface Attention {
   face(x: number, y: number, z: number): void
   /** Let them go. */
   release(): void
-  /** False once the hold is over: let go of, or they have gone home. */
+  /** False once the hold is over: let go of, walked away from, or they have gone home. */
   readonly held: boolean
 }
 
@@ -46,6 +47,8 @@ export interface Attention {
 export interface Attender {
   attend(x: number, y: number, z: number): void
   unattend(): void
+  /** True while they are held: false again once let go of, or once whoever held them walked off. */
+  readonly attending: boolean
   /** True once their body has been handed back: nothing more will happen to them. */
   readonly gone: boolean
 }
@@ -57,16 +60,17 @@ export const NOBODY: Attention = {
   release(): void {},
 }
 
-/** One person held still. Let go of once, and gone the moment they are retired. */
+/** One person held still, from the moment it is made. Let go of once, and gone the moment they are retired. */
 export class Hold implements Attention {
   #who: Attender | undefined
 
-  constructor(who: Attender) {
+  constructor(who: Attender, x: number, y: number, z: number) {
     this.#who = who
+    who.attend(x, y, z)
   }
 
   get held(): boolean {
-    return this.#who !== undefined && !this.#who.gone
+    return this.#who !== undefined && !this.#who.gone && this.#who.attending
   }
 
   face(x: number, y: number, z: number): void {

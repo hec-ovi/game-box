@@ -6,28 +6,40 @@ import { Escort } from './escort.ts'
 import { distance } from './geometry.ts'
 import { Ground } from './ground.ts'
 import { Kerb } from './kerb.ts'
+import { Obstacles } from './obstacles.ts'
 import { resolveOptions, type CrowdOptions } from './options.ts'
-import { Pavement } from './pavement.ts'
+import { pavementOf } from './pavement.ts'
 import { STRANGERS } from './people.ts'
+import { Places } from './places.ts'
 import type {
+  Cell,
   Companion,
   CrowdCast,
   CrowdGround,
   CrowdNav,
   CrowdPeople,
+  Destination,
   Hazards,
   Point,
   WalkerView,
 } from './ports.ts'
+import { Ring } from './ring.ts'
 import { Router } from './router.ts'
 import { Space } from './space.ts'
 import { Walker } from './walker.ts'
+
+/**
+ * Within this of where a trip ends a walker is there, in metres. Wider than
+ * personal space, so two people heading for one door both get to stand at it
+ * rather than the second stalling behind the first.
+ */
+const DOORSTEP = 1
 
 export interface CrowdDeps {
   readonly world: World
   readonly nav: CrowdNav
   readonly cast: CrowdCast
-  /** What is moving on the roads, so walkers look before they step off the kerb. None means no traffic to look for. */
+  /** What is on the roads, so walkers look before they step off the kerb and walk round what is parked. None means no traffic. */
   readonly hazards?: Hazards
   /** The ground past the edge of the city, for feet and for what may be walked on. None means the grid is all there is. */
   readonly ground?: CrowdGround
@@ -49,7 +61,8 @@ export class Crowd {
   #cast: CrowdCast
   #people: CrowdPeople
   #ground: Ground
-  #pavement: Pavement
+  #pavement: Ring<Cell>
+  #places: Places
   #space: Space
   #kerb: Kerb
   #router: Router
@@ -70,8 +83,9 @@ export class Crowd {
     this.#cast = deps.cast
     this.#people = deps.people ?? STRANGERS
     this.#ground = new Ground(deps.world, options.pavement, options.kerbHeight, deps.ground)
-    this.#pavement = Pavement.from(deps.world, options.pavement)
-    this.#space = new Space(this.#ground, deps.nav, options)
+    this.#pavement = pavementOf(deps.world, options.pavement)
+    this.#places = Places.from(deps.world, options.pavement)
+    this.#space = new Space(this.#ground, deps.nav, options, new Obstacles(options, deps.hazards))
     this.#kerb = new Kerb(this.#ground, options, deps.hazards)
     this.#router = new Router({
       nav: deps.nav,
@@ -86,6 +100,7 @@ export class Crowd {
       space: this.#space,
       kerb: this.#kerb,
       cast: deps.cast,
+      places: this.#places,
       options,
       rng: this.#rng,
     })
@@ -118,6 +133,17 @@ export class Crowd {
   }
 
   /**
+   * Where a walker is going: the building whose door they are heading for,
+   * and whether they are standing at it. Nothing for somebody heading nowhere
+   * in particular, for a companion, whose way is the player's, and for an id
+   * nobody answers to.
+   */
+  destination(id: string): Destination | undefined {
+    for (const walker of this.#walkers) if (walker.id === id) return walker.destination
+    return undefined
+  }
+
+  /**
    * Somebody comes along with the player. Following twice is following once.
    * They are never retired by distance, so they last as long as this crowd
    * does; `clear()` sends them home with everybody else.
@@ -146,10 +172,7 @@ export class Crowd {
    */
   attend(npcId: string, x: number, y: number, z: number): Attention {
     const walker = this.#somebody(npcId)
-    if (!walker) return NOBODY
-    const hold = new Hold(walker)
-    hold.face(x, y, z)
-    return hold
+    return walker ? new Hold(walker, x, y, z) : NOBODY
   }
 
   /** The body behind an id: somebody out on the street, or somebody walking with the player. */
@@ -213,15 +236,21 @@ export class Crowd {
     }
   }
 
-  /** True when the walker got a route. False means nowhere reachable, and they are done. */
+  /**
+   * True when the walker got a route. Somewhere real first: a door in town a
+   * trip away, and only a stretch of pavement when no door is that far off.
+   * False means nowhere reachable, and they are done.
+   */
   #sendSomewhere(walker: Walker): boolean {
     const from = this.#ground.cellAt(walker.x, walker.z)
+    const { tripMin, tripMax } = this.options
     for (let attempt = 0; attempt < this.options.routeTries; attempt++) {
-      const target = this.#pavement.pick(walker, this.options.tripMin, this.options.tripMax, walker.rng)
+      const place = this.#places.pick(walker, tripMin, tripMax, walker.rng)
+      const target = place?.cell ?? this.#pavement.pick(walker, tripMin, tripMax, walker.rng)
       if (!target) continue
       const route = this.#router.route(from, target)
       if (!route) continue
-      walker.follow(route)
+      walker.follow(route, place?.plotId)
       return true
     }
     return false
@@ -267,6 +296,10 @@ export class Crowd {
       rng,
       pauseMin: this.options.pauseMin,
       pauseMax: this.options.pauseMax,
+      dwellMin: this.options.dwellMin,
+      dwellMax: this.options.dwellMax,
+      talkRadius: this.options.talkRadius,
+      arrival: DOORSTEP,
       finishesCrossings: true,
     })
     this.#walkers.push(walker)

@@ -1,9 +1,9 @@
 import { CLIPS } from '@gb/cast'
 import { CityNav } from '@gb/nav'
-import { WIDEST_ROADWAY_CELLS, type Npc, type World } from '@gb/world'
+import { METRICS, WIDEST_ROADWAY_CELLS, type Npc, type World } from '@gb/world'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { HEAD_TURN } from '../src/attention.ts'
-import { Crowd, type Cell, type Point, type WalkerView } from '../src/index.ts'
+import { Crowd, Leash, type Cell, type Point, type WalkerView } from '../src/index.ts'
 import { FakeActor, FakeCast } from './support/fake-cast.ts'
 import { StraightNav } from './support/fake-nav.ts'
 import { testTown, wideRoad } from './support/town.ts'
@@ -259,6 +259,40 @@ describe('somebody being talked to', () => {
     expect(Math.hypot(held.x - walker.x, held.z - walker.z)).toBeLessThan(0.05)
   })
 
+  it('lets go by itself when the player walks away from them', () => {
+    const { crowd, actor, walker } = oneWalker('walk-away')
+    // two metres off, and standing there long enough for the hold to be a conversation
+    const player = { x: walker.x, z: walker.z - 2 }
+    const hold = crowd.attend(walker.id, player.x, 1.7, player.z)
+    for (let frame = 0; frame < 60; frame++) {
+      hold.face(player.x, 1.7, player.z)
+      crowd.update(STEP, player)
+    }
+    expect(hold.held).toBe(true)
+
+    // then walking off up the road
+    let ended = -1
+    let apart = 0
+    for (let frame = 0; frame < 600 && ended < 0; frame++) {
+      player.z -= METRICS.player.walkSpeed * STEP
+      hold.face(player.x, 1.7, player.z)
+      crowd.update(STEP, player)
+      if (!hold.held) {
+        ended = frame
+        const now = crowd.walkers()[0]!
+        apart = Math.hypot(now.x - player.x, now.z - player.z)
+      }
+    }
+
+    // over the moment the player is past talking distance, and they go on their way
+    expect(ended).toBeGreaterThan(0)
+    expect(apart).toBeGreaterThan(crowd.options.talkRadius)
+    expect(apart).toBeLessThan(crowd.options.talkRadius + 0.1)
+    expect(actor.looksAway).toBe(1)
+    for (let frame = 0; frame < 120; frame++) crowd.update(STEP, player)
+    expect(crowd.walkers()[0]!.state).toBe('walking')
+  })
+
   it('holds nobody when nobody by that id is out here', () => {
     const { crowd } = oneWalker()
     const hold = crowd.attend('npc_nobody', 0, 1.7, 0)
@@ -330,5 +364,17 @@ describe('a companion being talked to', () => {
     }
     const back = crowd.following()[0]!
     expect(Math.hypot(back.x - at.x, back.z - at.z)).toBeLessThan(crowd.options.catchUp)
+  })
+})
+
+describe('the range rule, for somebody who is nobody\'s walker', () => {
+  it('is over once the player has come close and gone again, and not before', () => {
+    const leash = new Leash(5)
+    // never came close: a hold taken across the road stands while they walk over
+    expect(leash.gone(12, 0)).toBe(false)
+    expect(leash.gone(3, 4)).toBe(false)
+    expect(leash.gone(0, 6)).toBe(true)
+    leash.reset()
+    expect(leash.gone(0, 6)).toBe(false)
   })
 })

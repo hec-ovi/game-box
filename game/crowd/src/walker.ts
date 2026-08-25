@@ -4,7 +4,8 @@ import { headAim, type Attender, type Spot, TURN_EASE, TURN_QUICKEST, TURNED } f
 import { angleDelta, distance, easeToward, headingOf, turnToward } from './geometry.ts'
 import type { Ground } from './ground.ts'
 import type { Kerb } from './kerb.ts'
-import type { CrowdActor, Point, WalkerState, WalkerView } from './ports.ts'
+import { Leash } from './leash.ts'
+import type { CrowdActor, Destination, Point, WalkerState, WalkerView } from './ports.ts'
 import type { Space, Urge } from './space.ts'
 
 export interface WalkerSetup {
@@ -18,8 +19,16 @@ export interface WalkerSetup {
   readonly turnRate: number
   readonly stuckSeconds: number
   readonly rng: Rng
+  /** How long to stand after arriving nowhere in particular, in seconds. */
   readonly pauseMin: number
   readonly pauseMax: number
+  /** How long to stand at a door they were heading for, in seconds. */
+  readonly dwellMin: number
+  readonly dwellMax: number
+  /** How far the player may walk off, having come close, before a conversation is over, in metres. */
+  readonly talkRadius: number
+  /** Within this of the end of a route they are there, in metres. Wider than a corner, so a door somebody is already standing at is still reached. */
+  readonly arrival: number
   /**
    * True for somebody walking the city on their own errand: talked to out in a
    * roadway, they finish the crossing and turn at the far kerb. A companion is
@@ -77,8 +86,14 @@ export class Walker implements Attender {
   #stuckSeconds: number
   #pauseMin: number
   #pauseMax: number
+  #dwellMin: number
+  #dwellMax: number
+  #arrival: number
   #finishesCrossings: boolean
   #route: Point[] = []
+  /** The building the route ends at, while it is being walked and while we stand at its door. */
+  #destination: string | undefined
+  #arrived = false
   /** Metres from each corner to the end of the route, so `remaining` is a sum and not a walk of the route. */
   #after: number[] = []
   #leg = 0
@@ -91,7 +106,7 @@ export class Walker implements Attender {
   /** The least we have ever had left to walk on this route: what says whether we are getting anywhere. */
   #best = Infinity
   /** What the crowd is asking of us, and the way and pace we settled on. Kept here so a frame allocates nothing. */
-  #urge: Urge = { x: 0, z: 0, pace: 1 }
+  #urge: Urge = { x: 0, z: 0, pace: 1, side: 0 }
   #wayX = 0
   #wayZ = 0
   #pace = 1
@@ -103,6 +118,8 @@ export class Walker implements Attender {
   #head: Spot = { x: 0, y: 0, z: 0 }
   /** Let go of, and coming round to the way we were walking before we set off again. */
   #turningBack = false
+  /** The range rule: whoever is talking to us walking off is the end of it. */
+  #leash: Leash
   #gone = false
 
   constructor(setup: WalkerSetup) {
@@ -117,6 +134,10 @@ export class Walker implements Attender {
     this.#stuckSeconds = setup.stuckSeconds
     this.#pauseMin = setup.pauseMin
     this.#pauseMax = setup.pauseMax
+    this.#dwellMin = setup.dwellMin
+    this.#dwellMax = setup.dwellMax
+    this.#leash = new Leash(setup.talkRadius)
+    this.#arrival = setup.arrival
     this.#finishesCrossings = setup.finishesCrossings
     this.x = setup.at.x
     this.z = setup.at.z
@@ -143,6 +164,12 @@ export class Walker implements Attender {
     return this.#gone
   }
 
+  /** Where we are going, or nothing when it is nowhere in particular. */
+  get destination(): Destination | undefined {
+    if (this.#destination === undefined) return undefined
+    return { plotId: this.#destination, arrived: this.#arrived }
+  }
+
   /** Metres left to walk. Zero when idle. */
   get remaining(): number {
     const corner = this.#route[this.#leg]
@@ -150,9 +177,12 @@ export class Walker implements Attender {
     return this.#after[this.#leg]! + distance(this.x, this.z, corner.x, corner.z)
   }
 
-  /** Take a route in metres and start walking it. The first point may be where we stand. */
-  follow(route: readonly Point[]): void {
+  /** Take a route in metres and start walking it, to the door of `plotId` when it ends at one. The first point may be where we stand. */
+  follow(route: readonly Point[], plotId?: string): void {
     this.#route = route.filter((point) => distance(this.x, this.z, point.x, point.z) > ARRIVED)
+    this.#destination = plotId
+    this.#arrived = false
+    this.#urge.side = 0
     this.#measure()
     this.#leg = 0
     this.#stalled = 0
@@ -198,6 +228,7 @@ export class Walker implements Attender {
   /** Stand still, facing whoever is talking to us. The route is kept for afterwards. */
   #standToFace(): void {
     this.#crossingFirst = false
+    this.#leash.reset()
     this.#state = 'idle'
     this.#setClip(CLIPS.idle)
   }
@@ -222,7 +253,13 @@ export class Walker implements Attender {
 
   /** Walk for this long, then turn a little further towards where we are going. */
   advance(seconds: number): void {
-    if (this.#attend && !this.#crossingFirst) return this.#watch(seconds, this.#attend)
+    this.#space.eject(this, seconds)
+    if (this.#attend && !this.#crossingFirst) {
+      const player = this.#space.viewer
+      // they have walked off: that is the end of the conversation, and we go on our way
+      if (this.#leash.gone(player.x - this.x, player.z - this.z)) this.unattend()
+      else return this.#watch(seconds, this.#attend)
+    }
     if (this.#turningBack) return this.#comeRound(seconds)
     const fromX = this.x
     const fromZ = this.z
@@ -356,11 +393,12 @@ export class Walker implements Attender {
     }
   }
 
-  /** The corner we are walking to, having stepped past any we are already standing on. */
+  /** The corner we are walking to, having stepped past any we are already standing on. The last one is reached from further off. */
   #nextCorner(): Point | undefined {
     while (this.#leg < this.#route.length) {
       const corner = this.#route[this.#leg]!
-      if (distance(this.x, this.z, corner.x, corner.z) > ARRIVED) return corner
+      const within = this.#leg === this.#route.length - 1 ? this.#arrival : ARRIVED
+      if (distance(this.x, this.z, corner.x, corner.z) > within) return corner
       this.#leg++
     }
     return undefined
@@ -442,16 +480,22 @@ export class Walker implements Attender {
     return true
   }
 
-  /** Arrived, or never had anywhere to go: stand still for a moment. */
+  /** Arrived, or never had anywhere to go: stand still for a moment, and longer at a door we came to. */
   #rest(): void {
-    this.#stop(this.rng.range(this.#pauseMin, this.#pauseMax))
+    const door = this.#destination
+    this.#stop(door ? this.rng.range(this.#dwellMin, this.#dwellMax) : this.rng.range(this.#pauseMin, this.#pauseMax))
+    this.#destination = door
+    this.#arrived = door !== undefined
   }
 
+  /** Nothing left to walk and nowhere we are going: a route dropped forgets its door. */
   #stop(pause: number): void {
     this.#route = []
     this.#leg = 0
     this.#stalled = 0
     this.#slowed = 0
+    this.#destination = undefined
+    this.#arrived = false
     this.#state = 'idle'
     this.#pause = pause
     this.#setClip(CLIPS.idle)

@@ -1,6 +1,6 @@
 import { CLIPS, clipsUsed } from '@gb/cast'
 import { CityNav } from '@gb/nav'
-import { METRICS, World, type CellKind, type Npc } from '@gb/world'
+import { cellCentre, METRICS, World, type CellKind, type Npc } from '@gb/world'
 import * as THREE from 'three'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { Crowd, SceneCast, type CrowdOptions, type CrowdPeople, type Point, type WalkerView } from '../src/index.ts'
@@ -83,7 +83,7 @@ describe('Crowd', () => {
   })
 
   it('arrives, stands still for a moment, then goes somewhere else', () => {
-    const { crowd } = crowdOf({ population: 1, tripMin: 10, tripMax: 20, pauseMin: 2, pauseMax: 3 })
+    const { crowd } = crowdOf({ population: 1, tripMin: 10, tripMax: 20, pauseMin: 2, pauseMax: 3, dwellMin: 2, dwellMax: 3 })
     let arrivals = 0
     let wasWalking = false
 
@@ -100,6 +100,37 @@ describe('Crowd', () => {
 
     // two arrivals means they set off again after the first, which is the whole cycle
     expect(arrivals).toBeGreaterThanOrEqual(2)
+  })
+
+  it('is going somewhere: the door of a building in town, and stands at it before moving on', () => {
+    const { crowd } = crowdOf({ population: 4, dwellMin: 1, dwellMax: 2 })
+    const doors = new Map<string, Point>()
+    for (const plot of world.plotsOfKind('house')) {
+      doors.set(plot.id, cellCentre(plot.entrance.cell.x, plot.entrance.cell.y, world.cellSize))
+    }
+    let heading = 0
+    let stood = 0
+
+    for (let frame = 0; frame < 3600; frame++) {
+      crowd.update(STEP, middle)
+      for (const walker of crowd.walkers()) {
+        const going = crowd.destination(walker.id)
+        if (walker.state !== 'idle') {
+          // on the move, it is towards a door in this town, and not one they are standing at yet
+          expect(going).toBeDefined()
+          expect(doors.has(going!.plotId)).toBe(true)
+          expect(going!.arrived).toBe(false)
+          heading++
+        } else if (going?.arrived) {
+          expect(distance(walker, doors.get(going.plotId)!)).toBeLessThanOrEqual(1 + 1e-9)
+          stood++
+        }
+      }
+    }
+
+    expect(heading).toBeGreaterThan(0)
+    expect(stood).toBeGreaterThan(0)
+    expect(crowd.destination('npc_nobody')).toBeUndefined()
   })
 
   it('is always playing a clip the pack has, and stands in an idle when it gets there', () => {

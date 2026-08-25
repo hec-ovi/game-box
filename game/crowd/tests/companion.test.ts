@@ -1,5 +1,5 @@
 import { CityNav } from '@gb/nav'
-import { METRICS, type Npc, type World } from '@gb/world'
+import { cellCentre, METRICS, type Npc, type World } from '@gb/world'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { Crowd, type Point } from '../src/index.ts'
 import { Country } from './support/country.ts'
@@ -222,6 +222,38 @@ describe('companions', () => {
     const standing = crowd.following()[0]!
     expect(standing.x).toBeLessThan(edge)
     expect(standing.state).toBe('idle')
+  })
+
+  it('sets off from the doorstep of the building it was in, and walks over from there', () => {
+    const cast = new FakeCast()
+    const crowd = Crowd.create({ world, nav, cast, seed: 'party' }, { population: 0 })
+    const plot = world.plotsOfKind('house')[0]!
+    const door = cellCentre(plot.entrance.cell.x, plot.entrance.cell.y, world.cellSize)
+    // the player is a few metres along the pavement from the door
+    const at = { x: door.x + 6, z: door.z }
+    crowd.update(STEP, at)
+
+    crowd.follow({ npc: guide('shopkeeper'), door: plot.id })
+    const first = crowd.following()[0]!
+    expect(first.x).toBeCloseTo(door.x, 9)
+    expect(first.z).toBeCloseTo(door.z, 9)
+    // a companion is going where the player is going, which is nowhere the crowd can name
+    expect(crowd.destination(first.id)).toBeUndefined()
+
+    let teleports = 0
+    let where = { x: first.x, z: first.z }
+    for (let frame = 0; frame < 600; frame++) {
+      crowd.update(STEP, at)
+      const now = crowd.following()[0]!
+      if (distance(now, where) > METRICS.player.runSpeed * STEP + 1e-6) teleports++
+      where = { x: now.x, z: now.z }
+    }
+    expect(teleports).toBe(0)
+    expect(distance(crowd.following()[0]!, at)).toBeLessThan(crowd.options.followGap + 1)
+
+    // a door nobody knows is no door: they set off from the player
+    crowd.follow({ npc: guide('stranger'), door: 'plot_9999' })
+    expect(distance(crowd.following()[1]!, at)).toBeLessThan(1e-9)
   })
 
   it('leaves a body the game handed over alone when it stops following', () => {
