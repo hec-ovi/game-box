@@ -2,14 +2,15 @@ import type { Rng } from '@gb/kit'
 import { METRICS, type Premise, type ResolvedCharter, type Word, type World } from '@gb/world'
 import { openDoors, type Frontage } from '../interior/open.ts'
 import { planInterior } from '../interior/plan.ts'
-import type { InstanceRequest, PlaceRequest } from '../narrator.ts'
+import type { InstanceBrief, InstanceRequest, PlaceRequest } from '../narrator.ts'
 import { premiseLines } from '../premise/render.ts'
 import type { Signs } from '../narrator/signs.ts'
 import type { StreetNames } from '../narrator/streets.ts'
-import { bodyFor, itemsFor, occupancy, roleFor, surfacesOf } from '../populate.ts'
+import { bodyFor, itemsFor, keeperOf, occupancy, roleFor, surfacesOf } from '../populate.ts'
 import { callsForDancing } from '../premise/wants.ts'
 import { priceOf } from '../prices.ts'
-import type { Chosen, PlannedInside, PlannedPost, PlannedSite, PlannedThing } from './planned.ts'
+import { putUpForSale } from './homes.ts'
+import { narrated, type Chosen, type PlannedInside, type PlannedPost, type PlannedSite, type PlannedThing } from './planned.ts'
 
 /** What the whole town needs before a single site can be planned. */
 export interface RaiseSetup {
@@ -44,7 +45,7 @@ export function planRaise(world: World, chosen: readonly Chosen[], setup: RaiseS
   const style = `${setup.theme.split(/\s+/)[0]?.toLowerCase() ?? 'plain'}-`
   const story = setup.premise ? premiseLines(setup.premise) : undefined
 
-  return chosen.map((one, at) => {
+  const planned = chosen.map((one, at): PlannedSite => {
     const street = setup.streets.at(one.site.entrance, one.site.facing)
     return {
       ...one,
@@ -55,6 +56,8 @@ export function planRaise(world: World, chosen: readonly Chosen[], setup: RaiseS
       ...(open.has(String(at)) ? { inside: planInside(world, one, setup, counts) } : {}),
     }
   })
+  // a home for the player is a fact about the whole town, so it is picked once the town is planned
+  return putUpForSale(planned, counts, setup.people.fork('sale'))
 }
 
 /** One building as every narrator is shown it: what it is, the street it is on, and the town's story. */
@@ -81,8 +84,23 @@ export function instanceRequests(planned: readonly PlannedSite[], setup: RaiseSe
       ...placeRequest(one, setup, premise),
       rooms: one.inside.plan.rooms.map((room) => room.kind),
       posts: one.inside.posts.map((post) => ({ postId: post.anchor.id, role: post.role, index: post.index })),
-      things: one.inside.things.map((thing) => ({ thingId: thing.thingId, archetype: thing.archetype, index: thing.index })),
+      things: one.inside.things.filter(narrated).map((thing) => ({ thingId: thing.thingId, archetype: thing.archetype, index: thing.index })),
+      has: briefOf(one.inside),
     }))
+}
+
+/** What the plan put in a place beyond its people and its stock, in the words a writer builds a line on. */
+function briefOf(inside: PlannedInside): InstanceBrief {
+  const { plan } = inside
+  const named = new Map(plan.rooms.map((room) => [room.id, room.name]))
+  return {
+    locked: plan.doors
+      .filter((door) => door.locked)
+      .map((door) => ({ room: named.get(door.to) ?? door.to, by: door.password ? 'code' : plan.keys.find((key) => key.doorId === door.id)?.archetype === 'keycard' ? 'card' : 'key' })),
+    machines: plan.furniture.filter((piece) => piece.machine).map((piece) => ({ room: named.get(piece.roomId) ?? piece.roomId, program: piece.machine!.program })),
+    camera: plan.furniture.some((piece) => piece.prop === 'camera'),
+    ...(inside.forSale !== undefined ? { forSale: inside.forSale } : {}),
+  }
 }
 
 /** Every door that does not open, for a narrator that hangs those signs itself. */
@@ -127,32 +145,48 @@ function frontagesOf(world: World, chosen: readonly Chosen[], demanded: Readonly
 function planInside(world: World, one: Chosen, setup: RaiseSetup, counts: { npcs: number; items: number }): PlannedInside {
   const wall = METRICS.building.wallThickness
   const size = { w: one.site.rect.w * world.cellSize - wall * 2, h: one.site.rect.h * world.cellSize - wall * 2 }
+  const interiorId = world.mintId('interior')
   const plan = planInterior({
     charter: one.charter,
     size,
     entrance: one.site.facing,
     wants: { dancing: callsForDancing(setup.theme, setup.premise) },
+    interiorId,
     mint: (kind) => world.mintId(kind),
     rng: one.rng.fork('inside'),
   })
-  const interiorId = world.mintId('interior')
   const rng = setup.people.fork(`people/${interiorId}`)
+  // posts filled whatever the dice say: whoever keeps the keys, because a lock without its keeper is a lock nobody can write a quest through, and one person in a home, because a home is somebody's
+  const keeper = keeperOf(plan.anchors, one.charter)
+  const filled = new Set(plan.keys.length || one.charter.residential ? [keeper] : [])
 
   const posts: PlannedPost[] = []
   for (const anchor of plan.anchors) {
     const role = roleFor(anchor.kind, one.charter)
     if (!role) continue
     // a staff post is always filled: a bar without a bartender is not a bar
-    const chance = occupancy(anchor.kind, one.charter)
+    const chance = filled.has(anchor) ? 1 : occupancy(anchor.kind, one.charter)
     if (chance < 1 && !rng.chance(chance * setup.density)) continue
     const index = counts.npcs++
     posts.push({ anchor, role, index, appearance: { base: bodyFor(rng), variant: rng.int(0, 8) } })
   }
 
+  const things: PlannedThing[] = plan.keys.map((key, at) => ({
+    thingId: `${interiorId}/key/${at}`,
+    archetype: key.archetype,
+    anchorId: (keeper ?? plan.anchors[0]!).id,
+    index: counts.items++,
+    value: priceOf(key.archetype, rng),
+    itemId: key.itemId,
+    opens: key.opens,
+    room: key.room,
+    carried: keeper !== undefined,
+  }))
+  // something worth locking up goes behind the lock; the rest lies on the surfaces people use
+  const behind = plan.anchors.filter((anchor) => plan.shut.includes(anchor.roomId))
   const surfaces = surfacesOf(plan.anchors)
-  const things: PlannedThing[] = []
   for (const [at, archetype] of itemsFor(one.charter, rng).entries()) {
-    const anchor = surfaces[at % Math.max(1, surfaces.length)]
+    const anchor = (at === 0 && behind[0]) || surfaces[at % Math.max(1, surfaces.length)]
     if (!anchor) break
     things.push({ thingId: `${interiorId}/thing/${at}`, archetype, anchorId: anchor.id, index: counts.items++, value: priceOf(archetype, rng) })
   }

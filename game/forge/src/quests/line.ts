@@ -1,5 +1,5 @@
 import type { Rng } from '@gb/kit'
-import type { Premise } from '@gb/world'
+import { CAR_MODELS, type Premise } from '@gb/world'
 import type { PremiseSide } from '../premise/check.ts'
 import type { CastPerson, CityCast } from './cast.ts'
 import { allied } from './marks.ts'
@@ -52,6 +52,12 @@ interface Argument {
  * work never waits on a branch and the ladder can always be climbed to the top.
  * A town too small for two sides simply does not fork, and its line is the one
  * it always was.
+ *
+ * The top of the ladder is paid for what it is: the finale is hard work in a
+ * town too small to fork and epic in one that does, and it hands over what the
+ * town has to give, a car where somewhere works at a bench and a home where
+ * one is for sale. The fork is hard work too, and pays the car when the finale
+ * pays the home.
  */
 export class MainLine {
   readonly hub: CastPerson | undefined
@@ -68,37 +74,60 @@ export class MainLine {
     this.rival = tiers >= TO_FORK ? cast.rival(rng, this.hub) : undefined
     // the fork needs a link in front of it to lead up to and one behind it to change
     const fork = this.rival ? rng.int(2, tiers - 1) : 0
-    this.links = this.#plan(tiers, fork, argumentOf(premise))
+    this.links = this.#plan(tiers, fork, argumentOf(premise), payoffs(cast, rng, tiers, fork))
   }
 
-  #plan(tiers: number, fork: number, argument?: Argument): Link[] {
+  #plan(tiers: number, fork: number, argument: Argument | undefined, worth: ReadonlyMap<number, Payoff>): Link[] {
     const links: Link[] = []
     const hub = this.hub!
     const rival = this.rival
 
     for (let tier = 1; tier <= tiers; tier++) {
       const climbed = tier === 1 ? [] : [flag(standing(tier - 1))]
+      const payoff = worth.get(tier) ?? {}
       if (!rival || tier < fork) {
-        links.push({ label: `main/${tier}`, tier, ...link(hub, climbed, tier, stakeOf(argument, false)) })
+        links.push({ label: `main/${tier}`, tier, ...link(hub, climbed, tier, stakeOf(argument, false), payoff) })
         continue
       }
       if (tier === fork) {
         // the one link that puts both sides in front of the player at once
-        links.push({ label: `main/${tier}/fork`, tier, ...link(hub, climbed, tier, stakeOf(argument, false)), against: rival })
+        links.push({ label: `main/${tier}/fork`, tier, ...link(hub, climbed, tier, stakeOf(argument, false), payoff), against: rival })
         continue
       }
       for (const [at, side] of [hub, rival].entries()) {
         const taken = [...climbed, flag(allied(side.place))]
-        links.push({ label: `main/${tier}/${side.place.plotId}`, tier, ...link(side, taken, tier, stakeOf(argument, at === 1)) })
+        links.push({ label: `main/${tier}/${side.place.plotId}`, tier, ...link(side, taken, tier, stakeOf(argument, at === 1), payoff) })
       }
     }
     return links
   }
 }
 
-function link(from: CastPerson, requires: Condition[], tier: number, stake?: Stake): Omit<Job, 'id'> {
-  return { kind: 'main', requires, grants: [standing(tier)], from, ...(stake ? { stake } : {}) }
+/** The band a rung is paid in at the least, and what it hands over beyond credits. */
+type Payoff = Pick<Job, 'atLeast' | 'pays'>
+
+/**
+ * What the ladder pays at its top: the finale, and the fork where there is one.
+ * A car only where the town has a garage to hand one out of, a home only where
+ * one is for sale, and the home is booked here so no other line promises it.
+ */
+function payoffs(cast: CityCast, rng: Rng, tiers: number, fork: number): Map<number, Payoff> {
+  const worth = new Map<number, Payoff>()
+  const car = cast.garage ? { car: rng.pick(CAR_MODELS) } : {}
+  if (!fork) {
+    worth.set(tiers, { atLeast: 'hard', pays: car })
+    return worth
+  }
+  const home = cast.home(rng)
+  worth.set(fork, { atLeast: 'hard', pays: car })
+  worth.set(tiers, { atLeast: 'epic', pays: { ...car, ...(home?.interiorId ? { deed: home.interiorId } : {}) } })
+  return worth
 }
+
+function link(from: CastPerson, requires: Condition[], tier: number, stake: Stake | undefined, payoff: Payoff): Omit<Job, 'id'> {
+  return { kind: 'main', requires, grants: [standing(tier)], from, ...(stake ? { stake } : {}), ...payoff }
+}
+
 
 /** The premise's first two sides, which are the two ends of the town's argument. */
 function argumentOf(premise?: Premise): Argument | undefined {

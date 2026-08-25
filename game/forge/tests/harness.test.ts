@@ -2,8 +2,9 @@ import { PlayerState } from '@gb/play'
 import type { QuestDoc } from '@gb/quest'
 import { describe, expect, it } from 'vitest'
 import { questTargets } from '../src/quests/targets.ts'
-import { ownedItems, Player, verbFor, type PlayerOptions } from './player.ts'
-import { openLog, playEvery } from './playable.ts'
+import { City } from './city.ts'
+import { Player, verbFor, type PlayerOptions } from './player.ts'
+import { meeting, openLog, playEvery } from './playable.ts'
 import { Street } from './street.ts'
 import { buildTown } from './support.ts'
 import { Hands, VERBS, type Verb } from './verbs.ts'
@@ -20,17 +21,17 @@ import { Hands, VERBS, type Verb } from './verbs.ts'
  */
 
 const { world, quests } = await buildTown('harness', { blocksX: 8, blocksY: 8, theme: 'dense neon port city' })
-const owned = ownedItems(world)
+const city = new City(world)
 
 /** A quest with a step of this kind in it, and one with none. */
 const withKind = (kind: string): QuestDoc | undefined => quests.find((quest) => quest.steps.some((step) => step.kind === kind))
 
-function play(quest: QuestDoc, options: Omit<PlayerOptions, 'owned'> = {}) {
+function play(quest: QuestDoc, options: PlayerOptions = {}) {
   const state = PlayerState.create(world.id)
-  for (const need of quest.requires ?? []) if (need.kind === 'flag') state.setFlag(need.flag, need.value)
+  meeting(quest, state)
   const log = openLog(quests, state)
   expect(log.start(quest.id).ok, quest.title).toBe(true)
-  return { log, state, run: new Player(log, state, { owned, ...options }).play(quest) }
+  return { log, state, run: new Player(log, state, city, options).play(quest) }
 }
 
 /** A player missing one verb, to prove the harness will not credit a step through hands nobody has. */
@@ -88,12 +89,12 @@ describe('a quest is credited the way a player credits it', () => {
     // a stale panel must not be able to finish a decision and strand the quest
     const quest = withKind('choice')!
     const state = PlayerState.create(world.id)
-    for (const need of quest.requires ?? []) if (need.kind === 'flag') state.setFlag(need.flag, need.value)
+    meeting(quest, state)
     const log = openLog(quests, state)
     log.start(quest.id)
 
     // walk up to the decision by doing everything else the board asks for
-    const player = new Player(log, state, { owned })
+    const player = new Player(log, state, city)
     const board = () => log.objectives().filter((objective) => objective.questId === quest.id)
     let waiting = board().filter((objective) => objective.choice)
     while (!waiting.length) {
@@ -119,6 +120,11 @@ describe('a quest is credited the way a player credits it', () => {
     expect(verbFor({ ...line, topic: 'the missing crate' } as never)).toBe('talk about')
     expect(verbFor({ ...line, place: { plotId: 'plot_0001' } } as never)).toBe('walk with')
     expect(verbFor({ stepId: 'step_0001', questId: 'quest_0001', questTitle: 'x', text: 'x', place: { plotId: 'plot_0001' } } as never)).toBe('walk')
+    // a door is opened, a screen is opened, and a screen with a score on it is played
+    const bare = { stepId: 'step_0001', questId: 'quest_0001', questTitle: 'x', text: 'x' }
+    expect(verbFor({ ...bare, doorId: 'door_0001' } as never)).toBe('unlock')
+    expect(verbFor({ ...bare, machineId: 'machine_0001' } as never)).toBe('hack')
+    expect(verbFor({ ...bare, machineId: 'machine_0001', score: 300 } as never)).toBe('play')
   })
 
   it('reads what to do off the board and nowhere else', () => {

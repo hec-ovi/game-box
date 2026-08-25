@@ -2,84 +2,20 @@ import { Rng } from '@gb/kit'
 import { RECIPES } from '@gb/kitbash'
 import { SHIPPED_CHARTERS, type Charter, type Premise } from '@gb/world'
 import { describe, expect, it } from 'vitest'
-import { Forge, OfflineNarrator } from '../src/index.ts'
 import { drawOf } from '../src/interior/draw.ts'
-import type { History, Narrator } from '../src/index.ts'
 import { kindWeights, stapleKinds } from '../src/theme/plot-mix.ts'
+import { buildTold, JAIL, LOCKUP } from './histories.ts'
 import { buildTown } from './support.ts'
-
-/** A kind of place the engine has no word for, written the way a history would write it. */
-const JAIL: Charter = {
-  word: 'jail',
-  label: 'jail',
-  blade: 'JAIL',
-  names: ['{family} Holding', 'The {adjective} {noun} House'],
-  rumours: ['Somebody in the cells has not been charged with anything.', 'The duty desk keeps two ledgers.'],
-  share: 1,
-  prominence: 'landmark',
-  residential: false,
-  size: { storeys: [2, 3], sprawl: 'block' },
-  street: { frontage: 'blank', openness: 'sparse', material: 'masonry', voice: 'sober' },
-  access: 'open',
-  service: 'desk',
-  work: ['watch'],
-  holding: ['papers'],
-  finish: 'civic',
-  rooms: {
-    hall: { use: 'waiting-room', name: 'Duty desk' },
-    main: { use: 'ward', name: 'Cells' },
-    services: [{ use: 'private-office', name: 'Warden office', weight: 1, spare: true }],
-  },
-}
-
-/** A town whose history says there is a jail, and says what a jail is. */
-const LOCKUP: History = {
-  livesOn: 'the county court, and everybody who has to come to it',
-  happened: 'the assizes moved here from the city and brought the cells with them',
-  stake: 'who is inside when the door shuts',
-  sides: [
-    { name: 'the court', wants: 'the cells full and the ledger clean' },
-    { name: 'the families outside', wants: 'somebody to tell them who is in there' },
-  ],
-  common: ['the jail takes in more on market day than the court ever sees'],
-  build: { moreOf: ['jail', 'office'], fewerOf: ['hotel'], mustHave: ['jail'] },
-  charters: [JAIL],
-}
-
-/** A narrator told the town's history, offline in every other respect. */
-class Told implements Narrator {
-  #offline: OfflineNarrator
-  #history: unknown
-  constructor(seed: string, history: unknown) {
-    this.#offline = new OfflineNarrator(seed)
-    this.#history = history
-  }
-  async writePremise(): Promise<History> {
-    return this.#history as History
-  }
-  nameCity = (input: Parameters<Narrator['nameCity']>[0]) => this.#offline.nameCity(input)
-  namePlace = (input: Parameters<Narrator['namePlace']>[0]) => this.#offline.namePlace(input)
-  describeNpc = (input: Parameters<Narrator['describeNpc']>[0]) => this.#offline.describeNpc(input)
-  describeItem = (input: Parameters<Narrator['describeItem']>[0]) => this.#offline.describeItem(input)
-  writeQuests = (input: Parameters<Narrator['writeQuests']>[0]) => this.#offline.writeQuests(input)
-  writeInstances = (requests: Parameters<NonNullable<Narrator['writeInstances']>>[0]) => this.#offline.writeInstances(requests)
-}
-
-async function build(seed: string, history: unknown, blocks = 3) {
-  const built = await new Forge(new Told(seed, history)).build({ theme: 'quiet market town', seed, blocksX: blocks, blocksY: blocks })
-  if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 400))
-  return built.value
-}
 
 describe('a kind of place the history invents', () => {
   it('gets a plot of that kind with rooms, staff and a sign, and the file says what it is', async () => {
-    const { world, dropped } = await build('lockup', LOCKUP)
+    const { world, dropped } = await buildTold('lockup', LOCKUP)
     expect(dropped).toEqual([])
     expect(world.check()).toEqual([])
     expect(world.charter('jail')?.blade).toBe('JAIL')
     // the wall pieces are the kit's own row for how the jail meets the street, so it is drawn as the file says
     expect(world.charter('jail')?.built).toEqual(RECIPES[JAIL.street.frontage][JAIL.street.openness])
-    expect(world.charters().length).toBe(SHIPPED_CHARTERS.length + 1)
+    expect(world.charters().length).toBe(SHIPPED_CHARTERS.length + LOCKUP.charters!.length)
 
     const jails = world.plotsOfKind('jail')
     expect(jails.length, 'the town has no jail').toBeGreaterThan(0)
@@ -106,7 +42,7 @@ describe('a kind of place the history invents', () => {
 
   it('drops a charter that fails the shape, strips the word from the build, and keeps the history', async () => {
     const bad = { ...JAIL, word: 'vault', blade: 'vault', rooms: { main: { use: 'ward', name: 'Vault' }, services: [] } }
-    const { world, dropped } = await build('vault', { ...LOCKUP, charters: [JAIL, bad], build: { moreOf: ['vault'], fewerOf: [], mustHave: ['jail', 'vault'] } })
+    const { world, dropped } = await buildTold('vault', { ...LOCKUP, charters: [JAIL, bad], build: { moreOf: ['vault'], fewerOf: [], mustHave: ['jail', 'vault'] } })
     expect(dropped.map((one) => one.word)).toEqual(['vault'])
     expect(dropped[0]!.reason).toContain('blade')
     expect(world.charter('vault')).toBeUndefined()

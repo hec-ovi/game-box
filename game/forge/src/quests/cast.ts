@@ -1,6 +1,7 @@
 import type { Rng } from '@gb/kit'
 import type { NpcRole } from '@gb/world'
-import type { WorldSummary } from '../narrator.ts'
+import { GAMES } from '../interior/machines.ts'
+import type { SummaryLock, SummaryMachine, WorldSummary } from '../narrator.ts'
 import { metresBetween, pickNear } from './reach.ts'
 import { Stock } from './stock.ts'
 
@@ -18,6 +19,21 @@ export interface CastPerson {
 export interface CastLoot {
   readonly place: CastPlace
   readonly item: CastItem
+}
+
+/** A locked door a quest can be written through: the place, the lock, who carries its key, and what lies behind it. */
+export interface CastLock {
+  readonly place: CastPlace
+  readonly lock: SummaryLock
+  /** Whoever carries the key, standing somewhere the player can reach them. */
+  readonly keeper?: CastPerson
+  readonly behind: readonly CastItem[]
+}
+
+/** A screen a quest can be written at: the place and the machine. */
+export interface CastMachine {
+  readonly place: CastPlace
+  readonly machine: SummaryMachine
 }
 
 /** Roles with a post to hold: the people a town brings its problems to. */
@@ -46,18 +62,36 @@ export class CityCast {
   #walkers: CastPerson[] = []
   #everyone: CastPerson[] = []
   #hiding: CastPlace[] = []
+  #locks: CastLock[] = []
+  #screens: CastMachine[] = []
+  #arcades: CastMachine[] = []
+  #counters: CastPlace[] = []
+  #homes: CastPlace[] = []
+  #garages: CastPlace[] = []
   #stock: Stock
   #jobs = new Map<string, number>()
   #home = new Map<string, string>()
   #busy = new Set<string>()
+  #promised = new Set<string>()
+  /** Things behind a lock that a quest has claimed: they are outside the ledger, so they are booked here. */
+  #claimed = new Set<string>()
 
   constructor(summary: WorldSummary) {
-    this.places = summary.places
-    this.#stock = new Stock(summary.places)
-    for (const place of summary.places) {
+    // a person behind a locked door is a person no line can point at until the door is open, so the cast is everybody in front of one
+    this.places = summary.places.map((place) => ({ ...place, npcs: place.npcs.filter((npc) => inReach(place, npc)) }))
+    this.#stock = new Stock(this.places)
+    for (const place of this.places) {
       if (place.stashAnchorId !== undefined) this.#hiding.push(place)
+      if (place.forSale !== undefined && place.interiorId) this.#homes.push(place)
+      if (place.items.some((item) => item.ownerNpcId !== undefined && (item.value ?? 0) > 0)) this.#counters.push(place)
+      for (const machine of place.machines ?? []) (GAMES.includes(machine.program) ? this.#arcades : this.#screens).push({ place, machine })
+      for (const lock of place.locks ?? []) {
+        const npc = place.npcs.find((one) => one.npcId === lock.keeperNpcId)
+        this.#locks.push({ place, lock, ...(npc ? { keeper: { place, npc } } : {}), behind: place.items.filter((item) => lock.behind.includes(item.itemId)) })
+      }
       if (!place.npcs.length) continue
       this.#peopled.push(place)
+      if (place.work?.includes('bench')) this.#garages.push(place)
       for (const npc of place.npcs) {
         const person = { place, npc }
         this.#home.set(npc.npcId, place.plotId)
@@ -97,6 +131,71 @@ export class CityCast {
   /** The things in a place no quest has taken yet. */
   free(place: CastPlace): readonly CastItem[] {
     return this.#stock.free(place)
+  }
+
+  /** How many locked doors a quest can be written through: a way past each that a quest can hand out, and something still unclaimed behind it. */
+  get locked(): number {
+    return this.#locks.filter((one) => this.#passable(one)).length
+  }
+
+  /** How many locked screens with a code on them stand in places with somebody in them. */
+  get screens(): number {
+    return this.#screens.filter((one) => one.machine.locked && one.machine.password !== undefined && one.place.npcs.length > 0).length
+  }
+
+  /** How many game screens stand in places with somebody in them. */
+  get arcades(): number {
+    return this.#arcades.filter((one) => one.place.npcs.length > 0).length
+  }
+
+  /** How many counters sell something. */
+  get counters(): number {
+    return this.#counters.length
+  }
+
+  /** A locked door with something still unclaimed behind it, near where the job starts, and a way past it a quest can hand out. */
+  lock(rng: Rng, from: CastPlace | undefined): CastLock | undefined {
+    const found = pickNear(rng, this.#locks, (one) => one.place, (one) => this.#passable(one), from)
+    return found ? { ...found, behind: found.behind.filter((item) => !this.#claimed.has(item.itemId)) } : undefined
+  }
+
+  /** Whether a quest can be written through this lock: a way past it to hand out, and something behind it nobody has claimed. */
+  #passable(one: CastLock): boolean {
+    return (one.keeper !== undefined || one.lock.password !== undefined) && one.behind.some((item) => !this.#claimed.has(item.itemId))
+  }
+
+  /** A locked screen with a code on it, a walk from where the job starts, in a place with somebody in it. */
+  screen(rng: Rng, from: CastPlace | undefined): CastMachine | undefined {
+    const spare = (one: CastMachine) => one.place.plotId !== from?.plotId && one.machine.locked && one.machine.password !== undefined && one.place.npcs.length > 0
+    return pickNear(rng, this.#screens, (one) => one.place, spare, from)
+  }
+
+  /** A screen running a game, in a place with somebody in it. */
+  arcade(rng: Rng, from: CastPlace | undefined): CastMachine | undefined {
+    return pickNear(rng, this.#arcades, (one) => one.place, (one) => one.place.npcs.length > 0, from)
+  }
+
+  /** A counter with priced things on it that nobody has claimed, a walk from where the job starts. */
+  counter(rng: Rng, from: CastPlace | undefined): CastPlace | undefined {
+    const spare = (place: CastPlace) => place.plotId !== from?.plotId && this.priced(place).length > 0
+    return pickNear(rng, this.#counters, itself, spare, from)
+  }
+
+  /** What a counter sells that no quest has claimed: the things with an owner and a price. */
+  priced(place: CastPlace): readonly CastItem[] {
+    return this.free(place).filter((item) => item.ownerNpcId !== undefined && (item.value ?? 0) > 0)
+  }
+
+  /** A home for sale nobody has promised yet: what the town's finale can hand over. Promising it books it. */
+  home(rng: Rng): CastPlace | undefined {
+    const home = pickNear(rng, this.#homes, itself, (place) => !this.#promised.has(place.plotId))
+    if (home) this.#promised.add(home.plotId)
+    return home
+  }
+
+  /** Whether the town has somewhere that works at a bench: a place with a car to hand over. */
+  get garage(): boolean {
+    return this.#garages.length > 0
   }
 
   /** Metres between two street doors: what a walk actually costs the player. */
@@ -165,6 +264,12 @@ export class CityCast {
     return pickNear(rng, this.#everyone, placeOf, (person) => !avoid.includes(person.npc.npcId), near)
   }
 
+  /** Somebody standing in this very place, other than the people already in this quest. */
+  inside(rng: Rng, place: CastPlace, avoid: readonly string[] = []): CastPerson | undefined {
+    const spare = place.npcs.filter((npc) => !avoid.includes(npc.npcId))
+    return spare.length ? { place, npc: rng.pick(spare) } : undefined
+  }
+
   /** Another place with people in it, a walk from this one: somewhere to walk somebody to. */
   elsewhere(rng: Rng, from: CastPlace): CastPlace | undefined {
     return pickNear(rng, this.#peopled, itself, (place) => place.plotId !== from.plotId, from)
@@ -192,6 +297,7 @@ export class CityCast {
   /** Books things and people so nothing is promised to two quests at once. */
   book(items: readonly CastItem[], givers: readonly string[] = []): void {
     this.#stock.take(items)
+    for (const item of items) this.#claimed.add(item.itemId)
     for (const npcId of givers) {
       this.#jobs.set(npcId, (this.#jobs.get(npcId) ?? 0) + 1)
       const home = this.#home.get(npcId)
@@ -202,3 +308,8 @@ export class CityCast {
 
 const placeOf = (person: CastPerson): CastPlace => person.place
 const itself = (place: CastPlace): CastPlace => place
+
+/** Whether somebody stands where a player can walk up to them: not behind a locked room door, and not inside a locked street door. */
+function inReach(place: CastPlace, npc: CastNpc): boolean {
+  return !(place.locks ?? []).some((lock) => lock.street || lock.roomId === npc.roomId)
+}

@@ -17,6 +17,7 @@ const GOING_RATE: Record<ItemArchetype, number> = {
   envelope: 5,
   key: 20,
   keycard: 60,
+  deed: 800,
   bag: 18,
   briefcase: 45,
   toolbox: 55,

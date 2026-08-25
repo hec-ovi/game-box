@@ -150,12 +150,14 @@ describe('a town written by a narrator answering many places at once', () => {
     const { world } = await town(thin)
     expect(world.check()).toEqual([])
     expect(world.npcs().some((npc) => npc.name === 'A Stranger')).toBe(false)
-    expect(world.npcs().length).toBe(world.interiors().filter((interior) => interior.anchors.length > 0).length)
+    // one person per place, except the home on the market, which has nobody in it
+    expect(world.npcs().length).toBe(world.interiors().filter((interior) => interior.anchors.length > 0 && interior.forSale === undefined).length)
     for (const npc of world.npcs()) {
       const interior = world.interior(npc.station!.interiorId)!
       expect(interior.anchors.some((anchor) => anchor.id === npc.station!.anchorId), `${npc.name} stands nowhere`).toBe(true)
     }
-    expect(world.items()).toEqual([])
+    // nothing the narrator was asked to name; only what the box writes off its own facts, a deed or a key
+    expect(world.items().filter((item) => item.deedTo === undefined && item.opens === undefined)).toEqual([])
   })
 
   it('builds the same city out of a narrator that only answers one question at a time, with the whole town in the air', async () => {

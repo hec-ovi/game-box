@@ -1,8 +1,8 @@
 import { opposite, step } from '../geometry.ts'
 import type { RoomPlan } from '../room-plan.ts'
-import { cornerPiece, standAt } from './pieces.ts'
+import { cornerPiece, standAt, workstation } from './pieces.ts'
 
-/** A living room: a sofa looking at the screen across the rug. */
+/** A living room: a sofa looking at the screen across the rug, and a desk with the household's laptop on it where a wall is free. */
 export function livingRoom(plan: RoomPlan): void {
   for (const side of plan.openSides()) {
     const sofa = plan.againstWall('sofa', side, { prefer: 'centre', approach: 1 })
@@ -12,8 +12,19 @@ export function livingRoom(plan: RoomPlan): void {
     plan.againstWall('tv', opposite(side), { prefer: 'centre', approach: 0.5 })
     break
   }
+  homeDesk(plan)
   if (plan.rng.chance(0.6)) cornerPiece(plan, 'lamp')
   cornerPiece(plan, 'shelf')
+}
+
+/** The desk in the corner with the laptop on it, the chair between it and the wall so whoever sits there faces the room. */
+function homeDesk(plan: RoomPlan): void {
+  for (const side of plan.openSides()) {
+    const desk = plan.againstWall('desk', side, { prefer: 'ends', gap: 0.9, approach: 0.7 })
+    if (!desk) continue
+    workstation(plan, desk, desk.rot + 180, 'laptop')
+    return
+  }
 }
 
 /** A kitchen: the run of appliances along one wall, room to stand at the stove. */

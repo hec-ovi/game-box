@@ -2,55 +2,55 @@
   {
     "seed": "golden-1",
     "history": "offline",
-    "world": "4d44500b8261485398ef2e848b4af200aa43ff0fe794533e519446cb35f3dbac",
-    "quests": "1828d349d6288a436092ca963f7391c3fb12adecbead06755c2581584540404e"
+    "world": "45889cb11b39b4740009d228ec5e9e37c4daec866edddbd37d5cc9c625b5805c",
+    "quests": "dfd6d1c18aa94aaa5511b6451a9ab6ca4cbc3b0b64dcead33c68f002bfb2cd90"
   },
   {
     "seed": "golden-1",
     "history": "wharves",
-    "world": "6b32bad2461b567d8a8ce2bf424aa53ab74a5bab1e242cf4bf109731cb4c5c16",
-    "quests": "f64b2de01a0043dd108ee8b456541ef06df582ac3651094443f8d6e34a24fc22"
+    "world": "7ca8277b9b541ae1065ef41caf056d61fbdf66d83b3f4719680c3a9e1d3cebf1",
+    "quests": "3f77ba0c0c505c8b99171fd42c568a564be4d961e5656be0227344afb56309bc"
   },
   {
     "seed": "golden-1",
     "history": "potteries",
-    "world": "19320a0c96096469f3dfbc0a3fc055255e1ed68a6b70eb87a489e9335a4a3294",
-    "quests": "1c0bf017aa5f14c913a5ee29fbf89a962aa3c6a8442d4b0a4bd3a16e3bd0e286"
+    "world": "79a24a572fc593b032059a3fbea89b1e3c31f031e9e64592f72449a07ca9a543",
+    "quests": "d3b26446bfa53de18538320a2c8d844bb553dbe11e011a03b26cfc6dc0eef636"
   },
   {
     "seed": "golden-2",
     "history": "offline",
-    "world": "1ce2c8681a31cc3a52e0a5e72f4a86f5d2faa4808d47be07be1c30875656ee97",
-    "quests": "dbd9d6931e2e0a265fcfe869bfaf64e45635500fa6d21037636e012d6170f005"
+    "world": "a82214cd3815566319f80422b0d1a2799dec7e0e7c7ae18b92a0c5329b889ce4",
+    "quests": "18df23eb7d8e7eee751e5bcc36ecb44dcf56f420b5b30d12e2e56e2e2bdb572b"
   },
   {
     "seed": "golden-2",
     "history": "wharves",
-    "world": "ef38b912753b24d4ca8744b22c5f4b84830bb49f95b4c97fe642cf9b34717710",
-    "quests": "bb8138334832212fcfc7f98f9c5c055675435b77fafc42f7660a420ba0845e4f"
+    "world": "4278acaf3bdc6dd1a5bc90e6cc54839c25dae7603034afe3337d22a9c7722d11",
+    "quests": "096dbf2b1f160b96f0e64e1aedaa950669c25701ef671997cf48e7ad2024a16b"
   },
   {
     "seed": "golden-2",
     "history": "potteries",
-    "world": "5228cd81510876fc2656f5adb22a211a4cf8ba37d3ceb2c4881f9d064d94943d",
-    "quests": "5c177977eb43cd9bee6cbefc24e893cefd017dd6a26d52f8d3e74ad2334e2fe5"
+    "world": "66f50217746d40db637a9b43191a0bfb61cd96b6d2cf6b7e80c946af5383f258",
+    "quests": "95c2399e476a2a3bab478e49a7a33affc3a055d3b29abeda9c71eb0a0482c706"
   },
   {
     "seed": "golden-3",
     "history": "offline",
-    "world": "ae32215b7325a4d2b36d07344c256d0222e306a4daebd13ccff72729a148110c",
-    "quests": "4833fedf34ae8872ef3dec2ef7adbd161ce424ddd67277331e2cd7850fc9e9e4"
+    "world": "4912a5cc79be0ae9be54cc7b34931368b06f0422159bedbc9f586754fd71955f",
+    "quests": "a17a629b83541db6f8aa41b21a4ce496455b23f346131a59cd52661526899cff"
   },
   {
     "seed": "golden-3",
     "history": "wharves",
-    "world": "ed95109514ecee6a31d0070973b9e532a8320e40b0153a945423d11a9af469dd",
-    "quests": "c92d684904ce1cc96cb474504cc4232d2d9f5c92d3a17d65607d29df8913d4c8"
+    "world": "cb63dab7a0d49999fcc8e6bd7a7e02f4beee972c797176f700c476b35b107c80",
+    "quests": "3ff1945a2e6d8029cda29f946a580a0a6e1095fe18074e79e4128947053ff13d"
   },
   {
     "seed": "golden-3",
     "history": "potteries",
-    "world": "e8ad6d26e41389ca79ea625fd1b3082aea9f0312aa0f120030c971cfe2d3f13f",
-    "quests": "c1fbe8ffa1b1276bf10e1dfb96b5fa16c2f8431dbe4535c1c1b30e904d99f821"
+    "world": "e31051c6393aaf030327df236955fc6e6d553f0b8d7148c75eafdf942ff87250",
+    "quests": "6c3fd993d485c2e8838a0a8f2c33f73db7395a0f8adee81550a2bf7683e11c01"
   }
 ]

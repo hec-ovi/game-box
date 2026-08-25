@@ -133,10 +133,12 @@ describe('a town of frontage with a few doors that open', () => {
       const pull = (plots: readonly { kind: string }[]) =>
         plots.reduce((sum, plot) => sum + pullOf(built.world.charter(plot.kind)!), 0) / Math.max(1, plots.length)
       const open = openPlots(built.world)
-      const chosen = pull(built.world.plots().filter((plot) => open.has(plot.id)))
+      // a home opens for the player to buy, not for what it holds, so it is not what the ranking is measured on
+      const chosen = pull(built.world.plots().filter((plot) => open.has(plot.id) && !built.world.charter(plot.kind)!.residential))
       expect(chosen, `${built.world.name} opens middling doors`).toBeGreaterThan(6)
-      // a whole tier above the street: a door a place is worth is a counter, staff, stock or seats
-      expect(chosen, `${built.world.name} opens what the street happens to hold`).toBeGreaterThan(pull(built.world.plots()) + 1)
+      // a whole tier above the street, where the street leaves a tier under the most a door can be worth
+      const best = Math.max(...built.world.charters().map(pullOf))
+      expect(chosen, `${built.world.name} opens what the street happens to hold`).toBeGreaterThan(Math.min(pull(built.world.plots()) + 1, best - 0.5))
     }
   })
 

@@ -4,7 +4,8 @@ import { validateQuest, type QuestDoc } from '@gb/quest'
 import { questView, ROOM_USES, World, type WorldDoc } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { Forge, OfflineNarrator, summarise } from '../src/index.ts'
-import { ownedItems, Player } from './player.ts'
+import { City } from './city.ts'
+import { Player } from './player.ts'
 import { openLog } from './playable.ts'
 import { buildTown } from './support.ts'
 
@@ -83,7 +84,7 @@ describe('Forge', () => {
     const log = openLog(quests, state)
     expect(log.start(quest.id).ok).toBe(true)
 
-    const run = new Player(log, state, { owned: ownedItems(world) }).play(quest)
+    const run = new Player(log, state, new City(world)).play(quest)
     expect(run.status, `${quest.title}: ${run.blocked.map((block) => block.why).join('; ')}`).toBe('complete')
     expect(run.paid).toBeGreaterThan(0)
   })

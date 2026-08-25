@@ -3,6 +3,7 @@ import { QuestLog, REWARD_TABLE, type QuestDoc } from '@gb/quest'
 import { METRICS } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { secondsFor } from '../src/quests/pace.ts'
+import { buildTold, LOCKUP } from './histories.ts'
 import { across, line, playEvery } from './playable.ts'
 import { buildTown, digest } from './support.ts'
 
@@ -15,6 +16,8 @@ const towns = await Promise.all([
   buildTown('recipes-5', { theme: 'farming village on the plains', blocksX: 4, blocksY: 3 }),
   buildTown('recipes-6', { theme: 'cold industrial rail town', blocksX: 2, blocksY: 2 }),
   buildTown('recipes-7', { theme: 'snowy alpine ski town', blocksX: 3, blocksY: 3 }),
+  buildTown('recipes-8', { theme: 'dense neon port city', blocksX: 4, blocksY: 4 }),
+  buildTold('recipes-9', LOCKUP),
 ])
 const everyQuest: QuestDoc[] = towns.flatMap((town) => [...town.quests])
 /** Every one of them played through, once per road, by somebody with the verbs the game has. */
@@ -58,6 +61,24 @@ describe('generated quests', () => {
     expect(some((q) => q.failWhen?.some((f) => f.kind === 'item-lost') ?? false)).toBeGreaterThan(0)
     expect(some((q) => q.steps.some((s) => s.effects.some((e) => e.kind === 'pay')))).toBeGreaterThan(0)
 
+    // and the locks, the screens and the counters the second wave put in the town
+    expect(some((q) => q.steps.some((s) => s.kind === 'unlock')), 'nothing gets the player through a door').toBeGreaterThan(0)
+    expect(some((q) => q.steps.some((s) => s.kind === 'hack')), 'nothing opens a screen').toBeGreaterThan(0)
+    expect(some((q) => q.steps.some((s) => s.kind === 'beat-game')), 'nothing bets on a game').toBeGreaterThan(0)
+    expect(some((q) => q.steps.some((s) => s.kind === 'buy')), 'nothing is bought over a counter').toBeGreaterThan(0)
+    expect(some((q) => q.steps.some((s) => s.effects.some((e) => e.kind === 'give-item' || e.kind === 'give-password'))), 'no way past a lock is ever handed out').toBeGreaterThan(0)
+    expect(some((q) => (q.reward.access?.length ?? 0) > 0), 'no job leaves a door open to the player').toBeGreaterThan(0)
+    expect(some((q) => q.reward.car !== undefined), 'no job pays a car').toBeGreaterThan(0)
+    expect(some((q) => q.reward.deed !== undefined), 'no job pays a home').toBeGreaterThan(0)
+    // a way past a lock is handed out before the lock, a code before the screen, and only where the town wrote one
+    for (const quest of everyQuest) {
+      for (const step of quest.steps) {
+        if (step.kind !== 'unlock' && step.kind !== 'hack') continue
+        const before = quest.steps.filter((other) => other.next.includes(step.id))
+        expect(before.some((other) => other.effects.some((e) => e.kind === 'give-item' || e.kind === 'give-password')), `${quest.title} sends the player to a lock with nothing to open it`).toBe(true)
+      }
+    }
+
     // a hidden step is worth nothing to a player who cannot see where it is
     for (const step of everyStep) {
       if (step.kind === 'complete' || step.kind === 'join' || step.kind === 'choice') continue
@@ -79,6 +100,10 @@ describe('generated quests', () => {
       const band = quest.difficulty ?? 'small'
       expect(REWARD_TABLE[band].money.min).toBeLessThanOrEqual(quest.reward.money)
       expect(REWARD_TABLE[band].money.max).toBeGreaterThanOrEqual(quest.reward.money)
+      // a car and a home only from the bands that may pay them, and only the top of the main line pays either
+      if (quest.reward.car) expect(REWARD_TABLE[band].car, `${quest.title} pays a car for ${band} work`).toBe(true)
+      if (quest.reward.deed) expect(REWARD_TABLE[band].deed, `${quest.title} pays a home for ${band} work`).toBe(true)
+      if (quest.reward.car || quest.reward.deed) expect(quest.kind).toBe('main')
       byBand.set(band, [...(byBand.get(band) ?? []), quest.reward.money])
     }
     expect(byBand.size).toBeGreaterThanOrEqual(3)
@@ -104,11 +129,13 @@ describe('generated quests', () => {
       )
       for (const quest of quests) {
         for (const need of quest.requires ?? []) {
-          expect(need.kind).toBe('flag')
+          // a job waits on a mark, or on the money a shopping list costs
+          expect(['flag', 'money-at-least']).toContain(need.kind)
           // waiting for something to have happened means the town can make it happen;
           // waiting for something not to have happened needs nothing, because a mark
           // the player never earns simply stays down
           if (need.kind === 'flag' && need.value) expect(raised.has(need.flag), `${quest.title} waits on ${need.flag}`).toBe(true)
+          if (need.kind === 'money-at-least') expect(quest.steps.some((step) => step.kind === 'buy'), `${quest.title} wants money and buys nothing`).toBe(true)
         }
       }
       for (const link of main.slice(1)) {

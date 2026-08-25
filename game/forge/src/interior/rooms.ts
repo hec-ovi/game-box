@@ -106,8 +106,8 @@ export function cutRooms(programme: Programme, size: { w: number; h: number }, e
   return boxes
 }
 
-/** The three fields a room is cut with, and nothing a spec carries beyond them. */
-const spec = ({ kind, use, name }: RoomSpec): RoomSpec => ({ kind, use, name })
+/** The fields a room is cut with, and nothing a spec carries beyond them. */
+const spec = ({ kind, use, name, shut }: RoomSpec): RoomSpec => ({ kind, use, name, ...(shut ? { shut: true } : {}) })
 
 /** How deep the entrance hall is, or zero when the building is too shallow for one. */
 function hallFor(programme: Programme, front: number, depth: number, rng: Rng): number {

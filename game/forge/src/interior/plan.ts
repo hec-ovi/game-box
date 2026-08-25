@@ -1,8 +1,10 @@
 import type { Rng } from '@gb/kit'
-import type { Anchor, Charter, Furniture, Interior, Room } from '@gb/world'
+import { METRICS, type Anchor, type Charter, type Furniture, type Interior, type Room } from '@gb/world'
 import { hangDoors } from './doors.ts'
 import { furnishRoom, type RoomWants } from './furnish/index.ts'
 import { headingTo, step, type Side, type Vec } from './geometry.ts'
+import { barsFor, lockDoors, type PlannedKey } from './locks.ts'
+import { keepsWatch, stampMachines } from './machines.ts'
 import { programmeOf } from './recipes.ts'
 import { cutRooms } from './rooms.ts'
 import { RoomPlan, type Mint } from './room-plan.ts'
@@ -12,35 +14,47 @@ export interface InteriorPlan {
   readonly doors: Interior['doors']
   readonly furniture: Furniture[]
   readonly anchors: Anchor[]
+  /** The keys and cards its locks name, for whoever keeps them to carry. */
+  readonly keys: PlannedKey[]
+  /** Rooms behind a locked door: where a thing worth locking up is put. */
+  readonly shut: string[]
 }
 
 export interface InteriorRequest {
-  /** What kind of place this is: its rooms, its service and the work done in it. */
+  /** What kind of place this is: its rooms, its service, the work done in it and who it admits. */
   readonly charter: Charter
   readonly size: { readonly w: number; readonly h: number }
   /** The wall the street door is in. */
   readonly entrance: Side
   /** What the town asks of the rooms beyond what the charter says. */
   readonly wants: RoomWants
+  /** The id the interior will carry: a card for a private place names it. */
+  readonly interiorId: string
   readonly mint: Mint
   readonly rng: Rng
 }
 
+/** How high a camera hangs: its top a hand under the ceiling. */
+const CAMERA_LIFT = METRICS.building.groundFloorHeight - 0.5
+
 /**
  * Plans one interior end to end: rooms first, then the doors that string them
- * together, then the furniture and the places people stand. Nothing lands
- * anywhere a person could not walk to, a place with a service keeps its post,
- * and a place that keeps watch has somebody on the door.
+ * together and the locks the charter puts on them, then the furniture and the
+ * places people stand, then what every screen runs. Nothing lands anywhere a
+ * person could not walk to, a place with a service keeps its post, and a place
+ * that keeps watch has somebody on the door and a camera over it.
  */
 export function planInterior(request: InteriorRequest): InteriorPlan {
-  const { charter, size, entrance, wants, mint, rng } = request
+  const { charter, size, entrance, wants, interiorId, mint, rng } = request
   const boxes = cutRooms(programmeOf(charter), size, entrance, rng)
   const rooms: Room[] = boxes.map((box) => ({ id: mint('room'), kind: box.kind, use: box.use, name: box.name, rect: box.rect }))
-  const { doors, points } = hangDoors(rooms, entrance, mint, rng)
+  const shut = new Set(rooms.filter((_, at) => boxes[at]!.shut).map((room) => room.id))
+  const hung = hangDoors(rooms, entrance, mint, rng)
+  const { doors, keys } = lockDoors(hung.doors, rooms, shut, charter, interiorId, mint, rng.fork('locks'))
 
-  const reachable = rooms.filter((room) => (points.get(room.id) ?? []).length > 0)
+  const reachable = rooms.filter((room) => (hung.points.get(room.id) ?? []).length > 0)
   const plans = reachable.map((room, index) => {
-    const plan = new RoomPlan(room, points.get(room.id) ?? [], mint, rng.fork(`room/${index}`))
+    const plan = new RoomPlan(room, hung.points.get(room.id) ?? [], mint, rng.fork(`room/${index}`))
     furnishRoom(plan, boxes[rooms.indexOf(room)]!.use, wants)
     return plan
   })
@@ -50,12 +64,19 @@ export function planInterior(request: InteriorRequest): InteriorPlan {
   if (charter.service !== 'none' && !has('serve')) stationSomeone(entry, 'serve')
   if (charter.work.includes('watch') && !has('guard')) doorman(entry)
   if (!plans.some((plan) => plan.anchors.length > 0)) stationSomeone(entry, 'stand')
+  const watched = keepsWatch(charter) && entry.mount('camera', entry.backSide(), CAMERA_LIFT) !== undefined
 
+  const furniture = stampMachines(
+    plans.flatMap((plan) => [...plan.furniture]),
+    { charter, watched, mint, rng: rng.fork('machines') },
+  )
   return {
     rooms: reachable,
     doors,
-    furniture: plans.flatMap((plan) => [...plan.furniture]),
+    furniture: [...furniture, ...barsFor(doors, charter, mint)],
     anchors: plans.flatMap((plan) => [...plan.anchors]),
+    keys,
+    shut: doors.filter((door) => door.locked && door.from !== 'outside').map((door) => door.to),
   }
 }
 

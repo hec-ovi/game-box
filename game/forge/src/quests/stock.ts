@@ -18,13 +18,16 @@ export class Stock {
 
   constructor(places: readonly CastPlace[]) {
     for (const place of places) {
-      if (!place.items.length) continue
-      this.#free.set(place.plotId, [...place.items])
-      for (const item of place.items) this.#whereItIs.set(item.itemId, place.plotId)
+      // a deed is bought or won, never fetched, and a thing behind a lock is a job for whoever has the key: neither is an errand
+      const locked = new Set((place.locks ?? []).flatMap((lock) => lock.behind))
+      const items = place.items.filter((item) => item.archetype !== 'deed' && !locked.has(item.itemId))
+      if (!items.length) continue
+      this.#free.set(place.plotId, items)
+      for (const item of items) this.#whereItIs.set(item.itemId, place.plotId)
       this.#places.push(place)
-      this.#things += place.items.length
-      this.#hold(place.items.length, 1)
-      if (place.items.some(belongsToSomebody)) this.#owned.push(place)
+      this.#things += items.length
+      this.#hold(items.length, 1)
+      if (items.some(belongsToSomebody)) this.#owned.push(place)
     }
   }
 

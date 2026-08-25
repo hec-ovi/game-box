@@ -2,7 +2,7 @@ import { Rng } from '@gb/kit'
 import { SHIPPED_CHARTERS, type Anchor, type Charter, type Furniture, type FurnitureProp, type Interior, type Room, type Word } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { DOORSTEP } from '../src/interior/doors.ts'
-import { boxAt, dirOf, holds, inBox, inward, overlaps, SIDES, type Box, type Side, type Vec } from '../src/interior/geometry.ts'
+import { boxAt, dirOf, headingTo, holds, inBox, inward, overlaps, SIDES, type Box, type Side, type Vec } from '../src/interior/geometry.ts'
 import { planInterior, type InteriorPlan } from '../src/interior/plan.ts'
 import { footprintOf, SEAT_SPECS, seatSpecOf, specOf, topOf } from '../src/interior/props.ts'
 import { AT_DESK, IN_FRONT, LEAN_BODY, stanceOf, type Stance } from '../src/interior/stance.ts'
@@ -30,7 +30,7 @@ const charterOf = (word: Word): Charter => SHIPPED_CHARTERS.find((charter) => ch
 function plan(charter: Charter, seed: string, size = SIZES[1]!, entrance: Side = 'north'): InteriorPlan {
   let minted = 0
   const mint = (thing: string) => `${thing}_${String(++minted).padStart(4, '0')}`
-  return planInterior({ charter, size, entrance, wants: { dancing: false }, mint, rng: new Rng(seed) })
+  return planInterior({ charter, size, entrance, wants: { dancing: false }, interiorId: 'interior_0001', mint, rng: new Rng(seed) })
 }
 
 /** Every plan a sweep over kinds, seeds, shapes and which way the door faces. */
@@ -57,11 +57,13 @@ function roomOf(made: InteriorPlan, id: string): Room {
 }
 
 /**
- * The only thing on a floor a body walks over. Everything else in a room is
+ * The only things on a floor a body walks through. Everything else in a room is
  * something it has to go round, whatever the planner's own idea of what blocks
- * a person: a chair is 0.5 m of furniture and a player collides with it.
+ * a person: a chair is 0.5 m of furniture and a player collides with it. A gate
+ * of bars stands in a doorway and is the door: shut it is a lock, open it is
+ * the way through.
  */
-const WALK_OVER: readonly FurnitureProp[] = ['rug']
+const WALK_OVER: readonly FurnitureProp[] = ['rug', 'bars-door']
 
 /**
  * Walks the whole interior from the street door, independently of how the plan
@@ -444,16 +446,30 @@ describe('interior plans', () => {
           expect(piece.on, `${where} is on the floor and names a host`).toBeUndefined()
           continue
         }
+        if (specOf(piece.prop).stands === 'wall') {
+          // it hangs on the wall, up out of everybody's way, on nothing
+          expect(piece.lift, `${where} hangs at floor level`).toBeGreaterThan(2)
+          expect(piece.on, `${where} hangs on a wall and names a host`).toBeUndefined()
+          continue
+        }
         // it belongs on a worktop, so it is on one, at that worktop's own height, and says which
         const host = made.furniture.find((other) => other.lift === undefined && overlaps(footprintOf(other), footprintOf(piece)))
         expect(host, `${where} stands on nothing`).toBeDefined()
         expect(piece.on, `${where} does not name what it stands on`).toBe(host!.id)
         expect(piece.lift, `${where} floats above its ${host?.prop}`).toBe(topOf(host!.prop))
-        expect(piece.rot, `${where} faces a different way from its ${host?.prop}`).toBe(host!.rot)
+        if (host!.prop === 'desk') {
+          // a screen on a desk faces whoever sits at it: the chair drawn up to the desk lies the way it faces
+          const chair = made.furniture.filter((other) => other.prop === 'office-chair').sort((a, b) => Math.hypot(a.pos.x - host!.pos.x, a.pos.y - host!.pos.y) - Math.hypot(b.pos.x - host!.pos.x, b.pos.y - host!.pos.y))[0]
+          expect(chair, `${where} sits on a desk nobody sits at`).toBeDefined()
+          expect(Math.abs(((headingTo(host!.pos, chair!.pos) - piece.rot) % 360) + 360) % 360, `${where} faces away from the chair`).toBeLessThan(1)
+        } else {
+          expect(piece.rot, `${where} faces a different way from its ${host?.prop}`).toBe(host!.rot)
+        }
         lifted.set(piece.prop, (lifted.get(piece.prop) ?? 0) + 1)
       }
     }
     expect(lifted.get('register') ?? 0, 'no bar or shop has a till').toBeGreaterThan(5)
+    expect(lifted.get('terminal') ?? 0, 'no office has a screen on a desk').toBeGreaterThan(5)
     expect(lifted.get('coffee-machine') ?? 0, 'no cafe has a machine').toBeGreaterThan(3)
   })
 
@@ -462,7 +478,7 @@ describe('interior plans', () => {
     for (const seed of SEEDS) {
       let minted = 0
       const mint = (thing: string) => `${thing}_${String(++minted).padStart(4, '0')}`
-      const club = planInterior({ charter: charterOf('bar'), size: SIZES[2]!, entrance: 'north', wants: { dancing: true }, mint, rng: new Rng(seed) })
+      const club = planInterior({ charter: charterOf('bar'), size: SIZES[2]!, entrance: 'north', wants: { dancing: true }, interiorId: 'interior_0001', mint, rng: new Rng(seed) })
       const dancers = club.anchors.filter((anchor) => anchor.kind === 'dance')
       dancing += dancers.length
       for (const dancer of dancers) {
@@ -537,6 +553,8 @@ describe('interior plans', () => {
           doors: [...interior.doors],
           furniture: [...interior.furniture],
           anchors: [...interior.anchors],
+          keys: [],
+          shut: [],
         }
         const walk = new Walk(made, interior.size)
         const where = `${world.name} ${interior.kind}`

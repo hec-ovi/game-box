@@ -11,6 +11,7 @@ export { historyContract, HistorySchema, type History } from './premise/shape.ts
 export type { Dropped } from './charters/resolve.ts'
 export type {
   Instance,
+  InstanceBrief,
   InstancePerson,
   InstancePost,
   InstanceRequest,
@@ -20,6 +21,8 @@ export type {
   Narrator,
   NpcProfile,
   PlaceRequest,
+  SummaryLock,
+  SummaryMachine,
   WorldSummary,
 } from './narrator.ts'
 export { BANDS, MOUNTAIN_CELLS, RoadBand, type BandKind } from './layout/bands.ts'

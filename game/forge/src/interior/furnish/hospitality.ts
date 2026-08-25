@@ -7,10 +7,10 @@ export interface TaproomOptions {
   readonly dancing: boolean
 }
 
-/** A bar: a counter you can walk behind, drinkers on the stools, tables in the rest. */
+/** A bar: a counter you can walk behind, drinkers on the stools, the bar's game screen beside the till, tables in the rest. */
 export function taproom(plan: RoomPlan, options: TaproomOptions): void {
   plan.crowdLimit = 6
-  servePost(plan, { prop: 'bar-counter', stool: 'bar-stool', onTop: 'register' })
+  servePost(plan, { prop: 'bar-counter', stool: 'bar-stool', onTop: 'register', screen: 'monitor' })
   // before the screen and the tables, so the propped bodies get the free wall
   // and the room is not everybody sitting down
   leanSpots(plan, plan.rng.int(1, 3))

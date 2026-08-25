@@ -14,8 +14,8 @@ export interface PropSpec extends Extent {
   readonly d: number
   /** Whether a person has to walk around it. A rug does not stop anyone; a chair does. */
   readonly blocks: boolean
-  /** A till and a coffee machine stand on a counter top; everything else stands on the floor. */
-  readonly stands: 'floor' | 'counter'
+  /** A till, a coffee machine and a screen stand on a counter top or a desk; a camera hangs on a wall; everything else stands on the floor. */
+  readonly stands: 'floor' | 'top' | 'wall'
 }
 
 const specs = new Map<FurnitureProp, PropSpec>()
@@ -24,7 +24,7 @@ export function specOf(prop: FurnitureProp): PropSpec {
   const held = specs.get(prop)
   if (held) return held
   const { width, depth } = metresOf(prop)
-  const spec: PropSpec = { w: round(width), d: round(depth), blocks: PROP_SPECS[prop].blocks, stands: PROP_SPECS[prop].onSurface ? 'counter' : 'floor' }
+  const spec: PropSpec = { w: round(width), d: round(depth), blocks: PROP_SPECS[prop].blocks, stands: PROP_SPECS[prop].onSurface ? 'top' : PROP_SPECS[prop].mounted ? 'wall' : 'floor' }
   specs.set(prop, spec)
   return spec
 }
@@ -64,8 +64,8 @@ export function seatSpecOf(prop: FurnitureProp): SeatSpec | undefined {
   return (SEAT_SPECS as Partial<Record<FurnitureProp, SeatSpec>>)[prop]
 }
 
-/** The pieces something else stands on: a counter top a till or a coffee machine goes over. */
-const HOSTS: readonly FurnitureProp[] = ['counter', 'bar-counter']
+/** The pieces something else stands on: a counter top a till goes over, a desk a screen sits on. */
+const HOSTS: readonly FurnitureProp[] = ['counter', 'bar-counter', 'desk']
 
 /** The height of a piece's top, or nothing for one nothing stands on. */
 export function topOf(prop: FurnitureProp): number | undefined {

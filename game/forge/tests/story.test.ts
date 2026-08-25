@@ -2,7 +2,8 @@ import { PlayerState } from '@gb/play'
 import { QuestLog, type QuestDoc } from '@gb/quest'
 import type { World } from '@gb/world'
 import { describe, expect, it } from 'vitest'
-import { ownedItems, Player, type Choose } from './player.ts'
+import { City } from './city.ts'
+import { Player, type Choose } from './player.ts'
 import { openLog } from './playable.ts'
 import { buildTown } from './support.ts'
 
@@ -37,7 +38,7 @@ interface Ending {
 function playTown(world: World, quests: readonly QuestDoc[], choose: Choose): Ending {
   const state = PlayerState.create(world.id, 200)
   const log = openLog(quests, state)
-  const player = new Player(log, state, { owned: ownedItems(world), choose })
+  const player = new Player(log, state, new City(world), { choose })
   const givers = [...new Set(quests.map((quest) => quest.giverNpcId))]
   const finished: string[] = []
   const boards: number[] = []

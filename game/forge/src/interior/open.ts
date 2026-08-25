@@ -40,6 +40,12 @@ const AGAIN = 1.5
  */
 const MOST_AGAIN = 2
 
+/** One home opens in any town, and one more for every this many buildings: what a bigger city has on the market. */
+const HOMES_PER = 200
+
+/** How many homes a town of this many buildings opens, whatever their doors are worth: the ones the player can buy and the one somebody lives in. */
+export const homesFor = (buildings: number): number => 1 + Math.floor(buildings / HOMES_PER)
+
 /** A building that has gone up, before anybody has decided whether it opens. */
 export interface Frontage {
   /** The caller's handle for it; it is what comes back in the set. */
@@ -73,9 +79,11 @@ export interface Town {
  * same town twice over is not the same list of shops. Whatever the ranking says,
  * a town still ends up with somewhere to sit, buy, sleep and work, because those
  * come out of the allowance first, and any of them the town already has open is
- * not bought twice; and a kind of place its history demands opens one door
- * next, because a lock-up the story is about is a door the player is meant to
- * try, and the rest of that kind then compete on what they hold like any other.
+ * not bought twice; a bigger town opens more homes, because a home is what the
+ * player buys and a city with one on the market is thin; and a kind of place
+ * its history demands opens one door next, because a lock-up the story is about
+ * is a door the player is meant to try, and the rest of that kind then compete
+ * on what they hold like any other.
  */
 export function openDoors(frontages: readonly Frontage[], rng: Rng, town: Town): ReadonlySet<string> {
   if (!frontages.length) return new Set()
@@ -110,6 +118,15 @@ export function openDoors(frontages: readonly Frontage[], rng: Rng, town: Town):
     // town of six doors cannot spend four of them twice over
     standing.push(drawOf(best.frontage.charter))
     already.set(best.frontage.charter.word, (already.get(best.frontage.charter.word) ?? 0) + 1)
+  }
+
+  const homes = homesFor(town.built + frontages.length)
+  for (const candidate of scored) {
+    if (open.size >= budget.spare || standing.filter((draw) => draw.home).length >= homes) break
+    if (open.has(candidate.frontage.id) || !candidate.frontage.charter.residential) continue
+    open.add(candidate.frontage.id)
+    standing.push(drawOf(candidate.frontage.charter))
+    already.set(candidate.frontage.charter.word, (already.get(candidate.frontage.charter.word) ?? 0) + 1)
   }
 
   for (const candidate of scored) {

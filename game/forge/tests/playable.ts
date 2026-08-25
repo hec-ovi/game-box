@@ -1,7 +1,8 @@
 import { PlayerState } from '@gb/play'
 import { QuestLog, type QuestDoc } from '@gb/quest'
 import type { World } from '@gb/world'
-import { ownedItems, Player, type Choose, type Living, type Playthrough } from './player.ts'
+import { City } from './city.ts'
+import { Player, type Choose, type Living, type Playthrough } from './player.ts'
 import { Street } from './street.ts'
 
 /**
@@ -21,6 +22,8 @@ export interface Report {
   readonly blockedBy: ReadonlyMap<string, number>
   /** Quests that stopped at an empty room: the person a step named was out walking. */
   readonly absent: number
+  /** Quests that stopped at a locked door the player had no way past. */
+  readonly shut: number
   /** Quests that stop for a reason that is not a missing verb: this box wrote them badly. */
   readonly stranded: readonly Playthrough[]
   /** Every road played, so a caller can look at one. */
@@ -47,22 +50,30 @@ export function openLog(quests: readonly QuestDoc[], state: PlayerState): QuestL
  */
 export type Town = 'at-post' | 'kept' | 'loose'
 
+/** A player who meets what a quest waits on: the flags it needs raised, and the money it needs in hand. */
+export function meeting(quest: QuestDoc, state: PlayerState): void {
+  for (const need of quest.requires ?? []) {
+    if (need.kind === 'flag') state.setFlag(need.flag, need.value)
+    if (need.kind === 'money-at-least') state.earn(need.amount)
+  }
+}
+
 /**
  * Plays every quest in a town on its own, from a fresh player who already meets
  * whatever it waits on, both ways round wherever it makes the player choose.
  */
 export function playEvery(world: World, quests: readonly QuestDoc[], town: Town = 'at-post', choices: readonly Choose[] = [() => 0, () => 1]): Report {
-  const owned = ownedItems(world)
+  const city = new City(world)
   const living: Living | undefined = town === 'at-post' ? undefined : { street: new Street(world), keepTargets: town === 'kept' }
   const runs: Playthrough[] = []
   for (const quest of quests) {
     for (const choose of choices) {
       const state = PlayerState.create(world.id)
-      for (const need of quest.requires ?? []) if (need.kind === 'flag') state.setFlag(need.flag, need.value)
+      meeting(quest, state)
       const log = openLog(quests, state)
       const started = log.start(quest.id)
       if (!started.ok) throw new Error(`${quest.title} cannot be started at all: ${JSON.stringify(started.error)}`)
-      runs.push(new Player(log, state, { owned, choose, ...(living ? { living } : {}) }).play(quest))
+      runs.push(new Player(log, state, city, { choose, ...(living ? { living } : {}) }).play(quest))
     }
   }
   return tally(runs)
@@ -80,9 +91,11 @@ function tally(runs: readonly Playthrough[]): Report {
   const blockedBy = new Map<string, number>()
   let completable = 0
   let absent = 0
+  let shut = 0
   for (const taken of roads.values()) {
     if (taken.every((run) => run.completable)) completable++
     if (taken.some((run) => run.absent.length > 0)) absent++
+    if (taken.some((run) => run.shut.length > 0)) shut++
     for (const kind of new Set(taken.flatMap((run) => run.blocked.map((block) => block.kind)))) {
       blockedBy.set(kind, (blockedBy.get(kind) ?? 0) + 1)
     }
@@ -92,6 +105,7 @@ function tally(runs: readonly Playthrough[]): Report {
     completable,
     blockedBy,
     absent,
+    shut,
     stranded: runs.filter((run) => run.stranded.length > 0),
     runs,
   }
@@ -106,6 +120,7 @@ export function across(reports: readonly Report[]): Report {
     completable: reports.reduce((total, report) => total + report.completable, 0),
     blockedBy,
     absent: reports.reduce((total, report) => total + report.absent, 0),
+    shut: reports.reduce((total, report) => total + report.shut, 0),
     stranded: reports.flatMap((report) => [...report.stranded]),
     runs: reports.flatMap((report) => [...report.runs]),
   }
@@ -115,5 +130,6 @@ export function across(reports: readonly Report[]): Report {
 export function line(report: Report): string {
   const blockers = [...report.blockedBy].map(([kind, count]) => `${kind} ${count}`).join(', ')
   const away = report.absent ? `; ${report.absent} sent to an empty room` : ''
-  return `${report.completable} of ${report.quests} completable${blockers ? `; blocked by ${blockers}` : ''}${away}`
+  const locked = report.shut ? `; ${report.shut} stopped at a locked door` : ''
+  return `${report.completable} of ${report.quests} completable${blockers ? `; blocked by ${blockers}` : ''}${away}${locked}`
 }

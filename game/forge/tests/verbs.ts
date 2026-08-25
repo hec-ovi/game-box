@@ -14,7 +14,7 @@
  */
 
 /** One thing a player does, in the words the game would use for it. */
-export type Verb = 'talk' | 'talk about' | 'walk' | 'walk with' | 'take' | 'hand over' | 'put down' | 'answer'
+export type Verb = 'talk' | 'talk about' | 'walk' | 'walk with' | 'take' | 'hand over' | 'put down' | 'answer' | 'unlock' | 'hack' | 'play'
 
 /** Every verb the harness knows how to do, and what the game reports when it is done. */
 export const VERBS: Readonly<Record<Verb, string>> = {
@@ -22,10 +22,13 @@ export const VERBS: Readonly<Record<Verb, string>> = {
   'talk about': 'talked, with the subject the player put them to',
   walk: 'arrived',
   'walk with': 'companion-arrived, the companion having got there on foot beside the player',
-  take: 'acquired',
+  take: 'acquired; bought as well when the thing is on a counter with a price and the player can pay it',
   'hand over': 'gave',
   'put down': 'stashed',
   answer: 'chose',
+  unlock: 'unlocked, with the key in hand or the code known',
+  hack: 'machine-unlocked, with the code known',
+  play: 'scored, at the score the line asked for',
 }
 
 /**
@@ -45,6 +48,9 @@ export const COSTS: Readonly<Record<Verb, number>> = {
   'hand over': 3600,
   'put down': 3000,
   answer: 600,
+  unlock: 600,
+  hack: 900,
+  play: 1800,
 }
 
 /** A verb the game does not have yet, and who is building it. */

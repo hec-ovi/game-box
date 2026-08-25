@@ -31,6 +31,8 @@ export interface Draw {
   readonly beds: number
   /** Kinds of loose stock the place carries. */
   readonly stock: number
+  /** Whether people live here: a bed in a home is a home somebody can buy. */
+  readonly home: boolean
   /** Every place a body stands, sits or lies: none means nobody can be in it at all. */
   readonly posts: number
 }
@@ -54,6 +56,7 @@ export function drawOf(charter: Charter): Draw {
     size: PROBE,
     entrance: 'north',
     wants: { dancing: false },
+    interiorId: 'interior_0',
     mint: (thing) => `${thing}_${++minted}`,
     rng: new Rng(`open/${charter.word}`),
   })
@@ -63,6 +66,7 @@ export function drawOf(charter: Charter): Draw {
     seats: plan.anchors.filter((anchor) => anchor.kind === 'sit' || anchor.kind === 'sit-drink').length,
     beds: plan.anchors.filter((anchor) => anchor.kind === 'sleep').length,
     stock: stockOf(charter).length,
+    home: charter.residential,
     posts: plan.anchors.length,
   }
   draws.set(key, draw)
@@ -89,9 +93,10 @@ export function pullOf(charter: Charter): number {
 
 /**
  * What a town has to have somewhere, whatever else it opens, in the order it
- * gets them. Three of the four are counters with somebody behind them, which is
+ * gets them. Three of the five are counters with somebody behind them, which is
  * also what the quest writer asks a town for: a place to hand work out from, a
- * second one to be its far side, and a third to send the player between them.
+ * second one to be its far side, and a third to send the player between them;
+ * the last is a home, because a home that opens is a home the player can buy.
  * So this list is both what a town needs to read as a town and the floor on how
  * many doors it opens.
  */
@@ -100,4 +105,5 @@ export const NEEDS: ReadonlyArray<readonly [string, (draw: Draw) => boolean]> = 
   ['somewhere to buy something', (draw) => draw.counter > 0 && draw.stock > 0],
   ['somewhere to sleep', (draw) => draw.beds > 0],
   ['somewhere to work', (draw) => draw.staff > 0],
+  ['somewhere to live', (draw) => draw.home && draw.beds > 0],
 ]

@@ -1,7 +1,7 @@
 import type { PlayerState } from '@gb/play'
 import type { Objective, QuestDoc, QuestLog } from '@gb/quest'
-import type { World } from '@gb/world'
 import { questTargets } from '../src/quests/targets.ts'
+import type { City, Target } from './city.ts'
 import type { Street } from './street.ts'
 import { COSTS, HANDS, type Hands, type Verb } from './verbs.ts'
 
@@ -16,6 +16,12 @@ import { COSTS, HANDS, type Hands, type Verb } from './verbs.ts'
  * quest and is reported, never credited. Every verb costs game seconds and the
  * clock is reported after each one, so a timer too short for its own job fails
  * here the way it would fail a player.
+ *
+ * The city's locks are kept: a line pointing behind a locked door is a line the
+ * player cannot act on until they have opened it, with the key in hand or the
+ * code known, and a door they cannot open is reported as shut rather than
+ * walked through. A thing on a counter with a price is bought when the player
+ * can pay and taken when they cannot, which is what the counter reports.
  *
  * The town can be alive while it is played: given a `street`, a third of the
  * people are out walking, and a line pointing at somebody who is out is a line
@@ -49,6 +55,8 @@ export interface Playthrough {
   readonly blocked: readonly Block[]
   /** Steps that point at somebody who was out walking when the player got there. */
   readonly absent: readonly string[]
+  /** Steps behind a locked door the player had no way past. */
+  readonly shut: readonly string[]
   /**
    * Steps that stopped for some other reason: the board asked for something it
    * published no target for, or asking for it moved nothing. Nobody else's fault
@@ -65,7 +73,6 @@ export interface Living {
 }
 
 export interface PlayerOptions {
-  readonly owned?: ReadonlySet<string>
   readonly choose?: Choose
   readonly hands?: Hands
   readonly living?: Living
@@ -75,26 +82,23 @@ export interface PlayerOptions {
 const ROUNDS = 60
 
 /**
- * Somebody playing this town: one inventory, one quest log, one set of hands.
- *
- * `owned` is what belongs to somebody, which is how the game decides an
- * acquisition was a theft; the board does not publish that and a player does not
- * decide it.
+ * Somebody playing this town: one inventory, one quest log, one set of hands,
+ * and the doors they have got open so far.
  */
 export class Player {
   #log: QuestLog
   #state: PlayerState
-  #owned: ReadonlySet<string>
+  #city: City
   #choose: Choose
   #hands: Hands
   #living: Living | undefined
-  #held = new Set<string>()
+  #opened = new Set<string>()
   #out: ReadonlySet<string> = new Set()
 
-  constructor(log: QuestLog, state: PlayerState, options: PlayerOptions = {}) {
+  constructor(log: QuestLog, state: PlayerState, city: City, options: PlayerOptions = {}) {
     this.#log = log
     this.#state = state
-    this.#owned = options.owned ?? new Set()
+    this.#city = city
     this.#choose = options.choose ?? (() => 0)
     this.#hands = options.hands ?? HANDS
     this.#living = options.living
@@ -105,6 +109,7 @@ export class Player {
     const kinds = new Map(quest.steps.map((step) => [step.id, step.kind]))
     const blocked = new Map<string, Block>()
     const absent = new Set<string>()
+    const shut = new Set<string>()
     let open: Objective[] = []
 
     for (let round = 0; round < ROUNDS; round++) {
@@ -116,6 +121,7 @@ export class Player {
         const tried = this.does(objective, quest.id)
         if (tried.stopped) blocked.set(objective.stepId, { ...tried.stopped, kind: kinds.get(objective.stepId) ?? '?' })
         if (tried.away) absent.add(objective.stepId)
+        if (tried.shut) shut.add(objective.stepId)
         moved = tried.moved || moved
       }
       if (!moved) break
@@ -123,7 +129,7 @@ export class Player {
     }
 
     const status = this.#log.status(quest.id)
-    const stranded = open.filter((objective) => !blocked.has(objective.stepId) && !absent.has(objective.stepId)).map((objective) => objective.stepId)
+    const stopped = (objective: Objective) => blocked.has(objective.stepId) || absent.has(objective.stepId) || shut.has(objective.stepId)
     return {
       questId: quest.id,
       title: quest.title,
@@ -132,28 +138,47 @@ export class Player {
       paid: this.#state.money,
       blocked: [...blocked.values()],
       absent: [...absent],
-      stranded: status === 'complete' ? [] : stranded,
+      shut: [...shut],
+      stranded: status === 'complete' ? [] : open.filter((objective) => !stopped(objective)).map((objective) => objective.stepId),
     }
   }
 
   /**
    * Does one line on the board: either the board moves, or the player has not
-   * got the verb it asks for, or the person it names is not at their post.
+   * got the verb it asks for, or the person it names is not at their post, or
+   * what it names is behind a door the player cannot open.
    */
-  does(objective: Objective, questId: string): { moved: boolean; stopped?: Omit<Block, 'kind'>; away?: boolean } {
+  does(objective: Objective, questId: string): { moved: boolean; stopped?: Omit<Block, 'kind'>; away?: boolean; shut?: boolean } {
     const verb = verbFor(objective)
     if (!verb) return { moved: false }
     if (!this.#hands.can(verb)) return { moved: false, stopped: { stepId: objective.stepId, verb, why: this.#hands.missing(verb)!.why } }
     if (objective.npcId && this.#out.has(objective.npcId)) return { moved: false, away: true }
-    const moved = this.#act(verb, objective, questId)
+    const target = targetOf(objective)
+    if (target && !this.#reaches(target)) return { moved: false, shut: true }
+    const done = this.#act(verb, objective, questId)
     this.#spend(COSTS[verb])
-    return { moved }
+    return done
   }
 
   /** Who is out on the street this round: the town's third, less whoever this quest is waiting on. */
   #lookOutside(open: readonly Objective[]): void {
     if (!this.#living) return
     this.#out = this.#living.street.out(this.#living.keepTargets ? questTargets(open) : new Set())
+  }
+
+  /** Whether every door between the street and this is open to the player. */
+  #reaches(target: Target): boolean {
+    return this.#city.wayTo(target).every((doorId) => this.#opened.has(doorId) || !this.#city.door(doorId)?.locked)
+  }
+
+  /** Whether the player has what opens this door: the key in hand, the code, or access granted. */
+  #canOpen(doorId: string): boolean {
+    const door = this.#city.door(doorId)
+    if (!door || !door.locked) return true
+    const key = door.keyItemId !== undefined && this.#state.has(door.keyItemId)
+    const code = door.password !== undefined && this.#state.knows(door.password)
+    const granted = this.#state.opens({ doorId }) || (door.from === 'outside' && this.#state.opens({ interiorId: door.interiorId }))
+    return key || code || granted
   }
 
   /** Time passing on the game clock, reported the way the running game reports it. */
@@ -163,47 +188,78 @@ export class Player {
   }
 
   /** Does one thing, and says whether the board moved because of it. */
-  #act(verb: Verb, objective: Objective, questId: string): boolean {
+  #act(verb: Verb, objective: Objective, questId: string): { moved: boolean; shut?: boolean } {
     switch (verb) {
       case 'talk':
-        return this.#report({ kind: 'talked', npcId: objective.npcId! })
+        return { moved: this.#report({ kind: 'talked', npcId: objective.npcId! }) }
       case 'talk about':
-        return this.#report({ kind: 'talked', npcId: objective.npcId!, topic: objective.topic! })
+        return { moved: this.#report({ kind: 'talked', npcId: objective.npcId!, topic: objective.topic! }) }
       case 'walk':
-        return this.#report({ kind: 'arrived', place: objective.place! })
+        return { moved: this.#report({ kind: 'arrived', place: objective.place! }) }
       case 'walk with':
-        return this.#report({ kind: 'companion-arrived', npcId: objective.npcId!, place: objective.place! })
+        return { moved: this.#report({ kind: 'companion-arrived', npcId: objective.npcId!, place: objective.place! }) }
       case 'take': {
+        const wanted = this.#some(objective, (id) => !this.#state.has(id))
+        const within = wanted.filter((id) => this.#reaches({ itemId: id }))
+        if (wanted.length && !within.length) return { moved: false, shut: true }
         let moved = false
-        for (const itemId of this.#some(objective, (id) => !this.#held.has(id))) {
-          const stolen = this.#owned.has(itemId)
-          this.#state.take(itemId, { stolen })
-          this.#held.add(itemId)
-          moved = this.#report({ kind: 'acquired', itemId, stolen }) || moved
-        }
-        return moved
+        for (const itemId of within) moved = this.#take(itemId) || moved
+        return { moved }
       }
       case 'hand over': {
         let moved = false
-        for (const itemId of this.#some(objective, (id) => this.#held.has(id))) {
+        for (const itemId of this.#some(objective, (id) => this.#state.has(id))) {
           moved = this.#report({ kind: 'gave', itemId, npcId: objective.npcId! }) || moved
         }
-        return moved
+        return { moved }
       }
       case 'put down': {
         let moved = false
-        for (const itemId of this.#some(objective, (id) => this.#held.has(id))) {
+        for (const itemId of this.#some(objective, (id) => this.#state.has(id))) {
           const place = objective.place as { interiorId: string }
           moved = this.#report({ kind: 'stashed', itemId, interiorId: place.interiorId, anchorId: objective.anchorId! }) || moved
         }
-        return moved
+        return { moved }
       }
       case 'answer': {
         const options = objective.choice!.options
         const taken = options[this.#choose(options) % options.length]!
-        return this.#report({ kind: 'chose', questId, stepId: objective.stepId, optionId: taken.key })
+        return { moved: this.#report({ kind: 'chose', questId, stepId: objective.stepId, optionId: taken.key }) }
+      }
+      case 'unlock': {
+        const doorId = objective.doorId!
+        if (!this.#canOpen(doorId)) return { moved: false, shut: true }
+        this.#opened.add(doorId)
+        return { moved: this.#report({ kind: 'unlocked', doorId }) }
+      }
+      case 'hack': {
+        const machineId = objective.machineId!
+        const found = this.#city.machine(machineId)?.machine
+        if (found?.locked && !(found.password !== undefined && this.#state.knows(found.password))) return { moved: false, shut: true }
+        return { moved: this.#report({ kind: 'machine-unlocked', machineId }) }
+      }
+      case 'play': {
+        const machineId = objective.machineId!
+        const score = objective.score!
+        const program = this.#city.machine(machineId)?.machine.program ?? 'blank'
+        this.#state.recordScore(machineId, program, score)
+        return { moved: this.#report({ kind: 'scored', machineId, score }) }
       }
     }
+  }
+
+  /** Picks one thing up: over the counter when it has a price and the player can pay, off the shelf otherwise. */
+  #take(itemId: string): boolean {
+    const price = this.#city.price(itemId)
+    const owned = this.#city.owned(itemId)
+    if (owned && price > 0 && this.#state.money >= price) {
+      this.#state.buy(itemId, price)
+      const bought = this.#report({ kind: 'bought', itemId })
+      return this.#report({ kind: 'acquired', itemId, stolen: false }) || bought
+    }
+    const opens = this.#city.opens(itemId)
+    this.#state.take(itemId, { stolen: owned, ...(opens ? { opens } : {}) })
+    return this.#report({ kind: 'acquired', itemId, stolen: owned })
   }
 
   /** As many of the interchangeable things as the line still wants, out of the ones that qualify. */
@@ -222,8 +278,9 @@ export class Player {
 /**
  * What one line on the board is asking the player to do, worked out from the
  * fields it publishes and nothing else. The sets are disjoint: only a stash
- * names a surface, only a delivery names a person and a thing together, only an
- * escort names a person and a place.
+ * names a surface, only a lock names a door, only a screen names a machine and
+ * only a game names a score with it, only a delivery names a person and a thing
+ * together, only an escort names a person and a place.
  *
  * A line publishing none of them is not the player's to act on: a `join` waiting
  * on its branches is finished by the branches, not by anybody's hands.
@@ -231,6 +288,8 @@ export class Player {
 export function verbFor(objective: Objective): Verb | undefined {
   if (objective.choice) return 'answer'
   if (objective.anchorId) return 'put down'
+  if (objective.doorId) return 'unlock'
+  if (objective.machineId) return objective.score !== undefined ? 'play' : 'hack'
   if (objective.itemId && objective.npcId) return 'hand over'
   if (objective.itemId) return 'take'
   if (objective.npcId && objective.place) return 'walk with'
@@ -240,6 +299,15 @@ export function verbFor(objective: Objective): Verb | undefined {
   return undefined
 }
 
-/** Everything in a town that belongs to somebody: taking one of these is a theft. */
-export const ownedItems = (world: World): ReadonlySet<string> =>
-  new Set(world.items().filter((item) => item.ownerNpcId !== undefined).map((item) => item.id))
+/**
+ * Where a line sends the player, for the locks between here and there. A
+ * thing is looked up one at a time when it is taken; a line that names only a
+ * place is the street outside it, which no lock keeps anybody from.
+ */
+function targetOf(objective: Objective): Target | undefined {
+  if (objective.anchorId) return { interiorId: (objective.place as { interiorId: string }).interiorId, anchorId: objective.anchorId }
+  if (objective.doorId) return { doorId: objective.doorId }
+  if (objective.machineId) return { machineId: objective.machineId }
+  if (objective.npcId) return { npcId: objective.npcId }
+  return undefined
+}

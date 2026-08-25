@@ -18,6 +18,8 @@ export interface Load {
   readonly escort?: boolean
   /** How many things have to be carried. */
   readonly items?: number
+  /** The band the job is paid in whatever the walk: the main line's finale is hard work however short it is. */
+  readonly atLeast?: Difficulty
 }
 
 /** What a job is worth: its band, its pay, and what is left over for side work. */
@@ -66,10 +68,12 @@ function effortOf(load: Load): number {
   )
 }
 
-/** The band a job falls in: how far, how many steps, and what it asks of you. */
+/** The band a job falls in: how far, how many steps, and what it asks of you, never below the floor it was asked for. */
 function difficultyOf(load: Load): Difficulty {
   const effort = effortOf(load)
-  return BANDS.find(([, floor]) => effort >= floor)?.[0] ?? 'small'
+  const earned = BANDS.find(([, floor]) => effort >= floor)?.[0] ?? 'small'
+  if (!load.atLeast) return earned
+  return DIFFICULTIES.indexOf(load.atLeast) > DIFFICULTIES.indexOf(earned) ? load.atLeast : earned
 }
 
 /**

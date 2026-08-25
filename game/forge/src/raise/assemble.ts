@@ -1,7 +1,7 @@
-import type { Item, Npc, World } from '@gb/world'
-import type { Instance } from '../narrator.ts'
+import type { Item, ItemArchetype, Npc, World } from '@gb/world'
+import type { Instance, ItemProfile } from '../narrator.ts'
 import { bulkOf } from '../populate.ts'
-import type { PlannedInside, PlannedSite } from './planned.ts'
+import type { PlannedInside, PlannedSite, PlannedThing } from './planned.ts'
 
 /**
  * Writes a planned town into the world, in the order it was planned.
@@ -9,19 +9,19 @@ import type { PlannedInside, PlannedSite } from './planned.ts'
  * Nothing here depends on when an answer arrived. The answers came back one per
  * request in request order, so the nth open building takes the nth answer;
  * inside an answer a person is matched to a post by `postId` and a name to a
- * thing by `thingId`, never by position. Ids are minted here and nowhere else,
- * so a plot, an interior, a person and a thing are numbered in the same order
- * however many calls were in the air at once.
+ * thing by `thingId`, never by position. Ids are minted here and nowhere else
+ * but the plan, so a plot, an interior, a person and a thing are numbered in
+ * the same order however many calls were in the air at once.
  */
 export function assemble(world: World, planned: readonly PlannedSite[], written: readonly Instance[]): string[] {
   const added: string[] = []
-  let answer = 0
+  const names = new Names(planned, written)
 
   for (const one of planned) {
-    const instance = one.inside ? written[answer++] : undefined
+    const instance = names.answer(one)
     const plot = world.addPlot({
       kind: one.charter.word,
-      name: instance?.name || one.sign,
+      name: names.of(one),
       rect: one.site.rect,
       entrance: { cell: one.site.entrance, facing: one.site.facing },
       storeys: one.storeys,
@@ -31,15 +31,47 @@ export function assemble(world: World, planned: readonly PlannedSite[], written:
     added.push(plot.value.id)
     if (!one.inside) continue
 
-    world.addInterior({ id: one.inside.interiorId, plotId: plot.value.id, kind: one.charter.word, finish: one.charter.finish, size: one.inside.size, ...one.inside.plan })
-    fill(world, one.inside, plot.value.id, instance)
+    const { interiorId, size, plan, forSale } = one.inside
+    world.addInterior({ id: interiorId, plotId: plot.value.id, kind: one.charter.word, finish: one.charter.finish, size, ...plan, ...(forSale !== undefined ? { forSale } : {}) })
+    fill(world, one, plot.value.id, instance, names)
   }
   return added
 }
 
-/** Puts the written people on their posts and the written names on their things. */
-function fill(world: World, inside: PlannedInside, plotId: string, instance: Instance | undefined): void {
+/** What every place is called, settled before anything is written, because a deed names a home wherever the home is in the order. */
+class Names {
+  readonly #answers = new Map<PlannedSite, Instance>()
+  readonly #homes = new Map<string, PlannedSite>()
+
+  constructor(planned: readonly PlannedSite[], written: readonly Instance[]) {
+    let answer = 0
+    for (const one of planned) {
+      if (!one.inside) continue
+      const instance = written[answer++]
+      if (instance) this.#answers.set(one, instance)
+      this.#homes.set(one.inside.interiorId, one)
+    }
+  }
+
+  answer(one: PlannedSite): Instance | undefined {
+    return this.#answers.get(one)
+  }
+
+  of(one: PlannedSite): string {
+    return this.#answers.get(one)?.name || one.sign
+  }
+
+  /** The place an interior belongs to, by its id. */
+  home(interiorId: string): PlannedSite | undefined {
+    return this.#homes.get(interiorId)
+  }
+}
+
+/** Puts the written people on their posts, the written names on their things, and the keys and deeds where the plan put them. */
+function fill(world: World, one: PlannedSite, plotId: string, instance: Instance | undefined, names: Names): void {
+  const inside = one.inside!
   const people = new Map((instance?.people ?? []).map((person) => [person.postId, person]))
+  const standing = new Map<string, string>()
   let staff: string | undefined
 
   for (const post of inside.posts) {
@@ -53,27 +85,55 @@ function fill(world: World, inside: PlannedInside, plotId: string, instance: Ins
       appearance: post.appearance,
       station: { interiorId: inside.interiorId, anchorId: post.anchor.id },
       workPlotId: plotId,
+      ...(one.charter.residential ? { homePlotId: plotId } : {}),
       personality: person.personality,
       knowledge: [...person.knowledge],
       ...(person.life ? { life: { ...person.life } } : {}),
       ...(person.background?.length ? { background: person.background.map((fact) => ({ ...fact })) } : {}),
     }
-    if (world.addNpc(npc).ok && post.anchor.kind === 'serve') staff ??= npc.id
+    if (!world.addNpc(npc).ok) continue
+    standing.set(post.anchor.id, npc.id)
+    if (post.anchor.kind === 'serve') staff ??= npc.id
   }
+  // whose home it is: the first person living in it, unless it is on the market
+  const resident = standing.values().next().value
+  if (one.charter.residential && inside.forSale === undefined && resident) world.recordOwner(inside.interiorId, resident)
 
   const named = new Map((instance?.things ?? []).map((thing) => [thing.thingId, thing]))
   for (const thing of inside.things) {
-    const written = named.get(thing.thingId)
-    if (!written) continue
+    const profile = named.get(thing.thingId) ?? aboutOf(thing, names.of(one), names)
+    if (!profile) continue
+    const carrier = thing.carried ? standing.get(thing.anchorId) : undefined
+    const owner = carrier ?? staff
     const item: Item = {
-      id: world.mintId('item'),
-      name: written.name,
-      description: written.description,
+      id: thing.itemId ?? world.mintId('item'),
+      name: profile.name,
+      description: profile.description,
       archetype: thing.archetype,
       value: thing.value,
       bulk: bulkOf(thing.archetype),
-      ...(staff ? { ownerNpcId: staff } : {}),
+      ...(owner ? { ownerNpcId: owner } : {}),
+      ...(thing.opens ? { opens: thing.opens } : {}),
+      ...(thing.deedTo ? { deedTo: thing.deedTo } : {}),
     }
-    world.addItem(item, { at: 'anchor', itemId: item.id, interiorId: inside.interiorId, anchorId: thing.anchorId })
+    world.addItem(
+      item,
+      carrier ? { at: 'npc', itemId: item.id, npcId: carrier } : { at: 'anchor', itemId: item.id, interiorId: inside.interiorId, anchorId: thing.anchorId },
+    )
   }
 }
+
+/** A key, a card or a deed, named off what it opens or owns; nothing for a thing the narrator names. */
+function aboutOf(thing: PlannedThing, placeName: string, names: Names): ItemProfile | undefined {
+  if (thing.deedTo) {
+    const home = names.home(thing.deedTo)
+    const homeName = home ? names.of(home) : 'a place in town'
+    return { name: `Deed to ${homeName}`, description: `Ownership of ${homeName}${home?.street ? ` on ${home.street}` : ''}. Whoever holds it lives there.` }
+  }
+  if (!thing.opens) return undefined
+  const what = keyWord(thing.archetype)
+  if ('interiorId' in thing.opens) return { name: `${placeName} ${what}`, description: `Opens the street door of ${placeName}.` }
+  return { name: `${thing.room ?? 'Door'} ${what}`, description: `Opens the ${(thing.room ?? 'door').toLowerCase()} door at ${placeName}.` }
+}
+
+const keyWord = (archetype: ItemArchetype): string => (archetype === 'keycard' ? 'card' : 'key')

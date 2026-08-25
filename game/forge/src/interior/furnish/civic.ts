@@ -10,10 +10,10 @@ const FLOOR_PER_BED = 12
 /** The most beds one ward is worth, however big the room. */
 const MOST_BEDS = 8
 
-/** A room you wait in: a desk to report to, chairs along the wall. */
+/** A room you wait in: a desk to report to with its screen on it, chairs along the wall. */
 export function waitingRoom(plan: RoomPlan): void {
   plan.crowdLimit = 3
-  const desk = servePost(plan)
+  const desk = servePost(plan, { onTop: 'terminal' })
   wallScreen(plan)
   benchRow(plan, 3, desk)
   cornerPiece(plan, 'plant')
@@ -38,10 +38,10 @@ export function ward(plan: RoomPlan): void {
   cornerPiece(plan, 'cabinet')
 }
 
-/** A hotel lobby: a reception desk, somewhere to sit, a plant. */
+/** A hotel lobby: a reception desk with the guest book on its screen, somewhere to sit, a plant. */
 export function lobby(plan: RoomPlan): void {
   plan.crowdLimit = 3
-  const desk = servePost(plan)
+  const desk = servePost(plan, { onTop: 'terminal' })
   wallScreen(plan)
   const side = plan.openSides().find((open) => open !== desk)
   if (side) {

@@ -1,10 +1,12 @@
-import { roomKindOf, type Charter, type RoomKind, type RoomUse } from '@gb/world'
+import { roomKindOf, type Charter, type CharterService, type RoomKind, type RoomUse } from '@gb/world'
 
 /** One room a building is cut for: the label it is cut under, the routine that dresses it, and what it is called. */
 export interface RoomSpec {
   readonly kind: RoomKind
   readonly use: RoomUse
   readonly name: string
+  /** Behind a locked door, in a place that admits people only so far. */
+  readonly shut?: boolean
 }
 
 export interface HallSpec extends RoomSpec {
@@ -39,8 +41,18 @@ export function programmeOf(charter: Charter): Programme {
   return {
     ...(hall ? { hall: { ...room(hall), ...(hall.use === 'entrance-hall' ? FOYER : LOBBY) } } : {}),
     main: room(main),
-    services: services.map((service) => ({ ...room(service), weight: service.weight, ...(service.spare ? { spare: true } : {}) })),
+    services: services.map((service) => ({
+      ...room(service),
+      weight: service.weight,
+      ...(service.spare ? { spare: true } : {}),
+      ...(service.shut ? { shut: true } : {}),
+    })),
   }
 }
 
-const room = (spec: Charter['rooms']['main']): RoomSpec => ({ kind: roomKindOf(spec), use: spec.use, name: spec.name })
+const room = (spec: Charter['rooms']['main'] | CharterService): RoomSpec => ({
+  kind: roomKindOf(spec),
+  use: spec.use,
+  name: spec.name,
+  ...('shut' in spec && spec.shut ? { shut: true } : {}),
+})

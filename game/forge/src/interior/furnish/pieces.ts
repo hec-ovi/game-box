@@ -18,8 +18,10 @@ export interface ServeOptions {
   readonly prop?: Extract<FurnitureProp, 'bar-counter' | 'counter'>
   /** Seats on the customer side, if the counter has any. */
   readonly stool?: Extract<FurnitureProp, 'bar-stool' | 'chair'>
-  /** What stands on the counter top: a till, a coffee machine. */
-  readonly onTop?: Extract<FurnitureProp, 'register' | 'coffee-machine'>
+  /** What stands on the counter top: a till, a coffee machine, the reception's screen. */
+  readonly onTop?: Extract<FurnitureProp, 'register' | 'coffee-machine' | 'terminal'>
+  /** A screen for the customers' side of the counter, beside the till: the bar's game. */
+  readonly screen?: Extract<FurnitureProp, 'monitor' | 'tablet'>
 }
 
 /** A counter run with the wall's choice of prop settled. */
@@ -57,6 +59,7 @@ function counterRun(plan: RoomPlan, side: Side, options: Run): Placed[] {
   // up against the counter: behind it facing the room, or in front of it at a counter flat to the wall
   const staffed = segments[Math.floor(segments.length / 2)]!
   if (options.onTop) plan.onTop(staffed, options.onTop)
+  if (options.screen) plan.onTop(staffed, options.screen, staffed.rot, spec.w / 2 - specOf(options.screen).w / 2 - 0.1)
   const reach = standoff('serve')
   const post = onWall(wall, alongWall(wall, staffed.pos), strip > 0 ? strip - reach : spec.d + reach)
   plan.anchor('serve', post, strip > 0 ? inward(side) : outward(side), staffed.id)
@@ -93,15 +96,13 @@ function depthFrom(plan: RoomPlan, side: Side): number {
 }
 
 /** Chairs drawn up to a table, each one against its edge and facing it. */
-export function seatTable(plan: RoomPlan, table: Placed, seats: number, kind: AnchorKind): number {
+export function seatTable(plan: RoomPlan, table: Placed, seats: number, kind: AnchorKind): void {
   const top = specOf(table.prop)
   const seat = specOf('chair')
-  let sat = 0
   for (const rot of plan.rng.shuffle([0, 90, 180, 270]).slice(0, seats)) {
     const away = faceReach(top, table.rot, rot) + seat.d / 2 + DRAWN_UP
-    if (plan.seat('chair', step(table.pos, rot, away), table.pos, kind)) sat++
+    plan.seat('chair', step(table.pos, rot, away), table.pos, kind)
   }
-  return sat
 }
 
 /**
@@ -110,9 +111,19 @@ export function seatTable(plan: RoomPlan, table: Placed, seats: number, kind: An
  * band: the desk's own half depth, the stance, then the seat's own offset back
  * to the chair's centre.
  */
-export function deskChair(plan: RoomPlan, desk: Placed, facing: number): boolean {
+export function deskChair(plan: RoomPlan, desk: Placed, facing: number): Placed | undefined {
   const away = specOf(desk.prop).d / 2 + standoff('work-desk') + seatRoot('office-chair', 'work-desk')
   return plan.seat('office-chair', step(desk.pos, facing, away), desk.pos, 'work-desk')
+}
+
+/**
+ * A desk with a chair drawn up to it and a screen on it, facing whoever sits
+ * there. `facing` is the side the chair goes on; the screen goes over the far
+ * half of the top, and only where the chair fits, because a screen is
+ * something a player sits at. It is what a quest can ask the player to open.
+ */
+export function workstation(plan: RoomPlan, desk: Placed, facing: number, screen: Extract<FurnitureProp, 'terminal' | 'laptop' | 'monitor' | 'tablet'>): void {
+  if (deskChair(plan, desk, facing)) plan.onTop(desk, screen, facing)
 }
 
 /** As many of one piece along a wall as the wall will take. */

@@ -10,6 +10,7 @@ import {
   holds,
   inBox,
   inward,
+  norm,
   onWall,
   opposite,
   round,
@@ -275,12 +276,16 @@ export class RoomPlan {
     return false
   }
 
-  /** A seat and the person on it, facing whatever the seat is drawn up to. */
-  seat(prop: FurnitureProp, pos: Vec, faces: Vec, kind: AnchorKind): boolean {
+  /**
+   * A seat and the person on it, facing whatever the seat is drawn up to. The
+   * seat, when it landed: a seat whose body has no footing is still a seat,
+   * just one nobody is stationed on.
+   */
+  seat(prop: FurnitureProp, pos: Vec, faces: Vec, kind: AnchorKind): Placed | undefined {
     const rot = headingTo(pos, faces)
     const placed = this.at(prop, pos, rot)
-    if (!placed) return false
-    return this.anchor(kind, pos, rot, placed.id)
+    if (placed) this.anchor(kind, pos, rot, placed.id)
+    return placed
   }
 
   /** A spot to stand in the open, facing something. */
@@ -290,24 +295,38 @@ export class RoomPlan {
 
   /**
    * Puts a piece that belongs on a worktop onto one: a till or a coffee machine
-   * on a counter that is already there. It stands at the host's own height and
-   * claims no floor, because the floor under it is the host's.
+   * on a counter that is already there, a screen on a desk. It stands at the
+   * host's own height and claims no floor, because the floor under it is the
+   * host's. `toward` is who it faces: whoever is served at the front of a
+   * counter, or whoever sits at the desk; it goes over the far half of the top
+   * from them. `shift` moves it along the top, to their right, so a second
+   * piece on the same top does not land on the first.
    */
-  onTop(host: Placed, prop: FurnitureProp): boolean {
+  onTop(host: Placed, prop: FurnitureProp, toward = host.rot, shift = 0): Placed | undefined {
     const lift = topOf(host.prop)
-    if (lift === undefined || specOf(prop).stands !== 'counter') return false
-    // over the back of the top, out of the way of whoever is served at the front
-    const pos = step(host.pos, host.rot + 180, Math.max(0, specOf(host.prop).d / 2 - specOf(prop).d / 2 - 0.05))
-    this.#furniture.push({
-      id: this.#mint('prop'),
-      prop,
-      roomId: this.room.id,
-      pos: { x: round(pos.x), y: round(pos.y) },
-      rot: round(host.rot),
-      lift: round(lift),
-      on: host.id,
-    })
-    return true
+    if (lift === undefined || specOf(prop).stands !== 'top') return undefined
+    const back = Math.max(0, specOf(host.prop).d / 2 - specOf(prop).d / 2 - 0.05)
+    const pos = step(step(host.pos, toward + 180, back), toward + 90, shift)
+    const id = this.#mint('prop')
+    const rot = round(norm(toward))
+    this.#furniture.push({ id, prop, roomId: this.room.id, pos: { x: round(pos.x), y: round(pos.y) }, rot, lift: round(lift), on: host.id })
+    return { id, prop, pos, rot, box: boxAt(pos, specOf(prop), rot) }
+  }
+
+  /**
+   * Hangs a piece on a wall at `lift` off the floor, in the corner at the
+   * wall's start so it looks down the room: a camera. It claims no floor and is
+   * tested against nothing on it, because nothing on the floor reaches it.
+   */
+  mount(prop: FurnitureProp, side: Side, lift: number): Placed | undefined {
+    const spec = specOf(prop)
+    const wall = wallOf(this.floor.bounds, side)
+    if (wall.to - wall.from < spec.w + 0.4) return undefined
+    const pos = onWall(wall, wall.from + 0.2 + spec.w / 2, spec.d / 2)
+    const rot = inward(side)
+    const id = this.#mint('prop')
+    this.#furniture.push({ id, prop, roomId: this.room.id, pos: { x: round(pos.x), y: round(pos.y) }, rot, lift: round(lift) })
+    return { id, prop, pos, rot, box: boxAt(pos, spec, rot) }
   }
 
   reserve(box: Box): void {

@@ -1,8 +1,10 @@
 import type { Rng } from '@gb/kit'
+import { REWARD_TABLE } from '@gb/quest'
+import type { Access, CarModel } from '@gb/world'
 import type { PremiseSide } from '../../premise/check.ts'
 import type { Flavour } from '../../theme/flavour.ts'
 import type { CastItem, CastPerson, CityCast } from '../cast.ts'
-import { payFor, type Load } from '../difficulty.ts'
+import { payFor, type Difficulty, type Load } from '../difficulty.ts'
 import { crossed, partyOf } from '../marks.ts'
 import { clip, type Condition, type Draft, type FailWhen, type Step } from '../shape.ts'
 
@@ -38,6 +40,10 @@ export interface Job {
   readonly against?: CastPerson
   /** What the main line is about, when the town has a premise. Side work has none. */
   readonly stake?: Stake
+  /** The band this job is paid in at the least: a rung of the ladder is worth its rung. */
+  readonly atLeast?: Difficulty
+  /** What finishing it hands over beyond credits, when the band allows: a car the town can give, a home it has for sale. */
+  readonly pays?: { readonly car?: CarModel; readonly deed?: string }
 }
 
 /** A way of writing one quest out of whatever the town happens to hold. */
@@ -61,6 +67,10 @@ interface Written {
   readonly load: Load
   readonly items: readonly CastItem[]
   readonly failWhen?: readonly FailWhen[]
+  /** Doors the player keeps the run of once the job is done. */
+  readonly access?: readonly Access[]
+  /** What the player has to bring to it: a shopping list wants the money for the list. */
+  readonly requires?: readonly Condition[]
 }
 
 /**
@@ -88,11 +98,22 @@ export abstract class RecipeBase implements Recipe {
 
   protected finish(cast: CityCast, job: Job, written: Written): Draft {
     // the standing goes to the place the work was for, not to the town at large
-    const { difficulty, reward } = payFor(written.load, partyOf(written.giver.place))
+    const { difficulty, reward: going } = payFor({ ...written.load, ...(job.atLeast ? { atLeast: job.atLeast } : {}) }, partyOf(written.giver.place))
+    const band = REWARD_TABLE[difficulty]
+    const access = (written.access ?? []).slice(0, band.access)
+    const reward: Draft['reward'] = {
+      money: going.money,
+      reputation: going.reputation,
+      faction: going.faction,
+      items: going.items,
+      ...(access.length ? { access } : {}),
+      ...(band.car && job.pays?.car ? { car: job.pays.car } : {}),
+      ...(band.deed && job.pays?.deed ? { deed: job.pays.deed } : {}),
+    }
     const summary = job.stake ? `${written.summary} Behind it: ${job.stake.what}, and ${job.stake.side.name} want ${job.stake.side.wants}.` : written.summary
     const steps = written.steps.map((step) => (step.kind === 'complete' ? this.#granting(step, job) : step))
     cast.book(written.items, [written.giver.npc.npcId])
-    const requires = [...job.requires, ...this.#stillTalking(job, written)]
+    const requires = [...job.requires, ...(written.requires ?? []), ...this.#stillTalking(job, written)]
 
     return {
       id: job.id,

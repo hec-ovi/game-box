@@ -1,4 +1,4 @@
-import type { Asks, Charter, ItemArchetype, Npc, NpcRole, Premise, RoomKind, Word } from '@gb/world'
+import type { Asks, Charter, ItemArchetype, MachineProgram, Npc, NpcRole, Premise, RoomKind, Word, WorkKind } from '@gb/world'
 import type { History } from './premise/shape.ts'
 
 /**
@@ -39,11 +39,29 @@ export interface InstanceStock {
   readonly index: number
 }
 
+/**
+ * What the plan put in a place beyond its people and its stock: the brief a
+ * writer builds a line on. A room behind a lock and how the lock opens, the
+ * screens and what each runs, whether a camera watches the door, and whether
+ * the place is for sale.
+ */
+export interface InstanceBrief {
+  /** Rooms behind a locked door, by name, and what opens it: a key, a card, or a code somebody can be told. */
+  readonly locked: ReadonlyArray<{ readonly room: string; readonly by: 'key' | 'card' | 'code' }>
+  /** Every screen in the place, the room it is in and the program it runs. */
+  readonly machines: ReadonlyArray<{ readonly room: string; readonly program: MachineProgram }>
+  readonly camera: boolean
+  /** Whole credits the place sells for. Absent is not for sale. */
+  readonly forSale?: number
+}
+
 /** One building's own shell: everything a narrator is shown to write the place whole. */
 export interface InstanceRequest extends PlaceRequest {
   readonly rooms: readonly RoomKind[]
   readonly posts: readonly InstancePost[]
+  /** The stock to name. Keys, cards and deeds are not in it: they are named here off what they open or own. */
   readonly things: readonly InstanceStock[]
+  readonly has: InstanceBrief
 }
 
 export interface InstancePerson extends NpcProfile {
@@ -79,7 +97,31 @@ export interface Instance {
   readonly things: readonly InstanceThing[]
 }
 
-/** The abstract world a quest writer sees: who is where, and what is lying about. */
+/** A locked door as a quest writer sees it: what opens it, who carries that, and what lies behind it. */
+export interface SummaryLock {
+  readonly doorId: string
+  /** The room behind it, and whether it is the street door. */
+  readonly room: string
+  readonly roomId: string
+  readonly street: boolean
+  readonly keyItemId?: string
+  /** Who carries the key, when somebody in the place does. */
+  readonly keeperNpcId?: string
+  readonly password?: string
+  /** Things lying in the room behind it. */
+  readonly behind: readonly string[]
+}
+
+/** A screen as a quest writer sees it: what it runs and what opens it. */
+export interface SummaryMachine {
+  readonly machineId: string
+  readonly program: MachineProgram
+  readonly locked: boolean
+  readonly password?: string
+  readonly roomId: string
+}
+
+/** The abstract world a quest writer sees: who is where, what is lying about, what is locked and what runs on the screens. */
 export interface WorldSummary {
   readonly cityName: string
   readonly theme: string
@@ -96,12 +138,21 @@ export interface WorldSummary {
     readonly door?: { readonly x: number; readonly z: number }
     /** A surface inside it something can be left on, when it has one. */
     readonly stashAnchorId?: string
-    readonly npcs: ReadonlyArray<{ readonly npcId: string; readonly name: string; readonly role: NpcRole }>
+    /** The work done in it, off its charter: a place that works at a bench has a car to hand out. */
+    readonly work?: readonly WorkKind[]
+    /** Whole credits it is for sale for. */
+    readonly forSale?: number
+    readonly locks?: readonly SummaryLock[]
+    readonly machines?: readonly SummaryMachine[]
+    readonly npcs: ReadonlyArray<{ readonly npcId: string; readonly name: string; readonly role: NpcRole; readonly roomId?: string }>
     readonly items: ReadonlyArray<{
       readonly itemId: string
       readonly name: string
       readonly archetype?: ItemArchetype
       readonly ownerNpcId?: string
+      /** The price its counter sells it for. */
+      readonly value?: number
+      readonly roomId?: string
     }>
   }>
 }

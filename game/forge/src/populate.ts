@@ -22,6 +22,7 @@ export function roleFor(anchor: AnchorKind, charter: Charter): NpcRole | undefin
     case 'dance':
       return 'patron'
     case 'work-desk':
+      return charter.residential ? 'resident' : charter.work.includes('bench') ? 'mechanic' : 'worker'
     case 'work-bench':
       return charter.work.includes('bench') ? 'mechanic' : 'worker'
     case 'cook':
@@ -79,9 +80,20 @@ export function surfacesOf(anchors: readonly Anchor[]): readonly Anchor[] {
   return surfaces.length ? surfaces : anchors
 }
 
-/** Everything this kind of place could have lying about: every archetype of every class it holds. */
+/** Everything this kind of place could have lying about: every archetype of every class it holds. A deed is never stock; one is written only when a place is put up for sale. */
 export function stockOf(charter: Charter): readonly ItemArchetype[] {
-  return charter.holding.flatMap((holding) => HOLDING_ARCHETYPES[holding])
+  return charter.holding.flatMap((holding) => HOLDING_ARCHETYPES[holding]).filter((archetype) => archetype !== 'deed')
+}
+
+/**
+ * Who keeps a place: whoever is at its counter, else whoever is on its door,
+ * else the first person with a job in it. One keeper per place, and their post
+ * is filled whatever the dice say where it matters: a lock always has its key
+ * in somebody's pocket, and a home always has somebody living in it.
+ */
+export function keeperOf(anchors: readonly Anchor[], charter: Charter): Anchor | undefined {
+  const staffed = anchors.filter((anchor) => roleFor(anchor.kind, charter) !== undefined)
+  return staffed.find((anchor) => anchor.kind === 'serve') ?? staffed.find((anchor) => anchor.kind === 'guard') ?? staffed[0]
 }
 
 /** What is lying around in one of them. */

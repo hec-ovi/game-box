@@ -1,5 +1,5 @@
 import type { Rng } from '@gb/kit'
-import type { Anchor, BodyKind, ItemArchetype, NpcRole, ResolvedCharter } from '@gb/world'
+import type { Access, Anchor, BodyKind, ItemArchetype, NpcRole, ResolvedCharter } from '@gb/world'
 import type { InteriorPlan } from '../interior/plan.ts'
 import type { PlotSite } from '../layout/plots.ts'
 
@@ -28,16 +28,34 @@ export interface PlannedPost {
   readonly appearance: { readonly base: BodyKind; readonly variant: number }
 }
 
-/** Something lying about inside a building, waiting to be named. */
+/**
+ * Something inside a building: stock lying on a surface waiting to be named,
+ * or a key, a card or a deed the plan wrote for a lock or a sale. The narrator
+ * names the stock; a key or a deed is named here off what it opens or owns.
+ */
 export interface PlannedThing {
   /** The handle a narrator's answer comes back under. */
   readonly thingId: string
   readonly archetype: ItemArchetype
+  /** Where it lies, or whose pocket it is in when `carried`. */
   readonly anchorId: string
   /** Where this thing falls in the town's own count of things. */
   readonly index: number
   readonly value: number
+  /** Minted at plan time, because a door already names it. */
+  readonly itemId?: string
+  /** What a key or a card opens. */
+  readonly opens?: Access
+  /** The room a key is the key to. */
+  readonly room?: string
+  /** The interior a deed is ownership of. */
+  readonly deedTo?: string
+  /** In the pocket of whoever stands on `anchorId`, rather than lying on it. */
+  readonly carried?: boolean
 }
+
+/** Whether a thing is one the narrator is asked to name, or one written here off what it opens or owns. */
+export const narrated = (thing: PlannedThing): boolean => thing.opens === undefined && thing.deedTo === undefined
 
 /** The inside of a building that opens: the shell, and what is waiting to be written into it. */
 export interface PlannedInside {
@@ -46,6 +64,8 @@ export interface PlannedInside {
   readonly plan: InteriorPlan
   readonly posts: readonly PlannedPost[]
   readonly things: readonly PlannedThing[]
+  /** Whole credits the place is for sale for: a home with nobody in it and a deed on a counter somewhere. */
+  readonly forSale?: number
 }
 
 /** One building, planned end to end: everything about it that is arithmetic rather than invention. */

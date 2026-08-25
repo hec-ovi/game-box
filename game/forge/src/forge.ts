@@ -5,6 +5,7 @@ import {
   questView,
   World,
   type IntegrityProblem,
+  type Interior,
   type Item,
   type Premise,
   type Rect,
@@ -17,8 +18,9 @@ import { Avenues } from './layout/avenues.ts'
 import { planStreets, type StreetPlan } from './layout/plan.ts'
 import { sitesInBlock, storeysFor, type PlotSite } from './layout/plots.ts'
 import { layRoads } from './layout/roads.ts'
+import { spreadSites, stationsWanted } from './layout/stations.ts'
 import { paintStreets } from './layout/streets.ts'
-import type { Narrator, WorldSummary } from './narrator.ts'
+import type { Narrator, SummaryLock, SummaryMachine, WorldSummary } from './narrator.ts'
 import { writeEachPlace } from './narrator/one-at-a-time.ts'
 import { Signs } from './narrator/signs.ts'
 import { StreetNames } from './narrator/streets.ts'
@@ -176,6 +178,11 @@ export class Forge {
     const wanted = stapleKinds(flavour, mix, charters, premise?.build.mustHave)
     const spots = mix.shuffle(sites.map((_, index) => index)).slice(0, wanted.length)
     const staples = new Map(spots.map((site, order) => [site, wanted[order]!]))
+    // somewhere to board, spread over the town, whatever the mix rolls for the kind that boards
+    const subway = charters.find((charter) => charter.transit === 'subway')
+    if (subway) {
+      for (const site of spreadSites(sites, stationsWanted(brief.blocksX * brief.blocksY), new Set(staples.keys()), mix.fork('stations'))) staples.set(site, subway.word)
+    }
     const byWord = new Map(charters.map((charter) => [charter.word, charter]))
 
     const chosen: Chosen[] = []
@@ -273,6 +280,8 @@ function violationsOf(error: WorldError): readonly SchemaViolation[] {
  */
 export function summarise(world: World, premise?: Premise): WorldSummary {
   const asks = world.asks()
+  const carried = new Map<string, string>()
+  for (const placement of world.placements()) if (placement.at === 'npc') carried.set(placement.itemId, placement.npcId)
   return {
     cityName: world.name,
     theme: world.theme,
@@ -281,14 +290,18 @@ export function summarise(world: World, premise?: Premise): WorldSummary {
     places: world.plots().map((plot) => {
       const interior = world.interiors().find((i) => i.plotId === plot.id)
       const npcs = interior ? world.npcs().filter((n) => n.station?.interiorId === interior.id) : []
+      const roomOf = new Map((interior?.anchors ?? []).map((anchor) => [anchor.id, anchor.roomId]))
       const items = interior
         ? world
             .placements()
-            .filter((p) => p.at === 'anchor' && p.interiorId === interior.id)
-            .map((p) => world.item(p.itemId))
-            .filter((item): item is Item => item !== undefined)
+            .flatMap((p) => {
+              if (p.at !== 'anchor' || p.interiorId !== interior.id) return []
+              const item = world.item(p.itemId)
+              return item ? [{ item, roomId: roomOf.get(p.anchorId) }] : []
+            })
         : []
       const surface = interior ? surfacesOf(interior.anchors)[0] : undefined
+      const work = world.charter(plot.kind)?.work
       return {
         plotId: plot.id,
         ...(interior ? { interiorId: interior.id } : {}),
@@ -296,14 +309,52 @@ export function summarise(world: World, premise?: Premise): WorldSummary {
         name: plot.name,
         door: cellCentre(plot.entrance.cell.x, plot.entrance.cell.y, world.cellSize),
         ...(surface ? { stashAnchorId: surface.id } : {}),
-        npcs: npcs.map((n) => ({ npcId: n.id, name: n.name, role: n.role })),
-        items: items.map((i) => ({
-          itemId: i.id,
-          name: i.name,
-          archetype: i.archetype,
-          ...(i.ownerNpcId ? { ownerNpcId: i.ownerNpcId } : {}),
+        ...(work ? { work } : {}),
+        ...(interior?.forSale !== undefined ? { forSale: interior.forSale } : {}),
+        ...(interior ? { locks: locksOf(interior, items, carried), machines: machinesOf(interior) } : {}),
+        npcs: npcs.map((n) => {
+          const roomId = n.station ? roomOf.get(n.station.anchorId) : undefined
+          return { npcId: n.id, name: n.name, role: n.role, ...(roomId ? { roomId } : {}) }
+        }),
+        items: items.map(({ item, roomId }) => ({
+          itemId: item.id,
+          name: item.name,
+          archetype: item.archetype,
+          ...(item.ownerNpcId ? { ownerNpcId: item.ownerNpcId } : {}),
+          value: item.value,
+          ...(roomId ? { roomId } : {}),
         })),
       }
     }),
   }
+}
+
+/** Every locked door of a place: what opens it, who has that in their pocket, and what is lying behind it. */
+function locksOf(interior: Interior, items: ReadonlyArray<{ item: Item; roomId: string | undefined }>, carried: ReadonlyMap<string, string>): SummaryLock[] {
+  const named = new Map(interior.rooms.map((room) => [room.id, room.name]))
+  return interior.doors
+    .filter((door) => door.locked)
+    .map((door) => {
+      const street = door.from === 'outside'
+      const keeper = door.keyItemId ? carried.get(door.keyItemId) : undefined
+      return {
+        doorId: door.id,
+        room: named.get(door.to) ?? door.to,
+        roomId: door.to,
+        street,
+        ...(door.keyItemId ? { keyItemId: door.keyItemId } : {}),
+        ...(keeper ? { keeperNpcId: keeper } : {}),
+        ...(door.password ? { password: door.password } : {}),
+        behind: items.filter(({ roomId }) => street || roomId === door.to).map(({ item }) => item.id),
+      }
+    })
+}
+
+/** Every screen of a place: what it runs and what opens it. */
+function machinesOf(interior: Interior): SummaryMachine[] {
+  return interior.furniture.flatMap((piece) =>
+    piece.machine
+      ? [{ machineId: piece.machine.id, program: piece.machine.program, locked: piece.machine.locked, ...(piece.machine.password ? { password: piece.machine.password } : {}), roomId: piece.roomId }]
+      : [],
+  )
 }

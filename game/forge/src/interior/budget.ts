@@ -21,10 +21,11 @@ const SHARE = 0.12
 const SWING = 0.3
 
 /**
- * The fewest a town opens, however small it is: the four things a town needs.
+ * The fewest a town opens, however small it is: the things a town needs.
  * Three of them are counters with somebody behind them, which is exactly what
  * the quest writer asks a town for, so a town that opens its needs can hold a
- * line of work. It is a floor on the town, not on a batch.
+ * line of work, and one is a home the player can buy. It is a floor on the
+ * town, not on a batch.
  */
 const FEWEST = NEEDS.length
 
@@ -48,7 +49,7 @@ export interface Standing {
  * to spend.
  *
  * Where a town is too small to hold both the floor and the majority-shut
- * ceiling, the ceiling wins: a hamlet of six buildings opens two, not four,
+ * ceiling, the ceiling wins: a hamlet of six buildings opens two, not five,
  * because "most of them are frontage" is the promise and the floor is only what
  * a town would like.
  */

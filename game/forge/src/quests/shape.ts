@@ -1,3 +1,4 @@
+import type { Access, CarModel } from '@gb/world'
 import type { Difficulty } from './difficulty.ts'
 
 /**
@@ -12,6 +13,7 @@ export type Place = { readonly plotId: string } | { readonly interiorId: string 
 export type Condition =
   | { readonly kind: 'flag'; readonly flag: string; readonly value: boolean }
   | { readonly kind: 'has-item'; readonly itemId: string }
+  | { readonly kind: 'money-at-least'; readonly amount: number }
   | { readonly kind: 'reputation-at-least'; readonly faction: string; readonly amount: number }
 
 export type Effect =
@@ -20,6 +22,8 @@ export type Effect =
   | { readonly kind: 'set-flag'; readonly flag: string; readonly value: boolean }
   | { readonly kind: 'companion-join'; readonly npcId: string }
   | { readonly kind: 'companion-leave'; readonly npcId: string }
+  | { readonly kind: 'give-item'; readonly itemId: string }
+  | { readonly kind: 'give-password'; readonly password: string }
   | { readonly kind: 'reveal'; readonly stepId: string }
 
 export type FailWhen =
@@ -46,8 +50,12 @@ export type Step = Common &
     | { readonly kind: 'goto'; readonly place: Place }
     | { readonly kind: 'collect'; readonly itemId: string; readonly alternates?: readonly string[]; readonly count?: number; readonly allowSteal?: boolean }
     | { readonly kind: 'deliver'; readonly itemId: string; readonly toNpcId: string; readonly alternates?: readonly string[]; readonly count?: number }
+    | { readonly kind: 'buy'; readonly itemId: string; readonly alternates?: readonly string[]; readonly count?: number }
     | { readonly kind: 'stash'; readonly itemId: string; readonly interiorId: string; readonly anchorId: string }
     | { readonly kind: 'escort'; readonly npcId: string; readonly place: Place }
+    | { readonly kind: 'unlock'; readonly doorId: string }
+    | { readonly kind: 'hack'; readonly machineId: string }
+    | { readonly kind: 'beat-game'; readonly machineId: string; readonly score: number }
     | { readonly kind: 'choice'; readonly prompt: string; readonly options: ReadonlyArray<{ readonly id: string; readonly label: string; readonly next: string }> }
     | { readonly kind: 'join'; readonly waitFor: readonly string[] }
     | { readonly kind: 'complete' }
@@ -62,7 +70,15 @@ export interface Draft {
   readonly difficulty: Difficulty
   readonly startStepId: string
   readonly steps: readonly Step[]
-  readonly reward: { readonly money: number; readonly reputation: number; readonly faction: string; readonly items: readonly string[] }
+  readonly reward: {
+    readonly money: number
+    readonly reputation: number
+    readonly faction: string
+    readonly items: readonly string[]
+    readonly access?: readonly Access[]
+    readonly car?: CarModel
+    readonly deed?: string
+  }
   readonly requires?: readonly Condition[]
   readonly failWhen?: readonly FailWhen[]
 }

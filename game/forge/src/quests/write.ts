@@ -61,14 +61,17 @@ export class QuestWriter {
     }
 
     const opening = Math.max(FREE_SIDES, Math.round(sideQuests * OPENING))
+    // a locked door is rare and deliberate, so every one the town still has gets a job through it before the errands are dealt
+    const locks = cast.locked
     for (let i = 0; i < sideQuests; i++) {
       const rng = this.#rng.fork(`side/${i}`)
       const gate = tier > 0 && i >= opening ? rng.weighted(gates(tier)) : 0
-      const draft = this.#one(cast, rng, flavour, {
+      const job: Job = {
         id: questId(drafts.length + 1),
         kind: 'side',
         requires: gate === 0 ? [] : [{ kind: 'flag', flag: standing(gate), value: true }],
-      })
+      }
+      const draft = this.#one(cast, rng, flavour, job, i < locks ? THROUGH_THE_DOOR : undefined)
       if (!draft) break
       drafts.push(draft)
     }
@@ -80,15 +83,19 @@ export class QuestWriter {
     })
   }
 
-  /** Tries the recipes this town can serve, best odds first, until one writes. */
-  #one(cast: CityCast, rng: Rng, flavour: Flavour, job: Job): Draft | undefined {
-    for (const recipe of order(cast, rng, flavour, job)) {
+  /** Tries the recipes this town can serve, the one asked for first and then best odds first, until one writes. */
+  #one(cast: CityCast, rng: Rng, flavour: Flavour, job: Job, first?: Recipe): Draft | undefined {
+    const tried = order(cast, rng, flavour, job)
+    for (const recipe of first ? [first, ...tried.filter((other) => other !== first)] : tried) {
       const draft = recipe.write(cast, rng.fork(recipe.name), job)
       if (draft) return draft
     }
     return undefined
   }
 }
+
+/** The recipe that writes a job through a lock. */
+const THROUGH_THE_DOOR = RECIPES.find((recipe) => recipe.name === 'key-run')!
 
 /** The recipes a town can serve, shuffled by their odds in a town like this. */
 function order(cast: CityCast, rng: Rng, flavour: Flavour, job: Job): Recipe[] {

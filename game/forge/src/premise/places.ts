@@ -18,7 +18,7 @@ export const PLACES: Readonly<Record<string, Charter>> = {
     residential: false,
     size: { storeys: [1, 2], sprawl: 'wide' },
     street: { frontage: 'painted', openness: 'sparse', material: 'mixed', voice: 'loud' },
-    access: 'open',
+    access: 'admitted',
     service: 'counter',
     work: ['watch'],
     holding: ['drink', 'valuables'],
@@ -26,7 +26,7 @@ export const PLACES: Readonly<Record<string, Charter>> = {
     rooms: {
       hall: { use: 'entrance-hall', name: 'Door' },
       main: { use: 'taproom', name: 'Dance floor' },
-      services: [{ use: 'store', name: 'Cellar', kind: 'cellar', weight: 1 }],
+      services: [{ use: 'store', name: 'Cellar', kind: 'cellar', weight: 1, shut: true }],
     },
   },
 }
