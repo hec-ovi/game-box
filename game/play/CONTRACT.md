@@ -1,6 +1,6 @@
 # @gb/play contract
 
-contractVersion: 0.5.0
+contractVersion: 0.5.1
 
 ## Purpose
 
@@ -13,7 +13,7 @@ The playthrough: what the player carries, what they stole, what they left standi
 | `PlayerState.create(worldId, startingMoney?)` | ids as strings | money is a whole number, zero or more |
 | `PlayerState.load(value, worldId)` | [schema/player-state.json](schema/player-state.json) | the save's `worldId` matches the world being played |
 | mutations: `take`, `drop`, `earn`, `setFlag`, `adjustReputation`, `addCompanion`, `removeCompanion` | ids and whole numbers | see errors |
-| `pay(amount)` | a whole number of credits, zero or more | refused when it is not, or not held; `spend(amount)` is the same call under the name `@gb/quest` pays with, kept until it moves to `pay` |
+| `pay(amount)` | a whole number of credits, zero or more | refused when it is not, or not held |
 | `buy(itemId, price)` | an item id and a price as for `pay` | pays and takes in one motion; refused, nothing moves |
 | `discover({ place } \| { npc })` | an interior id, or an npc id | names, not lookups; a nameless id is ignored |
 | `unlock(npcId, factId)` | ids as strings | names, not lookups; also lists the person as known of |

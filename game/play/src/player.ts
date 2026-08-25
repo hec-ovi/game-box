@@ -199,11 +199,6 @@ export class PlayerState {
     return this.#purse.pay(amount)
   }
 
-  /** The same as `pay`, under the name `@gb/quest` pays with, kept until it moves. */
-  spend(amount: number): Result<void, PlayError> {
-    return this.pay(amount)
-  }
-
   /** Pay for a thing and carry it off in one motion. Refused, nothing is paid and nothing taken. */
   buy(itemId: string, price: number): Result<void, PlayError> {
     if (this.has(itemId)) return err({ code: 'already-carried', itemId })

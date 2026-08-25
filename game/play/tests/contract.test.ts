@@ -127,7 +127,7 @@ describe('PlayerState', () => {
     expect(reload(player).where?.x).toBe(10)
   })
 
-  it('follows a quest, drops it, and still loads a save whose quest is gone', () => {
+  it('tracks a quest, drops it, and still loads a save whose quest is gone', () => {
     const player = PlayerState.create('world_0001')
     expect(player.tracked).toBeUndefined()
 
