@@ -1,8 +1,14 @@
 import { err, ok, type Result, type SchemaViolation } from '@gb/kit'
 import { GameClock } from './clock.ts'
+import { Codex, type Discovery } from './codex.ts'
+import type { Disposition } from './disposition.ts'
+import { Memories, type MemoryError, type MemorySource } from './memory.ts'
+import { Purse, type MoneyError } from './money.ts'
 import { MovedItems } from './moved.ts'
 import {
   playerContract,
+  type CodexDoc,
+  type MemoryDoc,
   type PlacedItemDoc,
   type PlayerStateDoc,
   type SpotDoc,
@@ -14,26 +20,34 @@ export type PlayError =
   | { readonly code: 'invalid-save'; readonly violations: readonly SchemaViolation[] }
   | { readonly code: 'wrong-world'; readonly message: string }
   | { readonly code: 'missing-item'; readonly itemId: string }
-  | { readonly code: 'not-enough-money'; readonly needed: number; readonly held: number }
+  | { readonly code: 'already-carried'; readonly itemId: string }
+  | MoneyError
+  | MemoryError
 
 export const DEFAULT_FACTION = 'town'
 
 /**
  * Everything about the playthrough that changes while it is played: what the
  * player carries, what they owe, what they have been told, who walks with them,
- * and what time it is. The world file stays untouched; this is the part that is
- * saved per playthrough.
+ * what they have found, what each person holds of them, and what time it is.
+ * The world file stays untouched; this is the part that is saved per playthrough.
  */
 export class PlayerState {
   #doc: PlayerStateDoc
+  #purse: Purse
   #clock: GameClock
   #moved: MovedItems
+  #codex: Codex
+  #memory: Memories
 
   private constructor(doc: PlayerStateDoc) {
-    const { clock, where, moved, ...rest } = doc
+    const { clock, where, moved, codex, memory, ...rest } = doc
     this.#doc = rest
+    this.#purse = new Purse(rest.money)
     this.#clock = GameClock.from(clock)
     this.#moved = MovedItems.from(moved)
+    this.#codex = Codex.from(codex)
+    this.#memory = Memories.from(memory)
     // a thing in hand is not also on a shelf, whatever a hand-made save says
     for (const itemId of this.#doc.inventory) this.#moved.clear(itemId)
     if (where) this.setWhere(where)
@@ -105,7 +119,7 @@ export class PlayerState {
   }
 
   get money(): number {
-    return this.#doc.money
+    return this.#purse.balance
   }
 
   has(itemId: string): boolean {
@@ -175,14 +189,27 @@ export class PlayerState {
     return ok(undefined)
   }
 
+  /** A reward. */
   earn(amount: number): void {
-    this.#doc.money += Math.max(0, Math.trunc(amount))
+    this.#purse.earn(amount)
   }
 
+  /** Hand credits over. A refused payment deducts nothing. */
+  pay(amount: number): Result<void, PlayError> {
+    return this.#purse.pay(amount)
+  }
+
+  /** The same as `pay`, under the name `@gb/quest` pays with, kept until it moves. */
   spend(amount: number): Result<void, PlayError> {
-    const needed = Math.max(0, Math.trunc(amount))
-    if (this.#doc.money < needed) return err({ code: 'not-enough-money', needed, held: this.#doc.money })
-    this.#doc.money -= needed
+    return this.pay(amount)
+  }
+
+  /** Pay for a thing and carry it off in one motion. Refused, nothing is paid and nothing taken. */
+  buy(itemId: string, price: number): Result<void, PlayError> {
+    if (this.has(itemId)) return err({ code: 'already-carried', itemId })
+    const paid = this.pay(price)
+    if (!paid.ok) return paid
+    this.take(itemId)
     return ok(undefined)
   }
 
@@ -204,10 +231,58 @@ export class PlayerState {
     if (index >= 0) this.#doc.companions.splice(index, 1)
   }
 
+  /** Note a place walked into or a person met, for the codex. */
+  discover(found: Discovery): void {
+    this.#codex.discover(found)
+  }
+
+  /** Everything found so far: places in the order entered, people in the order met, each with what was learned of them. */
+  discovered(): CodexDoc {
+    return this.#codex.list()
+  }
+
+  /** Learn one of a person's background facts. */
+  unlock(npcId: string, factId: string): void {
+    this.#codex.unlock(npcId, factId)
+  }
+
+  /** The background facts learned about one person, in the order learned. */
+  unlocked(npcId: string): readonly string[] {
+    return this.#codex.unlocked(npcId)
+  }
+
+  /** Give one person a fact to hold about the player. Nobody else hears it. */
+  remember(npcId: string, fact: string, source: MemorySource): Result<void, PlayError> {
+    return this.#memory.remember(npcId, fact, source)
+  }
+
+  /** What one person holds, oldest first. */
+  memories(npcId: string): readonly MemoryDoc[] {
+    return this.#memory.memories(npcId)
+  }
+
+  /** How one person feels about the player. */
+  disposition(npcId: string): Disposition {
+    return this.#memory.disposition(npcId)
+  }
+
+  /** One step friendlier, for that person only. */
+  warm(npcId: string): void {
+    this.#memory.warm(npcId)
+  }
+
+  /** One step colder, for that person only. */
+  cool(npcId: string): void {
+    this.#memory.cool(npcId)
+  }
+
   toJSON(): PlayerStateDoc {
-    const doc: PlayerStateDoc = { ...this.#doc, clock: this.#clock.toJSON() }
+    const doc: PlayerStateDoc = { ...this.#doc, money: this.#purse.balance, clock: this.#clock.toJSON() }
     if (this.#doc.where) doc.where = { ...this.#doc.where }
     if (this.#moved.any) doc.moved = this.#moved.toJSON()
+    if (this.#codex.any) doc.codex = this.#codex.toJSON()
+    const memory = this.#memory.toJSON()
+    if (Object.keys(memory).length > 0) doc.memory = memory
     return doc
   }
 }

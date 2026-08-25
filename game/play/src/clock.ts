@@ -29,24 +29,31 @@ export type ClockError =
  */
 export class GameClock {
   #doc: ClockDoc
+  #paused: boolean
 
-  private constructor(doc: ClockDoc) {
+  private constructor(doc: ClockDoc, paused: boolean) {
     this.#doc = doc
+    this.#paused = paused
   }
 
   /** Day 1, morning, clear sky, running at the default rate. */
   static create(): GameClock {
-    return new GameClock({
-      day: 1,
-      secondsOfDay: DEFAULT_START_HOUR * SECONDS_PER_HOUR,
-      rate: DEFAULT_RATE,
-      weather: 'clear',
-    })
+    return new GameClock(
+      { day: 1, secondsOfDay: DEFAULT_START_HOUR * SECONDS_PER_HOUR, rate: DEFAULT_RATE, weather: 'clear' },
+      false,
+    )
   }
 
-  /** Restore from a save. A save written before clocks existed has none and starts fresh. */
+  /**
+   * Restore from a save. A save written before clocks existed has none and
+   * starts fresh. One written before `paused` existed carried its pause as a
+   * rate of 0, and opens paused with the default rate ready to resume at.
+   */
   static from(doc: ClockDoc | undefined): GameClock {
-    return doc ? new GameClock({ ...doc }) : GameClock.create()
+    if (!doc) return GameClock.create()
+    const { paused, ...rest } = doc
+    const stopped = rest.rate === 0
+    return new GameClock({ ...rest, rate: stopped ? DEFAULT_RATE : rest.rate }, paused ?? stopped)
   }
 
   get day(): number {
@@ -66,9 +73,14 @@ export class GameClock {
     return Math.floor((this.#doc.secondsOfDay % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE)
   }
 
-  /** Game seconds per real second. 0 is paused. */
+  /** Game seconds per real second while running, and what `resume` brings back. Always above 0. */
   get rate(): number {
     return this.#doc.rate
+  }
+
+  /** Whether the clock is stopped. Every reading holds still while it is. */
+  get paused(): boolean {
+    return this.#paused
   }
 
   get weather(): Weather {
@@ -96,17 +108,33 @@ export class GameClock {
 
   /** Move the clock on by one frame. A step that is negative or not a number does nothing. */
   advance(realSeconds: number): void {
-    if (!Number.isFinite(realSeconds) || realSeconds <= 0) return
+    if (this.#paused || !Number.isFinite(realSeconds) || realSeconds <= 0) return
     const moved = this.#doc.secondsOfDay + realSeconds * this.#doc.rate
     if (moved === this.#doc.secondsOfDay) return
     this.#doc.day += Math.floor(moved / SECONDS_PER_DAY)
     this.#doc.secondsOfDay = moved % SECONDS_PER_DAY
   }
 
+  /** Run at a rate, and run: a positive rate also resumes a paused clock. 0 is `pause()`. */
   setRate(rate: number): Result<void, ClockError> {
     if (!Number.isFinite(rate) || rate < 0 || rate > MAX_RATE) return err({ code: 'invalid-rate', rate })
+    if (rate === 0) {
+      this.pause()
+      return ok(undefined)
+    }
     this.#doc.rate = rate
+    this.#paused = false
     return ok(undefined)
+  }
+
+  /** Stop the clock. The rate it was running at is kept, and saved, for `resume`. */
+  pause(): void {
+    this.#paused = true
+  }
+
+  /** Run again at the rate it was running at. */
+  resume(): void {
+    this.#paused = false
   }
 
   /** Jump to an hour of the same day. */
@@ -134,6 +162,6 @@ export class GameClock {
   }
 
   toJSON(): ClockDoc {
-    return { ...this.#doc }
+    return { ...this.#doc, paused: this.#paused }
   }
 }

@@ -85,6 +85,9 @@
             "overcast",
             "rain"
           ]
+        },
+        "paused": {
+          "type": "boolean"
         }
       },
       "required": [
@@ -143,6 +146,95 @@
           "itemId",
           "interiorId",
           "anchorId"
+        ]
+      }
+    },
+    "codex": {
+      "type": "object",
+      "properties": {
+        "places": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "people": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "npcId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "unlocked": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "npcId",
+              "unlocked"
+            ]
+          }
+        }
+      },
+      "required": [
+        "places",
+        "people"
+      ]
+    },
+    "memory": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "disposition": {
+            "type": "string",
+            "enum": [
+              "hostile",
+              "cool",
+              "neutral",
+              "warm",
+              "friendly"
+            ]
+          },
+          "facts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "fact": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "told",
+                    "seen"
+                  ]
+                }
+              },
+              "required": [
+                "fact",
+                "source"
+              ]
+            }
+          }
+        },
+        "required": [
+          "disposition",
+          "facts"
         ]
       }
     }

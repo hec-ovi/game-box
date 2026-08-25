@@ -28,17 +28,28 @@ describe('GameClock', () => {
     expect(clock.hour).toBe(0)
   })
 
-  it('holds still at a rate of zero and moves again when the rate comes back', () => {
+  it('holds still while paused, keeps the rate it ran at, and moves again on resume', () => {
     const clock = clockOf()
-    expect(clock.setRate(0).ok).toBe(true)
+    expect(clock.setRate(60).ok).toBe(true)
+    clock.pause()
+    expect(clock.paused).toBe(true)
+    expect(clock.rate).toBe(60)
     clock.advance(600)
     expect(clock.hour).toBe(8)
     expect(clock.minute).toBe(0)
     expect(clock.day).toBe(1)
 
-    expect(clock.setRate(60).ok).toBe(true)
+    clock.resume()
+    expect(clock.paused).toBe(false)
     clock.advance(60)
     expect(clock.hour).toBe(9)
+
+    // a rate of 0 is the same pause; a positive rate runs
+    expect(clock.setRate(0).ok).toBe(true)
+    expect(clock.paused).toBe(true)
+    expect(clock.rate).toBe(60)
+    expect(clock.setRate(60).ok).toBe(true)
+    expect(clock.paused).toBe(false)
 
     const bad = clock.setRate(-1)
     expect(bad.ok).toBe(false)
@@ -134,6 +145,32 @@ describe('the clock in a save', () => {
     expect(loaded.value.clock.minute).toBe(45)
     expect(loaded.value.clock.rate).toBe(30)
     expect(loaded.value.clock.weather).toBe('rain')
+  })
+
+  it('written while paused, opens paused and resumes at the rate it ran at', () => {
+    const player = PlayerState.create('world_0001')
+    player.clock.setRate(30)
+    player.clock.pause()
+    const saved = JSON.parse(JSON.stringify(player.toJSON()))
+    expect(saved.clock).toMatchObject({ rate: 30, paused: true })
+
+    const loaded = PlayerState.load(saved, 'world_0001')
+    expect(loaded.ok).toBe(true)
+    if (!loaded.ok) return
+    expect(loaded.value.clock.paused).toBe(true)
+    loaded.value.clock.advance(600)
+    expect(loaded.value.clock.hour).toBe(8)
+    loaded.value.clock.resume()
+    expect(loaded.value.clock.rate).toBe(30)
+    loaded.value.clock.advance(120)
+    expect(loaded.value.clock.hour).toBe(9)
+
+    // a save from before `paused` carried its pause as a rate of 0
+    const frozen = PlayerState.load({ ...saved, clock: { ...saved.clock, rate: 0, paused: undefined } }, 'world_0001')
+    expect(frozen.ok).toBe(true)
+    if (!frozen.ok) return
+    expect(frozen.value.clock.paused).toBe(true)
+    expect(frozen.value.clock.rate).toBe(DEFAULT_RATE)
   })
 
   it('starts a save written before clocks at the default morning', () => {

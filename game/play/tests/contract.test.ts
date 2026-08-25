@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PlayerState, type PlayerStateDoc } from '../src/index.ts'
+import { FACT_LENGTH, MEMORY_CAP, PlayerState, type MemorySource, type PlayerStateDoc } from '../src/index.ts'
 
 describe('PlayerState', () => {
   it('carries items, marks stolen ones, and gives them up', () => {
@@ -24,13 +24,38 @@ describe('PlayerState', () => {
     const player = PlayerState.create('world_0001', 10)
     player.earn(15)
     expect(player.money).toBe(25)
-    expect(player.spend(5).ok).toBe(true)
+    expect(player.pay(5).ok).toBe(true)
     expect(player.money).toBe(20)
 
-    const broke = player.spend(999)
+    const broke = player.pay(999)
     expect(broke.ok).toBe(false)
     if (!broke.ok && broke.error.code === 'not-enough-money') expect(broke.error.held).toBe(20)
     expect(player.money).toBe(20)
+
+    // a price that is not a whole number of credits is not a price
+    const odd = player.pay(-3)
+    expect(odd.ok).toBe(false)
+    if (!odd.ok) expect(odd.error.code).toBe('invalid-amount')
+    expect(player.pay(2.5).ok).toBe(false)
+    expect(player.money).toBe(20)
+  })
+
+  it('buys a thing in one motion, or refuses and changes nothing', () => {
+    const player = PlayerState.create('world_0001', 8)
+    expect(player.buy('item_0005', 5).ok).toBe(true)
+    expect(player.has('item_0005')).toBe(true)
+    expect(player.money).toBe(3)
+
+    const broke = player.buy('item_0006', 4)
+    expect(broke.ok).toBe(false)
+    if (!broke.ok) expect(broke.error.code).toBe('not-enough-money')
+    expect(player.has('item_0006')).toBe(false)
+    expect(player.money).toBe(3)
+
+    const twice = player.buy('item_0005', 1)
+    expect(twice.ok).toBe(false)
+    if (!twice.ok) expect(twice.error.code).toBe('already-carried')
+    expect(player.money).toBe(3)
   })
 
   it('clamps reputation and tracks flags and companions', () => {
@@ -169,6 +194,81 @@ describe('PlayerState', () => {
     expect(reload(player).placed()).toEqual([])
   })
 
+  it('records the places entered and the people met, and what was learned of each', () => {
+    const player = PlayerState.create('world_0001')
+    expect(player.discovered()).toEqual({ places: [], people: [] })
+
+    player.discover({ place: 'interior_0003' })
+    player.discover({ npc: 'npc_0002' })
+    player.discover({ place: 'interior_0001' })
+    player.discover({ place: 'interior_0003' })
+    player.unlock('npc_0002', 'fact_0001')
+    player.unlock('npc_0002', 'fact_0001')
+    // learning of somebody from a third party lists them too
+    player.unlock('npc_0007', 'fact_0004')
+    player.discover({ npc: 'npc_0002' })
+
+    const found = reload(player).discovered()
+    expect(found.places).toEqual(['interior_0003', 'interior_0001'])
+    expect(found.people).toEqual([
+      { npcId: 'npc_0002', unlocked: ['fact_0001'] },
+      { npcId: 'npc_0007', unlocked: ['fact_0004'] },
+    ])
+    expect(player.unlocked('npc_0002')).toEqual(['fact_0001'])
+    expect(player.unlocked('npc_9999')).toEqual([])
+  })
+
+  it('lets each person hold a few facts, oldest dropped, and none of another person', () => {
+    const player = PlayerState.create('world_0001')
+    expect(player.remember('npc_0002', 'took a job from the rival bar', 'told').ok).toBe(true)
+    expect(player.remember('npc_0002', 'took a job from the rival bar', 'told').ok).toBe(true)
+    expect(player.remember('npc_0002', 'walked out mid sentence', 'seen').ok).toBe(true)
+    expect(player.memories('npc_0002')).toEqual([
+      { fact: 'took a job from the rival bar', source: 'told' },
+      { fact: 'walked out mid sentence', source: 'seen' },
+    ])
+    expect(player.memories('npc_0003')).toEqual([])
+
+    for (let n = 1; n <= MEMORY_CAP; n += 1) player.remember('npc_0002', `fact ${n}`, 'told')
+    const held = reload(player).memories('npc_0002')
+    expect(held).toHaveLength(MEMORY_CAP)
+    expect(held[0]).toEqual({ fact: 'fact 1', source: 'told' })
+    expect(held[MEMORY_CAP - 1]).toEqual({ fact: `fact ${MEMORY_CAP}`, source: 'told' })
+
+    const blank = player.remember('npc_0002', '   ', 'told')
+    expect(blank.ok).toBe(false)
+    if (!blank.ok) expect(blank.error.code).toBe('bad-fact')
+    expect(player.remember('npc_0002', 'x'.repeat(FACT_LENGTH + 1), 'told').ok).toBe(false)
+
+    const gossip = player.remember('npc_0002', 'heard it in the street', 'overheard' as MemorySource)
+    expect(gossip.ok).toBe(false)
+    if (!gossip.ok) expect(gossip.error.code).toBe('unknown-source')
+    expect(player.memories('npc_0002')).toHaveLength(MEMORY_CAP)
+  })
+
+  it('moves how one person feels along a closed scale without touching anyone else', () => {
+    const player = PlayerState.create('world_0001')
+    expect(player.disposition('npc_0002')).toBe('neutral')
+
+    player.warm('npc_0002')
+    expect(player.disposition('npc_0002')).toBe('warm')
+    player.warm('npc_0002')
+    player.warm('npc_0002')
+    expect(player.disposition('npc_0002')).toBe('friendly')
+    expect(player.disposition('npc_0003')).toBe('neutral')
+
+    player.cool('npc_0003')
+    player.cool('npc_0003')
+    player.cool('npc_0003')
+    expect(reload(player).disposition('npc_0003')).toBe('hostile')
+    expect(reload(player).disposition('npc_0002')).toBe('friendly')
+
+    // back at neutral with nothing held, a person takes no room in the save
+    player.cool('npc_0002')
+    player.cool('npc_0002')
+    expect(saveOf(player).memory).toEqual({ npc_0003: { disposition: 'hostile', facts: [] } })
+  })
+
   it('opens a save written before places were remembered', () => {
     const old = {
       format: 'game-box.player',
@@ -189,6 +289,9 @@ describe('PlayerState', () => {
     expect(loaded.value.where).toBeUndefined()
     expect(loaded.value.tracked).toBeUndefined()
     expect(loaded.value.placed()).toEqual([])
+    expect(loaded.value.discovered()).toEqual({ places: [], people: [] })
+    expect(loaded.value.memories('npc_0001')).toEqual([])
+    expect(loaded.value.disposition('npc_0001')).toBe('neutral')
   })
 })
 

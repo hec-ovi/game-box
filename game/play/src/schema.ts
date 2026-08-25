@@ -1,6 +1,8 @@
 import { contract } from '@gb/kit'
 import { z } from 'zod'
 import { MAX_RATE, SECONDS_PER_DAY } from './day.ts'
+import { DISPOSITIONS } from './disposition.ts'
+import { FACT_LENGTH, MEMORY_SOURCES } from './memory.ts'
 import { WEATHERS } from './weather.ts'
 
 export const ClockSchema = z.object({
@@ -8,9 +10,11 @@ export const ClockSchema = z.object({
   day: z.number().int().min(1),
   /** How far into the day it is, from 0 up to (not including) 86400. */
   secondsOfDay: z.number().min(0).lt(SECONDS_PER_DAY),
-  /** Game seconds per real second. 0 is paused. */
+  /** Game seconds per real second while running. A save carrying 0 opens paused at the default rate. */
   rate: z.number().min(0).max(MAX_RATE),
   weather: z.enum(WEATHERS),
+  /** Whether the clock was stopped when the save was written. `rate` is still the rate it runs at. */
+  paused: z.boolean().optional(),
 })
 
 export const WhereSchema = z.object({
@@ -33,6 +37,33 @@ export const SpotSchema = z.object({
 export const PlacedItemSchema = z.object({
   itemId: z.string().min(1),
   ...SpotSchema.shape,
+})
+
+export const CodexPersonSchema = z.object({
+  npcId: z.string().min(1),
+  /** Ids of the background facts the player has learned about them, in the order learned. */
+  unlocked: z.array(z.string().min(1)),
+})
+
+export const CodexSchema = z.object({
+  /** Interiors the player has walked into, first entry first. */
+  places: z.array(z.string().min(1)),
+  /** People the player knows of, first met first. */
+  people: z.array(CodexPersonSchema),
+})
+
+export const MemorySchema = z.object({
+  /** One sentence a person now holds. */
+  fact: z.string().min(1).max(FACT_LENGTH),
+  /** Where they got it: the player said it, or they saw it happen. */
+  source: z.enum(MEMORY_SOURCES),
+})
+
+export const PersonMemorySchema = z.object({
+  /** How this one person feels about the player. */
+  disposition: z.enum(DISPOSITIONS),
+  /** Oldest first. */
+  facts: z.array(MemorySchema),
 })
 
 export const PlayerStateSchema = z.object({
@@ -59,6 +90,10 @@ export const PlayerStateSchema = z.object({
   tracked: z.string().min(1).optional(),
   /** Things the player carried off and left somewhere the city did not put them. */
   moved: z.array(PlacedItemSchema).optional(),
+  /** What the player has found so far. Absent until they find something. */
+  codex: CodexSchema.optional(),
+  /** What each person holds of the player, by npc id. Absent until somebody holds something. */
+  memory: z.record(z.string().min(1), PersonMemorySchema).optional(),
 })
 
 export const playerContract = contract('player-state', PlayerStateSchema)
@@ -67,3 +102,7 @@ export type ClockDoc = z.infer<typeof ClockSchema>
 export type WhereDoc = z.infer<typeof WhereSchema>
 export type SpotDoc = z.infer<typeof SpotSchema>
 export type PlacedItemDoc = z.infer<typeof PlacedItemSchema>
+export type CodexDoc = z.infer<typeof CodexSchema>
+export type CodexPersonDoc = z.infer<typeof CodexPersonSchema>
+export type MemoryDoc = z.infer<typeof MemorySchema>
+export type PersonMemoryDoc = z.infer<typeof PersonMemorySchema>
