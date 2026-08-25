@@ -107,6 +107,7 @@ describe('Pack', () => {
     if (pack.ok) return
     expect(pack.error.code).toBe('not-an-extension')
     if (pack.error.code !== 'not-an-extension') return
-    expect(pack.error.problems.map((problem) => problem.path)).toEqual(['plots.0', 'quests.0', 'quests.1', 'quests.2', 'quests.3'])
+    const everyQuest = base.quests.map((_, index) => `quests.${index}`)
+    expect(pack.error.problems.map((problem) => problem.path)).toEqual(['plots.0', ...everyQuest])
   })
 })
