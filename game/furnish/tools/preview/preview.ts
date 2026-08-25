@@ -7,11 +7,13 @@
  * envelope reads as an envelope at arm's length. `room` puts the surfaces on a
  * plain room with the lit channel running round it: it answers whether a
  * polished floor gives back the room's own light or a hole. `screens` stands
- * three televisions on three different screenings in that same dark room.
+ * three televisions on three different screenings in that same dark room, and
+ * `machines` one of every machine with its program printed on it, the camera,
+ * the gate of bars (`?open=1` slides it back) and a dance floor with its booth.
  *
  *   npx vite --port 5311     then open /game/furnish/tools/preview/index.html
  *
- * `?show=counter|room|screens`, `?style=corpo|home`, `?view=hand|near|far` (1,
+ * `?show=counter|room|screens|machines`, `?style=corpo|home`, `?view=hand|near|far` (1,
  * 2 and 3 switch live, `?x=` slides along the counter). On the counter:
  * `?cast=0|1|2` picks which cast of every archetype is shown, `?some=a,b,c`
  * lines up just those, `?batch=1` puts every item into one `BatchedMesh` so the
@@ -25,12 +27,13 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { WebGPURenderer } from 'three/webgpu'
 import { FurnishDressing, ITEM_SPECS, furnishKit, loadFurnish, type FurnishStyle } from '../../src/index.ts'
 import { buildCounter, COUNTER_TOP } from './counter.ts'
+import { buildMachines } from './machines.ts'
 import { buildRoom } from './room.ts'
 import { buildScreens } from './screens.ts'
 
 const options = new URLSearchParams(location.search)
 const asked = options.get('show')
-const show = asked === 'room' || asked === 'screens' ? asked : 'counter'
+const show = asked === 'room' || asked === 'screens' || asked === 'machines' ? asked : 'counter'
 const style: FurnishStyle = options.get('style') === 'home' ? 'home' : 'corpo'
 const labelled = options.get('labels') === '1'
 
@@ -47,7 +50,9 @@ const stage =
     ? { root: buildRoom(dressing, style, probed), items: [], span: 5.6 }
     : show === 'screens'
       ? { root: buildScreens(kit, style, probed), items: [], span: 6.6 }
-      : buildCounter(kit, dressing, {
+      : show === 'machines'
+        ? { root: buildMachines(kit, style, probed, options.get('open') === '1'), items: [], span: 8 }
+        : buildCounter(kit, dressing, {
         cast: Number(options.get('cast') ?? 0),
         batched: options.get('batch') === '1',
         some: (options.get('some')?.split(',').filter(Boolean) ?? []) as ItemArchetype[],
@@ -72,7 +77,7 @@ if (show === 'counter') {
 }
 
 /** How much light is in the stage that is not the room's own: none, on the screens. */
-const AMBIENT = { counter: 1, room: 0.34, screens: 0.06 }[show]
+const AMBIENT = { counter: 1, room: 0.34, screens: 0.06, machines: 0.12 }[show]
 scene.add(new THREE.HemisphereLight(0x5d8296, 0x101418, 1.5 * AMBIENT))
 const key = new THREE.DirectionalLight(0xdff2ff, 2.6 * AMBIENT)
 key.position.set(2.4, 4.2, -2.8)
@@ -109,6 +114,12 @@ function aim(): void {
   if (show === 'room') {
     camera.position.set(pan, 1.62, 2.4)
     camera.lookAt(pan, view === 'hand' ? 0.2 : view === 'far' ? 1.9 : 0.7, -2.4)
+    return
+  }
+  if (show === 'machines') {
+    // standing inside the street door looking up the room, or a step from the desk
+    camera.position.set(pan, 1.62, view === 'hand' ? -0.9 : 2.6)
+    camera.lookAt(pan + (view === 'hand' ? 1.5 : 0), view === 'hand' ? 1.05 : 1.1, -2.4)
     return
   }
   camera.position.set(pan, view === 'hand' ? COUNTER_TOP + 0.42 : COUNTER_TOP + 0.28 + back * 0.16, -back)

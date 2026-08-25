@@ -22,6 +22,8 @@ export interface Build {
   readonly staff: number
   /** How tall it stands, for a prop that declares one. Zero otherwise. */
   readonly height: number
+  /** Drawn in its open state: a gate with its leaf slid back. False for everything that does not open. */
+  readonly open: boolean
 }
 
 export type PropBuilder = (build: Build) => void

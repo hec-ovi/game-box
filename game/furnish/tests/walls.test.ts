@@ -115,8 +115,9 @@ describe('a wall is a run of bays', () => {
           const inward = bay.side === 'north' || bay.side === 'west' ? 1 : -1
 
           for (const piece of interior.furniture) {
-            // a piece in the next room is behind a solid wall, not in front of this one
-            if (piece.roomId !== bay.roomId) continue
+            // a piece in the next room is behind a solid wall, not in front of this one,
+            // and a camera hung over the field fights nothing on it
+            if (piece.roomId !== bay.roomId || (piece.lift ?? 0) >= WALL.rail.top) continue
             const half = boxOf(piece)
             const overlap =
               Math.min(bay.to, piece.pos[axis] + half[axis]) - Math.max(bay.from, piece.pos[axis] - half[axis])

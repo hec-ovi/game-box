@@ -1,8 +1,8 @@
 /**
  * Prints what a furnished room costs against the greybox it replaces: draws,
  * triangles and materials, per room of a generated town, each in the language
- * its building's finish gives it, with and without the bays its walls are made
- * of. Also the build time and the memory of the catalog itself, furniture and
+ * its building's finish gives it, with and without its decor: the bays its
+ * walls are made of, its screens' prints and any dance floor. Also the build time and the memory of the catalog itself, furniture and
  * carried things. The numbers in CONTRACT.md come from here.
  *
  * Run: node game/furnish/tools/print-cost.ts
@@ -76,10 +76,10 @@ for (const placement of world.toJSON().placements) {
 }
 
 console.log('a whole room, shell included. Every piece of furniture in it is one mesh on one material,')
-console.log('every thing lying on it is another, and every bay of every wall of the interior is one more.\n')
+console.log('every thing lying on it is another, and the decor of the interior (its bays, its screens, its dance floor) is one more.\n')
 console.log(
   `${'room'.padEnd(12)}${'finish'.padEnd(11)}${'language'.padEnd(9)}${'pieces'.padStart(6)}${'items'.padStart(6)}${'bays'.padStart(6)}   ` +
-    `${'furnished'.padEnd(30)}${'furnished + walls'.padEnd(30)}greybox`,
+    `${'furnished'.padEnd(30)}${'furnished + decor'.padEnd(30)}greybox`,
 )
 for (const interior of [...world.interiors()].sort((a, b) => b.furniture.length - a.furniture.length)) {
   const room = furnished.room(interior, world.charter(interior.kind))

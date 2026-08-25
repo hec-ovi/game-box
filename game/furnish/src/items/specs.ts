@@ -40,6 +40,7 @@ export const ITEM_SPECS: Record<ItemArchetype, ItemSpec> = {
   book: { width: 0.15, depth: 0.22, height: 0.04, body: ['oxblood', 'navy', 'moss'], trim: 'brass', mark: 'paper' },
   ledger: { width: 0.22, depth: 0.31, height: 0.055, body: ['ink', 'hide', 'slate'], trim: 'brass', mark: 'bond' },
   envelope: { width: 0.22, depth: 0.11, height: 0.008, body: ['bond', 'manila', 'paper'], trim: 'ink', mark: 'red' },
+  deed: { width: 0.21, depth: 0.297, height: 0.012, body: ['bond', 'manila', 'paper'], trim: 'ink', mark: 'red' },
   key: { width: 0.058, depth: 0.024, height: 0.006, body: ['brass', 'steel', 'gunmetal'], trim: 'ink', mark: 'ink' },
   keycard: { width: 0.086, depth: 0.054, height: 0.003, body: ['ink', 'teal', 'white'], trim: 'gunmetal', mark: 'brass' },
   bag: { width: 0.46, depth: 0.24, height: 0.31, body: ['duffel', 'canvas', 'leather'], trim: 'ink', mark: 'amber' },

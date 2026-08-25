@@ -62,6 +62,56 @@ export const envelope: ItemBuilder = ({ solid, cast, width, depth, height }) => 
   }
 }
 
+/**
+ * A deed: a sheet with a title across its head, lines of terms down it, and a
+ * seal in the corner where it was signed. The seal is the one mark, the thing
+ * that says whose the place is now.
+ */
+export const deed: ItemBuilder = ({ solid, cast, width, depth, height }) => {
+  const face = height - PRINT
+  const seal = 0.028
+  solid.block({
+    width,
+    depth,
+    y0: 0,
+    y1: face,
+    corner: everyCorner(0.002),
+    arc: 1,
+    top: edgeOf(cast, 0.0008),
+    look: cast.body,
+  })
+  solid.block({
+    z: -depth * 0.38,
+    width: width * 0.6,
+    depth: 0.012,
+    y0: face - BURY,
+    y1: height,
+    look: cast.trim,
+  })
+  for (let line = 0; line < 6; line++) {
+    solid.block({
+      x: -width * 0.05,
+      z: -depth * 0.2 + line * 0.024,
+      width: width * heft(cast, 0.62, 0.76) - (line === 5 ? 0.06 : 0),
+      depth: 0.005,
+      y0: face - BURY,
+      y1: height - PRINT * 0.4,
+      look: cast.trim,
+    })
+  }
+  solid.block({
+    x: width * 0.3,
+    z: depth * 0.36,
+    width: seal,
+    depth: seal,
+    y0: face - BURY,
+    y1: height,
+    corner: everyCorner(seal / 2),
+    arc: 3,
+    look: cast.mark,
+  })
+}
+
 export const keycard: ItemBuilder = ({ solid, cast, width, depth, height }) => {
   const face = height - PRINT
   solid.block({ width, depth, y0: 0, y1: face, corner: everyCorner(0.0035), arc: 2, look: cast.body })

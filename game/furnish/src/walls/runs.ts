@@ -11,6 +11,7 @@
  * of it. No geometry, so it can be checked without building anything.
  */
 import { METRICS, footprintOf, roomUseOf, type Interior, type ResolvedCharter, type RoomUse } from '@gb/world'
+import { WALL } from './bays.ts'
 
 type Room = Interior['rooms'][number]
 type Furniture = Interior['furniture'][number]
@@ -57,8 +58,8 @@ const HALF_WALL = METRICS.building.wallThickness / 2
 const DOORWAY = METRICS.building.doorWidth / 2 + 0.1
 const DOORWAY_CLEAR = 0.15
 
-/** Nothing standing further into the room than this can fight a bay. */
-const REACH = 0.5
+/** Nothing standing further into the room than this is any concern of the wall's. */
+const REACH = 2
 
 /** Two floats out of the same generator are the same edge inside this. */
 const SAME = 1e-6
@@ -135,6 +136,8 @@ function obstaclesOn(interior: Interior, room: Room, edge: Edge, topOf: TopOf): 
 
   for (const piece of interior.furniture) {
     if (piece.roomId !== room.id) continue
+    // a piece hung over the field, a camera under the ceiling, fights nothing on it
+    if ((piece.lift ?? 0) >= WALL.rail.top) continue
     const half = halfExtents(piece)
     const near = edge.inward * (piece.pos[across] - edge.inward * half[across] - edge.face)
     if (near > REACH) continue
@@ -170,6 +173,17 @@ export function clears(run: WallRun, span: Span, depth: number, low: number): bo
   }
   return true
 }
+
+/** Whether the floor in front of a stretch of wall is open for `metres` out, with nothing a body walks round on it. */
+export function openInFront(run: WallRun, span: Span, metres: number): boolean {
+  return run.obstacles.every(
+    (obstacle) =>
+      obstacle.to <= span.from + SAME || obstacle.from >= span.to - SAME || obstacle.near >= metres || obstacle.top <= STEP_OVER,
+  )
+}
+
+/** What a body steps over rather than walks round: a rug, a tile. `@gb/scene`'s own number. */
+const STEP_OVER = 0.25
 
 /** The stretches of a run no doorway falls in, in order. */
 export function segmentsOf(run: WallRun): Span[] {

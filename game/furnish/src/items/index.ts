@@ -1,7 +1,7 @@
 import type { ItemArchetype } from '@gb/world'
 import type { ItemBuilder } from './builder.ts'
 import { bag, box, briefcase, crate, fuelcan, medkit, parcel, toolbox } from './pack.ts'
-import { book, cash, envelope, keycard, ledger, painting } from './paper.ts'
+import { book, cash, deed, envelope, keycard, ledger, painting } from './paper.ts'
 import { gem, key, phone, radio, statue, wrench } from './tool.ts'
 import { bottle, cup, flower, glass, plate } from './vessel.ts'
 
@@ -15,6 +15,7 @@ export const ITEM_BUILDERS: Record<ItemArchetype, ItemBuilder> = {
   book,
   ledger,
   envelope,
+  deed,
   key,
   keycard,
   bag,

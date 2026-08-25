@@ -1,8 +1,11 @@
 import type { FurnitureProp } from '@gb/world'
 import { cabinet, crateStack, displayCase, fridge, shelf, wardrobe } from './case.ts'
+import { camera } from './camera.ts'
 import { barCounter, counter, sink, stove } from './counter.ts'
+import { barsDoor } from './gate.ts'
 import { coffeeMachine, jukebox, lamp, register, tv } from './gear.ts'
 import { plant, rug } from './green.ts'
+import { laptop, monitor, tablet, terminal } from './machine.ts'
 import { barStool, chair, officeChair } from './seat.ts'
 import { bed, sofa } from './soft.ts'
 import { desk, table } from './table.ts'
@@ -34,4 +37,13 @@ export const BUILDERS: Record<FurnitureProp, PropBuilder> = {
   tv,
   'coffee-machine': coffeeMachine,
   jukebox,
+  terminal,
+  laptop,
+  tablet,
+  monitor,
+  camera,
+  'bars-door': barsDoor,
 }
+
+/** The pieces that open: built a second time with their leaf slid back. */
+export const OPENS: readonly FurnitureProp[] = ['bars-door']

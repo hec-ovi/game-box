@@ -84,7 +84,21 @@ export class FurnishDressing implements Dressing {
   }
 
   prop(prop: FurnitureProp): THREE.Object3D {
-    const mesh = new THREE.Mesh(this.#kit.geometry(prop, this.style, this.#slot), this.#kit.material)
+    return this.#piece(prop, this.#kit.geometry(prop, this.style, this.#slot))
+  }
+
+  /**
+   * The same piece drawn open, for a piece that opens: the gate of bars with
+   * its leaf slid into the wall, for the app to stand in the shut one's place
+   * when its door unlocks. Nothing for a piece that does not open.
+   */
+  opened(prop: FurnitureProp): THREE.Object3D | undefined {
+    const geometry = this.#kit.opened(prop, this.style)
+    return geometry && this.#piece(prop, geometry)
+  }
+
+  #piece(prop: FurnitureProp, geometry: THREE.BufferGeometry): THREE.Mesh {
+    const mesh = new THREE.Mesh(geometry, this.#kit.material)
     mesh.name = prop
     mesh.castShadow = true
     mesh.receiveShadow = true

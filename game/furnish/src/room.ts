@@ -1,9 +1,12 @@
 import type { Dressing } from '@gb/scene'
 import type { Finish, Interior } from '@gb/world'
 import * as THREE from 'three'
+import { Solid } from './build/solid.ts'
+import { layDanceFloor, type LitTile } from './dance/floor.ts'
 import type { RoomDress } from './dress.ts'
 import type { FurnishDressing } from './dressing.ts'
 import type { FurnishLibrary } from './kit/library.ts'
+import { printScreens, type Printed } from './machines/print.ts'
 import type { FurnishStyle } from './style/palette.ts'
 import { buildWalls, type PlacedBay } from './walls/build.ts'
 
@@ -15,11 +18,14 @@ import { buildWalls, type PlacedBay } from './walls/build.ts'
  * - `dressing` is what `@gb/scene` builds the room with. It paints this
  *   interior's own floor, walls and ceiling, drawn from the seed, so the shop
  *   is not the same room as the flat above it.
- * - `decor` is everything the walls are made of that is not flat: panelled
- *   bays, lit recesses with things standing in them, shelves, framed pictures,
- *   grilles, light strips and windows. One indexed mesh on the one shared
- *   material, in the interior's own coordinates, so it goes straight into what
- *   `buildInterior` hands back and costs one draw however many bays there are.
+ * - `decor` is everything in the room that is this interior's own and not a
+ *   shared piece: the bays its walls are made of (panels, lit recesses with
+ *   things standing in them, shelves, framed pictures, grilles, light strips,
+ *   windows, the booth over a dance floor), what every screen in it is showing,
+ *   printed on the glass of the machine the file put there, and the lit tiles
+ *   under its dancers. One indexed mesh on the one shared material, in the
+ *   interior's own coordinates, so it goes straight into what `buildInterior`
+ *   hands back and costs one draw however much of it there is.
  *
  * ```ts
  * const room = dressing.room(interior)
@@ -27,10 +33,12 @@ import { buildWalls, type PlacedBay } from './walls/build.ts'
  * built.root.add(room.decor)
  * ```
  *
- * The things standing in a niche or on a shelf are decoration. They are not
- * `@gb/world` furniture, nothing can pick one up, and nothing collides with
- * one: no bay reaches more than `BAY_SPECS[kind].depth` off the wall, which is
- * well inside the radius the player is already held off it by.
+ * The things standing in a niche or on a shelf are decoration, and so are the
+ * prints and the tiles. None of it is `@gb/world` furniture, nothing can pick
+ * any of it up, and nothing collides with it: no bay reaches more than
+ * `BAY_SPECS[kind].depth` off the wall, which is inside the radius the player
+ * is already held off it by, a print is a millimetre off a screen, and a tile
+ * is under the height a body steps over.
  */
 export class FurnishRoom {
   readonly interiorId: string
@@ -46,25 +54,36 @@ export class FurnishRoom {
   readonly bays: readonly PlacedBay[]
   /** Every height in this room a body can put something down on, exactly. */
   readonly contacts: readonly number[]
+  /** Every screen in the interior and what it is showing. */
+  readonly screens: readonly Printed[]
+  /** Every lit tile of a dance floor, in interior metres. */
+  readonly tiles: readonly LitTile[]
   readonly triangles: number
 
   constructor(kit: FurnishLibrary, dressing: FurnishDressing, dress: RoomDress, interior: Interior) {
-    const walls = buildWalls(interior, dress, kit.seed, (prop) => kit.heightOf(prop, dress.style))
+    const solid = new Solid()
+    const walls = buildWalls(solid, interior, dress, kit.seed, (prop) => kit.heightOf(prop, dress.style))
+    const screens = printScreens(solid, interior, kit.seed)
+    const tiles = layDanceFloor(solid, interior, kit.seed)
+    const geometry = solid.geometry()
+    geometry.name = `furnish:decor:${dress.style}:${interior.id}`
 
     this.interiorId = interior.id
     this.style = dress.style
     this.finish = dress.finish
     this.dressing = dressing
-    this.decor = new THREE.Mesh(walls.geometry, kit.material)
-    this.decor.name = `furnish:walls:${interior.id}`
+    this.decor = new THREE.Mesh(geometry, kit.material)
+    this.decor.name = `furnish:decor:${interior.id}`
     this.decor.castShadow = true
     this.decor.receiveShadow = true
     this.bays = walls.bays
     this.contacts = walls.contacts
-    this.triangles = walls.triangles
+    this.screens = screens
+    this.tiles = tiles
+    this.triangles = solid.triangles
   }
 
-  /** The bays are this room's own geometry, so this room owns them. */
+  /** The decor is this room's own geometry, so this room owns it. */
   dispose(): void {
     this.decor.geometry.dispose()
   }

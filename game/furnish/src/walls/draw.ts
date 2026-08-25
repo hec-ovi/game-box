@@ -15,6 +15,7 @@ import type { Rng } from '@gb/kit'
 import type { Solid } from '../build/solid.ts'
 import { cornersOf, edgeOf, type Variant } from '../style/variant.ts'
 import { SHELF_LEDGES, WALL, type BayKind } from './bays.ts'
+import { drawBooth } from './booth.ts'
 import { standThings } from './things.ts'
 
 /** Air left at each end of a bay, so the seam between two of them reads. */
@@ -53,6 +54,7 @@ export const BAY_DRAWS: Record<BayKind, Draw | undefined> = {
   grille: drawGrille,
   strip: drawStrip,
   window: drawWindow,
+  booth: drawBooth,
 }
 
 /** The rail over the field of bays, and the lit channel washing down off it. */

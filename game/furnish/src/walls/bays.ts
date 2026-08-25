@@ -4,7 +4,7 @@
  * A wall is not one surface. It is a run of bays: a whole number of 10 cm room
  * cells each, side by side along the wall, each one plain, panelled, a lit
  * recess with something standing in it, a shelf, a framed picture, a grille, a
- * light strip or a window.
+ * light strip, a window, or the booth a dance floor is played from.
  *
  * This file is the vocabulary and nothing else: how wide a bay of each kind may
  * be, how far it stands off the wall, and the lowest part of it that sticks
@@ -14,7 +14,7 @@
  */
 import { METRICS } from '@gb/world'
 
-export type BayKind = 'plain' | 'panel' | 'niche' | 'shelf' | 'frame' | 'grille' | 'strip' | 'window'
+export type BayKind = 'plain' | 'panel' | 'niche' | 'shelf' | 'frame' | 'grille' | 'strip' | 'window' | 'booth'
 
 export interface BaySpec {
   /** How wide it may be, in 10 cm room cells: fewest, then most. */
@@ -56,6 +56,8 @@ export const WALL = {
   strip: { low: 0.1, high: 2.3, depth: 0.035, width: 0.1 },
   window: { low: 1, high: 2.2, depth: 0.06, frame: 0.07 },
   panel: { low: 0.04, depth: 0.03, gap: 0.02 },
+  /** The booth: a console with its top at hand height, and the rack of meters over it. */
+  booth: { top: serviceCounterHeight, low: 0.04, depth: 0.28, rack: { low: 1.35, high: 1.85, depth: 0.06 } },
 } as const
 
 /** The most cells a shelf bay ever carries. */
@@ -70,6 +72,7 @@ export const WALL_CONTACTS: readonly number[] = [
   ...new Set([
     ...Array.from({ length: SHELF_LEDGES }, (_, at) => WALL.shelf.lowest + at * WALL.shelf.pitch),
     WALL.niche.sill,
+    WALL.booth.top,
   ]),
 ].sort((one, two) => one - two)
 
@@ -82,6 +85,7 @@ export const BAY_SPECS: Record<BayKind, BaySpec> = {
   grille: { cells: [4, 9], depth: WALL.grille.depth, low: WALL.grille.low },
   strip: { cells: [4, 12], depth: WALL.strip.depth, low: WALL.strip.low },
   window: { cells: [8, 16], depth: WALL.window.depth, low: WALL.window.low, outsideOnly: true },
+  booth: { cells: [6, 12], depth: WALL.booth.depth, low: WALL.booth.low },
 }
 
 /** A bay with something standing off the wall in it, so two in a row read as one. */

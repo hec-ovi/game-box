@@ -1,11 +1,12 @@
 /**
  * One room's walls, as one buffer.
  *
- * Every bay of every wall of every room in an interior is drawn into a single
- * `Solid`, so a whole building's worth of panelling, recesses, shelves,
- * grilles, strips and windows is one indexed mesh on the one shared material:
- * one draw, whatever the count. Adding bay kinds or making the rhythm finer
- * costs triangles, never draws.
+ * Every bay of every wall of every room in an interior is drawn into the one
+ * `Solid` the room hands over, so a whole building's worth of panelling,
+ * recesses, shelves, grilles, strips and windows shares one indexed mesh on
+ * the one shared material with everything else the room prints: one draw,
+ * whatever the count. Adding bay kinds or making the rhythm finer costs
+ * triangles, never draws.
  *
  * The bay itself is drawn in a frame of its own (across, up, out of the wall)
  * and put on the wall by a matrix, so nothing in `draw.ts` knows which way a
@@ -14,7 +15,7 @@
 import { Rng } from '@gb/kit'
 import type { Interior } from '@gb/world'
 import * as THREE from 'three'
-import { Solid } from '../build/solid.ts'
+import type { Solid } from '../build/solid.ts'
 import type { RoomDress } from '../dress.ts'
 import { variantOf } from '../style/variant.ts'
 import { BAY_SPECS, type BayKind } from './bays.ts'
@@ -42,11 +43,9 @@ export interface PlacedBay {
 }
 
 export interface BuiltWalls {
-  readonly geometry: THREE.BufferGeometry
   readonly bays: readonly PlacedBay[]
   /** Every height in this room a body can put something down on, exactly. */
   readonly contacts: readonly number[]
-  readonly triangles: number
 }
 
 const UP = new THREE.Vector3(0, 1, 0)
@@ -60,8 +59,7 @@ const YAW: Record<Side, number> = {
   east: -Math.PI / 2,
 }
 
-export function buildWalls(interior: Interior, dress: RoomDress, seed: string, topOf: TopOf): BuiltWalls {
-  const solid = new Solid()
+export function buildWalls(solid: Solid, interior: Interior, dress: RoomDress, seed: string, topOf: TopOf): BuiltWalls {
   const variant = variantOf(dress.style, WALL_KIND, seed)
   const decor = new Rng(seed).fork('furnish').fork('wall-decor').fork(dress.style).fork(interior.id)
   const bays: PlacedBay[] = []
@@ -105,9 +103,7 @@ export function buildWalls(interior: Interior, dress: RoomDress, seed: string, t
     }
   }
 
-  const geometry = solid.geometry()
-  geometry.name = `furnish:walls:${dress.style}:${interior.id}`
-  return { geometry, bays, contacts: [...contacts].sort((one, two) => one - two), triangles: solid.triangles }
+  return { bays, contacts: [...contacts].sort((one, two) => one - two) }
 }
 
 /** A bay's own frame, standing on the wall at `along` metres down the run. */

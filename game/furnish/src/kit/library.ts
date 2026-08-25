@@ -43,6 +43,14 @@ export class FurnishLibrary {
     return screens[slot % screens.length]!
   }
 
+  /**
+   * The same piece with its leaf slid open, for a piece that opens: the gate of
+   * bars with its opening clear. Nothing for a piece that does not open.
+   */
+  opened(prop: FurnitureProp, style: FurnishStyle): THREE.BufferGeometry | undefined {
+    return this.#built(style, prop).opened
+  }
+
   /** One thing a player can pick up, in the cast its id draws. Shared per cast. */
   item(item: Item): THREE.BufferGeometry {
     return this.itemGeometry(item.archetype, castIndex(this.seed, item.id))
@@ -114,7 +122,10 @@ export class FurnishLibrary {
   }
 
   dispose(): void {
-    for (const built of this.#props.values()) for (const geometry of built.screens) geometry.dispose()
+    for (const built of this.#props.values()) {
+      for (const geometry of built.screens) geometry.dispose()
+      built.opened?.dispose()
+    }
     for (const built of this.#items.values()) built.geometry.dispose()
     this.#material.dispose()
     this.surfaces?.dispose()

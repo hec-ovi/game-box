@@ -10,13 +10,16 @@
  *
  * This is the distribution and nothing else. It draws from a stream forked per
  * room and per wall, so retuning the taste cannot move the furniture, and
- * adding a bay kind cannot change the wall next door.
+ * adding a bay kind cannot change the wall next door. The one bay not dealt is
+ * the booth: a room that dances stands exactly one, on the bay nearest its
+ * dancers that has the wall clear for it.
  */
 import { Rng } from '@gb/kit'
 import { PROP_CELL, type Interior } from '@gb/world'
+import { dancersIn, dancesIn, type Anchor } from '../dance/room.ts'
 import type { RoomDress } from '../dress.ts'
 import { BAY_SPECS, WALL, isFeature, type BayKind } from './bays.ts'
-import { clears, runsOf, segmentsOf, useOf, type Span, type TopOf, type WallRun } from './runs.ts'
+import { clears, openInFront, runsOf, segmentsOf, useOf, type Span, type TopOf, type WallRun } from './runs.ts'
 import { tasteOf, type Taste } from './taste.ts'
 
 /** How wide a bay wants to be, in cells. The rhythm settles near this. */
@@ -24,6 +27,9 @@ const PREFERRED_PROP_CELLS = 7
 
 /** A stretch shorter than this is left as bare wall. */
 const MIN_RUN_PROP_CELLS = 4
+
+/** Metres of open floor a booth wants in front of it: the dancers, not the back of the bar. */
+const BOOTH_FLOOR = 1.6
 
 export interface PlannedBay extends Span {
   readonly kind: BayKind
@@ -46,13 +52,46 @@ export function planInterior(interior: Interior, dress: RoomDress, seed: string,
   const planned: PlannedRun[] = []
 
   for (const room of interior.rooms) {
-    const taste = tasteOf(dress.finish, useOf(room, dress.charter))
-    for (const run of runsOf(interior, room, topOf)) {
+    const dancing = dancesIn(interior, room)
+    const taste = tasteOf(dress.finish, useOf(room, dress.charter), dancing)
+    const walls = runsOf(interior, room, topOf).map((run) => {
       const rng = root.fork(room.id).fork(run.side)
-      planned.push({ run, bays: baysOf(run, taste, rng), bands: bandsOf(run) })
-    }
+      return { run, bays: baysOf(run, taste, rng), bands: bandsOf(run) }
+    })
+    planned.push(...(dancing ? withBooth(walls, dancersIn(interior, room), room.rect) : walls))
   }
   return planned
+}
+
+/**
+ * The booth on the wall nearest the dancers: the one bay of the room, wide
+ * enough and with open floor in front of it, whose middle is closest to a
+ * dancer, or to the middle of the room when nobody is dancing yet. A room with
+ * no such bay has no booth.
+ */
+function withBooth(walls: PlannedRun[], dancers: readonly Anchor[], rect: { x: number; y: number; w: number; h: number }): PlannedRun[] {
+  const spec = BAY_SPECS.booth
+  const towards = dancers.length ? dancers.map((dancer) => dancer.pos) : [{ x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 }]
+  let best: { wall: number; bay: number; distance: number } | undefined
+
+  walls.forEach(({ run, bays }, wall) => {
+    bays.forEach((bay, at) => {
+      if (bay.cells < spec.cells[0] || bay.cells > spec.cells[1]) return
+      if (!clears(run, bay, spec.depth, spec.low) || !openInFront(run, bay, BOOTH_FLOOR)) return
+      const along = (bay.from + bay.to) / 2
+      const here = run.side === 'north' || run.side === 'south' ? { x: along, y: run.face } : { x: run.face, y: along }
+      const distance = Math.min(...towards.map((dancer) => Math.hypot(dancer.x - here.x, dancer.y - here.y)))
+      if (!best || distance < best.distance) best = { wall, bay: at, distance }
+    })
+  })
+  if (!best) return walls
+
+  const chosen = best
+  return walls.map((planned, wall) =>
+    wall === chosen.wall
+      ? { ...planned, bays: planned.bays.map((bay, at) => (at === chosen.bay ? { ...bay, kind: 'booth' as const } : bay)) }
+      : planned,
+  )
 }
 
 function baysOf(run: WallRun, taste: Taste, rng: Rng): PlannedBay[] {

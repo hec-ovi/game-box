@@ -102,6 +102,23 @@ export async function town(seed = 'furnish'): Promise<World> {
   return built.value.world
 }
 
+/**
+ * The town whose story calls for dancing: the offline neon trade "the clubs"
+ * declares a disco, with a dance floor, a gate of bars on its cellar and a
+ * camera over its door. The one town with each of those in it.
+ */
+export async function clubTown(): Promise<World> {
+  const built = await new Forge(new OfflineNarrator('club-1')).build({
+    theme: 'dense neon port city',
+    seed: 'club-1',
+    blocksX: 3,
+    blocksY: 3,
+    blockCells: 14,
+  })
+  if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 400))
+  return built.value.world
+}
+
 /** Seeds a test that has to see the catalog exercised samples over, rather than one town. */
 export const TOWN_SEEDS = ['furnish', 'furnish-2', 'furnish-3'] as const
 

@@ -108,16 +108,16 @@ describe('the height a body meets', () => {
     }
   })
 
-  it('lifts a till and a coffee machine onto the drawn top of the counter they stand on', () => {
+  it('lifts a till, a coffee machine and the four screens onto the drawn top of what they stand on', () => {
     // the planner writes `Furniture.lift` as the host's contact height and
     // `@gb/scene` draws the piece there: so the published number has to be the
     // drawn top, and the piece has to fit on it
     const lifted = FURNITURE_PROPS.filter((prop) => PROP_SPECS[prop].onSurface)
-    expect(lifted).toEqual(['register', 'coffee-machine'])
+    expect(lifted).toEqual(['register', 'coffee-machine', 'terminal', 'laptop', 'tablet', 'monitor'])
 
     for (const style of FURNISH_STYLES) {
       const dressing = dressingIn(style)
-      for (const host of ['counter', 'bar-counter'] as const) {
+      for (const host of ['counter', 'bar-counter', 'desk'] as const) {
         const lift = dressing.contactHeight(host)!
         const top = plates(dressing.prop(host)).find((plate) => Math.abs(plate.y - lift) < 1e-5)
         expect(top, `${style} ${host} top at ${lift}`).toBeDefined()

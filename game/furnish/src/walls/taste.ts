@@ -5,8 +5,11 @@
  * what the charter says a place is finished like decides whether its walls
  * are panelled and lit or bare and racked. `USE_TASTE` is how the room's own
  * use tilts that row: a store leans to shelves, a washroom to grilles, a
- * bedroom to pictures and windows. `tasteOf` is the two multiplied. Retune
- * here, nowhere else.
+ * bedroom to pictures and windows. `tasteOf` is the two multiplied, and
+ * `DANCE_TILT` is what a room that dances does to the row over its use. The
+ * booth weighs nothing everywhere: a dance floor stands exactly one, on the
+ * wall nearest its dancers, and nothing draws one by chance. Retune here,
+ * nowhere else.
  */
 import type { Finish, RoomUse } from '@gb/world'
 import type { BayKind } from './bays.ts'
@@ -16,16 +19,19 @@ export type Taste = Readonly<Record<BayKind, number>>
 /** One weight per bay kind, per finish. */
 export const BAY_TASTE: Record<Finish, Taste> = {
   // flat panel with a machined rhythm, services on show, a lit case rather than a shelf of clutter
-  corporate: { plain: 3, panel: 9, niche: 3, shelf: 2, frame: 2, grille: 3, strip: 2, window: 3 },
+  corporate: { plain: 3, panel: 9, niche: 3, shelf: 2, frame: 2, grille: 3, strip: 2, window: 3, booth: 0 },
   // a cabin wall: more things standing on things, warmer and busier
-  domestic: { plain: 3, panel: 8, niche: 4, shelf: 4, frame: 3, grille: 1, strip: 2, window: 4 },
+  domestic: { plain: 3, panel: 8, niche: 4, shelf: 4, frame: 3, grille: 1, strip: 2, window: 4, booth: 0 },
   // an institution: bare stretches, notices in frames, little standing on the walls
-  civic: { plain: 5, panel: 8, niche: 2, shelf: 1, frame: 3, grille: 3, strip: 2, window: 4 },
+  civic: { plain: 5, panel: 8, niche: 2, shelf: 1, frame: 3, grille: 3, strip: 2, window: 4, booth: 0 },
   // a place of work: racks and vents, few pictures, the light strips up the wall
-  industrial: { plain: 4, panel: 4, niche: 1, shelf: 5, frame: 1, grille: 5, strip: 3, window: 2 },
+  industrial: { plain: 4, panel: 4, niche: 1, shelf: 5, frame: 1, grille: 5, strip: 3, window: 2, booth: 0 },
   // left as it was: mostly bare wall, what is there is unlit
-  worn: { plain: 6, panel: 5, niche: 2, shelf: 3, frame: 1, grille: 3, strip: 1, window: 3 },
+  worn: { plain: 6, panel: 5, niche: 2, shelf: 3, frame: 1, grille: 3, strip: 1, window: 3, booth: 0 },
 }
+
+/** What dancing does to a room's row: strips and lit niches up the walls, nothing to read and little to see out of. */
+export const DANCE_TILT: Partial<Record<BayKind, number>> = { strip: 2.5, niche: 1.5, panel: 1.2, frame: 0.3, shelf: 0.3, window: 0.3 }
 
 /** How a room's use multiplies its finish's row. A kind left out keeps its weight. */
 export const USE_TASTE: Partial<Record<RoomUse, Partial<Record<BayKind, number>>>> = {
@@ -52,12 +58,13 @@ export const USE_TASTE: Partial<Record<RoomUse, Partial<Record<BayKind, number>>
   'bulk-store': { shelf: 3, grille: 1.5, frame: 0, niche: 0, window: 0.5, strip: 0.5 },
 }
 
-/** The row a wall in this finish, in a room of this use, draws its bays from. */
-export function tasteOf(finish: Finish, use: RoomUse | undefined): Taste {
+/** The row a wall in this finish, in a room of this use, draws its bays from; tilted again when the room dances. */
+export function tasteOf(finish: Finish, use: RoomUse | undefined, dancing = false): Taste {
   const base = BAY_TASTE[finish]
   const tilt = use === undefined ? undefined : USE_TASTE[use]
-  if (!tilt) return base
   const taste = { ...base }
-  for (const kind of Object.keys(base) as BayKind[]) taste[kind] = base[kind] * (tilt[kind] ?? 1)
+  for (const kind of Object.keys(base) as BayKind[]) {
+    taste[kind] = base[kind] * (tilt?.[kind] ?? 1) * (dancing ? (DANCE_TILT[kind] ?? 1) : 1)
+  }
   return taste
 }
