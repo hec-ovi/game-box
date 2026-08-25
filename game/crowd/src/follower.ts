@@ -93,7 +93,7 @@ export class Follower {
     }
 
     this.walker.speed = this.#gearFor(gap)
-    this.walker.moving = gap > this.#options.catchUp ? CLIPS.run : CLIPS.walk
+    this.walker.moving = gap > this.#options.catchUp ? CLIPS.run : this.walker.walk
     if (gap <= SETTLED) this.#stand()
     else if (this.#rethinking(slot)) this.#makeFor(slot)
     this.walker.advance(seconds)

@@ -1,3 +1,4 @@
+import { walkFor } from '@gb/cast'
 import { Rng } from '@gb/kit'
 import { METRICS, type Npc, type World } from '@gb/world'
 import { Hold, NOBODY, type Attention } from './attention.ts'
@@ -291,6 +292,7 @@ export class Crowd {
       kerb: this.#kerb,
       at,
       speed: METRICS.player.walkSpeed * rng.range(1 - spread, 1 + spread),
+      walk: walkFor(npc.id),
       turnRate: this.options.turnRate,
       stuckSeconds: this.options.stuckSeconds,
       rng,

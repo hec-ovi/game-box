@@ -16,6 +16,12 @@ export interface CrowdActor {
   faceTo(heading: number): void
   /** Cross-fade to this clip. An unknown name is ignored by the cast, never thrown. */
   play(clip: string): void
+  /**
+   * How fast the body is really moving, in metres per second, so a gait can be
+   * run at the speed the feet cover. Optional: a body that cannot be paced
+   * plays its walk as authored.
+   */
+  pace?(metresPerSecond: number): void
   /** Take this body out of the world. */
   release(): void
   /**

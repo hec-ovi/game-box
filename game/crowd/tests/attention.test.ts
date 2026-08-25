@@ -1,4 +1,4 @@
-import { CLIPS } from '@gb/cast'
+import { CLIPS, walkFor } from '@gb/cast'
 import { CityNav } from '@gb/nav'
 import { METRICS, WIDEST_ROADWAY_CELLS, type Npc, type World } from '@gb/world'
 import { beforeAll, describe, expect, it } from 'vitest'
@@ -185,7 +185,7 @@ describe('somebody being talked to', () => {
       const now = crowd.walkers()[0]!
       // out in the road they are still walking it, not standing in front of the traffic
       if (now.state === 'idle') stopped = now
-      else expect(actor.clip).toBe(CLIPS.walk)
+      else expect(actor.clip).toBe(walkFor(walker.id))
     }
 
     expect(stopped).toBeDefined()

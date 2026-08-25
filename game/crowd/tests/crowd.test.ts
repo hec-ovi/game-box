@@ -1,4 +1,4 @@
-import { CLIPS, clipsUsed } from '@gb/cast'
+import { CLIPS, clipsUsed, WALKS, walkFor } from '@gb/cast'
 import { CityNav } from '@gb/nav'
 import { cellCentre, METRICS, World, type CellKind, type Npc } from '@gb/world'
 import * as THREE from 'three'
@@ -133,18 +133,18 @@ describe('Crowd', () => {
     expect(crowd.destination('npc_nobody')).toBeUndefined()
   })
 
-  it('is always playing a clip the pack has, and stands in an idle when it gets there', () => {
+  it('is always playing a clip the pack has, walks its own walk, and stands in an idle when it gets there', () => {
     const root = new THREE.Object3D()
     const cast = new StubCast()
     const crowd = Crowd.create(
       { world, nav, cast: new SceneCast(cast, root), seed: 'clips' },
-      { population: 4, tripMin: 10, tripMax: 20 },
+      { population: 8, tripMin: 10, tripMax: 20 },
     )
     const library = new Set(clipsUsed())
     // a walker's id is the id of the person walking, which is the id their body was spawned under
     const bodyOf = (walker: WalkerView) => cast.members.find((member) => member.npcId === walker.id)
+    const walks = new Set<string>()
     let standing = 0
-    let walking = 0
 
     for (let frame = 0; frame < 2400; frame++) {
       crowd.update(STEP, middle)
@@ -152,14 +152,44 @@ describe('Crowd', () => {
         const playing = bodyOf(walker)?.playing
         // never the rest pose: from the frame they appear there is a real clip on the body
         expect(playing !== undefined && library.has(playing)).toBe(true)
-        expect(playing).toBe(walker.state === 'walking' ? CLIPS.walk : CLIPS.idle)
+        // the walk is the one the cast draws off their id, so the same person always walks the same way
+        expect(playing).toBe(walker.state === 'walking' ? walkFor(walker.id) : CLIPS.idle)
         if (walker.state === 'idle') standing++
-        else walking++
+        else walks.add(playing!)
       }
     }
 
     expect(standing).toBeGreaterThan(0)
-    expect(walking).toBeGreaterThan(0)
+    // a populated street is not in step: more than one of the cast's walks is playing on it
+    for (const walk of walks) expect(WALKS).toContain(walk)
+    expect(walks.size).toBeGreaterThanOrEqual(2)
+  })
+
+  it('paces the walk to the speed the body really covers, and only while walking', () => {
+    const { crowd, cast } = crowdOf({ population: 4, tripMin: 10, tripMax: 20 }, 'pace')
+    const before = new Map<string, WalkerView>()
+    let paced = 0
+
+    for (let frame = 0; frame < 1200; frame++) {
+      const asked = cast.made.map((actor) => actor.paces.length)
+      crowd.update(STEP, middle)
+      for (const walker of crowd.walkers()) {
+        const actor = cast.live.find((body) => body.npc.id === walker.id)!
+        const index = cast.made.indexOf(actor)
+        const calls = actor.paces.length - (asked[index] ?? 0)
+        const previous = before.get(walker.id)
+        before.set(walker.id, walker)
+        // standing, waiting at a kerb or just arrived: nothing to pace this frame
+        if (walker.state !== 'walking') expect(calls).toBe(0)
+        if (walker.state !== 'walking' || previous?.state !== 'walking') continue
+        // one speed a frame, and it is the ground the feet covered, not the pace they set out at
+        expect(calls).toBe(1)
+        expect(actor.paces.at(-1)).toBeCloseTo(distance(previous, walker) / STEP, 6)
+        paced++
+      }
+    }
+
+    expect(paced).toBeGreaterThan(0)
   })
 
   it('retires the walkers the player has left behind', () => {

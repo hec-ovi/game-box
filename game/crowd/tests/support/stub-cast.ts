@@ -20,8 +20,12 @@ export class StubMember implements CastMember {
   readonly npcId: string
   readonly object = new THREE.Object3D()
   readonly outfit = 'stub'
+  readonly holding = undefined
+  /** Every speed the gait was asked to run at, in the order it was asked. */
+  readonly paced: number[] = []
   #playing: string | undefined
   #gesturing: string | undefined
+  #attending = false
 
   constructor(npc: Npc, doing: string) {
     this.npcId = npc.id
@@ -37,8 +41,18 @@ export class StubMember implements CastMember {
     return this.#gesturing
   }
 
+  get attending(): boolean {
+    return this.#attending
+  }
+
   play(clip: string): void {
-    if (LIBRARY.has(clip)) this.#playing = clip
+    if (!LIBRARY.has(clip)) return
+    this.#playing = clip
+    this.#attending = false
+  }
+
+  pace(metresPerSecond: number): void {
+    this.paced.push(metresPerSecond)
   }
 
   gesture(clip: string): void {
@@ -51,6 +65,14 @@ export class StubMember implements CastMember {
 
   lookAt(): void {}
   lookAway(): void {}
+
+  attend(): void {
+    this.#attending = true
+  }
+
+  resume(): void {
+    this.#attending = false
+  }
 }
 
 /** The cast without the art pack: same `spawn`, and every body it made kept for reading. */

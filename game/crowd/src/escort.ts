@@ -1,3 +1,4 @@
+import { walkFor } from '@gb/cast'
 import { METRICS, type Npc } from '@gb/world'
 import type { Rng } from '@gb/kit'
 import { Follower } from './follower.ts'
@@ -78,6 +79,7 @@ export class Escort {
       kerb: this.#deps.kerb,
       at: who.at ?? this.#setsOff(who.door),
       speed: METRICS.player.walkSpeed,
+      walk: walkFor(who.npc.id),
       turnRate: options.turnRate,
       stuckSeconds: options.stuckSeconds,
       rng: this.#deps.rng.fork(`companion/${who.npc.id}`),

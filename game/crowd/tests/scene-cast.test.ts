@@ -25,26 +25,32 @@ describe('SceneCast', () => {
     actor.placeAt(4, 0.15, 9)
     actor.faceTo(Math.PI / 2)
     actor.play('Walk_Loop')
+    actor.pace?.(1.3)
 
     const body = root.children[0]!
     expect(root.children.length).toBe(1)
     expect(body.position.toArray()).toEqual([4, 0.15, 9])
     expect(body.rotation.y).toBeCloseTo(Math.PI / 2)
     expect(cast.spawned.length).toBe(1)
+    expect(cast.members[0]!.playing).toBe('Walk_Loop')
+    expect(cast.members[0]!.paced).toEqual([1.3])
   })
 
   it('takes a released body out of the scene and stops listening to it', () => {
     const root = new THREE.Object3D()
-    const actor = new SceneCast(new StubCast(), root).spawn(walkerNpc('npc_900001', 'male', 3))
+    const cast = new StubCast()
+    const actor = new SceneCast(cast, root).spawn(walkerNpc('npc_900001', 'male', 3))
     actor.placeAt(4, 0, 9)
     const body = root.children[0]!
 
     actor.release()
     actor.placeAt(100, 0, 100)
+    actor.pace?.(1.3)
 
     expect(root.children).toEqual([])
     expect(body.visible).toBe(false)
     expect(body.position.toArray()).toEqual([4, 0, 9])
+    expect(cast.members[0]!.paced).toEqual([])
   })
 
   it('reuses a parked body of the same kind instead of asking the cast for another', () => {

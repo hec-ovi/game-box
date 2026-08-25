@@ -112,6 +112,10 @@ class BodyActor implements CrowdActor {
     if (this.#live) this.#body.member.play(clip)
   }
 
+  pace(metresPerSecond: number): void {
+    if (this.#live) this.#body.member.pace(metresPerSecond)
+  }
+
   lookAt(x: number, y: number, z: number): void {
     if (!this.#live) return
     this.#eye.set(x, y, z)

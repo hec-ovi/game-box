@@ -16,6 +16,8 @@ export interface WalkerSetup {
   readonly kerb: Kerb
   readonly at: Point
   readonly speed: number
+  /** The walk this person was given: their own, so a street is not in step. */
+  readonly walk: string
   readonly turnRate: number
   readonly stuckSeconds: number
   readonly rng: Rng
@@ -75,8 +77,10 @@ export class Walker implements Attender {
   vz = 0
   /** Metres per second. A follower winds this up to catch the player. */
   speed: number
+  /** Their own walk, drawn off their id by the cast. */
+  readonly walk: string
   /** The clip to play while moving. A follower swaps it for a run when it has ground to make up. */
-  moving: string = CLIPS.walk
+  moving: string
 
   #actor: CrowdActor
   #ground: Ground
@@ -130,6 +134,8 @@ export class Walker implements Attender {
     this.#space = setup.space
     this.#kerb = setup.kerb
     this.speed = setup.speed
+    this.walk = setup.walk
+    this.moving = setup.walk
     this.#turnRate = setup.turnRate
     this.#stuckSeconds = setup.stuckSeconds
     this.#pauseMin = setup.pauseMin
@@ -268,6 +274,8 @@ export class Walker implements Attender {
     if (this.#state === 'walking') this.#setClip(this.moving)
     this.vx = seconds > 0 ? (this.x - fromX) / seconds : 0
     this.vz = seconds > 0 ? (this.z - fromZ) / seconds : 0
+    // the gait runs at the speed the feet really cover, queued behind somebody or squeezing past included
+    if (this.#state === 'walking') this.#actor.pace?.(Math.hypot(this.vx, this.vz))
     this.heading = turnToward(this.heading, this.#facing, this.#turnRate * seconds)
     // across, or gone as far as we are going to get: now we turn to them
     if (this.#crossingFirst && (this.#ground.pavement(this.x, this.z) || this.#state === 'idle')) this.#standToFace()

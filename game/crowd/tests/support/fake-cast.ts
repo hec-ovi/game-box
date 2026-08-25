@@ -10,6 +10,8 @@ export class FakeActor implements CrowdActor {
   heading = 0
   clip = ''
   clips: string[] = []
+  /** Every speed the gait was asked to run at, in metres per second, in the order it was asked. */
+  paces: number[] = []
   released = false
   /** Every point the head was asked to look at, in the order it was asked. */
   looks: { x: number; y: number; z: number }[] = []
@@ -32,6 +34,10 @@ export class FakeActor implements CrowdActor {
   play(clip: string): void {
     this.clip = clip
     this.clips.push(clip)
+  }
+
+  pace(metresPerSecond: number): void {
+    this.paces.push(metresPerSecond)
   }
 
   lookAt(x: number, y: number, z: number): void {
