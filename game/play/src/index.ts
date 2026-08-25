@@ -4,6 +4,7 @@ export { GameClock, type ClockError } from './clock.ts'
 export { DAY_PHASES, DEFAULT_RATE, MAX_RATE, SECONDS_PER_DAY, SUNRISE_HOUR, SUNSET_HOUR, type DayPhase } from './day.ts'
 export { WEATHERS, type Weather } from './weather.ts'
 export { type Discovery } from './codex.ts'
+export { HISTORY_CAP, HISTORY_LENGTH } from './told.ts'
 export { DISPOSITIONS, DEFAULT_DISPOSITION, type Disposition } from './disposition.ts'
 export { FACT_LENGTH, MEMORY_CAP, MEMORY_SOURCES, type MemorySource } from './memory.ts'
 export {

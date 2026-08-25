@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { MAX_RATE, SECONDS_PER_DAY } from './day.ts'
 import { DISPOSITIONS } from './disposition.ts'
 import { FACT_LENGTH, MEMORY_SOURCES } from './memory.ts'
+import { HISTORY_LENGTH } from './told.ts'
 import { WEATHERS } from './weather.ts'
 
 export const ClockSchema = z.object({
@@ -50,6 +51,8 @@ export const CodexSchema = z.object({
   places: z.array(z.string().min(1)),
   /** People the player knows of, first met first. */
   people: z.array(CodexPersonSchema),
+  /** Lines the player was told of the city, oldest first. Absent until they are told something. */
+  history: z.array(z.string().min(1).max(HISTORY_LENGTH)).optional(),
 })
 
 export const MemorySchema = z.object({

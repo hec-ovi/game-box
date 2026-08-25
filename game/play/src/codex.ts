@@ -1,5 +1,6 @@
 /** What the player has found: the places entered, the people known of, and what has been learned about each. */
 import type { CodexDoc, CodexPersonDoc } from './schema.ts'
+import { Told } from './told.ts'
 
 /** Something the player just came across: a place walked into, or a person met. */
 export type Discovery = { readonly place: string } | { readonly npc: string }
@@ -9,6 +10,7 @@ const named = (id: string): boolean => id.trim().length > 0
 export class Codex {
   #places: string[] = []
   #people: CodexPersonDoc[] = []
+  #told = Told.from(undefined)
 
   /** Restore from a save, keeping each place, person and fact once, in the order it was found. */
   static from(doc: CodexDoc | undefined): Codex {
@@ -18,6 +20,7 @@ export class Codex {
       codex.discover({ npc: npcId })
       for (const factId of unlocked) codex.unlock(npcId, factId)
     }
+    codex.#told = Told.from(doc?.history)
     return codex
   }
 
@@ -43,15 +46,27 @@ export class Codex {
     return [...(this.#person(npcId)?.unlocked ?? [])]
   }
 
+  /** Keep a line the player was told of the city. */
+  told(text: string): void {
+    this.#told.add(text)
+  }
+
+  /** What the player has been told, oldest first. */
+  history(): readonly string[] {
+    return this.#told.list()
+  }
+
   list(): CodexDoc {
-    return {
+    const doc: CodexDoc = {
       places: [...this.#places],
       people: this.#people.map(({ npcId, unlocked }) => ({ npcId, unlocked: [...unlocked] })),
     }
+    if (this.#told.any) doc.history = this.#told.list() as string[]
+    return doc
   }
 
   get any(): boolean {
-    return this.#places.length > 0 || this.#people.length > 0
+    return this.#places.length > 0 || this.#people.length > 0 || this.#told.any
   }
 
   toJSON(): CodexDoc {

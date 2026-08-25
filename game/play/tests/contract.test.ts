@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { FACT_LENGTH, MEMORY_CAP, PlayerState, type MemorySource, type PlayerStateDoc } from '../src/index.ts'
+import { FACT_LENGTH, HISTORY_CAP, HISTORY_LENGTH, MEMORY_CAP, PlayerState, type MemorySource, type PlayerStateDoc } from '../src/index.ts'
 
 describe('PlayerState', () => {
   it('carries items, marks stolen ones, and gives them up', () => {
@@ -216,6 +216,22 @@ describe('PlayerState', () => {
     ])
     expect(player.unlocked('npc_0002')).toEqual(['fact_0001'])
     expect(player.unlocked('npc_9999')).toEqual([])
+  })
+
+  it('keeps what the player was told of the city, each line once, oldest dropped', () => {
+    const player = PlayerState.create('world_0001')
+    expect(player.history()).toEqual([])
+    player.told('  The docks closed the year the cup was lost. ')
+    player.told('The docks closed the year the cup was lost.')
+    player.told('   ')
+    player.told('x'.repeat(HISTORY_LENGTH + 1))
+    expect(reload(player).history()).toEqual(['The docks closed the year the cup was lost.'])
+
+    for (let i = 0; i < HISTORY_CAP + 5; i++) player.told(`line ${i}`)
+    const history = reload(player).history()
+    expect(history).toHaveLength(HISTORY_CAP)
+    expect(history[0]).toBe('line 5')
+    expect(history[HISTORY_CAP - 1]).toBe(`line ${HISTORY_CAP + 4}`)
   })
 
   it('lets each person hold a few facts, oldest dropped, and none of another person', () => {

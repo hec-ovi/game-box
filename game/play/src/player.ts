@@ -236,6 +236,16 @@ export class PlayerState {
     return this.#codex.list()
   }
 
+  /** Keep a line the player was told of the city: a premise line, an announcement. */
+  told(text: string): void {
+    this.#codex.told(text)
+  }
+
+  /** What the player has been told of the city, oldest first, at most `HISTORY_CAP` lines. */
+  history(): readonly string[] {
+    return this.#codex.history()
+  }
+
   /** Learn one of a person's background facts. */
   unlock(npcId: string, factId: string): void {
     this.#codex.unlock(npcId, factId)

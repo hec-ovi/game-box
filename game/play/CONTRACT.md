@@ -1,6 +1,6 @@
 # @gb/play contract
 
-contractVersion: 0.5.1
+contractVersion: 0.6.0
 
 ## Purpose
 
@@ -16,6 +16,7 @@ The playthrough: what the player carries, what they stole, what they left standi
 | `pay(amount)` | a whole number of credits, zero or more | refused when it is not, or not held |
 | `buy(itemId, price)` | an item id and a price as for `pay` | pays and takes in one motion; refused, nothing moves |
 | `discover({ place } \| { npc })` | an interior id, or an npc id | names, not lookups; a nameless id is ignored |
+| `told(text)` | a line up to `HISTORY_LENGTH` (400) characters | what the player was told of the city; blank or over-long lines are ignored |
 | `unlock(npcId, factId)` | ids as strings | names, not lookups; also lists the person as known of |
 | `remember(npcId, fact, source)` | a sentence up to `FACT_LENGTH` (200) characters, and one of `MEMORY_SOURCES` | see errors |
 | `warm(npcId)`, `cool(npcId)` | an npc id | one step along `DISPOSITIONS`, staying on the scale at either end |
@@ -39,7 +40,8 @@ The playthrough: what the player carries, what they stole, what they left standi
 | `tracked` | a quest id or nothing | whatever was last tracked, resolved against nothing |
 | `placedAt(itemId)` | `{ interiorId, anchorId }` or nothing | where the player left that thing |
 | `placed()` | `[{ itemId, interiorId, anchorId }]` | everything they left somewhere, each thing once |
-| `discovered()` | [schema/player-state.json](schema/player-state.json) `codex` | `{ places, people: [{ npcId, unlocked }] }`, each in the order first found; a copy |
+| `discovered()` | [schema/player-state.json](schema/player-state.json) `codex` | `{ places, people: [{ npcId, unlocked }], history? }`, each in the order first found; a copy |
+| `history()` | lines of text | what the player has been told of the city, oldest first, each line once, at most `HISTORY_CAP` (60); a copy |
 | `unlocked(npcId)` | fact ids | what has been learned of one person, in the order learned; nobody reads `[]` |
 | `memories(npcId)` | `[{ fact, source }]` | what that person holds, oldest first, at most `MEMORY_CAP` (12); nobody reads `[]` |
 | `disposition(npcId)` | one of `DISPOSITIONS` | `hostile`, `cool`, `neutral`, `warm`, `friendly`; anyone not yet moved reads `neutral` |
@@ -80,6 +82,16 @@ player.discover({ npc: 'npc_0002' })
 player.unlock('npc_0002', 'fact_0001')
 player.discovered()
 // { places: ['interior_0003'], people: [{ npcId: 'npc_0002', unlocked: ['fact_0001'] }] }
+```
+
+The codex also keeps what the player was told of the city: the premise lines
+and announcements they have seen, as plain text, for the History heading on
+screen. Each line is held once, trimmed, in the order told, and the oldest goes
+past `HISTORY_CAP`, so a save grows by a page at most.
+
+```ts
+player.told('The docks closed the year the cup was lost.')
+player.history() // ['The docks closed the year the cup was lost.']
 ```
 
 A fact id is a name to this box: the box that wrote the person's background
@@ -236,7 +248,7 @@ From `GameClock`, each leaving the clock exactly as it was:
 
 - Money never goes negative and a refused payment or purchase changes nothing: no credits move, nothing is taken.
 - A place or a person is in the codex at most once, in the order first found; a fact is unlocked for a person at most once; a person with a fact unlocked is listed.
-- A fact given to one person is held by that person only. A person holds at most `MEMORY_CAP` facts, the newest kept. A disposition is always one of `DISPOSITIONS` and moves one step at a time.
+- A line the player was told is held once, at most `HISTORY_CAP` lines, the newest kept. A fact given to one person is held by that person only. A person holds at most `MEMORY_CAP` facts, the newest kept. A disposition is always one of `DISPOSITIONS` and moves one step at a time.
 - Reputation stays within -100 and 100 whatever is applied to it.
 - An item is in the inventory at most once, and dropping it also clears its stolen mark.
 - A save is only ever loaded against the world it was made in, so ids cannot silently point at different things.
