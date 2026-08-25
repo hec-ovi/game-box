@@ -10,6 +10,7 @@ export const CELL = {
   sidewalk: 'W',
   building: 'B',
   park: 'P',
+  /** The valley wall: impassable, rising from the pavement top away from the town. */
   mountain: 'M',
   water: '~',
 } as const

@@ -1,0 +1,82 @@
+import type { ResolvedCharter } from '../../model/resolved.ts'
+import { CURTAIN, MASONRY, PAINTED, brick, framed, masonry, metal } from './courses.ts'
+import { room, service } from './rooms.ts'
+
+export const clinic: ResolvedCharter = {
+  word: 'clinic',
+  label: 'clinic',
+  blade: 'CLINIC',
+  names: ['{family} Surgery', '{family} Clinic', 'The {adjective} {noun} Practice'],
+  rumours: ['People come in at night with injuries they will not explain.', 'The medicine cupboard is counted twice a day now.'],
+  share: 1,
+  prominence: 'notable',
+  residential: false,
+  size: { storeys: [1, 2], sprawl: 'wide' },
+  street: { frontage: 'painted', openness: 'dense', material: 'masonry', voice: 'sober' },
+  access: 'open',
+  service: 'desk',
+  work: [],
+  holding: ['medicine', 'papers'],
+  finish: 'civic',
+  rooms: {
+    hall: room('waiting-room', 'Waiting room'),
+    main: room('ward', 'Treatment room'),
+    services: [service('store', 'Supply room', 1, { spare: true })],
+  },
+  built: masonry(PAINTED, brick(1), 'DoorFrame_Trim', 'Metal_FirstFloor_Wall_1'),
+  signage: { blade: 0.42, hanging: 0.4, accents: 2, nameplate: 0.9 },
+  tint: 0xa8a8a4,
+  suits: ['clinic', 'painted', 'masonry', 'wide', 'notable'],
+}
+
+export const station: ResolvedCharter = {
+  word: 'station',
+  label: 'station',
+  blade: 'STATION',
+  names: ['{family} Station', '{family} Halt', 'The {adjective} {noun} Terminal'],
+  rumours: ['Freight comes through at hours the timetable does not mention.', 'People wait here who never board anything.'],
+  share: 1,
+  prominence: 'landmark',
+  residential: false,
+  size: { storeys: [1, 2], sprawl: 'wide' },
+  street: { frontage: 'curtain', openness: 'dense', material: 'metal', voice: 'sober' },
+  access: 'open',
+  service: 'counter',
+  work: ['watch', 'desk'],
+  holding: ['personal', 'goods'],
+  finish: 'civic',
+  rooms: {
+    main: room('concourse', 'Concourse'),
+    services: [service('private-office', 'Ticket office', 1, { spare: true })],
+  },
+  built: framed(CURTAIN, metal(1), CURTAIN, 'Metal_Plain_1'),
+  signage: { blade: 0.32, hanging: 0.36, accents: 3, nameplate: 0.9 },
+  tint: 0x707880,
+  suits: ['station', 'curtain', 'metal', 'wide', 'landmark'],
+}
+
+export const chapel: ResolvedCharter = {
+  word: 'chapel',
+  label: 'chapel',
+  blade: 'CHAPEL',
+  names: ['{family} Chapel', 'The {adjective} {noun} Mission', '{family} Meeting House'],
+  rumours: ['The collection box is emptied by somebody who does not attend.', 'The bell is rung on days that are not holy.'],
+  share: 1,
+  prominence: 'landmark',
+  residential: false,
+  size: { storeys: [1, 2], sprawl: 'narrow' },
+  street: { frontage: 'masonry', openness: 'sparse', material: 'masonry', voice: 'quiet' },
+  access: 'open',
+  service: 'none',
+  work: [],
+  holding: ['papers', 'valuables'],
+  finish: 'civic',
+  rooms: {
+    main: room('assembly', 'Nave'),
+    services: [service('store', 'Vestry', 1, { spare: true })],
+  },
+  built: masonry(MASONRY, brick(3), 'DoorFrame_Trim', 'Brick_Plain_1'),
+  signage: { blade: 0, hanging: 0, accents: 1, nameplate: 0.45 },
+  tint: 0x9a9a90,
+  suits: ['chapel', 'masonry', 'narrow', 'landmark'],
+}

@@ -1,10 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import {
+  ANCHOR_KINDS,
+  BODY_KINDS,
+  FURNITURE_PROPS,
+  footprintOf,
+  inPlotBand,
+  MAX_BACKGROUND_FACTS,
   METRICS,
+  PLOT_BAND,
+  plotShape,
+  PROP_CELL,
+  PROP_SPECS,
   questView,
   ROAD_KINDS,
   WIDEST_ROADWAY_CELLS,
   World,
+  type Asks,
   type Interior,
   type Item,
   type Npc,
@@ -442,9 +453,13 @@ describe('the history a city was built against', () => {
     expect('premise' in made.value.toJSON()).toBe(false)
   })
 
-  it('refuses a history that names a building the game cannot put up', () => {
+  it('takes any word the history asks for, and refuses what is not a word', () => {
     const spec = { name: 'Halvorsen', theme: 'industrial', seed: 'p3', width: 16, height: 16 }
-    const made = World.found({ ...spec, premise: { ...premise, build: { ...premise.build, mustHave: ['spaceport'] } } as never })
+    const asked = World.found({ ...spec, premise: { ...premise, build: { ...premise.build, mustHave: ['jail'] } } })
+    expect(asked.ok).toBe(true)
+    if (asked.ok) expect(asked.value.premise()?.build.mustHave).toEqual(['jail'])
+
+    const made = World.found({ ...spec, premise: { ...premise, build: { ...premise.build, mustHave: ['Space Port'] } } })
     expect(made.ok).toBe(false)
     if (made.ok || made.error.code !== 'invalid-document') throw new Error('expected invalid-document')
     expect(made.error.violations.map((v) => v.path).join(' ')).toContain('mustHave')
@@ -470,7 +485,7 @@ describe('the heights a body is animated against', () => {
   it('puts every surface a body works at inside the reach of the stance that works there', () => {
     // a cook's hands rode 7 cm over a 0.9 m hob because nothing measured the
     // number against the clip that reaches for it
-    const standing = [furniture.serviceCounterHeight, furniture.worktopHeight]
+    const standing = [furniture.barCounterHeight, furniture.serviceCounterHeight, furniture.worktopHeight]
     for (const height of standing) {
       expect(height, `standing work surface ${height}`).toBeGreaterThanOrEqual(reach.standing.palm)
       expect(height, `standing work surface ${height}`).toBeLessThanOrEqual(reach.standing.wrist)
@@ -484,5 +499,223 @@ describe('the heights a body is animated against', () => {
     // pad gives, which is what a cushion does
     expect(furniture.seatHeight).toBeGreaterThanOrEqual(reach.seatContact)
     expect(furniture.seatHeight - reach.seatContact).toBeLessThanOrEqual(reach.padGive)
+  })
+})
+
+/** The document of a hamlet, as JSON, for a test that edits it by hand. */
+function docOf(world: World): Record<string, any> {
+  return JSON.parse(JSON.stringify(world.toJSON()))
+}
+
+function violationsOf(loaded: ReturnType<typeof World.load>): string[] {
+  if (loaded.ok || loaded.error.code !== 'invalid-document') throw new Error('expected invalid-document')
+  return loaded.error.violations.map((v) => v.path)
+}
+
+function problemsOf(loaded: ReturnType<typeof World.load>): string[] {
+  if (loaded.ok || loaded.error.code !== 'inconsistent-world') throw new Error('expected inconsistent-world')
+  return loaded.error.problems.map((p) => p.message)
+}
+
+describe('the bodies and the stances', () => {
+  it('takes a person on a hero body dancing, because both are in the shipped packs', () => {
+    const { world, interior } = hamlet()
+    const doc = docOf(world)
+    const roomId = interior.rooms[0]!.id
+    doc.interiors[0].anchors.push({ id: 'anchor_9001', kind: 'dance', roomId, pos: { x: 2, y: 2 }, rot: 0 })
+    doc.npcs.push({
+      id: 'npc_9001',
+      name: 'Bo',
+      role: 'patron',
+      appearance: { base: 'hero-male', variant: 0 },
+      station: { interiorId: interior.id, anchorId: 'anchor_9001' },
+      personality: 'Never stops moving.',
+      knowledge: [],
+    })
+    const loaded = World.load(doc)
+    expect(loaded.ok).toBe(true)
+    expect(BODY_KINDS).toContain('hero-female')
+    expect(ANCHOR_KINDS).toContain('dance')
+  })
+})
+
+describe('a piece standing on another piece', () => {
+  const till = (counterId: string, roomId: string) => ({
+    id: 'prop_9001',
+    prop: 'register',
+    roomId,
+    pos: { x: 4, y: 6 },
+    rot: 0,
+    lift: METRICS.furniture.serviceCounterHeight,
+    on: counterId,
+  })
+
+  it('names its host and keeps it through a save', () => {
+    const { world, interior } = hamlet()
+    const doc = docOf(world)
+    doc.interiors[0].furniture.push(till(interior.furniture[0]!.id, interior.rooms[0]!.id))
+    const loaded = World.load(doc)
+    expect(loaded.ok).toBe(true)
+    if (!loaded.ok) return
+    expect(loaded.value.toJSON().interiors[0]!.furniture.at(-1)!.on).toBe(interior.furniture[0]!.id)
+  })
+
+  it('refuses a host that is not in the room, itself, or a host with no lift', () => {
+    const { world, interior } = hamlet()
+    const roomId = interior.rooms[0]!.id
+    const counterId = interior.furniture[0]!.id
+
+    const stray = docOf(world)
+    stray.interiors[0].furniture.push(till('prop_9999', roomId))
+    expect(problemsOf(World.load(stray)).some((m) => m.includes('unknown prop prop_9999'))).toBe(true)
+
+    const itself = docOf(world)
+    itself.interiors[0].furniture.push(till('prop_9001', roomId))
+    expect(problemsOf(World.load(itself)).some((m) => m.includes('stands on itself'))).toBe(true)
+
+    const grounded = docOf(world)
+    const { lift: _lift, ...noLift } = till(counterId, roomId)
+    grounded.interiors[0].furniture.push(noLift)
+    expect(problemsOf(World.load(grounded)).some((m) => m.includes('with no lift'))).toBe(true)
+  })
+})
+
+describe('what a thing is worth', () => {
+  it('reads a thing with no price as worth nothing, so an older file still opens', () => {
+    const { world } = hamlet()
+    const doc = docOf(world)
+    delete doc.items[0].value
+    const loaded = World.load(doc)
+    expect(loaded.ok).toBe(true)
+    if (!loaded.ok) return
+    expect(loaded.value.items()[0]!.value).toBe(0)
+  })
+
+  it('refuses a price that is not whole credits', () => {
+    const { world } = hamlet()
+    const doc = docOf(world)
+    doc.items[0].value = 4.5
+    expect(violationsOf(World.load(doc))).toContain('items.0.value')
+    doc.items[0].value = -1
+    expect(violationsOf(World.load(doc))).toContain('items.0.value')
+  })
+})
+
+describe('what the owner asked for', () => {
+  const brief = 'A port town that sold its harbour to the wrong people and wants it back. Long, in his own words. '.repeat(40)
+  const asks: Asks = {
+    mainQuest: 'Get the harbour deeds back from whoever holds them now.',
+    sideQuests: 'Small favours between neighbours, nothing with guns.',
+    tone: 'Tired, wet, funny in the way people are at three in the morning.',
+    style: { neon: 'lit', density: 'dense', wear: 'run-down' },
+  }
+
+  it('keeps the brief and the asks in the file, unbounded, and hands them back', () => {
+    const made = World.found({ name: 'Wetmouth', theme: 'harbour', seed: 'a1', width: 16, height: 16, brief, asks })
+    expect(made.ok).toBe(true)
+    if (!made.ok) return
+    expect(made.value.brief()).toBe(brief)
+    expect(made.value.asks()).toEqual(asks)
+
+    const reloaded = World.load(docOf(made.value))
+    expect(reloaded.ok).toBe(true)
+    if (!reloaded.ok) return
+    expect(reloaded.value.brief()).toBe(brief)
+    expect(reloaded.value.asks()).toEqual(asks)
+  })
+
+  it('leaves a city founded with only a theme alone', () => {
+    const made = World.found({ name: 'Plain', theme: 'plain', seed: 'a2', width: 16, height: 16 })
+    expect(made.ok).toBe(true)
+    if (!made.ok) return
+    expect(made.value.brief()).toBeUndefined()
+    expect(made.value.asks()).toBeUndefined()
+    expect('brief' in made.value.toJSON()).toBe(false)
+    expect('asks' in made.value.toJSON()).toBe(false)
+  })
+
+  it('refuses a style the catalogue cannot draw, whichever door it comes through', () => {
+    const medieval = { style: { period: 'medieval', neon: 'candles' } }
+    const spec = { name: 'Wetmouth', theme: 'harbour', seed: 'a3', width: 16, height: 16 }
+    const made = World.found({ ...spec, asks: medieval as never })
+    expect(made.ok).toBe(false)
+    if (made.ok || made.error.code !== 'invalid-document') throw new Error('expected invalid-document')
+    expect(made.error.violations.map((v) => v.path)).toContain('asks.style.neon')
+
+    const doc = docOf(World.create(spec))
+    doc.asks = medieval
+    expect(violationsOf(World.load(doc))).toContain('asks.style.neon')
+  })
+})
+
+describe("a person's life and what the player earns of it", () => {
+  const life = {
+    history: 'Came down from the ridge farms when the coolant line went.',
+    interests: 'Engines, other people\'s debts.',
+    manner: 'Short sentences, never a question.',
+    cares: 'Her brother on the night shift.',
+    avoids: 'The fire.',
+    reason: 'It is her shift, and the shift is short-handed.',
+  }
+  const background = [
+    { fact: 'She was on the night shift the night the line went.', unlockedBy: 'talked' },
+    { fact: 'Halvorsen paid her to stay quiet about it.', unlockedBy: 'quest' },
+  ]
+
+  it('carries a life and staged facts, and hands them back untouched', () => {
+    const { world } = hamlet()
+    const doc = docOf(world)
+    doc.npcs[0].life = life
+    doc.npcs[0].background = background
+    const loaded = World.load(doc)
+    expect(loaded.ok).toBe(true)
+    if (!loaded.ok) return
+    expect(loaded.value.npcs()[0]!.life).toEqual(life)
+    expect(loaded.value.npcs()[0]!.background).toEqual(background)
+    // a person nobody wrote a life for stays as they were
+    expect(hamlet().world.npcs()[0]!.life).toBeUndefined()
+  })
+
+  it('refuses a fact nothing can unlock, and more facts than one person carries', () => {
+    const { world } = hamlet()
+    const doc = docOf(world)
+    doc.npcs[0].background = [{ fact: 'Something.', unlockedBy: 'bribed' }]
+    expect(violationsOf(World.load(doc))).toContain('npcs.0.background.0.unlockedBy')
+
+    doc.npcs[0].background = Array.from({ length: MAX_BACKGROUND_FACTS + 1 }, () => background[0])
+    expect(violationsOf(World.load(doc))).toContain('npcs.0.background')
+
+    doc.npcs[0].background = background
+    doc.npcs[0].life = { ...life, history: 'x'.repeat(601) }
+    expect(violationsOf(World.load(doc))).toContain('npcs.0.life.history')
+  })
+})
+
+describe('the sizes everything is drawn and planned from', () => {
+  it('sizes every piece of furniture once, at the height a body meets it', () => {
+    for (const prop of FURNITURE_PROPS) {
+      const spec = PROP_SPECS[prop]
+      expect(spec.cells[0], prop).toBeGreaterThan(0)
+      expect(spec.cells[1], prop).toBeGreaterThan(0)
+      // a piece on a counter claims no floor, and a rug stops nobody
+      if (spec.onSurface) expect(spec.blocks, prop).toBe(false)
+    }
+    expect(footprintOf('table')).toEqual({ width: 10 * PROP_CELL, depth: 10 * PROP_CELL })
+    expect(PROP_SPECS.chair.contact).toEqual({ kind: 'rest', height: METRICS.furniture.seatHeight })
+    expect(PROP_SPECS['bar-counter'].staffContact).toBe(METRICS.furniture.serviceCounterHeight)
+    expect(PROP_SPECS.register.onSurface).toBe(true)
+  })
+
+  it('reads a plot in its door\'s frame and holds it to the band the city is cut in', () => {
+    const rect = { x: 0, y: 0, w: 4, h: 6 }
+    const south = plotShape({ rect, entrance: { cell: { x: 1, y: 6 }, facing: 'south' }, storeys: 2 })
+    expect(south).toEqual({ frontage: 4, depth: 6, storeys: 2 })
+    const east = plotShape({ rect, entrance: { cell: { x: 4, y: 2 }, facing: 'east' }, storeys: 2 })
+    expect(east).toEqual({ frontage: 6, depth: 4, storeys: 2 })
+
+    expect(inPlotBand(south)).toBe(true)
+    expect(inPlotBand(east)).toBe(false)
+    expect(inPlotBand({ frontage: PLOT_BAND.frontage.max, depth: PLOT_BAND.depth.min, storeys: PLOT_BAND.storeys.max })).toBe(true)
+    expect(inPlotBand({ ...south, storeys: PLOT_BAND.storeys.max + 1 })).toBe(false)
   })
 })

@@ -1,12 +1,15 @@
 import { err, IdMinter, ok, type Result, type SchemaViolation } from '@gb/kit'
+import { charterOf, declaredCharters } from './charters/declared.ts'
 import { CELL, Grid, type Rect } from './grid.ts'
 import { checkIntegrity, type IntegrityProblem } from './integrity.ts'
 import { METRICS, cellCentre } from './metrics.ts'
 import { citySpecContract, type CitySpec } from './model/city-spec.ts'
 import { catalogueListContract, plotDesignContract, type AssetPackRef, type PlotDesign } from './model/design.ts'
+import type { Asks } from './model/asks.ts'
 import type { Premise } from './model/premise.ts'
+import { chartersContract, type ResolvedCharter } from './model/resolved.ts'
 import { worldContract, type Interior, type Item, type Npc, type Placement, type Plot, type WorldDoc } from './model/schema.ts'
-import type { BuildingKind, Facing } from './model/vocabulary.ts'
+import type { Facing } from './model/vocabulary.ts'
 
 export type WorldError =
   | { readonly code: 'invalid-document'; readonly violations: readonly SchemaViolation[] }
@@ -15,7 +18,8 @@ export type WorldError =
   | { readonly code: 'unknown-reference'; readonly message: string }
 
 export interface PlotSpec {
-  readonly kind: BuildingKind
+  /** The word of one of the city's charters. */
+  readonly kind: string
   readonly name: string
   readonly rect: Rect
   readonly entrance: { readonly cell: { x: number; y: number }; readonly facing: Facing }
@@ -49,7 +53,7 @@ export class World {
   static found(spec: CitySpec): Result<World, WorldError> {
     const checked = citySpecContract.parse(spec)
     if (!checked.ok) return err({ code: 'invalid-document', violations: checked.error })
-    return ok(new World(blankCity(spec)))
+    return ok(new World(blankCity(checked.value)))
   }
 
   /** Going: `found` hands the refusal back instead of throwing it. */
@@ -95,6 +99,42 @@ export class World {
    */
   premise(): Premise | undefined {
     return this.#doc.premise
+  }
+
+  /** What the city is about in the owner's own words, when they wrote it down. */
+  brief(): string | undefined {
+    return this.#doc.brief
+  }
+
+  /** What else the owner asked for, when they asked for anything. */
+  asks(): Asks | undefined {
+    return this.#doc.asks
+  }
+
+  /** The kinds of place this city has: its own, or the fourteen shipped presets when it declares none. */
+  charters(): readonly ResolvedCharter[] {
+    return declaredCharters(this.#doc)
+  }
+
+  /** What a word means in this city, or nothing when no charter declares it. */
+  charter(word: string): ResolvedCharter | undefined {
+    return charterOf(this.#doc, word)
+  }
+
+  /**
+   * Write down the kinds of place this city has, before any plot takes one of
+   * their words. Replaces whatever was declared before, and refuses to drop a
+   * word a plot already holds.
+   */
+  recordCharters(charters: readonly ResolvedCharter[]): Result<readonly ResolvedCharter[], WorldError> {
+    const checked = chartersContract.parse(charters)
+    if (!checked.ok) return err({ code: 'invalid-document', violations: checked.error })
+    const orphaned = this.#doc.plots.find((p) => !checked.value.some((c) => c.word === p.kind))
+    if (orphaned) {
+      return err({ code: 'unknown-reference', message: `plot ${orphaned.id} is a ${orphaned.kind}, which this list drops` })
+    }
+    this.#doc.charters = checked.value
+    return ok(checked.value)
   }
 
   get grid(): Grid {
@@ -157,7 +197,7 @@ export class World {
     return this.interior(id) !== undefined
   }
 
-  plotsOfKind(kind: BuildingKind): readonly Plot[] {
+  plotsOfKind(kind: string): readonly Plot[] {
     return this.#doc.plots.filter((p) => p.kind === kind)
   }
 
@@ -201,6 +241,9 @@ export class World {
   addPlot(spec: PlotSpec): Result<Plot, WorldError> {
     if (!this.#grid.isAll(spec.rect, ['empty'])) {
       return err({ code: 'no-space', message: `${spec.name}: footprint is not free` })
+    }
+    if (!this.charter(spec.kind)) {
+      return err({ code: 'unknown-reference', message: `${spec.name} is a ${spec.kind}, which this city declares no charter for` })
     }
     let design: PlotDesign | undefined
     if (spec.design) {
@@ -321,6 +364,9 @@ function blankCity(spec: CitySpec): WorldDoc {
     generator: spec.generator ?? { name: 'unset', version: '0' },
     cellSize: spec.cellSize ?? METRICS.cellSize,
     ...(spec.premise ? { premise: spec.premise } : {}),
+    ...(spec.charters ? { charters: spec.charters } : {}),
+    ...(spec.brief ? { brief: spec.brief } : {}),
+    ...(spec.asks ? { asks: spec.asks } : {}),
     grid: {
       width: spec.width,
       height: spec.height,

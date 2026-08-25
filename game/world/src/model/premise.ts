@@ -1,6 +1,7 @@
 import { contract } from '@gb/kit'
 import { z } from 'zod'
-import { BUILDING_KINDS } from './vocabulary.ts'
+import { MAX_CHARTERS } from './resolved.ts'
+import { WordSchema } from './word.ts'
 
 /**
  * Why the town is here and what it is arguing about. It is written once, before
@@ -10,11 +11,10 @@ import { BUILDING_KINDS } from './vocabulary.ts'
  *
  * It lives here because it is a fact about the city, so a file somebody is sent
  * carries its own history. Every bound is a world document's bound, and `build`
- * is in this box's own `BUILDING_KINDS`, so a history that names a building the
- * game cannot put up is refused rather than half-applied.
+ * names kinds of place by their word, the same word a charter declares.
  */
 const Sentence = z.string().min(1).max(400)
-const KindList = z.array(z.enum(BUILDING_KINDS)).max(BUILDING_KINDS.length)
+const KindList = z.array(WordSchema).max(MAX_CHARTERS)
 
 export const PremiseSchema = z.object({
   /** What the town lives on. */
@@ -30,7 +30,7 @@ export const PremiseSchema = z.object({
     .max(8),
   /** What everybody in town knows. */
   common: z.array(z.string().min(1).max(300)).max(20),
-  /** What the town therefore holds, in building kinds. */
+  /** What the town therefore holds, as words for kinds of place. */
   build: z.object({ moreOf: KindList, fewerOf: KindList, mustHave: KindList }),
 })
 

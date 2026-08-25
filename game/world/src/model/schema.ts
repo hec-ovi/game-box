@@ -2,11 +2,15 @@ import { contract } from '@gb/kit'
 import { z } from 'zod'
 import { METRICS } from '../metrics.ts'
 import { AssetPackRefSchema, MAX_CATALOGUES, PlotDesignSchema } from './design.ts'
+import { AsksSchema, BriefSchema } from './asks.ts'
+import { BackgroundSchema, LifeSchema } from './life.ts'
 import { PremiseSchema } from './premise.ts'
+import { ChartersSchema } from './resolved.ts'
+import { ROOM_USES } from './traits.ts'
+import { WordSchema } from './word.ts'
 import {
   ANCHOR_KINDS,
   BODY_KINDS,
-  BUILDING_KINDS,
   FACINGS,
   FURNITURE_PROPS,
   ITEM_ARCHETYPES,
@@ -39,6 +43,8 @@ export const AnchorSchema = z.object({
   rot: z.number().min(-360).max(360),
   /** The furniture this anchor belongs to, when it has one. */
   propId: id('prop').optional(),
+  /** What whoever stands here is doing, in a phrase for the talk. Absent means the kind says it. */
+  doing: z.string().min(1).max(300).optional(),
 })
 
 export const FurnitureSchema = z.object({
@@ -53,11 +59,18 @@ export const FurnitureSchema = z.object({
    * which is where all but a handful of pieces are. Never above the ceiling.
    */
   lift: z.number().min(0).max(METRICS.building.groundFloorHeight).optional(),
+  /**
+   * The piece this one stands on, in the same interior: the counter under a
+   * till. A piece with a host carries `lift`, and it is the host's own top.
+   */
+  on: id('prop').optional(),
 })
 
 export const RoomSchema = z.object({
   id: id('room'),
   kind: z.enum(ROOM_KINDS),
+  /** Which dressing routine filled it. Absent is read back off `kind` through the charter. */
+  use: z.enum(ROOM_USES).optional(),
   name: z.string().min(1).max(60),
   /** Metres from the interior origin. */
   rect: z.object({ x: z.number(), y: z.number(), w: z.number().positive(), h: z.number().positive() }),
@@ -78,7 +91,8 @@ export const DoorSchema = z.object({
 export const InteriorSchema = z.object({
   id: id('interior'),
   plotId: id('plot'),
-  kind: z.enum(BUILDING_KINDS),
+  /** The plot's word. */
+  kind: WordSchema,
   /** Interior footprint in metres. */
   size: z.object({ w: z.number().positive(), h: z.number().positive() }),
   rooms: z.array(RoomSchema).min(1),
@@ -89,7 +103,8 @@ export const InteriorSchema = z.object({
 
 export const PlotSchema = z.object({
   id: id('plot'),
-  kind: z.enum(BUILDING_KINDS),
+  /** The word of one of the city's charters. */
+  kind: WordSchema,
   name: z.string().min(1).max(80),
   /** Footprint in grid cells. */
   rect: RectSchema,
@@ -128,6 +143,10 @@ export const NpcSchema = z.object({
   /** What this NPC can talk about. Anything not here, they do not know. */
   knowledge: z.array(z.string().min(1).max(300)).max(20),
   voice: z.string().min(1).max(40).optional(),
+  /** Their own life, for the model to speak from. Absent means nobody wrote one. */
+  life: LifeSchema.optional(),
+  /** Staged facts the player earns about them, for the codex. */
+  background: BackgroundSchema.optional(),
 })
 
 export const ItemSchema = z.object({
@@ -135,7 +154,8 @@ export const ItemSchema = z.object({
   name: z.string().min(1).max(60),
   description: z.string().min(1).max(300),
   archetype: z.enum(ITEM_ARCHETYPES),
-  value: z.number().int().min(0).max(100000),
+  /** Credits a counter sells it for. Absent reads as 0: not for sale, or worth nothing. */
+  value: z.number().int().min(0).max(100000).default(0),
   /** How much of the player it takes to carry: a pocket, a bag, or both hands. */
   bulk: z.enum(['pocket', 'bag', 'two-handed']).default('pocket'),
   /** Taking an owned item without permission is stealing. */
@@ -153,7 +173,12 @@ export const WorldSchema = z.object({
   schemaVersion: z.literal(1),
   id: id('world'),
   name: z.string().min(1).max(80),
+  /** The short keyword hint the offline author reads. */
   theme: z.string().min(1).max(60),
+  /** What the city is about, in the owner's own words. Absent means they gave only the theme. */
+  brief: BriefSchema.optional(),
+  /** What else the owner asked for: quests, tone, and a style inside the catalogue. */
+  asks: AsksSchema.optional(),
   seed: z.string().min(1).max(120),
   /** Which generator produced this, so a regeneration can match it. */
   generator: z.object({ name: z.string().min(1), version: z.string().min(1) }),
@@ -163,6 +188,8 @@ export const WorldSchema = z.object({
   catalogues: z.array(AssetPackRefSchema).max(MAX_CATALOGUES).optional(),
   /** The history the city was built against. Absent means nobody wrote one. */
   premise: PremiseSchema.optional(),
+  /** The kinds of place this city has. Absent means the fourteen shipped presets. */
+  charters: ChartersSchema.optional(),
   grid: z.object({
     width: z.number().int().min(4).max(1024),
     height: z.number().int().min(4).max(1024),

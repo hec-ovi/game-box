@@ -1,3 +1,4 @@
+import { charterOf } from './charters/declared.ts'
 import { Grid } from './grid.ts'
 import type { WorldDoc } from './model/schema.ts'
 
@@ -60,6 +61,8 @@ export function checkIntegrity(doc: WorldDoc): IntegrityProblem[] {
       cell.x >= x - 1 && cell.x <= x + w && cell.y >= y - 1 && cell.y <= y + h
     if (!onEdge) fail(where, 'entrance cell is not on the footprint edge')
 
+    if (!charterOf(doc, plot.kind)) fail(where, `kind ${plot.kind} names no charter this world declares`)
+
     if (plot.design && !catalogues.has(plot.design.pack)) {
       fail(where, `design names catalogue ${plot.design.pack}, which this world does not record`)
     }
@@ -95,6 +98,11 @@ export function checkIntegrity(doc: WorldDoc): IntegrityProblem[] {
     for (const piece of interior.furniture) {
       claim(`${where} furniture`, piece.id)
       if (!rooms.has(piece.roomId)) fail(where, `furniture ${piece.id} is in unknown room ${piece.roomId}`)
+      if (piece.on !== undefined) {
+        if (piece.on === piece.id) fail(where, `furniture ${piece.id} stands on itself`)
+        else if (!props.has(piece.on)) fail(where, `furniture ${piece.id} stands on unknown prop ${piece.on}`)
+        if (piece.lift === undefined) fail(where, `furniture ${piece.id} stands on ${piece.on} with no lift`)
+      }
     }
     for (const anchor of interior.anchors) {
       claim(`${where} anchor`, anchor.id)

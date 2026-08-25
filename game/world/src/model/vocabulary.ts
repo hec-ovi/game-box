@@ -2,24 +2,9 @@
  * The closed vocabularies. Every generator, including a language model, must
  * pick from these lists, which is what keeps generated content buildable: each
  * value maps to something the game can actually render, animate or place.
+ * They are closed because each names something the engine ships; what a
+ * place is, is closed by the world document instead, in its charters.
  */
-
-export const BUILDING_KINDS = [
-  'house',
-  'apartment',
-  'bar',
-  'cafe',
-  'restaurant',
-  'shop',
-  'market',
-  'office',
-  'workshop',
-  'warehouse',
-  'clinic',
-  'hotel',
-  'station',
-  'chapel',
-] as const
 
 export const ROOM_KINDS = [
   'main',
@@ -52,6 +37,8 @@ export const ANCHOR_KINDS = [
   'browse',
   'lean',
   'guard',
+  /** On the floor of a place with music, moving to it. */
+  'dance',
 ] as const
 
 export const NPC_ROLES = [
@@ -125,8 +112,12 @@ export const FURNITURE_PROPS = [
   'jukebox',
 ] as const
 
-/** The bodies an NPC can be built on. Every value must be a body the cast ships. */
-export const BODY_KINDS = ['male', 'female'] as const
+/**
+ * The bodies an NPC can be built on. Every value must be a body the cast ships:
+ * the two everyday builds and the two heavier ones from the same pack, all on
+ * the canonical 65-joint skeleton.
+ */
+export const BODY_KINDS = ['male', 'female', 'hero-male', 'hero-female'] as const
 
 export const FACINGS = ['north', 'east', 'south', 'west'] as const
 
@@ -137,7 +128,6 @@ export const FACINGS = ['north', 'east', 'south', 'west'] as const
  */
 export const ROAD_KINDS = ['street', 'avenue', 'exit'] as const
 
-export type BuildingKind = (typeof BUILDING_KINDS)[number]
 export type RoomKind = (typeof ROOM_KINDS)[number]
 export type AnchorKind = (typeof ANCHOR_KINDS)[number]
 export type NpcRole = (typeof NPC_ROLES)[number]

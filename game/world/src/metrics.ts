@@ -51,11 +51,14 @@ export const METRICS = {
    * Where a body meets a piece of furniture: the surface it sits, sleeps or
    * works on. The art is built to these heights, so a seat is one number rather
    * than one per box. Each one a body reaches for is held to `reach` above; the
-   * two that carry no stance say so.
+   * one that carries no stance says so.
    */
   furniture: {
-    /** The customer's rail, where a drink stands. Nobody's hands go on it. */
-    barCounterHeight: 1.1,
+    /**
+     * The customer's rail of a bar, where a drink stands and the lean clip
+     * rests its forearms: the same standing reach as any other counter.
+     */
+    barCounterHeight: 1.0,
     /** A counter you are served over, and the shelf the staff work from behind a bar. */
     serviceCounterHeight: 1.0,
     /**

@@ -9,6 +9,8 @@ import { WorldSchema } from './schema.ts'
 export const CitySpecSchema = z.object({
   name: WorldSchema.shape.name,
   theme: WorldSchema.shape.theme,
+  brief: WorldSchema.shape.brief,
+  asks: WorldSchema.shape.asks,
   seed: WorldSchema.shape.seed,
   width: WorldSchema.shape.grid.shape.width,
   height: WorldSchema.shape.grid.shape.height,
@@ -17,6 +19,8 @@ export const CitySpecSchema = z.object({
   generator: WorldSchema.shape.generator.optional(),
   /** The history it is being built against, when somebody wrote one. */
   premise: WorldSchema.shape.premise,
+  /** The kinds of place it will hold, when they are not the shipped presets. */
+  charters: WorldSchema.shape.charters,
 })
 
 export const citySpecContract = contract('city-spec', CitySpecSchema)
