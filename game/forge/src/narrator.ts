@@ -209,6 +209,11 @@ export interface Narrator {
    * position.
    */
   writeInstances?(requests: readonly InstanceRequest[]): Promise<readonly Instance[]>
-  /** Raw quest documents. The generator validates them and drops the ones that do not hold up. */
-  writeQuests(input: { summary: WorldSummary; sideQuests: number }): Promise<unknown[]>
+  /**
+   * Raw quest documents. The generator validates them and drops the ones that
+   * do not hold up. `from` is how many quests the city already hands out, so a
+   * growth's work carries on from the last id rather than colliding with it;
+   * absent is a city being written for the first time.
+   */
+  writeQuests(input: { summary: WorldSummary; sideQuests: number; from?: number }): Promise<unknown[]>
 }

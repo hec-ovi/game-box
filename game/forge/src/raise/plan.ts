@@ -54,11 +54,14 @@ export function planRaise(world: World, chosen: readonly Chosen[], setup: RaiseS
 
   const planned = chosen.map((one, at): PlannedSite => {
     const street = setup.streets.at(one.site.entrance, one.site.facing)
+    // a facade that was already standing keeps its number and its sign: the
+    // street reads as it always did, and its people are drawn where they were
+    const index = one.standing?.index ?? first + at
     return {
       ...one,
-      index: first + at,
+      index,
       style: style + one.charter.word,
-      sign: setup.signs.over(one.charter, setup.theme, first + at, { premise: story, street }),
+      sign: one.standing?.name ?? setup.signs.over(one.charter, setup.theme, index, { premise: story, street }),
       ...(street ? { street } : {}),
       ...(open.has(String(at)) ? { inside: planInside(world, one, setup, counts) } : {}),
     }
@@ -110,10 +113,10 @@ function briefOf(inside: PlannedInside): InstanceBrief {
   }
 }
 
-/** Every door that does not open, for a narrator that hangs those signs itself. */
+/** Every door that does not open, for a narrator that hangs those signs itself. A building already standing keeps the sign it has. */
 export function signRequests(planned: readonly PlannedSite[], setup: RaiseSetup): PlaceRequest[] {
   const premise = setup.premise ? premiseLines(setup.premise) : undefined
-  return planned.filter((one) => one.inside === undefined).map((one) => placeRequest(one, setup, premise))
+  return planned.filter(needsSign).map((one) => placeRequest(one, setup, premise))
 }
 
 /**
@@ -124,11 +127,14 @@ export function signRequests(planned: readonly PlannedSite[], setup: RaiseSetup)
 export function hangSigns(planned: readonly PlannedSite[], signs: readonly string[]): PlannedSite[] {
   let answer = 0
   return planned.map((one) => {
-    if (one.inside !== undefined) return one
+    if (!needsSign(one)) return one
     const sign = signs[answer++]?.trim()
     return sign ? { ...one, sign } : one
   })
 }
+
+/** A door nobody opens and no sign hangs over yet. */
+const needsSign = (one: PlannedSite): boolean => one.inside === undefined && one.standing === undefined
 
 /**
  * The buildings as the door ranking sees them. They are keyed by where they

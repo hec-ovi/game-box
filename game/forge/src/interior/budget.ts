@@ -8,8 +8,9 @@
  * learn, and three places every quest is written over are learned by name where
  * two dozen are addresses.
  *
- * The number is the town's, never the batch's. Twenty plots added to a city
- * that already has its places open add twenty facades and no doors.
+ * The number is the town's, never the batch's, so building a city bigger opens
+ * no more doors. Growing one later is the other case: a growth is an authored
+ * addition and it says how many more doors the city opens.
  */
 
 /** Open places a city has when the brief does not say: what a player meets, whatever the size. */
@@ -24,6 +25,14 @@ export const MOST_PLACES = 24
  * with no door at all is not a town.
  */
 export const mostOpen = (buildings: number): number => Math.max(1, Math.ceil(buildings / 2) - 1)
+
+/**
+ * How many doors new land opens among itself. A growth's new blocks are a
+ * district and a district is a town: it opens the town's own number of places,
+ * and stays mostly frontage the way a hamlet does, so a growth of two buildings
+ * opens one and a growth of thirty opens three.
+ */
+export const placesOnNewLand = (buildings: number): number => (buildings > 0 ? Math.min(OPEN_PLACES, mostOpen(buildings)) : 0)
 
 /** What a town already has up, before this batch of buildings. */
 export interface Standing {

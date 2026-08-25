@@ -13,8 +13,9 @@ import {
 } from '@gb/world'
 import { briefContract, type Brief } from './brief.ts'
 import type { Dropped } from './charters/resolve.ts'
-import { OPEN_PLACES } from './interior/budget.ts'
+import { placesOnNewLand } from './interior/budget.ts'
 import { Avenues } from './layout/avenues.ts'
+import { streetLines } from './layout/lines.ts'
 import { planStreets, type StreetPlan } from './layout/plan.ts'
 import { sitesInBlock, storeysFor, type PlotSite } from './layout/plots.ts'
 import { layRoads } from './layout/roads.ts'
@@ -44,6 +45,28 @@ export interface ForgeResult {
   readonly rejected: ReadonlyArray<{ readonly index: number; readonly problems: readonly QuestProblem[] }>
   /** Kinds of place the history invented that the city would not take, and why. */
   readonly dropped: readonly Dropped[]
+}
+
+/**
+ * How a finished city grows.
+ *
+ * Two kinds of growth, and a pack may ask for both. `places` opens doors that
+ * were painted on: a plot that was a sign and a wall gains its interior, its
+ * people and its things, so the streets are the streets anybody already played.
+ * `blocks` is new land at the edge, and new land is a district: it goes up on
+ * ground nothing has claimed and opens its own doors among itself.
+ */
+export interface Growth {
+  /** Buildings to put up on empty land. A bare number means this. */
+  readonly blocks?: number
+  /** Painted-on doors to open in the frontage already standing. */
+  readonly places?: number
+}
+
+/** The work a growth wrote: playable quests over the whole city, and the drafts that did not hold up. */
+export interface GrownQuests {
+  readonly quests: readonly QuestDoc[]
+  readonly rejected: ForgeResult['rejected']
 }
 
 const GENERATOR_VERSION = '0.1.0'
@@ -118,28 +141,63 @@ export class Forge {
   }
 
   /**
-   * Adds buildings and the people in them to a city that already exists,
-   * without touching anything already there.
+   * Grows a city that already exists: opens doors that were painted on, puts
+   * new buildings up on land nothing has claimed, or both. Nothing already
+   * standing is rewritten; the one thing a growth writes on the base is the
+   * door pointer of a facade it opened.
+   *
+   * The facades go first, so the people and the things behind a door that was
+   * always there are numbered before a building that was not.
    */
-  async extend(world: World, count: number, rng = new Rng(`${world.seed}/extend`)): Promise<Result<readonly string[], ForgeError>> {
-    // the city carries its own history, so what goes into its gaps is the same
+  async extend(world: World, growth: number | Growth, rng = new Rng(`${world.seed}/extend`)): Promise<Result<readonly string[], ForgeError>> {
+    const blocks = typeof growth === 'number' ? growth : (growth.blocks ?? 0)
+    const places = typeof growth === 'number' ? 0 : (growth.places ?? 0)
+    // the city carries its own history, so what a growth writes is the same
     // kind of town as what is already standing
     const premise = world.premise()
-    const added = await this.#raise(world, this.#gapSites(world, count, rng, premise), {
-      theme: world.theme,
-      ...(premise ? { premise } : {}),
-      // a city's places are its own, so growing it adds frontage to a town that already has them
-      places: Math.max(OPEN_PLACES, world.interiors().length),
-      signs: new Signs(world.seed),
-      streets: StreetNames.of(world),
-      // the town's own stream: which doors open is a fact about the town, so an
-      // extension spends what is left of its places rather than drawing again
-      doors: new Rng(world.seed).fork('doors'),
-      people: rng.fork('extend/people'),
-    })
+
+    if (places > 0) {
+      const facades = rng.fork('facades')
+      await this.#raise(world, this.#facadeSites(world, facades), this.#growing(world, premise, world.interiors().length + places, facades.fork('people')))
+    }
+    const added =
+      blocks > 0
+        ? await this.#raise(world, this.#gapSites(world, blocks, rng, premise), this.#growing(world, premise, world.interiors().length + placesOnNewLand(blocks), rng.fork('extend/people')))
+        : []
+
     const problems = world.check()
     if (problems.length) return err({ code: 'unsound-world', problems })
     return ok(added)
+  }
+
+  /**
+   * The work a growth adds: the town's own appetite for side jobs, less the
+   * quests it already carries, written over the whole city so a pack's errands
+   * send the player back through the base as well as into what just opened.
+   * Never nothing, because a pack nobody can do anything in is scenery. Ids
+   * continue from the ones already handed out.
+   */
+  async extendQuests(world: World, existing: readonly QuestDoc[], rng = new Rng(`${world.seed}/extend`)): Promise<GrownQuests> {
+    const summary = summarise(world, world.premise())
+    const stream = rng.fork('more-quests')
+    const from = existing.reduce((most, quest) => Math.max(most, Number(quest.id.split('_')[1] ?? 0) || 0), existing.length)
+    const wanted = Math.max(1, questDemand(summary, stream) - existing.length)
+    return this.#read(world, await this.#narrator.writeQuests({ summary, sideQuests: wanted, from }))
+  }
+
+  /** What every growth is raised against: the town's own theme, story, streets and door stream. */
+  #growing(world: World, premise: Premise | undefined, places: number, people: Rng): RaiseSetup {
+    return {
+      theme: world.theme,
+      ...(premise ? { premise } : {}),
+      places,
+      signs: new Signs(world.seed),
+      streets: StreetNames.of(world),
+      // the town's own stream: which doors open is a fact about the town, so a
+      // growth ranks its frontage the way the town ranked its first three
+      doors: new Rng(world.seed).fork('doors'),
+      people,
+    }
   }
 
   /**
@@ -154,9 +212,12 @@ export class Forge {
   async #raise(world: World, chosen: readonly Chosen[], setup: RaiseSetup): Promise<string[]> {
     const planned = planRaise(world, chosen, setup)
     const requests = instanceRequests(planned, setup)
+    const wantSigns = signRequests(planned, setup)
+    // nothing to ask about is nothing asked: a growth that only opens doors
+    // hangs no signs, and a batch that opens none writes no places
     const [written, signs] = await Promise.all([
-      this.#narrator.writeInstances?.(requests) ?? writeEachPlace(this.#narrator, requests),
-      this.#narrator.namePlaces?.(signRequests(planned, setup)) ?? [],
+      requests.length ? (this.#narrator.writeInstances?.(requests) ?? writeEachPlace(this.#narrator, requests)) : [],
+      wantSigns.length ? (this.#narrator.namePlaces?.(wantSigns) ?? []) : [],
     ])
     return assemble(world, hangSigns(planned, signs), written)
   }
@@ -199,6 +260,32 @@ export class Forge {
     return chosen
   }
 
+  /**
+   * The facades a growth may open: every building standing with nothing behind
+   * its door. They go into the ranking exactly as new land does, so a painted-on
+   * door is chosen for what the place holds, the floor behind it, how near the
+   * middle of town it stands and how far it is from the doors already open.
+   */
+  #facadeSites(world: World, rng: Rng): Chosen[] {
+    const lines = streetLines(world)
+    const avenues = Avenues.from(lines.columns, lines.rows)
+    const chosen: Chosen[] = []
+    for (const [index, plot] of world.plots().entries()) {
+      const charter = world.charter(plot.kind)
+      // a door that already opens is never opened again
+      if (plot.interiorId || !charter) continue
+      chosen.push({
+        site: { rect: plot.rect, facing: plot.entrance.facing, entrance: plot.entrance.cell },
+        charter,
+        storeys: plot.storeys,
+        onAvenue: avenues.has(plot.entrance.cell),
+        rng: rng.fork(`facade/${plot.id}`),
+        standing: { plotId: plot.id, name: plot.name, index },
+      })
+    }
+    return chosen
+  }
+
   /** What `extend` drops into the gaps: one building at a time, into land nothing has claimed. */
   #gapSites(world: World, count: number, rng: Rng, premise: Premise | undefined): Chosen[] {
     const chosen: Chosen[] = []
@@ -216,9 +303,13 @@ export class Forge {
     return chosen
   }
 
-  async #writeQuests(world: World, premise: Premise | undefined, rng: Rng): Promise<{ quests: QuestDoc[]; rejected: ForgeResult['rejected'] }> {
+  async #writeQuests(world: World, premise: Premise | undefined, rng: Rng): Promise<GrownQuests> {
     const summary = summarise(world, premise)
-    const raw = await this.#narrator.writeQuests({ summary, sideQuests: questDemand(summary, rng) })
+    return this.#read(world, await this.#narrator.writeQuests({ summary, sideQuests: questDemand(summary, rng) }))
+  }
+
+  /** Nothing a narrator writes is trusted: every draft goes through `@gb/quest` against this city, and what fails comes back with why. */
+  #read(world: World, raw: readonly unknown[]): GrownQuests {
     const quests: QuestDoc[] = []
     const rejected: Array<{ index: number; problems: readonly QuestProblem[] }> = []
 

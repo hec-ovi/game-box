@@ -12,6 +12,9 @@ import type { PlannedInside, PlannedSite, PlannedThing } from './planned.ts'
  * thing by `thingId`, never by position. Ids are minted here and nowhere else
  * but the plan, so a plot, an interior, a person and a thing are numbered in
  * the same order however many calls were in the air at once.
+ *
+ * A building already standing is never put up again: its plot is the one it
+ * always was, and all that is written is the interior behind its door.
  */
 export function assemble(world: World, planned: readonly PlannedSite[], written: readonly Instance[]): string[] {
   const added: string[] = []
@@ -19,23 +22,29 @@ export function assemble(world: World, planned: readonly PlannedSite[], written:
 
   for (const one of planned) {
     const instance = names.answer(one)
-    const plot = world.addPlot({
-      kind: one.charter.word,
-      name: names.of(one),
-      rect: one.site.rect,
-      entrance: { cell: one.site.entrance, facing: one.site.facing },
-      storeys: one.storeys,
-      style: one.style,
-    })
-    if (!plot.ok) continue
-    added.push(plot.value.id)
+    const plotId = one.standing ? one.standing.plotId : put(world, one, names)
+    if (!plotId) continue
+    if (!one.standing) added.push(plotId)
     if (!one.inside) continue
 
     const { interiorId, size, plan, forSale } = one.inside
-    world.addInterior({ id: interiorId, plotId: plot.value.id, kind: one.charter.word, finish: one.charter.finish, size, ...plan, ...(forSale !== undefined ? { forSale } : {}) })
-    fill(world, one, plot.value.id, instance, names)
+    world.addInterior({ id: interiorId, plotId, kind: one.charter.word, finish: one.charter.finish, size, ...plan, ...(forSale !== undefined ? { forSale } : {}) })
+    fill(world, one, plotId, instance, names)
   }
   return added
+}
+
+/** A building put up on land nothing had claimed. */
+function put(world: World, one: PlannedSite, names: Names): string | undefined {
+  const plot = world.addPlot({
+    kind: one.charter.word,
+    name: names.of(one),
+    rect: one.site.rect,
+    entrance: { cell: one.site.entrance, facing: one.site.facing },
+    storeys: one.storeys,
+    style: one.style,
+  })
+  return plot.ok ? plot.value.id : undefined
 }
 
 /** What every place is called, settled before anything is written, because a deed names a home wherever the home is in the order. */
@@ -57,8 +66,9 @@ class Names {
     return this.#answers.get(one)
   }
 
+  /** What it is called: what the writer named it, unless the sign was already over the door. */
   of(one: PlannedSite): string {
-    return this.#answers.get(one)?.name || one.sign
+    return one.standing ? one.standing.name : this.#answers.get(one)?.name || one.sign
   }
 
   /** The place an interior belongs to, by its id. */

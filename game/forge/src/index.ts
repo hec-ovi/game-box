@@ -1,5 +1,5 @@
 /** @gb/forge: builds a city from a brief, then checks what it built. See CONTRACT.md. */
-export { Forge, summarise, type ForgeError, type ForgeResult } from './forge.ts'
+export { Forge, summarise, type ForgeError, type ForgeResult, type Growth, type GrownQuests } from './forge.ts'
 export { briefContract, type Brief } from './brief.ts'
 export { OfflineNarrator } from './offline-narrator.ts'
 export { premiseLines } from './premise/render.ts'

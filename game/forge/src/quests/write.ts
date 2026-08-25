@@ -40,24 +40,30 @@ export class QuestWriter {
     this.#rng = rng
   }
 
-  write(summary: WorldSummary, sideQuests: number): unknown[] {
+  /**
+   * `from` is how many quests the city already hands out. A town being written
+   * for the first time is 0 and gets its main line; a growth carries on from
+   * the last id and writes errands only, because a town has one argument and it
+   * was settled when the town was founded.
+   */
+  write(summary: WorldSummary, sideQuests: number, from = 0): unknown[] {
     const flavour = flavourOf(summary.theme)
     const cast = new CityCast(summary)
-    const plan = this.#rng.fork('plan')
-    const line = new MainLine(cast, plan, summary.premise)
     const drafts: Draft[] = []
 
     let tier = 0
     // one rung at a time, and a rung nobody can write is where the line stops: if
     // one side of a fork cannot be written, neither side is, so a player on either
     // branch always has the same ladder in front of them
-    for (const rung of rungs(line.links)) {
-      const written = rung.map(({ label, tier: _, ...link }, i) =>
-        this.#one(cast, this.#rng.fork(label), flavour, { ...link, id: questId(drafts.length + 1 + i) }),
-      )
-      if (written.some((draft) => draft === undefined)) break
-      for (const draft of written) drafts.push(draft!)
-      tier = rung[0]!.tier
+    if (!from) {
+      for (const rung of rungs(new MainLine(cast, this.#rng.fork('plan'), summary.premise).links)) {
+        const written = rung.map(({ label, tier: _, ...link }, i) =>
+          this.#one(cast, this.#rng.fork(label), flavour, { ...link, id: questId(drafts.length + 1 + i) }),
+        )
+        if (written.some((draft) => draft === undefined)) break
+        for (const draft of written) drafts.push(draft!)
+        tier = rung[0]!.tier
+      }
     }
 
     const opening = Math.max(FREE_SIDES, Math.round(sideQuests * OPENING))
@@ -67,7 +73,7 @@ export class QuestWriter {
       const rng = this.#rng.fork(`side/${i}`)
       const gate = tier > 0 && i >= opening ? rng.weighted(gates(tier)) : 0
       const job: Job = {
-        id: questId(drafts.length + 1),
+        id: questId(from + drafts.length + 1),
         kind: 'side',
         requires: gate === 0 ? [] : [{ kind: 'flag', flag: standing(gate), value: true }],
       }

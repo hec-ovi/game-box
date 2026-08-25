@@ -104,8 +104,13 @@ export class OfflineNarrator implements Narrator {
     }
   }
 
-  /** A main line out of the town's busiest place, and side work behind it. */
-  async writeQuests(input: { summary: WorldSummary; sideQuests: number }): Promise<unknown[]> {
-    return new QuestWriter(this.#rng.fork('quests')).write(input.summary, input.sideQuests)
+  /**
+   * A main line out of the town's busiest place, and side work behind it. A
+   * growth (`from`) gets side work alone, on its own stream, because the town's
+   * argument was settled when it was founded.
+   */
+  async writeQuests(input: { summary: WorldSummary; sideQuests: number; from?: number }): Promise<unknown[]> {
+    const label = input.from ? `quests/from/${input.from}` : 'quests'
+    return new QuestWriter(this.#rng.fork(label)).write(input.summary, input.sideQuests, input.from)
   }
 }

@@ -6,7 +6,8 @@ import type { PlotSite } from '../layout/plots.ts'
 /**
  * A site the town has decided to build on, before anybody has looked inside it.
  * How the kind was picked is the caller's business: a whole town rolls it off
- * the mix, and `extend` draws one at a time into the gaps.
+ * the mix, `extend` draws one at a time into the gaps, and a growth also offers
+ * up the facades already standing so one of them can be opened.
  */
 export interface Chosen {
   readonly site: PlotSite
@@ -17,6 +18,17 @@ export interface Chosen {
   readonly onAvenue: boolean
   /** Its own stream, so the inside is planned off the same seed the outside was. */
   readonly rng: Rng
+  /** The building already standing here, when this is a facade a growth may open rather than new land. */
+  readonly standing?: Standing
+}
+
+/** A building the city already has: a painted-on door a growth can turn into a real place. */
+export interface Standing {
+  readonly plotId: string
+  /** The sign it already carries. An opened facade keeps it, so the street reads as it always did. */
+  readonly name: string
+  /** Where it falls in the town's own count of plots, which is what its people and its things are drawn from. */
+  readonly index: number
 }
 
 /** A post inside a building that somebody is going to be written into. */
@@ -73,7 +85,7 @@ export interface PlannedSite extends Chosen {
   /** Where it falls in the town's own count of plots. */
   readonly index: number
   readonly style: string
-  /** The sign over its door, written in the box. A place that opens is renamed by whoever writes it. */
+  /** The sign over its door, written in the box. A place that opens is renamed by whoever writes it, unless it was already standing. */
   readonly sign: string
   /** The street its door is on. */
   readonly street?: string

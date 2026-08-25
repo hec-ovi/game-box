@@ -1,7 +1,7 @@
 import { Rng } from '@gb/kit'
 import { SHIPPED_CHARTERS, type ResolvedCharter, type World } from '@gb/world'
 import { describe, expect, it } from 'vitest'
-import { DoorBudget, mostOpen, OPEN_PLACES } from '../src/interior/budget.ts'
+import { DoorBudget, mostOpen, OPEN_PLACES, placesOnNewLand } from '../src/interior/budget.ts'
 import { drawOf, NEEDS, pullOf } from '../src/interior/draw.ts'
 import { openDoors, type Frontage } from '../src/interior/open.ts'
 import { buildTown } from './support.ts'
@@ -261,14 +261,35 @@ describe('how many doors a town of any size opens', () => {
     }
   })
 
-  it('adds frontage to a city that already has its places, and no doors', async () => {
-    // the places are the city's, so twenty more plots are twenty more facades
+  it('gives new land its own doors, and opens none of the city it grew out of', async () => {
+    // a growth's new blocks are a district: they open the town's own number of
+    // places among themselves, and the city they joined is the city it was
     const built = await town('doors-grow', 5)
-    const before = built.world.interiors().length
+    const standing = new Set(built.world.plots().map((plot) => plot.id))
+    const before = openPlots(built.world)
     const added = await built.forge.extend(built.world, 20)
     expect(added.ok).toBe(true)
-    expect(built.world.interiors().length - before, 'growing the city opened another door').toBe(0)
-    expect(built.world.plots().length).toBeGreaterThan(before)
+    if (!added.ok) return
+
+    const opened = [...openPlots(built.world)].filter((plotId) => !before.has(plotId))
+    expect(opened.length, 'new land opened no door at all').toBe(placesOnNewLand(added.value.length))
+    expect(opened.every((plotId) => !standing.has(plotId)), 'new land opened a door in the city it joined').toBe(true)
+  })
+
+  it('opens a door that was painted on, and only as many as it was asked for', async () => {
+    const built = await town('doors-facade', 5)
+    const before = openPlots(built.world)
+    const plots = built.world.plots().length
+    const grown = await built.forge.extend(built.world, { places: 2 })
+    expect(grown.ok).toBe(true)
+    if (!grown.ok) return
+
+    // the matrix does not change: no plot is put up, two of the ones standing gain an interior
+    expect(grown.value).toEqual([])
+    expect(built.world.plots().length).toBe(plots)
+    const opened = [...openPlots(built.world)].filter((plotId) => !before.has(plotId))
+    expect(opened.length).toBe(2)
+    for (const plotId of opened) expect(before.has(plotId), 'a place that was already open was opened again').toBe(false)
   })
 
   it('opens nothing more in a town already over its allowance', () => {
