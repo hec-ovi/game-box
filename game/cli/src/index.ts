@@ -1,7 +1,10 @@
-import { parseArgs } from 'node:util'
+import { apply } from './apply.ts'
+import { parseApply, parseBuild, parseCheck, parseExtend, parsePack } from './args.ts'
 import { build } from './build.ts'
 import { check } from './check.ts'
+import { extend } from './extend.ts'
 import { inspect } from './inspect.ts'
+import { pack } from './pack.ts'
 
 /** Where output goes. Injected so the commands are testable without a terminal. */
 export interface Io {
@@ -9,7 +12,7 @@ export interface Io {
   err(line: string): void
 }
 
-const USAGE = `gb - build and inspect game-box cities
+const USAGE = `gb - build, grow and inspect game-box cities
 
   gb build [options]        generate a city and write it as a bundle
     --theme <text>          what kind of city (default: "quiet coastal town")
@@ -23,61 +26,50 @@ const USAGE = `gb - build and inspect game-box cities
     --history <file>        build to a history you wrote (JSON: the premise and the charters it declares)
     --out <file>            where to write it (default: city.json)
 
+  gb extend <base> [options]         grow a finished city into a new bundle, the base untouched
+    --count <n>             how many buildings to add (default: 10)
+    --model                 use the local model for the new places, not the offline narrator
+    --out <file>            where to write the grown city (default: extended.json)
+
+  gb pack <base> <extended> [--out <file>]   cut what the growth added into a pack (default: pack.json)
+  gb apply <base> <pack> [--out <file>]      apply a pack to its base and write the grown city (default: city.json)
+
   gb inspect <file>         print a bundle: its grid, its places, its quests
-  gb check <file>           open a bundle and report anything wrong with it
+  gb check <file>           open a bundle and report anything wrong with it; for a pack, say which base it names
+    --base <file>           for a pack: apply it to this base and check the city that gives
 `
 
 export async function run(argv: readonly string[], io: Io): Promise<number> {
   const [command, ...rest] = argv
-  switch (command) {
-    case 'build':
-      return build(parse(rest), io)
-    case 'inspect':
-      return inspect(rest[0], io)
-    case 'check':
-      return check(rest[0], io)
-    case undefined:
-    case 'help':
-    case '--help':
-    case '-h':
-      io.out(USAGE)
-      return command === undefined ? 1 : 0
-    default:
-      io.err(`unknown command: ${command}`)
-      io.err(USAGE)
-      return 1
+  try {
+    switch (command) {
+      case 'build':
+        return await build(parseBuild(rest), io)
+      case 'extend':
+        return await extend(parseExtend(rest), io)
+      case 'pack':
+        return await pack(parsePack(rest), io)
+      case 'apply':
+        return await apply(parseApply(rest), io)
+      case 'inspect':
+        return await inspect(rest[0], io)
+      case 'check':
+        return await check(parseCheck(rest), io)
+      case undefined:
+      case 'help':
+      case '--help':
+      case '-h':
+        io.out(USAGE)
+        return command === undefined ? 1 : 0
+      default:
+        io.err(`unknown command: ${command}`)
+        io.err(USAGE)
+        return 1
+    }
+  } catch (cause) {
+    // an option parseArgs will not take is the one thing left that throws
+    io.err(`cannot read the arguments: ${(cause as Error).message}`)
+    io.err(USAGE)
+    return 1
   }
-}
-
-export interface BuildArgs {
-  theme: string
-  seed: string
-  blocks: string
-  cells?: string
-  density: string
-  storeys: string
-  exits: string
-  model: boolean
-  history?: string
-  out: string
-}
-
-function parse(argv: readonly string[]): BuildArgs {
-  const { values } = parseArgs({
-    args: [...argv],
-    options: {
-      theme: { type: 'string', default: 'quiet coastal town' },
-      seed: { type: 'string', default: 'town' },
-      blocks: { type: 'string', default: '3x3' },
-      cells: { type: 'string' },
-      density: { type: 'string', default: '0.8' },
-      storeys: { type: 'string', default: '3' },
-      exits: { type: 'string', default: '1' },
-      model: { type: 'boolean', default: false },
-      history: { type: 'string' },
-      out: { type: 'string', default: 'city.json' },
-    },
-    allowPositionals: false,
-  })
-  return values as BuildArgs
 }

@@ -145,7 +145,7 @@ describe('gb', () => {
 
     const missing = capture()
     expect(await run(['check'], missing.io)).toBe(1)
-    expect(missing.err.join('\n')).toContain('needs a bundle file')
+    expect(missing.err.join('\n')).toContain('needs a bundle or pack file')
 
     const absent = capture()
     expect(await run(['inspect', join(dir, 'no-such-city.json')], absent.io)).toBe(1)

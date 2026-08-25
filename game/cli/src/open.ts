@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { Bundle } from '@gb/bundle'
 import type { Io } from './index.ts'
 
-type Opened = Extract<Awaited<ReturnType<typeof Bundle.open>>, { ok: true }>['value']
+export type Opened = Extract<Awaited<ReturnType<typeof Bundle.open>>, { ok: true }>['value']
 
 /**
  * Open a bundle file the way the game would. A file that will not open is
@@ -15,7 +15,12 @@ export async function openBundle(file: string, io: Io): Promise<Opened | undefin
     io.err(`${file} cannot be read: ${read.unreadable}`)
     return undefined
   }
-  const opened = await Bundle.open(read.document)
+  return openDocument(file, read.document, io)
+}
+
+/** The same, for a document already read off disk. */
+export async function openDocument(file: string, document: unknown, io: Io): Promise<Opened | undefined> {
+  const opened = await Bundle.open(document)
   if (!opened.ok) {
     io.err(`${file} will not open: ${opened.error.code}`)
     for (const line of detail(opened.error)) io.err(`  ${line}`)
@@ -31,12 +36,19 @@ export function detail(error: Record<string, unknown>): string[] {
   if (list) return list.slice(0, 10).map((p) => `${p.where ?? p.path}: ${p.message}`)
   if (Array.isArray(error.words)) return [`kinds of place the file does not describe: ${error.words.join(', ')}`]
   if (typeof error.message === 'string') return [error.message]
-  if (typeof error.expected === 'string') return [`expected ${error.expected}, got ${error.actual}`]
+  if ('expected' in error) return [`expected ${named(error.expected)}, got ${named(error.actual)}`]
   return []
 }
 
+/** A hash, or the base a pack names (world id and hash), in words. */
+function named(value: unknown): string {
+  const base = value as { worldId?: string; contentHash?: string } | undefined
+  if (typeof base?.worldId === 'string') return `${base.worldId} at ${base.contentHash}`
+  return String(value)
+}
+
 /** The file's JSON, or one line saying why there is none. */
-function readJson(file: string): { document: unknown } | { unreadable: string } {
+export function readJson(file: string): { document: unknown } | { unreadable: string } {
   try {
     return { document: JSON.parse(readFileSync(file, 'utf8')) as unknown }
   } catch (cause) {

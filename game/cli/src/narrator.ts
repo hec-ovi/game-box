@@ -1,20 +1,22 @@
 import { readFileSync } from 'node:fs'
 import { OfflineNarrator, type History, type Narrator } from '@gb/forge'
 import { Scribe } from '@gb/scribe'
-import type { BuildArgs } from './index.ts'
 
-/** Who writes the city, or why the history file asked for cannot be read. */
-export type Writers = { narrator: Narrator; scribe: Scribe | undefined } | { unreadable: string }
+/** Who writes a city: the local model when asked for, the offline narrator otherwise. */
+export interface Writers {
+  narrator: Narrator
+  scribe: Scribe | undefined
+}
 
-/** The local model when asked for, the offline narrator otherwise, and a history file in place of either's story. */
-export function narratorFor(args: BuildArgs): Writers {
-  const scribe = args.model ? new Scribe({ seed: args.seed }) : undefined
-  const base: Narrator = scribe ?? new OfflineNarrator(args.seed)
-  if (!args.history) return { narrator: base, scribe }
+export function narratorFor(seed: string, model: boolean): Writers {
+  const scribe = model ? new Scribe({ seed }) : undefined
+  return { narrator: scribe ?? new OfflineNarrator(seed), scribe }
+}
 
-  const history = readHistory(args.history)
-  if (typeof history === 'string') return { unreadable: history }
-  return { narrator: new HistoryNarrator(base, history), scribe }
+/** The same writer answering the history from a file, or one line saying why the file is not one. */
+export function storied(base: Narrator, file: string): Narrator | string {
+  const history = readHistory(file)
+  return typeof history === 'string' ? history : new HistoryNarrator(base, history)
 }
 
 /**

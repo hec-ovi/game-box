@@ -1,20 +1,21 @@
 import { writeFileSync } from 'node:fs'
 import { Bundle } from '@gb/bundle'
 import { Forge } from '@gb/forge'
-import type { BuildArgs, Io } from './index.ts'
-import { narratorFor } from './narrator.ts'
+import type { BuildArgs } from './args.ts'
+import type { Io } from './index.ts'
+import { narratorFor, storied } from './narrator.ts'
 import { detail } from './open.ts'
-import { pinDesigns } from './pins.ts'
+import { label, pinDesigns } from './pins.ts'
 
 /** Generate a city and write it out as one bundle file. */
 export async function build(args: BuildArgs, io: Io): Promise<number> {
   const [across, down] = args.blocks.split('x').map((n) => Number.parseInt(n, 10))
-  const writers = narratorFor(args)
-  if ('unreadable' in writers) {
-    io.err(`cannot build: ${writers.unreadable}`)
+  const { scribe, narrator: writer } = narratorFor(args.seed, args.model)
+  const narrator = args.history ? storied(writer, args.history) : writer
+  if (typeof narrator === 'string') {
+    io.err(`cannot build: ${narrator}`)
     return 1
   }
-  const { narrator, scribe } = writers
 
   const started = Date.now()
   const built = await new Forge(narrator).build({
@@ -40,8 +41,11 @@ export async function build(args: BuildArgs, io: Io): Promise<number> {
   // pin the city to the art it was designed against before it is sealed: the
   // hash covers the pins, and a file written without them is re-skinned by
   // whoever opens it against a newer pack
-  const pins = await pinDesigns(world)
-  if (pins.state === 'half') {
+  const pins = await pinDesigns(
+    world,
+    world.plots().map((plot) => plot.id),
+  )
+  if (pins.state === 'refused') {
     io.err(`cannot pin the city to its art: ${pins.why}`)
     return 1
   }
@@ -72,7 +76,7 @@ export async function build(args: BuildArgs, io: Io): Promise<number> {
   }
   io.out(
     pins.state === 'pinned'
-      ? `  designed against ${pins.pack.pack} ${pins.pack.version}, ${pins.plots} of ${world.plots().length} buildings pinned`
+      ? `  designed against ${label(pins.pack)}, ${pins.plots} of ${world.plots().length} buildings pinned`
       : `  no buildings pinned, so the file names no art: ${pins.why}`,
   )
   if (scribe?.problems().length) {

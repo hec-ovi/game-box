@@ -118,7 +118,11 @@ it('pins nothing at all when the pack cannot be read', async () => {
   if (!built.ok) throw new Error(built.error.code)
   const world = built.value.world
 
-  const pins = await pinDesigns(world, new URL('file:///no/such/pack/buildings.json'))
+  const pins = await pinDesigns(
+    world,
+    world.plots().map((plot) => plot.id),
+    new URL('file:///no/such/pack/buildings.json'),
+  )
 
   expect(pins.state).toBe('unpinned')
   expect(world.catalogues()).toEqual([])
