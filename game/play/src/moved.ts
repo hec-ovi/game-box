@@ -1,7 +1,6 @@
 /** The things the player has moved: what is standing somewhere the city did not put it. */
 import type { PlacedItemDoc, SpotDoc } from './schema.ts'
-
-const named = (...ids: string[]): boolean => ids.every((id) => id.trim().length > 0)
+import { named } from './named.ts'
 
 /**
  * Where a thing is now, once a player has carried it off and left it somewhere
@@ -46,6 +45,11 @@ export class MovedItems {
 
   list(): readonly PlacedItemDoc[] {
     return this.#entries.map((entry) => ({ ...entry }))
+  }
+
+  /** What is standing in one interior. */
+  listIn(interiorId: string): readonly PlacedItemDoc[] {
+    return this.#entries.filter((entry) => entry.interiorId === interiorId).map((entry) => ({ ...entry }))
   }
 
   get any(): boolean {

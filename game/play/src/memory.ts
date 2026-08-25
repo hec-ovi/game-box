@@ -2,6 +2,7 @@
 import { err, ok, type Result } from '@gb/kit'
 import { DEFAULT_DISPOSITION, stepped, type Disposition } from './disposition.ts'
 import type { MemoryDoc, PersonMemoryDoc } from './schema.ts'
+import { named } from './named.ts'
 
 /** Where a person got a fact: the player said it, or they saw it happen. */
 export const MEMORY_SOURCES = ['told', 'seen'] as const
@@ -17,8 +18,6 @@ export const FACT_LENGTH = 200
 export type MemoryError =
   | { readonly code: 'bad-fact'; readonly npcId: string; readonly limit: number }
   | { readonly code: 'unknown-source'; readonly source: string; readonly allowed: readonly MemorySource[] }
-
-const named = (id: string): boolean => id.trim().length > 0
 
 export class Memories {
   #people = new Map<string, PersonMemoryDoc>()

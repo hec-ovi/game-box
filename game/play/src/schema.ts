@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { MAX_RATE, SECONDS_PER_DAY } from './day.ts'
 import { DISPOSITIONS } from './disposition.ts'
 import { FACT_LENGTH, MEMORY_SOURCES } from './memory.ts'
+import { PASSWORD_LENGTH } from './passwords.ts'
 import { HISTORY_LENGTH } from './told.ts'
 import { WEATHERS } from './weather.ts'
 
@@ -69,6 +70,45 @@ export const PersonMemorySchema = z.object({
   facts: z.array(MemorySchema),
 })
 
+/** What a lock gives way to: one door, or an interior's street door. */
+export const AccessSchema = z.union([
+  z.object({ doorId: z.string().min(1) }),
+  z.object({ interiorId: z.string().min(1) }),
+])
+
+export const KeySchema = z.object({
+  opens: AccessSchema,
+  /** The key or card it rides on. Absent when a quest granted the access outright. */
+  itemId: z.string().min(1).optional(),
+})
+
+/** Who gave the player a password: a quest, or a person. */
+export const PasswordSourceSchema = z.union([
+  z.object({ questId: z.string().min(1) }),
+  z.object({ npcId: z.string().min(1) }),
+])
+
+export const PasswordSchema = z.object({
+  /** The word as it is typed at a door or a screen. */
+  password: z.string().min(1).max(PASSWORD_LENGTH),
+  from: PasswordSourceSchema,
+})
+
+export const GarageSchema = z.object({
+  /** Car models the player keeps, first kept first. */
+  kept: z.array(z.string().min(1)),
+  /** The one out on the street. Absent when none is. */
+  out: z.string().min(1).optional(),
+})
+
+export const ScoreSchema = z.object({
+  machineId: z.string().min(1),
+  /** The game played on it, by the name its program has. */
+  game: z.string().min(1),
+  /** The most points scored at it, whole. */
+  best: z.number().int().min(0),
+})
+
 export const PlayerStateSchema = z.object({
   format: z.literal('game-box.player'),
   schemaVersion: z.literal(1),
@@ -97,6 +137,16 @@ export const PlayerStateSchema = z.object({
   codex: CodexSchema.optional(),
   /** What each person holds of the player, by npc id. Absent until somebody holds something. */
   memory: z.record(z.string().min(1), PersonMemorySchema).optional(),
+  /** What the player can get past: keys and cards in hand by what they open, and access granted outright. Absent until they hold one. */
+  keys: z.array(KeySchema).optional(),
+  /** The passwords the player has been given, and by whom. Absent until they learn one. */
+  passwords: z.array(PasswordSchema).optional(),
+  /** Interiors the player holds the deed to, first bought first. Absent until they own one. */
+  owned: z.array(z.string().min(1)).optional(),
+  /** The cars the player keeps, and which is out. Absent until they keep one. */
+  garage: GarageSchema.optional(),
+  /** The best score per game per machine. Absent until one is played. */
+  scores: z.array(ScoreSchema).optional(),
 })
 
 export const playerContract = contract('player-state', PlayerStateSchema)
@@ -109,3 +159,9 @@ export type CodexDoc = z.infer<typeof CodexSchema>
 export type CodexPersonDoc = z.infer<typeof CodexPersonSchema>
 export type MemoryDoc = z.infer<typeof MemorySchema>
 export type PersonMemoryDoc = z.infer<typeof PersonMemorySchema>
+export type AccessDoc = z.infer<typeof AccessSchema>
+export type KeyDoc = z.infer<typeof KeySchema>
+export type PasswordSourceDoc = z.infer<typeof PasswordSourceSchema>
+export type PasswordDoc = z.infer<typeof PasswordSchema>
+export type GarageDoc = z.infer<typeof GarageSchema>
+export type ScoreDoc = z.infer<typeof ScoreSchema>

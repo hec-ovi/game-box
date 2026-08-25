@@ -1,19 +1,28 @@
 import { err, ok, type Result, type SchemaViolation } from '@gb/kit'
+import type { Access } from './access.ts'
 import { GameClock } from './clock.ts'
 import { Codex, type Discovery } from './codex.ts'
 import type { Disposition } from './disposition.ts'
+import { Garage, type GarageError } from './garage.ts'
+import { Keyring } from './keys.ts'
 import { Memories, type MemoryError, type MemorySource } from './memory.ts'
 import { Purse, type MoneyError } from './money.ts'
 import { MovedItems } from './moved.ts'
+import { Deeds } from './owned.ts'
+import { Passwords, type PasswordSource } from './passwords.ts'
 import {
   playerContract,
   type CodexDoc,
+  type KeyDoc,
   type MemoryDoc,
+  type PasswordDoc,
   type PlacedItemDoc,
   type PlayerStateDoc,
+  type ScoreDoc,
   type SpotDoc,
   type WhereDoc,
 } from './schema.ts'
+import { Scores } from './scores.ts'
 import { placeOf } from './where.ts'
 
 export type PlayError =
@@ -23,14 +32,16 @@ export type PlayError =
   | { readonly code: 'already-carried'; readonly itemId: string }
   | MoneyError
   | MemoryError
+  | GarageError
 
 export const DEFAULT_FACTION = 'town'
 
 /**
  * Everything about the playthrough that changes while it is played: what the
- * player carries, what they owe, what they have been told, who walks with them,
- * what they have found, what each person holds of them, and what time it is.
- * The world file stays untouched; this is the part that is saved per playthrough.
+ * player carries, what they can get past, what they owe, what they own, what
+ * they have been told, who walks with them, what they drive, what they have
+ * found, how well they play, what each person holds of them, and what time it
+ * is. The world file stays untouched; this is the part that is saved per playthrough.
  */
 export class PlayerState {
   #doc: PlayerStateDoc
@@ -39,15 +50,25 @@ export class PlayerState {
   #moved: MovedItems
   #codex: Codex
   #memory: Memories
+  #keys: Keyring
+  #passwords: Passwords
+  #deeds: Deeds
+  #garage: Garage
+  #scores: Scores
 
   private constructor(doc: PlayerStateDoc) {
-    const { clock, where, moved, codex, memory, ...rest } = doc
+    const { clock, where, moved, codex, memory, keys, passwords, owned, garage, scores, ...rest } = doc
     this.#doc = rest
     this.#purse = new Purse(rest.money)
     this.#clock = GameClock.from(clock)
     this.#moved = MovedItems.from(moved)
     this.#codex = Codex.from(codex)
     this.#memory = Memories.from(memory)
+    this.#keys = Keyring.from(keys, (itemId) => this.has(itemId))
+    this.#passwords = Passwords.from(passwords)
+    this.#deeds = Deeds.from(owned)
+    this.#garage = Garage.from(garage)
+    this.#scores = Scores.from(scores)
     // a thing in hand is not also on a shelf, whatever a hand-made save says
     for (const itemId of this.#doc.inventory) this.#moved.clear(itemId)
     if (where) this.setWhere(where)
@@ -150,9 +171,14 @@ export class PlayerState {
     return this.#doc.reputation[faction] ?? 0
   }
 
-  take(itemId: string, options: { stolen?: boolean } = {}): void {
+  /**
+   * Pick a thing up. Name `opens` when it is a key or a card, with what the
+   * city file says it opens: the access rides on the thing, and leaves with it.
+   */
+  take(itemId: string, options: { stolen?: boolean; opens?: Access } = {}): void {
     if (!this.has(itemId)) this.#doc.inventory.push(itemId)
     if (options.stolen && !this.isStolen(itemId)) this.#doc.stolen.push(itemId)
+    if (options.opens) this.#keys.hold(itemId, options.opens)
     this.#moved.clear(itemId)
   }
 
@@ -164,6 +190,11 @@ export class PlayerState {
   /** Everything the player has left somewhere, so a room can be dressed with it again. */
   placed(): readonly PlacedItemDoc[] {
     return this.#moved.list()
+  }
+
+  /** What is standing in one interior: the things put in a home, or left in any room. */
+  placedIn(interiorId: string): readonly PlacedItemDoc[] {
+    return this.#moved.listIn(interiorId)
   }
 
   /**
@@ -186,6 +217,7 @@ export class PlayerState {
     this.#doc.inventory.splice(index, 1)
     const stolenIndex = this.#doc.stolen.indexOf(itemId)
     if (stolenIndex >= 0) this.#doc.stolen.splice(stolenIndex, 1)
+    this.#keys.release(itemId)
     return ok(undefined)
   }
 
@@ -281,6 +313,94 @@ export class PlayerState {
     this.#memory.cool(npcId)
   }
 
+  /** Access with nothing to carry: a quest reward, a door buzzed open for good. */
+  grant(access: Access): void {
+    this.#keys.grant(access)
+  }
+
+  /** Whether a key or card in hand, or access granted, opens that door or that interior's street door. */
+  opens(access: Access): boolean {
+    return this.#keys.opens(access)
+  }
+
+  /** Every key and card in hand by what it opens, and every access granted, in the order come by. */
+  keys(): readonly KeyDoc[] {
+    return this.#keys.list()
+  }
+
+  /** The player was given a password, by a quest or by a person. Answers whether it was new. */
+  learn(password: string, from: PasswordSource): boolean {
+    return this.#passwords.learn(password, from)
+  }
+
+  /** Whether the player has been given exactly that word. */
+  knows(password: string): boolean {
+    return this.#passwords.knows(password)
+  }
+
+  /** Every password given, oldest first, each with who gave it. */
+  passwords(): readonly PasswordDoc[] {
+    return this.#passwords.list()
+  }
+
+  /** The deed to a place is the player's now. */
+  own(interiorId: string): void {
+    this.#deeds.own(interiorId)
+  }
+
+  owns(interiorId: string): boolean {
+    return this.#deeds.owns(interiorId)
+  }
+
+  /** Every place the player holds the deed to, first bought first. */
+  owned(): readonly string[] {
+    return this.#deeds.list()
+  }
+
+  /** A car is the player's to keep, by model. */
+  keepCar(model: string): void {
+    this.#garage.keep(model)
+  }
+
+  hasCar(model: string): boolean {
+    return this.#garage.has(model)
+  }
+
+  /** Every car kept, first kept first. */
+  cars(): readonly string[] {
+    return this.#garage.list()
+  }
+
+  /** Bring a kept car out; whichever was out goes back in. Refused for a car not kept. */
+  takeOutCar(model: string): Result<void, PlayError> {
+    return this.#garage.takeOut(model)
+  }
+
+  /** No car out on the street. */
+  putAwayCar(): void {
+    this.#garage.putAway()
+  }
+
+  /** The model out on the street, if one is. */
+  get carOut(): string | undefined {
+    return this.#garage.out
+  }
+
+  /** A game on a machine ended on that many points. Answers whether it is a new best. */
+  recordScore(machineId: string, game: string, points: number): boolean {
+    return this.#scores.record(machineId, game, points)
+  }
+
+  /** The best so far at that game on that machine, if it has been played. */
+  bestScore(machineId: string, game: string): number | undefined {
+    return this.#scores.best(machineId, game)
+  }
+
+  /** Every best, one per game per machine, in the order first played. */
+  scores(): readonly ScoreDoc[] {
+    return this.#scores.list()
+  }
+
   toJSON(): PlayerStateDoc {
     const doc: PlayerStateDoc = { ...this.#doc, money: this.#purse.balance, clock: this.#clock.toJSON() }
     if (this.#doc.where) doc.where = { ...this.#doc.where }
@@ -288,6 +408,11 @@ export class PlayerState {
     if (this.#codex.any) doc.codex = this.#codex.toJSON()
     const memory = this.#memory.toJSON()
     if (Object.keys(memory).length > 0) doc.memory = memory
+    if (this.#keys.any) doc.keys = this.#keys.toJSON()
+    if (this.#passwords.any) doc.passwords = this.#passwords.toJSON()
+    if (this.#deeds.any) doc.owned = this.#deeds.toJSON()
+    if (this.#garage.any) doc.garage = this.#garage.toJSON()
+    if (this.#scores.any) doc.scores = this.#scores.toJSON()
     return doc
   }
 }

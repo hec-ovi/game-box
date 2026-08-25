@@ -1,11 +1,10 @@
 /** What the player has found: the places entered, the people known of, and what has been learned about each. */
 import type { CodexDoc, CodexPersonDoc } from './schema.ts'
 import { Told } from './told.ts'
+import { named } from './named.ts'
 
 /** Something the player just came across: a place walked into, or a person met. */
 export type Discovery = { readonly place: string } | { readonly npc: string }
-
-const named = (id: string): boolean => id.trim().length > 0
 
 export class Codex {
   #places: string[] = []

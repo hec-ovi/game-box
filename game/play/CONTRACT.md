@@ -1,10 +1,10 @@
 # @gb/play contract
 
-contractVersion: 0.6.0
+contractVersion: 0.7.0
 
 ## Purpose
 
-The playthrough: what the player carries, what they stole, what they left standing somewhere, what they can afford, what they have been told, who is walking with them, where they are standing, which job they are tracking, what they have found, what each person holds of them, and what time it is.
+The playthrough: what the player carries, what they can get past and the passwords they were given, what they stole, what they left standing somewhere, what they can afford, what they own, the cars they keep, what they have been told, who is walking with them, where they are standing, which job they are tracking, what they have found, how well they play, what each person holds of them, and what time it is.
 
 ## Inputs
 
@@ -13,6 +13,13 @@ The playthrough: what the player carries, what they stole, what they left standi
 | `PlayerState.create(worldId, startingMoney?)` | ids as strings | money is a whole number, zero or more |
 | `PlayerState.load(value, worldId)` | [schema/player-state.json](schema/player-state.json) | the save's `worldId` matches the world being played |
 | mutations: `take`, `drop`, `earn`, `setFlag`, `adjustReputation`, `addCompanion`, `removeCompanion` | ids and whole numbers | see errors |
+| `take(itemId, { opens })` | an `Access`: `{ doorId }` or `{ interiorId }` | a key or card and what the city says it opens; the access rides on the thing |
+| `grant(access)` | an `Access` | access with nothing to carry: a quest reward; a nameless id is ignored |
+| `learn(password, from)` | a word up to `PASSWORD_LENGTH` (60) characters, and `{ questId }` or `{ npcId }` | blank or over-long words, or a nameless giver, are ignored |
+| `own(interiorId)` | an interior id | a name, not a lookup; the deed itself is bought with `buy` |
+| `keepCar(model)` | a car model name | a name, not a lookup; the same model twice is one car |
+| `takeOutCar(model)`, `putAwayCar()` | a kept model, or nothing | refused for a car not kept |
+| `recordScore(machineId, game, points)` | ids as strings, points a whole number zero or more | a lower score than the best changes nothing |
 | `pay(amount)` | a whole number of credits, zero or more | refused when it is not, or not held |
 | `buy(itemId, price)` | an item id and a price as for `pay` | pays and takes in one motion; refused, nothing moves |
 | `discover({ place } \| { npc })` | an interior id, or an npc id | names, not lookups; a nameless id is ignored |
@@ -40,6 +47,14 @@ The playthrough: what the player carries, what they stole, what they left standi
 | `tracked` | a quest id or nothing | whatever was last tracked, resolved against nothing |
 | `placedAt(itemId)` | `{ interiorId, anchorId }` or nothing | where the player left that thing |
 | `placed()` | `[{ itemId, interiorId, anchorId }]` | everything they left somewhere, each thing once |
+| `placedIn(interiorId)` | the same, for one interior | what stands in a home, or in any one room |
+| `opens(access)` | boolean | whether a key or card in hand, or an access granted, opens that |
+| `keys()` | `[{ opens, itemId? }]` | every key and card in hand by what it opens, and every access granted, in the order come by; a copy |
+| `knows(password)` | boolean | whether the player was given exactly that word, trimmed |
+| `passwords()` | `[{ password, from }]` | every password given, oldest first, with who gave it; a copy |
+| `owns(interiorId)`, `owned()` | boolean, interior ids | the places the player holds the deed to, first bought first |
+| `hasCar(model)`, `cars()`, `carOut` | boolean, model names, a model or nothing | the cars kept, first kept first, and the one out on the street |
+| `bestScore(machineId, game)`, `scores()` | a number or nothing, `[{ machineId, game, best }]` | the best per game per machine, in the order first played |
 | `discovered()` | [schema/player-state.json](schema/player-state.json) `codex` | `{ places, people: [{ npcId, unlocked }], history? }`, each in the order first found; a copy |
 | `history()` | lines of text | what the player has been told of the city, oldest first, each line once, at most `HISTORY_CAP` (60); a copy |
 | `unlocked(npcId)` | fact ids | what has been learned of one person, in the order learned; nobody reads `[]` |
@@ -69,6 +84,83 @@ player.pay(2.5)              // invalid-amount
 
 The price comes from whoever sells: the world file or the counter. This box
 holds the credits and the rule that they never go below zero.
+
+## What the player can get past
+
+A lock is the city's: the door carries what opens it, and the card carries what
+it opens. This box holds the player's side of it, so a quest can hand out
+access and a card can be carried from one session to the next.
+
+```ts
+player.take('item_0003', { opens: { doorId: 'door_0004' } })   // a card off a desk
+player.grant({ interiorId: 'interior_0002' })                   // a quest reward
+player.opens({ doorId: 'door_0004' })                           // true
+player.keys() // [{ opens: { doorId: 'door_0004' }, itemId: 'item_0003' }, { opens: { interiorId: 'interior_0002' } }]
+```
+
+An `Access` is `{ doorId }` for one door or `{ interiorId }` for that interior's
+street door, the same shape a card's `opens` and a quest's access reward are
+written in. A key or card taken with `opens` holds that access for as long as
+it is in hand: dropping it or placing it shuts the door again. Access granted
+rides on nothing and stays, so a door the player typed the password at is
+`grant({ doorId })` once it gives, and it stays open across a save. The ids are
+names; whoever knows the city compares them with the door in front of the
+player, along with `Door.keyItemId` against `has`, and walks `keys()` on
+opening a save to put every lock the player got past back the way they left it.
+
+A password is text the player was given, by a quest or by a person, trimmed
+and compared exactly. `learn` answers whether it was new, so a conversation can
+say so; `knows` is what a door or a screen checks before asking the player to
+type. Who gave it is kept for the journal.
+
+```ts
+player.learn('rosebud', { questId: 'quest_0002' })   // true
+player.knows('rosebud')                               // true
+player.passwords()                                    // [{ password: 'rosebud', from: { questId: 'quest_0002' } }]
+```
+
+## A place of their own
+
+The deed is a thing on a counter, bought with `buy` like any other; `own` then
+records the place as the player's. Whose a place is also stands in the city
+file (its `owner`), and `owned()` is the playthrough's own record of it, so a
+save opened against a city file written before the purchase still knows which
+doors are the player's. What they put in it is `place`, and `placedIn(home)`
+lists it for dressing the room.
+
+```ts
+player.buy('item_0020', 400)
+player.own('interior_0005')
+player.place('item_0021', { interiorId: 'interior_0005', anchorId: 'anchor_0030' })
+player.placedIn('interior_0005') // [{ itemId: 'item_0021', interiorId: 'interior_0005', anchorId: 'anchor_0030' }]
+```
+
+## The cars they keep
+
+A car reward is a model name, one of the cars the city's art ships; this box
+holds the name. `keepCar` adds it once, `takeOutCar` names the one on the
+street (whichever was out goes back in), `putAwayCar` leaves none out, and
+`carOut` is what the game spawns at the kerb on reopening a save.
+
+```ts
+player.keepCar('SUV')
+player.takeOutCar('SUV')   // ok
+player.takeOutCar('Cop')   // missing-car
+player.carOut              // 'SUV'
+```
+
+## How well they play
+
+A machine runs a game, and the best the player has done at it is kept per
+game per machine, whole points. `recordScore` answers whether the run is a new
+best, which is what a quest that asks for a score, or a screen that says
+"new record", reads.
+
+```ts
+player.recordScore('machine_0001', 'snake', 120)   // true
+player.recordScore('machine_0001', 'snake', 80)    // false
+player.bestScore('machine_0001', 'snake')          // 120
+```
 
 ## What the player has found
 
@@ -228,6 +320,7 @@ From `PlayerState`:
 - `wrong-world`: the save belongs to a different world id.
 - `missing-item`: dropping something the player is not carrying.
 - `already-carried`: buying something already in hand. Nothing is paid.
+- `missing-car`: taking out a car the player does not keep. Nothing changes.
 - `invalid-amount`: paying a price that is not a whole number of credits, zero or more. Nothing is deducted.
 - `not-enough-money`: paying more than is held. Nothing is deducted. Carries what was needed and what is held.
 - `bad-fact`: a fact for a person to hold that is blank, over `FACT_LENGTH`, or for a nameless person. Nothing is held. Carries the limit.
@@ -260,6 +353,10 @@ From `GameClock`, each leaving the clock exactly as it was:
 - A tracked quest id is stored, never resolved. This box holds no quests to check it against. The same goes for the room and the surface a thing was left on.
 - A thing is in the inventory or standing somewhere, never both: taking it forgets its spot, leaving it takes it out of the inventory, and a save that claims both loads with the thing in hand.
 - A thing has one spot: leaving it somewhere else moves it rather than copying it.
+- A key or card opens something only while it is in hand: a save that lists a key on a thing not in the inventory loads without that key. An access granted with no thing stays. Each key is held once.
+- A password is held once, trimmed, with the first giver kept. A place is owned once; a car is kept once; the car out is always one that is kept, and a save claiming otherwise opens with none out.
+- One best per game per machine, never lowered: a save listing the same pair twice keeps the higher.
+- A save written before keys, passwords, deeds, cars and scores has none of `keys`, `passwords`, `owned`, `garage` or `scores`, and loads with nothing to open, nothing known, nothing owned, no car and no score.
 - This box knows nothing about quests, dialogue or geometry, and nothing about rendering: it holds state, does arithmetic, and answers questions. The sky is drawn elsewhere from what `clock.weather` and `clock.hour` say.
 
 ## How to modify this blackbox safely
