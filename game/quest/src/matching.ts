@@ -28,6 +28,15 @@ export function matchStep(input: { step: Step; event: GameEvent; questId: string
     case 'stash':
       if (event.kind !== 'stashed' || event.interiorId !== step.interiorId || event.anchorId !== step.anchorId) return undefined
       return credit(step, event.itemId, credited)
+    case 'unlock':
+      return event.kind === 'unlocked' && event.doorId === step.doorId ? {} : undefined
+    case 'hack':
+      return event.kind === 'machine-unlocked' && event.machineId === step.machineId ? {} : undefined
+    case 'beat-game':
+      return event.kind === 'scored' && event.machineId === step.machineId && event.score >= step.score ? {} : undefined
+    case 'buy':
+      if (event.kind !== 'bought') return undefined
+      return credit(step, event.itemId, credited)
     case 'escort':
       return event.kind === 'companion-arrived' && event.npcId === step.npcId && samePlace(step.place, event.place) ? {} : undefined
     case 'choice':

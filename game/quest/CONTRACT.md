@@ -1,16 +1,16 @@
 # @gb/quest contract
 
-contractVersion: 0.8.1
+contractVersion: 0.9.0
 
 ## Purpose
 
-Quests as flows: a checked graph of steps ("talk to her, go there, take three of those, bring them back") that is refused unless it can actually be played and pays what the work is worth, then run from the events the game reports.
+Quests as flows: a checked graph of steps ("talk to her, get through the back door, open the terminal, buy three of those, bring them back") that is refused unless it can actually be played and pays what the work is worth (credits, things, access, a car, a home), then run from the events the game reports.
 
 ## Inputs
 
 | Param | Schema | Preconditions |
 |---|---|---|
-| `validateQuest(value, world)` | [schema/quest.json](schema/quest.json) | `world` answers `hasNpc`, `hasPlot`, `hasInterior`, `hasItem`, `hasAnchor` |
+| `validateQuest(value, world)` | [schema/quest.json](schema/quest.json) | `world` answers `hasNpc`, `hasPlot`, `hasInterior`, `hasItem`, `hasAnchor`, `hasDoor`, `hasMachine` (`@gb/world`'s `questView(world)` does) |
 | `checkFlow(quest, world)` | a parsed `QuestDoc` | same `world`; returns the problems without the reward check |
 | `rewardFor(difficulty, faction?)` | one of `DIFFICULTIES` | none |
 | `checkReward(quest)` | a parsed `QuestDoc` | none |
@@ -27,7 +27,7 @@ Quests as flows: a checked graph of steps ("talk to her, go there, take three of
 | `validateQuest` | a `QuestDoc` | every step reachable, every path ends, every reference exists, every item in hand before it is asked for, reward inside the band |
 | `checkReward` | `SchemaViolation[]` | empty means the pay fits the difficulty; each entry names the field to fix |
 | `rewardFor` | a `Reward` | inside the band for that difficulty |
-| `QuestLog.handle` / `start` / `abandon` | `Change[]` | `quest-started`, `step-opened`, `step-revealed`, `step-progress`, `step-done`, `step-abandoned`, `quest-abandoned`, `quest-complete`, `quest-failed`; empty when nothing moved |
+| `QuestLog.handle` / `start` / `abandon` | `Change[]` | `quest-started`, `step-opened`, `step-revealed`, `step-progress`, `step-done`, `step-abandoned`, `quest-abandoned`, `quest-complete` (carrying the whole `Reward`), `quest-failed`; empty when nothing moved |
 | `QuestLog.objectives()` | `Objective[]` | one line per open step the player can see: `questId`, `questTitle` and the step line below |
 | `QuestLog.journal()` | `JournalEntry[]` | one page per quest the player has taken, failed ones included: `questId`, `questTitle`, `kind` (`main` or `side`), `status`, `failReason` while it is `failed`, `timer` (`{remaining, total}` in game seconds) while a timed quest is being played, and the steps they do, in the order the quest was written, each a step line plus its `state` |
 | `QuestLog.offeredBy(npcId)` | `QuestDoc[]` | unstarted quests from that giver whose `requires` the player already meets |
@@ -95,8 +95,14 @@ A step names its target in whatever field its kind uses, and the objective carri
 | `deliver` | `npcId` (who it goes to), `itemId`, `alternates` |
 | `stash` | `place` (the interior it goes in), `anchorId`, `itemId`, `alternates` |
 | `escort` | `npcId` (who walks with you), `place` (where to) |
+| `unlock` | `doorId` |
+| `hack` | `machineId` |
+| `beat-game` | `machineId`, `score` (the one to reach) |
+| `buy` | `itemId`, `alternates` |
 | `choice` | nowhere in the world, but `choice`: the question and the roads out of it, below |
 | `join`, `any-of`, `complete`, `fail` | nothing: they point at no one and nowhere |
+
+A door or a machine is named by id alone; where it stands is the world's to answer (`world.door(doorId)`, `world.machine(machineId)` in `@gb/world`), so the map pins it from there.
 
 ## What credits a step
 
@@ -110,10 +116,14 @@ A step is credited by the thing happening in the world, never by a record of int
 | `deliver` | `gave { itemId, npcId }` | the thing left the player's hand and went to that person |
 | `stash` | `stashed { itemId, interiorId, anchorId }` | the thing is standing on that anchor in that room |
 | `escort` | `companion-arrived { npcId, place }` | that person's body, walking with the player, entered that plot or interior. The companion flag `@gb/play` keeps is not this: it says they agreed to come, and an escort is credited only when they got there |
+| `unlock` | `unlocked { doorId }` | that door's lock came off, with its key item in hand or its password typed at it. A password known (`@gb/play`'s `knows`) is not this |
+| `hack` | `machine-unlocked { machineId }` | that machine's lock came off at its own screen, with its password typed or a hack |
+| `beat-game` | `scored { machineId, score }` | a game on that machine ended; the step is credited by the first score at or past its own |
+| `buy` | `bought { itemId }` | the thing was paid for at a counter and is in the player's hand. A purchase also sends `acquired`, so a `collect` sees it too; `acquired` alone never credits a `buy` |
 | `choice` | `chose { questId, stepId, optionId }` | the player took one of the keys the step published |
 | `join`, `any-of`, `complete`, `fail` | nothing | they resolve the moment they open |
 
-`collect`, `deliver` and `stash` with a `count` are credited once per distinct item in their pool and finish on the last one. A step's `requires` is a gate in front of the credit, read off the player's record (`has-companion` reads the flag, `has-item` the inventory), so a credited event on a step whose gate is shut moves nothing.
+`collect`, `buy`, `deliver` and `stash` with a `count` are credited once per distinct item in their pool and finish on the last one. A step's `requires` is a gate in front of the credit, read off the player's record (`has-companion` reads the flag, `has-item` the inventory), so a credited event on a step whose gate is shut moves nothing.
 
 Failure rules read the world the same way:
 
@@ -153,9 +163,11 @@ Only a key the step published moves it. A `chose` naming anything else changes n
 
 ## Step kinds (closed set)
 
-`talk`, `goto`, `collect`, `deliver`, `stash`, `escort`, `choice`, `join`, `any-of`, `complete`, `fail`. A generator may use no others.
+`talk`, `goto`, `collect`, `buy`, `deliver`, `stash`, `escort`, `unlock`, `hack`, `beat-game`, `choice`, `join`, `any-of`, `complete`, `fail`. A generator may use no others.
 
-- `collect`, `deliver` and `stash` take `count` (default 1) over a pool of interchangeable items: the one in `itemId` plus `alternates`. That is how "three of the five crates" is written, and each item counts once.
+- `collect`, `buy`, `deliver` and `stash` take `count` (default 1) over a pool of interchangeable items: the one in `itemId` plus `alternates`. That is how "three of the five crates" is written, and each item counts once. A `buy` counts what was paid for; what was bought is in hand for the solvability walk, the same as a `collect`.
+- `unlock` names a `doorId` and `hack` a `machineId`, both ids the world holds (`door_0001`, `machine_0001`). What opens them is the city's: a door's key item or password, a machine's password. A quest that wants the player to type the word gives it with a `give-password` effect on an earlier step; the door or the screen checks it against what the player knows.
+- `beat-game` names a `machineId` and the `score` (1 to 1000000) a game on it has to reach. Which game runs is the machine's `program`, the writer's text says which, and the score is play's to keep.
 - A `talk` may name a `topic`. Then only a `talked` event carrying that same topic completes it, and the objective publishes `topic` so the caller knows which one to send.
 - An `escort` names who walks (`npcId`) and where to (`place`). It is credited by `companion-arrived` for that person at that place, and by nothing else.
 - A `choice` holds the question in `prompt` and the roads in `options` (`id`, `label`, and the `next` it routes to). The line publishes the question and the roads' words and keys, so a caller can draw the decision and send back the one that was taken.
@@ -166,9 +178,24 @@ Only a key the step published moves it. A `chose` naming anything else changes n
 
 Conditions: `has-item`, `flag`, `money-at-least`, `reputation-at-least`, `reputation-below`, `has-companion`. They gate a step, and on the quest itself they gate whether it is offered at all.
 
-Effects: `give-item`, `take-item`, `pay`, `charge`, `reputation`, `set-flag`, `companion-join`, `companion-leave`, `reveal`.
+Effects: `give-item`, `take-item`, `pay`, `charge`, `reputation`, `set-flag`, `companion-join`, `companion-leave`, `give-password`, `reveal`.
 
-Every effect lands on the `@gb/play` `PlayerState` the log was created with, and that is the whole port to the player: `give-item` is `take(itemId)`, `take-item` is `drop(itemId)`, `pay` (the quest paying the player) is `earn(amount)`, `charge` (the player paying) is `pay(amount)`, `reputation` is `adjustReputation(delta, faction)`, `set-flag` is `setFlag(flag, value)`, `companion-join` and `companion-leave` are `addCompanion` and `removeCompanion`. `reveal` touches the player not at all; it is the log's own. The completion reward goes the same way: `earn(money)`, `adjustReputation`, one `take` per item.
+Every effect lands on the `@gb/play` `PlayerState` the log was created with, and that is the whole port to the player: `give-item` is `take(itemId)`, `take-item` is `drop(itemId)`, `pay` (the quest paying the player) is `earn(amount)`, `charge` (the player paying) is `pay(amount)`, `reputation` is `adjustReputation(delta, faction)`, `set-flag` is `setFlag(flag, value)`, `companion-join` and `companion-leave` are `addCompanion` and `removeCompanion`, `give-password` (a word, 60 characters, trimmed) is `learn(password, { questId })`. `reveal` touches the player not at all; it is the log's own. The completion reward goes the same way, below.
+
+## What a quest hands over
+
+`reward` is what finishing pays, every part of it landing on the `@gb/play` `PlayerState` with `quest-complete`:
+
+| Field | Shape | Lands as |
+|---|---|---|
+| `money` | whole credits | `earn(money)` |
+| `reputation`, `faction` | a swing, either way | `adjustReputation(reputation, faction)` |
+| `items` | item ids | one `take(itemId)` each |
+| `access` | `Access[]`, optional: `{ doorId }` for one door, `{ interiorId }` for that interior's street door (`@gb/world`'s `AccessSchema`, the shape a keycard's `opens` is written in) | one `grant(access)` each: the player gets past it from now on, card or no card |
+| `car` | a `CarModel`, one of `@gb/world`'s `CAR_MODELS`: the seven cars the city ships | `keepCar(model)` |
+| `deed` | an interior id | `own(interiorId)`, and the game writes the city's owner record off `quest-complete`, since whose a place is also stands in the world file |
+
+Every id is checked against the world with the rest of the quest: an access to a door or a place the city has not got, a deed to one, or a car outside the list is refused before play. `quest-complete` carries the whole `Reward`, so the interface can announce it and the game can record the deed.
 
 ## Failing (closed set)
 
@@ -176,12 +203,12 @@ Every effect lands on the `@gb/play` `PlayerState` the log was created with, and
 
 ## Difficulty and pay
 
-`difficulty` is one of `errand`, `small`, `standard`, `hard`, `epic` (default `small`). `REWARD_TABLE` holds one band per tier: what the whole quest may hand over (the reward plus every `pay` effect), how far one reputation swing may go, and how many items the reward may include. `rewardFor(difficulty)` returns a reward that fits, so a generator asks for "a small job" instead of inventing a number. The table is the one place pay is tuned.
+`difficulty` is one of `errand`, `small`, `standard`, `hard`, `epic` (default `small`). `REWARD_TABLE` holds one band per tier: what the whole quest may hand over (the reward plus every `pay` effect), how far one reputation swing may go, how many items and how many accesses the reward may include, and whether it may be a car or a home. A car is `hard` or `epic` work; a home is `epic`. `rewardFor(difficulty)` returns a reward that fits, so a generator asks for "a small job" instead of inventing a number. The table is the one place pay is tuned.
 
 ## Errors (closed set)
 
 - `invalid-quest`: failed the JSON Schema. Carries the offending paths.
-- `broken-flow`: schema-valid but unplayable. Carries every problem: dangling reference, unreachable step, dead end, loop, no completion, a count larger than its pool, a secret nothing reveals, required work hanging off optional work, or an item asked for before the player can have it.
+- `broken-flow`: schema-valid but unplayable. Carries every problem: dangling reference (a person, thing, place, door or machine the world has not got, a reward's access or deed included), unreachable step, dead end, loop, no completion, a count larger than its pool, a secret nothing reveals, required work hanging off optional work, or an item asked for before the player can have it.
 - `unbalanced-reward`: playable, but the pay does not match the difficulty. Carries the difficulty and one violation per offending field.
 - `invalid-event`: the reported event is not one of the known shapes. Nothing moves.
 - `invalid-progress`: the save is not quest progress.
@@ -191,7 +218,8 @@ Every effect lands on the `@gb/play` `PlayerState` the log was created with, and
 ## Dependencies
 
 - `@gb/kit` contract (game/kit/CONTRACT.md): results and schema validation.
-- `@gb/play` contract (game/play/CONTRACT.md): the player state that conditions read and effects write.
+- `@gb/play` contract (game/play/CONTRACT.md): the player state that conditions read and effects write, and that the reward lands on.
+- `@gb/world` contract (game/world/CONTRACT.md): `AccessSchema` and `CAR_MODELS`, the closed shapes a reward names. A world itself is never read here; only `WorldView` is.
 
 ## Invariants
 
@@ -205,13 +233,14 @@ Every effect lands on the `@gb/play` `PlayerState` the log was created with, and
 - A journal page lists the steps the player does, in document order, whatever order they did them in.
 - A secret is published nowhere: while a hidden step waits to be revealed it is off the objectives and off the journal page, question and roads included, so nothing on screen gives away that it exists.
 - A step is `dropped` exactly when the flow can no longer walk into it from an open step. Because a flow runs forward only, nothing dropped ever comes back.
-- The runtime reads the world only through `WorldView`, and touches the player only through `@gb/play`, so it runs headless with no renderer.
+- The runtime reads the world only through `WorldView`, and touches the player only through `@gb/play`, so it runs headless with no renderer. The whole reward lands there too; the deed reaches the city through the game, off `quest-complete`.
 - Effects are the only way a quest changes the player: nothing is applied implicitly by an event, and neither is giving up.
-- A step is credited only by the event in "What credits a step", which reports the thing having happened; no step is credited off a flag, a companion record or a menu state. `requires` gates read the record; credits never do.
+- A step is credited only by the event in "What credits a step", which reports the thing having happened; no step is credited off a flag, a companion record, a password known or a menu state. `requires` gates read the record; credits never do.
+- What a quest names in the city is checked against the city before play, doors, machines, access and deeds included, so the runtime never points at a lock or a screen that is not there.
 - A quest that ended stays in the journal with its status and, when it failed, its reason. Only giving up removes a page.
 - A timer is game seconds off the `clock` event and nothing else: no wall clock, no `Date`, so a paused game holds every countdown.
 - Being a quest item is a binding from a live quest, not a property of the thing, so the same ledger can be untouchable in one playthrough and ordinary loot in another. Shipped RPGs bind it the same way, per quest rather than per item.
 
 ## How to modify this blackbox safely
 
-New step kinds, conditions, effects and failure rules are additive: extend the union, teach `checkEdges`/`checkShape` what they promise, teach `checkSolvability` what they guarantee, teach `targetOf` what the new kind points at (the switch there is exhaustive, so it will not compile until you do), teach `matchStep` which event credits it and add that event to "What credits a step", add it to `resolvesItself` if it needs no player, bump the minor contractVersion. New fields go on as optional, because exported worlds contain quests written without them. Never change what an existing kind means. Regenerate `schema/` (`pnpm --filter @gb/quest run generate`) and run `pnpm --filter @gb/quest test` in the same change.
+New step kinds, conditions, effects and failure rules are additive: extend the union, teach `checkReferences` what it names in the world (widening `WorldView` when the world has to answer something new), teach `checkEdges`/`checkShape` what they promise, teach `checkSolvability` what they guarantee, teach `targetOf` what the new kind points at (the switch there is exhaustive, so it will not compile until you do), teach `matchStep` which event credits it and add that event to "What credits a step", add it to `resolvesItself` if it needs no player, bump the minor contractVersion. A new reward field goes on `reward.ts`, lands through one `@gb/play` call in `payReward`, and gets a column in `REWARD_TABLE`. New fields go on as optional, because exported worlds contain quests written without them. Never change what an existing kind means. Regenerate `schema/` (`pnpm --filter @gb/quest run generate`) and run `pnpm --filter @gb/quest test` in the same change.

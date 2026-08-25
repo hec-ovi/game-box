@@ -2,6 +2,7 @@ import { contract } from '@gb/kit'
 import { z } from 'zod'
 import { DIFFICULTIES } from './balance.ts'
 import { id } from './ids.ts'
+import { RewardSchema } from './reward.ts'
 
 /** What must already be true before a step can be entered, or a quest offered. */
 export const ConditionSchema = z.discriminatedUnion('kind', [
@@ -23,6 +24,8 @@ export const EffectSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('set-flag'), flag: z.string().min(1).max(60), value: z.boolean() }),
   z.object({ kind: z.literal('companion-join'), npcId: id('npc') }),
   z.object({ kind: z.literal('companion-leave'), npcId: id('npc') }),
+  /** Tells the player a password: the word a door or a machine in the city asks for. */
+  z.object({ kind: z.literal('give-password'), password: z.string().trim().min(1).max(60) }),
   /** Puts a hidden step on the board. The step it names must be `hidden`. */
   z.object({ kind: z.literal('reveal'), stepId: id('step') }),
 ])
@@ -74,6 +77,14 @@ export const StepSchema = z.discriminatedUnion('kind', [
   z.object({ ...stepBase, ...counted, kind: z.literal('deliver'), itemId: id('item'), toNpcId: id('npc') }),
   z.object({ ...stepBase, ...counted, kind: z.literal('stash'), itemId: id('item'), interiorId: id('interior'), anchorId: id('anchor') }),
   z.object({ ...stepBase, kind: z.literal('escort'), npcId: id('npc'), place: PlaceSchema }),
+  /** A locked door opened, with its key item or its password. */
+  z.object({ ...stepBase, kind: z.literal('unlock'), doorId: id('door') }),
+  /** A locked machine opened at its own screen, with its password or a hack. */
+  z.object({ ...stepBase, kind: z.literal('hack'), machineId: id('machine') }),
+  /** A game on a machine played up to `score`. */
+  z.object({ ...stepBase, kind: z.literal('beat-game'), machineId: id('machine'), score: z.number().int().min(1).max(1000000) }),
+  /** Something paid for at a counter. Counted like a `collect`. */
+  z.object({ ...stepBase, ...counted, kind: z.literal('buy'), itemId: id('item') }),
   z.object({
     ...stepBase,
     kind: z.literal('choice'),
@@ -90,13 +101,6 @@ export const StepSchema = z.discriminatedUnion('kind', [
   z.object({ ...stepBase, kind: z.literal('complete') }),
   z.object({ ...stepBase, kind: z.literal('fail') }),
 ])
-
-export const RewardSchema = z.object({
-  money: z.number().int().min(0).max(100000).default(0),
-  reputation: z.number().int().min(-50).max(50).default(0),
-  faction: z.string().min(1).max(40).default('town'),
-  items: z.array(id('item')).max(6).default([]),
-})
 
 export const QuestSchema = z.object({
   format: z.literal('game-box.quest'),
@@ -127,8 +131,10 @@ export function itemPool(step: Step): ReadonlySet<string> {
   return new Set([step.itemId, ...(step.alternates ?? [])])
 }
 
-function isCounted(step: Step): step is Extract<Step, { kind: 'collect' | 'deliver' | 'stash' }> {
-  return step.kind === 'collect' || step.kind === 'deliver' || step.kind === 'stash'
+export type CountedStep = Extract<Step, { kind: 'collect' | 'buy' | 'deliver' | 'stash' }>
+
+function isCounted(step: Step): step is CountedStep {
+  return step.kind === 'collect' || step.kind === 'buy' || step.kind === 'deliver' || step.kind === 'stash'
 }
 
 /** How many items this step wants. One, unless it says otherwise. */
@@ -160,5 +166,5 @@ export type Place = z.infer<typeof PlaceSchema>
 export type Step = z.infer<typeof StepSchema>
 export type StepKind = Step['kind']
 export type QuestKind = QuestDoc['kind']
-export type Reward = z.infer<typeof RewardSchema>
 export type QuestDoc = z.infer<typeof QuestSchema>
+export type { Reward } from './reward.ts'

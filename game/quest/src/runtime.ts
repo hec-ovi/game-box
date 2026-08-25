@@ -255,7 +255,7 @@ export class QuestLog {
     progress.done.add(step.id)
     changes.push({ kind: 'step-done', questId: quest.id, stepId: step.id })
 
-    applyEffects(this.#player, step.effects)
+    applyEffects(this.#player, quest.id, step.effects)
     for (const effect of step.effects) if (effect.kind === 'reveal') this.#reveal(quest, progress, effect.stepId, changes)
 
     if (step.kind === 'complete') {

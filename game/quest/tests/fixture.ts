@@ -7,17 +7,22 @@ export const WITNESS = 'npc_0003'
 /** Five interchangeable crates: what "three of five" is counted over. */
 export const CRATES = ['item_0001', 'item_0002', 'item_0003', 'item_0004', 'item_0005'] as const
 export const LEDGER = 'item_0006'
+/** The warehouse's locked back door and the terminal on its desk. */
+export const BACK_DOOR = 'door_0001'
+export const TERMINAL = 'machine_0001'
 
 const NPCS = new Set([MARA, HOLLIS, WITNESS])
 const ITEMS = new Set<string>([...CRATES, LEDGER])
 
-/** A warehouse, three people, five crates and a ledger. */
+/** A warehouse with a locked back door and a terminal, three people, five crates and a ledger. */
 export const world: WorldView = {
   hasNpc: (id) => NPCS.has(id),
   hasPlot: (id) => id === 'plot_0001',
   hasInterior: (id) => id === 'interior_0001',
   hasItem: (id) => ITEMS.has(id),
   hasAnchor: (interiorId, anchorId) => interiorId === 'interior_0001' && anchorId === 'anchor_0001',
+  hasDoor: (id) => id === BACK_DOOR,
+  hasMachine: (id) => id === TERMINAL,
 }
 
 /** A quest as an author writes it: the envelope is not theirs to fill in. */

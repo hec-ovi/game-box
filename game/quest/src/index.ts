@@ -10,6 +10,7 @@ export type { ObjectiveTarget } from './target.ts'
 export { FAIL_REASONS, questProgressContract, type FailReason, type QuestProgressDoc, type QuestStatus } from './progress.ts'
 export { gameEventContract, type GameEvent } from './events.ts'
 export { DIFFICULTIES, REWARD_TABLE, checkReward, rewardFor, type Difficulty, type RewardBand } from './balance.ts'
+export type { Access, CarModel } from './reward.ts'
 export type { WorldView } from './world-view.ts'
 export { questDraftContract, sealQuest, type QuestDraft } from './draft.ts'
 export {

@@ -20,6 +20,12 @@ export interface RewardBand {
   readonly reputation: number
   /** How many items the reward may include. */
   readonly items: number
+  /** How many doors or places the reward may open. */
+  readonly access: number
+  /** Whether the reward may be a car. */
+  readonly car: boolean
+  /** Whether the reward may be a home. */
+  readonly deed: boolean
   /** What a generator gets when it asks for this difficulty and nothing more. */
   readonly typical: { readonly money: number; readonly reputation: number }
 }
@@ -30,11 +36,11 @@ export interface RewardBand {
  * and narrow enough that an hour of walking cannot pay four coins.
  */
 export const REWARD_TABLE: Readonly<Record<Difficulty, RewardBand>> = {
-  errand: { money: { min: 0, max: 25 }, reputation: 4, items: 0, typical: { money: 15, reputation: 1 } },
-  small: { money: { min: 10, max: 90 }, reputation: 12, items: 1, typical: { money: 45, reputation: 3 } },
-  standard: { money: { min: 60, max: 250 }, reputation: 20, items: 2, typical: { money: 140, reputation: 6 } },
-  hard: { money: { min: 200, max: 700 }, reputation: 35, items: 3, typical: { money: 420, reputation: 12 } },
-  epic: { money: { min: 600, max: 2500 }, reputation: 50, items: 4, typical: { money: 1200, reputation: 20 } },
+  errand: { money: { min: 0, max: 25 }, reputation: 4, items: 0, access: 0, car: false, deed: false, typical: { money: 15, reputation: 1 } },
+  small: { money: { min: 10, max: 90 }, reputation: 12, items: 1, access: 1, car: false, deed: false, typical: { money: 45, reputation: 3 } },
+  standard: { money: { min: 60, max: 250 }, reputation: 20, items: 2, access: 2, car: false, deed: false, typical: { money: 140, reputation: 6 } },
+  hard: { money: { min: 200, max: 700 }, reputation: 35, items: 3, access: 2, car: true, deed: false, typical: { money: 420, reputation: 12 } },
+  epic: { money: { min: 600, max: 2500 }, reputation: 50, items: 4, access: 3, car: true, deed: true, typical: { money: 1200, reputation: 20 } },
 }
 
 /** A reward that fits the band, for a generator that would rather ask for "a small job". */
@@ -75,6 +81,10 @@ export function checkReward(quest: QuestDoc): SchemaViolation[] {
   if (quest.reward.items.length > band.items) {
     fail('reward.items', `${tier} rewards at most ${band.items} item(s), this rewards ${quest.reward.items.length}`)
   }
+  const opened = quest.reward.access?.length ?? 0
+  if (opened > band.access) fail('reward.access', `${tier} opens at most ${band.access} door(s) or place(s), this opens ${opened}`)
+  if (quest.reward.car && !band.car) fail('reward.car', `${tier} does not hand over a car`)
+  if (quest.reward.deed && !band.deed) fail('reward.deed', `${tier} does not hand over a home`)
   return violations
 }
 

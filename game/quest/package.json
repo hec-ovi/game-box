@@ -13,6 +13,7 @@
   "dependencies": {
     "@gb/kit": "workspace:*",
     "@gb/play": "workspace:*",
+    "@gb/world": "workspace:*",
     "zod": "^4.4.3"
   }
 }

@@ -27,7 +27,7 @@ export function unmet(player: PlayerState, conditions: readonly Condition[]): re
 }
 
 /** Effects are the only way a quest changes the player. Nothing here is implicit. */
-export function applyEffects(player: PlayerState, effects: readonly Effect[]): void {
+export function applyEffects(player: PlayerState, questId: string, effects: readonly Effect[]): void {
   for (const effect of effects) {
     switch (effect.kind) {
       case 'give-item':
@@ -54,6 +54,9 @@ export function applyEffects(player: PlayerState, effects: readonly Effect[]): v
       case 'companion-leave':
         player.removeCompanion(effect.npcId)
         break
+      case 'give-password':
+        player.learn(effect.password, { questId })
+        break
       case 'reveal':
         // the quest log owns what the player can see; the player state has no say in it
         break
@@ -61,8 +64,12 @@ export function applyEffects(player: PlayerState, effects: readonly Effect[]): v
   }
 }
 
+/** The whole reward lands on the player. The deed also reaches the city, through the game, off `quest-complete`. */
 export function payReward(player: PlayerState, reward: Reward): void {
   player.earn(reward.money)
   if (reward.reputation) player.adjustReputation(reward.reputation, reward.faction)
   for (const itemId of reward.items) player.take(itemId)
+  for (const access of reward.access ?? []) player.grant(access)
+  if (reward.car) player.keepCar(reward.car)
+  if (reward.deed) player.own(reward.deed)
 }

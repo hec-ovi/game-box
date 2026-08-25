@@ -185,6 +185,80 @@
       "properties": {
         "kind": {
           "type": "string",
+          "const": "unlocked"
+        },
+        "doorId": {
+          "type": "string",
+          "pattern": "^door_\\d{4,}$"
+        }
+      },
+      "required": [
+        "kind",
+        "doorId"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "machine-unlocked"
+        },
+        "machineId": {
+          "type": "string",
+          "pattern": "^machine_\\d{4,}$"
+        }
+      },
+      "required": [
+        "kind",
+        "machineId"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "scored"
+        },
+        "machineId": {
+          "type": "string",
+          "pattern": "^machine_\\d{4,}$"
+        },
+        "score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "kind",
+        "machineId",
+        "score"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "bought"
+        },
+        "itemId": {
+          "type": "string",
+          "pattern": "^item_\\d{4,}$"
+        }
+      },
+      "required": [
+        "kind",
+        "itemId"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
           "const": "chose"
         },
         "questId": {

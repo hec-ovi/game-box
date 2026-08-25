@@ -2,13 +2,15 @@ import { PlayerState } from '@gb/play'
 import { describe, expect, it } from 'vitest'
 import { QuestLog, validateQuest, type QuestDoc, type WorldView } from '../src/index.ts'
 
-/** A world with two people, one warehouse and one ledger. */
+/** A world with two people, one warehouse and one ledger, and nothing locked. */
 const world: WorldView = {
   hasNpc: (id) => ['npc_0001', 'npc_0002', 'npc_0003'].includes(id),
   hasPlot: (id) => id === 'plot_0001',
   hasInterior: (id) => id === 'interior_0001',
   hasItem: (id) => ['item_0001', 'item_0002'].includes(id),
   hasAnchor: (interiorId, anchorId) => interiorId === 'interior_0001' && anchorId === 'anchor_0001',
+  hasDoor: () => false,
+  hasMachine: () => false,
 }
 
 const MARA = 'npc_0001'

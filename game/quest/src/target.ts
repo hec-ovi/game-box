@@ -1,11 +1,12 @@
-import type { Place, Step } from './schema.ts'
+import type { CountedStep, Place, Step } from './schema.ts'
 
 /**
  * What an objective points at, in one shape whatever kind of step it came from.
  * A `deliver` names its person in `toNpcId` and a `stash` names its place in
  * `interiorId`; both come out of here as `npcId` and `place`, so a map pin, a
  * waypoint or a route reads the same two fields for every step and never has to
- * know what kind it is.
+ * know what kind it is. A lock names its door and a machine step its machine;
+ * where those stand in the city is the world's to answer (`door`, `machine`).
  */
 export interface ObjectiveTarget {
   /** Who to reach: the person to talk to, to hand something to, or to walk somewhere. */
@@ -20,9 +21,13 @@ export interface ObjectiveTarget {
   readonly alternates?: readonly string[]
   /** The spot inside the interior a stash goes on. */
   readonly anchorId?: string
+  /** The locked door to get past. */
+  readonly doorId?: string
+  /** The machine to open or to play. */
+  readonly machineId?: string
+  /** The score a game on that machine has to reach. */
+  readonly score?: number
 }
-
-type CountedStep = Extract<Step, { kind: 'collect' | 'deliver' | 'stash' }>
 
 /** Where a step sends the player. Empty for the kinds that point at nothing. */
 export function targetOf(step: Step): ObjectiveTarget {
@@ -39,6 +44,14 @@ export function targetOf(step: Step): ObjectiveTarget {
       return { place: { interiorId: step.interiorId }, anchorId: step.anchorId, ...things(step) }
     case 'escort':
       return { npcId: step.npcId, place: step.place }
+    case 'unlock':
+      return { doorId: step.doorId }
+    case 'hack':
+      return { machineId: step.machineId }
+    case 'beat-game':
+      return { machineId: step.machineId, score: step.score }
+    case 'buy':
+      return things(step)
     case 'choice':
     case 'join':
     case 'any-of':

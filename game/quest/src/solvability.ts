@@ -55,7 +55,7 @@ function entryState(quest: QuestDoc, flow: Flow, step: Step, after: Map<string, 
 function applyStep(step: Step, before: Held): Held {
   const held = before.clone()
 
-  if (step.kind === 'collect') held.add(itemPool(step), countOf(step))
+  if (step.kind === 'collect' || step.kind === 'buy') held.add(itemPool(step), countOf(step))
   if (step.kind === 'deliver' || step.kind === 'stash') held.consume(itemPool(step), countOf(step))
   for (const effect of step.effects) {
     if (effect.kind === 'give-item') held.add(new Set([effect.itemId]), 1)
