@@ -1,5 +1,7 @@
-/** @gb/bundle: the file a city travels in, and the save that goes with it. See CONTRACT.md. */
+/** @gb/bundle: the file a city travels in, the pack that adds to it, and the save that goes with it. See CONTRACT.md. */
 export { Bundle, type BundleError, type OpenedBundle, type Resumed } from './bundle.ts'
+export { Pack, type City, type PackError } from './pack/pack.ts'
+export { packContract, type PackDoc } from './pack/schema.ts'
 export { comparePacks, type PackReport, type PackState, type PackVerdict } from './packs.ts'
 export { PUBLISHED, schemaText } from './published.ts'
 export { type ResumeEntry, type ResumeKind, type ResumeReport } from './resume/ledger.ts'

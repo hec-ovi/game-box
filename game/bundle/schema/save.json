@@ -264,6 +264,146 @@
               "facts"
             ]
           }
+        },
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "opens": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "doorId": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "doorId"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "interiorId": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "interiorId"
+                    ]
+                  }
+                ]
+              },
+              "itemId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "opens"
+            ]
+          }
+        },
+        "passwords": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "password": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 60
+              },
+              "from": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "questId": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "questId"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "npcId": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "npcId"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "password",
+              "from"
+            ]
+          }
+        },
+        "owned": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "garage": {
+          "type": "object",
+          "properties": {
+            "kept": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "out": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "kept"
+          ]
+        },
+        "scores": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "machineId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "game": {
+                "type": "string",
+                "minLength": 1
+              },
+              "best": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "machineId",
+              "game",
+              "best"
+            ]
+          }
         }
       },
       "required": [

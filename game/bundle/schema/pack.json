@@ -4,247 +4,83 @@
   "properties": {
     "format": {
       "type": "string",
-      "const": "game-box.bundle"
+      "const": "game-box.pack"
     },
     "schemaVersion": {
       "type": "number",
-      "enum": [
-        1,
-        2
-      ]
+      "const": 1
     },
     "contentHash": {
       "type": "string",
       "pattern": "^[a-f0-9]{64}$"
     },
-    "world": {
+    "base": {
       "type": "object",
       "properties": {
-        "format": {
-          "type": "string",
-          "const": "game-box.world"
-        },
-        "schemaVersion": {
-          "type": "number",
-          "const": 1
-        },
-        "id": {
-          "type": "string",
-          "pattern": "^world_\\d{4,}$"
-        },
-        "name": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 80
-        },
-        "theme": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 60
-        },
-        "brief": {
+        "worldId": {
           "type": "string",
           "minLength": 1
         },
-        "asks": {
+        "contentHash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "worldId",
+        "contentHash"
+      ]
+    },
+    "world": {
+      "type": "object",
+      "properties": {
+        "idCounters": {
           "type": "object",
-          "properties": {
-            "mainQuest": {
-              "type": "string",
-              "minLength": 1
-            },
-            "sideQuests": {
-              "type": "string",
-              "minLength": 1
-            },
-            "tone": {
-              "type": "string",
-              "minLength": 1
-            },
-            "style": {
-              "type": "object",
-              "properties": {
-                "neon": {
-                  "type": "string",
-                  "enum": [
-                    "dark",
-                    "some",
-                    "lit"
-                  ]
-                },
-                "density": {
-                  "type": "string",
-                  "enum": [
-                    "sparse",
-                    "mixed",
-                    "dense"
-                  ]
-                },
-                "wear": {
-                  "type": "string",
-                  "enum": [
-                    "kept",
-                    "lived-in",
-                    "run-down"
-                  ]
-                }
-              }
-            }
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
           }
         },
-        "seed": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 120
-        },
-        "generator": {
-          "type": "object",
-          "properties": {
-            "name": {
-              "type": "string",
-              "minLength": 1
-            },
-            "version": {
-              "type": "string",
-              "minLength": 1
-            }
-          },
-          "required": [
-            "name",
-            "version"
-          ]
-        },
-        "cellSize": {
-          "type": "number",
-          "exclusiveMinimum": 0,
-          "maximum": 16
-        },
-        "catalogues": {
-          "maxItems": 32,
+        "cells": {
           "type": "array",
           "items": {
             "type": "object",
             "properties": {
-              "pack": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 60
+              "x": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
               },
-              "version": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 20
+              "y": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
               },
-              "sha256": {
+              "kind": {
                 "type": "string",
-                "pattern": "^[a-f0-9]{64}$"
-              }
-            },
-            "required": [
-              "pack",
-              "version"
-            ]
-          }
-        },
-        "premise": {
-          "type": "object",
-          "properties": {
-            "livesOn": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 400
-            },
-            "happened": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 400
-            },
-            "stake": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 400
-            },
-            "sides": {
-              "minItems": 2,
-              "maxItems": 8,
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 60
-                  },
-                  "wants": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 300
-                  }
-                },
-                "required": [
-                  "name",
-                  "wants"
+                "enum": [
+                  "empty",
+                  "street",
+                  "sidewalk",
+                  "building",
+                  "park",
+                  "mountain",
+                  "water"
                 ]
               }
             },
-            "common": {
-              "maxItems": 20,
-              "type": "array",
-              "items": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 300
-              }
-            },
-            "build": {
-              "type": "object",
-              "properties": {
-                "moreOf": {
-                  "maxItems": 24,
-                  "type": "array",
-                  "items": {
-                    "type": "string",
-                    "pattern": "^[a-z][a-z0-9-]{0,23}$"
-                  }
-                },
-                "fewerOf": {
-                  "maxItems": 24,
-                  "type": "array",
-                  "items": {
-                    "type": "string",
-                    "pattern": "^[a-z][a-z0-9-]{0,23}$"
-                  }
-                },
-                "mustHave": {
-                  "maxItems": 24,
-                  "type": "array",
-                  "items": {
-                    "type": "string",
-                    "pattern": "^[a-z][a-z0-9-]{0,23}$"
-                  }
-                }
-              },
-              "required": [
-                "moreOf",
-                "fewerOf",
-                "mustHave"
-              ]
-            }
-          },
-          "required": [
-            "livesOn",
-            "happened",
-            "stake",
-            "sides",
-            "common",
-            "build"
-          ]
+            "required": [
+              "x",
+              "y",
+              "kind"
+            ]
+          }
         },
         "charters": {
-          "readOnly": true,
-          "minItems": 1,
-          "maxItems": 24,
           "type": "array",
           "items": {
             "type": "object",
@@ -1004,116 +840,32 @@
             ]
           }
         },
-        "grid": {
-          "type": "object",
-          "properties": {
-            "width": {
-              "type": "integer",
-              "minimum": 4,
-              "maximum": 1024
-            },
-            "height": {
-              "type": "integer",
-              "minimum": 4,
-              "maximum": 1024
-            },
-            "rows": {
-              "minItems": 4,
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          },
-          "required": [
-            "width",
-            "height",
-            "rows"
-          ]
-        },
-        "roads": {
-          "type": "object",
-          "properties": {
-            "nodes": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string",
-                    "pattern": "^node_\\d{4,}$"
-                  },
-                  "cell": {
-                    "type": "object",
-                    "properties": {
-                      "x": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 9007199254740991
-                      },
-                      "y": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 9007199254740991
-                      }
-                    },
-                    "required": [
-                      "x",
-                      "y"
-                    ]
-                  }
-                },
-                "required": [
-                  "id",
-                  "cell"
-                ]
+        "catalogues": {
+          "maxItems": 32,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "pack": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 60
+              },
+              "version": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
               }
             },
-            "segments": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string",
-                    "pattern": "^road_\\d{4,}$"
-                  },
-                  "from": {
-                    "type": "string",
-                    "pattern": "^node_\\d{4,}$"
-                  },
-                  "to": {
-                    "type": "string",
-                    "pattern": "^node_\\d{4,}$"
-                  },
-                  "kind": {
-                    "type": "string",
-                    "enum": [
-                      "street",
-                      "avenue",
-                      "exit"
-                    ]
-                  },
-                  "lanes": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 4
-                  }
-                },
-                "required": [
-                  "id",
-                  "from",
-                  "to",
-                  "kind",
-                  "lanes"
-                ]
-              }
-            }
-          },
-          "required": [
-            "nodes",
-            "segments"
-          ]
+            "required": [
+              "pack",
+              "version"
+            ]
+          }
         },
         "plots": {
           "type": "array",
@@ -2061,36 +1813,18 @@
               }
             ]
           }
-        },
-        "idCounters": {
-          "type": "object",
-          "propertyNames": {
-            "type": "string"
-          },
-          "additionalProperties": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 9007199254740991
-          }
         }
       },
       "required": [
-        "format",
-        "schemaVersion",
-        "id",
-        "name",
-        "theme",
-        "seed",
-        "generator",
-        "cellSize",
-        "grid",
-        "roads",
+        "idCounters",
+        "cells",
+        "charters",
+        "catalogues",
         "plots",
         "interiors",
         "npcs",
         "items",
-        "placements",
-        "idCounters"
+        "placements"
       ]
     },
     "quests": {
@@ -8283,33 +8017,6 @@
         ]
       }
     },
-    "requires": {
-      "maxItems": 32,
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "pack": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 60
-          },
-          "version": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 20
-          },
-          "sha256": {
-            "type": "string",
-            "pattern": "^[a-f0-9]{64}$"
-          }
-        },
-        "required": [
-          "pack",
-          "version"
-        ]
-      }
-    },
     "createdWith": {
       "type": "object",
       "properties": {
@@ -8334,9 +8041,9 @@
     "format",
     "schemaVersion",
     "contentHash",
+    "base",
     "world",
     "quests",
-    "requires",
     "createdWith"
   ]
 }

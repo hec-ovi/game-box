@@ -1,10 +1,10 @@
 # @gb/bundle contract
 
-contractVersion: 0.4.0
+contractVersion: 0.5.0
 
 ## Purpose
 
-The file a city travels in: world, quests and the art packs it needs, sealed behind one hash, brought up to what the format promises when it is older, plus the save that belongs to it.
+The file a city travels in: world, quests and the art packs it needs, sealed behind one hash, brought up to what the format promises when it is older; the pack that adds to a finished city; and the save that belongs to it.
 
 ## Inputs
 
@@ -14,6 +14,8 @@ The file a city travels in: world, quests and the art packs it needs, sealed beh
 | `Bundle.open(value, have?)` | [schema/bundle.json](schema/bundle.json), `schemaVersion` 1 or 2, and the packs the reader has loaded | any untrusted file, including one downloaded from a stranger. `have` is the caller's own runtime, not file data, so it is taken as given |
 | `Bundle.save(bundle, player, log)` | an opened bundle, `@gb/play` state, `@gb/quest` log | all three from the same session |
 | `Bundle.resume(bundle, value)` | [schema/save.json](schema/save.json) | the save names this bundle's world id; its content hash may be another version's, see below |
+| `Pack.cut(base, extended, options?)` | an opened bundle; a `City` `{ world, quests }`; `options.generator`, `options.version` | `extended.world` is the base's world grown by `@gb/forge`'s `extend` and `extended.quests` is the base's list with the quests written for the growth on the end. `extend` writes into the `World` it is given, so `base` is the file opened on its own, never the object that was grown |
+| `Pack.apply(base, value, have?)` | an opened bundle; [schema/pack.json](schema/pack.json); the packs the reader has loaded | any untrusted pack file |
 | `comparePacks(requires, have)` | two lists of `AssetPackRef` | none |
 | `compareVersions(a, b)` | two version strings | none |
 
@@ -25,9 +27,11 @@ The file a city travels in: world, quests and the art packs it needs, sealed beh
 | `open` | `{ world, quests, requires, packs, upgraded, contentHash }` | the world is sound, every plot's kind of place is declared in it, and every quest is playable in it. `upgraded` is true when the file was written before charters and the presets it was drawn with were written in on the way, see below |
 | `save` | [schema/save.json](schema/save.json) | carries the world id, the bundle's content hash, and what each quest was called |
 | `resume` | `{ player, log, report }` | against the same hash, the log is open on exactly the steps it was saved on and `report.dropped` is empty; against another version, everything that resolves is kept and the report says what was not |
+| `cut` | [schema/pack.json](schema/pack.json) | names the base by world id and content hash; carries only what the extension added, the counters it minted up to and the cells it built on; `contentHash` covers everything else in the file |
+| `apply` | an `OpenedBundle` of the extended city | its world is the one the pack was cut from byte for byte, every base record in it as it was, and its `contentHash` is the hash `Bundle.pack` gives that city, so the same base and the same pack open the same city on every machine |
 | `comparePacks` | `PackReport`: `{ verdicts, asBuilt }` | one verdict per pack the file names, in the order it names them |
 | `compareVersions` | `-1`, `0` or `1` | total: any two strings compare |
-| `PUBLISHED`, `schemaText` | the published formats, and the exact bytes their `schema/` files hold | what `run generate` writes and what the drift test reads |
+| `PUBLISHED`, `schemaText` | the bundle, the pack and the save, and the exact bytes their `schema/` files hold | what `run generate` writes and what the drift test reads |
 
 ## Errors (closed set)
 
@@ -38,6 +42,11 @@ The file a city travels in: world, quests and the art packs it needs, sealed beh
 - `broken-quest`: a quest inside cannot be played in this world. Carries which and why.
 - `invalid-save`: not a save.
 - `save-mismatch`: the save names another city's world id.
+- `not-an-extension`: `cut` was handed a city that changed, moved or dropped something the base had. Carries each place by path (`plots.0`, `grid.21.23`, `quests.3`, `idCounters.plot`).
+- `invalid-pack`: not a pack, or a pack naming a cell outside the base's grid. Carries the paths.
+- `pack-mismatch`: the pack was cut from another city, or another version of this one. Carries the base it names and the base it was applied to.
+
+`apply` also answers `content-changed` (the pack's hash), and every error `open` answers, because the extended city goes through the same gate a file does.
 
 Art the reader does not have is not in this set. A city always opens; see below. A save from another version of this city is not in it either: it resumes, and the report says what it lost.
 
@@ -86,6 +95,44 @@ that build's presets, which is the fail-closed rule doing its job.
 `pack` runs the same step over whatever `World` it is given, so a file it
 writes is self-describing whether the world declared charters or was founded
 on the presets alone.
+
+## Adding to a finished city
+
+A city is generated, played, and later added to as a separate authored step,
+never while it is being played. `@gb/forge`'s `extend` grows a `World` in
+place; the pack is what makes that growth a file anyone with the base can
+apply and get the same city.
+
+**What a pack holds.** The base's world id and content hash; the extended
+city's `idCounters`; the grid cells the growth built on, each with what it
+became; the charters and catalogues the growth declared that the base had
+not; the plots, interiors, people, items and placements appended to the
+base's lists, in the base's own record shapes; and the quests written for
+the growth. Nothing of the base is in it.
+
+**What `cut` holds the extended city to.** Every list the base had is a
+prefix of the extended one, byte for byte; every charter and catalogue the
+base declared is still declared unchanged; every counter is at or past the
+base's; the only cells that differ were `empty` in the base; and everything
+else in the document (name, seed, history, roads) is as written. Anything
+else is `not-an-extension`, by path, and no pack is cut. Then the base plus
+what was cut is rebuilt and compared with the extended city, so a pack that
+would not give it back is never written.
+
+**What `apply` does.** Shape, the pack's hash, then the base it names against
+the base handed in, then the base document with the additions on the end and
+the cells written, sealed as a `schemaVersion` 2 bundle and opened through
+`open`. So a pack whose plot is of a kind neither the base nor the pack
+declares is `unknown-kind`, one whose interior points at nothing is
+`unsound-world`, and one whose quest cannot be played is `broken-quest`. A
+pack's quests may name the base's places and people: they are validated
+against the whole city. Ids continue from the base's counters, so nothing a
+pack adds can collide with what the base has, and applying never writes into
+the base handed in.
+
+**Determinism.** The pack is a diff in the base's terms and the world reads a
+document to the same bytes at both doors, so the same base and the same pack
+give the same world, and the same `contentHash`, on every machine.
 
 ## Resuming in a rebuilt city
 
@@ -192,11 +239,13 @@ the art it was designed against.
 - Art packs are named and versioned in the file, so a missing or different pack is a named answer rather than a city that quietly renders wrong.
 - A kind of place is a fact about the file. A plot whose word the file does not declare is refused by name, never drawn as something else.
 - Static world data and playthrough state never mix: sharing a bundle shares no progress.
+- A pack only ever adds. `cut` refuses a city that changed anything the base had, `apply` appends to the base's lists and builds only on ground that was empty, and every base record comes out of `apply` byte for byte as it went in.
+- A pack applies to the city it was cut from and no other, by world id and content hash.
 - The published schemas are what this box generates today. Most of what is in them belongs to `@gb/world`, `@gb/quest` and `@gb/play`, so they go stale when one of those boxes adds a field and nothing here changes; `tests/published-schema.test.ts` is what notices, and it costs a file read.
 
 ## How to modify this blackbox safely
 
-`schemaVersion` 2 is what `pack` writes; 1 is read and brought up to 2 on open (`src/self-describing.ts`). Adding a field to the envelope changes every hash, so it needs `schemaVersion: 3` and a step that can still open 1 and 2. Regenerate `schema/` (`pnpm --filter @gb/bundle run generate`) and run `pnpm --filter @gb/bundle test`.
+`schemaVersion` 2 is what `pack` writes; 1 is read and brought up to 2 on open (`src/self-describing.ts`). Adding a field to the envelope changes every hash, so it needs `schemaVersion: 3` and a step that can still open 1 and 2. The pack file is `schemaVersion` 1 (`src/pack/`): its record schemas are read off `@gb/world`'s, so a field the world adds reaches the pack without a line here moving. A field with a default anywhere in the world, quest or play schema changes the hash of every file written without it, so new fields there go on as optional; `tests/sealed.test.ts` is what notices. Regenerate `schema/` (`pnpm --filter @gb/bundle run generate`) and run `pnpm --filter @gb/bundle test`.
 
 A change in `@gb/world`, `@gb/quest` or `@gb/play` also changes what this box publishes, without a line here moving. Run `pnpm --filter @gb/bundle run generate` and commit the result in the same change; the drift test will fail until you do.
 
