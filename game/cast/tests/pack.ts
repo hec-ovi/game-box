@@ -21,9 +21,6 @@ export const wardrobe: Wardrobe = parseWardrobe(JSON.parse(readFileSync(join(DIS
 /** The bodies the shipped wardrobe dresses: what every measurement here is taken on. */
 export const BODIES: readonly BodyKind[] = [...new Set(wardrobe.characters.map((entry) => entry.body))]
 
-/** Whose rail each body kind dresses from, as the contract promises: the pack has one build per sex. */
-export const RAIL: Readonly<Record<BodyKind, BodyKind>> = { male: 'male', female: 'female', 'hero-male': 'male', 'hero-female': 'female' }
-
 export function animsBytes(): ArrayBuffer {
   return read(join(DIST, 'anims.glb'))
 }

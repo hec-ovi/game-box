@@ -6,7 +6,7 @@ contractVersion: 0.8.1
 
 The people: one clip library and one dressed character per outfit, loaded once, cloned per NPC, wearing what their role suits and the hair their id draws, playing what the anchor they stand on implies with the thing that clip is posed around in their hand, and leaving that stance to face whoever talks to them.
 
-The city is cyberpunk at night, so the clothes are near-black coated garments with one lit accent each, and the hair is as often dyed as grown. Twelve outfits cover the twelve `NPC_ROLES` across the pack's two bodies; the hero kinds are those same two bodies under another name and dress from the same rails.
+The city is cyberpunk at night, so the clothes are near-black coated garments with one lit accent each, and the hair is as often dyed as grown. Twelve outfits cover the twelve `NPC_ROLES` across the pack's two bodies.
 
 ## Inputs
 
@@ -74,14 +74,14 @@ The Universal Base Characters pack ships two bodies, both on the canonical 65-jo
 
 | Body file, under `assets/src/quaternius-ubc/.../Base Characters/Godot - UE/` | Dresses |
 |---|---|
-| `Superhero_Male_FullBody.gltf` | `male`, `hero-male` |
-| `Superhero_Female_FullBody.gltf` | `female`, `hero-female` |
+| `Superhero_Male_FullBody.gltf` | `male` |
+| `Superhero_Female_FullBody.gltf` | `female` |
 
-`hero-male` and `hero-female` are the `male` and `female` mesh: the pack has one build per sex (the "Superhero" in the file name is that build), so a hero kind dresses from the plain kind's rail and looks the same on screen. This box never assigns a body: `npc.appearance.base` is the world's, and whatever it says is dressed from that rail (`RAIL` in `src/wardrobe.ts`, which does not compile until every `BODY_KIND` has one). A hero outfit built today would be another 1.1 MB file drawing the same pixels as the plain one, so none is built.
+This box never assigns a body: `npc.appearance.base` is the world's, and whatever it says is dressed from the outfits cut for that body (`chooseCharacter` in `src/wardrobe.ts`).
 
 ### The outfits
 
-Twelve, six per rail, cut from the fantasy pack's Peasant and Ranger parts and repainted, each with one lit accent. An NPC gets the one on their rail that names their role, the theme breaking ties.
+Twelve, six per body, cut from the fantasy pack's Peasant and Ranger parts and repainted, each with one lit accent. An NPC gets the one cut for their body that names their role, the theme breaking ties.
 
 | Id | Garments | Accent | Roles | Theme words | MB |
 |---|---|---|---|---|---|
@@ -271,7 +271,7 @@ The bed `@gb/forge` places is 1.84 m of pad and a body with boots on is 1.90 m e
 - **Facing.** A spawned body at `rotation.y = 0` faces -Z, the way a three.js camera looks at heading 0. Set `object.rotation.y` to a heading and the person faces along it. The source art faces the other way in its own files; `spawn` holds it at half a turn inside the object the game moves, so nothing outside this box has to know. `attend` turns the art inside the object; the object is never touched.
 - Nobody's foot goes through the floor and nobody floats: through every standing stance and every outfit the lowest point of a posed body stays within two centimetres of the ground the root stands on. `Sleep_Loop` and the stool clips are the ones that carry their own height, resting on the mattress and the pad rather than on the floor. The gaits are the packs' own and a heel strike in `Walk_Loop` dips 3 cm.
 - One clip library and one character mesh per outfit for the whole game; a person is a clone sharing that geometry with their own skeleton and their own mixer, and a thing in their hand is a clone sharing one template.
-- Everybody is dressed. Every body kind has a rail, a hero kind's being the plain kind's, and a wardrobe with nothing on a rail dresses off the whole of it rather than sending somebody out bare.
+- Everybody is dressed. Every body kind has outfits cut for it, and a wardrobe with nothing cut for a body dresses off the whole of it rather than sending somebody out bare.
 - Nobody stands in the rest pose. `spawn` falls back to the idle when it is handed a clip the library has not got, and `load` refuses a library with no clips in it, so a typo is a wrong animation rather than a T-posing NPC.
 - No limb ends up inside the head, through any clip the game plays or any gesture layered over it.
 - Every material a character renders with carries its base colour texture, so nobody comes out the white of a missing map.
@@ -321,4 +321,4 @@ Hair is listed per body in the `hair` block of `game/cast/wardrobe.json`: `style
 
 ## How to modify this blackbox safely
 
-New clips go in `CLIPS`, `CLIPS_FOR_ANCHOR`, `GAITS`, `WALKS` or `GESTURES` and then in the pack: `node tools/build-anims.mjs` builds from `clipsUsed()`, so naming a clip there is what ships it, and a name no source pack has fails the build. A clip no pack has is written in `tools/anims/clips/` (standing, working, seated) as a pose (per-bone angles on a clip already in the library; `tools/anims/derive.mjs` says what the angles mean), a blend (one clip's movement laid over another's stance; `tools/anims/blend.mjs`) or a trim (a section of a one-shot closed into a loop; `tools/anims/trim.mjs`). The list is built in the order written, so any clip may build on any clip above it, and a step on the way that nothing names is not shipped. Every clip drives all 65 bones, and it has to: the character files' own rest poses sit a few millimetres off the animation mannequin's, so a clip that leaves a bone undriven leaves it wherever that file put it, which is 5 cm at a toe. A clip only belongs in `GESTURES` if it stays near its own starting pose. A clip posed around a thing gets a row in `HANDHELD` and, if it is a new thing, a builder in `src/props/`. A new body needs a `BODY_KIND` in `@gb/world` first, then a rail in `src/wardrobe.ts` (its own once it has a body file in `game/cast/wardrobe.json` and at least one outfit; another kind's meanwhile). Rebuild the pack, run the gate, then `pnpm --filter @gb/cast test`.
+New clips go in `CLIPS`, `CLIPS_FOR_ANCHOR`, `GAITS`, `WALKS` or `GESTURES` and then in the pack: `node tools/build-anims.mjs` builds from `clipsUsed()`, so naming a clip there is what ships it, and a name no source pack has fails the build. A clip no pack has is written in `tools/anims/clips/` (standing, working, seated) as a pose (per-bone angles on a clip already in the library; `tools/anims/derive.mjs` says what the angles mean), a blend (one clip's movement laid over another's stance; `tools/anims/blend.mjs`) or a trim (a section of a one-shot closed into a loop; `tools/anims/trim.mjs`). The list is built in the order written, so any clip may build on any clip above it, and a step on the way that nothing names is not shipped. Every clip drives all 65 bones, and it has to: the character files' own rest poses sit a few millimetres off the animation mannequin's, so a clip that leaves a bone undriven leaves it wherever that file put it, which is 5 cm at a toe. A clip only belongs in `GESTURES` if it stays near its own starting pose. A clip posed around a thing gets a row in `HANDHELD` and, if it is a new thing, a builder in `src/props/`. A new body needs a `BODY_KIND` in `@gb/world` first, then a body file in `game/cast/wardrobe.json` and at least one outfit cut for it. Rebuild the pack, run the gate, then `pnpm --filter @gb/cast test`.

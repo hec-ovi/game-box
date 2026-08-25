@@ -52,28 +52,15 @@ function problemWith(entry: WardrobeEntry): string | undefined {
 }
 
 /**
- * Whose rail each body dresses from. The pack ships one build per sex, so a
- * hero body is the plain body's mesh and wears the plain body's outfits; a
- * kind added to `@gb/world` does not compile here until it is given a rail.
- */
-const RAIL: Record<BodyKind, BodyKind> = {
-  male: 'male',
-  female: 'female',
-  'hero-male': 'male',
-  'hero-female': 'female',
-}
-
-/**
- * Who wears what. An outfit on this body's rail wins over one that is not, an
+ * Who wears what. An outfit cut for this body wins over one that is not, an
  * outfit made for this role wins over one that is not, and a theme word the
  * world uses breaks the tie above chance. Whatever is left is picked by the
  * NPC's id, so the same city dresses the same way every time it is opened, and
  * a room of clerks is not one clerk copied.
  */
 export function chooseCharacter(wardrobe: Wardrobe, npc: Npc, theme: string): WardrobeEntry {
-  const rail = RAIL[npc.appearance.base]
-  const fitting = wardrobe.characters.filter((entry) => entry.body === rail)
-  // nobody goes out naked: a wardrobe with nothing on this rail dresses off the whole of it
+  const fitting = wardrobe.characters.filter((entry) => entry.body === npc.appearance.base)
+  // nobody goes out naked: a wardrobe with nothing cut for this body dresses off the whole of it
   const pool = fitting.length ? fitting : wardrobe.characters
   const words = theme.toLowerCase()
 

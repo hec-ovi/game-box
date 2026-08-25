@@ -2,7 +2,7 @@ import { ANCHOR_KINDS, BODY_KINDS } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { Cast, CastDressing, CastError, CLIPS, CLIPS_FOR_ANCHOR, clipsUsed, GAITS, WALKS, walkFor } from '../src/index.ts'
-import { animsBytes, loadCast, person, RAIL, wardrobe } from './pack.ts'
+import { animsBytes, loadCast, person, wardrobe } from './pack.ts'
 import { posedBounds } from './posing.ts'
 
 const cast = await loadCast()
@@ -41,7 +41,7 @@ describe('Cast', () => {
       const member = cast.spawn(person({ id: `npc_${base}`, appearance: { base, variant: 1 } }))
       const entry = wardrobe.characters.find((candidate) => candidate.id === member.outfit)
       expect(entry, `${base} was given ${member.outfit}, which is not in the wardrobe`).toBeDefined()
-      expect(entry!.body, `a ${base} is wearing ${member.outfit}, off the ${entry!.body} rail`).toBe(RAIL[base])
+      expect(entry!.body, `a ${base} is wearing ${member.outfit}, cut for a ${entry!.body}`).toBe(base)
 
       const skinned: THREE.SkinnedMesh[] = []
       member.object.traverse((child) => {
