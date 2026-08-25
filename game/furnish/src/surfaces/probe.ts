@@ -1,10 +1,10 @@
 import * as THREE from 'three'
 import { screenAverage } from '../screens/light.ts'
 import { PALETTES, type FurnishStyle } from '../style/palette.ts'
-import { lookOf } from './surfaces.ts'
+import { SURFACE_LOOKS, type SurfacePart } from './surfaces.ts'
 
 /**
- * What a polished floor indoors has to reflect.
+ * What a room indoors has to reflect, and what a surface in it is lit by.
  *
  * `scene.environment` after dark is the prefiltered night sky, which is nearly
  * black, and the only light actually in a room is the lit channel under the
@@ -18,16 +18,20 @@ import { lookOf } from './surfaces.ts'
  * band that matters is the lit channel at the top of the wall, and that is what
  * is drawn brightest.
  *
+ * The rest of the picture is the room's own surfaces, lit. The light goes in
+ * first; then the floor is painted as its colour times what that light lays on
+ * an upward face, the wall as its colour times what the light and the floor lay
+ * on a sideways one, and the ceiling last, lit by all three. So a ceiling
+ * looking straight down samples a lit floor, and nothing here is a hand-set
+ * bounce: change the light and every surface follows.
+ *
  * A screen is in the picture too. A television is on a wall at eye height, not
  * up in the cove, so it lands as one low lobe just over the horizon, in the
- * colour the screens really average over a whole schedule. It lifts a floor a
- * little and lays a soft patch across it, which is what a lit screen does to a
- * dark room; it is nowhere near the channel, because a screen is a fraction of
- * a metre of wall and the cove is all of it.
+ * colour the screens really average over a whole schedule.
  *
- * One per interior language, 64 by 32, painted from that language's own
- * surfaces and the colour its strips emit. Two pictures for a town of any size,
- * and they are what makes it safe for a floor to be polished.
+ * One per interior language, 64 by 32, painted from the average of that
+ * language's own pools and the colour its strips emit. Two pictures for a town
+ * of any size, and they are what makes it safe for a floor to be polished.
  */
 
 const WIDE = 64
@@ -61,8 +65,6 @@ const SCREEN = { from: 6, to: 22 }
  */
 const SCREEN_WIDE = 26
 
-/** How much of each surface's own colour comes back. A room is not a mirror box. */
-const BOUNCE = { floor: 0.08, wall: 0.12, ceiling: 0.05 }
 /**
  * How hard the channel and the strips read.
  *
@@ -92,6 +94,10 @@ const SCREEN_LIGHT = 1
 
 type Rgb = [number, number, number]
 
+const UP: Rgb = [0, 1, 0]
+const DOWN: Rgb = [0, -1, 0]
+const SIDE: Rgb = [1, 0, 0]
+
 /**
  * The room's own light and surfaces, as an equirectangular texture ready to be
  * prefiltered. Rows run from straight down to straight up, which is the
@@ -99,29 +105,20 @@ type Rgb = [number, number, number]
  */
 export function roomProbe(style: FurnishStyle): THREE.DataTexture {
   const palette = PALETTES[style]
-  const floor = linear(lookOf(style, 'floor', 0).colour)
-  const wall = linear(lookOf(style, 'wall', 0).colour)
-  const ceiling = linear(lookOf(style, 'ceiling', 0).colour)
   const glow = scale(linear(palette.glow.glow ?? 0xffffff), palette.glow.glowStrength ?? 1)
   const average = screenAverage()
-  const screen: Rgb = [average[0], average[1], average[2]]
+  const picture = new Picture()
 
-  const data = new Uint16Array(WIDE * TALL * 4)
-  for (let row = 0; row < TALL; row++) {
-    // v runs linearly in elevation, which is how three samples an equirect
-    const elevation = ((row + 0.5) / TALL - 0.5) * 180
-    for (let column = 0; column < WIDE; column++) {
-      const azimuth = ((column + 0.5) / WIDE) * 360
-      const rgb = paint(elevation, azimuth, { floor, wall, ceiling, glow, screen })
-      const at = (row * WIDE + column) * 4
-      data[at] = THREE.DataUtils.toHalfFloat(rgb[0])
-      data[at + 1] = THREE.DataUtils.toHalfFloat(rgb[1])
-      data[at + 2] = THREE.DataUtils.toHalfFloat(rgb[2])
-      data[at + 3] = THREE.DataUtils.toHalfFloat(1)
-    }
-  }
+  picture.paint((elevation, azimuth) => lights(elevation, azimuth, glow, [average[0], average[1], average[2]]))
+  // the surfaces, each lit by everything painted before it
+  const floor = scale(poolColour(style, 'floor'), picture.irradiance(UP))
+  picture.paint((elevation) => (elevation < GROUND ? floor : undefined))
+  const wall = scale(poolColour(style, 'wall'), picture.irradiance(SIDE))
+  picture.paint((elevation) => (elevation >= GROUND && elevation < CHANNEL.from ? wall : undefined))
+  const ceiling = scale(poolColour(style, 'ceiling'), picture.irradiance(DOWN))
+  picture.paint((elevation) => (elevation >= CHANNEL.from ? ceiling : undefined))
 
-  const texture = new THREE.DataTexture(data, WIDE, TALL, THREE.RGBAFormat, THREE.HalfFloatType)
+  const texture = new THREE.DataTexture(picture.halfFloats(), WIDE, TALL, THREE.RGBAFormat, THREE.HalfFloatType)
   texture.name = `furnish:probe:${style}`
   texture.mapping = THREE.EquirectangularReflectionMapping
   texture.colorSpace = THREE.NoColorSpace
@@ -132,38 +129,87 @@ export function roomProbe(style: FurnishStyle): THREE.DataTexture {
   return texture
 }
 
-interface Room {
-  readonly floor: Rgb
-  readonly wall: Rgb
-  readonly ceiling: Rgb
-  readonly glow: Rgb
-  /** What the screens in the room average over a whole schedule. */
-  readonly screen: Rgb
+/** The picture under construction: linear rgb per texel, added to layer by layer. */
+class Picture {
+  readonly #rgb = new Float32Array(WIDE * TALL * 3)
+
+  /** Adds one layer: what `at` gives for a direction, or nothing to leave the texel alone. */
+  paint(at: (elevation: number, azimuth: number) => Rgb | undefined): void {
+    for (let row = 0; row < TALL; row++) {
+      for (let column = 0; column < WIDE; column++) {
+        const rgb = at(elevationOf(row), azimuthOf(column))
+        if (!rgb) continue
+        const index = (row * WIDE + column) * 3
+        this.#rgb[index] = this.#rgb[index]! + rgb[0]
+        this.#rgb[index + 1] = this.#rgb[index + 1]! + rgb[1]
+        this.#rgb[index + 2] = this.#rgb[index + 2]! + rgb[2]
+      }
+    }
+  }
+
+  /**
+   * What a matte surface facing `normal` is lit by, so far: the cosine-weighted
+   * average of the picture over its hemisphere, scaled so a picture that is 1
+   * everywhere lights every surface by 1, which is how the renderer reads it.
+   */
+  irradiance(normal: Rgb): number {
+    let lit = 0
+    let sphere = 0
+    for (let row = 0; row < TALL; row++) {
+      const elevation = (elevationOf(row) * Math.PI) / 180
+      const solid = Math.cos(elevation)
+      for (let column = 0; column < WIDE; column++) {
+        const azimuth = (azimuthOf(column) * Math.PI) / 180
+        const cosine =
+          Math.cos(elevation) * Math.cos(azimuth) * normal[0] +
+          Math.sin(elevation) * normal[1] +
+          Math.cos(elevation) * Math.sin(azimuth) * normal[2]
+        const index = (row * WIDE + column) * 3
+        const value = (this.#rgb[index]! + this.#rgb[index + 1]! + this.#rgb[index + 2]!) / 3
+        lit += value * Math.max(0, cosine) * solid
+        sphere += solid
+      }
+    }
+    return (lit / sphere) * 4
+  }
+
+  halfFloats(): Uint16Array {
+    const data = new Uint16Array(WIDE * TALL * 4)
+    for (let texel = 0; texel < WIDE * TALL; texel++) {
+      for (let channel = 0; channel < 3; channel++) {
+        data[texel * 4 + channel] = THREE.DataUtils.toHalfFloat(this.#rgb[texel * 3 + channel]!)
+      }
+      data[texel * 4 + 3] = THREE.DataUtils.toHalfFloat(1)
+    }
+    return data
+  }
 }
 
-function paint(elevation: number, azimuth: number, room: Room): Rgb {
-  const screen = scale(room.screen, SCREEN_LIGHT * lobe(elevation, azimuth))
-  return add(surfaces(elevation, azimuth, room), screen)
+/** v runs linearly in elevation, which is how three samples an equirect. */
+function elevationOf(row: number): number {
+  return ((row + 0.5) / TALL - 0.5) * 180
 }
 
-/** The room without its screen: the floor under, the ceiling over, the wall and its channel. */
-function surfaces(elevation: number, azimuth: number, room: Room): Rgb {
-  if (elevation < GROUND) return scale(room.floor, BOUNCE.floor)
-  if (elevation > CHANNEL.to) return scale(room.ceiling, BOUNCE.ceiling)
+function azimuthOf(column: number): number {
+  return ((column + 0.5) / WIDE) * 360
+}
 
-  if (elevation >= CHANNEL.from) {
+/** The light in the room: the channel, the strips standing up the wall, and the screen. */
+function lights(elevation: number, azimuth: number, glow: Rgb, screen: Rgb): Rgb {
+  const set = scale(screen, SCREEN_LIGHT * lobe(elevation, azimuth))
+  if (elevation >= CHANNEL.from && elevation <= CHANNEL.to) {
     // the lit channel, brightest in the middle of the band and falling off at
     // both edges, which is what a cove throwing light up a wall looks like
     const across = (elevation - CHANNEL.from) / (CHANNEL.to - CHANNEL.from)
-    const fall = Math.sin(Math.PI * across)
-    return add(scale(room.ceiling, BOUNCE.ceiling), scale(room.glow, CHANNEL_LIGHT * fall))
+    return add(scale(glow, CHANNEL_LIGHT * Math.sin(Math.PI * across)), set)
   }
+  if (elevation < GROUND || elevation > CHANNEL.to) return set
 
   // the field of the wall, with the strips standing up it
   const period = 360 / STRIPS
   const nearest = Math.abs((((azimuth % period) + period) % period) - period / 2)
   const strip = Math.max(0, 1 - nearest / (STRIP_WIDE / 2))
-  return add(scale(room.wall, BOUNCE.wall), scale(room.glow, STRIP_LIGHT * strip * strip))
+  return add(scale(glow, STRIP_LIGHT * strip * strip), set)
 }
 
 /**
@@ -176,6 +222,13 @@ function lobe(elevation: number, azimuth: number): number {
   if (off > SCREEN_WIDE / 2) return 0
   const up = Math.sin((Math.PI * (elevation - SCREEN.from)) / (SCREEN.to - SCREEN.from))
   return up * Math.cos((Math.PI * off) / SCREEN_WIDE)
+}
+
+/** The colour a language's pool for one part averages to: the probe is shared by every room in it. */
+function poolColour(style: FurnishStyle, part: SurfacePart): Rgb {
+  const pool = SURFACE_LOOKS[style][part]
+  const total = pool.map((look) => linear(look.colour)).reduce(add, [0, 0, 0])
+  return scale(total, 1 / pool.length)
 }
 
 function linear(hex: number): Rgb {

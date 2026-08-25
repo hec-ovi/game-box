@@ -31,6 +31,34 @@ function dressing(): FurnishDressing {
   return new FurnishDressing(surfaced)
 }
 
+/** One texel's brightness, as the mean of its three channels. */
+function texelAt(texture: THREE.DataTexture, row: number, column: number): number {
+  const data = texture.image.data as Uint16Array
+  const at = (row * texture.image.width + column) * 4
+  return [0, 1, 2].reduce((sum, channel) => sum + THREE.DataUtils.fromHalfFloat(data[at + channel]!), 0) / 3
+}
+
+/**
+ * What a matte surface facing straight up or straight down is lit by: the
+ * cosine-weighted mean of its hemisphere, scaled so a picture that is 1
+ * everywhere lights it by 1. Written here on its own so it holds the probe's
+ * bookkeeping to an independent sum.
+ */
+function irradiance(texture: THREE.DataTexture, facing: 'up' | 'down'): number {
+  const { width, height } = texture.image
+  let lit = 0
+  let sphere = 0
+  for (let row = 0; row < height; row++) {
+    const elevation = ((row + 0.5) / height - 0.5) * Math.PI
+    const cosine = Math.max(0, Math.sin(elevation) * (facing === 'up' ? 1 : -1))
+    for (let column = 0; column < width; column++) {
+      lit += texelAt(texture, row, column) * cosine * Math.cos(elevation)
+      sphere += Math.cos(elevation)
+    }
+  }
+  return (lit / sphere) * 4
+}
+
 /**
  * What one of these pictures holds, band by band: the cosine-weighted average
  * over the whole sphere (which is what it lifts a room by), the same over each
@@ -201,6 +229,29 @@ describe("a room's own probe", () => {
       expect(read.brightest.value, style).toBeGreaterThan(0.5)
       // and the whole picture averages near nothing, so the room stays dark
       expect(read.average, style).toBeLessThan(0.15)
+    }
+  })
+
+  it('paints the lit floor where a ceiling looks, so a downward face samples the floor and not black', () => {
+    for (const style of FURNISH_STYLES) {
+      const probe = surfaced.surfaces!.probe(style)
+      const { width, height } = probe.image
+      // the floor's colour is the average of the pool the language draws from
+      const pool = SURFACE_LOOKS[style].floor
+      const floor =
+        pool.reduce((sum, look) => {
+          const colour = new THREE.Color().setHex(look.colour, THREE.SRGBColorSpace)
+          return sum + (colour.r + colour.g + colour.b) / 3
+        }, 0) / pool.length
+
+      // straight down is the floor, lit by what the picture lays on an upward face
+      const down = Array.from({ length: width }, (_, column) => texelAt(probe, 0, column)).reduce((a, b) => a + b) / width
+      expect(down, `${style} straight down`).toBeCloseTo(floor * irradiance(probe, 'up'), 3)
+      expect(down, `${style} straight down`).toBeGreaterThan(0.004)
+      // and it is a bounce off a dark surface, a tenth of the light, not a second light
+      expect(irradiance(probe, 'down') / irradiance(probe, 'up'), `${style} ceiling against floor`).toBeGreaterThan(0.1)
+      expect(irradiance(probe, 'down') / irradiance(probe, 'up'), `${style} ceiling against floor`).toBeLessThan(0.5)
+      expect(height).toBe(32)
     }
   })
 

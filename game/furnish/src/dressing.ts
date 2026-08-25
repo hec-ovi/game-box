@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import type { FurnishLibrary } from './kit/library.ts'
 import { FurnishRoom } from './room.ts'
 import { screenSlot } from './screens/screening.ts'
+import { finishOf } from './style/finish.ts'
 import type { FurnishStyle } from './style/palette.ts'
 import { FIRST_CHOICES, surfaceChoices, type SurfaceChoices } from './surfaces/choose.ts'
 import type { SurfacePart } from './surfaces/surfaces.ts'
@@ -20,9 +21,10 @@ import type { SurfacePart } from './surfaces/surfaces.ts'
  * A dressing speaks one language. `as` hands back a sibling in the other over
  * the same library, so an app that knows which building it is entering pays
  * nothing for the second language: one library, one material, two dressings.
- * `room` hands back a sibling bound to one interior, whose floor, walls and
- * ceiling are that interior's own, plus the bays its walls are made of, and
- * whose screens are on that interior's own channel.
+ * `room` hands back a sibling bound to one interior, in the language that
+ * building's finish asks for, whose floor, walls and ceiling are that
+ * interior's own, plus the bays its walls are made of, and whose screens are
+ * on that interior's own channel.
  */
 export class FurnishDressing implements Dressing {
   readonly #kit: FurnishLibrary
@@ -52,16 +54,25 @@ export class FurnishDressing implements Dressing {
       : new FurnishDressing(this.#kit, this.#rest, style, this.#choices, this.#slot)
   }
 
-  /** This interior's own room: its surfaces, its bays, and what its screens are showing. */
+  /** This interior's own room: its language, its surfaces, its bays, and what its screens are showing. */
   room(interior: Interior): FurnishRoom {
+    const style = finishOf(interior.kind)
     const bound = new FurnishDressing(
       this.#kit,
       this.#rest,
-      this.style,
-      surfaceChoices(this.#kit.seed, this.style, interior.id),
+      style,
+      surfaceChoices(this.#kit.seed, style, interior.id),
       screenSlot(this.#kit.seed, interior.id),
     )
-    return new FurnishRoom(this.#kit, bound, this.style, interior)
+    return new FurnishRoom(this.#kit, bound, style, interior)
+  }
+
+  /**
+   * How high off the floor the top of a piece is drawn, for a piece that has
+   * one: the number a till or a coffee machine is lifted by to stand on it.
+   */
+  contactHeight(prop: FurnitureProp): number | undefined {
+    return this.#kit.contact(prop)
   }
 
   prop(prop: FurnitureProp): THREE.Object3D {

@@ -10,8 +10,7 @@
  * the run, the doorways no bay may touch, and the furniture standing in front
  * of it. No geometry, so it can be checked without building anything.
  */
-import { METRICS, type Interior } from '@gb/world'
-import { footprintOf } from '../catalog/specs.ts'
+import { METRICS, footprintOf, type Interior } from '@gb/world'
 
 type Room = Interior['rooms'][number]
 type Furniture = Interior['furniture'][number]

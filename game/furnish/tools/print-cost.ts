@@ -1,9 +1,9 @@
 /**
  * Prints what a furnished room costs against the greybox it replaces: draws,
- * triangles and materials, per room of a generated town, in both interior
- * languages, with and without the bays its walls are made of. Also the build
- * time and the memory of the catalog itself, furniture and carried things. The
- * numbers in CONTRACT.md come from here.
+ * triangles and materials, per room of a generated town, each in the language
+ * its building's finish gives it, with and without the bays its walls are made
+ * of. Also the build time and the memory of the catalog itself, furniture and
+ * carried things. The numbers in CONTRACT.md come from here.
  *
  * Run: node game/furnish/tools/print-cost.ts
  */
@@ -67,8 +67,7 @@ const built = await new Forge(new OfflineNarrator('furnish')).build({
 if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 400))
 const world = built.value.world
 
-const corpo = new FurnishDressing(kit, undefined, 'corpo')
-const home = corpo.as('home')
+const furnished = new FurnishDressing(kit)
 const greybox = new Greybox()
 
 const placedIn = new Map<string, number>()
@@ -79,17 +78,16 @@ for (const placement of world.toJSON().placements) {
 console.log('a whole room, shell included. Every piece of furniture in it is one mesh on one material,')
 console.log('every thing lying on it is another, and every bay of every wall of the interior is one more.\n')
 console.log(
-  `${'room'.padEnd(12)}${'pieces'.padStart(6)}${'items'.padStart(6)}${'bays'.padStart(6)}   ` +
-    `${'corpo'.padEnd(30)}${'corpo + walls'.padEnd(30)}${'home + walls'.padEnd(30)}greybox`,
+  `${'room'.padEnd(12)}${'finish'.padEnd(7)}${'pieces'.padStart(6)}${'items'.padStart(6)}${'bays'.padStart(6)}   ` +
+    `${'furnished'.padEnd(30)}${'furnished + walls'.padEnd(30)}greybox`,
 )
 for (const interior of [...world.interiors()].sort((a, b) => b.furniture.length - a.furniture.length)) {
-  const kind = world.plot(interior.plotId)?.kind ?? '?'
-  const bays = corpo.room(interior).bays.length
+  const room = furnished.room(interior)
   console.log(
-    `${kind.padEnd(12)}${String(interior.furniture.length).padStart(4)}` +
-      `${String(placedIn.get(interior.id) ?? 0).padStart(6)}${String(bays).padStart(6)}   ` +
-      `${cost(interior.id, corpo, false).padEnd(30)}${cost(interior.id, corpo, true).padEnd(30)}` +
-      `${cost(interior.id, home, true).padEnd(30)}${cost(interior.id, greybox, false)}`,
+    `${interior.kind.padEnd(12)}${room.style.padEnd(7)}${String(interior.furniture.length).padStart(4)}` +
+      `${String(placedIn.get(interior.id) ?? 0).padStart(6)}${String(room.bays.length).padStart(6)}   ` +
+      `${cost(interior.id, furnished, false).padEnd(30)}${cost(interior.id, furnished, true).padEnd(30)}` +
+      `${cost(interior.id, greybox, false)}`,
   )
 }
 

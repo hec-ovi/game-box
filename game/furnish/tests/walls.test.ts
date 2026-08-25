@@ -1,16 +1,13 @@
-import { METRICS, type Interior, type World } from '@gb/world'
+import { METRICS, PROP_CELL, PROP_SPECS, footprintOf, type Interior, type World } from '@gb/world'
 import * as THREE from 'three'
 import { beforeAll, describe, expect, it } from 'vitest'
 import {
   BAY_SPECS,
-  CELL,
   FURNISH_STYLES,
   FurnishDressing,
-  PROP_SPECS,
   SOLID_MATERIAL,
   WALL,
   WALL_CONTACTS,
-  footprintOf,
   furnishKit,
   type PlacedBay,
 } from '../src/index.ts'
@@ -80,8 +77,8 @@ describe('a wall is a run of bays', () => {
   it('claims whole 10 cm cells, never a fraction of one', () => {
     for (const interior of interiors) {
       for (const bay of dressingIn('home').room(interior).bays) {
-        expect(Math.round(bay.from / CELL) * CELL, `${interior.id} ${bay.side}`).toBeCloseTo(bay.from, 9)
-        expect(bay.to - bay.from, `${interior.id} ${bay.side}`).toBeCloseTo(bay.cells * CELL, 9)
+        expect(Math.round(bay.from / PROP_CELL) * PROP_CELL, `${interior.id} ${bay.side}`).toBeCloseTo(bay.from, 9)
+        expect(bay.to - bay.from, `${interior.id} ${bay.side}`).toBeCloseTo(bay.cells * PROP_CELL, 9)
       }
     }
   })
@@ -213,7 +210,8 @@ describe('the same seed is the same room', () => {
       const room = dressing.room(interior)
       for (const part of ['floor', 'wall', 'ceiling'] as const) materials.add(room.dressing.surface(part))
     }
-    // four floors, three walls and one ceiling is the whole pool for a language
-    expect(materials.size).toBeLessThanOrEqual(8)
+    // four floors, three walls and one ceiling is the whole pool for a
+    // language, and a town dresses its homes in one and its trade in the other
+    expect(materials.size).toBeLessThanOrEqual(8 * FURNISH_STYLES.length)
   })
 })

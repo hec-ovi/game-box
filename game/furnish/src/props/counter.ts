@@ -8,10 +8,11 @@ import type { Build, PropBuilder } from './builder.ts'
  * slab on top, and the slab's top face is the contact height.
  *
  * The bar counter is the only piece in the catalog worked from both sides, so
- * it is the only one with two of them. The customer's drink stands on the
- * raised rail at bar height; the bartender's forearms rest on the shelf behind
- * it at service-counter height, which is where `@gb/cast`'s lean clip puts a
- * body's hands. One piece, two heights, both drawn rather than assumed.
+ * it is the only one with two of them. The customer's drink stands on the rail
+ * at bar height; the bartender's forearms rest on the shelf behind it at
+ * service-counter height, which is where `@gb/cast`'s lean clip puts a body's
+ * hands. One piece, two surfaces, each drawn on its own number rather than
+ * assumed, and `@gb/world` holds them level.
  */
 
 /** The slice of depth at the front a door or a panel fills. */
@@ -37,8 +38,10 @@ export const barCounter: PropBuilder = (build) => {
   const shelf = depth * 0.4
   const rail = depth - shelf
 
-  carcass(build, staff - slab)
-  face(build, 0.06, staff - slab)
+  carcass(build, Math.min(contact, staff) - slab)
+  face(build, 0.06, contact - slab)
+  // the staff shelf behind, its top on the service height, in the board look
+  // so it reads as the working side even when it is level with the rail
   solid.block({
     z: (depth - shelf) / 2,
     width,
@@ -47,17 +50,9 @@ export const barCounter: PropBuilder = (build) => {
     y1: staff,
     corner: cornersOf(variant, shelf / 3),
     top: edgeOf(variant, Math.min(0.018, slab * 0.5)),
-    look: variant.palette.top,
+    look: variant.palette.board,
   })
-  solid.block({
-    z: -(depth - rail) / 2 + PROUD / 2,
-    width,
-    depth: rail - PROUD,
-    y0: staff - slab,
-    y1: contact - slab,
-    corner: cornersOf(variant, rail / 4),
-    look: variant.palette.shell,
-  })
+  // the customer's rail in front, its top on the bar height
   top(build, { width, depth: rail, z: -(depth - rail) / 2, y0: contact - slab, y1: contact })
 
   // a rail to put a boot on, inside the footprint so it cannot trip anyone

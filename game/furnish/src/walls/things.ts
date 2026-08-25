@@ -13,8 +13,8 @@
  * shelf a wall can afford.
  */
 import type { Rng } from '@gb/kit'
+import { PROP_CELL } from '@gb/world'
 import type { Solid } from '../build/solid.ts'
-import { CELL } from '../catalog/cells.ts'
 import type { Look } from '../build/look.ts'
 import { cornersOf, edgeOf, type Variant } from '../style/variant.ts'
 
@@ -70,7 +70,7 @@ export interface Ledge {
  * the bay's own frame: x across the bay, y off the floor, z out of the wall.
  */
 export function standThings(solid: Solid, variant: Variant, ledge: Ledge, rng: Rng): void {
-  const cells = Math.floor((2 * ledge.half) / CELL + 1e-6) - 2 * ledge.margin
+  const cells = Math.floor((2 * ledge.half) / PROP_CELL + 1e-6) - 2 * ledge.margin
   if (cells < 1) return
 
   const chosen: ThingKind[] = []
@@ -87,19 +87,19 @@ export function standThings(solid: Solid, variant: Variant, ledge: Ledge, rng: R
   }
   if (!chosen.length) return
 
-  let at = -ledge.half + ledge.margin * CELL + ((cells - used) * CELL) / 2
+  let at = -ledge.half + ledge.margin * PROP_CELL + ((cells - used) * PROP_CELL) / 2
   for (const [index, kind] of chosen.entries()) {
     const spec = THING_SPECS[kind]
-    const width = spec.cells * CELL
+    const width = spec.cells * PROP_CELL
     draw(solid, variant, kind, at + width / 2, ledge, rng.fork(`thing${index}`))
-    at += width + CELL
+    at += width + PROP_CELL
   }
 }
 
 function draw(solid: Solid, variant: Variant, kind: ThingKind, x: number, ledge: Ledge, rng: Rng): void {
   const spec = THING_SPECS[kind]
-  const width = spec.cells * CELL - AIR
-  const depth = Math.min(CELL - AIR, ledge.depth - AIR)
+  const width = spec.cells * PROP_CELL - AIR
+  const depth = Math.min(PROP_CELL - AIR, ledge.depth - AIR)
   const z = depth / 2 + AIR / 2
   const y0 = ledge.y
   const y1 = y0 + spec.height

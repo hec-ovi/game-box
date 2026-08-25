@@ -1,8 +1,26 @@
 import { Greybox } from '@gb/scene'
-import { FURNITURE_PROPS, type AnchorKind, type CellKind, type FurnitureProp, type Item, type Npc, type Plot } from '@gb/world'
+import {
+  FURNITURE_PROPS,
+  METRICS,
+  type AnchorKind,
+  type CellKind,
+  type FurnitureProp,
+  type Item,
+  type ItemArchetype,
+  type Npc,
+  type Plot,
+} from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { FURNISH_STYLES, FurnishDressing, PROP_SPECS, SOLID_MATERIAL, SURFACE_PARTS, furnishKit } from '../src/index.ts'
+import {
+  FURNISH_STYLES,
+  FurnishDressing,
+  FurnishError,
+  SOLID_MATERIAL,
+  SURFACE_PARTS,
+  finishOf,
+  furnishKit,
+} from '../src/index.ts'
 import { dressingIn, meshesOf, town, trianglesOf } from './support.ts'
 
 /** A dressing that writes down what it was asked, so a fall-through is visible. */
@@ -87,22 +105,51 @@ describe('prop', () => {
   })
 })
 
-describe('the published spec', () => {
-  it('covers the whole vocabulary and nothing else', () => {
-    expect(Object.keys(PROP_SPECS).sort()).toEqual([...FURNITURE_PROPS].sort())
+describe('the height a piece is lifted to', () => {
+  it('is published, and it is the drawn top of the counter, so a till lands on it exactly', () => {
+    const dressing = dressingIn('corpo')
+    expect(dressing.contactHeight('counter')).toBe(METRICS.furniture.serviceCounterHeight)
+    expect(dressing.contactHeight('bar-counter')).toBe(METRICS.furniture.barCounterHeight)
+    // a piece nobody stands anything on has no such height
+    expect(dressing.contactHeight('wardrobe')).toBeUndefined()
   })
+})
 
-  it('gives every prop a contact or a height, never both', () => {
-    for (const [prop, spec] of Object.entries(PROP_SPECS) as [FurnitureProp, (typeof PROP_SPECS)[FurnitureProp]][]) {
-      expect(spec.contact !== undefined && spec.height !== undefined, prop).toBe(false)
+describe('the room a building gets', () => {
+  it('is dressed in the language its finish asks for: a flat is a home, a bar is corpo', async () => {
+    const world = await town()
+    const interiors = [...world.interiors()]
+    const flat = interiors.find((interior) => finishOf(interior.kind) === 'home')
+    const bar = interiors.find((interior) => finishOf(interior.kind) === 'corpo')
+    expect(flat, 'a home in town').toBeDefined()
+    expect(bar, 'a corpo place in town').toBeDefined()
+
+    // whichever language the dressing was made in, the room follows the building
+    for (const style of FURNISH_STYLES) {
+      const dressing = dressingIn(style)
+      const home = dressing.room(flat!)
+      const corpo = dressing.room(bar!)
+      expect(home.style).toBe('home')
+      expect(corpo.style).toBe('corpo')
+      expect((home.dressing.prop('chair') as THREE.Mesh).geometry).toBe((dressingIn('home').prop('chair') as THREE.Mesh).geometry)
+      expect((corpo.dressing.prop('chair') as THREE.Mesh).geometry).toBe((dressingIn('corpo').prop('chair') as THREE.Mesh).geometry)
     }
   })
+})
 
-  it('marks what belongs on a worktop rather than on the floor', () => {
-    const onSurface = Object.entries(PROP_SPECS)
-      .filter(([, spec]) => spec.onSurface)
-      .map(([prop]) => prop)
-    expect(onSurface.sort()).toEqual(['coffee-machine', 'register'])
+describe('what it refuses', () => {
+  it('names a prop or a thing it has no shape for, rather than drawing it flat', () => {
+    const kit = furnishKit()
+    const throne = 'throne' as FurnitureProp
+    const sword = 'sword' as ItemArchetype
+
+    expect(() => kit.heightOf(throne, 'corpo')).toThrow(FurnishError)
+    expect(() => kit.heightOf(throne, 'corpo')).toThrow(/unknown-prop/)
+    expect(() => kit.geometry(throne, 'home')).toThrow(/unknown-prop/)
+    expect(() => kit.itemGeometry(sword, 0)).toThrow(/unknown-item/)
+    // a second surface is a fact about the table, so an unknown name simply has none
+    expect(kit.staffContact(throne)).toBeUndefined()
+    kit.dispose()
   })
 })
 

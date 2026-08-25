@@ -90,8 +90,9 @@ export interface SurfaceLook {
  * part from its own seed; index 0 is what a room with no seed behind it gets.
  */
 export const SURFACE_LOOKS: Record<FurnishStyle, Record<SurfacePart, readonly SurfaceLook[]>> = {
-  // corpo: an open floor of polished concrete, graphite structure, a dark lid
-  // with the services in it
+  // corpo: an open floor of polished concrete, graphite structure, a lid a
+  // shade darker than the walls with the services in it. Darker than that and
+  // nothing lit by a bounce can show it
   corpo: {
     floor: [
       {
@@ -167,7 +168,7 @@ export const SURFACE_LOOKS: Record<FurnishStyle, Record<SurfacePart, readonly Su
         name: 'surface:corpo:ceiling',
         map: 'formwork',
         pattern: { kind: 'tile', unit: 1.2 },
-        colour: 0x24262a,
+        colour: 0x4a4d52,
         roughness: 0.9,
         joint: 0.4,
         variation: 0.03,

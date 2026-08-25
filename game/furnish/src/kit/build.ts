@@ -1,6 +1,5 @@
-import { FURNITURE_PROPS, type FurnitureProp } from '@gb/world'
+import { FURNITURE_PROPS, PROP_SPECS, footprintOf, type FurnitureProp } from '@gb/world'
 import type * as THREE from 'three'
-import { PROP_SPECS, footprintOf } from '../catalog/specs.ts'
 import { Solid } from '../build/solid.ts'
 import { BUILDERS } from '../props/index.ts'
 import { SCREEN_SLOTS, screeningOf } from '../screens/screening.ts'

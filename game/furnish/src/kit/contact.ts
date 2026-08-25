@@ -1,5 +1,8 @@
+import type { PropSpec } from '@gb/world'
 import * as THREE from 'three'
-import type { ContactKind } from '../catalog/specs.ts'
+
+/** Which surface of a piece a body meets: `work` for a top, `rest` for a seat or a mattress. */
+export type ContactKind = NonNullable<PropSpec['contact']>['kind']
 
 /** How level a face has to be before a body could rest on it: within about ten degrees of flat. */
 const UPWARD = 0.985

@@ -12,17 +12,16 @@
  * adding a bay kind cannot change the wall next door.
  */
 import { Rng } from '@gb/kit'
-import type { Interior } from '@gb/world'
-import { CELL } from '../catalog/cells.ts'
+import { PROP_CELL, type Interior } from '@gb/world'
 import type { FurnishStyle } from '../style/palette.ts'
 import { BAY_SPECS, BAY_TASTE, WALL, isFeature, type BayKind } from './bays.ts'
 import { clears, runsOf, segmentsOf, type Span, type TopOf, type WallRun } from './runs.ts'
 
 /** How wide a bay wants to be, in cells. The rhythm settles near this. */
-const PREFERRED_CELLS = 7
+const PREFERRED_PROP_CELLS = 7
 
 /** A stretch shorter than this is left as bare wall. */
-const MIN_RUN_CELLS = 4
+const MIN_RUN_PROP_CELLS = 4
 
 export interface PlannedBay extends Span {
   readonly kind: BayKind
@@ -81,7 +80,7 @@ interface CellSpan {
 }
 
 function spanOf(span: CellSpan): Span {
-  return { from: span.cell * CELL, to: (span.cell + span.cells) * CELL }
+  return { from: span.cell * PROP_CELL, to: (span.cell + span.cells) * PROP_CELL }
 }
 
 /**
@@ -92,14 +91,14 @@ function spanOf(span: CellSpan): Span {
  * start rather than left as a stub at the end.
  */
 function dividedInto(span: Span): CellSpan[] {
-  const first = Math.ceil(span.from / CELL - 1e-6)
-  const cells = Math.floor(span.to / CELL + 1e-6) - first
-  if (cells < MIN_RUN_CELLS) return []
+  const first = Math.ceil(span.from / PROP_CELL - 1e-6)
+  const cells = Math.floor(span.to / PROP_CELL + 1e-6) - first
+  if (cells < MIN_RUN_PROP_CELLS) return []
 
   const widest = Math.max(...Object.values(BAY_SPECS).map((spec) => spec.cells[1]))
-  let bays = Math.max(1, Math.round(cells / PREFERRED_CELLS))
+  let bays = Math.max(1, Math.round(cells / PREFERRED_PROP_CELLS))
   bays = Math.max(bays, Math.ceil(cells / widest))
-  bays = Math.min(bays, Math.floor(cells / MIN_RUN_CELLS))
+  bays = Math.min(bays, Math.floor(cells / MIN_RUN_PROP_CELLS))
 
   const base = Math.floor(cells / bays)
   const extra = cells % bays
@@ -141,10 +140,10 @@ function bandsOf(run: WallRun): Span[] {
   const bands: Span[] = []
   for (const segment of segmentsOf(run)) {
     let open: Span | undefined
-    const first = Math.ceil(segment.from / CELL - 1e-6)
-    const last = Math.floor(segment.to / CELL + 1e-6)
+    const first = Math.ceil(segment.from / PROP_CELL - 1e-6)
+    const last = Math.floor(segment.to / PROP_CELL + 1e-6)
     for (let cell = first; cell < last; cell++) {
-      const span = { from: cell * CELL, to: (cell + 1) * CELL }
+      const span = { from: cell * PROP_CELL, to: (cell + 1) * PROP_CELL }
       if (clears(run, span, WALL.rail.depth, WALL.rail.under)) open = open ? { from: open.from, to: span.to } : span
       else if (open) {
         bands.push(open)
@@ -153,5 +152,5 @@ function bandsOf(run: WallRun): Span[] {
     }
     if (open) bands.push(open)
   }
-  return bands.filter((band) => band.to - band.from > 2 * CELL)
+  return bands.filter((band) => band.to - band.from > 2 * PROP_CELL)
 }

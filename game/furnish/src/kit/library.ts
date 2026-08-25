@@ -1,6 +1,6 @@
-import type { FurnitureProp, Item, ItemArchetype } from '@gb/world'
+import { PROP_SPECS, type FurnitureProp, type Item, type ItemArchetype } from '@gb/world'
 import type * as THREE from 'three'
-import { PROP_SPECS } from '../catalog/specs.ts'
+import { FurnishError } from '../errors.ts'
 import { buildItems, itemKey, type BuiltItem } from '../items/build.ts'
 import { castIndex } from '../items/cast.ts'
 import type { SurfaceLibrary } from '../surfaces/library.ts'
@@ -39,9 +39,8 @@ export class FurnishLibrary {
    * screening are one buffer as well.
    */
   geometry(prop: FurnitureProp, style: FurnishStyle, slot = 0): THREE.BufferGeometry {
-    const built = this.#props.get(keyOf(style, prop))
-    if (!built) throw new Error(`furnish: no builder for ${style}/${prop}`)
-    return built.screens[slot % built.screens.length]!
+    const { screens } = this.#built(style, prop)
+    return screens[slot % screens.length]!
   }
 
   /** One thing a player can pick up, in the cast its id draws. Shared per cast. */
@@ -57,7 +56,7 @@ export class FurnishLibrary {
   /** One archetype in one named cast. */
   itemGeometry(archetype: ItemArchetype, cast: number): THREE.BufferGeometry {
     const built = this.#items.get(itemKey(archetype, cast))
-    if (!built) throw new Error(`furnish: no builder for ${archetype} cast ${cast}`)
+    if (!built) throw new FurnishError('unknown-item', `${archetype} cast ${cast}`)
     return built.geometry
   }
 
@@ -88,25 +87,30 @@ export class FurnishLibrary {
 
   /** The second working surface, for a piece worked from both sides. */
   staffContact(prop: FurnitureProp): number | undefined {
-    return PROP_SPECS[prop].staffContact
+    return PROP_SPECS[prop]?.staffContact
   }
 
   /**
    * How tall a piece stands, measured off the triangles that were built rather
    * than off what it declares: the top of a chair is its backrest. This is what
    * a wall bay is tested against before it is allowed to stand off the wall in
-   * front of one.
+   * front of one, so a piece nobody built is refused rather than read as flat.
    */
   heightOf(prop: FurnitureProp, style: FurnishStyle): number {
-    const geometry = this.#props.get(keyOf(style, prop))?.screens[0]
-    if (!geometry) return 0
+    const geometry = this.#built(style, prop).screens[0]!
     geometry.computeBoundingBox()
-    return geometry.boundingBox?.max.y ?? 0
+    return geometry.boundingBox!.max.y
   }
 
   /** Triangles in one prop, both languages counted separately. */
   triangles(prop: FurnitureProp, style: FurnishStyle): number {
     return this.#props.get(keyOf(style, prop))?.triangles ?? 0
+  }
+
+  #built(style: FurnishStyle, prop: FurnitureProp): Built {
+    const built = this.#props.get(keyOf(style, prop))
+    if (!built) throw new FurnishError('unknown-prop', `${style}/${prop}`)
+    return built
   }
 
   dispose(): void {

@@ -1,8 +1,8 @@
-import { METRICS, type AnchorKind, type FurnitureProp } from '@gb/world'
+import { FURNITURE_PROPS, PROP_SPECS, footprintOf, type AnchorKind, type FurnitureProp } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { FURNISH_STYLES, PROP_SPECS } from '../src/index.ts'
-import { contactOf, dressingIn, interiorsAcrossTowns, plates } from './support.ts'
+import { FURNISH_STYLES } from '../src/index.ts'
+import { boundsOf, contactOf, dressingIn, interiorsAcrossTowns, plates } from './support.ts'
 
 /**
  * The height promise, and the reason furniture is generated at all.
@@ -84,21 +84,8 @@ describe('the height a body meets', () => {
     }
   })
 
-  it('comes from @gb/world, which is the one place those numbers live', () => {
-    const metric = METRICS.furniture
-    expect(PROP_SPECS['bar-counter'].contact?.height).toBe(metric.barCounterHeight)
-    expect(PROP_SPECS['bar-counter'].staffContact).toBe(metric.serviceCounterHeight)
-    expect(PROP_SPECS.counter.contact?.height).toBe(metric.serviceCounterHeight)
-    expect(PROP_SPECS.table.contact?.height).toBe(metric.tableHeight)
-    expect(PROP_SPECS.desk.contact?.height).toBe(metric.tableHeight)
-    expect(PROP_SPECS['bar-stool'].contact?.height).toBe(metric.stoolHeight)
-    expect(PROP_SPECS.chair.contact?.height).toBe(metric.seatHeight)
-    expect(PROP_SPECS.bed.contact?.height).toBe(metric.mattressHeight)
-    expect(PROP_SPECS.stove.contact?.height).toBe(metric.worktopHeight)
-  })
-
   it('gives the bar counter a working shelf at service height as well as its rail', () => {
-    // the raised rail is where a drink stands; the shelf behind it is where the
+    // the rail is where a drink stands; the shelf behind it is where the
     // bartender's forearms land, and the lean clip holds hands at 1.02 to 1.04
     for (const style of FURNISH_STYLES) {
       const counter = dressingIn(style).prop('bar-counter')
@@ -107,6 +94,31 @@ describe('the height a body meets', () => {
 
       expect(level, `${style} bar counter shelf at ${staff}`).toBeDefined()
       expect(level!.area, `${style} bar counter shelf`).toBeGreaterThan(0.25)
+    }
+  })
+
+  it('lifts a till and a coffee machine onto the drawn top of the counter they stand on', () => {
+    // the planner writes `Furniture.lift` as the host's contact height and
+    // `@gb/scene` draws the piece there: so the published number has to be the
+    // drawn top, and the piece has to fit on it
+    const lifted = FURNITURE_PROPS.filter((prop) => PROP_SPECS[prop].onSurface)
+    expect(lifted).toEqual(['register', 'coffee-machine'])
+
+    for (const style of FURNISH_STYLES) {
+      const dressing = dressingIn(style)
+      for (const host of ['counter', 'bar-counter'] as const) {
+        const lift = dressing.contactHeight(host)!
+        const top = plates(dressing.prop(host)).find((plate) => Math.abs(plate.y - lift) < 1e-5)
+        expect(top, `${style} ${host} top at ${lift}`).toBeDefined()
+
+        for (const prop of lifted) {
+          const piece = dressing.prop(prop)
+          piece.position.y = lift
+          const bounds = boundsOf(piece)
+          expect(bounds.min.y, `${style} ${prop} on the ${host}`).toBeCloseTo(top!.y, EXACT)
+          expect(footprintOf(prop).depth, `${style} ${prop} fits the ${host}`).toBeLessThanOrEqual(footprintOf(host).depth)
+        }
+      }
     }
   })
 

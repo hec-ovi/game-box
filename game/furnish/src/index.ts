@@ -1,14 +1,9 @@
 /** @gb/furnish: the inside of a building, generated from parameters. See CONTRACT.md. */
 export { FurnishDressing } from './dressing.ts'
 export { FurnishRoom } from './room.ts'
-export { CELL, metresOf, type Cells, type Footprint } from './catalog/cells.ts'
-export {
-  PROP_SPECS,
-  footprintOf,
-  type Contact,
-  type ContactKind,
-  type PropSpec,
-} from './catalog/specs.ts'
+export { FurnishError, type FurnishErrorCode } from './errors.ts'
+export { type ContactKind } from './kit/contact.ts'
+export { finishOf } from './style/finish.ts'
 export { ITEM_SPECS, type ItemSpec } from './items/specs.ts'
 export { ITEM_CASTS, castIndex, itemCast, type ItemCast } from './items/cast.ts'
 export { MATTER, type Matter } from './items/matter.ts'

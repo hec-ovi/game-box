@@ -1,12 +1,12 @@
-import { FURNITURE_PROPS, type FurnitureProp } from '@gb/world'
+import { FURNITURE_PROPS, PROP_SPECS, footprintOf, type FurnitureProp } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { CELL, FURNISH_STYLES, PROP_SPECS, footprintOf } from '../src/index.ts'
+import { FURNISH_STYLES } from '../src/index.ts'
 import { backwardsMass, boundsOf, dressingIn, padAt, sizeOf } from './support.ts'
 
 /**
- * The other half of the contract with `@gb/forge`: a prop is a rectangle of
- * 10 cm room cells and it stays inside them.
+ * The other half of the contract with `@gb/forge`: a prop is the rectangle of
+ * 10 cm room cells `@gb/world` publishes for it, and it stays inside them.
  *
  * The planner claims those cells, so anything that reaches past them, a handle,
  * a leaf of a plant, the corner of a backrest, would stand in a walkway or in
@@ -24,17 +24,6 @@ const SLACK = 1e-4
 const LYING_BODY = 2 * 0.96
 
 describe('the floor a prop claims', () => {
-  it('is a whole number of 10 cm cells for every prop, because that is what the planner claims', () => {
-    for (const prop of FURNITURE_PROPS) {
-      const [across, deep] = PROP_SPECS[prop].cells
-      expect(Number.isInteger(across), `${prop} across`).toBe(true)
-      expect(Number.isInteger(deep), `${prop} deep`).toBe(true)
-      expect(across, `${prop} across`).toBeGreaterThan(0)
-      expect(deep, `${prop} deep`).toBeGreaterThan(0)
-      expect(footprintOf(prop).width).toBeCloseTo(across * CELL, 10)
-    }
-  })
-
   it('holds the whole prop, in both languages, with nothing hanging over the edge', () => {
     for (const style of FURNISH_STYLES) {
       const dressing = dressingIn(style)
