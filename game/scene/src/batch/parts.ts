@@ -18,7 +18,8 @@ const MARKERS = new Set(['Object3D', 'Group', 'Bone'])
  * carrying anything a batch cannot draw the same way (an instanced mesh, a
  * sprite, a light, a mesh cut into material groups) is refused whole rather
  * than half taken, so a dressing may return whatever it likes and the worst
- * that happens is its object stands on its own.
+ * that happens is its object stands on its own. An object with nothing in it
+ * to draw comes back as no parts at all, which is not the same answer.
  *
  * Geometry comes back in the object's frame: a mesh sitting off the origin
  * inside it is baked, so the batch only ever has to place the object itself.
@@ -37,6 +38,9 @@ export function partsOf(object: THREE.Object3D): Part[] | undefined {
       if (!MARKERS.has(child.type)) refused = true
       return
     }
+    // a mesh with no triangles in it draws nothing, whatever it is made of
+    const position = mesh.geometry.getAttribute('position')
+    if (!position || position.count === 0) return
     if ((mesh as unknown as { isInstancedMesh?: boolean }).isInstancedMesh || Array.isArray(mesh.material) || !mesh.geometry.getIndex()) {
       refused = true
       return

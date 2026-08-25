@@ -4,11 +4,13 @@ import type { CityBatcher, Placing } from '../batch/batcher.ts'
 import type { CityBuilding } from '../batch/building.ts'
 import type { CityLights } from '../lights/city-lights.ts'
 import type { LightEmitter } from '../lights/emitter.ts'
+import { offerTo } from '../seam.ts'
 import { isNear, type Cell } from './near.ts'
 
 /** One plot dressed in detail: the object, what it throws light from, and where it stands. */
 export interface Dressed {
-  readonly object: THREE.Object3D
+  /** What the dressing answered, which may be nothing at all. */
+  readonly object: THREE.Object3D | undefined
   readonly emitters: readonly LightEmitter[]
   readonly at: THREE.Matrix4
 }
@@ -67,11 +69,14 @@ export class CityDetail {
   }
 
   #build(plot: Plot): void {
-    const { object, emitters, at } = this.#dress(plot)
-    const placing = this.#batcher.offer(plot.id, object, at)
-    if (placing) this.#buildings.get(plot.id)?.detail(placing)
-    this.#lights.add(plot.id, emitters, at)
     this.#near.add(plot.id)
+    const { object, emitters, at } = this.#dress(plot)
+    const taken = offerTo(this.#batcher, plot.id, object, at)
+    // a plot the dressing draws nothing near keeps the shell it is drawn by
+    // from far off, and throws no light over a building that is not there
+    if (!taken.draws) return
+    if (taken.placing) this.#buildings.get(plot.id)?.detail(taken.placing)
+    this.#lights.add(plot.id, emitters, at)
   }
 
   /** The detail sealed in at open, handed to the buildings it belongs to. */

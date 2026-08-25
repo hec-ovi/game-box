@@ -18,6 +18,14 @@ interface Entry {
   readonly at: THREE.Matrix4
 }
 
+/** What came of offering one object: whether it put anything in the city, and how to address it. */
+export interface Taken {
+  /** Whether the object drew anything at all. An object with nothing in it draws nothing. */
+  readonly draws: boolean
+  /** How to address it. Undefined until the buffers are cut, and for an object that drew nothing. */
+  readonly placing?: Placing
+}
+
 /** One object standing in the city: what it occupies, and the two things that can be done to it. */
 export interface Placing {
   /** The box it occupies, in city metres. */
@@ -82,15 +90,18 @@ export class CityBatcher {
 
   /**
    * One object at one place. An object holding something a batch cannot draw
-   * stands on its own in the city instead, and is still addressable. Before
-   * `seal` the answer is undefined: the object is not in a buffer yet.
+   * stands on its own in the city instead, and is still addressable. One with
+   * nothing in it to draw is not taken at all, so whoever offered it can put
+   * something else there rather than leaving a hole in the city. Before `seal`
+   * there is no placing yet: the object is not in a buffer.
    */
-  offer(plotId: string, object: THREE.Object3D, at: THREE.Matrix4): Placing | undefined {
+  offer(plotId: string, object: THREE.Object3D, at: THREE.Matrix4): Taken {
     const parts = partsOf(object)
-    if (!parts) return this.#standing(object, at)
+    if (!parts) return { draws: true, placing: this.#standing(object, at) }
+    if (parts.length === 0) return { draws: false }
     if (!this.#sealed) {
       for (const part of parts) this.#collect(plotId, part, at)
-      return undefined
+      return { draws: true }
     }
 
     const bounds = new THREE.Box3()
@@ -100,7 +111,7 @@ export class CityBatcher {
       pieces.push(this.#put(batch, part.geometry, at, plotId, bounds))
       this.#touched.add(batch)
     }
-    return placingOf(bounds, pieces)
+    return { draws: true, placing: placingOf(bounds, pieces) }
   }
 
   /** Measures every batch that changed since the last time, for the scene-wide cull. */
@@ -152,15 +163,24 @@ export class CityBatcher {
     return placings
   }
 
+  /**
+   * An object no batch will take, standing on its own where the plot is. It is
+   * carried by a holder rather than moved itself, so a dressing that hands the
+   * same object back twice gets it drawn once at the right place instead of
+   * twice as far out.
+   */
   #standing(object: THREE.Object3D, at: THREE.Matrix4): Placing {
-    object.applyMatrix4(at)
-    this.#root.add(object)
+    const holder = new THREE.Group()
+    holder.name = object.name
+    holder.applyMatrix4(at)
+    holder.add(object)
+    this.#root.add(holder)
     return {
-      bounds: new THREE.Box3().setFromObject(object),
+      bounds: new THREE.Box3().setFromObject(holder),
       show: (visible) => {
-        object.visible = visible
+        holder.visible = visible
       },
-      remove: () => object.removeFromParent(),
+      remove: () => holder.removeFromParent(),
     }
   }
 
@@ -206,6 +226,11 @@ export class CityBatcher {
     box.union(geometry.boundingBox!.clone().applyMatrix4(at))
     return new Piece(batch, placed, (touched) => this.#touched.add(touched))
   }
+}
+
+/** A place in the city with nothing in it, so a plot whose dressing drew nothing is still a building. */
+export function drawsNothing(): Placing {
+  return { bounds: new THREE.Box3(), show: () => {}, remove: () => {} }
 }
 
 function placingOf(bounds: THREE.Box3, pieces: readonly Piece[]): Placing {

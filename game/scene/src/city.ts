@@ -1,6 +1,6 @@
 import { METRICS, cellCentre, type Plot, type World } from '@gb/world'
 import * as THREE from 'three'
-import { CityBatcher } from './batch/batcher.ts'
+import { CityBatcher, drawsNothing, type Placing } from './batch/batcher.ts'
 import { CityBuilding } from './batch/building.ts'
 import { clutterMesh } from './clutter/mesh.ts'
 import { CLUTTER_DENSITY, planClutter, type ClutterDensity, type ClutterPiece } from './clutter/plan.ts'
@@ -14,6 +14,7 @@ import { CityRooms } from './lod/rooms.ts'
 import { markingMeshes } from './marking-mesh.ts'
 import { planMarkings, type Marking } from './markings.ts'
 import { RoadNetwork } from './roads.ts'
+import { emittersOf, offerTo } from './seam.ts'
 import { spawnAt, type Standing } from './spawn.ts'
 import { StreetSkin } from './street/skin.ts'
 
@@ -119,26 +120,38 @@ export function buildCity(world: World, dressing: Dressing, options: CityOptions
     return { size, charter, at: new THREE.Matrix4().makeTranslation(centre.x, 0, centre.z) }
   }
 
-  /** The shell of one plot into the city, and, for a dressing with no far look, its lights with it. */
+  /**
+   * The far look of one plot into the city, and, for a dressing with no far
+   * look at all, its lights with it. A `shell` that answers nothing leaves
+   * that plot with no far look of its own, so its whole building stands at
+   * every distance rather than the plot standing empty.
+   */
   const shellOf = (plot: Plot) => {
     const { size, charter, at } = siteOf(plot)
     const doorstep = cellCentre(plot.entrance.cell.x, plot.entrance.cell.y, cell)
     doorsteps.set(plot.id, new THREE.Vector3(doorstep.x, 0, doorstep.z))
-    const object = splits ? dressing.shell!(plot, size, charter) : dressing.building(plot, size, charter)
-    const placing = shells.offer(plot.id, object, at)
+    let taken = offerTo(shells, plot.id, splits ? dressing.shell!(plot, size, charter) : undefined, at)
+    if (!taken.draws) taken = offerTo(shells, plot.id, dressing.building(plot, size, charter), at)
     shells.settle()
-    if (!splits) lights.add(plot.id, dressing.lights?.(plot, size, charter) ?? [], at)
-    return placing
+    if (!splits && taken.draws) lights.add(plot.id, emittersOf(dressing.lights?.(plot, size, charter)), at)
+    return taken.placing
   }
 
   const dress = (plot: Plot): Dressed => {
     const { size, charter, at } = siteOf(plot)
-    const object = dressing.building(plot, size, charter)
-    return { object, emitters: dressing.lights?.(plot, size, charter) ?? [], at }
+    return { object: dressing.building(plot, size, charter), emitters: emittersOf(dressing.lights?.(plot, size, charter)), at }
   }
 
-  for (const plot of world.plots()) shellOf(plot)
-  for (const [plotId, placing] of shells.seal()) buildings.set(plotId, new CityBuilding(plotId, placing))
+  // every plot is a building whatever its dressing drew, so nothing is left
+  // without a place in the city to be hidden, shown or dressed in detail
+  const plots = world.plots()
+  const raised = new Map<string, Placing>()
+  for (const plot of plots) {
+    const placing = shellOf(plot)
+    if (placing) raised.set(plot.id, placing)
+  }
+  for (const [plotId, placing] of shells.seal()) raised.set(plotId, placing)
+  for (const plot of plots) buildings.set(plot.id, new CityBuilding(plot.id, raised.get(plot.id) ?? drawsNothing()))
 
   const spawn = spawnAt(world, doorsteps)
   let standing: Cell = cellOf(spawn.x, spawn.z, cell)
@@ -148,7 +161,7 @@ export function buildCity(world: World, dressing: Dressing, options: CityOptions
   const details = new CityBatcher(root, 'detail')
   const detail = splits ? new CityDetail(world, details, lights, buildings, dress, radius) : undefined
   if (detail) {
-    for (const plot of world.plots()) if (detail.isNear(plot, standing)) detail.build(plot)
+    for (const plot of plots) if (detail.isNear(plot, standing)) detail.build(plot)
     detail.sealed(details.seal())
   }
   const rooms = new CityRooms(world, dressing, radius)
@@ -162,7 +175,7 @@ export function buildCity(world: World, dressing: Dressing, options: CityOptions
     buildings,
     doorsteps,
     add: (plot) => {
-      const building = new CityBuilding(plot.id, shellOf(plot)!)
+      const building = new CityBuilding(plot.id, shellOf(plot) ?? drawsNothing())
       buildings.set(plot.id, building)
       if (detail?.isNear(plot, standing)) detail.build(plot)
       return building

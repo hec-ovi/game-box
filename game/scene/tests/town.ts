@@ -13,6 +13,11 @@ export function bigTown(): Promise<World> {
   return cached('ceiling', 5)
 }
 
+/** A second town, so a rule proved on one city is proved on a city it was not written against. */
+export function otherTown(): Promise<World> {
+  return cached('streaming', 3)
+}
+
 function cached(seed: string, blocks: number): Promise<World> {
   let world = built.get(seed)
   if (!world) {
