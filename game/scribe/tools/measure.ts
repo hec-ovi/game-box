@@ -1,27 +1,62 @@
 /**
- * Builds cities through the live sidecar and prints what the model wrote: who
- * got a life and a codex, how many distinct head words and shapes the signs
- * came out in, what a batch of signs costs in tokens, and whether any example
- * from a prompt came back as output.
+ * Builds cities through the live sidecar and prints what the model wrote: the
+ * kinds of place each history invented and whether the city has them, how many
+ * distinct head words and shapes the signs came out in, who got a life and a
+ * codex, what each kind of call costs in tokens and seconds, and whether any
+ * example from a prompt came back as output.
  *
- * Usage: pnpm --filter @gb/scribe run measure [cities] [blockCells]
+ * Every brief asks for a kind of place the presets lack, so every city measures
+ * the charter path.
+ *
+ * Usage: pnpm --filter @gb/scribe run measure [cities] [blocks] [blockCells]
  */
-import { Forge, premiseLines } from '@gb/forge'
+import { Forge } from '@gb/forge'
 import { Sidecar } from '@gb/sidecar'
+import { SHIPPED_CHARTERS } from '@gb/world'
 import { headOf } from '../src/head.ts'
-import { Scribe, type PlaceRequest } from '../src/index.ts'
+import { Scribe } from '../src/index.ts'
 
-const THEMES = [
-  'rain-soaked port',
-  'neon city, the freight lines shut last winter',
-  'mining town on the ridge',
-  'coastal resort after the season',
-  'industrial estate by the canal',
-  'alpine research station',
-  'agrarian market town',
-  'border town on the highway',
-  'university district in the rain',
-  'shipyard town in decline',
+const TOWNS = [
+  {
+    theme: 'border town on the highway',
+    brief: 'A border crossing where the customs house and the jail are where everything happens. Half the town is waiting on somebody inside one of them.',
+  },
+  {
+    theme: 'rain-soaked port',
+    brief: 'A port with a lighthouse nobody has kept lit since the wreck, and a fish market that opens before dawn.',
+  },
+  {
+    theme: 'neon city, the freight lines shut last winter',
+    brief: 'The pawnshops took over when the freight stopped, and the night court never closes.',
+  },
+  {
+    theme: 'mining town on the ridge',
+    brief: 'The assay office decides what the ore is worth and the bathhouse is where the shift ends.',
+  },
+  {
+    theme: 'coastal resort after the season',
+    brief: 'A casino that stays open for the staff, and a pier with an arcade at the end of it.',
+  },
+  {
+    theme: 'industrial estate by the canal',
+    brief: 'A foundry that still runs one furnace, and a union hall that argues about it.',
+  },
+  {
+    theme: 'alpine research station',
+    brief: 'A laboratory the whole town works for, and a cable car station at the top of the street.',
+  },
+  {
+    theme: 'agrarian market town',
+    brief: 'A grain exchange that sets the price, and a veterinary surgery that never sleeps.',
+  },
+  {
+    theme: 'university district in the rain',
+    brief: 'A library open all night, and a print shop that runs the pamphlets everybody argues over.',
+  },
+  {
+    theme: 'shipyard town in decline',
+    brief: 'A dry dock with one hull in it, and a pawnbroker holding half the town\'s tools.',
+  },
 ]
 
 /** What a prompt once showed as an example, and every bracketed slot the prompts show now. */
@@ -39,8 +74,12 @@ interface Usage {
 }
 
 const cities = Number(process.argv[2] ?? 1)
-const blockCells = Number(process.argv[3] ?? 16)
+const blocks = Number(process.argv[3] ?? 1)
+const blockCells = Number(process.argv[4] ?? 16)
 const usage: Usage[] = []
+/** The start of every reply that came back as prose rather than the call. */
+const prose: string[] = []
+const presets = new Set(SHIPPED_CHARTERS.map((charter) => charter.word))
 
 /** The engine behind the sidecar, asked to count tokens, because the sidecar's reply carries no usage. */
 const engine = process.env['GAME_BOX_LLM_UPSTREAM'] ?? 'http://127.0.0.1:8080'
@@ -65,6 +104,7 @@ const fetch: typeof globalThis.fetch = async (url, init) => {
   try {
     const message = JSON.parse(text).choices?.[0]?.message
     const answer = message?.tool_calls?.[0]?.function?.arguments ?? message?.content ?? ''
+    if (!message?.tool_calls?.length) prose.push(`${tool}: ${String(answer).replace(/\s+/g, ' ').slice(0, 160)}`)
     usage.push({
       tool,
       prompt: await tokens(JSON.stringify({ messages: body.messages, tools: body.tools })),
@@ -95,29 +135,24 @@ let codices = 0
 let staged = 0
 let quests = 0
 let rejected = 0
+let invented = 0
+let raised = 0
 const problems = new Map<string, number>()
 
 for (let i = 0; i < cities; i++) {
-  const theme = THEMES[i % THEMES.length]!
+  const town = TOWNS[i % TOWNS.length]!
   const seed = `measure-${i}`
   const scribe = new Scribe({ sidecar: new Sidecar({ fetch }), seed })
   const started = Date.now()
-  const built = await new Forge(scribe).build({ theme, seed, blocksX: 1, blocksY: 1, blockCells })
+  const built = await new Forge(scribe).build({ theme: town.theme, seed, blocksX: blocks, blocksY: blocks, blockCells, brief: town.brief })
   if (!built.ok) {
     console.log(`${seed}: ${built.error.code}`)
     continue
   }
   const world = built.value.world
-  const premise = world.premise()
-  const shut = world.plots().filter((plot) => !plot.interiorId)
-  const requests: PlaceRequest[] = shut.map((plot, index) => ({
-    index: index + world.plots().length,
-    kind: plot.kind,
-    theme,
-    ...(premise ? { premise: premiseLines(premise) } : {}),
-  }))
-  const named = await scribe.namePlaces(requests)
-  const allSigns = [...world.plots().filter((plot) => plot.interiorId).map((plot) => plot.name), ...named]
+  const plots = world.plots()
+  const open = plots.filter((plot) => plot.interiorId)
+  const allSigns = plots.map((plot) => plot.name)
   signs += allSigns.length
   heads += new Set(allSigns.map(headOf)).size
   for (const sign of allSigns) shapes.set(shapeOf(sign), (shapes.get(shapeOf(sign)) ?? 0) + 1)
@@ -131,23 +166,51 @@ for (let i = 0; i < cities; i++) {
   }
   quests += built.value.quests.length
   rejected += built.value.rejected.length
-  for (const problem of scribe.problems()) problems.set(`${problem.task}:${problem.error.code}`, (problems.get(`${problem.task}:${problem.error.code}`) ?? 0) + 1)
+  for (const problem of scribe.problems()) {
+    const key = `${problem.task}:${problem.error.code}`
+    problems.set(key, (problems.get(key) ?? 0) + 1)
+    if (problem.task === 'write_charter') console.log(`  ${problem.at}: ${problem.error.code}`)
+  }
 
-  const text = JSON.stringify([world.toJSON(), built.value.quests, named]).toLowerCase()
-  for (const leak of LEAKS) if (text.includes(leak)) leaked.push(`${seed}: ${leak}`)
+  const text = JSON.stringify([world.toJSON(), built.value.quests]).toLowerCase()
+  for (const leak of LEAKS) {
+    const at = text.indexOf(leak)
+    if (at >= 0) leaked.push(`${seed}: ${leak} in "${text.slice(Math.max(0, at - 40), at + leak.length + 40)}"`)
+  }
 
   console.log(
-    `${seed} (${theme}): ${world.plots().length} plots, ${shut.length} shut, ${world.npcs().length} people, ` +
+    `${seed} (${town.theme}): ${plots.length} plots, ${open.length} open, ${world.npcs().length} people, ` +
       `${built.value.quests.length} quests, ${Math.round((Date.now() - started) / 1000)} s`,
   )
+  const premise = world.premise()
+  if (premise) console.log(`  build: more of ${premise.build.moreOf.join(', ') || 'nothing'}; fewer of ${premise.build.fewerOf.join(', ') || 'nothing'}; must have ${premise.build.mustHave.join(', ') || 'nothing'}`)
+  for (const charter of world.charters().filter((charter) => !presets.has(charter.word))) {
+    invented++
+    const of = plots.filter((plot) => plot.kind === charter.word)
+    const opened = of.filter((plot) => plot.interiorId)
+    if (of.length) raised++
+    const rooms = [charter.rooms.hall, charter.rooms.main, ...charter.rooms.services].flatMap((room) => (room ? [`${room.name} (${room.use})`] : []))
+    console.log(
+      `  charter ${charter.word}: "${charter.label}", blade ${charter.blade}, ${charter.street.frontage} front, ${charter.access}, ` +
+        `${charter.service} at the front, work ${charter.work.join('+') || 'none'}, keeps ${charter.holding.join('+') || 'nothing'}, ` +
+        `share ${charter.share}, ${charter.prominence}; rooms ${rooms.join(', ')}; signs ${charter.names.join(' | ')}`,
+    )
+    console.log(`    in the city: ${of.length} plots, ${opened.length} open${of.length ? `: ${of.map((plot) => plot.name).join(' | ')}` : ''}`)
+  }
+  for (const dropped of built.value.dropped) console.log(`  dropped ${dropped.word}: ${dropped.reason}`)
   console.log(`  ${world.name}: ${allSigns.join(' | ')}`)
 }
 
-const batches = usage.filter((entry) => entry.tool === 'name_signs')
 const mean = (values: number[]) => (values.length ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : 0)
-console.log(`\nsigns: ${signs}, distinct heads: ${heads}, shapes: ${[...shapes].map(([shape, n]) => `${shape} ${n}`).join(', ')}`)
-console.log(`sign batches: ${batches.length}, tokens per batch: prompt ${mean(batches.map((b) => b.prompt))}, completion ${mean(batches.map((b) => b.completion))}, ${mean(batches.map((b) => b.ms))} ms`)
+console.log(`\nkinds invented: ${invented}, with a plot in the city: ${raised}`)
+console.log(`signs: ${signs}, distinct heads: ${heads}, shapes: ${[...shapes].map(([shape, n]) => `${shape} ${n}`).join(', ')}`)
 console.log(`people: ${people}, with a whole life: ${lives}, with a codex: ${codices}, codex using all four stages: ${staged}`)
 console.log(`quests: ${quests}, rejected: ${rejected}`)
+console.log('calls by tool: count, prompt tokens, completion tokens, seconds (means)')
+for (const tool of new Set(usage.map((entry) => entry.tool))) {
+  const calls = usage.filter((entry) => entry.tool === tool)
+  console.log(`  ${tool}: ${calls.length}, ${mean(calls.map((c) => c.prompt))}, ${mean(calls.map((c) => c.completion))}, ${(mean(calls.map((c) => c.ms)) / 1000).toFixed(1)}`)
+}
 console.log(`calls: ${usage.length}, problems: ${[...problems].map(([key, n]) => `${key} ${n}`).join(', ') || 'none'}`)
+for (const reply of prose) console.log(`  prose ${reply}`)
 console.log(`leaks: ${leaked.length ? leaked.join('; ') : 'none'}`)

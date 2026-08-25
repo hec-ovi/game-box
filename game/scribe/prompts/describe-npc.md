@@ -4,7 +4,8 @@ City: {{cityName}}
 Theme: {{theme}}
 What the town is about:
 {{premise}}
-Place: {{placeName}}, a {{placeKind}}
+Place: {{placeName}}, a {{placeLabel}}
+{{charter}}
 Their role there: {{role}}
 
 Give them a name, the way they behave when a stranger walks in, the things they

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { Scribe, type PlaceRequest, type ScribeProgress } from '../src/index.ts'
 import { fakeModel, type Sent } from './fake-model.ts'
 import { backgroundOf, lifeOf, shellOf } from './people.ts'
+import { JAIL, charterOf } from './places.ts'
 
 const CITY: WorldSummary = {
   cityName: 'Cold Harbour',
@@ -20,14 +21,15 @@ const CITY: WorldSummary = {
 
 const PLACES: InstanceRequest[] = ['bar', 'shop'].map((kind, i) => ({
   index: i,
-  kind: kind as 'bar',
+  kind,
+  charter: charterOf(kind),
   theme: 'port',
   rooms: ['main'],
   posts: [{ postId: `anchor_${i}`, role: 'clerk', index: i }],
   things: [],
 }))
 
-const FRONTAGE: PlaceRequest[] = Array.from({ length: 3 }, (_, i) => ({ index: i + 2, kind: 'house', theme: 'port' }))
+const FRONTAGE: PlaceRequest[] = Array.from({ length: 3 }, (_, i) => ({ index: i + 2, kind: 'house', charter: charterOf('house'), theme: 'port' }))
 
 const PREMISE = {
   livesOn: 'Container freight off the elevated line.',
@@ -38,12 +40,13 @@ const PREMISE = {
     { name: 'the Dockhands Local', wants: 'the yards broken up' },
   ],
   common: ['Nothing has moved since November.'],
-  build: { moreOf: ['warehouse'], fewerOf: [], mustHave: [] },
+  build: { moreOf: ['warehouse'], fewerOf: [], mustHave: ['jail'] },
 }
 
 /** Answers every tool the pipeline uses, taking the ids out of the schema it was handed. */
 function model(call: Sent) {
   if (call.toolName === 'write_premise') return PREMISE
+  if (call.toolName === 'write_charter') return JAIL
   if (call.toolName === 'name_city') return { name: 'Cold Harbour' }
   if (call.toolName === 'name_signs') {
     const labels = (call.parameters as { properties: { signs: { items: { properties: { building: { enum: string[] } } } } } }).properties.signs.items.properties.building.enum
@@ -101,13 +104,14 @@ describe('showing how far the build has got', () => {
     await build((step) => seen.push(step))
 
     const counts = (stage: string) => seen.filter((step) => step.stage === stage).map((step) => `${step.done}/${step.total}`)
-    expect(counts('history')).toEqual(['0/1', '1/1'])
-    // the city stage is the name and then the signs: one bar that grows, never two
+    // the history stage is the premise and then the kinds of place it invented: one bar that grows
+    expect(counts('history')).toEqual(['0/1', '0/2', '1/2', '2/2'])
+    // the city stage is the name and then the signs, the same way
     expect(counts('city')).toEqual(['0/1', '1/1', '1/4', '2/4', '3/4', '4/4'])
     expect(counts('places')).toEqual(['0/2', '1/2', '2/2'])
     expect(counts('quests')).toEqual(['0/1', '1/1'])
     expect(seen.map((step) => step.stage)).toEqual([
-      ...Array(2).fill('history'),
+      ...Array(4).fill('history'),
       ...Array(6).fill('city'),
       ...Array(3).fill('places'),
       ...Array(2).fill('quests'),
@@ -118,11 +122,13 @@ describe('showing how far the build has got', () => {
       const last = seen.filter((step) => step.stage === stage).at(-1)!
       expect(last.done).toBe(last.total)
     }
-    expect(seen[1]!.what).toBe('Container freight off the elevated line.')
-    expect(seen[3]!.what).toBe('Cold Harbour')
-    expect(seen[4]!.what).toBe('3 signs')
-    expect(seen[5]!.what).toBe('b2 Row, a house')
-    expect(seen[9]!.what).toMatch(/^The [A-Z]+ House, a (bar|shop)$/)
+    expect(seen[1]!.what).toBe('jail')
+    expect(seen[2]!.what).toBe('a jail')
+    expect(seen[3]!.what).toBe('Container freight off the elevated line.')
+    expect(seen[5]!.what).toBe('Cold Harbour')
+    expect(seen[6]!.what).toBe('3 signs')
+    expect(seen[7]!.what).toBe('b2 Row, a house')
+    expect(seen[11]!.what).toMatch(/^The [A-Z]+ House, a (bar|shop)$/)
     expect(seen.at(-1)!.what).toBe('Errand quest_0001')
   })
 

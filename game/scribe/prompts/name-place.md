@@ -4,7 +4,8 @@ City: {{cityName}}
 Theme: {{theme}}
 What the town is about:
 {{premise}}
-Kind of building: {{kind}}
+Kind of building: {{label}}
+{{charter}}
 
 Name it the way its owner would have named it. A bar and an office are named
 very differently: one is a sign hung over a door, the other is a family name and

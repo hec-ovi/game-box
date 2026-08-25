@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { Scribe } from '../src/index.ts'
 import { fakeModel, type Sent } from './fake-model.ts'
 import { backgroundOf, lifeOf, shellOf } from './people.ts'
+import { charterOf } from './places.ts'
 
 /** A model that writes whatever the shell asked for, with the family names it is allowed. */
 function answer(call: Sent, options: { name?: string; given?: string; stages?: readonly string[] } = {}) {
@@ -28,6 +29,7 @@ function answer(call: Sent, options: { name?: string; given?: string; stages?: r
 const bar: InstanceRequest = {
   index: 0,
   kind: 'bar',
+  charter: charterOf('bar'),
   theme: 'rain-soaked port',
   rooms: ['main', 'storage'],
   posts: [
@@ -43,6 +45,7 @@ function places(count: number): InstanceRequest[] {
   return Array.from({ length: count }, (_, i) => ({
     index: i,
     kind: 'shop' as const,
+    charter: charterOf('shop'),
     theme: 'rain-soaked port',
     rooms: ['main' as const],
     posts: [
@@ -88,7 +91,8 @@ describe('writing a place and its people in one call', () => {
     const asked = sent[1]!.user
     expect(asked).toContain('City: Cold Harbour')
     expect(asked).toContain('Lives on: the freight line.')
-    expect(asked).toContain('a bar')
+    expect(asked).toContain('The building: a bar')
+    expect(asked).toContain('What a bar is here: a counter at the front with somebody behind it; nobody works past the front; it keeps drink, papers, valuables; anybody may walk in. Its\nrooms: Taproom, Cellar.')
     expect(asked).toContain('main, storage')
     expect(asked).toContain('anchor_0001: the bartender')
     expect(asked).toContain('item_0001: a ledger')
@@ -132,6 +136,7 @@ describe('writing a place and its people in one call', () => {
     const clinic: InstanceRequest = {
       index: 1,
       kind: 'clinic',
+      charter: charterOf('clinic'),
       theme: 'rain-soaked port',
       rooms: ['main'],
       posts: [{ postId: 'anchor_9999', role: 'receptionist', index: 2 }],

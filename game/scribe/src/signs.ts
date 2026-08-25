@@ -1,5 +1,5 @@
 import type { Narrator } from '@gb/forge'
-import type { BuildingKind } from '@gb/world'
+import type { Charter, Word } from '@gb/world'
 import type { Asker, Violation } from './asker.ts'
 import { headOf } from './head.ts'
 import type { Progress } from './progress.ts'
@@ -10,7 +10,10 @@ import type { Waves } from './waves.ts'
 
 /** A building that does not open: a facade, a door and a sign, and nothing behind it. */
 export interface PlaceRequest {
-  readonly kind: BuildingKind
+  /** The word of the kind of place it is. */
+  readonly kind: Word
+  /** What that word means here: its label is what the sign is written for. */
+  readonly charter: Charter
   readonly theme: string
   /** Where this building falls in the town's own count of plots: its label in the batch, and the offline draw. */
   readonly index: number
@@ -80,7 +83,7 @@ export class SignNamer {
       const written = answered[Math.floor(index / BATCH)]!.get(label(request))
       const name = written !== undefined && !this.#registry.signTaken(written) ? written : await this.#spare(request)
       this.#registry.hang(name)
-      this.#count(index, name, request.kind)
+      this.#count(index, name, request.charter.label)
       out.push(name)
     }
     return out
@@ -97,7 +100,7 @@ export class SignNamer {
         theme: first?.theme ?? '',
         premise: first?.premise ?? prompt('no-history'),
         buildings: bullets(
-          batch.map((request) => `${label(request)}: a ${request.kind}${request.street ? ` on ${request.street}` : ''}`),
+          batch.map((request) => `${label(request)}: a ${request.charter.label}${request.street ? ` on ${request.street}` : ''}`),
           'None.',
         ),
         usedHeads: bullets(takenHeads, 'None yet.'),
@@ -107,7 +110,7 @@ export class SignNamer {
     )
     if (!answer) return new Map()
     for (const [k, sign] of answer.signs.entries()) {
-      this.#count(b * BATCH + k, sign.name, batch[k]!.kind)
+      this.#count(b * BATCH + k, sign.name, batch[k]!.charter.label)
     }
     return new Map(answer.signs.map((sign) => [sign.building, sign.name]))
   }
@@ -116,6 +119,7 @@ export class SignNamer {
   async #spare(request: PlaceRequest): Promise<string> {
     const at = (attempt: number) => ({
       kind: request.kind,
+      charter: request.charter,
       theme: request.theme,
       index: request.index * ATTEMPTS + attempt,
       ...(request.premise === undefined ? {} : { premise: request.premise }),
@@ -128,10 +132,10 @@ export class SignNamer {
   }
 
   /** One building counts once, whether it was named in its batch or mended afterwards. */
-  #count(index: number, name: string, kind: BuildingKind): void {
+  #count(index: number, name: string, label: string): void {
     if (this.#counted.has(index)) return
     this.#counted.add(index)
-    this.#progress.finished(`${name}, a ${kind}`)
+    this.#progress.finished(`${name}, a ${label}`)
   }
 }
 

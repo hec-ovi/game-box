@@ -1,8 +1,10 @@
-import type { Instance, InstanceRequest, ItemProfile, Narrator, NpcProfile } from '@gb/forge'
+import type { History, Instance, InstanceRequest, ItemProfile, Narrator, NpcProfile } from '@gb/forge'
 import { OfflineNarrator, premiseLines } from '@gb/forge'
 import { Sidecar } from '@gb/sidecar'
-import type { BuildingKind, ItemArchetype, NpcRole, Premise } from '@gb/world'
+import type { Charter, ItemArchetype, NpcRole, Premise, Word } from '@gb/world'
 import { Asker, type ScribeProblem } from './asker.ts'
+import { charterLines } from './charter-lines.ts'
+import { CharterWriter } from './charters.ts'
 import { FamilyClaims } from './claim.ts'
 import { InstanceWriter } from './instance.ts'
 import { profileOf } from './person.ts'
@@ -97,14 +99,16 @@ export class Scribe implements Narrator {
    * from is never handed on: the model is told what was wrong, and a town whose
    * history the model will not write gets the one the seed composes. The
    * owner's brief goes to this call verbatim, with the tone, the main errand
-   * and the look they asked for.
+   * and the look they asked for. A kind of place the history invents is asked
+   * for next, one charter per word, and rides back on the history.
    */
-  async writePremise(input: PremiseInput): Promise<Premise> {
+  async writePremise(input: PremiseInput): Promise<History> {
     this.#reseed(input.seed)
     this.#progress.open('history', 1, 'writing the history')
-    const premise = await new PremiseWriter({ asker: this.#descriptive, fallback: this.#fallback }).write(input)
-    this.#progress.finished(premise.livesOn)
-    return premise
+    const charters = new CharterWriter({ asker: this.#descriptive, waves: this.#waves, progress: this.#progress })
+    const history = await new PremiseWriter({ asker: this.#descriptive, fallback: this.#fallback, charters }).write(input)
+    this.#progress.finished(history.livesOn)
+    return history
   }
 
   /** Named after what the town lives on, which is why the history goes out with the question. */
@@ -126,10 +130,16 @@ export class Scribe implements Narrator {
   }
 
   /** One sign on its own. A head word already over a door goes to the offline composer instead. */
-  async namePlace(input: { kind: BuildingKind; theme: string; index: number; premise?: string }): Promise<string> {
+  async namePlace(input: { kind: Word; charter: Charter; theme: string; index: number; premise?: string }): Promise<string> {
     const answer = await this.#descriptive.ask(
       NAME_PLACE,
-      prompt('name-place', { ...input, premise: input.premise ?? prompt('no-history'), ...this.#city() }),
+      prompt('name-place', {
+        theme: input.theme,
+        label: input.charter.label,
+        charter: charterLines(input.charter),
+        premise: input.premise ?? prompt('no-history'),
+        ...this.#city(),
+      }),
       `sign:${input.index}`,
     )
     let name = answer?.name ?? (await this.#fallback.namePlace(input))
@@ -182,7 +192,8 @@ export class Scribe implements Narrator {
   /** One person on their own, with their life and their codex, the family name held to their index's letters. */
   async describeNpc(input: {
     role: NpcRole
-    placeKind: BuildingKind
+    placeKind: Word
+    place: Charter
     placeName: string
     theme: string
     index: number
@@ -192,7 +203,11 @@ export class Scribe implements Narrator {
     const answer = await this.#descriptive.ask(
       describeNpcTool(letters),
       prompt('describe-npc', {
-        ...input,
+        theme: input.theme,
+        role: input.role,
+        placeName: input.placeName,
+        placeLabel: input.place.label,
+        charter: charterLines(input.place),
         premise: input.premise ?? prompt('no-history'),
         letters: letters.split('').join(', '),
         ...this.#city(),

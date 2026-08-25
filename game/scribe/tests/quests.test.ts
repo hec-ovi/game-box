@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { Scribe } from '../src/index.ts'
 import { fakeModel, type Sent } from './fake-model.ts'
 import { backgroundOf, lifeOf, shellOf } from './people.ts'
+import { charterOf } from './places.ts'
 
 const CITY: WorldSummary = {
   cityName: 'Cold Harbour',
@@ -295,7 +296,7 @@ describe('writing quests', () => {
     const scribe = new Scribe({ sidecar, seed: 'harbour', concurrency: 1 })
 
     await scribe.writeInstances([
-      { index: 0, kind: 'bar', theme: 'port', rooms: ['main'], posts: [{ postId: 'anchor_0001', role: 'bartender', index: 0 }], things: [] },
+      { index: 0, kind: 'bar', charter: charterOf('bar'), theme: 'port', rooms: ['main'], posts: [{ postId: 'anchor_0001', role: 'bartender', index: 0 }], things: [] },
     ])
     await scribe.writeQuests({ summary: CITY, sideQuests: 0 })
 

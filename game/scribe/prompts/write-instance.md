@@ -3,12 +3,13 @@ Write this place and everybody in it, all at once.
 City: {{cityName}}
 Theme: {{theme}}
 The city so far: {{premise}}
-The building: a {{kind}}
+The building: a {{label}}
 The rooms it was built with: {{rooms}}
+{{charter}}
 
 ## What the place is
 
-Decide what this particular {{kind}} is: who runs it, what it lives off, what
+Decide what this particular {{label}} is: who runs it, what it lives off, what
 somebody notices in the first ten seconds through the door, and what has been
 going on here lately. Put that in `character`, in the present tense, about this
 building and no other.

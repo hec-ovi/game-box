@@ -1,6 +1,6 @@
 import type { Instance, InstancePerson, InstancePost, InstanceRequest, InstanceThing, Narrator } from '@gb/forge'
-import type { BuildingKind } from '@gb/world'
 import type { Asker, Violation } from './asker.ts'
+import { charterLines } from './charter-lines.ts'
 import { FamilyClaims } from './claim.ts'
 import { personProblems, profileOf } from './person.ts'
 import type { Progress } from './progress.ts'
@@ -72,7 +72,8 @@ export class InstanceWriter implements Pass<InstanceRequest, Instance> {
       prompt('write-instance', {
         cityName: this.#registry.cityName,
         theme: request.theme,
-        kind: request.kind,
+        label: request.charter.label,
+        charter: charterLines(request.charter),
         premise: request.premise ?? prompt('no-history'),
         rooms: request.rooms.length ? request.rooms.join(', ') : 'one room',
         letters: shell.letters.split('').join(', '),
@@ -91,7 +92,7 @@ export class InstanceWriter implements Pass<InstanceRequest, Instance> {
     )
     if (!answer) return undefined
     const instance = made(request, answer)
-    this.#count(index, instance.name, request.kind)
+    this.#count(index, instance.name, request.charter.label)
     return instance
   }
 
@@ -117,7 +118,7 @@ export class InstanceWriter implements Pass<InstanceRequest, Instance> {
     }
 
     const things = answer?.things.length ? answer.things : await this.#stock(request)
-    this.#count(index, name, request.kind)
+    this.#count(index, name, request.charter.label)
     return { name, character: answer?.character ?? '', people, things }
   }
 
@@ -125,6 +126,7 @@ export class InstanceWriter implements Pass<InstanceRequest, Instance> {
   async #spareName(request: InstanceRequest): Promise<string> {
     const at = (attempt: number) => ({
       kind: request.kind,
+      charter: request.charter,
       theme: request.theme,
       index: request.index * ATTEMPTS + attempt,
       ...(request.premise === undefined ? {} : { premise: request.premise }),
@@ -140,6 +142,7 @@ export class InstanceWriter implements Pass<InstanceRequest, Instance> {
     const at = (attempt: number) => ({
       role: post.role,
       placeKind: request.kind,
+      place: request.charter,
       placeName,
       theme: request.theme,
       index: post.index * ATTEMPTS + attempt,
@@ -166,10 +169,10 @@ export class InstanceWriter implements Pass<InstanceRequest, Instance> {
   }
 
   /** One place counts once, whether it was written first time, asked again, or mended. */
-  #count(index: number, name: string, kind: BuildingKind): void {
+  #count(index: number, name: string, label: string): void {
     if (this.#counted.has(index)) return
     this.#counted.add(index)
-    this.#progress.finished(`${name}, a ${kind}`)
+    this.#progress.finished(`${name}, a ${label}`)
   }
 }
 

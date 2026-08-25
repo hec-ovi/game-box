@@ -1,7 +1,8 @@
-import { OfflineNarrator, type Narrator } from '@gb/forge'
-import { BUILDING_KINDS, type Premise } from '@gb/world'
+import { OfflineNarrator, type History, type Narrator } from '@gb/forge'
+import { SHIPPED_CHARTERS, type Asks, type Premise } from '@gb/world'
 import { askedLines, type Asked } from './asked.ts'
 import type { Asker, Violation } from './asker.ts'
+import { CharterWriter, declared, onPresets } from './charters.ts'
 import { prompt } from './prompts.ts'
 import { WRITE_PREMISE } from './tools.ts'
 
@@ -9,11 +10,14 @@ import { WRITE_PREMISE } from './tools.ts'
 export interface PremiseInput extends Asked {
   readonly theme: string
   readonly seed: string
+  readonly brief?: string
+  readonly asks?: Asks
 }
 
 export interface PremiseWriterOptions {
   readonly asker: Asker
   readonly fallback: Narrator
+  readonly charters: CharterWriter
 }
 
 /**
@@ -27,29 +31,40 @@ export interface PremiseWriterOptions {
  * than no history at all, which is why an answer that names no buildings, or
  * whose two sides are one side twice, goes back to the model with the reason
  * before the town falls back to the one the seed composes.
+ *
+ * A history may build the town out of a kind of place no preset is. Each such
+ * word is asked for next as a charter, and the history hands back only the
+ * words the town can raise: a kind the model named and then would not write
+ * is taken out of `build` rather than handed on for the forge to drop.
  */
 export class PremiseWriter {
   #asker: Asker
   #fallback: Narrator
+  #charters: CharterWriter
 
   constructor(options: PremiseWriterOptions) {
     this.#asker = options.asker
     this.#fallback = options.fallback
+    this.#charters = options.charters
   }
 
-  async write(input: PremiseInput): Promise<Premise> {
+  async write(input: PremiseInput): Promise<History> {
     const written = await this.#asker.ask(
       WRITE_PREMISE,
       prompt('write-premise', {
         theme: input.theme,
         seed: input.seed,
         asked: askedLines(input, ['brief', 'tone', 'mainQuest', 'look']) || prompt('asked-nothing'),
-        kinds: BUILDING_KINDS.join(', '),
+        kinds: SHIPPED_CHARTERS.map((charter) => charter.word).join(', '),
       }),
       'premise',
       problemsWith,
     )
-    return written ?? (await this.#spare(input))
+    if (!written) return this.#spare(input)
+    const folded = onPresets(written)
+    const charters = await this.#charters.write(folded, input.theme)
+    const premise = declared(folded, charters)
+    return charters.length ? { ...premise, charters } : premise
   }
 
   /**
@@ -58,7 +73,7 @@ export class PremiseWriter {
    * A build with the model on never leaves a town with less story than the same
    * build with it off, the same way it never leaves one with fewer quests.
    */
-  async #spare(input: PremiseInput): Promise<Premise> {
+  async #spare(input: PremiseInput): Promise<History> {
     const written = await this.#fallback.writePremise?.(input)
     return written ?? (await new OfflineNarrator(input.seed).writePremise(input))
   }

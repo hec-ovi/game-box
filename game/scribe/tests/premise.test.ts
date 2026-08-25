@@ -1,8 +1,9 @@
-import { OfflineNarrator } from '@gb/forge'
-import { BUILDING_KINDS, premiseContract, type Premise } from '@gb/world'
+import { OfflineNarrator, type History } from '@gb/forge'
+import { charterContract, premiseContract, SHIPPED_CHARTERS, type Premise } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { Scribe, type ScribeProblem } from '../src/index.ts'
 import { fakeModel } from './fake-model.ts'
+import { JAIL } from './places.ts'
 
 const THEME = 'neon city, the freight lines shut last winter'
 const SEED = 'harbour'
@@ -20,8 +21,14 @@ const WRITTEN: Premise = {
   build: { moreOf: ['warehouse', 'bar'], fewerOf: ['office', 'cafe'], mustHave: ['station'] },
 }
 
+/** The same history, built out of a kind of place no preset is. */
+const WITH_JAIL: Premise = {
+  ...WRITTEN,
+  build: { moreOf: ['warehouse', 'jail'], fewerOf: ['office'], mustHave: ['station', 'jail'] },
+}
+
 /** What the town falls back to when the model writes nothing usable. */
-const composed = (): Promise<Premise> => new OfflineNarrator(SEED).writePremise({ theme: THEME, seed: SEED })
+const composed = (): Promise<History> => new OfflineNarrator(SEED).writePremise({ theme: THEME, seed: SEED })
 
 const scribeWith = (answers: unknown[], attempts?: number) => {
   const { sent, sidecar } = fakeModel(answers)
@@ -51,11 +58,62 @@ describe('the city history', () => {
       'mustHave',
     ])
 
-    // and the call knows the theme, the town it is telling apart from the others, and every
-    // kind of building it may ask the town for
+    // and the call knows the theme, the town it is telling apart from the others, every
+    // kind of place a town already has, and that it may name one they are not
     expect(sent[0]!.user).toContain(THEME)
     expect(sent[0]!.user).toContain(SEED)
-    for (const kind of BUILDING_KINDS) expect(sent[0]!.user).toContain(kind)
+    for (const charter of SHIPPED_CHARTERS) expect(sent[0]!.user).toContain(charter.word)
+    expect(sent[0]!.user).toContain('one plain lowercase word')
+    // a history built from the presets alone asks for nothing more
+    expect(sent).toHaveLength(1)
+  })
+
+  it('asks for the charter behind a kind no preset is, against the world\'s own charter contract, and hands it back on the history', async () => {
+    const { sent, scribe } = scribeWith([WITH_JAIL, JAIL])
+
+    expect(await scribe.writePremise({ theme: THEME, seed: SEED })).toEqual({ ...WITH_JAIL, charters: [JAIL] })
+
+    // one call per invented word, none for a preset, the word pinned in the schema
+    expect(sent.map((call) => call.toolName)).toEqual(['write_premise', 'write_charter'])
+    const base = charterContract.jsonSchema() as { properties: Record<string, unknown> }
+    expect(sent[1]!.parameters).toEqual({ ...base, properties: { ...base.properties, word: { type: 'string', const: 'jail' } } })
+    // and the call is shown the history it is filling in, the word, and the kinds it is not
+    const asked = sent[1]!.user
+    expect(asked).toContain('Lives on: Container freight off the elevated line, run by the Vance yards.')
+    expect(asked).toContain('`word` is jail')
+    for (const charter of SHIPPED_CHARTERS) expect(asked).toContain(charter.word)
+    expect(scribe.problems()).toEqual([])
+  })
+
+  it('sends a charter back with the reason when its blade spells nothing or a template puts one sign over every door', async () => {
+    const { sent, scribe } = scribeWith([WITH_JAIL, { ...JAIL, blade: '  ', names: ['County Jail', '{family} Jail'] }, JAIL], 2)
+
+    expect(await scribe.writePremise({ theme: THEME, seed: SEED })).toEqual({ ...WITH_JAIL, charters: [JAIL] })
+    expect(sent).toHaveLength(3)
+    expect(scribe.problems().flatMap(refused)).toEqual(['blade', 'names.0'])
+    expect(sent[2]!.user).toContain('names.0: County Jail has no slot')
+  })
+
+  it('reads a preset written in the plural as the preset, and asks for no charter for it', async () => {
+    const plural: Premise = { ...WRITTEN, build: { moreOf: ['warehouses', 'bars'], fewerOf: ['offices', 'cafes'], mustHave: ['station', 'bar'] } }
+    const { sent, scribe } = scribeWith([plural])
+
+    expect(await scribe.writePremise({ theme: THEME, seed: SEED })).toEqual({
+      ...WRITTEN,
+      build: { moreOf: ['warehouse', 'bar'], fewerOf: ['office', 'cafe'], mustHave: ['station', 'bar'] },
+    })
+    expect(sent).toHaveLength(1)
+  })
+
+  it('takes a kind the model will not write out of the build rather than handing it on', async () => {
+    const { sent, scribe } = scribeWith([WITH_JAIL, 'no-call'], 1)
+
+    expect(await scribe.writePremise({ theme: THEME, seed: SEED })).toEqual({
+      ...WITH_JAIL,
+      build: { moreOf: ['warehouse'], fewerOf: ['office'], mustHave: ['station'] },
+    })
+    expect(sent).toHaveLength(2)
+    expect(scribe.problems().map((problem) => problem.error.code)).toEqual(['no-tool-call'])
   })
 
   it('drops a history the contract refuses and gives the town the one the seed composes', async () => {

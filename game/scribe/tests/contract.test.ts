@@ -3,6 +3,7 @@ import { Sidecar } from '@gb/sidecar'
 import { describe, expect, it } from 'vitest'
 import { Scribe } from '../src/index.ts'
 import { fakeModel } from './fake-model.ts'
+import { charterOf } from './places.ts'
 
 const CITY: WorldSummary = {
   cityName: 'Cold Harbour',
@@ -74,7 +75,7 @@ describe('Scribe', () => {
     const refused = fakeModel(['http-500'])
     const scribeA = new Scribe({ sidecar: refused.sidecar, attempts: 1 })
     await scribeA.nameCity({ theme: 't', seed: 's' })
-    expect(scribeA.problems()[0]!.error.code).toBe('refused')
+    expect(scribeA.problems()[0]).toMatchObject({ task: 'name_city', at: 'city-name', error: { code: 'refused' } })
 
     const chatty = fakeModel(['no-call'])
     const scribeB = new Scribe({ sidecar: chatty.sidecar, attempts: 1 })
@@ -104,12 +105,16 @@ describe('Scribe', () => {
     const scribe = new Scribe({ sidecar })
 
     await scribe.nameCity({ theme: 'port', seed: 's' })
-    await scribe.namePlace({ kind: 'bar', theme: 'port', index: 0 })
-    await scribe.describeNpc({ role: 'bartender', placeKind: 'bar', placeName: 'The Anchor', theme: 'port', index: 0 })
+    await scribe.namePlace({ kind: 'bar', charter: charterOf('bar'), theme: 'port', index: 0 })
+    await scribe.describeNpc({ role: 'bartender', placeKind: 'bar', place: charterOf('bar'), placeName: 'The Anchor', theme: 'port', index: 0 })
 
     expect(sent[1]!.user).toContain('City: Cold Harbour')
+    expect(sent[1]!.user).toContain('Kind of building: bar')
     expect(sent[2]!.user).toContain('City: Cold Harbour')
-    expect(sent[2]!.user).toContain('Place: The Anchor')
+    expect(sent[2]!.user).toContain('Place: The Anchor, a bar')
+    // and each is told what such a place is here, off its charter
+    expect(sent[2]!.user).toContain('What a bar is here: a counter at the front with somebody behind it')
+    expect(sent[2]!.user).toContain('- The cellar door sticks unless you lift it.')
     // and the name the city already spent comes back as a name not to spend again
     expect(sent[1]!.user).toContain('- Cold Harbour')
     expect(sent[2]!.user).toContain('- The Anchor')
@@ -129,8 +134,8 @@ describe('Scribe', () => {
       }) as unknown as typeof globalThis.fetch
       const scribe = new Scribe({ sidecar: new Sidecar({ base: 'http://127.0.0.1:8976', fetch }), seed, attempts: 2 })
       await scribe.nameCity({ theme: 'port', seed })
-      await scribe.namePlace({ kind: 'bar', theme: 'port', index: 3 })
-      await scribe.namePlace({ kind: 'bar', theme: 'port', index: 4 })
+      await scribe.namePlace({ kind: 'bar', charter: charterOf('bar'), theme: 'port', index: 3 })
+      await scribe.namePlace({ kind: 'bar', charter: charterOf('bar'), theme: 'port', index: 4 })
       return pins
     }
 
@@ -148,7 +153,7 @@ describe('Scribe', () => {
     expect(elsewhere.map((pin) => pin.seed)).not.toEqual(first.map((pin) => pin.seed))
   })
 
-  it('tries again when a call ran out of time, and gives up on one the caller stopped', async () => {
+  it('tries again when a call ran out of time or broke off, and gives up on one the caller stopped', async () => {
     // the sidecar's own clock is its business; what this box owes is what it does with the answer
     const answers = (...codes: string[]) => {
       const left = codes.slice()
@@ -165,6 +170,10 @@ describe('Scribe', () => {
     const late = new Scribe({ sidecar: answers('timeout') })
     expect(await late.nameCity({ theme: 'port', seed: 's' })).toBe('Saltmere')
     expect(late.problems().map((problem) => problem.error.code)).toEqual(['timeout'])
+
+    const cut = new Scribe({ sidecar: answers('broken') })
+    expect(await cut.nameCity({ theme: 'port', seed: 's' })).toBe('Saltmere')
+    expect(cut.problems().map((problem) => problem.error.code)).toEqual(['broken'])
 
     const stopped = new Scribe({ sidecar: answers('aborted'), seed: 'stopped' })
     const name = await stopped.nameCity({ theme: 'port', seed: 's' })

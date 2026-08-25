@@ -76,7 +76,14 @@ somebody would say them.
 wrong: a fine story whose building mix does not follow from it gives a town that
 does not match its own history.
 
-The kinds of building the town can be made of: {{kinds}}.
+The kinds of place every town already has, each by its word: {{kinds}}. Write
+the word as it stands there, singular, whatever the count.
+
+The story may need a kind none of those is: a jail, a customs house, a bathhouse.
+Name it in `build` as one plain lowercase word, singular, and you will be asked
+next what such a place is here, and the town gets it. Invent a kind only when
+the story needs one and nothing above fits: a bar with a stranger name is still
+a bar.
 
 Reason from the trade and the turn to the mix, and take the consequences
 seriously. A collapsed shipping trade leaves the sheds and the markets standing

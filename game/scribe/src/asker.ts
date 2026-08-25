@@ -15,8 +15,13 @@ export type Check<T> = (value: T) => readonly Violation[]
 /** One authoring call that did not work out, kept so a thin world is explainable. */
 export interface ScribeProblem {
   readonly task: string
+  /** The call's place in the build (`charter:jail`, `quest:3`): which answer the town went without. */
+  readonly at: string
   readonly error: SidecarError
 }
+
+/** What is worth a second draw: the engine ran out of time, died mid-reply, or wrote prose. Measured: a charter call broke off at 327 s beside four that took 39 s. */
+const RETRIED: ReadonlySet<SidecarError['code']> = new Set(['timeout', 'broken', 'no-tool-call'])
 
 export interface AskerOptions {
   readonly sidecar: Sidecar
@@ -30,8 +35,8 @@ export interface AskerOptions {
 
 /**
  * Makes one tool call and keeps at it: a rejected answer comes back to the model
- * with the exact fields quoted, a call that ran out of time or came back as
- * prose is tried again on the next attempt's seed, and anything else gives up
+ * with the exact fields quoted, a call that ran out of time, broke off mid-reply
+ * or came back as prose is tried again on the next attempt's seed, and anything else gives up
  * so a dead sidecar costs one answer rather than the whole build. Every request
  * carries the seed for its position and attempt, so a second try is a second
  * draw rather than the same one over.
@@ -68,8 +73,8 @@ export class Asker {
       })
 
       if (!answer.ok) {
-        this.#record({ task: tool.name, error: answer.error })
-        if (answer.error.code === 'timeout' || answer.error.code === 'no-tool-call') continue
+        this.#record({ task: tool.name, at, error: answer.error })
+        if (RETRIED.has(answer.error.code)) continue
         if (answer.error.code !== 'invalid-arguments') return undefined
         request = this.#again(user, answer.error.violations)
         continue
@@ -77,7 +82,7 @@ export class Asker {
 
       const violations = check?.(answer.value) ?? []
       if (violations.length === 0) return answer.value
-      this.#record({ task: tool.name, error: { code: 'invalid-arguments', violations: violations.slice() } })
+      this.#record({ task: tool.name, at, error: { code: 'invalid-arguments', violations: violations.slice() } })
       request = this.#again(user, violations)
     }
     return undefined

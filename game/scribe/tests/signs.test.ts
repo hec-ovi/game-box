@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Scribe, type PlaceRequest } from '../src/index.ts'
 import { fakeModel, type Sent } from './fake-model.ts'
+import { charterOf } from './places.ts'
 
 const KINDS = ['bar', 'shop', 'office', 'warehouse', 'house'] as const
 
@@ -9,6 +10,7 @@ function frontage(count: number): PlaceRequest[] {
   return Array.from({ length: count }, (_, i) => ({
     index: i,
     kind: KINDS[i % KINDS.length]!,
+    charter: charterOf(KINDS[i % KINDS.length]!),
     theme: 'rain-soaked port',
     street: i % 2 ? 'Kettle Row' : 'Wharf Lane',
     premise: 'Lives on: the freight line.',

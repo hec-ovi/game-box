@@ -1,6 +1,6 @@
 import { contract, type Contract } from '@gb/kit'
 import { questDraftContract } from '@gb/quest'
-import { premiseContract, type Premise } from '@gb/world'
+import { CharterSchema, premiseContract, type Charter, type Premise, type Word } from '@gb/world'
 import { z } from 'zod'
 import { personSchema, type WrittenPerson } from './person.ts'
 import { prompt } from './prompts.ts'
@@ -42,6 +42,19 @@ export const WRITE_PREMISE: Tool<Premise> = {
   name: 'write_premise',
   description: prompt('tool-write-premise'),
   contract: premiseContract,
+}
+
+/**
+ * One kind of place the history invented, as `@gb/world`'s own charter contract
+ * with the word pinned: the model decodes against the file's own shape, and it
+ * cannot answer a question about a jail with a charter for something else.
+ */
+export function charterTool(word: Word): Tool<Charter> {
+  return {
+    name: 'write_charter',
+    description: prompt('tool-write-charter'),
+    contract: contract('write_charter', CharterSchema.extend({ word: z.literal(word) })),
+  }
 }
 
 export const NAME_CITY: Tool<CityName> = {
