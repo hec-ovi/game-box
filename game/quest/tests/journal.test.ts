@@ -1,6 +1,7 @@
+import { PlayerState } from '@gb/play'
 import { describe, expect, it } from 'vitest'
-import type { JournalEntry, QuestLog } from '../src/index.ts'
-import { HOLLIS, LEDGER, MARA, WITNESS, play, quest } from './fixture.ts'
+import { QuestLog, type JournalEntry } from '../src/index.ts'
+import { HOLLIS, LEDGER, MARA, WITNESS, accept, play, quest } from './fixture.ts'
 
 function page(log: QuestLog, questId = 'quest_0001'): JournalEntry {
   const found = log.journal().find((entry) => entry.questId === questId)
@@ -207,5 +208,43 @@ describe('the journal', () => {
     const [objective] = log.objectives()
     const { questId, questTitle, ...line } = objective!
     expect(page(log).steps[0]).toEqual({ ...line, state: 'open' })
+  })
+
+  it('keeps a failed quest on the page, saying why, and the page survives a save', () => {
+    const timed = quest(
+      [
+        { id: 'step_0001', kind: 'talk', npcId: MARA, objective: 'Hear Mara out', next: ['step_0002'] },
+        { id: 'step_0002', kind: 'complete', objective: 'Done' },
+      ],
+      { failWhen: [{ kind: 'time-limit', seconds: 600 }] },
+    )
+    const { log } = play(timed)
+    log.start('quest_0001')
+    log.handle({ kind: 'clock', seconds: 600 })
+    expect(page(log).status).toBe('failed')
+    expect(page(log).failReason).toBe('time-limit')
+    expect(page(log).timer).toBeUndefined()
+
+    const resumed = QuestLog.load(log.toJSON(), [accept(timed)], PlayerState.create('world_0001'))
+    expect(resumed.ok).toBe(true)
+    if (resumed.ok) expect(page(resumed.value).failReason).toBe('time-limit')
+  })
+
+  it('counts a timed quest down in game seconds, and says nothing about time on one that is not timed', () => {
+    const steps = [
+      { id: 'step_0001', kind: 'talk', npcId: MARA, objective: 'Hear Mara out', next: ['step_0002'] },
+      { id: 'step_0002', kind: 'complete', objective: 'Done' },
+    ]
+    const { log } = play(quest(steps, { failWhen: [{ kind: 'time-limit', seconds: 3600 }] }))
+    log.handle({ kind: 'clock', seconds: 1000 })
+    log.start('quest_0001')
+    expect(page(log).timer).toEqual({ remaining: 3600, total: 3600 })
+
+    log.handle({ kind: 'clock', seconds: 1000 + 1440 })
+    expect(page(log).timer).toEqual({ remaining: 2160, total: 3600 })
+
+    const untimed = play(quest(steps))
+    untimed.log.start('quest_0001')
+    expect(page(untimed.log).timer).toBeUndefined()
   })
 })

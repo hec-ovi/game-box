@@ -1,4 +1,3 @@
-import type { PlayerState } from '@gb/play'
 import type { GameEvent } from './events.ts'
 import { itemPool, type FailRule, type Place, type Step } from './schema.ts'
 
@@ -7,15 +6,14 @@ export interface StepMatch {
   readonly credit?: string
 }
 
-/** Whether an event is the thing this step was waiting for. */
-export function matchStep(input: {
-  step: Step
-  event: GameEvent
-  questId: string
-  player: PlayerState
-  credited: ReadonlySet<string>
-}): StepMatch | undefined {
-  const { step, event, questId, player, credited } = input
+/**
+ * Whether an event is the thing this step was waiting for. Every kind is
+ * credited by the thing happening in the world, never by a record of intent:
+ * an escort needs the companion's body at the destination, not the flag that
+ * says they agreed to come.
+ */
+export function matchStep(input: { step: Step; event: GameEvent; questId: string; credited: ReadonlySet<string> }): StepMatch | undefined {
+  const { step, event, questId, credited } = input
   switch (step.kind) {
     case 'talk':
       return event.kind === 'talked' && event.npcId === step.npcId && (!step.topic || step.topic === event.topic) ? {} : undefined
@@ -31,7 +29,7 @@ export function matchStep(input: {
       if (event.kind !== 'stashed' || event.interiorId !== step.interiorId || event.anchorId !== step.anchorId) return undefined
       return credit(step, event.itemId, credited)
     case 'escort':
-      return event.kind === 'arrived' && samePlace(step.place, event.place) && player.isCompanion(step.npcId) ? {} : undefined
+      return event.kind === 'companion-arrived' && event.npcId === step.npcId && samePlace(step.place, event.place) ? {} : undefined
     case 'choice':
       if (event.kind !== 'chose' || event.questId !== questId || event.stepId !== step.id) return undefined
       // only a road the step published: anything else would finish the step and open nothing

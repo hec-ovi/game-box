@@ -5,7 +5,17 @@ import { gameEventContract, type GameEvent } from './events.ts'
 import { Flow } from './graph.ts'
 import { QuestJournal, type JournalEntry } from './journal.ts'
 import { matchStep, triggersFailure } from './matching.ts'
-import { freshProgress, isSecret, questProgressContract, restoreProgress, storeProgress, type Progress, type QuestProgressDoc, type QuestStatus } from './progress.ts'
+import {
+  freshProgress,
+  isSecret,
+  questProgressContract,
+  restoreProgress,
+  storeProgress,
+  type FailReason,
+  type Progress,
+  type QuestProgressDoc,
+  type QuestStatus,
+} from './progress.ts'
 import { countOf, itemPool, resolvesItself, type Condition, type QuestDoc, type Reward, type Step } from './schema.ts'
 import { stepLine, type StepLine } from './step-line.ts'
 
@@ -16,9 +26,6 @@ export type RuntimeError =
   | { readonly code: 'requirements-not-met'; readonly questId: string; readonly unmet: readonly Condition[] }
   | { readonly code: 'invalid-event'; readonly violations: readonly SchemaViolation[] }
   | { readonly code: 'invalid-progress'; readonly violations: readonly SchemaViolation[] }
-
-/** Why a quest ended badly. */
-export type FailReason = 'fail-step' | 'time-limit' | 'npc-lost' | 'item-lost'
 
 export type Change =
   | { readonly kind: 'quest-started'; readonly questId: string }
@@ -55,7 +62,7 @@ export class QuestLog {
   #flows = new Map<string, Flow>()
   #progress: Map<string, Progress>
   #player: PlayerState
-  /** Seconds of play, as last reported by the game. Time limits count from here. */
+  /** Game seconds, as the last `clock` event reported them. Time limits count off this. */
   #clock = 0
 
   private constructor(quests: readonly QuestDoc[], player: PlayerState, progress: Map<string, Progress>) {
@@ -196,7 +203,7 @@ export class QuestLog {
     for (const quest of this.#quests.values()) {
       const progress = this.#progress.get(quest.id)!
       if (progress.status === 'unstarted') continue
-      pages.push(new QuestJournal(quest, this.#flow(quest), progress).entry())
+      pages.push(new QuestJournal(quest, this.#flow(quest), progress, this.#clock).entry())
     }
     return pages
   }
@@ -217,7 +224,7 @@ export class QuestLog {
 
   #advance(quest: QuestDoc, progress: Progress, step: Step, event: GameEvent, changes: Change[]): void {
     const credited = progress.credited.get(step.id) ?? new Set<string>()
-    const match = matchStep({ step, event, questId: quest.id, player: this.#player, credited })
+    const match = matchStep({ step, event, questId: quest.id, credited })
     if (!match || !meets(this.#player, step.requires)) return
 
     if (match.credit !== undefined) {
@@ -325,8 +332,10 @@ export class QuestLog {
     }
   }
 
+  /** The page stays in the journal, saying `failed` and why; nothing here forgets a quest. */
   #failQuest(quest: QuestDoc, progress: Progress, reason: FailReason, changes: Change[]): void {
     progress.status = 'failed'
+    progress.failReason = reason
     progress.open.clear()
     changes.push({ kind: 'quest-failed', questId: quest.id, reason })
   }

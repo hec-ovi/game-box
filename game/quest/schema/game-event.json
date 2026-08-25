@@ -69,6 +69,52 @@
       "properties": {
         "kind": {
           "type": "string",
+          "const": "companion-arrived"
+        },
+        "npcId": {
+          "type": "string",
+          "pattern": "^npc_\\d{4,}$"
+        },
+        "place": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "plotId": {
+                  "type": "string",
+                  "pattern": "^plot_\\d{4,}$"
+                }
+              },
+              "required": [
+                "plotId"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "interiorId": {
+                  "type": "string",
+                  "pattern": "^interior_\\d{4,}$"
+                }
+              },
+              "required": [
+                "interiorId"
+              ]
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "npcId",
+        "place"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
           "const": "acquired"
         },
         "itemId": {

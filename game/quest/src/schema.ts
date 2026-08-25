@@ -35,7 +35,7 @@ export const PlaceSchema = z.union([
 
 /** Things that end a quest badly on their own, without the flow reaching a `fail` step. */
 export const FailRuleSchema = z.discriminatedUnion('kind', [
-  /** Seconds of play from the moment the quest starts. The game reports the clock. */
+  /** Game seconds from the moment the quest starts, counted off the `clock` event. */
   z.object({ kind: z.literal('time-limit'), seconds: z.number().int().min(30).max(86400) }),
   /** Someone the quest cannot do without. No `reason` means either dying or leaving town. */
   z.object({ kind: z.literal('npc-lost'), npcId: id('npc'), reason: z.enum(['died', 'left']).optional() }),

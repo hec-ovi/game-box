@@ -1,6 +1,6 @@
 # @gb/quest contract
 
-contractVersion: 0.7.0
+contractVersion: 0.8.0
 
 ## Purpose
 
@@ -18,7 +18,7 @@ Quests as flows: a checked graph of steps ("talk to her, go there, take three of
 | `QuestLog.load(value, quests, player)` | [schema/quest-progress.json](schema/quest-progress.json) | same quest set the save was made with |
 | `QuestLog.start(questId)` | a quest id | the quest is unstarted and the player meets its `requires` |
 | `QuestLog.abandon(questId)` | a quest id | the quest is being played |
-| `QuestLog.handle(event)` | [schema/game-event.json](schema/game-event.json) | any untrusted event from the game |
+| `QuestLog.handle(event)` | [schema/game-event.json](schema/game-event.json) | any untrusted event from the game; which one each step waits for is under "What credits a step" |
 
 ## Outputs
 
@@ -29,7 +29,7 @@ Quests as flows: a checked graph of steps ("talk to her, go there, take three of
 | `rewardFor` | a `Reward` | inside the band for that difficulty |
 | `QuestLog.handle` / `start` / `abandon` | `Change[]` | `quest-started`, `step-opened`, `step-revealed`, `step-progress`, `step-done`, `step-abandoned`, `quest-abandoned`, `quest-complete`, `quest-failed`; empty when nothing moved |
 | `QuestLog.objectives()` | `Objective[]` | one line per open step the player can see: `questId`, `questTitle` and the step line below |
-| `QuestLog.journal()` | `JournalEntry[]` | one page per quest the player has taken: `questId`, `questTitle`, `kind` (`main` or `side`), `status` and the steps they do, in the order the quest was written, each a step line plus its `state` |
+| `QuestLog.journal()` | `JournalEntry[]` | one page per quest the player has taken, failed ones included: `questId`, `questTitle`, `kind` (`main` or `side`), `status`, `failReason` while it is `failed`, `timer` (`{remaining, total}` in game seconds) while a timed quest is being played, and the steps they do, in the order the quest was written, each a step line plus its `state` |
 | `QuestLog.offeredBy(npcId)` | `QuestDoc[]` | unstarted quests from that giver whose `requires` the player already meets |
 | `QuestLog.isQuestItem(itemId)` | boolean | true while a live quest still needs that item |
 | `QuestLog.toJSON()` | [schema/quest-progress.json](schema/quest-progress.json) | resumes to exactly the same open steps, counts, secrets and dropped branches |
@@ -44,6 +44,32 @@ One shape for a step wherever the interface shows it, so the objectives panel an
 
 A page lists the work and nothing else. `join`, `any-of`, `complete` and `fail` resolve the moment they open, so the player never does one and none of them is a line: "Get paid" on a page is a promise nobody keeps, since the reward arrives on its own with `quest-complete`. The page says how a quest ended in `status`; it does not spend a row on it. Everything the page does carry is a line the player can act on, so a caller draws it as it comes and never has to sort work from wiring.
 
+A page is never taken away by the quest ending. A finished quest keeps its page with `status: 'complete'`; a failed one keeps its page with `status: 'failed'` and `failReason` saying why (`fail-step`, `time-limit`, `npc-lost`, `item-lost`), so the player reads that it failed and what for instead of finding a gap. Both survive a save. The one thing that removes a page is `abandon`, because giving up makes the quest unstarted again and the giver offers it afresh.
+
+## Timers
+
+A quest with a `time-limit` in `failWhen` is on a countdown, and its page carries it while it is being played:
+
+```ts
+entry.timer // { remaining: 2160, total: 3600 }   game seconds
+```
+
+`total` is what the quest was given and `remaining` is what is left of it against the last `clock` event, clamped to `0..total`, so a caller draws "36 min left" or a bar without arithmetic of its own. The page stops carrying `timer` once the quest is over; a page that ran out says `failReason: 'time-limit'` instead.
+
+**The unit is game seconds**: the number the `clock` event carries, which is `@gb/play`'s `clock.totalSeconds`. A timer runs on the game clock, never the wall clock, so pausing the game (rate 0) freezes every countdown, and skipping to tomorrow runs them all out. The game sends `clock` whenever the reading moves; the countdown moves with it and nowhere else, so an interface showing it re-reads the page on every clock push.
+
+Picking a duration, at the clock's rate of 24 game seconds per real second (a game day is one real hour):
+
+| Game time | `seconds` | Real time |
+|---|---|---|
+| a minute | 60 | 2.5 s |
+| ten minutes | 600 | 25 s |
+| an hour | 3600 | 2.5 min |
+| a quarter day | 21600 | 15 min |
+| a day | 86400 | 1 hour |
+
+One reply from the model costs 8 to 19 real seconds, which is 200 to 450 game seconds, and a walk across town is a real minute or two, which is 1500 to 3000. So budget at least 600 game seconds for every conversation the timed work needs and 3000 for every walk, and never give a quest under an hour (3600): below that, a slow reply fails it on its own. A job with two conversations and a walk wants three hours (10800); a chain of errands wants a quarter day or more. The schema floor of 30 exists so a world file written earlier still loads; pick from the table above.
+
 | `state` | Where the step stands |
 |---|---|
 | `upcoming` | the flow has not reached it, and can still walk into it |
@@ -52,6 +78,10 @@ A page lists the work and nothing else. `join`, `any-of`, `complete` and `fail` 
 | `dropped` | a branch nobody took: the flow can no longer reach it |
 
 A quest splits at a `choice` and at an `any-of`. Picking an option drops everything only the other options led to; one branch winning an `any-of` drops its rivals. Whatever a finished or failed quest never reached is dropped as well. A secret stays off the page until something reveals it, then it appears in the place it was written.
+
+## Tracking a quest
+
+The quest the objectives panel and the map pins point at is the **tracked** quest: the player picks it with the interface's Track, and `@gb/play` remembers it as `tracked`. This box calls it nothing else. "Following" is what a companion does when they walk behind the player, and it is never a word for a quest here, so an escort's companion following the player and the player tracking the escort quest cannot be confused in a report or a contract.
 
 ## What an objective points at
 
@@ -67,6 +97,31 @@ A step names its target in whatever field its kind uses, and the objective carri
 | `escort` | `npcId` (who walks with you), `place` (where to) |
 | `choice` | nowhere in the world, but `choice`: the question and the roads out of it, below |
 | `join`, `any-of`, `complete`, `fail` | nothing: they point at no one and nowhere |
+
+## What credits a step
+
+A step is credited by the thing happening in the world, never by a record of intent: a flag, a menu state or an agreement is not a step done. Each kind waits for exactly one event, and the game (`@gb/app` in play, `@gb/forge`'s harness when proving a quest) sends that event when the thing has happened. Anything else moves nothing and comes back empty.
+
+| Step kind | Credited by | Sent when |
+|---|---|---|
+| `talk` | `talked { npcId, topic? }` | a conversation with that person has ended; `topic` names what it covered, and a step with a `topic` is credited only by the same one |
+| `goto` | `arrived { place }` | the player's own body entered that plot or interior |
+| `collect` | `acquired { itemId, stolen? }` | the thing is in the player's hand; `stolen: true` credits only a step with `allowSteal` |
+| `deliver` | `gave { itemId, npcId }` | the thing left the player's hand and went to that person |
+| `stash` | `stashed { itemId, interiorId, anchorId }` | the thing is standing on that anchor in that room |
+| `escort` | `companion-arrived { npcId, place }` | that person's body, walking with the player, entered that plot or interior. The companion flag `@gb/play` keeps is not this: it says they agreed to come, and an escort is credited only when they got there |
+| `choice` | `chose { questId, stepId, optionId }` | the player took one of the keys the step published |
+| `join`, `any-of`, `complete`, `fail` | nothing | they resolve the moment they open |
+
+`collect`, `deliver` and `stash` with a `count` are credited once per distinct item in their pool and finish on the last one. A step's `requires` is a gate in front of the credit, read off the player's record (`has-companion` reads the flag, `has-item` the inventory), so a credited event on a step whose gate is shut moves nothing.
+
+Failure rules read the world the same way:
+
+| Rule | Ended by | Sent when |
+|---|---|---|
+| `time-limit` | `clock { seconds }` | the game clock moved; the quest fails on the first reading at or past the limit |
+| `npc-lost` | `npc-gone { npcId, reason }` | that person died or left town, `reason` saying which |
+| `item-lost` | `item-destroyed { itemId }` | the thing has been destroyed |
 
 ## Making a choice
 
@@ -101,10 +156,11 @@ Only a key the step published moves it. A `chose` naming anything else changes n
 `talk`, `goto`, `collect`, `deliver`, `stash`, `escort`, `choice`, `join`, `any-of`, `complete`, `fail`. A generator may use no others.
 
 - `collect`, `deliver` and `stash` take `count` (default 1) over a pool of interchangeable items: the one in `itemId` plus `alternates`. That is how "three of the five crates" is written, and each item counts once.
-- A `talk` may name a `topic`. Then only a `talked` event carrying that same topic completes it, and the objective publishes the topic so the caller knows which one to send.
+- A `talk` may name a `topic`. Then only a `talked` event carrying that same topic completes it, and the objective publishes `topic` so the caller knows which one to send.
+- An `escort` names who walks (`npcId`) and where to (`place`). It is credited by `companion-arrived` for that person at that place, and by nothing else.
 - A `choice` holds the question in `prompt` and the roads in `options` (`id`, `label`, and the `next` it routes to). The line publishes the question and the roads' words and keys, so a caller can draw the decision and send back the one that was taken.
 - Any step may be `optional` (side work: the quest finishes without it, and it may be a dead end) or `hidden` (off the board until a `reveal` effect shows it).
-- `join` waits for every branch in `waitFor`. `any-of` takes the first branch in `oneOf` to finish and drops the rest. Both name steps the flow already runs through: every branch has to be reachable from the first step, and has to have the `join` or `any-of` in its own `next`. Listing a step in `waitFor` or `oneOf` does not wire it into the flow, so a branch that only appears there is refused as unreachable.
+- `join` waits for every branch in `waitFor`. `any-of` takes the first branch in `oneOf` to finish and drops the rest. Both name steps the flow already runs through, which means two things at once: every branch has to be reachable from the first step through some chain of `next`, and every branch has to have the `join` or `any-of` in its own `next`. Listing a step in `waitFor` or `oneOf` does not wire it into the flow. A branch that is only listed is refused as "unreachable from the first step: no step's next leads here, and listing it in a oneOf or a waitFor does not connect it"; a branch that is reached but leads elsewhere is refused as "offers X, but X does not lead to it: every branch needs this step in its next, and needs to be reachable from the first step". The usual shape: the step before the split lists both branches in its `next`, and both branches list the `any-of` in theirs.
 
 ## Conditions and effects (closed sets)
 
@@ -114,7 +170,7 @@ Effects: `give-item`, `take-item`, `pay`, `charge`, `reputation`, `set-flag`, `c
 
 ## Failing (closed set)
 
-`failWhen` ends a quest badly without the flow reaching a `fail` step: `time-limit` (seconds since the quest was taken, counted off the `clock` event), `npc-lost` (that person died or left, or either), `item-lost` (the thing was destroyed).
+`failWhen` ends a quest badly without the flow reaching a `fail` step: `time-limit` (game seconds since the quest was taken, counted off the `clock` event; see "Timers"), `npc-lost` (that person died or left, or either), `item-lost` (the thing was destroyed). Whichever way a quest fails, `quest-failed` carries the reason, the page stays in the journal with `status: 'failed'` and the same `failReason`, and the save keeps both. `FAIL_REASONS` is the closed set: `fail-step`, `time-limit`, `npc-lost`, `item-lost`.
 
 ## Difficulty and pay
 
@@ -149,8 +205,11 @@ Effects: `give-item`, `take-item`, `pay`, `charge`, `reputation`, `set-flag`, `c
 - A step is `dropped` exactly when the flow can no longer walk into it from an open step. Because a flow runs forward only, nothing dropped ever comes back.
 - The runtime reads the world only through `WorldView`, and touches the player only through `@gb/play`, so it runs headless with no renderer.
 - Effects are the only way a quest changes the player: nothing is applied implicitly by an event, and neither is giving up.
+- A step is credited only by the event in "What credits a step", which reports the thing having happened; no step is credited off a flag, a companion record or a menu state. `requires` gates read the record; credits never do.
+- A quest that ended stays in the journal with its status and, when it failed, its reason. Only giving up removes a page.
+- A timer is game seconds off the `clock` event and nothing else: no wall clock, no `Date`, so a paused game holds every countdown.
 - Being a quest item is a binding from a live quest, not a property of the thing, so the same ledger can be untouchable in one playthrough and ordinary loot in another. Shipped RPGs bind it the same way, per quest rather than per item.
 
 ## How to modify this blackbox safely
 
-New step kinds, conditions, effects and failure rules are additive: extend the union, teach `checkEdges`/`checkShape` what they promise, teach `checkSolvability` what they guarantee, teach `targetOf` what the new kind points at (the switch there is exhaustive, so it will not compile until you do), teach the runtime what completes them, add it to `resolvesItself` if it needs no player, bump the minor contractVersion. New fields go on as optional, because exported worlds contain quests written without them. Never change what an existing kind means. Regenerate `schema/` (`pnpm --filter @gb/quest run generate`) and run `pnpm --filter @gb/quest test` in the same change.
+New step kinds, conditions, effects and failure rules are additive: extend the union, teach `checkEdges`/`checkShape` what they promise, teach `checkSolvability` what they guarantee, teach `targetOf` what the new kind points at (the switch there is exhaustive, so it will not compile until you do), teach `matchStep` which event credits it and add that event to "What credits a step", add it to `resolvesItself` if it needs no player, bump the minor contractVersion. New fields go on as optional, because exported worlds contain quests written without them. Never change what an existing kind means. Regenerate `schema/` (`pnpm --filter @gb/quest run generate`) and run `pnpm --filter @gb/quest test` in the same change.
