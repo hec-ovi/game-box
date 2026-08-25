@@ -100,10 +100,19 @@ function expectStandingOn(built: InteriorBuild, interior: Interior, itemId: stri
   const host = built.props.get(piece.id)!
   const footprint = new PropFootprint(piece.id, piece.prop, host)
   const base = baseOf(built, itemId)
+  const box = drawnBox(built, itemId)
+  const size = box.getSize(new THREE.Vector3())
 
-  // the whole of it is on the piece, corners included, not just its middle
-  for (const corner of cornersOf(built, itemId)) {
-    expect(footprint.contains(corner.x, corner.z, HAIR), `${where} overhangs`).toBe(true)
+  if (size.x <= footprint.halfWidth * 2 + HAIR && size.z <= footprint.halfDepth * 2 + HAIR) {
+    // the whole of it is on the piece, corners included, not just its middle
+    for (const corner of cornersOf(built, itemId)) {
+      expect(footprint.contains(corner.x, corner.z, HAIR), `${where} overhangs`).toBe(true)
+    }
+  } else {
+    // a thing wider than the piece stands in the middle of it
+    const middle = box.getCenter(new THREE.Vector3())
+    expect(middle.x, `${where} off centre`).toBeCloseTo(footprint.x, EXACT)
+    expect(middle.z, `${where} off centre`).toBeCloseTo(footprint.z, EXACT)
   }
   // and the piece is drawn right under it, at the height it was put down at
   const handle = built.pickups.get(itemId)!

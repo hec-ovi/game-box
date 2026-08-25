@@ -2,14 +2,15 @@ import { Forge, OfflineNarrator } from '@gb/forge'
 import type { World } from '@gb/world'
 import * as THREE from 'three'
 import { WebGPURenderer } from 'three/webgpu'
-import { buildCity, buildInterior, CEILING_FILL, CEILING_HEIGHT, Greybox, LIVE_LIGHTS, type SurfacePart } from '../../src/index.ts'
+import { buildCity, buildInterior, CEILING_FILL, CEILING_HEIGHT, Greybox, LIVE_LIGHTS, type Dressing, type SurfacePart } from '../../src/index.ts'
 
 /**
  * Two measurements, chosen by `?view=`:
  *
- * `street` (default): the city at its default size, greyboxed, the camera at
- * the spawn, `?lights=N` of the buildings' emitters live as point lights,
- * `?gl=1` for the WebGL2 backend.
+ * `street` (default): the city at `?blocks=N` (default 2), greyboxed, the
+ * camera at the spawn, `?lights=N` of the buildings' emitters live as point
+ * lights, `?gl=1` for the WebGL2 backend, `?whole=1` for every building
+ * whole at every distance instead of the shells past the detail radius.
  * The frame is timed off requestAnimationFrame, so run the browser with its
  * frame rate uncapped or every answer is the vsync.
  *
@@ -61,11 +62,29 @@ function done(result: Record<string, unknown>): void {
   document.title = 'done'
 }
 
+/** The greybox with its far look taken away, so every building is whole at every distance: `?whole=1`. */
+function whole(grey: Greybox): Dressing {
+  return {
+    building: (plot, size, charter) => grey.building(plot, size, charter),
+    lights: (plot, size) => grey.lights(plot, size),
+    prop: (prop) => grey.prop(prop),
+    character: (npc, doing) => grey.character(npc, doing),
+    pickup: (item) => grey.pickup(item),
+    ground: (kind) => grey.ground(kind),
+    surface: (part) => grey.surface(part),
+    marking: (paint) => grey.marking(paint),
+    clutter: () => grey.clutter(),
+  }
+}
+
 async function street(): Promise<void> {
   const blocks = Number(query.get('blocks') ?? 2)
   const budget = Number(query.get('lights') ?? LIVE_LIGHTS)
   const world = await city(blocks)
-  const built = buildCity(world, new Greybox(), { lights: budget, night: 1, wetness: 0.6 })
+  const dressing = query.get('whole') === '1' ? whole(new Greybox()) : new Greybox()
+  const opened = performance.now()
+  const built = buildCity(world, dressing, { lights: budget, night: 1, wetness: 0.6 })
+  const openMs = Number((performance.now() - opened).toFixed(0))
 
   const scene = new THREE.Scene()
   scene.background = new THREE.Color(0x06080a)
@@ -76,7 +95,7 @@ async function street(): Promise<void> {
   camera.position.set(built.spawn.x, 1.7, built.spawn.z)
   camera.rotation.order = 'YXZ'
   camera.rotation.y = built.spawn.heading + Math.PI / 2
-  built.lights.follow(built.spawn.x, built.spawn.z)
+  built.follow(built.spawn.x, built.spawn.z)
 
   const made = renderer()
   await made.init()
@@ -110,6 +129,9 @@ async function street(): Promise<void> {
     size: [innerWidth, innerHeight],
     blocks,
     plots: world.plots().length,
+    whole: query.get('whole') === '1',
+    openMs,
+    detailed: [...built.buildings.values()].filter((one) => one.detailed).length,
     emitters: built.lights.emitters.length,
     lights: budget,
     live: built.lights.lights.filter((light) => light.visible).length,

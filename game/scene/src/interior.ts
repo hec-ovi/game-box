@@ -8,6 +8,7 @@ import { Leaving } from './leaving.ts'
 import { Pickups } from './pickups.ts'
 import { shellOf } from './shell.ts'
 import { PropSurface } from './surface.ts'
+import { visitorCellsOf, type VisitorCell } from './visitors.ts'
 
 /**
  * A stored heading as a three.js yaw. The world writes compass degrees, 0
@@ -38,10 +39,14 @@ export interface InteriorBuild {
   readonly leave: (itemId: string, anchorId: string) => THREE.Object3D | undefined
   /** The furniture the player cannot walk through, as rectangles on the floor in these same coordinates. */
   readonly blockers: readonly PropFootprint[]
+  /** Where a visitor may stand, nearest the street door first: clear of the furniture, the doors, the people and the staff's aisle. */
+  readonly visitorCells: readonly VisitorCell[]
   /** Where the player appears when they come in, and where they leave from. */
   readonly entrance: THREE.Vector3
   /** The way into the room from that door, so entering faces the room. */
   readonly inward: THREE.Vector3
+  /** Lets go of the geometry this box made for the room: its shell and its pickup batches. The dressing's own objects are left alone. */
+  readonly dispose: () => void
 }
 
 /**
@@ -52,8 +57,9 @@ export function buildInterior(world: World, interior: Interior, dressing: Dressi
   const root = new THREE.Group()
   root.name = interior.id
 
-  for (const surface of shellOf(interior, dressing)) root.add(surface)
-  ceilingFill(root)
+  const shell = shellOf(interior, dressing)
+  for (const surface of shell) root.add(surface)
+  const fill = ceilingFill(root)
 
   const props = new Map<string, THREE.Object3D>()
   const tops = new Map<string, PropSurface>()
@@ -113,6 +119,9 @@ export function buildInterior(world: World, interior: Interior, dressing: Dressi
   inward.y = 0
   inward.normalize()
 
+  const footprints = new Map([...tops].map(([id, top]) => [id, top.footprint]))
+  const blockers = blockersOf(interior, footprints.values())
+
   return {
     root,
     anchors,
@@ -120,8 +129,15 @@ export function buildInterior(world: World, interior: Interior, dressing: Dressi
     people,
     pickups: pickups.all,
     leave: (itemId, anchorId) => leaving.leave(itemId, anchorId),
-    blockers: blockersOf(interior, [...tops.values()].map((top) => top.footprint)),
+    blockers,
+    visitorCells: visitorCellsOf(interior, blockers, footprints),
     entrance,
     inward,
+    dispose: () => {
+      for (const surface of shell) surface.geometry.dispose()
+      fill.dispose()
+      pickups.dispose()
+      root.clear()
+    },
   }
 }

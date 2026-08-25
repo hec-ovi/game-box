@@ -35,15 +35,20 @@ function cost(root: THREE.Object3D, only: (name: string) => boolean = () => true
 describe('what a city costs', () => {
   it('draws a town of any size in one mesh per material, not one per building', async () => {
     const world = await bigTown()
-    const { meshes, materials } = cost(buildCity(world, new Greybox()).root)
+    const root = buildCity(world, new Greybox()).root
+    const { meshes, materials } = cost(root)
+    const detail = cost(root, (name) => name.startsWith('detail:')).meshes
 
     expect(world.plots().length, 'a town worth budgeting for').toBeGreaterThan(120)
     // measured: 142 buildings over 23 materials, drawn in 23 meshes. The ground
     // is a mesh per surface, so a dressing sharing one material between two
-    // surfaces costs a mesh more than it costs materials
-    expect(meshes).toBeLessThanOrEqual(materials + 8)
+    // surfaces costs a mesh more than it costs materials; the buildings near
+    // the spawn are drawn in detail out of one more batch per material
+    expect(meshes - detail).toBeLessThanOrEqual(materials + 8)
+    expect(detail).toBeGreaterThan(0)
+    expect(detail).toBeLessThanOrEqual(materials)
     // and the ceiling that matters: draws do not follow the buildings
-    expect(meshes).toBeLessThan(world.plots().length / 4)
+    expect(meshes - detail).toBeLessThan(world.plots().length / 4)
   })
 
   it('draws every piece of rubbish in the city in one mesh', async () => {
@@ -60,8 +65,9 @@ describe('what a city costs', () => {
   it('costs no more draws for twenty times the town', async () => {
     const small = await town()
     const big = await bigTown()
-    const cheap = cost(buildCity(small, new Greybox()).root)
-    const dear = cost(buildCity(big, new Greybox()).root)
+    const shells = (name: string) => !name.startsWith('detail:')
+    const cheap = cost(buildCity(small, new Greybox()).root, shells)
+    const dear = cost(buildCity(big, new Greybox()).root, shells)
 
     expect(big.plots().length).toBeGreaterThan(small.plots().length * 10)
     expect(dear.triangles).toBeGreaterThan(cheap.triangles * 4)
@@ -130,13 +136,22 @@ describe('what a city costs', () => {
     // piece of rubbish
     for (const batch of all) expect(batch.perObjectFrustumCulled, batch.name).toBe(true)
 
-    const plot = world.plots()[0]!
-    const building = city.buildings.get(plot.id)!
-    building.visible = false
-    expect(building.visible).toBe(false)
-    expect(batches.some((batch) => (batch.userData['plots'] as string[]).some((id, at) => id === plot.id && !batch.getVisibleAt(at)))).toBe(true)
+    const buildings = all.filter((batch) => batch.userData['plots'] !== undefined)
+    const drawnFrom = (building: { detailed: boolean }) => buildings.filter((batch) => batch.name.startsWith(building.detailed ? 'detail:' : 'city:'))
+    const instancesOf = (plotId: string, list: THREE.BatchedMesh[]) =>
+      list.flatMap((batch) => (batch.userData['plots'] as string[]).map((id, at) => ({ id, batch, at })).filter((one) => one.id === plotId))
+    for (const plot of [world.plots()[0]!, world.plots().at(-1)!]) {
+      const building = city.buildings.get(plot.id)!
+      const drawn = instancesOf(plot.id, drawnFrom(building))
+      expect(drawn.length, plot.id).toBeGreaterThan(0)
+      expect(drawn.every(({ batch, at }) => batch.getVisibleAt(at))).toBe(true)
 
-    building.visible = true
-    expect(batches.every((batch) => (batch.userData['plots'] as string[]).every((id, at) => id !== plot.id || batch.getVisibleAt(at)))).toBe(true)
+      building.visible = false
+      expect(building.visible).toBe(false)
+      expect(instancesOf(plot.id, buildings).every(({ batch, at }) => !batch.getVisibleAt(at))).toBe(true)
+
+      building.visible = true
+      expect(drawn.every(({ batch, at }) => batch.getVisibleAt(at))).toBe(true)
+    }
   })
 })

@@ -79,6 +79,14 @@ export class CityLights {
     if (this.#at) this.follow(this.#at.x, this.#at.z)
   }
 
+  /** One building's emitters taken out again: what it threw stops being lit. */
+  remove(plotId: string): void {
+    let kept = 0
+    for (const emitter of this.#emitters) if (emitter.plotId !== plotId) this.#emitters[kept++] = emitter
+    this.#emitters.length = kept
+    if (this.#at) this.follow(this.#at.x, this.#at.z)
+  }
+
   /** Gives the live lights to the emitters nearest that point on the ground: the camera, every frame. */
   follow(x: number, z: number): void {
     this.#at = { x, z }

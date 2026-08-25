@@ -51,6 +51,16 @@ export class Pickups {
     return this.#handles
   }
 
+  /** Lets go of every buffer the room's things went into. */
+  dispose(): void {
+    for (const { batch } of this.#batches.values()) {
+      batch.mesh.geometry.dispose()
+      batch.mesh.dispose()
+    }
+    this.#batches.clear()
+    this.#handles.clear()
+  }
+
   /** The handle to a thing the room has not held before: its triangles go into the buffer here, once. */
   #hold(itemId: string, object: THREE.Object3D): THREE.Object3D {
     const parts = partsOf(object)

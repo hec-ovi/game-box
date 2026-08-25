@@ -7,7 +7,9 @@ import { writeFile } from 'node:fs/promises'
  * the browser is `CHROME` on the environment, `chromium` when unset. The
  * frame rate is uncapped and the GPU asked for, so a frame is what it costs
  * rather than the vsync. `SHOT` names a folder to drop a screenshot of each
- * run into, to see that what was timed is what was meant.
+ * run into, to see that what was timed is what was meant, and `BLOCKS` how
+ * big a town the street view builds (default 2), `WHOLE=1` every building
+ * whole at every distance.
  *
  *   CHROME=/path/to/chrome node game/scene/tools/bench/measure.ts street 0 4 8 16 32
  *   CHROME=/path/to/chrome node game/scene/tools/bench/measure.ts street-gl 0 4 8 16 32
@@ -113,8 +115,10 @@ try {
   await session.send('Page.enable')
   const param = view === 'ceiling' ? 'fill' : 'lights'
   const backend = view === 'street-gl' ? '&gl=1' : ''
+  const blocks = process.env['BLOCKS'] ? `&blocks=${process.env['BLOCKS']}` : ''
+  const look = process.env['WHOLE'] === '1' ? '&whole=1' : ''
   for (const value of values.length ? values : ['16']) {
-    console.log(await run(session, `${PAGE}?view=${view.replace('-gl', '')}&${param}=${value}${backend}`))
+    console.log(await run(session, `${PAGE}?view=${view.replace('-gl', '')}&${param}=${value}${backend}${blocks}${look}`))
   }
   session.close()
 } finally {

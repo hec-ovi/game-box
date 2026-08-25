@@ -27,6 +27,12 @@ export interface SurfaceSize {
 export interface Dressing {
   /** A building of this plot's charter, footprint and height, with its origin at the centre of its base. */
   building(plot: Plot, size: BuildingSize, charter: ResolvedCharter): THREE.Object3D
+  /**
+   * The same building as it is seen from far off: its walls and roof and
+   * nothing that is only worth drawing near (no signs, no screens, no rooms
+   * behind the panes). Left out, `building` is drawn at every distance.
+   */
+  shell?(plot: Plot, size: BuildingSize, charter: ResolvedCharter): THREE.Object3D
   /** What that building throws light from, in its own frame. Asked after `building`. Left out, it lights nothing. */
   lights?(plot: Plot, size: BuildingSize, charter: ResolvedCharter): readonly LightEmitter[]
   /** A piece of furniture, origin at the centre of its base, facing north. */
@@ -96,6 +102,13 @@ export class Greybox implements Dressing {
   #materials = new Map<number, THREE.Material>()
 
   building(plot: Plot, size: BuildingSize, charter: ResolvedCharter): THREE.Object3D {
+    const group = this.shell(plot, size, charter)
+    group.add(this.#door(plot, size))
+    return group
+  }
+
+  /** The box alone: what a greybox building is from far off. */
+  shell(plot: Plot, size: BuildingSize, charter: ResolvedCharter): THREE.Object3D {
     const shell = new THREE.Mesh(new THREE.BoxGeometry(size.width, size.height, size.depth), this.#material(charter.tint))
     shell.position.y = size.height / 2
     shell.name = `${plot.id}:shell`
@@ -103,7 +116,6 @@ export class Greybox implements Dressing {
     const group = new THREE.Group()
     group.name = plot.id
     group.add(shell)
-    group.add(this.#door(plot, size))
     return group
   }
 

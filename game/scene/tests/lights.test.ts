@@ -44,12 +44,14 @@ function onePlot(): { world: World; plot: Plot } {
 }
 
 describe('the light the buildings throw', () => {
-  it('keeps every emitter and makes only the budget of them lights, however big the town', async () => {
+  it('keeps every emitter of the buildings drawn in detail and makes only the budget of them lights', async () => {
     const world = await bigTown()
     const city = buildCity(world, new Signed())
+    const detailed = [...city.buildings.values()].filter((building) => building.detailed)
 
-    expect(city.lights.emitters.length).toBeGreaterThan(LIVE_LIGHTS * 20)
-    expect(city.lights.emitters.length).toBeGreaterThanOrEqual(world.plots().length * 2)
+    expect(detailed.length).toBeGreaterThan(LIVE_LIGHTS)
+    expect(city.lights.emitters.length).toBeGreaterThanOrEqual(detailed.length * 2)
+    expect(new Set(city.lights.emitters.map((one) => one.plotId))).toEqual(new Set(detailed.map((one) => one.plotId)))
     const lights = lightsIn(city)
     expect(lights).toHaveLength(LIVE_LIGHTS)
     // every one of them is burning something: the town has more emitters than lights
@@ -84,9 +86,8 @@ describe('the light the buildings throw', () => {
   it('gives the lights to the emitters nearest the camera, and moves them when it moves', async () => {
     const world = await bigTown()
     const city = buildCity(world, new Signed())
-    const emitters = city.lights.emitters
     const nearest = (x: number, z: number) =>
-      [...emitters].sort((a, b) => Math.hypot(a.position[0] - x, a.position[2] - z) - Math.hypot(b.position[0] - x, b.position[2] - z)).slice(0, LIVE_LIGHTS)
+      [...city.lights.emitters].sort((a, b) => Math.hypot(a.position[0] - x, a.position[2] - z) - Math.hypot(b.position[0] - x, b.position[2] - z)).slice(0, LIVE_LIGHTS)
     const farthest = (x: number, z: number) => Math.max(...nearest(x, z).map((one) => Math.hypot(one.position[0] - x, one.position[2] - z)))
 
     // built, the lights stand round the spawn
@@ -95,7 +96,7 @@ describe('the light the buildings throw', () => {
 
     // walked to the far corner of town, they are the ones there
     const far = { x: world.grid.width * world.cellSize * 0.8, z: world.grid.height * world.cellSize * 0.8 }
-    city.lights.follow(far.x, far.z)
+    city.follow(far.x, far.z)
     const there = lightsIn(city).map(litFrom)
     for (const light of there) expect(Math.hypot(light.x - far.x, light.z - far.z)).toBeLessThanOrEqual(farthest(far.x, far.z) + 1e-6)
     expect(there.some((light) => atSpawn.some((was) => was.x === light.x && was.z === light.z))).toBe(false)
