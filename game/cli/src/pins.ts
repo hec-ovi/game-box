@@ -32,7 +32,7 @@ export async function pinDesigns(world: World, manifest: URL = PACK_MANIFEST): P
   for (const plot of world.plots()) {
     // a shape the pack has no building for keeps falling back to the kit, and
     // the file says nothing about it rather than naming a model it never chose
-    const design = catalogue.design(plot, sizeOf(plot, world))
+    const design = catalogue.design(plot, sizeOf(plot, world), suitsOf(plot, world))
     if (!design) continue
 
     const written = world.recordDesign(plot.id, { pack: catalogue.pack, ...design })
@@ -51,6 +51,11 @@ function sizeOf(plot: Plot, world: World) {
     depth: plot.rect.h * world.cellSize,
     height: heightOf(plot.storeys),
   }
+}
+
+/** The words the pick matches a look on. A world refuses a plot whose word no charter declares, so there is always one. */
+function suitsOf(plot: Plot, world: World) {
+  return world.charter(plot.kind)!.suits
 }
 
 /** The catalogue, or one line saying why the city goes out unpinned. */

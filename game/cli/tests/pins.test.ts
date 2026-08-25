@@ -25,19 +25,24 @@ function sizeOf(plot: Plot, world: World) {
   return { width: plot.rect.w * world.cellSize, depth: plot.rect.h * world.cellSize, height: heightOf(plot.storeys) }
 }
 
-/** The same pack with one more look in it, which is what a pack update is: a ninth building at every shape. */
+/** The words the pick matches a look on: the plot's charter's. */
+function suitsOf(plot: Plot, world: World) {
+  return world.charter(plot.kind)!.suits
+}
+
+/** The same pack with one more look in it, which is what a pack update is: a ninth building at every shape, suiting everything the shape suits. */
 async function grown(): Promise<Catalogue> {
   const manifest = JSON.parse(await readFile(PACK_MANIFEST, 'utf8')) as {
-    models: Array<{ id: string; look: string; kinds: string[] }>
+    models: Array<{ id: string; look: string; tags: string[] }>
   }
-  const later = new Map<string, { id: string; look: string; kinds: string[] }>()
+  const later = new Map<string, { id: string; look: string; tags: string[] }>()
   for (const model of manifest.models) {
     const shape = model.id.slice(model.look.length + 1)
-    const at = later.get(shape) ?? { ...model, id: `later-a-${shape}`, look: 'later-a', kinds: [] }
-    at.kinds = [...new Set([...at.kinds, ...model.kinds])]
+    const at = later.get(shape) ?? { ...model, id: `later-a-${shape}`, look: 'later-a', tags: [] }
+    at.tags = [...new Set([...at.tags, ...model.tags])]
     later.set(shape, at)
   }
-  return Catalogue.parse({ ...manifest, version: '1.5.0', models: [...manifest.models, ...later.values()] })
+  return Catalogue.parse({ ...manifest, version: '1.8.0', models: [...manifest.models, ...later.values()] })
 }
 
 let pack: Catalogue
@@ -64,16 +69,26 @@ describe('a city gb built', () => {
     expect(pinned.every((plot) => plot.design?.pack === pack.pack)).toBe(true)
   })
 
+  it('pins each plot to the model its charter would be drawn with', () => {
+    // the pin is the pick made against the plot's own charter: any other
+    // suits, or any other size, names a building the plot is not drawn with
+    const { world } = city
+    for (const plot of world.plots().filter((plot) => plot.design)) {
+      expect(plot.design?.model).toBe(pack.design(plot, sizeOf(plot, world), suitsOf(plot, world))?.model)
+    }
+  })
+
   it('draws the same buildings after the pack has grown', async () => {
     // the whole point of a pack: add to a city later and every building that
     // was already there stays the building it was
     const later = await grown()
-    const plots = city.world.plots()
+    const { world } = city
+    const plots = world.plots()
 
     const moved = plots.filter(
       (plot) =>
-        designFor(later, plot, sizeOf(plot, city.world))?.model !==
-        designFor(pack, plot, sizeOf(plot, city.world))?.model,
+        designFor(later, plot, sizeOf(plot, world), suitsOf(plot, world))?.model !==
+        designFor(pack, plot, sizeOf(plot, world), suitsOf(plot, world))?.model,
     )
     expect(moved.map((plot) => plot.id)).toEqual([])
 
@@ -81,7 +96,8 @@ describe('a city gb built', () => {
     // city off the catalogue instead of off the file
     const repicked = plots.filter(
       (plot) =>
-        later.design(plot, sizeOf(plot, city.world))?.model !== pack.design(plot, sizeOf(plot, city.world))?.model,
+        later.design(plot, sizeOf(plot, world), suitsOf(plot, world))?.model !==
+        pack.design(plot, sizeOf(plot, world), suitsOf(plot, world))?.model,
     )
     expect(repicked.length).toBeGreaterThan(0)
   })

@@ -1,6 +1,7 @@
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { run } from '../src/index.ts'
 
@@ -11,6 +12,7 @@ function capture() {
 }
 
 const dir = mkdtempSync(join(tmpdir(), 'gb-cli-'))
+const fixtures = new URL('./fixtures/', import.meta.url)
 
 async function buildTown(name = 'town.json', extra: string[] = []) {
   const file = join(dir, name)
@@ -44,12 +46,35 @@ describe('gb', () => {
 
   it('does not write a bundle it cannot open again', async () => {
     // the read-back is the promise: a file nobody can load is a worse outcome
-    // than no file, and it used to be reported as success
+    // than no file
     const { file, code } = await buildTown('readable.json')
     expect(code).toBe(0)
 
     const io = capture()
     expect(await run(['check', file], io.io)).toBe(0)
+  })
+
+  it('builds to a history you wrote, and says which kinds of place it declared were dropped', async () => {
+    // a charter the city would not take must never go quietly: the file has no
+    // place for it, so the report is the one place it is said
+    const history = fileURLToPath(new URL('history.json', fixtures))
+    const { file, code, out } = await buildTown('storied.json', ['--history', history])
+    expect(code).toBe(0)
+
+    const text = out.join('\n')
+    expect(text).toContain('1 kinds of place the history declared were dropped')
+    expect(text).toMatch(/lighthouse: .*sprawl/)
+
+    const world = JSON.parse(readFileSync(file, 'utf8')).world
+    expect(world.premise.build.mustHave).toEqual(['customs'])
+    expect(world.plots.some((plot: { kind: string }) => plot.kind === 'customs')).toBe(true)
+    expect(world.charters.some((charter: { word: string }) => charter.word === 'lighthouse')).toBe(false)
+  })
+
+  it('refuses a history file it cannot read', async () => {
+    const { code, err } = await buildTown('unstoried.json', ['--history', join(dir, 'no-such-history.json')])
+    expect(code).toBe(1)
+    expect(err.join('\n')).toContain('no-such-history.json cannot be read')
   })
 
   it('refuses a city too big for a world to hold', async () => {
@@ -85,6 +110,16 @@ describe('gb', () => {
     expect(text).toMatch(/^M+$/m) // the mountain ring
   })
 
+  it('says when a city was written before charters', async () => {
+    // the file is read against the presets it was drawn with, and whoever
+    // checks it should know the city is older than the format it opens under
+    const file = fileURLToPath(new URL('before-charters.json', fixtures))
+    const io = capture()
+
+    expect(await run(['check', file], io.io)).toBe(0)
+    expect(io.out.join('\n')).toContain('written before charters')
+  })
+
   it('refuses a bundle that was edited after it was sealed', async () => {
     const { file } = await buildTown('tampered.json')
     const bundle = JSON.parse(readFileSync(file, 'utf8'))
@@ -111,5 +146,9 @@ describe('gb', () => {
     const missing = capture()
     expect(await run(['check'], missing.io)).toBe(1)
     expect(missing.err.join('\n')).toContain('needs a bundle file')
+
+    const absent = capture()
+    expect(await run(['inspect', join(dir, 'no-such-city.json')], absent.io)).toBe(1)
+    expect(absent.err.join('\n')).toContain('no-such-city.json cannot be read')
   })
 })

@@ -1,16 +1,16 @@
 # @gb/cli contract
 
-contractVersion: 0.2.0
+contractVersion: 0.3.0
 
 ## Purpose
 
-The terminal surface: generate a city, pin it to the art it was drawn from, write it as a bundle, and look at what came out.
+The terminal surface: generate a city, to a history of your own if you wrote one, pin it to the art it was drawn from, write it as a bundle, and look at what came out.
 
 ## Inputs
 
 | Command | Arguments | Preconditions |
 |---|---|---|
-| `gb build` | `--theme --seed --blocks NxN --cells --density --storeys --model --out` | `--model` needs the sidecar running on `GAME_BOX_URL`, or it falls back per call |
+| `gb build` | `--theme --seed --blocks NxN --cells --density --storeys --exits --model --history --out` | `--model` needs the sidecar running on `GAME_BOX_URL`, or it falls back per call. `--history <file>` is a JSON object: `@gb/world`'s `Premise` plus `charters`, each a `CharterSchema`; it is taken as the narrator's answer to `writePremise`, so the forge gates it the way it gates a model's and the report says what was dropped |
 | `gb inspect <file>` | a bundle written by `gb build` | |
 | `gb check <file>` | a bundle | |
 | `gb help` | | |
@@ -21,15 +21,17 @@ The terminal surface: generate a city, pin it to the art it was drawn from, writ
 
 | Command | Result |
 |---|---|
-| `build` | a bundle file, plus a summary: size, counts, quests written and quests rejected, the pack the city was designed against and how many buildings are pinned to it, how many model calls fell back, the content hash |
+| `build` | a bundle file, plus a summary: size, counts, every kind of place the history declared that the city would not take with why (`Forge.build`'s `dropped`, one line each, never left out), whether nothing of a `--history` file could be read as a history, quests written and quests rejected, the pack the city was designed against and how many buildings are pinned to it, how many model calls fell back, the content hash |
 | `inspect` | the grid as characters, then every place with who is in it, then every quest with its steps |
 | `check` | opens the bundle the way the game would, then walks the city to prove every building can be reached |
+
+`inspect` and `check` say first when the file was written before charters and is read against the presets it was drawn with (`Bundle.open`'s `upgraded`). What a file cannot say is what its build dropped: the report at `build` is the one place that is said.
 
 Exit code is 0 when the command did what it says, 1 otherwise.
 
 ## Errors (closed set)
 
-Nothing throws at the boundary. A failure prints why on `err` and exits 1: an unbuildable brief, a city the world took a catalogue for and then refused a design for, a bundle that will not open (with the first ten problems), a missing file argument, an unknown command.
+Nothing throws at the boundary. A failure prints why on `err` and exits 1: an unbuildable brief, a history file that is not there or not a JSON object, a city the world took a catalogue for and then refused a design for, a bundle file that cannot be read, a bundle that will not open (with the first ten problems, or the words of a kind of place it does not describe), a missing file argument, an unknown command.
 
 ## What a built city is pinned to
 
@@ -49,9 +51,12 @@ seals anything.
 - **The choice goes in the document**: every plot the pack has a shape for is
   recorded with `world.recordDesign`, against the size `@gb/scene` hands the
   dressing (`rect.w` and `rect.h` in cells times `cellSize`, and
-  `heightOf(storeys)`). A pin made against any other size names a model of the
-  wrong shape, which the pack refuses to honour, so the plot falls back to the
-  kit and the pin bought nothing.
+  `heightOf(storeys)`) and the `suits` of the plot's charter
+  (`world.charter(plot.kind)`), which is what the pick matches a look on. A pin
+  made against any other size names a model of the wrong shape, which the pack
+  refuses to honour, so the plot falls back to the kit and the pin bought
+  nothing; one made against other suits names a building the plot is not
+  drawn with.
 - **A plot the pack has no shape for is not pinned**, and keeps falling back to
   `@gb/kitbash`. The file promises nothing it did not choose.
 - **A pack that cannot be read pins nothing at all**, and the summary says so.
@@ -88,4 +93,4 @@ is no way to turn it off.
 
 ## How to modify this blackbox safely
 
-A new command is a new module plus a line in the switch and in the usage text. Keep `run(argv, io)` free of `process` and `console`. What a city is pinned to lives in `src/pins.ts` alone; the size a pin is made against is the one `@gb/scene` hands `Dressing.building`, so it moves only when that does. The `gb` script runs on `node --experimental-transform-types`, which is what `@gb/prefab` needs to load from source. Run `pnpm --filter @gb/cli test`.
+A new command is a new module plus a line in the switch and in the usage text. Keep `run(argv, io)` free of `process` and `console`. Who writes a city is `src/narrator.ts` alone: the model or the offline narrator, and a history file in place of either's story. Opening a file for `inspect` and `check` is `src/open.ts`, which is where a refusal is put into words. What a city is pinned to lives in `src/pins.ts` alone; the size a pin is made against is the one `@gb/scene` hands `Dressing.building`, so it moves only when that does. `tests/fixtures/before-charters.json` is a `schemaVersion` 1 city kept as it was shared, the proof that an older file is opened and said to be older; `tests/fixtures/history.json` is a history with one charter the gate takes and one it drops. The `gb` script runs on `node --experimental-transform-types`, which is what `@gb/prefab` needs to load from source. Run `pnpm --filter @gb/cli test`.

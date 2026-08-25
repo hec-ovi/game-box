@@ -1,0 +1,53 @@
+{
+  "livesOn": "Smuggling through the customs house, and the fishing that covers for it.",
+  "happened": "The customs officer who looked the other way for twenty years died in the spring, and his replacement does not.",
+  "stake": "Whether the town keeps its trade or its officer.",
+  "sides": [
+    { "name": "the skippers", "wants": "the new officer gone or bought" },
+    { "name": "the customs house", "wants": "one clean season on the books" }
+  ],
+  "common": ["The old officer is buried behind the chapel.", "Nobody fishes on a Sunday."],
+  "build": { "moreOf": ["bar"], "fewerOf": ["office"], "mustHave": ["customs"] },
+  "charters": [
+    {
+      "word": "customs",
+      "label": "customs house",
+      "blade": "CUSTOMS",
+      "names": ["{family} Customs House", "The {adjective} Customs"],
+      "rumours": ["The new officer keeps the books himself."],
+      "share": 2,
+      "prominence": "notable",
+      "residential": false,
+      "size": { "storeys": [1, 2], "sprawl": "wide" },
+      "street": { "frontage": "painted", "openness": "even", "material": "masonry", "voice": "sober" },
+      "access": "admitted",
+      "service": "desk",
+      "work": ["desk", "watch"],
+      "holding": ["papers", "goods"],
+      "finish": "civic",
+      "rooms": {
+        "hall": { "use": "waiting-room", "name": "the public counter" },
+        "main": { "use": "desk-floor", "name": "the clerks' room" },
+        "services": [{ "use": "bulk-store", "name": "the bonded store", "weight": 2 }]
+      }
+    },
+    {
+      "word": "lighthouse",
+      "label": "lighthouse",
+      "blade": "LIGHT",
+      "names": ["The {adjective} Light"],
+      "rumours": [],
+      "share": 1,
+      "prominence": "landmark",
+      "residential": false,
+      "size": { "storeys": [6, 8], "sprawl": "tower" },
+      "street": { "frontage": "glass", "openness": "sparse", "material": "masonry", "voice": "quiet" },
+      "access": "private",
+      "service": "none",
+      "work": ["watch"],
+      "holding": [],
+      "finish": "worn",
+      "rooms": { "main": { "use": "store", "name": "the lamp room" }, "services": [] }
+    }
+  ]
+}

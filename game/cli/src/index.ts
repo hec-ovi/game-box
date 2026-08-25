@@ -20,6 +20,7 @@ const USAGE = `gb - build and inspect game-box cities
     --storeys <n>           tallest building allowed (default: 3)
     --exits <1..4>          how many roads lead out of town (default: 1)
     --model                 use the local model for names and quests, not the offline narrator
+    --history <file>        build to a history you wrote (JSON: the premise and the charters it declares)
     --out <file>            where to write it (default: city.json)
 
   gb inspect <file>         print a bundle: its grid, its places, its quests
@@ -57,6 +58,7 @@ export interface BuildArgs {
   storeys: string
   exits: string
   model: boolean
+  history?: string
   out: string
 }
 
@@ -72,6 +74,7 @@ function parse(argv: readonly string[]): BuildArgs {
       storeys: { type: 'string', default: '3' },
       exits: { type: 'string', default: '1' },
       model: { type: 'boolean', default: false },
+      history: { type: 'string' },
       out: { type: 'string', default: 'city.json' },
     },
     allowPositionals: false,

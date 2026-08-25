@@ -1,15 +1,20 @@
 import { writeFileSync } from 'node:fs'
 import { Bundle } from '@gb/bundle'
-import { Forge, OfflineNarrator, type Narrator } from '@gb/forge'
-import { Scribe } from '@gb/scribe'
+import { Forge } from '@gb/forge'
 import type { BuildArgs, Io } from './index.ts'
+import { narratorFor } from './narrator.ts'
+import { detail } from './open.ts'
 import { pinDesigns } from './pins.ts'
 
 /** Generate a city and write it out as one bundle file. */
 export async function build(args: BuildArgs, io: Io): Promise<number> {
   const [across, down] = args.blocks.split('x').map((n) => Number.parseInt(n, 10))
-  const scribe = args.model ? new Scribe({ seed: args.seed }) : undefined
-  const narrator: Narrator = scribe ?? new OfflineNarrator(args.seed)
+  const writers = narratorFor(args)
+  if ('unreadable' in writers) {
+    io.err(`cannot build: ${writers.unreadable}`)
+    return 1
+  }
+  const { narrator, scribe } = writers
 
   const started = Date.now()
   const built = await new Forge(narrator).build({
@@ -26,11 +31,11 @@ export async function build(args: BuildArgs, io: Io): Promise<number> {
   })
   if (!built.ok) {
     io.err(`cannot build: ${built.error.code}`)
-    for (const problem of problemsOf(built.error)) io.err(`  ${problem}`)
+    for (const problem of detail(built.error)) io.err(`  ${problem}`)
     return 1
   }
 
-  const { world, quests, rejected } = built.value
+  const { world, quests, rejected, dropped } = built.value
 
   // pin the city to the art it was designed against before it is sealed: the
   // hash covers the pins, and a file written without them is re-skinned by
@@ -44,11 +49,11 @@ export async function build(args: BuildArgs, io: Io): Promise<number> {
   const bundle = await Bundle.pack(world, quests, { generator: 'gb build', requires })
 
   // read it back the way the game will: writing a file nobody can open is a
-  // worse failure than not writing one, and it used to be reported as success
+  // worse failure than not writing one
   const reopened = await Bundle.open(JSON.parse(JSON.stringify(bundle)))
   if (!reopened.ok) {
     io.err(`built a bundle that will not open: ${reopened.error.code}`)
-    for (const problem of problemsOf(reopened.error)) io.err(`  ${problem}`)
+    for (const problem of detail(reopened.error)) io.err(`  ${problem}`)
     return 1
   }
   writeFileSync(args.out, `${JSON.stringify(bundle, null, 2)}\n`)
@@ -56,6 +61,11 @@ export async function build(args: BuildArgs, io: Io): Promise<number> {
   const seconds = ((Date.now() - started) / 1000).toFixed(1)
   io.out(`${world.name} (${world.theme})`)
   io.out(`  ${world.grid.width}x${world.grid.height} cells at ${world.cellSize}m, ${world.plots().length} buildings, ${world.npcs().length} people, ${world.items().length} things`)
+  if (args.history && !world.premise()) io.out(`  nothing of ${args.history} could be read as a history, so the town has no story`)
+  // a kind of place the history declared and the city would not take is the
+  // one thing the file cannot say, so the report says it loud
+  if (dropped.length) io.out(`  ${dropped.length} kinds of place the history declared were dropped`)
+  for (const gone of dropped) io.out(`    ${gone.word}: ${gone.reason}`)
   io.out(`  ${quests.length} quests${rejected.length ? `, ${rejected.length} rejected` : ''}`)
   for (const bad of rejected) {
     io.out(`    quest ${bad.index} rejected: ${bad.problems[0]?.message ?? 'unknown'}`)
@@ -70,9 +80,4 @@ export async function build(args: BuildArgs, io: Io): Promise<number> {
   }
   io.out(`  written to ${args.out} in ${seconds}s (${bundle.contentHash.slice(0, 12)})`)
   return 0
-}
-
-function problemsOf(error: { code: string } & Record<string, unknown>): string[] {
-  const list = (error.problems ?? error.violations) as Array<Record<string, string>> | undefined
-  return (list ?? []).slice(0, 10).map((p) => `${p.where ?? p.path}: ${p.message}`)
 }
