@@ -1,6 +1,6 @@
 # @gb/world contract
 
-contractVersion: 0.13.0
+contractVersion: 0.14.0
 
 ## Purpose
 
@@ -48,7 +48,7 @@ take. A refusal writes nothing: no id, no ground, no record.
 | `CELL_KINDS`, `CELL`, `Grid` | the closed cell vocabulary; the char each kind is written as; the matrix | what each kind means for walking, driving and drawing, see below |
 | `World.charters()`, `World.charter(word)` | `ResolvedCharter[]`; `ResolvedCharter` or nothing | the kinds of place this city has: its own list when the file carries one, else `SHIPPED_CHARTERS`. Nothing means no charter declares the word |
 | `CharterSchema`, `ResolvedCharterSchema`, `ChartersSchema` | zod, with `charterContract`, `resolvedCharterContract`, `chartersContract` | what a generator writes, what the file carries, and the whole list, see below |
-| `SHIPPED_CHARTERS`, `BUILDING_KINDS` | fourteen `ResolvedCharter`s; their words as a tuple | the presets every city was built from before charters, in the order a mix draws them. `BUILDING_KINDS` and `BuildingKind` are the preset word list for this release only |
+| `SHIPPED_CHARTERS` | fourteen `ResolvedCharter`s | the presets a city that declares no charters of its own is built from, in the order a mix draws them |
 | `ROOM_USES`, `FRONTAGES`, `OPENNESS`, `MATERIALS`, `SIGN_VOICES`, `ACCESS_KINDS`, `TRANSITS`, `SERVICES`, `WORK_KINDS`, `HOLDINGS`, `FINISHES`, `PROMINENCES`, `SPRAWLS`, `KIT_PIECES` | closed lists | the axes a charter is written on, and the wall pieces a resolved one may name |
 | `HOLDING_ARCHETYPES` | `Record<Holding, ItemArchetype[]>` | what each class of holding is made of; every archetype is in exactly one class |
 | `ROOM_USE_KIND`, `roomKindOf(spec)`, `roomUseOf(room, charter)` | `Record<RoomUse, RoomKind>`; `RoomKind`; `RoomUse` | the label a use cuts to, the label a charter's room takes, and which routine dressed a room, read off its label through the charter when the file left `use` out |
@@ -129,11 +129,11 @@ twice; inside a charter every map's keys are sorted, `work`, `holding` and
 rounded to three decimals. A generator that dithers or reorders its output
 cannot move a building, and reading a document twice gives the same bytes.
 
-**The presets.** `SHIPPED_CHARTERS` is the fourteen kinds every city was
-built from before charters, each carrying the resolved values it has always
-been drawn with, in the order a mix has always drawn them. A file with no
-`charters` is read against exactly these, so a city exported before charters
-loads, checks and hashes as it did. A file that carries `charters` is read
+**The presets.** `SHIPPED_CHARTERS` is the fourteen kinds a city that
+declares none of its own is built from, each carrying the resolved values it
+has always been drawn with, in the order a mix draws them. A file with no
+`charters` is read against exactly these, so a city exported by any generator
+loads, checks and hashes the same. A file that carries `charters` is read
 against those alone: it is self-describing, and a preset it wants has to be
 in the list. Presets are all `access: open`, which is how every door opens
 today, and `station` carries `transit: subway`, so every city built from the

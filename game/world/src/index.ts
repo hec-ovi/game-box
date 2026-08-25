@@ -108,7 +108,7 @@ export {
   type Transit,
 } from './model/traits.ts'
 export { KIT_PIECES, type KitPiece } from './model/pieces.ts'
-export { SHIPPED_CHARTERS, BUILDING_KINDS, type BuildingKind } from './charters/presets/index.ts'
+export { SHIPPED_CHARTERS } from './charters/presets/index.ts'
 export { HOLDING_ARCHETYPES } from './charters/holdings.ts'
 export { ROOM_USE_KIND, roomKindOf, roomUseOf } from './charters/room-use.ts'
 export {

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  BUILDING_KINDS,
   HOLDING_ARCHETYPES,
   ITEM_ARCHETYPES,
   MAX_CHARTERS,
@@ -51,6 +50,24 @@ function jail(over: Partial<ResolvedCharter> = {}): ResolvedCharter {
   }
 }
 
+/** The words of the fourteen presets, in the order a town's mix draws them. */
+const PRESET_WORDS = [
+  'house',
+  'apartment',
+  'bar',
+  'cafe',
+  'restaurant',
+  'shop',
+  'market',
+  'office',
+  'workshop',
+  'warehouse',
+  'clinic',
+  'hotel',
+  'station',
+  'chapel',
+]
+
 const spec = { name: 'Holding', theme: 'grim', seed: 'c1', width: 16, height: 16 }
 const site = { rect: { x: 2, y: 1, w: 4, h: 4 }, entrance: { cell: { x: 3, y: 5 }, facing: 'south' as const }, storeys: 2, style: 'kit' }
 
@@ -63,8 +80,8 @@ function town(charters: readonly ResolvedCharter[]): World {
 describe('the kinds of place a city has', () => {
   it('reads the fourteen presets, in the order a mix has always drawn them, into a city that declares none', () => {
     const world = World.create(spec)
-    expect(world.charters().map((c) => c.word)).toEqual([...BUILDING_KINDS])
-    expect(SHIPPED_CHARTERS.map((c) => c.word)).toEqual([...BUILDING_KINDS])
+    expect(world.charters().map((c) => c.word)).toEqual(PRESET_WORDS)
+    expect(SHIPPED_CHARTERS.map((c) => c.word)).toEqual(PRESET_WORDS)
     expect('charters' in world.toJSON()).toBe(false)
 
     const bar = world.charter('bar')

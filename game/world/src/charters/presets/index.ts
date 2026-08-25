@@ -6,31 +6,13 @@ import { market, shop } from './retail.ts'
 import { office, warehouse, workshop } from './work.ts'
 
 /**
- * The words of the fourteen shipped presets, in the order a town's mix has
- * always drawn them: the order and length of this list are part of every
- * existing city's identity, so neither moves. A city that declares no
- * charters of its own is built from exactly these.
+ * The fourteen presets a city that declares no charters of its own is built
+ * from, each carrying the resolved values it has always been drawn with and
+ * read through the same schema a file's charters are, so they are in the same
+ * canonical form. The order is the order a town's mix draws them, and it is
+ * part of every existing city's identity, so it does not move.
  */
-export const BUILDING_KINDS = [
-  'house',
-  'apartment',
-  'bar',
-  'cafe',
-  'restaurant',
-  'shop',
-  'market',
-  'office',
-  'workshop',
-  'warehouse',
-  'clinic',
-  'hotel',
-  'station',
-  'chapel',
-] as const
-
-export type BuildingKind = (typeof BUILDING_KINDS)[number]
-
-const PRESETS: Record<BuildingKind, ResolvedCharter> = {
+export const SHIPPED_CHARTERS: readonly ResolvedCharter[] = [
   house,
   apartment,
   bar,
@@ -45,11 +27,4 @@ const PRESETS: Record<BuildingKind, ResolvedCharter> = {
   hotel,
   station,
   chapel,
-}
-
-/**
- * The fourteen presets, each carrying the resolved values it has always been
- * drawn with, read through the same schema a file's charters are, so they are
- * in the same canonical form.
- */
-export const SHIPPED_CHARTERS: readonly ResolvedCharter[] = BUILDING_KINDS.map((word) => ResolvedCharterSchema.parse(PRESETS[word]))
+].map((preset) => ResolvedCharterSchema.parse(preset))
