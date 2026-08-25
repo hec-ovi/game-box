@@ -2,7 +2,7 @@ import { METRICS, ROAD_KINDS, World, type RoadSegment } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { LaneGraph, Traffic, type Lane, type Point } from '../src/index.ts'
 import { SPEED_LIMIT } from '../src/settings.ts'
-import { lattice } from './city.ts'
+import { addRoad, lattice } from './city.ts'
 
 const CELL = 2
 
@@ -58,7 +58,8 @@ function bend(): World {
   world.paint({ x: 0, y: 0, w: 60, h: 60 }, 'building')
   world.paint({ x: 0, y: 40 - half, w: 60, h: cells }, 'street')
   world.paint({ x: 40 - half, y: 0, w: cells, h: 60 }, 'street')
-  world.addRoad(
+  addRoad(
+    world,
     [
       { id: 'node_0001', cell: { x: 5, y: 40 } },
       { id: 'node_0002', cell: { x: 40, y: 40 } },

@@ -2,7 +2,7 @@ import { METRICS, ROAD_KINDS, World } from '@gb/world'
 import { Object3D } from 'three'
 import { describe, expect, it } from 'vitest'
 import { Traffic, type CarBodies, type CarBody, type CarSpawn, type CarView } from '../src/index.ts'
-import { lattice } from './city.ts'
+import { addRoad, lattice } from './city.ts'
 
 const CAR_LENGTH = METRICS.vehicle.carLength
 const HALF_WIDTH = METRICS.vehicle.carWidth / 2
@@ -59,7 +59,8 @@ describe('Traffic', () => {
     expect(Traffic.fromWorld(roadless)).toEqual({ ok: false, error: { code: 'no-lanes', message: expect.any(String) } })
 
     const dangling = World.create({ name: 'Nowhere', theme: 'test', seed: 's', width: 20, height: 20 })
-    dangling.addRoad(
+    addRoad(
+      dangling,
       [{ id: 'node_0001', cell: { x: 4, y: 4 } }],
       [{ id: 'road_0001', from: 'node_0001', to: 'node_0002', kind: 'street', lanes: 2 }],
     )

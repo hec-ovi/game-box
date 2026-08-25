@@ -1,4 +1,4 @@
-import { METRICS, World, type RoadSegment } from '@gb/world'
+import { METRICS, World, type RoadNode, type RoadSegment } from '@gb/world'
 
 export interface Lattice {
   /** Junctions across and down. */
@@ -37,23 +37,34 @@ export function lattice({ across, down, span, seed = 'traffic-test', kind = 'str
   for (const strip of strips) world.paint({ ...strip, x: strip.x - 1, y: strip.y - 1, w: strip.w + 2, h: strip.h + 2 }, 'sidewalk')
   for (const strip of strips) world.paint(strip, 'street')
 
-  const nodes = []
+  const nodes: RoadNode[] = []
   const segments: RoadSegment[] = []
+  const join = (from: string, to: string) => segments.push({ id: roadId(segments.length), from, to, kind, lanes: road.lanes })
   for (let j = 0; j < rows.length; j++) {
     for (let i = 0; i < columns.length; i++) {
-      nodes.push({ id: id(i, j), cell: { x: columns[i]!, y: rows[j]! } })
-      if (i > 0) segments.push({ id: `road_${j}_${i}_h`, from: id(i - 1, j), to: id(i, j), kind, lanes: road.lanes })
-      if (j > 0) segments.push({ id: `road_${j}_${i}_v`, from: id(i, j - 1), to: id(i, j), kind, lanes: road.lanes })
+      nodes.push({ id: nodeId(i, j), cell: { x: columns[i]!, y: rows[j]! } })
+      if (i > 0) join(nodeId(i - 1, j), nodeId(i, j))
+      if (j > 0) join(nodeId(i, j - 1), nodeId(i, j))
     }
   }
-  world.addRoad(nodes, segments)
+  addRoad(world, nodes, segments)
   return world
+}
+
+/** `World.addRoad` for a fixture: a refused record is a broken fixture, so it throws. */
+export function addRoad(world: World, nodes: readonly RoadNode[], segments: readonly RoadSegment[]): void {
+  const added = world.addRoad(nodes, segments)
+  if (!added.ok) throw new Error(`fixture road refused: ${JSON.stringify(added.error)}`)
 }
 
 function axis(count: number, span: number, margin: number): number[] {
   return Array.from({ length: count }, (_, i) => margin + i * span)
 }
 
-function id(i: number, j: number): string {
+function nodeId(i: number, j: number): string {
   return `node_${String(j * 100 + i).padStart(4, '0')}`
+}
+
+function roadId(n: number): string {
+  return `road_${String(n).padStart(4, '0')}`
 }
