@@ -1,6 +1,6 @@
 import { Driver, type Handling } from './handling.ts'
 import { buried, fits, patchesOf } from './geometry.ts'
-import type { Blocking, DriveBody, DriveGround, DriveSolid, Point, Rolling } from './ports.ts'
+import type { Blocking, DriveBody, DriveGround, DriveSolid, Moving, Point } from './ports.ts'
 
 /**
  * The car the player owns: where it stands, what is drawn for it, and what
@@ -11,7 +11,7 @@ import type { Blocking, DriveBody, DriveGround, DriveSolid, Point, Rolling } fro
  * head-on one stops it. Turning is tried on its own before either, so a car
  * wedged against a wall cannot rotate its nose into it.
  */
-export class PlayerCar implements Rolling {
+export class PlayerCar implements Moving {
   readonly id: string
   readonly model: string
   readonly driver: Driver

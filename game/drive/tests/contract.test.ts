@@ -221,10 +221,12 @@ describe('getting in and out', () => {
     for (let t = 0; t < 2; t += STEP) driving.update(STEP)
 
     expect(driving.car!.z).toBeGreaterThan(4)
+    expect(driving.car!.speed).toBeGreaterThan(3)
     driving.act()
     const parked = driving.car!.z
     for (let t = 0; t < 2; t += STEP) driving.update(STEP)
     expect(driving.car!.z).toBe(parked)
+    expect(driving.car!.speed).toBe(0)
   })
 
   it('will not drive through a building', () => {

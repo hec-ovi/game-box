@@ -37,7 +37,7 @@ The car the player drives: walking up to one on the road and taking it, how it a
 | Param | Type | Postconditions |
 |---|---|---|
 | `Driving.aboard` | boolean | true from the frame the player gets in to the frame they get out |
-| `Driving.car` | `Rolling` or undefined | the player's car, driving or parked: `x`, `z`, `heading` |
+| `Driving.car` | `Moving` or undefined | the player's car, driving or parked: `x`, `z`, `heading`, `speed` in metres per second along the heading, negative in reverse and 0 parked. A crowd hazard feed reads it to tell a car coming from one standing |
 | `Driving.target()` | `DriveTarget` or undefined | `{ kind: 'drive', id, label, at }`, the same shape a game's own target list holds. `at` is the point on the bodywork nearest the player, so reach is measured to the car and not to its middle |
 | `Driving.passengers()` | `readonly string[]` | the npc ids riding, in seat order |
 | `Driving.rolling()` | `readonly Rolling[]` | the parked car as an oriented rectangle to walk into. Empty while somebody is in it |

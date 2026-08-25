@@ -14,6 +14,7 @@ import type {
   Rider,
   Riders,
   RoadTraffic,
+  Moving,
   Rolling,
 } from './ports.ts'
 import { DRIVER, EYE_HEIGHT, EYE_ROLL, spotAt } from './seats.ts'
@@ -95,7 +96,7 @@ export class Driving {
   }
 
   /** The player's car, driving or parked. */
-  get car(): Rolling | undefined {
+  get car(): Moving | undefined {
     return this.#car
   }
 

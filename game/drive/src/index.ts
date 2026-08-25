@@ -19,6 +19,7 @@ export type {
   RiderCrowd,
   Riders,
   RoadTraffic,
+  Moving,
   Rolling,
   Seat,
 } from './ports.ts'

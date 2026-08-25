@@ -12,6 +12,11 @@ export interface Rolling extends Point {
   readonly heading: number
 }
 
+/** Something rolling that also says how fast: metres per second along its heading, negative in reverse. */
+export interface Moving extends Rolling {
+  readonly speed: number
+}
+
 /** A round patch of road something takes up. */
 export interface Blocking extends Point {
   readonly radius: number
