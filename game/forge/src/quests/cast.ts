@@ -102,9 +102,14 @@ export class CityCast {
     }
   }
 
-  /** Places with somebody in them: what the amount of work in a town is measured against. */
+  /** Places with somebody in them. */
   get peopled(): readonly CastPlace[] {
     return this.#peopled
+  }
+
+  /** Everybody a job can name: what the amount of work in a town is measured against. */
+  get people(): readonly CastPerson[] {
+    return this.#everyone
   }
 
   /**

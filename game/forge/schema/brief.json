@@ -13,16 +13,22 @@
       "maxLength": 120
     },
     "blocksX": {
-      "default": 3,
+      "default": 20,
       "type": "integer",
       "minimum": 1,
       "maximum": 57
     },
     "blocksY": {
-      "default": 3,
+      "default": 20,
       "type": "integer",
       "minimum": 1,
       "maximum": 57
+    },
+    "openPlaces": {
+      "default": 3,
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 24
     },
     "blockCells": {
       "type": "integer",

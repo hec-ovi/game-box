@@ -1,15 +1,17 @@
 import type { Rng } from '@gb/kit'
 import type { PlotSite } from './plots.ts'
 
-/** A town this many blocks or bigger has somewhere to board. */
-const FIRST_AT = 4
+/**
+ * Metres of town between one station and the next: about ten blocks, which is
+ * a walk of six minutes at the far end of it. Where fast travel boards is a
+ * distance, so a city has a handful of entrances however many plots it holds
+ * and a town smaller than half that spacing has none.
+ */
+const SPACING = 500
 
-/** And one more station for every this many blocks on top. */
-const PER_STATION = 20
-
-/** How many stations a town of this many blocks has, whatever the mix rolls. */
-export function stationsWanted(blocks: number): number {
-  return blocks < FIRST_AT ? 0 : 1 + Math.floor(blocks / PER_STATION)
+/** How many stations a town this many metres across has, whatever the mix rolls. */
+export function stationsWanted(span: number): number {
+  return Math.round(span / SPACING)
 }
 
 /**

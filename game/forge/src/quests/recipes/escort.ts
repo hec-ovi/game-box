@@ -14,7 +14,7 @@ export class EscortRun extends RecipeBase {
   override readonly leads = true
 
   weight(cast: CityCast, flavour: Flavour): number {
-    if (cast.peopled.length < 3) return 0
+    if (cast.peopled.length < 2) return 0
     return flavour === 'alpine' || flavour === 'agrarian' ? 7 : 5
   }
 

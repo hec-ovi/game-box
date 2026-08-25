@@ -32,6 +32,11 @@ const narrator = new Recording('club-1')
 const club = await new Forge(narrator).build({ theme: 'dense neon port city', seed: 'club-1', blocksX: 3, blocksY: 3 })
 if (!club.ok) throw new Error(JSON.stringify(club.error).slice(0, 400))
 const neon = club.value.world
+
+/** A brief that asks for more than the three places a city opens by default: what a wider town holds. */
+const wideNarrator = new Recording('wide-1')
+const wide = await new Forge(wideNarrator).build({ theme: 'dense neon port city', seed: 'wide-1', blocksX: 5, blocksY: 5, openPlaces: 10 })
+if (!wide.ok) throw new Error(JSON.stringify(wide.error).slice(0, 400))
 const lockup = await buildTold('lockup-brief', LOCKUP)
 const towns = await Promise.all([
   buildTown('brief-1'),
@@ -212,24 +217,30 @@ describe('a home for the player, and somewhere to board', () => {
         for (const npc of living) expect(npc.homePlotId).toBe(interior.plotId)
       }
     }
-    expect(Math.max(...sales.values())).toBeGreaterThan(Math.min(...sales.values()))
-    // and the bigger town keeps one home lived in beside the ones on the market
-    const city = towns[3]!.world
-    expect(city.interiors().filter((interior) => city.charter(interior.kind)!.residential && interior.forSale === undefined && interior.owner !== undefined).length).toBeGreaterThan(0)
+    // one home, whatever the size of the city: a city's places are a number it
+    // carries, and the home is the one the player buys
+    expect([...new Set(sales.values())]).toEqual([1])
+    // a brief that asks for more places can open more homes, and then one of them is somebody's
+    const city = wide.value.world
+    const homes = city.interiors().filter((interior) => city.charter(interior.kind)!.residential)
+    expect(homes.length).toBeGreaterThan(1)
+    expect(homes.filter((interior) => interior.forSale === undefined && interior.owner !== undefined).length).toBeGreaterThan(0)
   })
 
-  it('puts a station in any town of four blocks, two at twenty, a walk apart', async () => {
-    expect(stationsWanted(1)).toBe(0)
-    expect(stationsWanted(4)).toBe(1)
-    expect(stationsWanted(20)).toBe(2)
-    expect(stationsWanted(400)).toBe(21)
-    const [four, twenty] = await Promise.all([buildTown('stations-4', { blocksX: 2, blocksY: 2 }), buildTown('stations-20', { blocksX: 4, blocksY: 5 })])
-    expect(four.world.stations().length).toBeGreaterThanOrEqual(1)
-    const stations = twenty.world.stations()
-    expect(stations.length).toBeGreaterThanOrEqual(2)
-    const apart = Math.max(...stations.flatMap((a) => stations.map((b) => Math.hypot(a.entrance.cell.x - b.entrance.cell.x, a.entrance.cell.y - b.entrance.cell.y))))
-    expect(apart * twenty.world.cellSize, 'the stations are on one corner').toBeGreaterThan(100)
-    for (const station of stations) expect(twenty.world.charter(station.kind)?.transit).toBe('subway')
+  it('boards fast travel every five hundred metres and never rolls a station in the mix', async () => {
+    // a share of the plots put 26 entrances in an eight-block town and 157 in a twenty
+    expect(stationsWanted(200)).toBe(0)
+    expect(stationsWanted(500)).toBe(1)
+    expect(stationsWanted(2500)).toBe(5)
+    const [hamlet, city] = await Promise.all([buildTown('stations-2', { blocksX: 2, blocksY: 2 }), buildTown('stations-20', { blocksX: 20, blocksY: 20 })])
+    expect(hamlet.world.stations().length, 'a town you cross in two minutes has a subway').toBe(0)
+    const span = Math.max(city.world.grid.width, city.world.grid.height) * city.world.cellSize
+    const stations = city.world.stations()
+    expect(stations.length, `${Math.round(span)} m of city`).toBe(stationsWanted(span))
+    expect(stations.length).toBeGreaterThan(1)
+    const apart = Math.min(...stations.flatMap((a, at) => stations.slice(at + 1).map((b) => Math.hypot(a.entrance.cell.x - b.entrance.cell.x, a.entrance.cell.y - b.entrance.cell.y))))
+    expect(apart * city.world.cellSize, 'the stations are on one corner').toBeGreaterThan(300)
+    for (const station of stations) expect(city.world.charter(station.kind)?.transit).toBe('subway')
   })
 })
 
@@ -244,8 +255,8 @@ describe('what the writers are told', () => {
     const sale = narrator.requests.find((request) => request.has.forSale !== undefined)!
     expect(sale.posts).toEqual([])
     expect(neon.interiors().find((interior) => interior.forSale === sale.has.forSale)).toBeDefined()
-    const office = narrator.requests.find((request) => request.kind === 'office')!
-    expect(office.has.machines.map((machine) => machine.program)).toContain('ledger')
+    const ledger = wideNarrator.requests.find((request) => request.has.machines.some((machine) => machine.program === 'ledger'))!
+    expect(ledger.charter.holding, 'the ledger stands on a counter that keeps no papers').toContain('papers')
   })
 
   it('summarises the locks, the screens, the prices and the sale for the quest writer', () => {

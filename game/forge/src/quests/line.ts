@@ -9,7 +9,7 @@ import type { Condition } from './shape.ts'
 /** The longest main line a generated town gets. */
 const MOST_MAIN = 4
 
-/** How many places with people in them a town needs before its main line grows another link. */
+/** How many people a town needs standing in it before its main line grows another link. */
 const PER_LINK = 6
 
 /** The fewest links a line needs before it is worth splitting in two. */
@@ -70,7 +70,7 @@ export class MainLine {
       this.links = []
       return
     }
-    const tiers = Math.min(MOST_MAIN, 1 + Math.floor(cast.peopled.length / PER_LINK) + rng.int(0, 2))
+    const tiers = Math.min(MOST_MAIN, 1 + Math.floor(cast.people.length / PER_LINK) + rng.int(0, 2))
     this.rival = tiers >= TO_FORK ? cast.rival(rng, this.hub) : undefined
     // the fork needs a link in front of it to lead up to and one behind it to change
     const fork = this.rival ? rng.int(2, tiers - 1) : 0

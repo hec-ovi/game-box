@@ -14,8 +14,8 @@ const BUSY: Record<Flavour, number> = {
   agrarian: 0.8,
 }
 
-/** Side jobs per place with somebody in it. */
-const PER_PLACE = 0.4
+/** Side jobs per person standing in the town. */
+const PER_PERSON = 0.5
 
 /** How far a town's appetite for work swings either side of that, on the seed. */
 const SWING = 0.3
@@ -25,16 +25,16 @@ const FEWEST = 2
 /**
  * How much side work a town has in it: not how many blocks it was cut into, but
  * how many people are standing in it, how busy a place of this kind is, and how
- * the seed feels that day. It is a density, so a street in a city has about as
- * much going on as a street in a village and a city has more of both.
+ * the seed feels that day. A city's size is scenery and its people are a fixed
+ * cast, so how much there is to do follows the cast and two cities of very
+ * different sizes have about as much going on.
  *
  * The only ceiling is what the town can actually book: two jobs per person who
- * gives work, one unclaimed thing per job. That grows with the town, so a big
- * city is never told it has as little to do as a small one.
+ * gives work, one unclaimed thing per job.
  */
 export function questDemand(summary: WorldSummary, rng: Rng): number {
   const cast = new CityCast(summary)
   const busy = BUSY[flavourOf(summary.theme)]
-  const wanted = Math.round(cast.peopled.length * PER_PLACE * busy * rng.range(1 - SWING, 1 + SWING))
+  const wanted = Math.round(cast.people.length * PER_PERSON * busy * rng.range(1 - SWING, 1 + SWING))
   return Math.max(FEWEST, Math.min(cast.capacity, wanted))
 }

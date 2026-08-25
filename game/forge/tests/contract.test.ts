@@ -142,7 +142,8 @@ describe('Forge', () => {
     expect(summary.cityName).toBe(world.name)
     expect(summary.places.length).toBe(world.plots().length)
     const populated = summary.places.filter((p) => p.npcs.length > 0)
-    expect(populated.length).toBeGreaterThan(2)
+    // a city opens three places and one of them is the home it sells
+    expect(populated.length).toBeGreaterThan(1)
     expect(populated[0]!.npcs[0]!.name.length).toBeGreaterThan(2)
   })
 

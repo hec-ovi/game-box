@@ -7,9 +7,6 @@ import { questDemand } from '../src/quests/demand.ts'
 import { line, playEvery } from './playable.ts'
 import { buildTown, digest } from './support.ts'
 
-/** Places with somebody in them: what the amount of work in a town is measured against. */
-const peopled = (world: Parameters<typeof summarise>[0]) => summarise(world).places.filter((place) => place.npcs.length > 0).length
-
 const BANDS = ['errand', 'small', 'standard', 'hard', 'epic']
 
 const ranked = (quests: readonly { difficulty?: string | undefined }[]): number[] =>
@@ -27,16 +24,22 @@ const [city, town] = await Promise.all([
 describe('a town offers as much as it holds', () => {
   it('builds the same town twice at a size where the amount of work is not fixed', async () => {
     const [a, b] = await Promise.all([buildTown('scale-same', { blocksX: 10, blocksY: 10 }), buildTown('scale-same', { blocksX: 10, blocksY: 10 })])
-    expect(a.quests.length).toBeGreaterThan(30)
+    expect(a.quests.length).toBeGreaterThan(6)
     expect(digest(a.quests)).toBe(digest(b.quests))
     expect(digest(a.world.toJSON())).toBe(digest(b.world.toJSON()))
   })
 
-  it('gives a big city more to do than a small town, at about the same density per street', () => {
-    expect(city.quests.length).toBeGreaterThan(town.quests.length * 4)
-    const density = (place: typeof city) => place.quests.length / peopled(place.world)
-    expect(density(city)).toBeGreaterThan(density(town) * 0.75)
-    expect(density(city)).toBeLessThan(density(town) * 1.25)
+  it('gives a city no more to do than a town, because a city\'s size is scenery', () => {
+    // nine times the buildings, the same places open and about the same cast in
+    // them, so about the same amount of work: a share of the plots wrote 159
+    // jobs into a twenty-block town and 3 into a two-block one
+    expect(city.world.plots().length).toBeGreaterThan(town.world.plots().length * 5)
+    expect(city.world.interiors().length).toBe(town.world.interiors().length)
+    expect(city.quests.length).toBeLessThan(town.quests.length * 2)
+    // the work follows the cast, and the cast is whoever stands in those places
+    const density = (built: typeof city) => built.quests.length / built.world.npcs().length
+    expect(density(city)).toBeGreaterThan(density(town) * 0.6)
+    expect(density(city)).toBeLessThan(density(town) * 1.6)
   })
 
   it('does not offer every town of one size the same amount of work', async () => {
@@ -71,26 +74,23 @@ describe('a town offers as much as it holds', () => {
     expect(new Set(asked).size).toBeGreaterThan(2)
   })
 
-  it('asks about as much of the player per job in a city as in a small town, and adds a tail that crosses town', () => {
-    // the middling job is about the same size of job either way: a city is more
-    // neighbourhoods, not longer errands. A band apart is as far as the two go,
-    // in either direction: a town with two dozen jobs in it has its median
-    // sitting on a boundary, so which side of it the middle job falls is noise
+  it('pays its jobs over the bands rather than paying every errand the same', () => {
+    // every errand in a city of three places is a walk between two of them, so
+    // the bands have to be measured against that walk or the whole list comes
+    // out epic and the finale is worth no more than a fetch
+    for (const built of [city, town]) {
+      const bands = new Set(built.quests.map((quest) => quest.difficulty))
+      expect(bands.size, `${built.world.name} pays every job the same: ${[...bands].join(', ')}`).toBeGreaterThan(2)
+      expect(built.quests.filter((quest) => quest.difficulty === 'epic').length).toBeLessThan(built.quests.length * 0.5)
+    }
+    // a city's places stand further apart than a town's, so its middling job is
+    // the harder one, and never the easier
     const band = (quests: typeof city.quests) => BANDS.indexOf(median(quests))
-    expect(Math.abs(band(city.quests) - band(town.quests)), `${median(city.quests)} in a city against ${median(town.quests)} in a town`).toBeLessThanOrEqual(1)
-    // and a city holds far more of the work that crosses a town. The biggest
-    // single job is not the measure: a small town throws one up on about half
-    // its seeds, so the top of the range is one draw rather than a property.
-    // The main line is measured out differently again: its two sides are the two
-    // ends of the town's own argument, so its longest link spans whatever town
-    // it is in
-    const crossing = (built: typeof city) => built.quests.filter((quest) => quest.kind === 'side' && quest.difficulty === 'epic').length
-    expect(crossing(city), `${crossing(city)} jobs cross the city, ${crossing(town)} cross the town`).toBeGreaterThan(crossing(town) * 4)
-    expect(city.quests.filter((quest) => quest.difficulty === 'epic').length).toBeLessThan(city.quests.length * 0.2)
+    expect(band(city.quests), `${median(city.quests)} in a city against ${median(town.quests)} in a town`).toBeGreaterThanOrEqual(band(town.quests))
   })
 
   it('writes nothing unplayable, however much of it there is', () => {
-    expect(city.quests.length).toBeGreaterThan(150)
+    expect(city.quests.length).toBeGreaterThan(8)
     expect(city.rejected).toEqual([])
     // both roads of every fork, by somebody with the verbs the game has
     const report = playEvery(city.world, city.quests)

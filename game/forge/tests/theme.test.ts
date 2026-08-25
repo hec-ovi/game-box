@@ -61,7 +61,9 @@ describe('a town reads as the kind of town it was asked for', () => {
   })
 
   it('gives the people their own names and their own things to say', async () => {
-    const size = { blocksX: 3, blocksY: 3 }
+    // briefed wide on purpose: a city opens three places, and a cast of nine is
+    // not enough people to catch two of them sharing a name
+    const size = { blocksX: 3, blocksY: 3, openPlaces: 12 }
     const towns = await Promise.all([buildTown('talk-1', size), buildTown('talk-2', size), buildTown('talk-3', { ...size, theme: 'quiet coastal town' })])
     const npcs = towns.flatMap((town) => town.world.npcs())
     const names = new Set(npcs.map((npc) => npc.name))

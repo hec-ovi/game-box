@@ -96,12 +96,22 @@ export function keeperOf(anchors: readonly Anchor[], charter: Charter): Anchor |
   return staffed.find((anchor) => anchor.kind === 'serve') ?? staffed.find((anchor) => anchor.kind === 'guard') ?? staffed[0]
 }
 
-/** What is lying around in one of them. */
-export function itemsFor(charter: Charter, rng: Rng): ItemArchetype[] {
+/** The most a place has lying about, however many surfaces it has: past this a room reads as a store room. */
+const MOST_STOCK = 6
+
+/**
+ * What is lying about in a place: one thing for every surface it has to put one
+ * on. A city opens a handful of places, so each of them is stocked rather than
+ * sampled, and where it has more surfaces than its charter has kinds of stock
+ * the pool is dealt again.
+ */
+export function itemsFor(charter: Charter, rng: Rng, surfaces: number): ItemArchetype[] {
   const pool = stockOf(charter)
   if (!pool.length) return []
-  const count = rng.int(1, Math.min(4, pool.length + 1))
-  return rng.shuffle(pool).slice(0, count)
+  const count = Math.max(1, Math.min(MOST_STOCK, surfaces))
+  const dealt: ItemArchetype[] = []
+  while (dealt.length < count) dealt.push(...rng.shuffle(pool))
+  return dealt.slice(0, count)
 }
 
 /** How much of the player an item takes to carry. */

@@ -39,8 +39,9 @@ const MOST_STAPLES = 3
  */
 export function kindWeights(flavour: Flavour, rng: Rng, charters: readonly ResolvedCharter[], build?: PremiseBuild): KindWeights {
   const kept = new Set<Word>([...(build?.moreOf ?? []), ...(build?.mustHave ?? [])])
-  const missing = dropped(charters.filter((charter) => !charter.residential && !kept.has(charter.word)), rng)
-  return charters
+  const rolled = charters.filter(mixed)
+  const missing = dropped(rolled.filter((charter) => !charter.residential && !kept.has(charter.word)), rng)
+  return rolled
     .map((charter) => {
       const swing = rng.fork(`mix/${charter.word}`).pick(SWING)
       const wanted = charter.share * tiltOf(flavour, charter) * storied(build, charter) * (charter.residential ? Math.max(1, swing) : swing)
@@ -48,6 +49,14 @@ export function kindWeights(flavour: Flavour, rng: Rng, charters: readonly Resol
     })
     .filter(([, weight]) => weight > 0)
 }
+
+/**
+ * Whether the mix rolls this kind of place at all. Where fast travel boards is
+ * a distance rather than a share (`layout/stations.ts` spaces them), so a
+ * charter that boards is placed and never rolled: rolling it put 157 subway
+ * entrances in a twenty-block town.
+ */
+const mixed = (charter: ResolvedCharter): boolean => charter.transit === undefined || charter.transit === 'none'
 
 /** Up to two kinds the town turns out not to have: each keyed off its own word, the lowest keys dropped. */
 function dropped(candidates: readonly ResolvedCharter[], rng: Rng): Set<Word> {
@@ -73,14 +82,14 @@ function storied(build: PremiseBuild | undefined, charter: ResolvedCharter): num
  * of those. Every town has a bar until its history declares something ahead of it.
  */
 export function keystoneOf(charters: readonly ResolvedCharter[]): ResolvedCharter | undefined {
-  const seated = charters.filter((charter) => charter.service !== 'none' && drawOf(charter).seats > 0)
+  const seated = charters.filter((charter) => mixed(charter) && charter.service !== 'none' && drawOf(charter).seats > 0)
   const pours = seated.filter((charter) => charter.holding.includes('drink'))
   return (pours.length ? pours : seated.length ? seated : charters).at(0)
 }
 
 /** The kinds a town can be known for: a counter, or a place the street notices. */
 export function stapleSet(charters: readonly ResolvedCharter[]): readonly ResolvedCharter[] {
-  return charters.filter((charter) => charter.service !== 'none' || charter.prominence !== 'background')
+  return charters.filter((charter) => mixed(charter) && (charter.service !== 'none' || charter.prominence !== 'background'))
 }
 
 /**

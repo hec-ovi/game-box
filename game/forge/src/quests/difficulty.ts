@@ -30,8 +30,15 @@ export interface Pay {
   readonly bonus: number
 }
 
-/** A walk of this many metres is worth one point of difficulty. */
-const A_WALK = 120
+/**
+ * A walk of this many metres is worth one point of difficulty: about ten
+ * blocks, which is the span the stations are set at and roughly the distance
+ * between two of the handful of places a city opens. A job that sends the
+ * player further than one stop is a job worth being paid for, and the bands
+ * below then spread over the walks a city actually produces instead of
+ * bunching every errand at the top.
+ */
+const A_WALK = 400
 
 const WEIGHT = { leg: 0.6, stolen: 1.2, timed: 1.5, escort: 1.5, item: 0.8 }
 

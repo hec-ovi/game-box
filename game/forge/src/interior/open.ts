@@ -1,13 +1,14 @@
 import type { Rng } from '@gb/kit'
 import type { ResolvedCharter, Word } from '@gb/world'
 import { DoorBudget } from './budget.ts'
-import { drawOf, NEEDS, pullOf } from './draw.ts'
+import { drawOf, NEEDS, pullOf, type Draw } from './draw.ts'
 
 /**
  * Which of a town's buildings you can walk into.
  *
- * How many open is `budget.ts`; what a place is worth is `draw.ts`. This is the
- * pick: given a number of doors to spend, which ones.
+ * How many open is `budget.ts`, and it is a number the city carries rather than
+ * a share of its plots; what a place is worth is `draw.ts`. This is the pick:
+ * given a handful of doors to spend, which ones, and where.
  */
 
 /**
@@ -26,6 +27,15 @@ const NUDGE = 5
 const SPINE = 1
 
 /**
+ * What the town's own story is worth on the one plot it lands on. As much as
+ * the seed's whole nudge, so the kind of place a history demands takes the door
+ * it can answer rather than waiting for a door to be spare. It goes on the best
+ * plot of that kind and no other: scoring every plot of a demanded kind fills a
+ * town with hotels.
+ */
+const STORIED = 5
+
+/**
  * What each door of a kind the town already opens costs the next one of the
  * same kind. A player meets a town one door at a time, and six restaurants is
  * one restaurant met six times.
@@ -40,11 +50,28 @@ const AGAIN = 1.5
  */
 const MOST_AGAIN = 2
 
-/** One home opens in any town, and one more for every this many buildings: what a bigger city has on the market. */
-const HOMES_PER = 200
+/**
+ * What the roomiest plot in town is worth over the tightest. A city opens a
+ * handful of places and every one of them has to hold people, stock and a job
+ * or two, so the door that opens is the one with floor behind it: the same
+ * charter on a 6 by 8 plot seats twice what it seats on a 3 by 5.
+ */
+const ROOMY = 2
 
-/** How many homes a town of this many buildings opens, whatever their doors are worth: the ones the player can buy and the one somebody lives in. */
-export const homesFor = (buildings: number): number => 1 + Math.floor(buildings / HOMES_PER)
+/** The fewest doors a town opens before one of them is a home: a hamlet with two spends both on what a town needs. */
+const HOME_AT = 3
+
+/** And one more home for every this many places a brief asks to open, so a wider city has one lived in as well as one on the market. */
+const PER_HOME = 8
+
+/** How many homes a city opens, whatever its size: the one the player buys, and one more per handful of places. */
+export const homesFor = (open: number): number => (open >= HOME_AT ? 1 + Math.floor(open / PER_HOME) : 0)
+
+/** Where something stands on the grid, in cells. */
+export interface Spot {
+  readonly x: number
+  readonly y: number
+}
 
 /** A building that has gone up, before anybody has decided whether it opens. */
 export interface Frontage {
@@ -52,6 +79,10 @@ export interface Frontage {
   readonly id: string
   /** What kind of place it is. */
   readonly charter: ResolvedCharter
+  /** Where its door stands, which is what the doors are spread across. */
+  readonly spot: Spot
+  /** Cells of footprint: how much room there is behind the door. */
+  readonly floor: number
   /** How near the middle of town it stands, 1 at the centre and 0 at the edge. */
   readonly nearness: number
   /** Whether its door is on an avenue: the spine everybody walks and drives. */
@@ -60,86 +91,64 @@ export interface Frontage {
   readonly storied: boolean
 }
 
+/** A door the town already has open. */
+export interface OpenPlace {
+  readonly charter: ResolvedCharter
+  readonly spot: Spot
+}
+
 /** The town these buildings are joining: everything already up, and what of it opens. */
 export interface Town {
   /** Buildings already standing, this batch not counted. */
   readonly built: number
-  /** The kinds of place already open, which is what the town's needs are measured against. */
-  readonly open: readonly ResolvedCharter[]
+  /** The doors already open, which is what the town's needs and its spacing are measured against. */
+  readonly open: readonly OpenPlace[]
+  /** The longest side of the town in cells: what its doors are spread across. */
+  readonly span: number
+  /** How many places this city opens, whatever its size. */
+  readonly places: number
 }
 
 /**
  * Which of a batch of buildings open, in the order they were put up.
  *
- * The town gets an allowance (`budget.ts`), and this batch spends what is left
- * of it, on as many different kinds of place as it can. The pick inside the batch is what the place
- * has to offer, how near the middle of town it stands, whether it is on an
- * avenue (a door on the way to everywhere gets tried, one at the edge does not),
- * and a seeded nudge so the
- * same town twice over is not the same list of shops. Whatever the ranking says,
- * a town still ends up with somewhere to sit, buy, sleep and work, because those
- * come out of the allowance first, and any of them the town already has open is
- * not bought twice; a bigger town opens more homes, because a home is what the
- * player buys and a city with one on the market is thin; and a kind of place
- * its history demands opens one door next, because a lock-up the story is about
- * is a door the player is meant to try, and the rest of that kind then compete
- * on what they hold like any other.
+ * The city has a number of places and this batch spends what is left of it. The
+ * pick is what the place has to offer, how much floor there is behind its door,
+ * how near the middle of town it stands, whether it is on an avenue (a door on
+ * the way to everywhere gets tried, one at the edge does not), whether the
+ * town's own story is about that kind of place, and a seeded nudge so the same
+ * town twice over is not the same list of shops. Whatever the ranking says, the
+ * doors end up a walk apart rather than on one corner, a town gets the things
+ * it needs in the order it needs them, and one of them is a home, because a
+ * home is what the player buys.
  */
 export function openDoors(frontages: readonly Frontage[], rng: Rng, town: Town): ReadonlySet<string> {
   if (!frontages.length) return new Set()
-  const budget = new DoorBudget({ built: town.built, open: town.open.length }, frontages.length, rng)
+  const budget = new DoorBudget({ built: town.built, open: town.open.length }, frontages.length, town.places)
+  const picker = new Picker(frontages, rng, town, budget)
+  const homes = homesFor(budget.town)
+  // the story's kinds of place have doors of their own, so long as the town is
+  // still left with somewhere to walk into and somewhere to buy
+  const stories = Math.min(picker.stories, Math.max(0, budget.spare - 2))
 
-  const scored: Ranked[] = frontages.map((frontage, at) => ({
-    frontage,
-    at,
-    score:
-      pullOf(frontage.charter) +
-      frontage.nearness * 2 +
-      (frontage.onAvenue ? SPINE : 0) +
-      rng.range(0, NUDGE),
-  }))
-  // two doors worth exactly the same open in the order they were put up
-  scored.sort((a, b) => b.score - a.score || a.at - b.at)
-
-  const open = new Set<string>()
-  const already = new Map<Word, number>()
-  for (const charter of town.open) already.set(charter.word, (already.get(charter.word) ?? 0) + 1)
-
-  const standing = town.open.map(drawOf)
-
+  // the things a town needs, in the order it gets them, the story's and the home's doors kept back
   for (const [, met] of NEEDS) {
-    if (open.size >= budget.spare) break
-    if (standing.some(met)) continue
-    const best = scored.find((candidate) => !open.has(candidate.frontage.id) && met(drawOf(candidate.frontage.charter)))
-    if (!best) continue
-    open.add(best.frontage.id)
-    // a place bought for one need answers the next one too: a shop with chairs
-    // in it is somewhere to sit as well as somewhere to buy something, and a
-    // town of six doors cannot spend four of them twice over
-    standing.push(drawOf(best.frontage.charter))
-    already.set(best.frontage.charter.word, (already.get(best.frontage.charter.word) ?? 0) + 1)
+    if (!picker.room(homes + stories)) break
+    if (picker.holds(met)) continue
+    picker.take((frontage) => met(drawOf(frontage.charter)))
   }
-
-  const homes = homesFor(town.built + frontages.length)
-  for (const candidate of scored) {
-    if (open.size >= budget.spare || standing.filter((draw) => draw.home).length >= homes) break
-    if (open.has(candidate.frontage.id) || !candidate.frontage.charter.residential) continue
-    open.add(candidate.frontage.id)
-    standing.push(drawOf(candidate.frontage.charter))
-    already.set(candidate.frontage.charter.word, (already.get(candidate.frontage.charter.word) ?? 0) + 1)
+  // a kind of place the town's history is about: the door the story means the player to try
+  for (let told = 0; told < stories && picker.room(homes); told++) {
+    if (!picker.take((frontage, open) => frontage.storied && open === 0)) break
   }
-
-  for (const candidate of scored) {
-    if (open.size >= budget.spare) break
-    const word = candidate.frontage.charter.word
-    if (!candidate.frontage.storied || open.has(candidate.frontage.id) || already.has(word)) continue
-    open.add(candidate.frontage.id)
-    already.set(word, 1)
-  }
-
-  spread(scored, open, already, budget.spare)
-  return open
+  while (picker.room(0) && picker.homes < homes) if (!picker.take((frontage) => frontage.charter.residential)) break
+  // whatever is left goes over as many different kinds of place as the town has
+  while (picker.room(0)) if (!picker.take(() => true)) break
+  return picker.open
 }
+
+/** Which doors a pass will take: the building, and how many of its kind the town already opens. */
+type Fits = (frontage: Frontage, open: number) => boolean
 
 /** One building in the ranking. */
 interface Ranked {
@@ -150,41 +159,114 @@ interface Ranked {
 }
 
 /**
- * Spends what is left of the allowance over as many kinds of place as the town
- * has, by taking the best door of any kind and charging the town for every door
- * of that kind it already opens.
+ * The town's doors, taken one at a time.
  *
- * The ranking is walked kind by kind rather than straight down, so the cost of
- * a repeat is paid once per pick against a head per kind and not against the
- * whole town: a city of six thousand buildings picks its doors in the same time
- * a hamlet does.
+ * Every pick is the best door left, charged for every door of its own kind the
+ * town already opens and held to a walk away from the doors already picked. The
+ * spacing gives way where the town has nothing else to offer, because a door
+ * on the wrong corner beats no door at all.
  */
-function spread(scored: readonly Ranked[], open: Set<string>, already: Map<Word, number>, allowance: number): void {
-  const queues = new Map<Word, Ranked[]>()
-  for (const candidate of scored) {
-    if (open.has(candidate.frontage.id)) continue
-    const queue = queues.get(candidate.frontage.charter.word)
-    if (queue) queue.push(candidate)
-    else queues.set(candidate.frontage.charter.word, [candidate])
+class Picker {
+  /** The doors picked so far. */
+  readonly open = new Set<string>()
+
+  #homes: number
+  #scored: readonly Ranked[]
+  #stories: number
+  #standing: Draw[]
+  #already = new Map<Word, number>()
+  #spots: Spot[]
+  #apart: number
+  #spare: number
+
+  constructor(frontages: readonly Frontage[], rng: Rng, town: Town, budget: DoorBudget) {
+    const biggest = Math.max(...frontages.map((frontage) => frontage.floor))
+    const told = crowned(
+      frontages.map((frontage, at) => ({
+        frontage,
+        at,
+        score:
+          pullOf(frontage.charter) +
+          frontage.nearness * 2 +
+          (frontage.floor / biggest) * ROOMY +
+          (frontage.onAvenue ? SPINE : 0) +
+          rng.range(0, NUDGE),
+      })),
+    )
+    this.#scored = told.scored
+    this.#stories = told.stories
+    this.#standing = town.open.map((one) => drawOf(one.charter))
+    this.#spots = town.open.map((one) => one.spot)
+    this.#homes = town.open.filter((one) => one.charter.residential).length
+    for (const one of town.open) this.#already.set(one.charter.word, (this.#already.get(one.charter.word) ?? 0) + 1)
+    this.#apart = town.span / (budget.town + 1)
+    this.#spare = budget.spare
   }
 
-  const heads = new Map<Word, number>()
-  while (open.size < allowance) {
+  /** Whether this batch may open another door and still keep this many back. */
+  room(reserved: number): boolean {
+    return this.open.size + reserved < this.#spare
+  }
+
+  /** Whether something the town already opens answers this. */
+  holds(met: (draw: Draw) => boolean): boolean {
+    return this.#standing.some(met)
+  }
+
+  /** How many kinds of place the town's history is about and this batch could open. */
+  get stories(): number {
+    return this.#stories
+  }
+
+  /** How many of the doors picked so far are homes. */
+  get homes(): number {
+    return this.#homes
+  }
+
+  /** Opens the best door that fits, a walk from the others where the town has one. */
+  take(fits: Fits): boolean {
+    const best = this.#best(fits, true) ?? this.#best(fits, false)
+    if (!best) return false
+    const { charter } = best.frontage
+    this.open.add(best.frontage.id)
+    this.#standing.push(drawOf(charter))
+    this.#spots.push(best.frontage.spot)
+    this.#already.set(charter.word, (this.#already.get(charter.word) ?? 0) + 1)
+    if (charter.residential) this.#homes++
+    return true
+  }
+
+  #best(fits: Fits, spaced: boolean): Ranked | undefined {
     let best: Ranked | undefined
     let worth = -Infinity
-    for (const [kind, queue] of queues) {
-      const head = queue[heads.get(kind) ?? 0]
-      if (!head) continue
-      const score = head.score - Math.min(AGAIN * (already.get(kind) ?? 0), MOST_AGAIN)
-      if (score > worth || (score === worth && best !== undefined && head.at < best.at)) {
-        best = head
+    for (const one of this.#scored) {
+      if (this.open.has(one.frontage.id) || !fits(one.frontage, this.#already.get(one.frontage.charter.word) ?? 0)) continue
+      if (spaced && this.#crowds(one.frontage.spot)) continue
+      const score = one.score - Math.min(AGAIN * (this.#already.get(one.frontage.charter.word) ?? 0), MOST_AGAIN)
+      // two doors worth exactly the same open in the order they were put up
+      if (score > worth) {
+        best = one
         worth = score
       }
     }
-    if (!best) return
-    const kind = best.frontage.charter.word
-    open.add(best.frontage.id)
-    heads.set(kind, (heads.get(kind) ?? 0) + 1)
-    already.set(kind, (already.get(kind) ?? 0) + 1)
+    return best
   }
+
+  /** Whether this door would stand on top of one the town already opens. */
+  #crowds(spot: Spot): boolean {
+    return this.#spots.some((other) => Math.hypot(spot.x - other.x, spot.y - other.y) < this.#apart)
+  }
+}
+
+/** The story's own kinds of place, each lifted on the one plot of it worth opening, and how many kinds those are. */
+function crowned(scored: readonly Ranked[]): { scored: readonly Ranked[]; stories: number } {
+  const best = new Map<Word, Ranked>()
+  for (const one of scored) {
+    if (!one.frontage.storied) continue
+    const held = best.get(one.frontage.charter.word)
+    if (!held || one.score > held.score) best.set(one.frontage.charter.word, one)
+  }
+  const lifted = new Set([...best.values()].map((one) => one.at))
+  if (!lifted.size) return { scored, stories: 0 }
+  return { scored: scored.map((one) => (lifted.has(one.at) ? { ...one, score: one.score + STORIED } : one)), stories: lifted.size }
 }

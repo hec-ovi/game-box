@@ -538,10 +538,12 @@ describe('interior plans', () => {
   it('holds all of that up in a city the forge actually built', async () => {
     // a batch of towns rather than one: a room sealed by its own furniture is a
     // few interiors in a hundred, and one town is not enough of them to notice
+    // a city opens three doors, so the towns here are briefed to open as many as
+    // a brief may ask for: it is the only way to walk a hundred rooms
     const towns = await Promise.all([
-      buildTown('interiors', { theme: 'harbour town', blocksX: 6, blocksY: 6 }),
-      buildTown('walkable', { theme: 'dense neon port city', blocksX: 5, blocksY: 5 }),
-      buildTown('aisles', { theme: 'alpine ski village', blocksX: 5, blocksY: 5 }),
+      buildTown('interiors', { theme: 'harbour town', blocksX: 6, blocksY: 6, openPlaces: 24 }),
+      buildTown('walkable', { theme: 'dense neon port city', blocksX: 5, blocksY: 5, openPlaces: 24 }),
+      buildTown('aisles', { theme: 'alpine ski village', blocksX: 5, blocksY: 5, openPlaces: 24 }),
     ])
     let rooms = 0
 

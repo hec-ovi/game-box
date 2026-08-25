@@ -1,6 +1,7 @@
 import { contract } from '@gb/kit'
 import { AsksSchema } from '@gb/world'
 import { z } from 'zod'
+import { MOST_PLACES, OPEN_PLACES } from './interior/budget.ts'
 import { MAX_BLOCK, MIN_BLOCK, mostBlocks, widestBlock, widestGrid } from './layout/plan.ts'
 
 /** The widest grid `@gb/world` accepts, a side. Ask for more and nothing is built. */
@@ -20,9 +21,11 @@ export const BriefSchema = z
     theme: z.string().min(1).max(60),
     /** Same seed, same city, every time. */
     seed: z.string().min(1).max(120),
-    /** Blocks across and down. A 2x2 hamlet, a 12x12 city, as many as the grid holds. */
-    blocksX: z.number().int().min(1).max(BLOCKS_MAX).default(3),
-    blocksY: z.number().int().min(1).max(BLOCKS_MAX).default(3),
+    /** Blocks across and down. A 2x2 hamlet, a 20x20 city, as many as the grid holds. */
+    blocksX: z.number().int().min(1).max(BLOCKS_MAX).default(20),
+    blocksY: z.number().int().min(1).max(BLOCKS_MAX).default(20),
+    /** Places that open, whatever the city's size. Everything else is frontage. */
+    openPlaces: z.number().int().min(1).max(MOST_PLACES).default(OPEN_PLACES),
     /** Cells per block side, before streets. Left out, the seed picks it and varies it block by block. */
     blockCells: z.number().int().min(MIN_BLOCK).max(MAX_BLOCK).optional(),
     /** How much of each block gets built on, 0 to 1. */

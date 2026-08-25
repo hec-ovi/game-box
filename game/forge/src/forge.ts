@@ -9,11 +9,11 @@ import {
   type Item,
   type Premise,
   type Rect,
-  type ResolvedCharter,
   type WorldError,
 } from '@gb/world'
 import { briefContract, type Brief } from './brief.ts'
 import type { Dropped } from './charters/resolve.ts'
+import { OPEN_PLACES } from './interior/budget.ts'
 import { Avenues } from './layout/avenues.ts'
 import { planStreets, type StreetPlan } from './layout/plan.ts'
 import { sitesInBlock, storeysFor, type PlotSite } from './layout/plots.ts'
@@ -50,9 +50,6 @@ const GENERATOR_VERSION = '0.1.0'
 
 /** How tall `extend` builds into a gap. */
 const EXTEND_STOREYS = 2
-
-/** How full `extend` makes the buildings it drops in. */
-const EXTEND_DENSITY = 0.8
 
 /**
  * Builds a city from a brief: streets and plots by arithmetic, names and people
@@ -103,10 +100,10 @@ export class Forge {
     paintStreets(world, streets)
 
     layRoads(world, streets.crossings, streets.exits)
-    await this.#raise(world, this.#townSites(brief, streets, rng, premise, world.charters()), {
+    await this.#raise(world, this.#townSites(brief, streets, rng, premise, world), {
       theme: brief.theme,
       ...(premise ? { premise } : {}),
-      density: brief.density,
+      places: brief.openPlaces,
       signs: new Signs(brief.seed),
       streets: StreetNames.of(world),
       doors: rng.fork('doors'),
@@ -131,11 +128,12 @@ export class Forge {
     const added = await this.#raise(world, this.#gapSites(world, count, rng, premise), {
       theme: world.theme,
       ...(premise ? { premise } : {}),
-      density: EXTEND_DENSITY,
+      // a city's places are its own, so growing it adds frontage to a town that already has them
+      places: Math.max(OPEN_PLACES, world.interiors().length),
       signs: new Signs(world.seed),
       streets: StreetNames.of(world),
-      // the town's own stream: how big a share of it opens is a fact about the
-      // town, so an extension spends what is left of that rather than drawing again
+      // the town's own stream: which doors open is a fact about the town, so an
+      // extension spends what is left of its places rather than drawing again
       doors: new Rng(world.seed).fork('doors'),
       people: rng.fork('extend/people'),
     })
@@ -169,7 +167,8 @@ export class Forge {
    * places the town is known for, the ones the history demands included, are
    * dropped on seeded sites before the rest is rolled.
    */
-  #townSites(brief: Brief, streets: StreetPlan, rng: Rng, premise: Premise | undefined, charters: readonly ResolvedCharter[]): Chosen[] {
+  #townSites(brief: Brief, streets: StreetPlan, rng: Rng, premise: Premise | undefined, world: World): Chosen[] {
+    const charters = world.charters()
     const sites = streets.blocks.flatMap((block, index) => sitesInBlock(block, rng.fork(`block/${index}`)))
     const avenues = Avenues.from(streets.columns, streets.rows)
     const mix = rng.fork('plots')
@@ -178,10 +177,11 @@ export class Forge {
     const wanted = stapleKinds(flavour, mix, charters, premise?.build.mustHave)
     const spots = mix.shuffle(sites.map((_, index) => index)).slice(0, wanted.length)
     const staples = new Map(spots.map((site, order) => [site, wanted[order]!]))
-    // somewhere to board, spread over the town, whatever the mix rolls for the kind that boards
+    // somewhere to board every five hundred metres, spread over the town: the mix never rolls the kind that boards
     const subway = charters.find((charter) => charter.transit === 'subway')
     if (subway) {
-      for (const site of spreadSites(sites, stationsWanted(brief.blocksX * brief.blocksY), new Set(staples.keys()), mix.fork('stations'))) staples.set(site, subway.word)
+      const span = Math.max(streets.size.width, streets.size.height) * world.cellSize
+      for (const site of spreadSites(sites, stationsWanted(span), new Set(staples.keys()), mix.fork('stations'))) staples.set(site, subway.word)
     }
     const byWord = new Map(charters.map((charter) => [charter.word, charter]))
 

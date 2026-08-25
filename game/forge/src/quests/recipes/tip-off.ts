@@ -8,7 +8,7 @@ export class TipOff extends RecipeBase {
   readonly name = 'tip-off'
 
   weight(cast: CityCast): number {
-    return cast.stocked(2) > 0 && cast.peopled.length >= 3 ? 4 : 0
+    return cast.stocked(2) > 0 && cast.peopled.length >= 2 ? 4 : 0
   }
 
   write(cast: CityCast, rng: Rng, job: Job): Draft | undefined {

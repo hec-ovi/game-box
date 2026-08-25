@@ -18,6 +18,8 @@ const towns = await Promise.all([
   buildTown('recipes-7', { theme: 'snowy alpine ski town', blocksX: 3, blocksY: 3 }),
   buildTown('recipes-8', { theme: 'dense neon port city', blocksX: 4, blocksY: 4 }),
   buildTold('recipes-9', LOCKUP),
+  // one town briefed wide: a city of three places rarely opens a bench to hand a car over
+  buildTown('recipes-10', { theme: 'cold industrial rail town', blocksX: 5, blocksY: 5, openPlaces: 12 }),
 ])
 const everyQuest: QuestDoc[] = towns.flatMap((town) => [...town.quests])
 /** Every one of them played through, once per road, by somebody with the verbs the game has. */
@@ -160,7 +162,8 @@ describe('generated quests', () => {
       // most of the town is behind the main line, and side work is part of what waits
       const atFirst = onTheBoard()
       expect(atFirst).toBeGreaterThan(0)
-      expect(atFirst).toBeLessThanOrEqual(Math.ceil(quests.length * 0.6))
+      // three quarters of the side work is up front and the rest waits on the ladder
+      expect(atFirst).toBeLessThanOrEqual(Math.ceil(quests.length * 0.75))
       expect(quests.filter((quest) => quest.kind === 'side' && (quest.requires?.length ?? 0) > 0).length).toBeGreaterThan(0)
 
       player.setFlag('standing_1', true)

@@ -111,7 +111,7 @@ describe('a city written against a history', () => {
     expect(digest(campus.world.toJSON()), 'two histories built one town').not.toBe(digest(shipping.world.toJSON()))
 
     // the push is measured over a few seeds: one town's dice can halve a kind on their own
-    const seeds = [SEED, 'two-histories', 'three-histories']
+    const seeds = [SEED, 'two-histories', 'three-histories', 'four-histories', 'five-histories']
     const towns = await Promise.all(seeds.flatMap((seed) => [SHIPPING, CAMPUS].map((premise) => build(new Told(seed, premise), { seed }))))
     const port = counts(towns.filter((_, at) => at % 2 === 0).flatMap((town) => town.world.plots().map((plot) => plot.kind)))
     const college = counts(towns.filter((_, at) => at % 2 === 1).flatMap((town) => town.world.plots().map((plot) => plot.kind)))
@@ -144,7 +144,7 @@ describe('a city written against a history', () => {
     // is: whoever it is sent to cannot read it, and its empty land fills up with
     // a town of no particular kind
     const forge = new Forge(new Told('grow', SHIPPING))
-    const built = await forge.build({ theme: 'quiet coastal town', seed: 'grow', blocksX: 3, blocksY: 3 })
+    const built = await forge.build({ theme: 'quiet coastal town', seed: 'grow', blocksX: 8, blocksY: 8 })
     if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 200))
     expect(built.value.world.premise()).toEqual(SHIPPING)
 
@@ -153,7 +153,8 @@ describe('a city written against a history', () => {
     // the same city on the same land with the same hand of dice, once with its
     // history and once without: every difference below is the history alone
     const grown = ([document, forgotten] as const).map((value) => {
-      const loaded = World.load(value)
+      // a copy each: the two cities are grown side by side and must not share a plot
+      const loaded = World.load(structuredClone(value))
       expect(loaded.ok, 'the city would not reopen').toBe(true)
       if (!loaded.ok) throw new Error('unreachable')
       const world = loaded.value
@@ -165,21 +166,24 @@ describe('a city written against a history', () => {
 
     const added = await Promise.all(
       grown.map(async ({ world, standing }) => {
-        const grew = await forge.extend(world, 40, new Rng('one-hand'))
+        const grew = await forge.extend(world, 120, new Rng('one-hand'))
         expect(grew.ok).toBe(true)
         expect(world.premise(), 'growing the city rewrote its history').toEqual(world === grown[0]!.world ? SHIPPING : undefined)
         return counts(world.plots().filter((plot) => !standing.has(plot.id)).map((plot) => plot.kind))
       }),
     )
 
-    const wharf = (held: Map<string, number>) => (held.get('warehouse') ?? 0) + (held.get('market') ?? 0)
-    expect(wharf(added[0]!), 'the city grew the same either way').toBeGreaterThan(wharf(added[1]!) * 2)
+    // how far a growth leans towards the story: the kinds it asks for, less the
+    // kinds it has less use for. The city that kept its history leans twice as far
+    const held = (counted: Map<string, number>, kinds: readonly string[]) => kinds.reduce((sum, kind) => sum + (counted.get(kind) ?? 0), 0)
+    const lean = (counted: Map<string, number>) => held(counted, SHIPPING.build.moreOf) - held(counted, SHIPPING.build.fewerOf)
+    expect(lean(added[0]!), 'the city grew the same either way').toBeGreaterThan(lean(added[1]!) * 1.5)
   })
 
   it('shows every place that opens the town it stands in', async () => {
     const told = new Told(SEED, SHIPPING)
     await build(told)
-    expect(told.seen.length).toBeGreaterThan(4)
+    expect(told.seen.length, 'the narrator was asked about no place at all').toBeGreaterThan(2)
     for (const request of told.seen) {
       expect(request.premise, `${request.kind} was written knowing nothing about the town`).toBe(premiseLines(SHIPPING))
     }

@@ -6,7 +6,7 @@ import type { InstanceBrief, InstanceRequest, PlaceRequest } from '../narrator.t
 import { premiseLines } from '../premise/render.ts'
 import type { Signs } from '../narrator/signs.ts'
 import type { StreetNames } from '../narrator/streets.ts'
-import { bodyFor, itemsFor, keeperOf, occupancy, roleFor, surfacesOf } from '../populate.ts'
+import { bodyFor, itemsFor, keeperOf, roleFor, surfacesOf } from '../populate.ts'
 import { callsForDancing } from '../premise/wants.ts'
 import { priceOf } from '../prices.ts'
 import { putUpForSale } from './homes.ts'
@@ -17,7 +17,8 @@ export interface RaiseSetup {
   readonly theme: string
   /** What the city is about, when a narrator wrote one. */
   readonly premise?: Premise
-  readonly density: number
+  /** How many places the city opens, whatever its size. */
+  readonly places: number
   readonly signs: Signs
   /** What every street in the town is called. */
   readonly streets: StreetNames
@@ -39,7 +40,13 @@ export function planRaise(world: World, chosen: readonly Chosen[], setup: RaiseS
   const demanded = new Set(setup.premise?.build.mustHave ?? [])
   const open = openDoors(frontagesOf(world, chosen, demanded), setup.doors, {
     built: first,
-    open: world.interiors().flatMap((interior) => world.charter(interior.kind) ?? []),
+    open: world.interiors().flatMap((interior) => {
+      const charter = world.charter(interior.kind)
+      const plot = world.plot(interior.plotId)
+      return charter && plot ? [{ charter, spot: plot.entrance.cell }] : []
+    }),
+    span: Math.max(world.grid.width, world.grid.height),
+    places: setup.places,
   })
   const counts = { npcs: world.npcs().length, items: world.items().length }
   const style = `${setup.theme.split(/\s+/)[0]?.toLowerCase() ?? 'plain'}-`
@@ -135,6 +142,8 @@ function frontagesOf(world: World, chosen: readonly Chosen[], demanded: Readonly
   return chosen.map((one, at) => ({
     id: String(at),
     charter: one.charter,
+    spot: one.site.entrance,
+    floor: one.site.rect.w * one.site.rect.h,
     nearness: 1 - Math.hypot(one.site.entrance.x - middle.x, one.site.entrance.y - middle.y) / furthest,
     onAvenue: one.onAvenue,
     storied: demanded.has(one.charter.word),
@@ -156,17 +165,15 @@ function planInside(world: World, one: Chosen, setup: RaiseSetup, counts: { npcs
     rng: one.rng.fork('inside'),
   })
   const rng = setup.people.fork(`people/${interiorId}`)
-  // posts filled whatever the dice say: whoever keeps the keys, because a lock without its keeper is a lock nobody can write a quest through, and one person in a home, because a home is somebody's
+  // whoever keeps the keys: a lock without its keeper is a lock nobody can write a quest through
   const keeper = keeperOf(plan.anchors, one.charter)
-  const filled = new Set(plan.keys.length || one.charter.residential ? [keeper] : [])
-
+  // a city opens a handful of places and its whole cast stands in them, so every
+  // post in one is filled: an empty stool in a town of three doors is a third of
+  // the people the player will ever meet missing
   const posts: PlannedPost[] = []
   for (const anchor of plan.anchors) {
     const role = roleFor(anchor.kind, one.charter)
     if (!role) continue
-    // a staff post is always filled: a bar without a bartender is not a bar
-    const chance = filled.has(anchor) ? 1 : occupancy(anchor.kind, one.charter)
-    if (chance < 1 && !rng.chance(chance * setup.density)) continue
     const index = counts.npcs++
     posts.push({ anchor, role, index, appearance: { base: bodyFor(rng), variant: rng.int(0, 8) } })
   }
@@ -185,7 +192,7 @@ function planInside(world: World, one: Chosen, setup: RaiseSetup, counts: { npcs
   // something worth locking up goes behind the lock; the rest lies on the surfaces people use
   const behind = plan.anchors.filter((anchor) => plan.shut.includes(anchor.roomId))
   const surfaces = surfacesOf(plan.anchors)
-  for (const [at, archetype] of itemsFor(one.charter, rng).entries()) {
+  for (const [at, archetype] of itemsFor(one.charter, rng, surfaces.length).entries()) {
     const anchor = (at === 0 && behind[0]) || surfaces[at % Math.max(1, surfaces.length)]
     if (!anchor) break
     things.push({ thingId: `${interiorId}/thing/${at}`, archetype, anchorId: anchor.id, index: counts.items++, value: priceOf(archetype, rng) })
