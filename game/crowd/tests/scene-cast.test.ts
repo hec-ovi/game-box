@@ -1,15 +1,15 @@
-import { CLIPS } from '@gb/cast'
-import type { Npc } from '@gb/world'
+import { CLIPS, buildFor } from '@gb/cast'
+import type { Npc, NpcRole } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { SceneCast } from '../src/index.ts'
 import { StubCast } from './support/stub-cast.ts'
 
-function walkerNpc(id: string, base: 'male' | 'female', variant: number): Npc {
+function walkerNpc(id: string, base: 'male' | 'female', variant: number, role: NpcRole = 'wanderer'): Npc {
   return {
     id,
     name: 'Passer-by',
-    role: 'wanderer',
+    role,
     appearance: { base, variant },
     personality: 'Crossing town.',
     knowledge: [],
@@ -76,6 +76,29 @@ describe('SceneCast', () => {
     expect(scene.parked).toBe(0)
   })
 
+  it('never puts a walker in a body of another build', () => {
+    const cast = new StubCast()
+    const root = new THREE.Object3D()
+    const scene = new SceneCast(cast, root)
+    // the cast builds a minority of the people whose work is physical heavier, and these two workers differ
+    const heavy = walkerNpc('npc_900004', 'male', 3, 'worker')
+    const regular = walkerNpc('npc_900000', 'male', 3, 'worker')
+    expect(buildFor(heavy)).toBe('heavy')
+    expect(buildFor(regular)).toBe('regular')
+
+    scene.spawn(heavy).release()
+    // the parked body is the wrong size for this one, so the cast makes a second rather than shrinking them
+    scene.spawn(regular)
+    expect(cast.spawned.map((npc) => npc.id)).toEqual([heavy.id, regular.id])
+    expect(scene.members().get(regular.id)!.build).toBe('regular')
+    expect(scene.parked).toBe(1)
+
+    // and the parked heavy body is worn by the next heavy walker
+    scene.spawn(walkerNpc('npc_900007', 'male', 3, 'worker'))
+    expect(cast.spawned.length).toBe(2)
+    expect(scene.members().get('npc_900007')).toBe(cast.members[0])
+  })
+
   it('answers for whoever is wearing a body now, never for whoever wore it before', () => {
     const cast = new StubCast()
     const scene = new SceneCast(cast, new THREE.Object3D())
@@ -127,18 +150,21 @@ describe('SceneCast', () => {
     expect(scene.parked).toBe(1)
   })
 
-  it('parks a body with its hands down, whatever it was saying when it was retired', () => {
+  it('parks a body with its mouth shut and its hands down, whatever it was saying when it was retired', () => {
     const cast = new StubCast()
     const scene = new SceneCast(cast, new THREE.Object3D())
     const actor = scene.spawn(walkerNpc('npc_900001', 'male', 3))
     const member = cast.members[0]!
 
     member.gesture(CLIPS.talk)
+    member.speak(true)
     expect(member.gesturing).toBe(CLIPS.talk)
+    expect(member.speaking).toBe(true)
 
     // retired mid-sentence, then worn by the next passer-by, who is not talking to anybody
     actor.release()
     scene.spawn(walkerNpc('npc_900002', 'male', 3))
     expect(member.gesturing).toBeUndefined()
+    expect(member.speaking).toBe(false)
   })
 })

@@ -1,4 +1,4 @@
-import type { Cast, CastMember } from '@gb/cast'
+import { buildFor, type Cast, type CastMember } from '@gb/cast'
 import type { Npc } from '@gb/world'
 import { Vector3 } from 'three'
 import type { Object3D } from 'three'
@@ -23,13 +23,23 @@ interface Body {
 }
 
 /**
+ * The bodies a walker may be given: their body kind and their build. A body is
+ * scaled to its build once, at spawn, so a heavy one worn by anybody else is
+ * the wrong person in the street.
+ */
+function poolOf(npc: Npc): string {
+  return `${npc.appearance.base}/${buildFor(npc)}`
+}
+
+/**
  * The bridge from the crowd to the real people: a `@gb/cast` body per walker,
  * parented to one object you can add to the scene and hide in one go.
  *
  * Bodies are recycled rather than thrown away. `@gb/cast` keeps a mixer per
  * body it spawns and has no way to hand one back, so an hour of walking past
  * strangers would otherwise leave hundreds of skeletons ticking. A retired
- * body leaves the scene graph and waits here for the next walker of its kind.
+ * body leaves the scene graph and waits here for the next walker of its kind
+ * and build.
  */
 export class SceneCast implements CrowdCast {
   readonly root: Object3D
@@ -67,34 +77,35 @@ export class SceneCast implements CrowdCast {
   }
 
   spawn(npc: Npc): CrowdActor {
-    const { base, variant } = npc.appearance
-    const body = this.#take(base, variant) ?? { member: this.#cast.spawn(npc), variant }
+    const { variant } = npc.appearance
+    const pool = poolOf(npc)
+    const body = this.#take(pool, variant) ?? { member: this.#cast.spawn(npc), variant }
     body.member.object.visible = true
     this.root.add(body.member.object)
     this.#worn.set(npc.id, body.member)
-    return new BodyActor(body, this.root, this.#rooms, (returned) => this.#give(npc.id, base, returned))
+    return new BodyActor(body, this.root, this.#rooms, (returned) => this.#give(npc.id, pool, returned))
   }
 
-  /** The right look if one is parked, otherwise any body of the same kind, otherwise none. */
-  #take(base: string, variant: number): Body | undefined {
-    const bodies = this.#free.get(base)
+  /** The right look if one is parked, otherwise any body of the same kind and build, otherwise none. */
+  #take(pool: string, variant: number): Body | undefined {
+    const bodies = this.#free.get(pool)
     if (!bodies || bodies.length === 0) return undefined
     const exact = bodies.findIndex((body) => body.variant === variant)
     const index = exact === -1 ? bodies.length - 1 : exact
     return bodies.splice(index, 1)[0]
   }
 
-  /** A body handed back: nobody is wearing it, and it waits for the next walker of its kind. */
-  #give(npcId: string, base: string, body: Body): void {
+  /** A body handed back: nobody is wearing it, and it waits for the next walker of its kind and build. */
+  #give(npcId: string, pool: string, body: Body): void {
     // spawn one person twice and the newest body is theirs: an older one going home must not blank it
     if (this.#worn.get(npcId) === body.member) this.#worn.delete(npcId)
-    this.#park(base, body)
+    this.#park(pool, body)
   }
 
-  #park(base: string, body: Body): void {
-    const bodies = this.#free.get(base)
+  #park(pool: string, body: Body): void {
+    const bodies = this.#free.get(pool)
     if (bodies) bodies.push(body)
-    else this.#free.set(base, [body])
+    else this.#free.set(pool, [body])
   }
 }
 
@@ -161,7 +172,8 @@ class BodyActor implements CrowdActor {
   release(): void {
     if (!this.#live) return
     this.#live = false
-    // a parked body is reused as somebody else: it must not come back still staring, or still waving its hands about
+    // a parked body is reused as somebody else: it must not come back still talking, still staring, or still waving its hands about
+    this.#body.member.speak(false)
     this.#body.member.lookAway()
     this.#body.member.stopGesture()
     this.#body.member.object.visible = false

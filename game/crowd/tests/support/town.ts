@@ -1,4 +1,4 @@
-import { METRICS, WIDEST_ROADWAY_CELLS, World, type CellKind } from '@gb/world'
+import { METRICS, SHIPPED_CHARTERS, WIDEST_ROADWAY_CELLS, World, type CellKind, type ResolvedCharter } from '@gb/world'
 
 /** Cells from one street to the next. Three of roadway, a pavement each side, block between. */
 const PITCH = 12
@@ -19,18 +19,27 @@ function kindAt(x: number, y: number): CellKind | 'block' {
   return 'block'
 }
 
+/** The house preset under whatever word a town declares, so a town can be built of a kind no preset ships. */
+function charterFor(word: string): ResolvedCharter {
+  const house = SHIPPED_CHARTERS.find((charter) => charter.word === 'house')
+  if (!house) throw new Error('the shipped charters no longer carry a house')
+  return { ...house, word }
+}
+
 /**
  * A hand-laid grid city: streets with pavement both sides, blocks built on,
  * and one of them left as a park. Built here rather than generated so this
- * box's tests answer for this box alone.
+ * box's tests answer for this box alone. `kind` is the word its buildings are
+ * of, declared by the town itself, so a test can walk a city whose kinds of
+ * place no preset ships.
  */
-export function testTown(seed = 'crowd-town'): World {
-  const world = World.create({ name: 'Grid', theme: 'test', seed, width: CELLS, height: CELLS })
+export function testTown(kind = 'house'): World {
+  const world = World.create({ name: 'Grid', theme: 'test', seed: 'crowd-town', width: CELLS, height: CELLS, charters: [charterFor(kind)] })
 
   for (let y = 0; y < CELLS; y++) {
     for (let x = 0; x < CELLS; x++) {
-      const kind = kindAt(x, y)
-      if (kind !== 'block') world.paint({ x, y, w: 1, h: 1 }, kind)
+      const ground = kindAt(x, y)
+      if (ground !== 'block') world.paint({ x, y, w: 1, h: 1 }, ground)
     }
   }
 
@@ -45,8 +54,8 @@ export function testTown(seed = 'crowd-town'): World {
         continue
       }
       const built = world.addPlot({
-        kind: 'house',
-        name: `House ${bx}-${by}`,
+        kind,
+        name: `Number ${bx}-${by}`,
         rect,
         // the doorstep is the pavement cell in front of the door, the way a generated city lays it
         entrance: { cell: { x: rect.x, y: rect.y - 1 }, facing: 'north' },
@@ -181,7 +190,7 @@ export function roomBehind(world: World, plotId: string): string {
   const added = world.addInterior({
     id,
     plotId,
-    kind: 'house',
+    kind: world.plot(plotId)!.kind,
     size: { w: 8, h: 6 },
     rooms: [{ id: room, kind: 'main', name: 'Front room', rect: { x: 0, y: 0, w: 8, h: 6 } }],
     doors: [{ id: world.mintId('door'), from: 'outside', to: room, pos: { x: 4, y: 0 }, rot: 0 }],

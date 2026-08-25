@@ -1,5 +1,5 @@
 import type { Rng } from '@gb/kit'
-import { BUILDING_KINDS, type CellKind, type World } from '@gb/world'
+import type { CellKind, World } from '@gb/world'
 import type { Cell, Point } from './ports.ts'
 import { Ring } from './ring.ts'
 
@@ -10,9 +10,12 @@ export interface Place {
 }
 
 /**
- * The doors in town. A plot's doorstep is its `entrance.cell`, the way
- * `@gb/nav` reads it; one that is not on the pavement is a door nobody can
- * walk up to, so that building is nowhere to go and nowhere to set off from.
+ * The doors in town, of every kind of place the city declares: the words are
+ * the world's charters, so a city that invented its own kinds is walked the
+ * same as one built from the presets. A plot's doorstep is its
+ * `entrance.cell`, the way `@gb/nav` reads it; one that is not on the pavement
+ * is a door nobody can walk up to, so that building is nowhere to go and
+ * nowhere to set off from.
  */
 export class Places {
   #ring: Ring<Place>
@@ -25,8 +28,8 @@ export class Places {
   static from(world: World, kinds: readonly CellKind[]): Places {
     const wanted = new Set(kinds)
     const places = new Places(new Ring<Place>(world.cellSize, world.grid.width, world.grid.height))
-    for (const kind of BUILDING_KINDS) {
-      for (const plot of world.plotsOfKind(kind)) {
+    for (const charter of world.charters()) {
+      for (const plot of world.plotsOfKind(charter.word)) {
         const cell = plot.entrance.cell
         const under = world.grid.at(cell.x, cell.y)
         if (under === undefined || !wanted.has(under)) continue

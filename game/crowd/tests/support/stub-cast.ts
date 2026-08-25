@@ -1,4 +1,4 @@
-import { CLIPS, GESTURES, clipsUsed, type CastMember } from '@gb/cast'
+import { CLIPS, GESTURES, buildFor, clipsUsed, type Build, type CastMember } from '@gb/cast'
 import type { Npc } from '@gb/world'
 import * as THREE from 'three'
 import type { CastSpawner } from '../../src/index.ts'
@@ -20,15 +20,18 @@ export class StubMember implements CastMember {
   readonly npcId: string
   readonly object = new THREE.Object3D()
   readonly outfit = 'stub'
+  readonly build: Build
   readonly holding = undefined
   /** Every speed the gait was asked to run at, in the order it was asked. */
   readonly paced: number[] = []
   #playing: string | undefined
   #gesturing: string | undefined
   #attending = false
+  #speaking = false
 
   constructor(npc: Npc, doing: string) {
     this.npcId = npc.id
+    this.build = buildFor(npc)
     this.object.name = `${npc.appearance.base}/${npc.appearance.variant}`
     this.play(doing)
   }
@@ -43,6 +46,10 @@ export class StubMember implements CastMember {
 
   get attending(): boolean {
     return this.#attending
+  }
+
+  get speaking(): boolean {
+    return this.#speaking
   }
 
   play(clip: string): void {
@@ -62,6 +69,12 @@ export class StubMember implements CastMember {
   stopGesture(): void {
     this.#gesturing = undefined
   }
+
+  speak(on: boolean): void {
+    this.#speaking = on
+  }
+
+  pulse(): void {}
 
   lookAt(): void {}
   lookAway(): void {}

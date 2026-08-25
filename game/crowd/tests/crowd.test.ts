@@ -133,6 +133,27 @@ describe('Crowd', () => {
     expect(crowd.destination('npc_nobody')).toBeUndefined()
   })
 
+  it('goes to the doors of a kind of place only this city declares', () => {
+    // a town of a word no preset ships: its charter is the only reason the word is legal
+    const invented = testTown('roost')
+    const doors = new Set(invented.plotsOfKind('roost').map((plot) => plot.id))
+    expect(doors.size).toBeGreaterThan(0)
+    const crowd = Crowd.create({ world: invented, nav: CityNav.from(invented), cast: new FakeCast(), seed: 'invented' }, { population: 4 })
+    let heading = 0
+
+    for (let frame = 0; frame < 600; frame++) {
+      crowd.update(STEP, middle)
+      for (const walker of crowd.walkers()) {
+        const going = crowd.destination(walker.id)
+        if (!going) continue
+        expect(doors.has(going.plotId)).toBe(true)
+        heading++
+      }
+    }
+
+    expect(heading).toBeGreaterThan(0)
+  })
+
   it('is always playing a clip the pack has, walks its own walk, and stands in an idle when it gets there', () => {
     const root = new THREE.Object3D()
     const cast = new StubCast()
