@@ -1,3 +1,4 @@
+import { forcedTool } from './forced.ts'
 import type { GenerateRequest, TokenEvent } from './schema.ts'
 
 /**
@@ -10,7 +11,7 @@ export function generate(request: GenerateRequest): TokenEvent[] {
   const forced = forcedTool(request)
   if (forced !== undefined) {
     return [
-      { type: 'tool-call', name: forced, arguments: {} },
+      { type: 'tool-call', name: forced.function.name, arguments: {} },
       { type: 'done', finishReason: 'stop' },
     ]
   }
@@ -19,14 +20,6 @@ export function generate(request: GenerateRequest): TokenEvent[] {
   const events: TokenEvent[] = splitInclusive(`You said: ${lastUser}`, ' ').map((text) => ({ type: 'token', text }))
   events.push({ type: 'done', finishReason: 'stop' })
   return events
-}
-
-/** The tool the request insists on, if it insists on one. */
-function forcedTool(request: GenerateRequest): string | undefined {
-  const choice = request.tool_choice
-  if (typeof choice === 'object') return choice.function.name
-  if (choice !== 'required') return undefined
-  return request.tools?.[0]?.function.name
 }
 
 /** Pieces that still carry their separator, so joining them rebuilds the text. */

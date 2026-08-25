@@ -27,6 +27,7 @@ export const ToolChoiceSchema = z.union([
 
 export const TOOLS_DESCRIPTION = 'Callable tools. The model answers by calling one instead of writing prose.'
 export const CHOICE_DESCRIPTION = 'auto lets the model decide, required forces some call, or name the one tool it must call.'
+const SALVAGED_DESCRIPTION = 'The engine wrote the arguments as prose instead of calling; the call was rebuilt from it.'
 
 export const GenerateRequestSchema = z
   .strictObject({
@@ -46,6 +47,7 @@ export const TokenEventSchema = z
       id: z.string().optional(),
       name: z.string().min(1),
       arguments: z.looseObject({}).meta({ description: 'Parsed arguments. Unparseable JSON never reaches here.' }),
+      salvaged: z.literal(true).meta({ description: SALVAGED_DESCRIPTION }).optional(),
     }),
     z.strictObject({ type: z.literal('done'), finishReason: z.enum(['stop', 'length', 'error']) }),
   ])

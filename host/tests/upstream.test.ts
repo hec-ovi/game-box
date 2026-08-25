@@ -20,18 +20,29 @@ const SPEAKING_AND_ACTING = [
   '{"choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}]}',
 ]
 
+const GIVE_QUEST = {
+  type: 'function',
+  function: {
+    name: 'give_quest',
+    parameters: { type: 'object', properties: { questId: { type: 'string' } }, required: ['questId'] },
+  },
+}
+
 const REQUEST = {
   messages: [{ role: 'user', content: 'anything going on?' }],
-  tools: [
-    {
-      type: 'function',
-      function: {
-        name: 'give_quest',
-        parameters: { type: 'object', properties: { questId: { type: 'string' } }, required: ['questId'] },
-      },
-    },
-  ],
+  tools: [GIVE_QUEST],
   tool_choice: 'auto',
+}
+
+/** The shape the game sends when it wants data: one tool, and the choice naming it. */
+const FORCED = { ...REQUEST, tool_choice: { type: 'function', function: { name: 'give_quest' } } }
+
+/** An engine asked for JSON through its grammar writes the arguments as its whole answer. */
+function jsonAnswer(text: string): string[] {
+  return [
+    `{"choices":[{"index":0,"delta":{"content":${JSON.stringify(text)}},"finish_reason":null}]}`,
+    '{"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}',
+  ]
 }
 
 let host: RunningHost
@@ -106,6 +117,46 @@ describe('an upstream engine', () => {
     } finally {
       upstream.answerWith(SPEAKING_AND_ACTING)
     }
+  })
+})
+
+// llama-server reads a named tool choice as `auto` and answers prose, and a
+// `required` reply the model resists never ends (measured on b10603 with
+// gemma-4-26b-a4b). Its grammar does force a JSON schema, so a forced call
+// goes out as one, and the JSON it writes is read back as the call.
+describe('a forced call on a server of your own', () => {
+  after(() => upstream.answerWith(SPEAKING_AND_ACTING))
+
+  it('is asked for as the tool\'s parameters, and the JSON that comes back is the call', async () => {
+    upstream.answerWith(jsonAnswer('{"questId":"quest_0001"}'))
+
+    const body = await (await post(FORCED)).json()
+    const sent = upstream.seen.at(-1)?.body
+
+    assert.deepEqual(sent?.response_format, {
+      type: 'json_schema',
+      json_schema: { name: 'give_quest', schema: GIVE_QUEST.function.parameters },
+    })
+    assert.equal(sent?.tool_choice, 'none')
+    assert.deepEqual(sent?.tools, [GIVE_QUEST])
+    assert.ok(chatResponseContract.is(body), `response off-contract: ${JSON.stringify(body)}`)
+    const choice = body.choices[0]
+    assert.equal(choice?.finish_reason, 'tool_calls')
+    assert.equal(choice?.message.tool_calls?.[0]?.function.name, 'give_quest')
+    assert.deepEqual(JSON.parse(choice?.message.tool_calls?.[0]?.function.arguments ?? 'null'), { questId: 'quest_0001' })
+    assert.equal(choice?.message.content, undefined)
+    assert.equal(body.salvaged, undefined, 'a call asked for as JSON is the answer by design, not a salvage')
+  })
+
+  it('leaves JSON that does not fit the parameters as the prose it is', async () => {
+    upstream.answerWith(jsonAnswer('{"quest":"quest_0001"}'))
+
+    const body = await (await post(FORCED)).json()
+
+    assert.ok(chatResponseContract.is(body), `response off-contract: ${JSON.stringify(body)}`)
+    assert.equal(body.choices[0]?.finish_reason, 'stop')
+    assert.equal(body.choices[0]?.message.tool_calls, undefined)
+    assert.equal(body.choices[0]?.message.content, '{"quest":"quest_0001"}')
   })
 })
 

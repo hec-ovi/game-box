@@ -1,6 +1,6 @@
 # host contract
 
-contractVersion: 0.4.0
+contractVersion: 0.5.0
 
 ## Purpose
 
@@ -16,8 +16,10 @@ pnpm -C host start    # reads nothing: export the variables yourself
 ```
 GAME_BOX_LLM_UPSTREAM=http://127.0.0.1:8080 \
   node --experimental-strip-types tools/repeatable.ts    # does the engine repeat itself?
+GAME_BOX_LLM_UPSTREAM=http://127.0.0.1:8080 \
+  node --experimental-strip-types tools/forced-call.ts   # does a forced tool call come back as one?
 GAME_BOX_LLM_UPSTREAM=openrouter \
-  node --env-file=.env --experimental-strip-types tools/forced-call.ts [model ...]   # does it honour a forced tool call?
+  node --env-file=.env --experimental-strip-types tools/forced-call.ts [model ...]   # the same, per hosted model
 ```
 
 Node 22 or newer, one dependency (zod), no build step. The port comes from `GAME_BOX_PORT` (default 8976) and the socket is bound to 127.0.0.1 only.
@@ -54,8 +56,8 @@ OpenRouter.
 
 | Param | Schema | Postconditions |
 |---|---|---|
-| chat response (non-streaming) | [schema/api/chat-response.json](schema/api/chat-response.json) | one assistant message carrying whatever the engine produced: `content`, `tool_calls`, or both, with `finish_reason: "tool_calls"` whenever there is a call |
-| chat SSE chunk (streaming, each `data:` payload) | [schema/api/chat-stream-event.json](schema/api/chat-stream-event.json) | token chunks with `finish_reason: null`, one chunk per completed tool call, one closing chunk with a finish reason, then literal `data: [DONE]` |
+| chat response (non-streaming) | [schema/api/chat-response.json](schema/api/chat-response.json) | one assistant message carrying whatever the engine produced: `content`, `tool_calls`, or both, with `finish_reason: "tool_calls"` whenever there is a call; `salvaged` counts the calls rebuilt from prose, and is absent when none was |
+| chat SSE chunk (streaming, each `data:` payload) | [schema/api/chat-stream-event.json](schema/api/chat-stream-event.json) | token chunks with `finish_reason: null`, one chunk per completed tool call (`salvaged: 1` on it when the call was rebuilt from prose), one closing chunk with a finish reason, then literal `data: [DONE]` |
 | realtime server events | [schema/api/realtime-server-event.json](schema/api/realtime-server-event.json) | `transcription.partial` per accepted append; `transcription.completed` on commit; `error` never closes the socket |
 | error body (HTTP 4xx/5xx) | [schema/api/error.json](schema/api/error.json) | every non-2xx response carries this body; a 429 also carries a `Retry-After` header in whole seconds |
 | `GET /health` | inline: `{status:"ok", service:"game-box", contractVersion}` | always 200 when the process is up |
@@ -89,6 +91,50 @@ requests queueing instead of fanning out.
 
 Run `tools/repeatable.ts` against whichever engine is configured, as it is
 actually started, rather than assuming either answer holds.
+
+## Forcing a call
+
+A request that insists on one tool (a `tool_choice` naming it, or `required`
+with one tool offered) gets one call back, or prose it can see is prose. The
+shape the engine is asked in depends on the upstream, because they differ in
+what they honour. `auto`, `none`, and `required` over several tools force
+nothing and go out unchanged.
+
+Measured on 2026-08-25 against llama-server b10603 (gemma-4-26b-a4b,
+`--jinja`, `--parallel 5`) with a quest tool whose steps carry a `next` array,
+and a system line asking for the quest as JSON:
+
+- A named `tool_choice` is read as `auto`: 19 of 20 replies were a ```json
+  block with `finish_reason: "stop"` and no call, and a prompt asking for the
+  word hello got "Hello." 5 times of 5.
+- `required` forbids the end of the reply until a call arrives but does not
+  make the call come first: 2 of 5 replies finished (one after writing the
+  block anyway), 3 ran past a 100 s cap, and the hello prompt looped for
+  4,531 tokens in 90 s without ending.
+- `response_format: {"type": "json_schema"}` built from the tool's parameters
+  is enforced by the grammar from the first token: 5 of 5 replies sent
+  directly were bare JSON objects fitting the schema, `next` an array, about
+  14 s each. Through this service, with the same prompt: 20 of 20 non-streamed and 5 of 5 streamed forced calls came back as the call, 0 prose, `next` an array in every one, 11 to 17 s each.
+
+So a server of your own is sent the tool's parameters as `response_format`,
+`tool_choice: "none"`, and its `tools` as they are, and the JSON it writes is
+read back as the call. OpenRouter is sent the choice itself, which it honours
+(see below).
+
+On either path a reply that arrives as prose carrying a JSON block that fits
+the tool's parameters (the whole text, the inside of a code fence, or the
+span between its first and last brace) becomes the call it was, and the reply
+counts it in `salvaged`, so a caller can see the engine did not call on its
+own. A call asked for as JSON is the answer by design and counts nothing.
+Text that is not the call, or that fails the parameters, stays prose with
+`finish_reason: "stop"`; a reply that ended for any other reason is left as it
+came. The check is zod's reading of the JSON Schema, and a schema it cannot
+read (`not`, `if`/`then`, `unevaluatedProperties`, `dependentRequired`, an
+external `$ref`) validates nothing, so no call is rebuilt against it.
+
+The text of a forced reply is held until the reply ends, since only then is
+it known whether it was the call; a streamed forced call therefore arrives as
+its call chunk and the closing chunk together.
 
 ## A busy model
 
@@ -173,7 +219,7 @@ None. This service knows about text, audio, tools and models; it does not know w
 - Sampler settings are the caller's to make. None is defaulted, none is dropped: what a request pins reaches the engine, and what it leaves out is left out.
 - A rate limit is answered as 429 with a wait, never as a failure, and never retried inside this service.
 - A credential is read from the environment, sent only to the upstream it belongs to, and scrubbed out of every error this service returns. A URL you configure yourself is always called unauthenticated.
-- Tool definitions and the tool choice are forwarded to the engine unchanged, and a tool call comes back in the OpenAI shape with its arguments as JSON text. A caller that offers a tool gets either a complete call or an error, never a half-built one.
+- Tool definitions are forwarded to the engine unchanged. A call the request insists on is asked for in the shape the upstream honours, and comes back in the OpenAI shape with its arguments as JSON text; when it was rebuilt from prose the reply says so. A caller that offers a tool gets either a complete call or an error, never a half-built one.
 - Speaking and acting are not exclusive: a reply that carries both text and a call keeps both, because a character who says something while doing it must not lose either half.
 - A WS `error` event leaves the recognition session exactly as it was.
 - Audio only ever crosses a boundary as a schema-validated base64 envelope, never as bare bytes.
@@ -185,7 +231,7 @@ Four layers behind the endpoints, each with its own schemas and its own seam for
 
 | Layer | Takes | Gives | Engine today |
 |---|---|---|---|
-| `src/llm` | [generate-request](schema/llm/generate-request.json) | stream of [token-event](schema/llm/token-event.json), always exactly one `done` | proxy to whatever `GAME_BOX_LLM_UPSTREAM` selects, or a stand-in that replies `You said: <last user message>` and answers a forced tool choice with an empty call |
+| `src/llm` | [generate-request](schema/llm/generate-request.json) | stream of [token-event](schema/llm/token-event.json), always exactly one `done`; a `tool-call` rebuilt from prose carries `salvaged: true` | proxy to whatever `GAME_BOX_LLM_UPSTREAM` selects, asking for a forced call in the shape that upstream honours, or a stand-in that replies `You said: <last user message>` and answers a forced tool choice with an empty call |
 | `src/stt` | [audio-chunk](schema/stt/audio-chunk.json) per `push` | [transcript-event](schema/stt/transcript-event.json): `partial` per push, one `final` per `finish` | stand-in that reports heard duration |
 | `src/tts` | [speak-request](schema/tts/speak-request.json), then any text slice | [audio-event](schema/tts/audio-event.json): 80 ms `frame`s while the sentence is still being written, one `end` | stand-in that emits silence timed from the text |
 | `src/models` | [model-entry](schema/models/model-entry.json) | [resolved-model](schema/models/resolved-model.json) | streaming sha256 over the cache directory; nothing is returned unverified |

@@ -1,9 +1,11 @@
 import { err, ok, type Result } from '../result.ts'
 import { Backoff } from './backoff.ts'
 import { modelBusy, upstreamFailed, type LlmError } from './errors.ts'
+import type { Forcing } from './forced.ts'
+import { ForcedReply } from './forced-reply.ts'
 import { PendingCall } from './pending-call.ts'
+import { upstreamRequest } from './request-body.ts'
 import { retryAfterSeconds } from './retry-after.ts'
-import { samplingOf } from './sampling.ts'
 import type { GenerateRequest, TokenEvent } from './schema.ts'
 import { payloadsOf, prepend, type Payload } from './sse.ts'
 
@@ -15,6 +17,8 @@ export interface Upstream {
   readonly headers?: Readonly<Record<string, string>>
   /** The model asked for when the caller names none. */
   readonly model: string
+  /** How a call the request insists on is asked for. */
+  readonly forcing: Forcing
   /** A credential inside those headers. It never appears in an error. */
   readonly secret?: string
 }
@@ -38,19 +42,14 @@ const backoff = new Backoff()
  * Proxy generation to an OpenAI-compatible server. No output-length cap is
  * ever sent: the model must finish naturally. A rate limit is answered as
  * `busy` with how long to wait, never as a failure, and never retried here.
+ * A call the request insists on comes back as one call whichever way the
+ * engine wrote it.
  */
 export async function generate(
   upstream: Upstream,
   request: GenerateRequest,
 ): Promise<Result<AsyncIterable<TokenEvent>, LlmError>> {
-  const body: Record<string, unknown> = {
-    model: request.model ?? upstream.model,
-    messages: request.messages,
-    stream: true,
-    ...samplingOf(request),
-  }
-  if (request.tools !== undefined) body.tools = request.tools
-  if (request.tool_choice !== undefined) body.tool_choice = request.tool_choice
+  const { body, forced } = upstreamRequest(upstream, request)
 
   let response: Response
   try {
@@ -78,7 +77,8 @@ export async function generate(
   if (!first.done && isBusy(first.value)) return err(busy(undefined))
 
   backoff.reset()
-  return ok(read(first.done ? payloads : prepend(first.value, payloads)))
+  const events = read(first.done ? payloads : prepend(first.value, payloads))
+  return ok(forced === undefined ? events : new ForcedReply(forced.tool, forced.asked).through(events))
 }
 
 function busy(retryAfter: number | undefined): LlmError {

@@ -76,7 +76,9 @@ function completionOf(events: readonly TokenEvent[], head: Head): ChatResponse {
     .filter((e) => e.type === 'token')
     .map((e) => e.text)
     .join('')
-  const calls = events.filter((e) => e.type === 'tool-call').map(toolCall)
+  const made = events.filter((e) => e.type === 'tool-call')
+  const calls = made.map(toolCall)
+  const salvaged = made.filter((e) => e.salvaged === true).length
   const done = events.findLast((e) => e.type === 'done')
 
   // A speaker can say something and do something in the same breath, so
@@ -91,12 +93,15 @@ function completionOf(events: readonly TokenEvent[], head: Head): ChatResponse {
     created: head.created,
     model: head.model,
     choices: [{ index: 0, message, finish_reason: calls.length > 0 ? 'tool_calls' : (done?.finishReason ?? 'stop') }],
+    ...(salvaged > 0 ? { salvaged } : {}),
   }
 }
 
+/** The chunk carrying a rebuilt call says so, the way the whole reply does when not streamed. */
 async function* chunksOf(events: AsyncIterable<TokenEvent>, head: Head): AsyncGenerator<ChatStreamEvent> {
   for await (const event of events) {
-    yield { ...head, object: 'chat.completion.chunk', choices: [{ index: 0, ...deltaOf(event) }] }
+    const salvaged = event.type === 'tool-call' && event.salvaged === true ? { salvaged: 1 } : {}
+    yield { ...head, object: 'chat.completion.chunk', choices: [{ index: 0, ...deltaOf(event) }], ...salvaged }
   }
 }
 

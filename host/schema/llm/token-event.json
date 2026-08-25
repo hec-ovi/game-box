@@ -38,6 +38,11 @@
           "properties": {},
           "additionalProperties": {},
           "description": "Parsed arguments. Unparseable JSON never reaches here."
+        },
+        "salvaged": {
+          "type": "boolean",
+          "const": true,
+          "description": "The engine wrote the arguments as prose instead of calling; the call was rebuilt from it."
         }
       },
       "required": [

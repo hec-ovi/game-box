@@ -11,6 +11,8 @@ import {
 import { AudioEnvelopeSchema } from '../stt/schema.ts'
 
 const ARGUMENTS_DESCRIPTION = 'JSON text, as the OpenAI shape requires'
+const SALVAGED_DESCRIPTION =
+  'How many of the calls were rebuilt from prose the engine wrote instead of calling. Absent when none was.'
 
 export const ChatRequestSchema = z
   .strictObject({
@@ -58,6 +60,7 @@ export const ChatResponseSchema = z
       )
       .min(1)
       .max(1),
+    salvaged: z.int().min(1).meta({ description: SALVAGED_DESCRIPTION }).optional(),
   })
   .meta({ $id: 'game-box.dev/api/chat-response', title: 'non-streaming chat completion response' })
 
@@ -80,6 +83,7 @@ export const ChatStreamEventSchema = z
       )
       .min(1)
       .max(1),
+    salvaged: z.int().min(1).meta({ description: SALVAGED_DESCRIPTION }).optional(),
   })
   .meta({ $id: 'game-box.dev/api/chat-stream-event', title: 'streaming chat completion chunk (SSE data payload)' })
 

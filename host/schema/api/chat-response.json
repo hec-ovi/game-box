@@ -103,6 +103,12 @@
         ],
         "additionalProperties": false
       }
+    },
+    "salvaged": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991,
+      "description": "How many of the calls were rebuilt from prose the engine wrote instead of calling. Absent when none was."
     }
   },
   "required": [

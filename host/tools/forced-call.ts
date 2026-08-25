@@ -5,10 +5,15 @@
  *
  *   GAME_BOX_LLM_UPSTREAM=openrouter \
  *     node --env-file=.env --experimental-strip-types tools/forced-call.ts [model ...]
+ *   GAME_BOX_LLM_UPSTREAM=http://127.0.0.1:8080 \
+ *     node --experimental-strip-types tools/forced-call.ts
  *
  * The streamed shape goes through this service's own upstream code, exactly
- * as the game's requests do. The non-streamed shape is the same request with
- * `stream: false`, sent directly, because this service never sends one.
+ * as the game's requests do, so the call arrives in whatever shape this
+ * service asks that upstream for, and a call rebuilt from prose is marked.
+ * The non-streamed shape is the same request with `stream: false`, sent
+ * directly with the choice as it is, because this service never sends one:
+ * it shows what the engine does with the choice on its own.
  * A busy answer is waited out for as long as it asked and tried again, a few
  * times, because a shared free pool refuses often and a refusal says nothing
  * about the model. The key is read from the environment and printed nowhere.
@@ -71,7 +76,7 @@ async function streamed(upstream: Upstream, request: GenerateRequest): Promise<O
       .filter((e) => e.type === 'token')
       .map((e) => e.text)
       .join(''),
-    call: call ? `${call.name}(${JSON.stringify(call.arguments)})` : '',
+    call: call ? `${call.name}(${JSON.stringify(call.arguments)})${call.salvaged === true ? ' SALVAGED' : ''}` : '',
   }
 }
 
