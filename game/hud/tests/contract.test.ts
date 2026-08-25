@@ -3,7 +3,7 @@ import { fireEvent, getByRole, getByText, queryByRole, queryByText, waitFor, wit
 import userEvent from '@testing-library/user-event'
 import type { JournalEntry, Objective } from '@gb/quest'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { Hud, HudError, type ControlHint, type HudIntent, type LoaderView, type MapView, type QuestEntry } from '../src/index.ts'
+import { HUD_CSS, HUD_KEYS, Hud, HudError, type ControlHint, type HudIntent, type LoaderView, type MapView, type QuestEntry } from '../src/index.ts'
 
 const huds: Hud[] = []
 
@@ -291,6 +291,10 @@ describe('conversation', () => {
     hud.show({ talk: { does: null } })
     expect(queryByText(screen, 'goes back to the glass')).toBeNull()
     getByText(screen, 'Come in.')
+
+    // The older name lands on the same line.
+    hud.show({ talk: { acted: 'nods' } })
+    expect(getByText(screen, 'nods').className).toBe('gb-does')
   })
 
   it('keeps the whole conversation, the player\'s turns and the speaker\'s apart', async () => {
@@ -624,14 +628,18 @@ describe('the quests tab', () => {
     const objectives = screen.querySelector('.gb-objectives') as HTMLElement
     within(objectives).getByText('Carry the crate to the docks')
 
-    await user.click(getByRole(screen, 'button', { name: 'Track Salt and Lamp Oil' }))
+    const track = getByRole(screen, 'button', { name: 'Track Salt and Lamp Oil' })
+    expect(track.textContent).toBe('Track')
+    await user.click(track)
     expect(intents).toContainEqual({ kind: 'track', questId: 'q2' })
 
     within(objectives).getByText('Buy lamp oil')
     within(objectives).getByText('Salt and Lamp Oil')
     expect(within(objectives).queryByText('Carry the crate to the docks')).toBeNull()
 
-    await user.click(getByRole(screen, 'button', { name: 'Stop tracking Salt and Lamp Oil' }))
+    const tracking = getByRole(screen, 'button', { name: 'Stop tracking Salt and Lamp Oil' })
+    expect(tracking.textContent).toBe('Tracking')
+    await user.click(tracking)
     expect(intents).toContainEqual({ kind: 'track', questId: null })
   })
 
@@ -892,7 +900,8 @@ describe('the codex tab', () => {
             name: 'Mara Quill',
             role: 'Keeps the bar at The Copper Wheel.',
             disposition: 'warm',
-            facts: [{ id: 'f1', text: 'Came up from the docks.' }, { id: 'f2' }],
+            // A fact's id is the game's handle: the index in the person's background, as a string.
+            facts: [{ id: '0', text: 'Came up from the docks.' }, { id: '1' }],
           },
         ],
         history: [{ id: 'h1', title: 'The flood', text: 'The river took the old docks.' }],
@@ -1263,6 +1272,30 @@ describe('announcements', () => {
     }
   })
 
+  it('words every kind of event, and says nothing for coin that did not move', () => {
+    vi.useFakeTimers()
+    try {
+      const { hud, screen } = mount()
+      hud.announce({ kind: 'quest-started', title: 'The Copper Wheel' })
+      hud.announce({ kind: 'step-done', text: 'Talk to Mara' })
+      hud.announce({ kind: 'quest-failed', title: 'Salt and Lamp Oil' })
+      hud.announce({ kind: 'money', delta: -12 })
+      const cards = [...screen.querySelectorAll('.gb-notice')].map((card) => [card.textContent, (card as HTMLElement).dataset.tone])
+      expect(cards).toEqual([
+        ['New quest: The Copper Wheel', 'major'],
+        ['Done: Talk to Mara', 'minor'],
+        ['Quest failed: Salt and Lamp Oil', 'major'],
+        ['-12 coin', 'minor'],
+      ])
+      expect((getByText(screen, '-12 coin').closest('.gb-notice') as HTMLElement).dataset.sign).toBe('down')
+
+      hud.announce({ kind: 'money', delta: 0 })
+      expect(screen.querySelectorAll('.gb-notice')).toHaveLength(4)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('keeps the stack readable when everything happens at once', () => {
     vi.useFakeTimers()
     try {
@@ -1310,6 +1343,30 @@ describe('the layers', () => {
     expect(px('.gb-window-room', 'right')).toBeGreaterThan(sideWidth)
     // And the side panel stops above the bar's band.
     expect(px('.gb-talk', 'bottom')).toBeGreaterThan(px('.gb-bar', 'bottom'))
+  })
+})
+
+describe('what the interface claims', () => {
+  it('names its keys so the game can bind around them, and they are the keys that work', async () => {
+    const user = userEvent.setup()
+    const { hud, screen, intents } = mount()
+    expect(Object.keys(HUD_KEYS)).toEqual(['quests', 'map', 'inventory', 'codex', 'settings', 'controls', 'leave', 'close', 'send', 'pick'])
+
+    await user.keyboard(HUD_KEYS.map)
+    expect(intents).toContainEqual({ kind: 'window', window: 'map' })
+    hud.show({ window: 'map' })
+    getByRole(screen, 'dialog', { name: 'Map' })
+    await user.keyboard(HUD_KEYS.leave)
+    expect(intents).toContainEqual({ kind: 'exit' })
+  })
+
+  it('ships its stylesheet as one string, installed once, with square corners throughout', () => {
+    mount()
+    mount()
+    const installed = [...document.head.querySelectorAll('style')].filter((style) => style.textContent === HUD_CSS)
+    expect(installed).toHaveLength(1)
+    expect(HUD_CSS.length).toBeGreaterThan(0)
+    expect(HUD_CSS).not.toMatch(/border-radius/)
   })
 })
 

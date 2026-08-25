@@ -1,6 +1,6 @@
 # @gb/hud contract
 
-contractVersion: 0.10.0
+contractVersion: 0.10.1
 
 ## Purpose
 
@@ -41,7 +41,7 @@ hud.announce({ kind: 'quest-complete', title: quest.title, reward: { money: 40 }
 | `patch.quests` | [QuestEntry](src/types.ts)`[]` | one page per quest for the quests tab: `@gb/quest`'s `JournalEntry[]` goes in as it comes, `kind` and `status` and all; `failReason` on a failed page, `timer: { remaining, total }` in game seconds on a timed one |
 | `patch.map` | [MapView](src/types.ts) | the city in grid cells: `width`, `height`, one `plots` rect per building with an optional `label` (read on hover), `named: true` where the label is to be written on the plan, and `prominence` (`background`, `notable`, `landmark`, left out reads as background); `marks` for the player (`kind: 'you'`, `facing` in radians clockwise from north) and each place to head for (`kind: 'goal'`, `line` `main` or `side`, left out reads as side) |
 | `patch.compass` | [CompassView](src/types.ts) | `facing` in radians clockwise from north, and the tracked `goal` when there is one: its `label`, `bearing` (same unit, the way to set off), `distance` in metres along the walk, `line`; pushed whenever the player turns or the guide resolves again; `null` takes the strip away |
-| `patch.codex` | [CodexView](src/types.ts) | what the player has found out, replaced whole: `places` (`id`, `name`, a `text` line), `people` (`id`, `name`, `role`, `disposition` one of `hostile`, `cool`, `neutral`, `warm`, `friendly`, and every `facts` entry there is to learn, with `text` only on the ones learned), and `history` notes (`id`, `title`, `text`) |
+| `patch.codex` | [CodexView](src/types.ts) | what the player has found out, replaced whole: `places` (`id`, `name`, a `text` line), `people` (`id`, `name`, `role`, `disposition` one of `hostile`, `cool`, `neutral`, `warm`, `friendly`, and every `facts` entry there is to learn, with `text` only on the ones learned; a fact's `id` is the game's handle, the index of the fact in the person's background as a string, and is never drawn), and `history` notes (`id`, `title`, `text`) |
 | `patch.settings` | [SettingsView](src/types.ts) | the clock (`hour`, `minute`, `locked`) and the sky (`weather`, and every `weathers` the game can show); pushed again whenever any of it moves |
 | `patch.controls` | [ControlHint](src/types.ts)`[]` | the game's own keys for the controls tab: `{ keys, text, group? }`, replaces the whole list |
 | `patch.window` | `'quests' \| 'map' \| 'inventory' \| 'codex' \| 'settings' \| 'controls' \| null` | opens that face of the window, or shuts it |
@@ -127,7 +127,7 @@ The story is listed first and wears a `Main` tag; errands follow in the order th
 
 A page's `status` says how the quest stands; left out, it is under way. A finished page wears `Done`, a failed one wears `Failed` and its `failReason` under the title in words ("Ran out of time", "Somebody it needed is gone"), so a quest that ended is read and never simply missing. Only a live page carries Track and Give up: a finished one has nothing that would do anything.
 
-A timed page shows the time left in game time ("1 h 12 min", "9 min", "45 s") and a bar for the share of the whole, written into the clock already there on every push of the journal. The timer runs on the game clock, so the hud keeps no clock of its own for it: a held game holds the countdown. Under a tenth of the whole, or ten game minutes, it is warned.
+A timed page shows the time left in game time ("1 h 12 min", "9 min", "45 s") and a bar for the share of the whole, written into the clock already there on every push of the journal. The timer runs on the game clock, so the hud keeps no clock of its own for it: the game pushes the journal on every clock tick and a held game holds the countdown. Twenty-four game seconds pass per real second, so "9 min" on the page is about 22 real seconds of play. Under a tenth of the whole, or ten game minutes, it is warned.
 
 A step reads four ways, the same four the engine keeps.
 

@@ -149,7 +149,7 @@ export interface CodexPlace {
   readonly text?: string
 }
 
-/** One thing to learn about a person. `text` arrives once it is learned; until then the fact is locked. */
+/** One thing to learn about a person: `id` is the game's handle (the index in their background, as a string), `text` arrives once it is learned; until then the fact is locked. */
 export interface CodexFact {
   readonly id: string
   readonly text?: string
