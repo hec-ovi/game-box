@@ -2,13 +2,23 @@
 import type { HudWindowName } from './types.ts'
 
 /** What a key press means to the interface. A window name opens that window; `screen` hands the key to the screen. */
-export type KeyAction = 'close' | 'send' | 'tab' | 'shift-tab' | 'leave' | 'screen' | HudWindowName
+export type KeyAction =
+  | 'close'
+  | 'send'
+  | 'tab'
+  | 'shift-tab'
+  | 'leave'
+  | 'fullscreen'
+  | 'confirm'
+  | 'screen'
+  | HudWindowName
 
 /**
- * Who has the keyboard: nobody, the conversation (its box or its moves), or a
- * screen, which takes every key but the one that closes it.
+ * Who has the keyboard: nobody, the conversation (its box or its moves), a
+ * screen, which takes every key but the one that closes it, or a question in
+ * front of the player, which takes every key until it is answered.
  */
-export type KeyHold = 'free' | 'typing' | 'screen'
+export type KeyHold = 'free' | 'typing' | 'screen' | 'confirm'
 
 /** The letter that brings up each window. `?`, `/` and F1 all reach the controls. */
 const OPENS: Record<string, KeyAction> = {
@@ -18,6 +28,7 @@ const OPENS: Record<string, KeyAction> = {
   x: 'codex',
   o: 'settings',
   n: 'leave',
+  f: 'fullscreen',
 }
 
 /**
@@ -62,6 +73,15 @@ export class Keys {
   }
 
   #action(event: KeyboardEvent, hold: KeyHold): KeyAction | undefined {
+    // A question in front of the player is answered before anything else is
+    // heard: Enter says yes, Escape says no, Tab walks the two answers, and
+    // every other key stops here rather than moving a player who is deciding.
+    if (hold === 'confirm') {
+      if (event.key === 'Escape') return 'close'
+      if (event.key === 'Enter') return 'confirm'
+      if (event.key === 'Tab') return event.shiftKey ? 'shift-tab' : 'tab'
+      return undefined
+    }
     if (hold === 'screen') return event.key === 'Escape' ? 'close' : 'screen'
     if (hold === 'typing') {
       if (event.key === 'Escape') return 'close'

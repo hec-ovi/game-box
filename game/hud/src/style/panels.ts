@@ -1,4 +1,4 @@
-import { LAYERS, LAYOUT, SIDE_RIGHT } from './layout.ts'
+import { CORNER_RESERVED, LAYERS, LAYOUT, SIDE_RIGHT } from './layout.ts'
 
 /**
  * The two things that stay on screen while the player walks: what they are
@@ -11,8 +11,8 @@ export const PANELS = `
   z-index: ${LAYERS.corner};
   left: ${LAYOUT.margin}px;
   top: ${LAYOUT.margin}px;
-  width: ${LAYOUT.corner}px;
-  max-height: min(42vh, 340px);
+  width: ${LAYOUT.corner.width}px;
+  max-height: min(42vh, ${LAYOUT.corner.height}px, calc(100vh - ${CORNER_RESERVED}px));
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;

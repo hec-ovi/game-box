@@ -217,7 +217,26 @@ export const SETTINGS = {
   locked: 'Time locked',
   skip: 'Skip ahead',
   weather: 'Weather',
+  view: 'View',
+  minimap: 'Minimap',
+  fullscreen: 'Full screen',
+  windowed: 'Leave full screen',
   exit: 'Exit game',
+} as const
+
+/** The minimap's own words: what it is called, and the letter that says north is up. */
+export const MINIMAP = { label: 'Minimap', north: 'N' } as const
+
+/**
+ * "You sure?", and one entry per thing worth asking about. The two answers are
+ * plain words, so one panel serves every question the interface has to ask.
+ */
+export const CONFIRM = {
+  yes: 'Yes',
+  no: 'No',
+  asks: {
+    exit: { title: 'Leave the game', question: 'The city stops here and the launcher comes back.' },
+  },
 } as const
 
 /** "07:30", the way a clock on a wall reads. */

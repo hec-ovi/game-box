@@ -13,8 +13,10 @@ import {
   type LoaderView,
   type MapView,
   type QuestEntry,
+  type MinimapView,
   type ScreenView,
 } from '../src/index.ts'
+import { CORNER_RESERVED, LAYOUT } from '../src/style/layout.ts'
 
 const huds: Hud[] = []
 
@@ -558,9 +560,10 @@ describe('the window', () => {
     hud.show({ quests: QUESTS, controls: CONTROLS, window: 'quests' })
     const frame = getByRole(screen, 'dialog') as HTMLElement
     const size = (): [string, string] => [getComputedStyle(frame).width, getComputedStyle(frame).height]
+    // One frame, and nearly the room it stands in: a map wants the width and a
+    // journal wants the height, and each gets it whichever tab is up.
     const first = size()
-    expect(Number.parseFloat(first[0])).toBeGreaterThan(0)
-    expect(Number.parseFloat(first[1])).toBeGreaterThan(0)
+    expect(first).toEqual([`${LAYOUT.window.width}px`, `${LAYOUT.window.height}px`])
 
     // A tab with one line and a tab with fifty are the same shape: nothing in
     // the window sizes itself to what is on the face.
@@ -571,6 +574,13 @@ describe('the window', () => {
     const body = frame.querySelector('.gb-window-body') as HTMLElement
     expect(getComputedStyle(body).overflowY).toBe('auto')
     expect(getComputedStyle(frame).height).not.toBe('auto')
+
+    // At that width a page of rows reads in columns rather than one line
+    // running the whole frame; the map fills it instead and takes none.
+    for (const face of ['.gb-quests', '.gb-inventory', '.gb-codex', '.gb-settings', '.gb-controls']) {
+      expect(getComputedStyle(frame.querySelector(face) as HTMLElement).getPropertyValue('columns')).toBe('440px')
+    }
+    expect(getComputedStyle(frame.querySelector('.gb-map') as HTMLElement).getPropertyValue('columns')).toBe('')
   })
 
   it('keeps Tab inside itself while it is up, all the way round', async () => {
@@ -999,7 +1009,39 @@ describe('the settings tab', () => {
     expect(intents).toContainEqual({ kind: 'weather', weather: 'overcast' })
 
     await user.click(within(panel).getByRole('button', { name: 'Exit game' }))
+    // The tab reports nothing until the question in front of the player is answered.
+    expect(intents).not.toContainEqual({ kind: 'exit' })
+    await user.click(getByRole(screen, 'button', { name: 'Yes (Enter)' }))
     expect(intents).toContainEqual({ kind: 'exit' })
+  })
+
+
+  it('shows the minimap and full screen as the game has them, and asks for the other', async () => {
+    const user = userEvent.setup()
+    const { hud, screen, intents } = mount()
+    hud.show({ window: 'settings' })
+    const panel = getByRole(screen, 'dialog', { name: 'Settings' })
+
+    // Before the game says otherwise: the minimap is on, the game is in a window.
+    const minimap = within(panel).getByRole('button', { name: 'Minimap' })
+    expect(minimap.getAttribute('aria-pressed')).toBe('true')
+    await user.click(minimap)
+    expect(intents).toContainEqual({ kind: 'minimap', shown: false })
+
+    const full = within(panel).getByRole('button', { name: 'Full screen' })
+    expect(full.getAttribute('aria-pressed')).toBe('false')
+    await user.click(full)
+    expect(intents).toContainEqual({ kind: 'fullscreen', on: true })
+
+    // The hud decides neither: both read what the game pushed back.
+    hud.show({
+      settings: { hour: 7, minute: 0, locked: false, weather: 'clear', weathers: ['clear'], minimap: false, fullscreen: true },
+    })
+    expect(within(panel).getByRole('button', { name: 'Minimap' }).getAttribute('aria-pressed')).toBe('false')
+    const back = within(panel).getByRole('button', { name: 'Leave full screen' })
+    expect(back.getAttribute('aria-pressed')).toBe('true')
+    await user.click(back)
+    expect(intents).toContainEqual({ kind: 'fullscreen', on: false })
   })
 
   it('offers the way out before the game has pushed the clock', () => {
@@ -1018,10 +1060,14 @@ describe('the bar', () => {
     const { screen, intents } = mount()
     const leave = getByRole(screen, 'button', { name: 'Leave (N)' })
     within(leave).getByText('N')
+    // Leaving throws the walk away, so the button asks before anything goes out.
     await user.click(leave)
+    expect(intents).toEqual([])
+    await user.click(getByRole(screen, 'button', { name: 'Yes (Enter)' }))
     expect(intents).toEqual([{ kind: 'exit' }])
 
     await user.keyboard('n')
+    await user.click(getByRole(screen, 'button', { name: 'Yes (Enter)' }))
     expect(intents).toEqual([{ kind: 'exit' }, { kind: 'exit' }])
   })
 })
@@ -1419,6 +1465,182 @@ describe('the compass', () => {
   })
 })
 
+
+const NEAR: MinimapView = {
+  x: 20,
+  y: 15,
+  facing: Math.PI / 2,
+  radius: 30,
+  plots: [
+    { id: 'p1', rect: { x: 16, y: 10, w: 6, h: 4 }, label: 'The Copper Wheel', prominence: 'landmark' },
+    { id: 'p2', rect: { x: 26, y: 18, w: 5, h: 5 } },
+  ],
+  marks: [
+    { x: 24, y: 12, label: 'The Copper Wheel', kind: 'goal', line: 'main' },
+    { x: 400, y: 15, label: 'The docks', kind: 'goal', line: 'side' },
+  ],
+  doors: [{ id: 'd1', name: 'The Copper Wheel', x: 19, y: 14 }],
+}
+
+/** Where a thing drawn in pixels was put, in the plan's own cells. */
+function at(node: Element | null): number[] {
+  const found = /translate\(([-\d.]+) ([-\d.]+)\)/.exec(node?.getAttribute('transform') ?? '')
+  return found ? [Number(found[1]), Number(found[2])] : []
+}
+
+describe('the minimap', () => {
+  it('draws the streets round the player north up, with the goals and the doors he knows', () => {
+    const { hud, screen } = mount()
+    const corner = screen.querySelector('.gb-minimap') as HTMLElement
+    expect(corner.hidden).toBe(true)
+
+    hud.show({ minimap: NEAR })
+    expect(corner.hidden).toBe(false)
+    within(corner).getByText('N')
+
+    // North up, the player at the centre: the box is the radius either side of him.
+    const plan = corner.querySelector('svg') as SVGElement
+    expect(plan.getAttribute('viewBox')).toBe('-10 -15 60 60')
+    expect(corner.querySelectorAll('.gb-near-plots .gb-block')).toHaveLength(2)
+    expect(corner.querySelectorAll('.gb-near-doors .gb-door')).toHaveLength(1)
+    expect(at(corner.querySelector('.gb-door'))).toEqual([19, 14])
+
+    // Facing east turns the arrow ninety degrees and nothing else.
+    expect((corner.querySelector('.gb-you') as SVGElement).getAttribute('transform')).toMatch(
+      /^translate\(20 15\) rotate\(90\) scale\(/,
+    )
+
+    // A goal inside the radius sits where it is; one beyond it is held at the rim and says so.
+    const goals = [...corner.querySelectorAll('.gb-near-goals .gb-goal')]
+    expect(goals.map((goal) => goal.getAttribute('data-line'))).toEqual(['main', 'side'])
+    expect(at(goals[0] as Element)).toEqual([24, 12])
+    expect((goals[0] as HTMLElement).dataset.edge).toBeUndefined()
+    const [x, y] = at(goals[1] as Element) as [number, number]
+    expect((goals[1] as HTMLElement).dataset.edge).toBe('true')
+    expect(Math.hypot(x - NEAR.x, y - NEAR.y)).toBeCloseTo(NEAR.radius * 0.86, 5)
+  })
+
+  it('follows the player without rebuilding the streets, and goes when settings turn it off', () => {
+    const { hud, screen } = mount()
+    hud.show({ minimap: NEAR })
+    const corner = screen.querySelector('.gb-minimap') as HTMLElement
+    const block = corner.querySelector('.gb-block') as SVGElement
+
+    hud.show({ minimap: { ...NEAR, x: 22, facing: 0 } })
+    expect((corner.querySelector('svg') as SVGElement).getAttribute('viewBox')).toBe('-8 -15 60 60')
+    // The same node: a walk moves the view, it does not rebuild the city.
+    expect(corner.querySelector('.gb-block')).toBe(block)
+
+    hud.show({ settings: { hour: 7, minute: 0, locked: false, weather: 'clear', weathers: ['clear'], minimap: false } })
+    expect(corner.getAttribute('aria-hidden')).toBe('true')
+    hud.show({ settings: { hour: 7, minute: 0, locked: false, weather: 'clear', weathers: ['clear'], minimap: true } })
+    expect(corner.hasAttribute('aria-hidden')).toBe(false)
+
+    hud.show({ minimap: null })
+    expect(corner.getAttribute('aria-hidden')).toBe('true')
+  })
+})
+
+describe('the two lines of work', () => {
+  const PLAN: MapView = {
+    width: 40,
+    height: 30,
+    plots: [{ id: 'p1', rect: { x: 4, y: 4, w: 8, h: 6 } }],
+    marks: [
+      { x: 8, y: 7, label: 'The Copper Wheel', kind: 'goal', line: 'main' },
+      { x: 30, y: 7, label: 'The docks', kind: 'goal', line: 'side' },
+    ],
+  }
+
+  it('wears one mark for the story and another for an errand, on the plan, the minimap and the strip', () => {
+    const { hud, screen } = mount()
+    hud.show({
+      window: 'map',
+      map: PLAN,
+      minimap: NEAR,
+      compass: { facing: 0, goal: { label: 'The Copper Wheel', bearing: 0, distance: 90, line: 'main' } },
+    })
+
+    // Two shapes, not one shape in two shades: a solid diamond and an open ring.
+    for (const root of ['.gb-plan', '.gb-near']) {
+      const main = screen.querySelector(`${root} .gb-goal[data-line='main'] .gb-mark-main`) as Element
+      const side = screen.querySelector(`${root} .gb-goal[data-line='side'] .gb-mark-side`) as Element
+      expect(main.tagName).toBe('path')
+      expect(side.tagName).toBe('circle')
+      const paint = (node: Element): string[] => [
+        getComputedStyle(node).getPropertyValue('fill'),
+        getComputedStyle(node).getPropertyValue('stroke'),
+      ]
+      expect(paint(main)).not.toEqual(paint(side))
+      for (const value of [...paint(main), ...paint(side)]) expect(value).not.toBe('')
+    }
+
+    // The bearings under the plan wear the same two marks.
+    const rows = [...screen.querySelectorAll('.gb-bearings li')]
+    expect(rows.map((row) => row.getAttribute('data-line'))).toEqual(['main', 'side'])
+
+    // And so does the compass: the story turns on its point, an errand does not.
+    const strip = screen.querySelector('.gb-compass-mark') as HTMLElement
+    const asMain = getComputedStyle(strip).transform
+    expect(asMain).toContain('rotate(45deg)')
+    hud.show({ compass: { facing: 0, goal: { label: 'The docks', bearing: 0, distance: 90, line: 'side' } } })
+    expect(getComputedStyle(strip).transform).not.toBe(asMain)
+    expect(getComputedStyle(strip).width).not.toBe('10px')
+  })
+})
+
+describe('leaving asks first', () => {
+  it('asks in place, leaves on yes, stays on no, and takes the keyboard while it is up', async () => {
+    const user = userEvent.setup()
+    const { screen, intents } = mount()
+    expect(queryByRole(screen, 'alertdialog')).toBeNull()
+
+    await user.keyboard('n')
+    const ask = getByRole(screen, 'alertdialog', { name: 'Leave the game' })
+    expect(intents).toEqual([])
+    // Yes has the ring, because Enter is yes: the keyboard and the ring never disagree.
+    expect(ask.contains(document.activeElement)).toBe(true)
+    expect(document.activeElement).toBe(within(ask).getByRole('button', { name: 'Yes (Enter)' }))
+
+    // Nothing else hears a key while a question is in front of the player.
+    await user.keyboard('j')
+    expect(intents).toEqual([])
+
+    await user.keyboard('{Escape}')
+    expect(intents).toEqual([{ kind: 'stay' }])
+    expect(queryByRole(screen, 'alertdialog')).toBeNull()
+
+    await user.keyboard('n')
+    await user.keyboard('{Enter}')
+    expect(intents).toEqual([{ kind: 'stay' }, { kind: 'exit' }])
+
+    // No answers as well as Escape does, and Tab stays on the two answers.
+    await user.keyboard('n')
+    const again = getByRole(screen, 'alertdialog', { name: 'Leave the game' })
+    await user.keyboard('{Tab}')
+    expect(again.contains(document.activeElement)).toBe(true)
+    await user.click(within(again).getByRole('button', { name: 'No (Esc)' }))
+    expect(intents).toEqual([{ kind: 'stay' }, { kind: 'exit' }, { kind: 'stay' }])
+  })
+
+  it('stands in front of the window, and answering hands the keyboard back', async () => {
+    const user = userEvent.setup()
+    const { hud, screen, intents } = mount()
+    hud.show({ window: 'settings', settings: { hour: 7, minute: 0, locked: false, weather: 'clear', weathers: ['clear'] } })
+    const panel = getByRole(screen, 'dialog', { name: 'Settings' })
+    await user.click(within(panel).getByRole('button', { name: 'Exit game' }))
+
+    // The window is still there behind the question, and Escape answers the question.
+    getByRole(screen, 'dialog', { name: 'Settings' })
+    await user.keyboard('{Escape}')
+    expect(intents).toContainEqual({ kind: 'stay' })
+    getByRole(screen, 'dialog', { name: 'Settings' })
+    // The next Escape is the window's, which is what says the question let go.
+    await user.keyboard('{Escape}')
+    expect(intents).toContainEqual({ kind: 'window', window: null })
+  })
+})
+
 describe('the controls tab', () => {
   it('lists every key the game declared next to the ones the interface owns', async () => {
     const user = userEvent.setup()
@@ -1578,6 +1800,7 @@ describe('the layers', () => {
     const z = (selector: string): number => Number(getComputedStyle(screen.querySelector(selector) as HTMLElement).zIndex)
     const order = [
       '.gb-objectives',
+      '.gb-minimap',
       '.gb-compass',
       '.gb-talk',
       '.gb-notices',
@@ -1586,6 +1809,7 @@ describe('the layers', () => {
       '.gb-counter-room',
       '.gb-window-room:not(.gb-counter-room)',
       '.gb-screen-room',
+      '.gb-confirm-room',
       '.gb-loader',
     ].map(z)
     for (const layer of order) expect(Number.isFinite(layer)).toBe(true)
@@ -1593,7 +1817,7 @@ describe('the layers', () => {
     expect(new Set(order).size).toBe(order.length)
   })
 
-  it('keeps the objectives corner, the notices column, the conversation and the window in disjoint regions', () => {
+  it('keeps the objectives corner, the minimap, the notices column, the conversation and the window in disjoint regions', () => {
     const { hud, screen } = mount()
     hud.show({ talk: { speaker: 'Mara Quill' }, compass: { facing: 0 } })
     hud.announce({ kind: 'note', text: 'A note' })
@@ -1615,6 +1839,21 @@ describe('the layers', () => {
     expect(px('.gb-window-room', 'right')).toBeGreaterThan(sideWidth)
     // And the side panel stops above the bar's band.
     expect(px('.gb-talk', 'bottom')).toBeGreaterThan(px('.gb-bar', 'bottom'))
+
+    // The minimap shares the corner's column: the same edge, above the bar,
+    // and clear of the room the window stands in.
+    expect(px('.gb-minimap', 'left')).toBe(px('.gb-objectives', 'left'))
+    expect(px('.gb-minimap', 'left') + px('.gb-minimap', 'width')).toBeLessThanOrEqual(px('.gb-window-room', 'left'))
+    expect(px('.gb-minimap', 'bottom')).toBeGreaterThan(px('.gb-bar', 'bottom'))
+    // The column gives the minimap and the foot their pixels first and the
+    // corner what is left, so in a view this tall the corner still gets all of
+    // its height and the two never meet.
+    expect(CORNER_RESERVED + LAYOUT.corner.height).toBeLessThanOrEqual(window.innerHeight)
+
+    // The question stands in the room the window and the counter share, and in front of both.
+    for (const side of ['left', 'right', 'top', 'bottom']) {
+      expect(px('.gb-confirm-room', side)).toBe(px('.gb-window-room', side))
+    }
   })
 })
 
@@ -1622,13 +1861,28 @@ describe('what the interface claims', () => {
   it('names its keys so the game can bind around them, and they are the keys that work', async () => {
     const user = userEvent.setup()
     const { hud, screen, intents } = mount()
-    expect(Object.keys(HUD_KEYS)).toEqual(['quests', 'map', 'inventory', 'codex', 'settings', 'controls', 'leave', 'close', 'send', 'pick'])
+    expect(Object.keys(HUD_KEYS)).toEqual([
+      'quests',
+      'map',
+      'inventory',
+      'codex',
+      'settings',
+      'controls',
+      'leave',
+      'fullscreen',
+      'close',
+      'send',
+      'pick',
+    ])
 
     await user.keyboard(HUD_KEYS.map)
     expect(intents).toContainEqual({ kind: 'window', window: 'map' })
     hud.show({ window: 'map' })
     getByRole(screen, 'dialog', { name: 'Map' })
+    await user.keyboard(HUD_KEYS.fullscreen)
+    expect(intents).toContainEqual({ kind: 'fullscreen', on: true })
     await user.keyboard(HUD_KEYS.leave)
+    await user.keyboard('{Enter}')
     expect(intents).toContainEqual({ kind: 'exit' })
   })
 

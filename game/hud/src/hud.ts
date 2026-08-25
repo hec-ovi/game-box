@@ -6,8 +6,10 @@ import { HudStore } from './store.ts'
 import { installStyle } from './style/index.ts'
 import { BarSurface } from './surfaces/bar.ts'
 import { CompassSurface } from './surfaces/compass.ts'
+import { ConfirmSurface } from './surfaces/confirm.ts'
 import { CounterSurface } from './surfaces/counter.ts'
 import { LoaderSurface } from './surfaces/loader.ts'
+import { MinimapSurface } from './surfaces/minimap.ts'
 import { NoticesSurface } from './surfaces/notices.ts'
 import { ObjectivesSurface } from './surfaces/objectives.ts'
 import { PanelSurface } from './surfaces/panel.ts'
@@ -16,7 +18,7 @@ import { ScreenSurface } from './surfaces/screen.ts'
 import { ScrimSurface } from './surfaces/scrim.ts'
 import type { Surface } from './surfaces/surface.ts'
 import { TalkSurface } from './surfaces/talk.ts'
-import type { HudHandlers, HudIntent, HudPatch, Notice, NoticeKind } from './types.ts'
+import type { ConfirmAsk, HudHandlers, HudIntent, HudPatch, Notice, NoticeKind } from './types.ts'
 
 const KINDS = new Set<NoticeKind>([
   'quest-started',
@@ -31,6 +33,15 @@ const KINDS = new Set<NoticeKind>([
 ])
 
 /**
+ * What each question sends out, whichever way it is answered. One entry per
+ * `ConfirmAsk`, so a new thing worth asking about is a line here and a line of
+ * wording, and nothing else.
+ */
+const ANSWERS: Record<ConfirmAsk, { readonly yes: HudIntent; readonly no: HudIntent }> = {
+  exit: { yes: { kind: 'exit' }, no: { kind: 'stay' } },
+}
+
+/**
  * Everything the player reads over the 3D scene. The game pushes state with
  * `show` and events with `announce`; the hud decides what that looks like, owns
  * how its window opens and closes, and reports back what the player did.
@@ -43,6 +54,7 @@ export class Hud {
   #counter: CounterSurface
   #panel: PanelSurface
   #screen: ScreenSurface
+  #confirm: ConfirmSurface
   #keys: Keys
   #handlers: HudHandlers
   /** True while focus is somewhere in the conversation. */
@@ -59,9 +71,11 @@ export class Hud {
     this.#counter = new CounterSurface(emit)
     this.#panel = new PanelSurface(emit)
     this.#screen = new ScreenSurface(emit)
+    this.#confirm = new ConfirmSurface((ask, yes) => this.#answer(ask, yes))
     this.#surfaces = [
       new ObjectivesSurface(),
       new PromptSurface(),
+      new MinimapSurface(),
       new CompassSurface(),
       new NoticesSurface(),
       new BarSurface(emit, () => this.#typing),
@@ -70,6 +84,7 @@ export class Hud {
       this.#counter,
       this.#panel,
       this.#screen,
+      this.#confirm,
       new LoaderSurface(),
     ]
 
@@ -114,6 +129,7 @@ export class Hud {
 
   /** Who has the keyboard right now. */
   #hold(): KeyHold {
+    if (this.#store.state.confirm) return 'confirm'
     if (this.#store.state.screen) return 'screen'
     return this.#talkHeld ? 'typing' : 'free'
   }
@@ -128,12 +144,18 @@ export class Hud {
         return this.#closeTop()
       case 'send':
         return this.#talk.submit()
+      case 'confirm':
+        return this.#confirm.answer(true)
+      case 'fullscreen':
+        this.#dispatch({ kind: 'fullscreen', on: state.settings?.fullscreen !== true })
+        return true
       case 'tab':
       case 'shift-tab': {
-        // Whatever is in front takes it: the window, then the counter, then
-        // the conversation, which has a ring of its own as soon as it has
-        // moves to step through.
+        // Whatever is in front takes it: the question, then the window, then
+        // the counter, then the conversation, which has a ring of its own as
+        // soon as it has moves to step through.
         const back = action === 'shift-tab'
+        if (state.confirm) return this.#confirm.trap(back)
         if (state.window) return this.#panel.trap(back)
         if (state.counter) return this.#counter.trap(back)
         return state.talk !== undefined && this.#talk.cycle(back)
@@ -148,9 +170,10 @@ export class Hud {
     }
   }
 
-  /** Close what is in front of the player, and only that: the screen, the window, the counter, the conversation. */
+  /** Close what is in front of the player, and only that: the question, the screen, the window, the counter, the conversation. */
   #closeTop(): boolean {
     const state = this.#store.state
+    if (state.confirm) return this.#confirm.answer(false)
     if (state.screen) this.#dispatch({ kind: 'screen-closed', machineId: state.screen.machineId })
     else if (state.window) this.#dispatch({ kind: 'window', window: null })
     else if (state.counter) this.#dispatch({ kind: 'counter-closed' })
@@ -182,6 +205,12 @@ export class Hud {
       case 'window':
         this.#store.apply({ window: intent.window })
         break
+      case 'exit':
+        // Every way out lands here: the bar, its key and the settings tab.
+        // Leaving throws the walk away, so the interface asks in place and
+        // only the answer goes out, from #answer.
+        this.#store.ask('exit')
+        return
       case 'track':
         this.#store.apply({ trackedQuestId: intent.questId })
         break
@@ -195,6 +224,16 @@ export class Hud {
         break
     }
     this.#handlers.onIntent(intent)
+  }
+
+  /**
+   * The player answered the question in front of them. It goes straight out
+   * rather than through `#dispatch`, because `exit` on the way in is a request
+   * to ask and on the way out is the answer.
+   */
+  #answer(ask: ConfirmAsk, yes: boolean): void {
+    this.#store.ask(null)
+    this.#handlers.onIntent(yes ? ANSWERS[ask].yes : ANSWERS[ask].no)
   }
 
   /** What the button said, so the transcript carries the player's own words. */
@@ -212,7 +251,9 @@ export class Hud {
 
   #render(): void {
     const state = this.#store.state
-    this.#root.dataset.modal = String(state.window !== null || state.counter !== undefined || state.screen !== undefined)
+    this.#root.dataset.modal = String(
+      state.window !== null || state.counter !== undefined || state.screen !== undefined || state.confirm !== undefined,
+    )
     this.#root.dataset.talk = String(state.talk !== undefined)
     this.#root.dataset.reach = String(state.prompt !== undefined)
     for (const surface of this.#surfaces) surface.render(state)

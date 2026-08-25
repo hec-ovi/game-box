@@ -1,5 +1,5 @@
 import { mergeTalk, withYours } from './transcript.ts'
-import type { HudPatch, HudState, LiveNotice, Notice } from './types.ts'
+import type { ConfirmAsk, HudPatch, HudState, LiveNotice, Notice } from './types.ts'
 
 const EMPTY: HudState = {
   objectives: [],
@@ -13,11 +13,13 @@ const EMPTY: HudState = {
   quests: [],
   trackedQuestId: undefined,
   map: undefined,
+  minimap: undefined,
   compass: undefined,
   codex: { places: [], people: [] },
   settings: undefined,
   controls: [],
   window: null,
+  confirm: undefined,
   loading: undefined,
   notices: [],
   hadQuest: false,
@@ -63,6 +65,7 @@ export class HudStore {
       ...(patch.quests ? { quests: patch.quests } : {}),
       ...(patch.trackedQuestId !== undefined ? { trackedQuestId: patch.trackedQuestId ?? undefined } : {}),
       ...(patch.map !== undefined ? { map: patch.map ?? undefined } : {}),
+      ...(patch.minimap !== undefined ? { minimap: patch.minimap ?? undefined } : {}),
       ...(patch.compass !== undefined ? { compass: patch.compass ?? undefined } : {}),
       ...(patch.codex ? { codex: patch.codex } : {}),
       ...(patch.settings ? { settings: patch.settings } : {}),
@@ -71,6 +74,15 @@ export class HudStore {
       ...(patch.loading !== undefined ? { loading: patch.loading ?? undefined } : {}),
       hadQuest: before.hadQuest || hasWork(patch),
     }
+    this.#onChange()
+  }
+
+  /**
+   * Put a "you sure" in front of the player, or take it away. This one is the
+   * interface's own state: the game never asks, it only hears the answer.
+   */
+  ask(confirm: ConfirmAsk | null): void {
+    this.#state = { ...this.#state, confirm: confirm ?? undefined }
     this.#onChange()
   }
 

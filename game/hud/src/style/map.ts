@@ -21,10 +21,6 @@ export const MAP = `
 .gb-plan[data-dragging='true'] { cursor: grabbing; }
 .gb-plan svg { display: block; width: 100%; height: 100%; }
 .gb-plan .gb-ground { fill: rgba(242, 239, 230, 0.07); }
-.gb-plan .gb-block { stroke: rgba(0, 0, 0, 0.5); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.gb-plan .gb-block[data-prominence='background'] { fill: var(--gb-plot); }
-.gb-plan .gb-block[data-prominence='notable'] { fill: var(--gb-plot-notable); }
-.gb-plan .gb-block[data-prominence='landmark'] { fill: var(--gb-plot-landmark); }
 .gb-plan text {
   font-family: var(--gb-display);
   font-size: 11px;
@@ -37,10 +33,8 @@ export const MAP = `
   pointer-events: none;
 }
 .gb-plan .gb-name text { fill: var(--gb-ink); }
-.gb-plan .gb-you path { fill: var(--gb-ink); stroke: rgba(0, 0, 0, 0.7); stroke-width: 1.2; }
-/* The story's mark is a diamond, an errand's a dot, both brass; the name sits beside each. */
-.gb-plan .gb-goal path, .gb-plan .gb-goal circle { fill: var(--gb-accent); stroke: rgba(0, 0, 0, 0.7); stroke-width: 1.2; }
-.gb-plan .gb-goal[data-line='side'] circle { fill: var(--gb-accent-deep); stroke: var(--gb-accent); }
+/* The player, the goals and the doorways are drawn by the shared mark rules;
+   only the name beside a goal belongs to the plan. */
 .gb-plan .gb-goal text { fill: var(--gb-accent); }
 /* A station is a square of ink: the one mark that is neither the player nor a goal. */
 .gb-plan .gb-station rect { fill: var(--gb-ink); stroke: rgba(0, 0, 0, 0.7); stroke-width: 1.2; }
@@ -111,8 +105,9 @@ export const MAP = `
   gap: var(--gb-s2);
   padding: 2px 0;
 }
-.gb-bearings li::before { content: '●'; flex: none; width: 12px; color: var(--gb-accent-deep); font-size: 9px; text-align: center; }
-.gb-bearings li[data-line='main']::before { content: '◆'; color: var(--gb-accent); font-size: 11px; }
+/* The list wears the marks the plan does: a solid diamond on the story, an open ring on an errand. */
+.gb-bearings li::before { content: '○'; flex: none; width: 12px; color: var(--gb-accent); font-size: 12px; text-align: center; }
+.gb-bearings li[data-line='main']::before { content: '◆'; color: var(--gb-accent); font-size: 12px; }
 .gb-bearings .gb-what { flex: 1; }
 .gb-bearings .gb-bearing {
   padding: 0;

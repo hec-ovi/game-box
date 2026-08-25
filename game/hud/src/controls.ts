@@ -15,6 +15,7 @@ export const HUD_KEYS = {
   settings: 'O',
   controls: '?',
   leave: 'N',
+  fullscreen: 'F',
   close: 'Esc',
   send: 'Enter',
   pick: 'Tab',
@@ -36,6 +37,7 @@ export const TALK_PICK_HINT: ControlHint = { keys: [HUD_KEYS.pick], text: 'Pick 
 export const HUD_HINTS: readonly ControlHint[] = [
   ...WINDOW_TABS.map((tab) => ({ keys: [tab.key], text: tab.title, group: 'Interface' })),
   { keys: [LEAVE.key], text: 'Leave the game', group: 'Interface' },
+  { keys: [HUD_KEYS.fullscreen], text: 'Full screen, on and off', group: 'Interface' },
   { keys: [HUD_KEYS.send], text: 'Send what you typed', group: 'Interface' },
   { keys: [HUD_KEYS.pick], text: 'Step through a conversation or a window', group: 'Interface' },
   { keys: [HUD_KEYS.close], text: 'Close the window in front of you', group: 'Interface' },

@@ -1,10 +1,10 @@
 # @gb/hud contract
 
-contractVersion: 0.11.0
+contractVersion: 0.12.0
 
 ## Purpose
 
-Everything the player reads over the 3D scene, and what they open on top of it: what they are meant to be doing, which way it is, what is in reach, the conversation they are in, what they are carrying and what it is worth, the places that are theirs, the counter they buy at, the machine they sit at, where things are and where a train goes, what they have found out, what they can set, what just happened, how a city is coming along while it is written, and how to get out of whatever they are in.
+Everything the player reads over the 3D scene, and what they open on top of it: what they are meant to be doing, which way it is, what the streets round them look like from above, what is in reach, the conversation they are in, what they are carrying and what it is worth, the places that are theirs, the counter they buy at, the machine they sit at, where things are and where a train goes, what they have found out, what they can set, what just happened, how a city is coming along while it is written, and how to get out of whatever they are in, which is asked before it is done.
 
 ## Shape
 
@@ -13,14 +13,15 @@ The game pushes state, the hud draws it. There is one store behind the whole int
 ```ts
 import { Hud } from '@gb/hud'
 
-const hud = new Hud(document.body, { onIntent: (intent) => { /* say, choose, talk-closed, typing, window, track, abandon, decide, lock-time, skip-time, weather, exit, buy, counter-closed, unlock, score, screen-closed, travel */ } })
+const hud = new Hud(document.body, { onIntent: (intent) => { /* say, choose, talk-closed, typing, window, track, abandon, decide, lock-time, skip-time, weather, minimap, fullscreen, exit, stay, buy, counter-closed, unlock, score, screen-closed, travel */ } })
 hud.show({ objectives: log.objectives(), money: player.money(), prompt: { key: 'E', text: target.label } })
 hud.show({ carrying: [{ id, name, value: 40 }], homes: [{ id, name, text, placed: [{ id, name, value }] }] })
 hud.show({ counter: { seller: npc.name, offers: [{ id: item.id, name: item.name, price: item.value }] } })
 hud.show({ screen: { machineId, title: 'Front desk terminal', locked: true, program: { kind: 'text', title: 'Ledger', lines } } })
 hud.show({ screen: { machineId, title: 'Laptop', locked: false, program: { kind: 'snake', best: player.best(machineId) } } })
 hud.show({ quests: log.journal(), trackedQuestId: 'q1' })
-hud.show({ map: { width, height, plots, marks, stations, boarding }, settings: { hour, minute, locked, weather, weathers } })
+hud.show({ map: { width, height, plots, marks, stations, boarding }, settings: { hour, minute, locked, weather, weathers, minimap, fullscreen } })
+hud.show({ minimap: { x, y, facing: body.yaw, radius: 40, plots, marks, doors: [{ id, name, x, y }] } })
 hud.show({ compass: { facing: body.yaw, goal: { label, bearing, distance, line: 'main' } } })
 hud.show({ codex: { places, people: [{ id, name, role, disposition, facts: [{ id, text }, { id }] }], history } })
 hud.show({ controls: [{ keys: ['W', 'A', 'S', 'D'], text: 'Walk', group: 'Move' }] })
@@ -47,9 +48,10 @@ hud.announce({ kind: 'quest-complete', title: quest.title, reward: { money: 40 }
 | `patch.talk.moves` | [TalkMove](src/types.ts)`[]` | what the player can do this turn, as `{ key, label }` in plain words. Replaces the menu; an empty list draws none |
 | `patch.quests` | [QuestEntry](src/types.ts)`[]` | one page per quest for the quests tab: `@gb/quest`'s `JournalEntry[]` goes in as it comes, `kind` and `status` and all; `failReason` on a failed page, `timer: { remaining, total }` in game seconds on a timed one |
 | `patch.map` | [MapView](src/types.ts) | the city in grid cells: `width`, `height`, one `plots` rect per building with an optional `label` (read on hover), `named: true` where the label is to be written on the plan, and `prominence` (`background`, `notable`, `landmark`, left out reads as background); `marks` for the player (`kind: 'you'`, `facing` in radians clockwise from north) and each place to head for (`kind: 'goal'`, `line` `main` or `side`, left out reads as side); `stations` where fast travel boards (`id`, `name`, `x`, `y`), and `boarding`, the id of the one the player stands at, while they do |
+| `patch.minimap` | [MinimapView](src/types.ts) | the streets round the player for the corner view, in the map's own cells: where they stand (`x`, `y`), which way they face (`facing`, radians clockwise from north), the `radius` in cells the game windowed the city to, the `plots` inside it, the `marks` they are headed for (the map's own goals) and the `doors` they have walked through as `{ id, name, x, y }`; pushed as they walk; `null` takes it away |
 | `patch.compass` | [CompassView](src/types.ts) | `facing` in radians clockwise from north, and the tracked `goal` when there is one: its `label`, `bearing` (same unit, the way to set off), `distance` in metres along the walk, `line`; pushed whenever the player turns or the guide resolves again; `null` takes the strip away |
 | `patch.codex` | [CodexView](src/types.ts) | what the player has found out, replaced whole: `places` (`id`, `name`, a `text` line), `people` (`id`, `name`, `role`, `disposition` one of `hostile`, `cool`, `neutral`, `warm`, `friendly`, and every `facts` entry there is to learn, with `text` only on the ones learned; a fact's `id` is the game's handle, the index of the fact in the person's background as a string, and is never drawn), and `history` notes (`id`, `title`, `text`) |
-| `patch.settings` | [SettingsView](src/types.ts) | the clock (`hour`, `minute`, `locked`) and the sky (`weather`, and every `weathers` the game can show); pushed again whenever any of it moves |
+| `patch.settings` | [SettingsView](src/types.ts) | the clock (`hour`, `minute`, `locked`), the sky (`weather`, and every `weathers` the game can show), and the view: `minimap` (left out reads as on) and `fullscreen` (left out reads as windowed); pushed again whenever any of it moves |
 | `patch.controls` | [ControlHint](src/types.ts)`[]` | the game's own keys for the controls tab: `{ keys, text, group? }`, replaces the whole list |
 | `patch.window` | `'quests' \| 'map' \| 'inventory' \| 'codex' \| 'settings' \| 'controls' \| null` | opens that face of the window, or shuts it |
 | `patch.loading` | [LoaderView](src/types.ts) | a build under way: its `title` and its `stages`, each `{ id, label, state, done?, total? }` with `state` one of `waiting`, `running`, `done`; with no stages it is a veil with the title alone, for a ride between stations; `null` when the city is ready or the player has landed |
@@ -59,7 +61,7 @@ hud.announce({ kind: 'quest-complete', title: quest.title, reward: { money: 40 }
 
 | Param | Type | Postconditions |
 |---|---|---|
-| `handlers.onIntent` | [HudIntent](src/types.ts) | `say` with the trimmed line, `choose` with the `key` of the move clicked, `talk-closed`, `typing` on every change of it, `window` with the face it moved to, `track` with the quest the player chose to follow, `abandon` with the quest they gave up, `decide` with the option they took, `lock-time` with whether the clock is to be held, `skip-time`, `weather` with the one picked, `exit`, `buy` with the `itemId` of the offer clicked, `counter-closed`, `unlock` with the `machineId` and the `password` typed, `score` with the `machineId`, the `game` and the `score` when a game ends, `screen-closed` with the `machineId`, `travel` with the `stationId` picked |
+| `handlers.onIntent` | [HudIntent](src/types.ts) | `say` with the trimmed line, `choose` with the `key` of the move clicked, `talk-closed`, `typing` on every change of it, `window` with the face it moved to, `track` with the quest the player chose to follow, `abandon` with the quest they gave up, `decide` with the option they took, `lock-time` with whether the clock is to be held, `skip-time`, `weather` with the one picked, `minimap` with whether the corner view is to be drawn, `fullscreen` with whether the game is to fill the screen, `exit` and `stay`, the two answers to the question the interface asks before it hands the player back to the launcher, `buy` with the `itemId` of the offer clicked, `counter-closed`, `unlock` with the `machineId` and the `password` typed, `score` with the `machineId`, the `game` and the `score` when a game ends, `screen-closed` with the `machineId`, `travel` with the `stationId` picked |
 | `hud.typing` | boolean | true while the conversation or a screen holds the keyboard, which is when the game must let its keys go |
 | `hud.destroy()` | void | the interface leaves the page, the key listener goes, every timer is cleared |
 | `HUD_KEYS` | `{ quests, map, inventory, codex, settings, controls, leave, close, send, pick }` | the keys the interface claims, so the game can bind around them |
@@ -74,6 +76,7 @@ Every surface is handed the whole state on every change and decides for itself w
 | Objectives | `objectives`, `trackedQuestId` | nothing |
 | Prompt | `prompt` | nothing |
 | Compass | `compass` | nothing |
+| Minimap | `minimap`, `settings.minimap` | nothing |
 | Notices | `hud.announce` | nothing |
 | Bar | `window`, `hud.typing` | `window`, `exit` |
 | Conversation | `talk` | `say`, `choose`, `typing`, `talk-closed` |
@@ -81,13 +84,14 @@ Every surface is handed the whole state on every change and decides for itself w
 | Counter | `counter`, `money` | `buy`, `counter-closed` |
 | Window | `window` | `window` |
 | Screen | `screen` | `unlock`, `score`, `screen-closed`, `typing` |
+| Confirm | the interface's own question | `exit`, `stay` |
 | Loader | `loading` | nothing |
 
 ## Where things sit
 
-The view is cut into regions that never cross, in pixels, in [src/style/layout.ts](src/style/layout.ts): the objectives corner top left (330 wide), the band beside it across the top (196 tall) holding the compass strip (360 by 44, centred at the top of the band) with the notices column under it, the conversation down the right (380 wide, stopping above the foot), the bar along the foot (88 tall), and the window and the counter in the room those leave. While a conversation is up the compass, the notices, the prompt and the room stop short of it. Each surface has a layer of its own, front to back: corner, compass, side, notices, bar, scrim, counter, window, screen, loader. Nothing shares a layer, so nothing is ever drawn through anything else.
+The view is cut into regions that never cross, in pixels, in [src/style/layout.ts](src/style/layout.ts): the objectives corner top left (330 wide) with the minimap under it in the same column (230 square, above the foot), the band beside them across the top (196 tall) holding the compass strip (360 by 44, centred at the top of the band) with the notices column under it, the conversation down the right (380 wide, stopping above the foot), the bar along the foot (88 tall), and the room the window, the counter and the confirm share in what those leave. While a conversation is up the compass, the notices, the prompt and the room stop short of it. The corner column gives the minimap, the foot and the margins their pixels first and the objectives panel takes what is left, so however short the view is the two never meet. Each surface has a layer of its own, front to back: corner, minimap, compass, side, notices, bar, scrim, counter, window, screen, confirm, loader. Nothing shares a layer, so nothing is ever drawn through anything else.
 
-The window is one frame, 760 by 600, centred in its room and clamped by it on a small screen, and it is that shape whatever face is up: a face is handed the body and scrolls inside it, and nothing in the window sizes itself to what is on the face. The counter is a second frame with the same chrome, 520 by 460, in the same room and behind the window, so a player can open their inventory over a counter and come back to it. A screen sits in the middle of the whole view, in front of both, sized by its own grid of characters.
+The window is one frame, 1320 by 800, centred in its room and clamped by it on a small screen, and it is that shape whatever face is up: a face is handed the body and scrolls inside it, and nothing in the window sizes itself to what is on the face. It is as near the whole view as the regions allow, because a map and six pages of lists want the room. At that width a face that is a list of rows runs in columns 440 wide rather than one line across the frame, and falls back to one column when there is no room for two. The counter is a second frame with the same chrome, 520 by 460, in the same room and behind the window, so a player can open their inventory over a counter and come back to it. The confirm is a third, 420 wide, in the same room and in front of both. A screen sits in the middle of the whole view, sized by its own grid of characters.
 
 ## The conversation
 
@@ -109,10 +113,10 @@ One shell with six faces behind a tab strip. Each face is handed the same state.
 | Map | `map`, `objectives`, `trackedQuestId`, `quests` | `travel` |
 | Inventory | `money`, `carrying`, `homes` | nothing |
 | Codex | `codex` | nothing |
-| Settings | `settings` | `lock-time`, `skip-time`, `weather`, `exit` |
+| Settings | `settings` | `lock-time`, `skip-time`, `weather`, `minimap`, `fullscreen`, `exit` |
 | Controls | `controls` | nothing |
 
-The objectives panel shows the tracked quest and its open steps, a count as "2/5" where a step wants more than one, a tag on optional work, and one line for how many other quests are running. With nothing on it, it says which kind of nothing: a player who has never held a quest is pointed at somebody to talk to, one between jobs is told there is no step open. The journal reads the same two ways. The map draws the survey when the game has one, filling the frame, and lists the places to head for either way. The inventory holds the credits and everything in hand, quest items first, each with its value where it has one: money is a thing the player carries, so it is read there and in no corner. Under them, the places the player owns, each with its line and what they have put in it; a place with nothing in it says so, and so does a player with no place yet. The codex files what was found under Places, People and History. Settings shows the hour as a clock face beside a button that holds it and one that skips ahead, one button per weather with the current one pressed, and the way out; until the game has pushed the clock it offers the way out and says the rest comes once the city is running. Controls lists the game's keys, then the interface's.
+The objectives panel shows the tracked quest and its open steps, a count as "2/5" where a step wants more than one, a tag on optional work, and one line for how many other quests are running. With nothing on it, it says which kind of nothing: a player who has never held a quest is pointed at somebody to talk to, one between jobs is told there is no step open. The journal reads the same two ways. The map draws the survey when the game has one, filling the frame, and lists the places to head for either way. The inventory holds the credits and everything in hand, quest items first, each with its value where it has one: money is a thing the player carries, so it is read there and in no corner. Under them, the places the player owns, each with its line and what they have put in it; a place with nothing in it says so, and so does a player with no place yet. The codex files what was found under Places, People and History. Settings shows the hour as a clock face beside a button that holds it and one that skips ahead, one button per weather with the current one pressed, under View a button for the minimap and one for full screen each reading what the game pushed back, and the way out; until the game has pushed the clock it offers the view and the way out and says the rest comes once the city is running. Controls lists the game's keys, then the interface's.
 
 ## The map
 
@@ -135,6 +139,18 @@ Locked, the screen asks for the password. Every printable key goes into the line
 Open, the screen runs the `program` pushed. A `text` program is the title over its lines, wrapped to the grid, with the arrows scrolling what does not fit. A game program is `snake` or `tetris`, playable with the arrows (tetris turns on Up and drops on Space), the first key setting it going. Snake credits ten a bite and ends on a wall or its own tail; tetris scores 40, 100, 300 and 1200 for one to four rows at once and ends when a piece cannot spawn. When a game ends it reports `score` once, with the machine, the game and the score, and says so on the glass with Enter to play again. The best score is the playthrough's: pushed as `best`, drawn beside the live score, and written into the running game without starting it over, so pushing a new best after a `score` does not lose the board.
 
 While a screen is up every key is the screen's and the game hears none: `typing` reads true, and false again before `screen-closed`. Escape, the close button and `screen: null` close it.
+
+## The minimap
+
+A square in the corner, above the bar, north up, on while the game pushes it. The player's arrow is at its centre and turns as they turn; the streets are the plots the game sent, windowed to a radius it chose, drawn in cells so a bigger radius shows more city rather than bigger buildings. Everything read on it is drawn in pixels: the arrow, the goals and the doorways are the same size whatever radius the game picked.
+
+The goals are the map's own marks, wearing the map's own shapes, so a place on the plan and the same place in the corner are recognisably one place. A goal further out than the radius is held at the rim on its bearing and drawn quieter, so where to head is never off the panel. A doorway the player has walked through is an open ink square, which is how a place already found is told from a place still to reach.
+
+It draws from what it is pushed and never from a second pass over the world, it takes no clicks, and `settings.minimap: false` takes it off the screen while the game goes on pushing it. `minimap: null` takes it away.
+
+## The two lines of work
+
+The story and an errand never wear one shape in two shades, anywhere they are drawn. The story is a solid brass diamond; an errand is an open brass ring, dark inside. Shape and fill both differ, so which is which reads at a glance, at any size, over a pale daylight plot or a black street: each mark carries a dark edge and a light one. The plan, the minimap and the bearings list under the plan use the same pair, and the compass strip uses the same pair in its own medium (a solid brass diamond, an open brass square). The `line` on a goal is the game's: left out reads as an errand.
 
 ## The compass
 
@@ -185,7 +201,13 @@ Giving a quest up sits beside Track and asks twice. The first click turns the bu
 
 ## Settings and the way out
 
-Every setting is an intent the game acts on, and the tab draws what the game pushes back: `lock-time` carries whether the clock is to be held, `skip-time` asks for the next time of day, `weather` names the one picked. The button reads locked once `settings.locked` says so, not before. `exit` comes from the Settings tab, from the Leave button on the bar and from its key, and the game decides what leaving means.
+Every setting is an intent the game acts on, and the tab draws what the game pushes back: `lock-time` carries whether the clock is to be held, `skip-time` asks for the next time of day, `weather` names the one picked, `minimap` whether the corner view is drawn, `fullscreen` whether the game fills the screen. The button reads locked once `settings.locked` says so, not before, and the same for the other four. The clock and the sky wait for a running city; the view does not, so the minimap and full screen answer from the first push and read their defaults until the game says otherwise (the minimap on, the game in a window). Full screen is the browser's to do: the hud owns the button, the key and the intent, the game makes the call and pushes `settings.fullscreen` back.
+
+## Asking before it is thrown away
+
+One panel asks "you sure", in place, on its own layer in front of the window: what it is about, the question in a line, and Yes and No with their keys on them. Enter is yes, Escape is no, clicking past it is no, Tab stays on the two answers, and every other key stops there rather than moving a player who is deciding. Yes takes the focus ring, because the keyboard and the ring never give two different answers. It reports the answer and changes nothing itself.
+
+Leaving is what it asks about today. `exit` from the Leave button, from its key and from the Settings tab all raise the question; only the yes goes out, as `exit`, and the no goes out as `stay`. So the game hears `exit` when the player has said they mean it, and hands them back to the launcher on that and nothing else. Another thing worth asking about is an entry in `ConfirmAsk` with its wording and the two intents it answers with.
 
 ## The loader
 
@@ -215,14 +237,15 @@ Type stacks only, no font file: the box ships as one string with no assets, so a
 
 One listener, on the window in the capture phase, so it runs before anything the game bound anywhere.
 
-- `Escape` closes what is in front of the player, one at a time: the screen, then the window, then the counter, then the conversation. With nothing open it passes through to the game.
+- `Escape` closes what is in front of the player, one at a time: the question, then the screen, then the window, then the counter, then the conversation. On a question it is the no. With nothing open it passes through to the game.
 - `J` quests, `M` map, `I` inventory, `X` codex, `O` settings, `?` `/` and `F1` controls. The key of the face already up puts the window away; any other switches face without closing anything.
-- `N` leaves: it reports `exit`, the same as the Leave button on the bar and the Exit game button in Settings.
-- `Enter` sends what is in the conversation box.
-- `Tab` cycles inside whatever is in front of the player: the open window, the counter, or failing those the conversation, where the ring is the box, then each move, then the way out. Left and right walk the tab strip while it has focus.
+- `N` leaves: it raises the question, the same as the Leave button on the bar and the Exit game button in Settings, and the answer is what goes out.
+- `F` asks for full screen, and asks to come back from it. The browser call is the game's.
+- `Enter` sends what is in the conversation box, and answers yes to a question.
+- `Tab` cycles inside whatever is in front of the player: the question, the open window, the counter, or failing those the conversation, where the ring is the box, then each move, then the way out. Left and right walk the tab strip while it has focus.
 - While a screen is up every key but `Escape` is the screen's: the password line, the reader's arrows, a game's arrows, Space and Enter. Held keys repeat there and nowhere else.
 - While the map has focus, `+` and `-` zoom, `0` fits the city, `Y` centres on the player and the arrows pan. They are printed on the map's tools and listed under Map in the controls tab.
-- While the player is writing, every other key stops at the hud and the game hears nothing.
+- While the player is writing, and while a question is up, every other key stops at the hud and the game hears nothing.
 - A key the interface does not use passes straight through, and so does every key while another text field on the page has focus.
 
 ## Errors (closed set)
@@ -237,7 +260,7 @@ Thrown as `HudError` with a `code`:
 
 - The only way in is `show` and `announce`; the only way out is `onIntent`. The hud never reads the world, the playthrough or the renderer.
 - One window, one face, one frame. Opening a face closes the one before it, so there is one scrim, one focus trap and one way out whatever the player is reading, and the frame is the same size whichever face is up. The counter and the screen are frames of their own on layers of their own, so what is in front is never in doubt: the screen, then the window, then the counter.
-- The regions in `layout.ts` are disjoint: the objectives corner, the notices column, the conversation and the window never overlap, and each surface has a layer of its own.
+- The regions in `layout.ts` are disjoint: the objectives corner, the minimap under it, the notices column, the conversation and the room the framed panels stand in never overlap, and each surface has a layer of its own.
 - Every window closes two ways: a button the player can see and click, and a key. The key is printed on the button.
 - Opening and closing are transitions of 120 to 150 ms. A window is closed the moment it is asked to close: it stops taking clicks, leaves the accessible tree and lets the keyboard go, and only its pixels linger. The key that closes one window is free to open the next in the same breath.
 - Nothing takes the keyboard except the conversation, for as long as focus is anywhere inside it, and a screen, for as long as it is up. `typing: false` is reported before `talk-closed` and before `screen-closed`, so the game has its keys back before it hears the thing ended. Stepping off the box onto a move does not hand the walk keys back mid-sentence. `typing` is reported on change only, never twice in a row.
@@ -255,7 +278,7 @@ Thrown as `HudError` with a `code`:
 - A game reports its score once, when it ends, and draws the best it is pushed; a push of `best` never restarts a game.
 - A screen is one grid of characters whatever runs on it, so the frame is the same size for a ledger, a lock and a game.
 - A ride is the game's: `travel` names the station and the hud draws the veil it is pushed.
-- Nothing the player cannot undo happens on one click. Giving up a quest asks a second time, and leaving the button answers no.
+- Nothing the player cannot undo happens on one click. Leaving the game asks in place and hands the player back to the launcher on the yes alone; giving up a quest asks a second time, and leaving the button answers no.
 - The story is never buried: the main line sits at the top of the journal, marked, and the corner panel says which of the two the player is on.
 - A quest that ended is never simply gone: a failed page says it failed and why, a finished one says it is done, and neither offers a button that would do nothing.
 - A quest page shows every step the engine kept, dropped branches included, in the order the quest was written. The journal never edits the story down to the part that happened.
@@ -269,7 +292,9 @@ Thrown as `HudError` with a `code`:
 - `Objective.markerLabel` names a place, so the map reads it; putting a marker in the world belongs to the scene, not here.
 - A place the player owns is never a gap: with nothing placed it says so, and a player with no place is told as much.
 - On the plan, what is drawn in cells scales and what is drawn in pixels does not: a name, a mark and the player's arrow are the same size at every zoom, and the view never leaves the city.
-- The story and an errand never wear the same mark, on the plan, in the bearings or on the compass.
+- The story and an errand never wear the same mark, on the plan, on the minimap, in the bearings or on the compass, and they differ in shape and fill rather than in shade, so neither reads as the other at a glance or over a pale plot.
+- The minimap draws what it is pushed, windowed by the game, and never a second pass over the world. A goal beyond the radius is at the rim, never off the panel.
+- The hud decides nothing about the minimap or full screen either: both are reported and drawn as they are pushed back, and full screen is the game's call to the browser.
 - The compass draws the numbers it is pushed and works out nothing about the route: the bearing and the distance are the game's.
 - A locked fact is a line, never a gap: what is still to learn of a person is on their page.
 
@@ -280,4 +305,4 @@ Thrown as `HudError` with a `code`:
 
 ## How to modify this blackbox safely
 
-A new kind of answer in the conversation is a case on `HudIntent` and a branch in the hud's `#dispatch`; anything the player picks goes out as an intent and comes back as a patch, because this box never decides what a move does. A new panel is a new surface in `src/surfaces/` plus its field on `HudPatch` and `HudState`, and its region and layer in `src/style/layout.ts`; nothing else changes, because every surface is handed the whole state. A framed panel in the room (the window, the counter) is built on `HudWindow` and gets the chrome, the transition and the focus manners free. The map is five pieces under `src/map/`: the viewport (what is on show, in cells), the plan (the SVG), the gestures (wheel and drag), the tools over it and the two lists under it; a new thing on the plan is a node in the plan, drawn in pixels if it must stay readable at every zoom. A new program on the screen is a `ScreenApp` in `src/screen/` (rows of text, a status line, a key) plus its kind on `ScreenProgram` and a branch where the surface builds one; the grid, the padding and the overlay helpers are in `src/screen/size.ts`. A new face of the window is an entry in `src/windows.ts` plus a `Tab` in `src/tabs/`, and it gets its chrome, its frame, its transition and its focus manners free. A new announcement is a kind on `Notice`, its wording, size and mood in `src/phrase.ts` and its name in the kind set. A new key is a `KeyAction` in `src/keys.ts` and a case in the hud, with its label in `src/controls.ts` so it appears on screen wherever it applies. Wording lives in `phrase.ts` and `controls.ts`; the look lives in `src/style/`, one file per concern, joined into one stylesheet at load. Run `pnpm --filter @gb/hud test` in the same change.
+A new kind of answer in the conversation is a case on `HudIntent` and a branch in the hud's `#dispatch`; anything the player picks goes out as an intent and comes back as a patch, because this box never decides what a move does. A new panel is a new surface in `src/surfaces/` plus its field on `HudPatch` and `HudState`, and its region and layer in `src/style/layout.ts`; nothing else changes, because every surface is handed the whole state. A framed panel in the room (the window, the counter) is built on `HudWindow` and gets the chrome, the transition and the focus manners free. A new thing worth asking "you sure" about is a value on `ConfirmAsk`, its wording in `phrase.ts` and its pair of intents in the hud's `ANSWERS`; the panel, the keys and the focus manners come with it. The map is six pieces under `src/map/`: the viewport (what is on show, in cells), the plan (the SVG), the minimap's own plan in `near.ts`, the gestures (wheel and drag), the tools over it and the two lists under it; a new thing on the plan is a node in the plan, drawn in pixels if it must stay readable at every zoom. The shapes both plans draw live in `src/map/marks.ts` and are painted by `src/style/marks.ts`, so a mark cannot come out one way on the plan and another in the corner. A new program on the screen is a `ScreenApp` in `src/screen/` (rows of text, a status line, a key) plus its kind on `ScreenProgram` and a branch where the surface builds one; the grid, the padding and the overlay helpers are in `src/screen/size.ts`. A new face of the window is an entry in `src/windows.ts` plus a `Tab` in `src/tabs/`, and it gets its chrome, its frame, its transition and its focus manners free. A new announcement is a kind on `Notice`, its wording, size and mood in `src/phrase.ts` and its name in the kind set. A new key is a `KeyAction` in `src/keys.ts` and a case in the hud, with its label in `src/controls.ts` so it appears on screen wherever it applies. Wording lives in `phrase.ts` and `controls.ts`; the look lives in `src/style/`, one file per concern, joined into one stylesheet at load. Run `pnpm --filter @gb/hud test` in the same change.

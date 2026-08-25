@@ -1,10 +1,8 @@
 import { el, svg } from '../dom.ts'
 import { LAYOUT } from '../style/layout.ts'
 import type { MapMark, MapPlot, MapStation, MapView } from '../types.ts'
+import { MARK_PX, goalShape, title, youArrow } from './marks.ts'
 import type { Size, Viewport } from './viewport.ts'
-
-/** Screen size of the marks and the type on the plan, in pixels, whatever the zoom. */
-const PX = { you: 9, main: 7, side: 5, station: 5, gap: 10 } as const
 
 /** The frame before the window has been laid out: the window itself, less its head. */
 const NOMINAL: Size = { w: LAYOUT.window.width, h: LAYOUT.window.height - 52 }
@@ -113,8 +111,8 @@ export class Plan {
 
   #station(at: MapStation): void {
     const node = svg('g', { class: 'gb-station' })
-    const r = PX.station
-    node.append(svg('rect', { x: -r, y: -r, width: r * 2, height: r * 2 }), text(at.name, PX.gap, 0, 'start'), title(at.name))
+    const r = MARK_PX.station
+    node.append(svg('rect', { x: -r, y: -r, width: r * 2, height: r * 2 }), text(at.name, MARK_PX.gap, 0, 'start'), title(at.name))
     this.#stations.append(node)
     this.#fixed.push({ node, x: at.x, y: at.y, rotate: 0 })
   }
@@ -141,32 +139,20 @@ function block(plot: MapPlot): SVGRectElement {
 
 function you(mark: MapMark): SVGElement {
   const node = svg('g', { class: 'gb-you' })
-  const r = PX.you
-  node.append(svg('path', { d: `M 0 ${-r} L ${r * 0.7} ${r * 0.85} L 0 ${r * 0.45} L ${-r * 0.7} ${r * 0.85} Z` }), title(mark.label))
+  node.append(youArrow(), title(mark.label))
   return node
 }
 
 function goal(mark: MapMark): SVGElement {
   const line = mark.line ?? 'side'
   const node = svg('g', { class: 'gb-goal', 'data-line': line })
-  const shape =
-    line === 'main'
-      ? svg('path', { d: `M 0 ${-PX.main} L ${PX.main} 0 L 0 ${PX.main} L ${-PX.main} 0 Z` })
-      : svg('circle', { r: PX.side })
-  node.append(shape, text(mark.label, PX.gap, 0, 'start'), title(mark.label))
+  node.append(goalShape(line), text(mark.label, MARK_PX.gap, 0, 'start'), title(mark.label))
   return node
 }
 
 function text(words: string, x: number, y: number, anchor: 'start' | 'middle'): SVGTextElement {
   const node = svg('text', { x, y, 'text-anchor': anchor, 'dominant-baseline': 'central' })
   node.textContent = words
-  return node
-}
-
-/** What hovering says, for anything with a name. */
-function title(label: string): SVGTitleElement {
-  const node = svg('title')
-  node.textContent = label
   return node
 }
 

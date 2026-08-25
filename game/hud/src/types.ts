@@ -180,6 +180,34 @@ export interface MapView {
   readonly boarding?: string
 }
 
+/** A doorway the player has walked through, so a place they know stays findable. */
+export interface MinimapDoor {
+  readonly id: string
+  readonly name: string
+  readonly x: number
+  readonly y: number
+}
+
+/**
+ * The streets round the player, north up, in the same cells the map takes. The
+ * game windows the city to `radius` and pushes what is inside it; the minimap
+ * draws that and nothing else.
+ */
+export interface MinimapView {
+  /** Where the player stands, in cells. */
+  readonly x: number
+  readonly y: number
+  /** Which way they face, radians clockwise from north. */
+  readonly facing: number
+  /** How many cells either side of the player are on show. */
+  readonly radius: number
+  /** The buildings inside the radius. */
+  readonly plots: readonly MapPlot[]
+  /** Where they are headed. A goal outside the radius is pinned to the rim. */
+  readonly marks?: readonly MapMark[]
+  readonly doors?: readonly MinimapDoor[]
+}
+
 /** The place the strip points at: where it is from here, and how far along the walk. */
 export interface CompassGoal {
   readonly label: string
@@ -248,7 +276,17 @@ export interface SettingsView {
   readonly weather: string
   /** Every weather the game can show, in the order it walks them. */
   readonly weathers: readonly string[]
+  /** Whether the minimap is on screen. Left out reads as on. */
+  readonly minimap?: boolean
+  /** Whether the game is full screen. Left out reads as windowed. */
+  readonly fullscreen?: boolean
 }
+
+/**
+ * What a "you sure" is asking about. One value per thing that throws work
+ * away; leaving the game is the one the interface asks today.
+ */
+export type ConfirmAsk = 'exit'
 
 /** One named stage of a build: waiting its turn, under way, or finished. */
 export interface LoadStage {
@@ -365,7 +403,10 @@ export type HudIntent =
   | { readonly kind: 'lock-time'; readonly locked: boolean }
   | { readonly kind: 'skip-time' }
   | { readonly kind: 'weather'; readonly weather: string }
+  | { readonly kind: 'minimap'; readonly shown: boolean }
+  | { readonly kind: 'fullscreen'; readonly on: boolean }
   | { readonly kind: 'exit' }
+  | { readonly kind: 'stay' }
   | { readonly kind: 'buy'; readonly itemId: string }
   | { readonly kind: 'counter-closed' }
   | { readonly kind: 'unlock'; readonly machineId: string; readonly password: string }
@@ -395,6 +436,7 @@ export interface HudPatch {
   readonly quests?: readonly QuestEntry[]
   readonly trackedQuestId?: string | null
   readonly map?: MapView | null
+  readonly minimap?: MinimapView | null
   readonly compass?: CompassView | null
   readonly codex?: CodexView
   readonly settings?: SettingsView
@@ -423,11 +465,14 @@ export interface HudState {
   readonly quests: readonly QuestEntry[]
   readonly trackedQuestId: string | undefined
   readonly map: MapView | undefined
+  readonly minimap: MinimapView | undefined
   readonly compass: CompassView | undefined
   readonly codex: CodexView
   readonly settings: SettingsView | undefined
   readonly controls: readonly ControlHint[]
   readonly window: HudWindowName | null
+  /** The "you sure" in front of the player, put up by the interface itself. */
+  readonly confirm: ConfirmAsk | undefined
   readonly loading: LoaderView | undefined
   readonly notices: readonly LiveNotice[]
   /** True once the player has held a quest, so an empty panel reads right. */

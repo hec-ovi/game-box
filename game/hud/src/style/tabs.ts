@@ -4,6 +4,17 @@
  * brass on the one thing in the row the player is meant to act on or head for.
  */
 export const TABS = `
+/* The frame is nearly the width of the view, so the pages that are lists run
+   in columns a line of prose wide rather than one column the width of the
+   screen. Under two columns' worth of room they fall back to one, which is
+   what a small screen gets. An entry is never split down the middle. */
+.gb-quests, .gb-inventory, .gb-codex, .gb-settings, .gb-controls {
+  columns: 440px;
+  column-gap: var(--gb-s6);
+}
+.gb-quest-entry, .gb-control-group, .gb-setting, .gb-codex-entry, .gb-home { break-inside: avoid; }
+.gb-inventory .gb-coin { column-span: all; }
+
 /* Quests: every job under way, and which one the corner panel follows. */
 .gb-quest-entry { padding-bottom: var(--gb-s3); margin-bottom: var(--gb-s3); border-bottom: 1px solid var(--gb-edge); }
 .gb-quest-entry:last-child { border-bottom: none; margin-bottom: 0; }

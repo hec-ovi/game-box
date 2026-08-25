@@ -64,18 +64,28 @@ export const COMPASS = `
   background: var(--gb-accent);
   opacity: 0.6;
 }
-/* The goal's mark: the story a diamond, an errand a dot; pinned to an edge while it is behind the player. */
+/* The goal's mark, wearing what the plan and the minimap wear: the story a
+   solid brass diamond, an errand an open brass square. Pinned to an edge while
+   it is behind the player. */
 .gb-compass-mark {
   position: absolute;
   top: 3px;
-  width: 9px;
-  height: 9px;
+  width: 10px;
+  height: 10px;
   background: var(--gb-accent);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.8);
   transform: translateX(-50%) rotate(45deg);
   transition: left 80ms linear;
 }
-.gb-compass-mark[data-line='side'] { width: 7px; height: 7px; top: 4px; background: var(--gb-accent-deep); box-shadow: 0 0 0 1px var(--gb-accent); transform: translateX(-50%); }
+.gb-compass-mark[data-line='side'] {
+  width: 9px;
+  height: 9px;
+  top: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  border: 2px solid var(--gb-accent);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.8);
+  transform: translateX(-50%);
+}
 .gb-compass-mark[data-edge] { opacity: 0.6; }
 .gb-compass-where {
   display: flex;
