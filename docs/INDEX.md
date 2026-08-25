@@ -27,14 +27,14 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI
 | The interface: objectives, prompts, the compass strip and which way the job is, the conversation down the side and the moves you can click in it, announcements, the loader while a city is written, the quests, map, inventory, codex, settings and controls window, and how it all looks | `game/hud/` |
 | Determinism, ids, results, boundary validation | `game/kit/` |
 | The running game: the panel you make a city in (every field optional) or open one somebody sent you from, the shelf every city you made or opened is kept on with its playthrough, the loader while the model writes one, renderer, frame loop, first-person body, the car it drives, the map, the compass and the route guide, the codex and the settings the interface is handed, taking a thing and leaving it where a job wants it, the keys for the hour and the weather, who goes out walking and who walks with the player, wiring, and how the hour is graded | `game/app/` |
-| The `gb` command: build a city and pin it to the art it was drawn from, inspect it, check it | `game/cli/` |
+| The `gb` command: build a city, to a history you wrote if you have one, pin it to the art it was drawn from and say what its history declared that it would not take, inspect it, check it | `game/cli/` |
 
 ## Sidecar
 
 | You want to change | Open |
 |---|---|
 | HTTP/WS endpoints, SSE shapes, OpenAI compatibility, tool calls, error bodies | `host/src/api/` |
-| Text generation, engine selection, llama.cpp/upstream wiring, forcing a tool call in the shape the engine honours, pinning an answer so the same request comes back the same | `host/src/llm/` |
+| Text generation, engine selection, llama.cpp/upstream wiring, forcing a tool call in the shape the engine honours and in a schema its grammar can end, stopping the engine when the caller leaves, pinning an answer so the same request comes back the same | `host/src/llm/` |
 | Speech recognition, audio envelopes, partial transcripts | `host/src/stt/` |
 | Speech synthesis, voices, streaming audio frames | `host/src/tts/` |
 | Model cache, integrity check, downloads | `host/src/models/` |
@@ -58,7 +58,7 @@ game/forge, game/quest, game/world, game/sidecar <- game/scribe
 game/kit, game/world, game/quest, game/play, game/sidecar <- game/talk
 game/world <- game/nav;  game/kit, game/world <- game/scene, game/traffic
 game/world <- game/drive   (the traffic, the car art, the crowd and the player all arrive as ports)
-game/scene, game/kit <- game/kitbash
+game/scene, game/kit <- game/kitbash <- game/forge
 game/scene, game/kitbash, game/world, game/kit <- game/prefab
 game/scene, game/world, game/kit <- game/furnish
 game/scene <- game/cast
