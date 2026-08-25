@@ -8,6 +8,7 @@ import {
   footprintOf,
   inPlotBand,
   MAX_BACKGROUND_FACTS,
+  MAX_GRID_SIDE,
   METRICS,
   PLOT_BAND,
   plotShape,
@@ -317,7 +318,7 @@ describe('founding a city', () => {
   })
 
   it('refuses a grid too big to validate, instead of building one', () => {
-    const made = World.found({ ...spec, width: 1093 })
+    const made = World.found({ ...spec, width: MAX_GRID_SIDE + 1 })
     expect(made.ok).toBe(false)
     if (made.ok || made.error.code !== 'invalid-document') throw new Error('expected invalid-document')
     expect(made.error.violations.map((v) => v.path)).toContain('width')
@@ -331,7 +332,7 @@ describe('founding a city', () => {
   })
 
   it('refuses the same specs through the older create', () => {
-    expect(() => World.create({ ...spec, width: 1093 })).toThrow(/width/)
+    expect(() => World.create({ ...spec, width: MAX_GRID_SIDE + 1 })).toThrow(/width/)
     expect(() => World.create({ ...spec, theme: 'a'.repeat(200) })).toThrow(/theme/)
     expect(World.create(spec).name).toBe('Dry Gulch')
   })
@@ -571,7 +572,7 @@ describe('the cells a city is laid in', () => {
     expect(World.load(docOf(world)).ok).toBe(true)
 
     const doc = docOf(world)
-    doc.grid.rows[15] = `?${doc.grid.rows[15].slice(1)}`
+    doc.grid.runs[15] = `?${doc.grid.runs[15].slice(1)}`
     expect(problemsOf(World.load(doc))).toContainEqual(expect.stringContaining('unknown cell char "?"'))
   })
 })

@@ -1,6 +1,6 @@
 # @gb/world contract
 
-contractVersion: 0.14.0
+contractVersion: 0.15.0
 
 ## Purpose
 
@@ -46,6 +46,7 @@ take. A refusal writes nothing: no id, no ground, no record.
 | `MachineSchema`, `MACHINE_PROPS`, `MACHINE_PROGRAMS`, `isMachineProp` | zod; the four screen kinds; what a screen runs | see "Machines, cameras and bars" |
 | `CAR_MODELS` | the seven cars `cars.glb` ships | what a car reward names |
 | `CELL_KINDS`, `CELL`, `Grid` | the closed cell vocabulary; the char each kind is written as; the matrix | what each kind means for walking, driving and drawing, see below |
+| `MAX_GRID_SIDE`, `cellRows(grid)`, `gridField(rows, like?)` | 2048; `string[]`; the `grid` of [schema/world.json](schema/world.json) | the widest a city may be; the picture a document's grid carries, whichever of the two forms it is written in; a picture back as a field in the form `like` is in, or as runs when there is none |
 | `World.charters()`, `World.charter(word)` | `ResolvedCharter[]`; `ResolvedCharter` or nothing | the kinds of place this city has: its own list when the file carries one, else `SHIPPED_CHARTERS`. Nothing means no charter declares the word |
 | `CharterSchema`, `ResolvedCharterSchema`, `ChartersSchema` | zod, with `charterContract`, `resolvedCharterContract`, `chartersContract` | what a generator writes, what the file carries, and the whole list, see below |
 | `SHIPPED_CHARTERS` | fourteen `ResolvedCharter`s | the presets a city that declares no charters of its own is built from, in the order a mix draws them |
@@ -339,6 +340,34 @@ and keeps no list of its own; a char outside it fails `load`.
 Heights are `@gb/scene`'s to draw and `@gb/nav`'s to price; what is passable is
 written here so the three cannot disagree.
 
+### How the grid is written
+
+The document carries the grid in one of two forms, and a city keeps the form
+its file was written in, so a file already shared saves back to the bytes it
+was sealed with:
+
+- **`grid.rows`**: one char a cell, which is what every file written before this
+  carries.
+- **`grid.runs`**: the same picture with each run of one kind written
+  `<count><char>`, the count left out for a run of one (`4M2W5S2W18B`). A city
+  founded here is written this way.
+
+A block is a run of the same kind, so a real city's runs are about a quarter of
+its picture: measured on a forge-built town, 8.9 cells a run. A grid that
+carries both forms, or neither, is `invalid-document` at `grid.rows`.
+
+`world.grid` is the picture either way, so nothing that reads or paints cells
+sees the difference. A reader that has the document rather than the `World`
+(a pack cutting a growth against its base) takes the picture with
+`cellRows(doc.grid)` and writes one back with `gridField(rows, doc.grid)`.
+
+`MAX_GRID_SIDE` is 2048 cells a side, 4 km at 2 m a cell: a fifty-block town of
+ordinary 22-cell blocks needs 1587, and walking one side of the widest city
+takes about fifty minutes. What the ceiling costs, measured on a town of 22-cell blocks:
+4,194,304 cells, 1.25 MB of runs in the file against 4.01 MB of picture, 4 MB
+of memory (one byte a cell), 0.4 ms to parse, 22 ms to read the picture back,
+67 ms for a whole `check()`, 5 ms to hash and 164 ms to paint the plan.
+
 ### What a mountain cell means
 
 A `mountain` cell (`M`) is the valley wall. The city is a valley with far
@@ -377,7 +406,7 @@ draws the city draws no kerb against it, and whoever routes never crosses it.
 - **A city's history is a fact about the file.** It is written at founding and nothing here rewrites it, so growing a city later grows it against the story it started from, and a shared file says what its town is about without the generator that built it.
 - **A plot's design is a fact about the file, never re-derived.** Nothing here chooses a model, and nothing rewrites one that is written down, so the same file is the same city on every machine and in every version of the art.
 - **`plot.interiorId` is exactly the set of doors that open.** A plot with an interior can be walked into and a plot without one cannot, and the two directions are checked: an interior whose plot does not point back at it is refused. There is no second field saying the same thing.
-- The grid is the single source of truth for what occupies a cell, which is what makes "add three more houses later" a lookup rather than a regeneration.
+- The grid is the single source of truth for what occupies a cell, which is what makes "add three more houses later" a lookup rather than a regeneration. It is written into the document once, when the document is asked for, in the form the file it came from was written in.
 - Vocabularies (`CELL_KINDS`, `ROOM_KINDS`, `ROOM_USES`, `ANCHOR_KINDS`, `NPC_ROLES`, `ITEM_ARCHETYPES`, `FURNITURE_PROPS`, `MACHINE_PROGRAMS`, `CAR_MODELS`, `BODY_KINDS`, `FACINGS`, `ROAD_KINDS`, `KIT_PIECES`, `BACKGROUND_UNLOCKS`, `NEON_LEVELS`, `DENSITY_LEVELS`, `WEAR_LEVELS`, and the thirteen charter axes) are closed: every value names a routine the engine runs or a thing it ships. What a place is, is closed by the world document instead, in its charters. `BODY_KINDS` is the two bodies of the shipped pack, `male` and `female`: its two files are one mesh per sex, each with a light and a dark skin sheet, both on the canonical 65-joint skeleton, and a heavier build would be a name for the same mesh until a pack ships one. `dance` is an anchor kind because a dance clip ships.
 - **Which doors open is a fact about the file, not a list of kinds.** `plot.interiorId` is the whole answer, and what makes a door worth opening is what the place turns out to hold, which nothing here can know. There is no vocabulary of enterable kinds.
 - An anchor kind is one stance, not one job: `work-desk` is sat in the chair at a desk, `work-bench` is on their feet at a bench with their hands on the top. Two stances at one surface height are two kinds, because a clip is chosen from the kind alone.
@@ -412,7 +441,7 @@ draws the city draws no kerb against it, and whoever routes never crosses it.
   A worktop is the same number as a service counter because one standing clip serves both and there is no lower standing pose on this rig. They stay two names because they are two surfaces, and the day a lower clip exists a worktop drops on its own.
 - **A bar counter is one height on both sides.** The customer's rail at `barCounterHeight` and the staff shelf behind it at `serviceCounterHeight` are both 1.0, inside the standing reach, so a body leaning on the rail keeps its forearms on it rather than through its front face. `PROP_SPECS['bar-counter'].staffContact` publishes the shelf.
 - **A stool is its own stance.** The stool clips carry their own height: hips on the pad at `stoolHeight`, shins back under the seat, soles on a rail `METRICS.reach.stoolSoles` (0.38) off the floor. `PROP_SPECS['bar-stool']` rests a body there and a chair at `seatHeight`, 0.30 lower with the soles on the floor, so a body sat for one on the other is in the air.
-- A city spec is measured against the world document's own bounds before a single cell is allocated (grid 4-1024 a side, name 80 characters, theme 60, seed 120, cellSize up to 16, `asks.style` inside its enums), so a world that `found` hands back is a world that `load` accepts. Nothing large is ever built only to fail validation after it has been written.
+- A city spec is measured against the world document's own bounds before a single cell is allocated (grid 4 to `MAX_GRID_SIDE` a side, name 80 characters, theme 60, seed 120, cellSize up to 16, `asks.style` inside its enums), so a world that `found` hands back is a world that `load` accepts. Nothing large is ever built only to fail validation after it has been written.
 - **The brief and the asks are facts about the file**, written at `found` like the premise and never rewritten here, so a city grown later is grown to what it was asked for.
 
 ## How to modify this blackbox safely

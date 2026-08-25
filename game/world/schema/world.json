@@ -992,14 +992,21 @@
         "width": {
           "type": "integer",
           "minimum": 4,
-          "maximum": 1024
+          "maximum": 2048
         },
         "height": {
           "type": "integer",
           "minimum": 4,
-          "maximum": 1024
+          "maximum": 2048
         },
         "rows": {
+          "minItems": 4,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "runs": {
           "minItems": 4,
           "type": "array",
           "items": {
@@ -1009,8 +1016,7 @@
       },
       "required": [
         "width",
-        "height",
-        "rows"
+        "height"
       ]
     },
     "roads": {

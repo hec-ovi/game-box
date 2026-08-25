@@ -5,6 +5,7 @@ import { checkIntegrity, type IntegrityProblem } from './integrity.ts'
 import { METRICS, cellCentre } from './metrics.ts'
 import { PLAYER, type Owner } from './model/access.ts'
 import { citySpecContract, type CitySpec } from './model/city-spec.ts'
+import { cellRows, gridField, type GridField } from './model/grid-field.ts'
 import { catalogueListContract, plotDesignContract, type AssetPackRef, type PlotDesign } from './model/design.ts'
 import type { Asks } from './model/asks.ts'
 import type { Premise } from './model/premise.ts'
@@ -65,19 +66,21 @@ export interface MachineSite {
 export class World {
   #doc: WorldDoc
   #grid: Grid
+  #gridField: GridField
   #ids: IdMinter
 
   private constructor(doc: WorldDoc) {
     this.#doc = doc
-    this.#grid = Grid.fromRows(doc.grid.rows)
+    this.#gridField = doc.grid
+    this.#grid = Grid.fromRows(cellRows(doc.grid))
     this.#ids = new IdMinter(doc.idCounters)
   }
 
   /**
    * An empty city: all land, no streets yet. A spec outside the bounds the
-   * world document allows (grid 4-1024 cells a side, theme up to 60 characters)
-   * comes back as `invalid-document`, so a city is never built only to fail
-   * validation once it has been written to disk.
+   * world document allows (grid 4 to `MAX_GRID_SIDE` cells a side, theme up to
+   * 60 characters) comes back as `invalid-document`, so a city is never built
+   * only to fail validation once it has been written to disk.
    */
   static found(spec: CitySpec): Result<World, WorldError> {
     const checked = read(citySpecContract, spec)
@@ -313,7 +316,6 @@ export class World {
   /** Paint streets and sidewalks. The generator owns the layout; the world owns the grid. */
   paint(rect: Rect, kind: keyof typeof CELL): void {
     this.#grid.fill(rect, kind)
-    this.#syncGrid()
   }
 
   /** Lay nodes and the segments between them: the drivable graph a car follows. */
@@ -341,7 +343,6 @@ export class World {
     }
     const plot: Plot = { id: this.mintId('plot'), ...checked.value }
     this.#grid.fill(plot.rect, 'building')
-    this.#syncGrid()
     this.#doc.plots.push(plot)
     return ok(plot)
   }
@@ -450,13 +451,10 @@ export class World {
   }
 
   toJSON(): WorldDoc {
-    this.#syncGrid()
+    /** The grid is written once, here, and only when something has been painted: a file nobody touched keeps its own bytes. */
+    if (this.#grid.changed) this.#doc.grid = gridField(this.#grid.rows(), this.#gridField)
     this.#doc.idCounters = this.#ids.snapshot()
     return this.#doc
-  }
-
-  #syncGrid(): void {
-    this.#doc.grid = { width: this.#grid.width, height: this.#grid.height, rows: [...this.#grid.rows()] }
   }
 
   /** A field written on the document lands where the file carries it, so the two save alike. */
@@ -496,11 +494,7 @@ function blankCity(spec: CitySpec): WorldDoc {
     ...(spec.charters ? { charters: spec.charters } : {}),
     ...(spec.brief ? { brief: spec.brief } : {}),
     ...(spec.asks ? { asks: spec.asks } : {}),
-    grid: {
-      width: spec.width,
-      height: spec.height,
-      rows: new Grid(spec.width, spec.height).rows() as string[],
-    },
+    grid: gridField(new Grid(spec.width, spec.height).rows()),
     roads: { nodes: [], segments: [] },
     plots: [],
     interiors: [],

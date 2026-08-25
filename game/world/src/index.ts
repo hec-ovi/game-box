@@ -3,6 +3,7 @@ export { World, type WorldError, type DoorSite, type MachineSite } from './world
 export { type CitySpec } from './model/city-spec.ts'
 export { questView, type QuestView } from './quest-view.ts'
 export { Grid, CELL, CELL_KINDS, type CellKind, type Rect } from './grid.ts'
+export { cellRows, gridField, type GridField } from './model/grid-field.ts'
 export { METRICS, cellCentre, type Metrics } from './metrics.ts'
 export {
   PROP_SPECS,
@@ -29,6 +30,7 @@ export {
 } from './model/machine.ts'
 export { CAR_MODELS, type CarModel } from './model/cars.ts'
 export {
+  MAX_GRID_SIDE,
   worldContract,
   plotSpecContract,
   plotContract,

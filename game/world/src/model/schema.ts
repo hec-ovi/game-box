@@ -204,6 +204,15 @@ export const PlacementSchema = z.discriminatedUnion('at', [
   z.object({ at: z.literal('ground'), itemId: id('item'), cell: Cell }),
 ])
 
+/**
+ * The widest a city may be, in cells: 4 km a side at 2 m a cell, which is a
+ * fifty-block town of ordinary blocks with room over. What it costs at the
+ * ceiling is one line of runs a row, about a megabyte of grid in the file.
+ */
+export const MAX_GRID_SIDE = 2048
+
+const GridSide = z.number().int().min(4).max(MAX_GRID_SIDE)
+
 export const WorldSchema = z.object({
   format: z.literal('game-box.world'),
   schemaVersion: z.literal(1),
@@ -226,11 +235,20 @@ export const WorldSchema = z.object({
   premise: PremiseSchema.optional(),
   /** The kinds of place this city has. Absent means the fourteen shipped presets. */
   charters: ChartersSchema.optional(),
-  grid: z.object({
-    width: z.number().int().min(4).max(1024),
-    height: z.number().int().min(4).max(1024),
-    rows: z.array(z.string()).min(4),
-  }),
+  grid: z
+    .object({
+      width: GridSide,
+      height: GridSide,
+      /** One char a cell: the form every file written before run-length rows carries. */
+      rows: z.array(z.string()).min(4).optional(),
+      /** The same picture as runs of one kind, `<count><char>`, the count left out for a run of one. */
+      runs: z.array(z.string()).min(4).optional(),
+    })
+    .superRefine((grid, ctx) => {
+      if ((grid.rows === undefined) === (grid.runs === undefined)) {
+        ctx.addIssue({ code: 'custom', path: ['rows'], message: 'a grid is written as rows or as runs, one of the two' })
+      }
+    }),
   roads: RoadsSchema,
   plots: z.array(PlotSchema),
   interiors: z.array(InteriorSchema),

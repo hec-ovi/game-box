@@ -3,6 +3,7 @@ import { checkAccess } from './checks/access.ts'
 import { checkMachines } from './checks/machines.ts'
 import { Report, type IntegrityProblem } from './checks/report.ts'
 import { Grid } from './grid.ts'
+import { cellRows } from './model/grid-field.ts'
 import type { WorldDoc } from './model/schema.ts'
 
 export type { IntegrityProblem }
@@ -32,7 +33,8 @@ export function checkIntegrity(doc: WorldDoc): IntegrityProblem[] {
   for (const segment of doc.roads.segments) claim(`road segment ${segment.id}`, segment.id)
 
   // grid shape and contents
-  const { width, height, rows } = doc.grid
+  const { width, height } = doc.grid
+  const rows = cellRows(doc.grid)
   if (rows.length !== height) fail('grid', `height is ${height} but there are ${rows.length} rows`)
   rows.forEach((row, y) => {
     if (row.length !== width) fail('grid', `row ${y} is ${row.length} cells, expected ${width}`)

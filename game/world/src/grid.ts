@@ -1,7 +1,7 @@
 /**
- * The city as a matrix of cells. One char per cell keeps it compact in the
- * world file and readable when you print it, and makes "is this space free"
- * and "put a building here" cheap.
+ * The city as a matrix of cells. One char per cell makes it readable when you
+ * print it and makes "is this space free" and "put a building here" cheap; how
+ * the document writes it is `model/grid-field.ts`.
  */
 
 /**
@@ -56,6 +56,7 @@ export class Grid {
   readonly width: number
   readonly height: number
   #rows: string[]
+  #changed = false
 
   constructor(width: number, height: number, rows?: readonly string[]) {
     this.width = width
@@ -71,6 +72,11 @@ export class Grid {
     return this.#rows
   }
 
+  /** Whether anything has been written to it since it was read, which is how a file is left as it was written. */
+  get changed(): boolean {
+    return this.#changed
+  }
+
   inside(x: number, y: number): boolean {
     return x >= 0 && y >= 0 && x < this.width && y < this.height
   }
@@ -84,11 +90,18 @@ export class Grid {
     if (!this.inside(x, y)) return
     const row = this.#rows[y]!
     this.#rows[y] = row.slice(0, x) + CELL[kind] + row.slice(x + 1)
+    this.#changed = true
   }
 
+  /** One row rewritten a span at a time, so painting a band costs a row and not a cell. */
   fill(rect: Rect, kind: CellKind): void {
-    for (let y = rect.y; y < rect.y + rect.h; y++) {
-      for (let x = rect.x; x < rect.x + rect.w; x++) this.set(x, y, kind)
+    const from = Math.max(0, rect.x)
+    const to = Math.min(this.width, rect.x + rect.w)
+    if (to <= from) return
+    const span = CELL[kind].repeat(to - from)
+    for (let y = Math.max(0, rect.y); y < Math.min(this.height, rect.y + rect.h); y++) {
+      this.#rows[y] = this.#rows[y]!.slice(0, from) + span + this.#rows[y]!.slice(to)
+      this.#changed = true
     }
   }
 
@@ -142,6 +155,8 @@ export class Grid {
   }
 
   clone(): Grid {
-    return new Grid(this.width, this.height, this.#rows)
+    const copy = new Grid(this.width, this.height, this.#rows)
+    copy.#changed = this.#changed
+    return copy
   }
 }
