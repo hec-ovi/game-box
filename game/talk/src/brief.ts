@@ -2,6 +2,7 @@ import type { Npc } from '@gb/world'
 import type { Offered } from './background.ts'
 import type { Turn } from './events.ts'
 import { Examples } from './examples.ts'
+import { Holding } from './holding.ts'
 import { Memory } from './memory.ts'
 import type { Move, Situation } from './moves.ts'
 import { PROMPTS } from './prompts.generated.ts'
@@ -17,7 +18,8 @@ const LIFE = keyed(PROMPTS.life)
 /**
  * Everything the model is told, in one fixed labelled template. The engine
  * fills the slots that change by the turn (the room, the hour, the company,
- * what the player carries, standing, what they remember, the moves on offer);
+ * what the player carries, what they sell and hold, standing, what they
+ * remember, the moves on offer);
  * the generator filled the slots that make this person this person, once, in
  * the world file; and how to speak is fixed text with worked examples.
  */
@@ -26,6 +28,7 @@ export class Brief {
   #scene: Scene
   #wants: Wants
   #memory: Memory
+  #holding: Holding
   #examples: Examples
 
   constructor(situation: Situation) {
@@ -33,6 +36,7 @@ export class Brief {
     this.#scene = new Scene(situation)
     this.#wants = new Wants(situation)
     this.#memory = new Memory(situation)
+    this.#holding = new Holding(situation)
     this.#examples = new Examples(situation)
   }
 
@@ -60,6 +64,9 @@ export class Brief {
       weather: this.#scene.weather,
       company: this.#scene.company(),
       carrying: this.#scene.carrying(),
+      wares: this.#holding.wares(),
+      pocket: this.#holding.pocket(),
+      home: this.#holding.home(),
       knowledge: this.#knowledge(npc),
       background: offered.length
         ? offered.map((fact, index) => fill(LINES.fact!, { number: String(index + 1), fact: fact.fact })).join('\n')

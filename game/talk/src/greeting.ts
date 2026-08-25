@@ -1,4 +1,6 @@
 import { Rng } from '@gb/kit'
+import type { Grant } from './events.ts'
+import { Locks } from './locks.ts'
 import type { Move, Situation } from './moves.ts'
 import { PROMPTS } from './prompts.generated.ts'
 import { Scene } from './scene.ts'
@@ -17,7 +19,8 @@ const COMPANY = 0.3
  * player presses the key is an empty panel. So the line is drawn from what the
  * box already knows: the hour, why this person is where they are, the spot
  * they keep, who else is in there, what the player's name is worth here, and
- * the one thing on the menu worth mentioning. The draw is seeded off the
+ * the one thing worth mentioning: a payoff that landed as the player walked
+ * up, else the first move on the menu with words for it. The draw is seeded off the
  * world's own seed, so a shared world file greets the same way on every machine.
  */
 export class Greeting {
@@ -29,10 +32,10 @@ export class Greeting {
     this.#scene = new Scene(situation)
   }
 
-  /** What they say before the player has said anything. Never empty. */
-  line(moves: readonly Move[]): string {
+  /** What they say before the player has said anything. Never empty. `granted` is what walking up paid out. */
+  line(moves: readonly Move[], granted: readonly Grant[] = []): string {
     const rng = this.#stream()
-    const parts = [this.#hello(rng), this.#beat(rng), this.#hook(rng, moves)]
+    const parts = [this.#hello(rng), this.#beat(rng), this.#payoff(rng, granted) || this.#hook(rng, moves)]
     return parts.filter(Boolean).join(' ')
   }
 
@@ -74,6 +77,19 @@ export class Greeting {
       role: npc?.role ?? '',
       other: nod ? rng.pick(company).name : '',
     })
+  }
+
+  /** A word, a key or a door that walking up handed over is said here, or the player never hears it. */
+  #payoff(rng: Rng, granted: readonly Grant[]): string {
+    const grant = granted[0]
+    if (!grant) return ''
+    const locks = new Locks(this.#situation.world)
+    const what =
+      'password' in grant ? grant.password
+      : 'keyItemId' in grant ? this.#situation.world.item(grant.keyItemId)?.name.toLowerCase()
+      : locks.placeOf(grant.access)
+    const pool = HOOKS[`granted-${'password' in grant ? 'password' : 'keyItemId' in grant ? 'key' : 'access'}`]
+    return what && pool?.length ? fill(rng.pick(pool), { what }) : ''
   }
 
   /**

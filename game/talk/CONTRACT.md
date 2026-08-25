@@ -1,10 +1,10 @@
 # @gb/talk contract
 
-contractVersion: 0.10.0
+contractVersion: 0.11.0
 
 ## Purpose
 
-Conversations with the people in the city: each person is their own session, speaks first off the game's own data, takes a turn as one call that says what they do and what they say, holds what the player told them, lets slip what the codex can earn, and picks what they do from the short list of things the quest script made legal this turn.
+Conversations with the people in the city: each person is their own session, speaks first off the game's own data, takes a turn as one call that says what they do and what they say, holds what the player told them, lets slip what the codex can earn, names what they sell and what it costs, hands over the word or the key a job pays out through them, opens their own door to a player they think enough of, and picks what they do from the short list of things the quest script made legal this turn.
 
 ## Inputs
 
@@ -19,12 +19,12 @@ Conversations with the people in the city: each person is their own session, spe
 
 | Param | Schema | Postconditions |
 |---|---|---|
-| `open` | `{ conversation, changes, opening, learned }` | the person goes in the codex as met and `learned` lists the fact ids seeing them earned; walking up to someone is a `talked` event, so a step that already asked for it completes here; a step that names a subject waits to be asked |
+| `open` | `{ conversation, changes, opening, learned, granted }` | the person goes in the codex as met and `learned` lists the fact ids seeing them earned; walking up to someone is a `talked` event, so a step that already asked for it completes here, and `granted` lists what that paid out (a word, a key, a door); a step that names a subject waits to be asked |
 | `opening` | `{ line, moves }` | what they say before the player has said anything, and the moves that were legal when they said it. Always a line, never a model call |
-| `say` | a stream of `TalkEvent` | `turn` with `does` (what their body does, when it does anything) and `says` (the words); `learned` for a fact about themselves they let slip; `answered` when the reply was a yes or a no; `did` for the action taken; `changed` for every quest change it caused; `over` when it ends |
+| `say` | a stream of `TalkEvent` | `turn` with `does` (what their body does, when it does anything) and `says` (the words); `learned` for a fact about themselves they let slip; `answered` when the reply was a yes or a no; `did` for the action taken; `changed` for every quest change it caused; `granted` for access that changed hands (`keyItemId`, `password` or `access`); `over` when it ends |
 | `available()` | the action names legal right now | what the UI can promise before a word is said |
 | `moves()` | every legal move as `{ key, action, label }` | `label` is what the player clicks, in their own words and with no id in it; `action` is its `ActionName`, so a caller can filter or group without reading the key; `key` names the move and what it is about, never its place in the list |
-| `choose` | a stream of `TalkEvent` | the same shape `say` gives: the spoken `turn`, `learned`, `answered`, `did`, `changed`, `over` |
+| `choose` | a stream of `TalkEvent` | the same shape `say` gives: the spoken `turn`, `learned`, `answered`, `did`, `changed`, `granted`, `over` |
 | `history()` | `Turn[]` | this person's transcript, oldest first, bounded: `{ role, content, does? }`, with `does` on a turn whose body did something, so a reopened transcript shows what they did as well as what they said |
 
 ## Every person is their own session
@@ -63,11 +63,13 @@ Ids never appear in either track. The menu says "the job: The Ledger", not a que
 
 One fixed labelled template, `prompts/npc.md`, filled from three places:
 
-- **By the engine, every turn:** the building, the room and what stands in it (furniture, and the things lying on its surfaces that the player has not taken), what they are doing there (the anchor's `doing` phrase when the world file wrote one, else a line for the anchor's kind, from `prompts/surroundings.md`), the hour, the weather, who else is in the building and what each is doing, what the player is carrying, what the player's name in town is worth, how this person feels about them, what they remember of them, and what is between them read off the moves they may make and the targets the quest log resolved (they are told they are owed a ledger and what the job pays, never the objective line the HUD shows).
+- **By the engine, every turn:** the building, the room and what stands in it (furniture, and the things lying on its surfaces that the player has not taken), what they are doing there (the anchor's `doing` phrase when the world file wrote one, else a line for the anchor's kind, from `prompts/surroundings.md`), the hour, the weather, who else is in the building and what each is doing, what the player is carrying, what they hold (what they sell with the price of each, what is in their pocket, and their home with whether this player is welcome in it, from `prompts/holding.md`), what the player's name in town is worth, how this person feels about them, what they remember of them, and what is between them read off the moves they may make and the targets the quest log resolved (they are told they are owed a ledger and what the job pays, never the objective line the HUD shows).
 - **By the generator, once per person, in the world file:** `personality`, and every `Npc.life` field it wrote (`manner`, `history`, `interests`, `cares`, `avoids`, `reason`, `errand`), one labelled line each and none for a field it did not write; `knowledge`, plus the premise's `common` facts marked as what everybody in town knows; and the `background` facts whose stage the player has reached and has not earned yet, numbered.
 - **Fixed in the template:** how to speak, as a short list of rules (the first clause answers what was actually said, a name put as a question is confirmed or corrected first, the length follows the question, the room and the sky are drawn on only when they bear on what was asked, the body goes in `does`), and three worked examples per turn, each a question with a reply of the right shape beside one of the wrong shape and why. The examples carry no name, place, price or sky, and a different three are drawn every turn, seeded off the world, the person and the turn count, so none can settle in as the answer.
 
 The weather is one labelled line the model may draw on. It is not seeded into anything the character says.
+
+Measured on 2026-08-25 through the sidecar on an offline 3x3 city (seed `talk-wave`), Carys Marek, receptionist, four things on her counter: "what do you sell?" answered "A medkit, a book, a keycard, or a deed if you've the credits for it. You looking for something specific?" in 4.7 s and the decider picked `show_wares` at 7.6 s; "how much is the medkit?" answered "Thirty-seven credits", the file's own price; "can I come round to your place sometime?" to somebody with no home answered "I don't have a place of my own in this town" and nothing was decided.
 
 Measured against the two exchanges the owner reported, on a generated city with the model up, 2026-08-25: "Mina Okoro? how are you" answered "That's me. I'm fine." with `does` "taps a rhythm on the desk with a heavy brass paperweight"; "do you need help?" answered "I've a job that needs doing, if you're looking for work. There's a crate over at Vane's Refractives that I need someone to fetch for me. Just take it without any fuss and I'll see you're looked after."
 
@@ -78,6 +80,24 @@ Three things, all through `@gb/play`, all bounded there, and none of them shared
 - **Memory.** `remembers` off the turn call is held with `remember(npcId, fact, 'told')`, at most three a turn; a fact the playthrough refuses (blank, over its length) is not held. Next turn the person reads them under "What you remember of them". With no model, nothing is held.
 - **Disposition.** `mood` moves it one step with `warm` or `cool`; `same`, or no mood, leaves it. The person reads it as one line ("You like them well enough").
 - **The codex.** A background fact's id is its position in `npc.background`, counted from 0, as a string, so whoever draws the codex finds it without a table. `met` facts are earned on opening and come back in `learned` on the open result. `talked` facts are offered to the turn call numbered, and `quest` facts join them once a job this person gave is complete; the call names the one it told with `reveals`, the box earns it with `unlock` and publishes `learned`. With no model, a fact about themselves is earned the moment the scripted hearsay says it. `told` facts are earned from somebody else, and nobody tells them yet.
+
+## What they sell
+
+A person's stock is what the world file gives them: every thing placed on a surface in the building they keep a spot in, with them as `ownerNpcId` and a `value` above zero, that the player has not bought or moved. It is the same list the counter offers. The person is told it, priced ("For sale, and what each costs: house gin, 9 credits"), so a question about a price is answered off the file and never invented; with no model, "what do you sell?" is answered with the list.
+
+`show_wares` is the move, one for the whole list: legal while they have anything to sell, and it is what "what do you sell" or "how much for the gin" comes to on every track. Carrying it out publishes `did` and moves no money: buying is the counter's act, through `@gb/play`'s `buy`, and the app opens the counter for `conversation.npcId` when it sees the `did`. Asked what they sell by somebody with nothing to sell is a no, said as one ("I've nothing to sell you"). A `buy` step that names a thing on this person's list puts one line between the two of them ("they have come to buy the house gin off you; it is 9 credits"), and a thing bought is off the list on the next turn.
+
+## What a job pays out through them
+
+A quest hands access out as a step's effects: `give-password` on a talk step, or `give-item` of a key or card, the shape `@gb/forge` writes in front of an `unlock` or a `hack`. `@gb/quest` lands them on the playthrough when the step is credited (`learn`, `take`); this box says the word out loud and publishes what changed hands, as a `granted` event: `{ password }`, `{ keyItemId }` (a thing the city says opens something, from its own `opens` or from a door naming it as its key), or `{ access }` for a door a reward opened. On `open`, the same list comes back as `granted` beside `learned`, and the greeting says it ("The word you'll need is rosebud"), because a step credited on the way in has already paid and nothing else would say so.
+
+The person knows what they are to hand over and what they have handed over, read off the log every turn: a step waiting on a subject reads "the word they need is rosebud, and it is theirs once they have asked you about the back door"; once done, "you have given them the word rosebud". Offline, the `ask_about` line that credits the step carries the word or the thing with it. Each grant is published once a turn, whichever way it landed, and never for a thing the city says opens nothing.
+
+A key or card the person carries and hands over (`hand_over`) is taken with what it opens, so the door it is for opens with it, and that is published as `granted` too.
+
+## Their home
+
+A person's home is the interior whose `owner` is their id. Whether the player is welcome in it is their disposition and nothing else: `warm` or `friendly` and the door is theirs to open, anything cooler and it stays shut. `invite_home` is the move, legal while they have a home, think enough of the player, and the player cannot yet get in; carried out, it is `player.grant({ interiorId })`, a `did` with the interior, and `granted { access: { interiorId } }`. The person is told which it is ("You like them well enough to have them round: the door is open to them if it comes up" against "You do not have them round: you do not know them well enough yet"), so the voice invites or refuses in character and the decider only ever has the invitation on the menu when it is theirs to give. With no model, asking to come round is refused as a no until they warm, an invitation once they have, and pointed at the open door after ("You've the run of my place already"), which is neither.
 
 ## Yes, no, or neither
 
@@ -105,7 +125,7 @@ The signal belongs to the conversation, not to one turn, so once it has fired la
 
 ## Actions (closed set)
 
-`give_quest`, `ask_about`, `take_delivery`, `hand_over`, `follow_player`, `stop_following`, `end_talk`. There are no others, and each is on the menu only while it is legal. `ask_about` is legal while a step is waiting to hear its subject raised with this person, and carries that subject; with no model running it is answered out of what the world file says they know.
+`give_quest`, `ask_about`, `take_delivery`, `hand_over`, `follow_player`, `stop_following`, `show_wares`, `invite_home`, `end_talk`. There are no others, and each is on the menu only while it is legal. `ask_about` is legal while a step is waiting to hear its subject raised with this person, and carries that subject; with no model running it is answered out of what the world file says they know. `show_wares` is legal while they have stock; `invite_home` while their door is theirs to open to this player.
 
 ## With no sidecar
 
@@ -130,7 +150,8 @@ The spoken side is terse but never reads stored text out as it is stored: a fact
 
 - An NPC can only do what the live state allows. The menu is built from that state, so offering a quest that is not theirs or taking an item the player is not carrying is not something they can pick, and every move is checked again before it is carried out.
 - No id, and nothing else a clerk would say, reaches the spoken turn: the voice track is never given one, and `does` and `says` are scrubbed on the way out in case the model invents one.
-- Every action goes through the box that owns the state: quests through `@gb/quest`, inventory, money, companions, memory, disposition and the codex through `@gb/play`. This box changes nothing itself.
+- Every action goes through the box that owns the state: quests through `@gb/quest`, inventory, access, companions, memory, disposition and the codex through `@gb/play`. This box changes nothing itself, and moves no money: what they sell is named here and bought at the counter.
+- Access changes hands only as the file and the log allow: a word or a key as a step's payoff lands through `@gb/quest`, a carried key carries what the city says it opens, and their own door opens on their disposition alone. Each grant is published once, and only for something the city has a lock for.
 - Every action an NPC takes off a spoken turn is a call the model was forced to make against a schema built from this turn's menu. No action is ever read out of prose, and a call that fails is a failure, not a quiet no.
 - A step that names a subject is credited by the move that raises it and by nothing else.
 - A turn that carried something out publishes a yes, on every track. A turn that published nothing is a turn that was neither, never a turn nobody looked at.
@@ -144,8 +165,8 @@ The spoken side is terse but never reads stored text out as it is stored: a fact
 - With no model reachable, the same words in the same state give the same conversation every time, down to the line.
 - A conversation opens with a line and a menu, whatever the model is doing. Nothing about opening one reaches the sidecar.
 - The same world file, the same person and the same hour give the same opening line on every machine.
-- A turn the player cut short changes nothing: no quest moves, no item, no money, no companion.
+- A turn the player cut short changes nothing: no quest moves, no item, no money, no companion, no door.
 
 ## How to modify this blackbox safely
 
-The turn call's name, wording and fields live in `prompts/turn-tool.md` and its schema in `speak.ts`; the template it answers against is `prompts/npc.md`, with the generator's lines in `prompts/life.md`, the engine's in `prompts/surroundings.md`, `standing.md`, `memory.md` and `brief.md`, and the worked examples in `prompts/examples.md` (add a numbered `ask`, `good`, `bad` triplet; keep names, places, prices and skies out of it). The forced action call's name, wording and parameter live in `prompts/decide-tool.md`; its schema is built from the menu in `decide.ts`. A new action is a name in `ACTIONS`, a rule in `legalMoves` for when it is offered and which ids it may carry, its wording in `prompts/moves.md` and `prompts/picks.md`, how the player would ask for it in `prompts/hearing.md`, how it is weighed in `listen.ts`, what it says in `prompts/offline.md`, how it is nudged at in `prompts/hook.md`, and a branch in `Performer`. A move that the decider keeps misreading can take a line in `prompts/rules.md`, which is added to the menu prompt only while that move is on it. What counts as a yes or a no is worded twice, in `prompts/decide.md` for the model and in `settle` in `script.ts` for the reader that stands in for it, and the rule they share (a move carried out is a yes) lives in `Conversation`, where both come out. The opening line is drawn pool by pool from `prompts/greeting.md`: the hour, the standing band, the person's own reason or the spot they keep, the company. Which facts a person may let slip and when is `background.ts`; what a turn leaves behind is `memory.ts`; the per-person transcript is `sessions.ts`. Every prompt is bundled by `pnpm --filter @gb/talk run generate`. Run `pnpm --filter @gb/talk test`.
+The turn call's name, wording and fields live in `prompts/turn-tool.md` and its schema in `speak.ts`; the template it answers against is `prompts/npc.md`, with the generator's lines in `prompts/life.md`, the engine's in `prompts/surroundings.md`, `standing.md`, `memory.md` and `brief.md`, and the worked examples in `prompts/examples.md` (add a numbered `ask`, `good`, `bad` triplet; keep names, places, prices and skies out of it). The forced action call's name, wording and parameter live in `prompts/decide-tool.md`; its schema is built from the menu in `decide.ts`. A new action is a name in `ACTIONS`, a rule in `legalMoves` for when it is offered and which ids it may carry, its wording in `prompts/moves.md` and `prompts/picks.md`, how the player would ask for it in `prompts/hearing.md`, how it is weighed in `listen.ts`, what it says in `prompts/offline.md`, how it is nudged at in `prompts/hook.md`, and a branch in `Performer`. A move that the decider keeps misreading can take a line in `prompts/rules.md`, which is added to the menu prompt only while that move is on it. What counts as a yes or a no is worded twice, in `prompts/decide.md` for the model and in `settle` in `script.ts` for the reader that stands in for it, and the rule they share (a move carried out is a yes) lives in `Conversation`, where both come out. The opening line is drawn pool by pool from `prompts/greeting.md`: the hour, the standing band, the person's own reason or the spot they keep, the company, and the `granted-` pools of `prompts/hook.md` when walking up paid something out. What they sell is `stock.ts`, their home and who is welcome in it `home.ts`, what a job pays out through them and what a set of changes landed `payoffs.ts`, what a thing opens `locks.ts`, and the "what you hold" slots `holding.ts` over `prompts/holding.md`. Which facts a person may let slip and when is `background.ts`; what a turn leaves behind is `memory.ts`; the per-person transcript is `sessions.ts`. Every prompt is bundled by `pnpm --filter @gb/talk run generate`. Run `pnpm --filter @gb/talk test`.

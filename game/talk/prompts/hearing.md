@@ -10,6 +10,8 @@ offering: here you go | here it is | take it | take this | i brought | brought |
 asking: what do you know about | what do you know | what have you heard | have you heard | heard anything about | heard anything | tell me about | tell me | any word on | word on | what about | ask about | asking about | about
 work: job | jobs | work | task | errand | gig | assignment | commission | trouble | something doing | anything going | anything doing | what needs doing | what do you need | any work | hiring
 pointing: one of those | it | that | this | those | them
+buying: what do you sell | what are you selling | what have you got for sale | what's for sale | whats for sale | anything for sale | what's on offer | whats on offer | how much | what does it cost | what do you charge | price | prices | buy | i'll buy | ill buy | i will buy | purchase | for sale | show me what | what do you have | are you selling | selling
+home: your place | your home | your house | your flat | come round | come over | where you live | where do you live | invite me | put me up | come to yours | your door
 follow: follow me | follow | come with me | come with | come along | walk with me | walk with | join me | lead the way | with me | on your feet | shall we
 stay: stay here | wait here | stop following | stay put | hold here | stay behind | remain here | i'll go alone | ill go alone
 farewell: goodbye | good bye | bye | see you | so long | later | i'm off | im off | that's all | thats all | take care | good day | good night | farewell | i'll be off | ill be off

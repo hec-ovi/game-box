@@ -7,10 +7,11 @@ import { Background } from './background.ts'
 import { Brief } from './brief.ts'
 import { Credit } from './credit.ts'
 import { Decider } from './decide.ts'
-import type { Decision, Opening, TalkError, TalkEvent, Turn } from './events.ts'
+import type { Decision, Grant, Opening, TalkError, TalkEvent, Turn } from './events.ts'
 import { Greeting } from './greeting.ts'
 import { Memory } from './memory.ts'
 import { legalMoves, topicOf, type ActionName, type Move, type Situation } from './moves.ts'
+import { Payoffs } from './payoffs.ts'
 import { Performer } from './perform.ts'
 import { pickByKey, pickLabel, picks, type TalkMove } from './picks.ts'
 import { Script } from './script.ts'
@@ -48,6 +49,7 @@ export class Conversation {
   #greeting: Greeting
   #background: Background
   #memory: Memory
+  #payoffs: Payoffs
   #speaker: Speaker
   #decider: Decider
   #script: Script
@@ -65,6 +67,7 @@ export class Conversation {
     this.#greeting = new Greeting(this.#situation)
     this.#background = new Background(this.#situation)
     this.#memory = new Memory(this.#situation)
+    this.#payoffs = new Payoffs(this.#situation)
     this.#speaker = new Speaker(input.sidecar)
     this.#decider = new Decider(input.sidecar)
     this.#script = new Script(this.#situation, this.#background)
@@ -74,7 +77,8 @@ export class Conversation {
   /**
    * Walking up to someone is itself an event: they go in the codex as met, the
    * facts that seeing them earns are earned, a quest step that already asked
-   * the player to talk to them completes here, and the person speaks first.
+   * the player to talk to them completes here, with whatever it pays out in
+   * hand, and the person speaks first.
    * The opening line and the moves that come with it are the game's own data,
    * so the panel is never empty and nothing is waited on.
    *
@@ -84,7 +88,10 @@ export class Conversation {
    */
   static open(
     input: Input,
-  ): Result<{ conversation: Conversation; changes: readonly Change[]; opening: Opening; learned: readonly string[] }, TalkError> {
+  ): Result<
+    { conversation: Conversation; changes: readonly Change[]; opening: Opening; learned: readonly string[]; granted: readonly Grant[] },
+    TalkError
+  > {
     if (!input.world.hasNpc(input.npcId)) return err({ code: 'unknown-npc', npcId: input.npcId })
     const conversation = new Conversation(input)
     input.player.discover({ npc: input.npcId })
@@ -92,13 +99,14 @@ export class Conversation {
     // Crediting first: a step that completes on the way in changes what is legal,
     // and the greeting is drawn from the state the player is walking into.
     const changes = conversation.#credit.earned()
-    return ok({ conversation, changes, opening: conversation.#begin(), learned })
+    const granted = conversation.#payoffs.landed(changes)
+    return ok({ conversation, changes, opening: conversation.#begin(granted), learned, granted })
   }
 
   /** They speak first, off the game's own data, and the menu opens with them. */
-  #begin(): Opening {
+  #begin(granted: readonly Grant[]): Opening {
     const moves = legalMoves(this.#situation)
-    const line = this.#greeting.line(moves)
+    const line = this.#greeting.line(moves, granted)
     this.#transcript.push({ role: 'assistant', content: line })
     return { line, moves: picks(moves) }
   }
@@ -227,8 +235,25 @@ export class Conversation {
       // while the player is still stood in front of the person who said it. A
       // move that put them to a subject carries it, and credits the steps that
       // were waiting on that subject and no others.
-      for (const change of this.#credit.earned(topicOf(decision.move))) yield { kind: 'changed', change }
+      const credited = this.#credit.earned(topicOf(decision.move))
+      for (const change of credited) yield { kind: 'changed', change }
+      yield* this.#granted(done, credited)
     }
     if (!this.#open) yield { kind: 'over' }
+  }
+
+  /**
+   * What the turn handed over, once each: the payoffs of every step it did and
+   * every reward it paid, less any the move already published on its own.
+   */
+  *#granted(done: readonly TalkEvent[], credited: readonly Change[]): Generator<TalkEvent> {
+    const changes = done.flatMap((event) => (event.kind === 'changed' ? [event.change] : []))
+    const seen = new Set(done.filter((event) => event.kind === 'granted').map((grant) => JSON.stringify(grant)))
+    for (const grant of this.#payoffs.landed([...changes, ...credited])) {
+      const key = JSON.stringify(grant)
+      if (seen.has(key)) continue
+      seen.add(key)
+      yield grant
+    }
   }
 }

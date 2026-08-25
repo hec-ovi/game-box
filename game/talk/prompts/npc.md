@@ -12,6 +12,11 @@ Where you are, this minute:
 - Who else is here: {{company}}
 - The one talking to you is carrying: {{carrying}}
 
+What you hold:
+- {{wares}}
+- {{pocket}}
+- {{home}}
+
 What you know for a fact, and the only facts you have:
 {{knowledge}}
 

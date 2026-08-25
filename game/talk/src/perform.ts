@@ -1,10 +1,15 @@
 import type { Change } from '@gb/quest'
 import type { TalkEvent } from './events.ts'
+import { Home } from './home.ts'
+import { Locks } from './locks.ts'
 import { topicsFor, type Move, type Situation } from './moves.ts'
+import { Stock } from './stock.ts'
 
 /**
  * Carries a move out through the box that owns the state it changes: quests
- * through `@gb/quest`, inventory, money and companions through `@gb/play`.
+ * through `@gb/quest`, inventory, access and companions through `@gb/play`.
+ * Money never moves here: what they sell is named, and the counter is where
+ * it is bought.
  * Legality is checked once more here, so a move that was legal when the turn
  * began but is not any more does nothing at all.
  */
@@ -51,10 +56,27 @@ export class Performer {
       case 'hand_over': {
         const itemId = move.id ?? ''
         if (!world.hasItem(itemId)) return []
-        player.take(itemId)
+        // A key or card is taken with what it opens, so the access rides on the thing.
+        const opens = new Locks(world).opensWith(itemId)
+        if (opens) player.take(itemId, { opens })
+        else player.take(itemId)
         events.push({ kind: 'did', action: move.action, detail: itemId })
+        if (opens) events.push({ kind: 'granted', keyItemId: itemId })
         const handled = log.handle({ kind: 'acquired', itemId, stolen: false })
         if (handled.ok) record(handled.value)
+        break
+      }
+      case 'show_wares':
+        if (!new Stock(this.#situation).wares().length) return []
+        events.push({ kind: 'did', action: move.action })
+        break
+      case 'invite_home': {
+        const home = new Home(this.#situation)
+        const interior = home.interior()
+        if (!interior || !home.canInvite()) return []
+        player.grant({ interiorId: interior.id })
+        events.push({ kind: 'did', action: move.action, detail: interior.id })
+        events.push({ kind: 'granted', access: { interiorId: interior.id } })
         break
       }
       case 'follow_player':

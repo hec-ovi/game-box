@@ -1,11 +1,11 @@
 import { PlayerState } from '@gb/play'
 import { QuestLog, validateQuest, type QuestDoc } from '@gb/quest'
 import { Sidecar } from '@gb/sidecar'
-import { World, type Interior, type Item, type Npc, type Placement } from '@gb/world'
+import { questView, World, type Interior, type Item, type Npc, type Placement } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { Conversation, Sessions, type TalkEvent } from '../src/index.ts'
 
-/** A bar, its bartender Mara, a courier Hollis across the room, and a ledger. */
+/** A bar, its bartender Mara with gin to sell, a courier Hollis across the room, a ledger, and Mara's flat across the street. */
 function bar(options: { carries?: boolean; hollisAt?: 'sit-drink' | 'dance'; doing?: string } = {}) {
   const world = World.create({ name: 'Cold Harbour', theme: 'a fogbound port town that lives off the tide', seed: 'talk', width: 16, height: 16 })
   world.paint({ x: 0, y: 6, w: 16, h: 1 }, 'sidewalk')
@@ -35,7 +35,7 @@ function bar(options: { carries?: boolean; hollisAt?: 'sit-drink' | 'dance'; doi
       { id: stool, kind: options.hollisAt ?? 'sit-drink', roomId: room, pos: { x: 3, y: 4 }, rot: 0 },
     ],
   }
-  world.addInterior(interior)
+  put(world.addInterior(interior))
 
   const mara: Npc = {
     id: world.mintId('npc'),
@@ -65,8 +65,32 @@ function bar(options: { carries?: boolean; hollisAt?: 'sit-drink' | 'dance'; doi
     personality: 'Always half out the door.',
     knowledge: ['The freight road floods at the bend.'],
   }
-  world.addNpc(mara)
-  world.addNpc(hollis)
+  put(world.addNpc(mara))
+  put(world.addNpc(hollis))
+
+  const street = world.addPlot({
+    kind: 'house',
+    name: 'Quay Steps',
+    rect: { x: 8, y: 2, w: 4, h: 4 },
+    entrance: { cell: { x: 9, y: 6 }, facing: 'south' },
+    storeys: 1,
+    style: 'port-house',
+  })
+  if (!street.ok) throw new Error('fixture')
+  const front = world.mintId('room')
+  const flatDoor = world.mintId('door')
+  const flat: Interior = {
+    id: world.mintId('interior'),
+    plotId: street.value.id,
+    kind: 'house',
+    owner: mara.id,
+    size: { w: 6, h: 6 },
+    rooms: [{ id: front, kind: 'main', name: 'Front room', rect: { x: 0, y: 0, w: 6, h: 6 } }],
+    doors: [{ id: flatDoor, from: 'outside', to: front, pos: { x: 3, y: 0 }, rot: 180, locked: true, password: 'rosebud' }],
+    furniture: [],
+    anchors: [{ id: world.mintId('anchor'), kind: 'sit', roomId: front, pos: { x: 3, y: 3 }, rot: 0 }],
+  }
+  put(world.addInterior(flat))
 
   const ledger: Item = {
     id: world.mintId('item'),
@@ -77,7 +101,7 @@ function bar(options: { carries?: boolean; hollisAt?: 'sit-drink' | 'dance'; doi
     bulk: 'pocket',
   }
   const placement: Placement = { at: 'anchor', itemId: ledger.id, interiorId: interior.id, anchorId: stool }
-  world.addItem(ledger, placement)
+  put(world.addItem(ledger, placement))
 
   const copy: Item = {
     id: world.mintId('item'),
@@ -87,7 +111,18 @@ function bar(options: { carries?: boolean; hollisAt?: 'sit-drink' | 'dance'; doi
     value: 8,
     bulk: 'pocket',
   }
-  world.addItem(copy, { at: 'anchor', itemId: copy.id, interiorId: interior.id, anchorId: stool })
+  put(world.addItem(copy, { at: 'anchor', itemId: copy.id, interiorId: interior.id, anchorId: stool }))
+
+  const gin: Item = {
+    id: world.mintId('item'),
+    name: 'House gin',
+    description: 'Cloudy, and strong.',
+    archetype: 'bottle',
+    value: 9,
+    bulk: 'pocket',
+    ownerNpcId: mara.id,
+  }
+  put(world.addItem(gin, { at: 'anchor', itemId: gin.id, interiorId: interior.id, anchorId: serve }))
 
   const key: Item = {
     id: world.mintId('item'),
@@ -96,10 +131,16 @@ function bar(options: { carries?: boolean; hollisAt?: 'sit-drink' | 'dance'; doi
     archetype: 'key',
     value: 2,
     bulk: 'pocket',
+    opens: { interiorId: flat.id },
   }
-  if (options.carries) world.addItem(key, { at: 'npc', itemId: key.id, npcId: mara.id })
+  if (options.carries) put(world.addItem(key, { at: 'npc', itemId: key.id, npcId: mara.id }))
 
-  return { world, mara, hollis, ledger, copy, key, plot: plot.value }
+  return { world, mara, hollis, ledger, copy, gin, key, flat, flatDoor, plot: plot.value }
+}
+
+/** The world refuses a record it cannot hold; a fixture that drops the answer tests nothing. */
+function put(result: { ok: boolean; error?: unknown }): void {
+  if (!result.ok) throw new Error(JSON.stringify(result.error))
 }
 
 /** Mara's job opens by asking the player to hear Mara out: what a generated quest does. */
@@ -132,6 +173,54 @@ function topicQuest(mara: string, ledger: string, copy?: string): QuestDoc {
       },
       ...ledgerQuest(mara, ledger, copy).steps,
     ],
+  } as QuestDoc
+}
+
+/** Mara gives up the word for her back door once asked about it, and the door is the next thing. */
+function passwordQuest(mara: string, door: string, topic?: string): QuestDoc {
+  return {
+    format: 'game-box.quest',
+    schemaVersion: 1,
+    id: 'quest_0002',
+    kind: 'side',
+    title: 'The Back Door',
+    summary: 'Mara knows the word for the door on Quay Steps.',
+    giverNpcId: mara,
+    startStepId: 'step_0001',
+    steps: [
+      {
+        id: 'step_0001',
+        kind: 'talk',
+        npcId: mara,
+        ...(topic ? { topic } : {}),
+        objective: 'Get the word off Mara',
+        next: ['step_0002'],
+        requires: [],
+        effects: [{ kind: 'give-password', password: 'rosebud' }],
+      },
+      { id: 'step_0002', kind: 'unlock', doorId: door, objective: 'Open the door on Quay Steps', next: ['step_0003'], requires: [], effects: [] },
+      { id: 'step_0003', kind: 'complete', objective: 'Done', next: [], requires: [], effects: [] },
+    ],
+    reward: { money: 20, reputation: 1, faction: 'town', items: [] },
+  } as QuestDoc
+}
+
+/** Somebody wants a bottle of Mara's gin bought, not lifted. */
+function buyQuest(mara: string, gin: string): QuestDoc {
+  return {
+    format: 'game-box.quest',
+    schemaVersion: 1,
+    id: 'quest_0003',
+    kind: 'side',
+    title: 'A Bottle',
+    summary: 'Buy a bottle of gin off Mara.',
+    giverNpcId: mara,
+    startStepId: 'step_0001',
+    steps: [
+      { id: 'step_0001', kind: 'buy', itemId: gin, alternates: [], objective: 'Buy the gin', next: ['step_0002'], requires: [], effects: [] },
+      { id: 'step_0002', kind: 'complete', objective: 'Done', next: [], requires: [], effects: [] },
+    ],
+    reward: { money: 10, reputation: 0, faction: 'town', items: [] },
   } as QuestDoc
 }
 
@@ -288,6 +377,20 @@ function said(events: readonly TalkEvent[]): string {
 
 const QUESTS = { plain: ledgerQuest, 'heard-out': heardOutQuest, topic: topicQuest }
 
+/** A second quest the log can hold beside the ledger. */
+const EXTRAS = {
+  password: (fixture: ReturnType<typeof bar>) => passwordQuest(fixture.mara.id, fixture.flatDoor),
+  'password-topic': (fixture: ReturnType<typeof bar>) => passwordQuest(fixture.mara.id, fixture.flatDoor, 'the back door'),
+  buy: (fixture: ReturnType<typeof bar>) => buyQuest(fixture.mara.id, fixture.gin.id),
+}
+
+/** A quest checked against the fixture city, or the reason it was refused. */
+function accepted(quest: QuestDoc, world: World): QuestDoc {
+  const validated = validateQuest(quest, questView(world))
+  if (!validated.ok) throw new Error(JSON.stringify(validated.error))
+  return validated.value
+}
+
 function setup(
   script: Script,
   options: {
@@ -295,6 +398,7 @@ function setup(
     hollisAt?: 'sit-drink' | 'dance'
     doing?: string
     quest?: keyof typeof QUESTS
+    extra?: keyof typeof EXTRAS
     sidecar?: Sidecar
     signal?: AbortSignal
     sessions?: Sessions
@@ -302,18 +406,11 @@ function setup(
 ) {
   const fixture = bar(options)
   const write = QUESTS[options.quest ?? 'plain']
-  const quest = write(fixture.mara.id, fixture.ledger.id, fixture.copy.id)
-  const validated = validateQuest(quest, {
-    hasNpc: (id) => fixture.world.hasNpc(id),
-    hasPlot: (id) => fixture.world.hasPlot(id),
-    hasInterior: (id) => fixture.world.hasInterior(id),
-    hasItem: (id) => fixture.world.hasItem(id),
-    hasAnchor: () => true,
-  })
-  if (!validated.ok) throw new Error(JSON.stringify(validated.error))
+  const quests = [accepted(write(fixture.mara.id, fixture.ledger.id, fixture.copy.id), fixture.world)]
+  if (options.extra) quests.push(accepted(EXTRAS[options.extra](fixture), fixture.world))
 
   const player = PlayerState.create(fixture.world.id)
-  const log = QuestLog.create([validated.value], player)
+  const log = QuestLog.create(quests, player)
   const model = speaker(script)
   const opened = Conversation.open({
     world: fixture.world,
@@ -329,11 +426,12 @@ function setup(
 }
 
 describe('Conversation', () => {
-  it('greeting someone completes the step that asked the player to talk to them', () => {
+  it('greeting someone completes the step that asked the player to talk to them, and pays what it pays', () => {
     const fixture = bar()
     const player = PlayerState.create(fixture.world.id)
     const talkQuest = {
       ...ledgerQuest(fixture.mara.id, fixture.ledger.id),
+      reward: { money: 30, reputation: 2, faction: 'town', items: [], access: [{ interiorId: fixture.flat.id }] },
       startStepId: 'step_0001',
       steps: [
         { id: 'step_0001', kind: 'talk', npcId: fixture.mara.id, objective: 'Speak to Mara', next: ['step_0002'], requires: [], effects: [] },
@@ -347,6 +445,8 @@ describe('Conversation', () => {
     expect(opened.ok).toBe(true)
     if (!opened.ok) return
     expect(opened.value.changes.map((c) => c.kind)).toContain('quest-complete')
+    expect(opened.value.granted).toEqual([{ kind: 'granted', access: { interiorId: fixture.flat.id } }])
+    expect(player.opens({ interiorId: fixture.flat.id })).toBe(true)
   })
 
   it('refuses to open on somebody who is not in the world', () => {
@@ -387,13 +487,14 @@ describe('Conversation', () => {
   it('puts only the legal moves to the decider, in plain words, with no ids anywhere', async () => {
     const { conversation, model } = setup({ text: 'Aye.' })
     // before the quest is taken, Mara can hand it out and nothing else
-    expect(conversation.available()).toEqual(['give_quest', 'end_talk'])
+    expect(conversation.available()).toEqual(['give_quest', 'show_wares', 'end_talk'])
 
     await collect(conversation.say('anything going?'))
     const menu = model.decisions[0]!.system
     expect(menu).toContain('1. nothing but talk')
     expect(menu).toContain('2. hand them the job: The Ledger')
-    expect(menu).toContain('3. be done with them')
+    expect(menu).toContain('3. show them what you sell')
+    expect(menu).toContain('4. be done with them')
     expect(menu).not.toContain('take the salt-stained ledger')
     for (const text of [menu, model.decisions[0]!.user, model.voice[0]!.system, model.voice[0]!.user]) {
       expect(text).not.toMatch(/[a-z]+_\d{4}/)
@@ -497,7 +598,7 @@ describe('Conversation', () => {
   })
 
   it('ends when they end it', async () => {
-    const { conversation } = setup({ text: 'Busy.', pick: 3 })
+    const { conversation } = setup({ text: 'Busy.', pick: 4 })
     const events = await collect(conversation.say('got a minute?'))
 
     expect(events).toContainEqual({ kind: 'did', action: 'end_talk' })
@@ -510,7 +611,7 @@ describe('Conversation', () => {
 
     const greeting = await collect(conversation.say('hello'))
     expect(said(greeting)).toContain('The Ledger')
-    expect(said(greeting)).toContain('30 coin')
+    expect(said(greeting)).toContain('30 credits')
     expect(greeting.some((e) => e.kind === 'over')).toBe(false)
 
     const accepted = await collect(conversation.say('yes'))
@@ -622,7 +723,7 @@ describe('Conversation', () => {
     // the engine's slots, this turn
     expect(brief).toContain('You are Mara Cole, the bartender at The Anchor, in Cold Harbour.')
     expect(brief).toContain('Cold Harbour is a fogbound port town')
-    expect(brief).toContain('The room: Taproom: bar counter; duplicate ledger lying about')
+    expect(brief).toContain('The room: Taproom: bar counter; duplicate ledger, house gin lying about')
     expect(brief).toContain('What you are doing: behind the counter')
     expect(brief).toContain('The hour: late evening')
     expect(brief).toContain('The weather: raining hard enough to hear')
@@ -662,7 +763,7 @@ describe('Conversation', () => {
       // the reply is the one field the call may leave out: an action is what a quest turns on
       required: ['option'],
       properties: {
-        option: { type: 'integer', minimum: 1, maximum: 3 },
+        option: { type: 'integer', minimum: 1, maximum: 4 },
         answer: { enum: ['yes', 'no', 'neither'] },
       },
     })
@@ -920,7 +1021,7 @@ describe('the first words', () => {
 
     expect(opening.line).not.toBe('')
     expect(opening.moves).toEqual(conversation.moves())
-    expect(opening.moves.map((move) => move.action)).toEqual(['give_quest', 'end_talk'])
+    expect(opening.moves.map((move) => move.action)).toEqual(['give_quest', 'show_wares', 'end_talk'])
     expect(opening.line).not.toMatch(/[a-z]+_\d{4}/)
     expect(conversation.history()[0]).toEqual({ role: 'assistant', content: opening.line })
   })
@@ -1075,18 +1176,22 @@ describe('Conversation.moves and choose', () => {
     expect(conversation.moves()).toEqual([
       { key: 'give_quest#quest_0001', action: 'give_quest', label: 'Take the job: The Ledger' },
       { key: `hand_over#${key.id}`, action: 'hand_over', label: 'Ask for the brass cellar key' },
+      { key: 'show_wares', action: 'show_wares', label: 'Ask what they sell' },
       { key: 'end_talk', action: 'end_talk', label: 'Say goodbye' },
     ])
     for (const move of conversation.moves()) expect(move.label).not.toMatch(/[a-z]+_\d{4}/)
   })
 
   it('carries out the move that was clicked and nothing else, speaking before it acts', async () => {
-    const { conversation, log, player, key } = setup({}, { carries: true })
+    const { conversation, log, player, key, flat } = setup({}, { carries: true })
 
     const events = await collect(conversation.choose(`hand_over#${key.id}`))
     expect(events).toContainEqual({ kind: 'did', action: 'hand_over', detail: key.id })
     expect(events.filter((e) => e.kind === 'did')).toHaveLength(1)
     expect(player.has(key.id)).toBe(true)
+    // a key changes hands with what it opens, so the door it is for opens with it
+    expect(events).toContainEqual({ kind: 'granted', keyItemId: key.id })
+    expect(player.opens({ interiorId: flat.id })).toBe(true)
     expect(log.status('quest_0001')).toBe('unstarted')
 
     expect(events[0]).toEqual({ kind: 'turn', says: "Here. Don't lose it." })
@@ -1134,6 +1239,126 @@ describe('Conversation.moves and choose', () => {
 
     await collect(conversation.say('where do I start?'))
     expect(model.voice[0]!.user).toContain('Them: "Take the job: The Ledger"')
+  })
+})
+
+describe('what they sell', () => {
+  it('names the wares and the price of each, and leaves the buying to the counter', async () => {
+    const { conversation, player, gin } = setup({ fail: true })
+    const events = await collect(conversation.say('what do you sell?'))
+    expect(events).toContainEqual({ kind: 'did', action: 'show_wares' })
+    expect(said(events)).toBe("For sale: house gin, 9 credits. Say which and it's yours.")
+    expect(player.has(gin.id)).toBe(false)
+    expect(player.money).toBe(0)
+
+    // the same list is in front of the model, priced
+    const voiced = setup({ text: 'Gin, if you have the credits.' })
+    await collect(voiced.conversation.say('how much for a drink?'))
+    expect(voiced.model.voice[0]!.system).toContain('For sale, and what each costs: house gin, 9 credits')
+
+    // somebody with nothing to sell says so, which is a no
+    const { hollis, world, log } = setup({ fail: true })
+    const chat = Conversation.open({ world, log, player: PlayerState.create(world.id), sidecar: speaker({ fail: true }).sidecar, npcId: hollis.id })
+    if (!chat.ok) throw new Error('did not open')
+    expect(chat.value.conversation.available()).not.toContain('show_wares')
+    const refused = await collect(chat.value.conversation.say('what are you selling?'))
+    expect(said(refused)).toBe("I've nothing to sell you.")
+    expect(refused).toContainEqual({ kind: 'answered', answer: 'no' })
+    expect(refused.some((e) => e.kind === 'did')).toBe(false)
+  })
+
+  it('knows what the player came to buy, and takes a thing off the list once it is bought', async () => {
+    const { conversation, model, log, player, gin } = setup({ text: 'Nine credits and it is yours.' }, { extra: 'buy' })
+    log.start('quest_0003')
+    await collect(conversation.say('I need a bottle'))
+    expect(model.voice[0]!.system).toContain('they have come to buy the house gin off you; it is 9 credits')
+
+    player.earn(20)
+    expect(player.buy(gin.id, 9).ok).toBe(true)
+    log.handle({ kind: 'bought', itemId: gin.id })
+    expect(conversation.available()).not.toContain('show_wares')
+    await collect(conversation.say('thanks'))
+    expect(model.voice[1]!.system).toContain('Nothing for sale.')
+  })
+})
+
+describe('a word or a key as the payoff', () => {
+  it('gives the word up when the subject is raised, says it, and publishes it', async () => {
+    const { conversation, model, log, player } = setup({ text: 'Rosebud. Do not write it down.', pick: 1 }, { extra: 'password-topic' })
+    log.start('quest_0002')
+
+    await collect(conversation.say('evening'))
+    expect(model.voice[0]!.system).toContain('the word they need is rosebud, and it is theirs once they have asked you about the back door')
+    expect(player.knows('rosebud')).toBe(false)
+
+    const ask = conversation.moves().find((move) => move.action === 'ask_about')!
+    const events = await collect(conversation.choose(ask.key))
+    expect(events).toContainEqual({ kind: 'did', action: 'ask_about', detail: 'the back door' })
+    expect(events).toContainEqual({ kind: 'granted', password: 'rosebud' })
+    expect(said(events)).toContain("The word you'll need is rosebud.")
+    expect(player.knows('rosebud')).toBe(true)
+    expect(log.objectives().map((o) => o.text)).toEqual(['Open the door on Quay Steps'])
+
+    await collect(conversation.say('what was it again?'))
+    expect(model.voice[1]!.system).toContain('you have given them the word rosebud')
+  })
+
+  it('pays out on the way in when the step asks for nothing more, and the first words say so', () => {
+    const fixture = bar()
+    const player = PlayerState.create(fixture.world.id)
+    const log = QuestLog.create([accepted(passwordQuest(fixture.mara.id, fixture.flatDoor), fixture.world)], player)
+    log.start('quest_0002')
+
+    const opened = Conversation.open({ world: fixture.world, log, player, sidecar: speaker({}).sidecar, npcId: fixture.mara.id })
+    if (!opened.ok) throw new Error('did not open')
+    expect(opened.value.granted).toEqual([{ kind: 'granted', password: 'rosebud' }])
+    expect(opened.value.opening.line).toContain('rosebud')
+    expect(player.knows('rosebud')).toBe(true)
+  })
+})
+
+describe('their home', () => {
+  it('is theirs to open, and their disposition decides', async () => {
+    const { conversation, model, player, mara, flat } = setup({ text: 'Not a chance.', pick: 1, says: 'no' })
+    expect(conversation.available()).not.toContain('invite_home')
+    await collect(conversation.say('can I come round to your place?'))
+    expect(model.voice[0]!.system).toContain('Your home is Quay Steps. You do not have them round')
+
+    player.warm(mara.id)
+    expect(conversation.moves()).toContainEqual({ key: `invite_home#${flat.id}`, action: 'invite_home', label: 'Ask to come round to their place' })
+    const events = await collect(conversation.choose(`invite_home#${flat.id}`))
+    expect(events).toContainEqual({ kind: 'did', action: 'invite_home', detail: flat.id })
+    expect(events).toContainEqual({ kind: 'granted', access: { interiorId: flat.id } })
+    expect(events).toContainEqual({ kind: 'answered', answer: 'yes' })
+    expect(player.opens({ interiorId: flat.id })).toBe(true)
+
+    // once open, there is nothing left to invite them to
+    expect(conversation.available()).not.toContain('invite_home')
+    await collect(conversation.say('so I can come round?'))
+    expect(model.voice[1]!.system).toContain('Your home is Quay Steps, and they have the run of it already.')
+  })
+
+  it('with no model, asking is refused until they warm to the player, and pointed at once the door is open', async () => {
+    const { conversation, player, mara, flat, hollis, world, log } = setup({ fail: true })
+    const cold = await collect(conversation.say('can I come round to your place?'))
+    expect(said(cold)).toBe("Not a chance. I don't have people round I hardly know.")
+    expect(cold).toContainEqual({ kind: 'answered', answer: 'no' })
+    expect(player.opens({ interiorId: flat.id })).toBe(false)
+
+    player.warm(mara.id)
+    const warm = await collect(conversation.say('can I come round to your place?'))
+    expect(warm).toContainEqual({ kind: 'did', action: 'invite_home', detail: flat.id })
+    expect(said(warm)).toBe("Come round whenever you like. The door's open to you.")
+    expect(player.opens({ interiorId: flat.id })).toBe(true)
+
+    const again = await collect(conversation.say('where do you live?'))
+    expect(said(again)).toBe("You've the run of my place already.")
+    expect(again).not.toContainEqual(expect.objectContaining({ kind: 'answered' }))
+
+    // somebody with no home of their own has no door to open
+    const chat = Conversation.open({ world, log, player, sidecar: speaker({ fail: true }).sidecar, npcId: hollis.id })
+    if (!chat.ok) throw new Error('did not open')
+    expect(said(await collect(chat.value.conversation.say('invite me to your place')))).toBe("Not a chance. I don't have people round I hardly know.")
   })
 })
 

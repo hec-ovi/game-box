@@ -1,7 +1,9 @@
 import type { PlayerState } from '@gb/play'
 import type { QuestLog } from '@gb/quest'
 import type { World } from '@gb/world'
+import { Home } from './home.ts'
 import { PROMPTS } from './prompts.generated.ts'
+import { Stock } from './stock.ts'
 import { fill, keyed } from './text.ts'
 
 /** Everything an NPC is ever able to do in a conversation. */
@@ -10,8 +12,10 @@ export const ACTIONS = [
   'ask_about',
   'take_delivery',
   'hand_over',
+  'show_wares',
   'follow_player',
   'stop_following',
+  'invite_home',
   'end_talk',
 ] as const
 export type ActionName = (typeof ACTIONS)[number]
@@ -70,12 +74,20 @@ export function legalMoves(situation: Situation): readonly Move[] {
     moves.push({ action: 'hand_over', id: itemId, subject: item, line: fill(WORDING.hand_over!, { item }) })
   }
 
+  // What they sell is one move, about all of it: the counter is where one thing is picked.
+  const wares = new Stock(situation).wares()
+  if (wares.length) moves.push({ action: 'show_wares', subject: wares.map((ware) => ware.name).join(', '), line: WORDING.show_wares! })
+
   if (escortsNeeded(log, npcId) && !player.isCompanion(npcId)) {
     moves.push({ action: 'follow_player', line: WORDING.follow_player! })
   }
   if (player.isCompanion(npcId)) {
     moves.push({ action: 'stop_following', line: WORDING.stop_following! })
   }
+
+  // Their door is theirs to open, and only while they think enough of the player to open it.
+  const home = new Home(situation)
+  if (home.canInvite()) moves.push({ action: 'invite_home', id: home.interior()!.id, line: WORDING.invite_home! })
 
   moves.push({ action: 'end_talk', line: WORDING.end_talk! })
   return moves
