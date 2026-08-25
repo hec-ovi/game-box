@@ -125,6 +125,9 @@ export class Walker implements Attender {
   /** The range rule: whoever is talking to us walking off is the end of it. */
   #leash: Leash
   #gone = false
+  /** The building we are standing in, undefined out on the street, and the idle we stand in: the plain one outside, one of the cast's shelf indoors. */
+  #inside: string | undefined
+  #stance: string = CLIPS.idle
 
   constructor(setup: WalkerSetup) {
     this.id = setup.id
@@ -251,6 +254,8 @@ export class Walker implements Attender {
     this.#actor.lookAway?.()
     this.#stalled = 0
     this.#slowed = 0
+    // indoors there is nowhere to walk on to: back to standing the way we were
+    if (this.#inside !== undefined) return this.#setClip(this.#stance)
     const corner = this.#nextCorner()
     if (!corner) return
     this.#facing = headingOf(corner.x - this.x, corner.z - this.z)
@@ -259,6 +264,7 @@ export class Walker implements Attender {
 
   /** Walk for this long, then turn a little further towards where we are going. */
   advance(seconds: number): void {
+    if (this.#inside !== undefined) return this.#stay(seconds)
     this.#space.eject(this, seconds)
     if (this.#attend && !this.#crossingFirst) {
       const player = this.#space.viewer
@@ -291,7 +297,37 @@ export class Walker implements Attender {
       state: this.#state,
       clip: this.#clip,
       remaining: this.remaining,
+      ...(this.#inside !== undefined && { interiorId: this.#inside }),
     }
+  }
+
+  /**
+   * Stand inside a building, at this spot in its own metres, holding this
+   * idle. The route is dropped: indoors there is nowhere to walk to, and the
+   * street steering has nothing to say about a body in another frame.
+   */
+  enter(interiorId: string, at: Point, heading: number, stance: string): void {
+    this.#inside = interiorId
+    this.#stance = stance
+    this.#crossingFirst = false
+    this.#turningBack = false
+    this.x = at.x
+    this.z = at.z
+    this.heading = heading
+    this.#facing = heading
+    this.#stop(0)
+    // held while we go in: we stay turned to whoever it is, and take the stance once let go of
+    if (this.#attend) this.#setClip(CLIPS.idle)
+    this.#actor.enter?.(interiorId)
+    this.#report()
+  }
+
+  /** Back out on the street, standing here in city metres. */
+  exit(x: number, z: number): void {
+    this.#inside = undefined
+    this.#stance = CLIPS.idle
+    this.#actor.exit?.()
+    this.putAt(x, z)
   }
 
   /** Stand here, now, with nothing left to walk. For putting a companion back beside the player. */
@@ -310,6 +346,11 @@ export class Walker implements Attender {
   /** Finished with, but the body belongs to whoever handed it over. */
   retire(): void {
     this.#gone = true
+  }
+
+  /** Indoors: nothing moves us, and the one thing left to do is turn to whoever is talking to us. */
+  #stay(seconds: number): void {
+    if (this.#attend) this.#watch(seconds, this.#attend)
   }
 
   /**
@@ -496,7 +537,7 @@ export class Walker implements Attender {
     this.#arrived = door !== undefined
   }
 
-  /** Nothing left to walk and nowhere we are going: a route dropped forgets its door. */
+  /** Nothing left to walk and nowhere we are going: a route dropped forgets its door. Stood in the idle of wherever we are. */
   #stop(pause: number): void {
     this.#route = []
     this.#leg = 0
@@ -506,7 +547,7 @@ export class Walker implements Attender {
     this.#arrived = false
     this.#state = 'idle'
     this.#pause = pause
-    this.#setClip(CLIPS.idle)
+    this.#setClip(this.#stance)
   }
 
   #aimAtLeg(): void {
@@ -523,7 +564,9 @@ export class Walker implements Attender {
 
   /** Hand the body where we stand and which way we look. Everything else about it is the cast's business. */
   #report(): void {
-    this.#actor.placeAt(this.x, this.#ground.heightAt(this.x, this.z), this.z)
+    // an interior is built in its own metres with the floor at zero; the city ground has nothing to say in there
+    const y = this.#inside === undefined ? this.#ground.heightAt(this.x, this.z) : 0
+    this.#actor.placeAt(this.x, y, this.z)
     this.#actor.faceTo(this.heading)
   }
 }

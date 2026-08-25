@@ -32,6 +32,23 @@ export interface CrowdActor {
   lookAt?(x: number, y: number, z: number): void
   /** Head back to whatever the clip has them looking at. */
   lookAway?(): void
+  /**
+   * Go indoors: from now on `placeAt` is in this interior's own metres, and the
+   * body is not drawn on the street. Optional: a body that cannot go in is
+   * placed where it is told all the same.
+   */
+  enter?(interiorId: string): void
+  /** Back out on the street, in city metres. */
+  exit?(): void
+}
+
+/** A companion inside a building: the interior, and the spot they stand on in its own metres. */
+export interface Visit {
+  readonly interiorId: string
+  /** Where to stand, in the interior's metres: a cell the room says a visitor may stand on. */
+  readonly at: Point
+  /** Which way to face, three.js `rotation.y`. Defaults to 0, the way `@gb/cast` stands somebody up. */
+  readonly heading?: number
 }
 
 /** Somebody who walks with the player until the game says otherwise. */
@@ -158,4 +175,6 @@ export interface WalkerView {
   readonly clip: string
   /** Metres still to walk on the current route. */
   readonly remaining: number
+  /** Set for a companion inside a building: `x` and `z` are that interior's own metres, and the street has no body of them. */
+  readonly interiorId?: string
 }

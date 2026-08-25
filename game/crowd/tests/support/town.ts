@@ -169,3 +169,25 @@ export function wideRoad(seed = 'crowd-wide-road'): World {
   world.paint({ x: pave + road, y: 1, w: pave, h: 1 }, 'sidewalk')
   return world
 }
+
+/**
+ * One room behind a plot's door, so a companion has somewhere to be taken
+ * into. The rooms are `@gb/world`'s business; the crowd only needs the
+ * interior to name its plot.
+ */
+export function roomBehind(world: World, plotId: string): string {
+  const id = world.mintId('interior')
+  const room = world.mintId('room')
+  const added = world.addInterior({
+    id,
+    plotId,
+    kind: 'house',
+    size: { w: 8, h: 6 },
+    rooms: [{ id: room, kind: 'main', name: 'Front room', rect: { x: 0, y: 0, w: 8, h: 6 } }],
+    doors: [{ id: world.mintId('door'), from: 'outside', to: room, pos: { x: 4, y: 0 }, rot: 0 }],
+    furniture: [],
+    anchors: [],
+  })
+  if (!added.ok) throw new Error(`test town could not build a room: ${added.error.code}`)
+  return id
+}

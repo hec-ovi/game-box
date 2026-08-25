@@ -1,10 +1,11 @@
+import { CLIPS, CLIPS_FOR_ANCHOR, HANDHELD } from '@gb/cast'
 import { CityNav } from '@gb/nav'
 import { cellCentre, METRICS, type Npc, type World } from '@gb/world'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { Crowd, type Point } from '../src/index.ts'
 import { Country } from './support/country.ts'
 import { FakeCast } from './support/fake-cast.ts'
-import { testTown } from './support/town.ts'
+import { roomBehind, testTown } from './support/town.ts'
 
 const STEP = 1 / 60
 
@@ -254,6 +255,96 @@ describe('companions', () => {
     // a door nobody knows is no door: they set off from the player
     crowd.follow({ npc: guide('stranger'), door: 'plot_9999' })
     expect(distance(crowd.following()[1]!, at)).toBeLessThan(1e-9)
+  })
+
+  it('comes inside with the player on its one body, stands at ease on the spot it is given, and is on the doorstep on the way out', () => {
+    const cast = new FakeCast()
+    const crowd = Crowd.create({ world, nav, cast, seed: 'party' }, { population: 0 })
+    const plot = world.plotsOfKind('house')[1]!
+    const interiorId = roomBehind(world, plot.id)
+    const door = cellCentre(plot.entrance.cell.x, plot.entrance.cell.y, world.cellSize)
+    // along the pavement to the door, the companion behind
+    const at = { x: door.x + 12, z: door.z }
+    crowd.update(STEP, at)
+    crowd.follow({ npc: guide('friend0'), at: { x: at.x + 1, z: at.z } })
+    while (at.x > door.x) {
+      at.x = Math.max(at.x - METRICS.player.walkSpeed * STEP, door.x)
+      crowd.update(STEP, at)
+    }
+    for (let frame = 0; frame < 240; frame++) crowd.update(STEP, at)
+    const body = cast.made[0]!
+    const outside = { x: body.x, z: body.z }
+    expect(distance(outside, door)).toBeLessThan(crowd.options.followGap + 1)
+
+    // through the door: the room says where a visitor stands, in its own metres
+    const cell = { x: 2.5, z: 3 }
+    crowd.visit('npc_friend0', { interiorId, at: cell, heading: Math.PI })
+    const inside = crowd.following()[0]!
+    expect(inside.interiorId).toBe(interiorId)
+    expect(inside.x).toBe(cell.x)
+    expect(inside.z).toBe(cell.z)
+    expect(body.inside).toBe(interiorId)
+    expect(body.y).toBe(0)
+    expect(body.heading).toBe(Math.PI)
+    // at ease, off the cast's standing shelf, with nothing in the hands
+    expect(CLIPS_FOR_ANCHOR.stand).toContain(body.clip)
+    expect(body.clip in HANDHELD).toBe(false)
+    expect(body.clip).not.toBe(CLIPS.walk)
+    // the street goes on without them: they stay put whatever the player outside does
+    for (let frame = 0; frame < 300; frame++) crowd.update(STEP, { x: door.x + 30, z: door.z })
+    expect(crowd.following()[0]!.x).toBe(cell.x)
+    expect(crowd.following()[0]!.state).toBe('idle')
+
+    // talked to in there: they turn to the point and go back to standing at ease afterwards
+    const held = crowd.attend('npc_friend0', cell.x + 2, 1.6, cell.z)
+    for (let frame = 0; frame < 120; frame++) crowd.update(STEP, { x: door.x + 30, z: door.z })
+    expect(held.held).toBe(true)
+    const turned = crowd.following()[0]!.heading + Math.PI / 2
+    expect(Math.abs(Math.atan2(Math.sin(turned), Math.cos(turned)))).toBeLessThan(0.05)
+    expect(body.clip).toBe(CLIPS.idle)
+    held.release()
+    expect(CLIPS_FOR_ANCHOR.stand).toContain(body.clip)
+
+    // back out: on the doorstep, on the street, in the same body
+    crowd.leave('npc_friend0')
+    const out = crowd.following()[0]!
+    expect(out.interiorId).toBeUndefined()
+    expect(body.inside).toBeUndefined()
+    expect(distance(out, door)).toBeLessThan(1e-9)
+    expect(cast.made.length).toBe(1)
+    expect(cast.live.length).toBe(1)
+
+    // the only jumps in the street frame are onto the doorstep, and none is longer than the way from where they stood to the door
+    const street = body.placed.filter((place) => place.inside === undefined)
+    let longest = 0
+    for (let i = 1; i < street.length; i++) {
+      longest = Math.max(longest, distance(street[i]!, street[i - 1]!))
+    }
+    expect(longest).toBeLessThanOrEqual(distance(outside, door) + 1e-9)
+    const room = body.placed.filter((place) => place.inside === interiorId)
+    for (const place of room) expect(distance(place, cell)).toBeLessThan(1e-9)
+
+    // and they set off after the player again
+    at.x = door.x + 8
+    for (let frame = 0; frame < 600; frame++) crowd.update(STEP, at)
+    expect(distance(crowd.following()[0]!, at)).toBeLessThan(crowd.options.followGap + 1)
+  })
+
+  it('takes nobody inside who is not walking with the player, and a room in no building comes out where they went in', () => {
+    const { crowd, cast } = party()
+    crowd.visit('npc_nobody', { interiorId: 'interior_0001', at: { x: 1, z: 1 } })
+    expect(crowd.following().length).toBe(1)
+    expect(crowd.following()[0]!.interiorId).toBeUndefined()
+
+    const before = { x: crowd.following()[0]!.x, z: crowd.following()[0]!.z }
+    crowd.visit('npc_friend0', { interiorId: 'interior_9999', at: { x: 1, z: 1 } })
+    expect(crowd.following()[0]!.interiorId).toBe('interior_9999')
+    crowd.leave('npc_friend0')
+    expect(distance(crowd.following()[0]!, before)).toBeLessThan(1e-9)
+    expect(cast.live.length).toBe(1)
+    // leaving twice is leaving once
+    crowd.leave('npc_friend0')
+    expect(distance(crowd.following()[0]!, before)).toBeLessThan(1e-9)
   })
 
   it('leaves a body the game handed over alone when it stops following', () => {

@@ -3,8 +3,9 @@ import { METRICS } from '@gb/world'
 import { distance } from './geometry.ts'
 import type { Ground } from './ground.ts'
 import type { CrowdOptions } from './options.ts'
-import type { CrowdNav, Point, WalkerView } from './ports.ts'
+import type { CrowdNav, Point, Visit, WalkerView } from './ports.ts'
 import type { Space } from './space.ts'
+import { stanceFor } from './stances.ts'
 import type { Walker } from './walker.ts'
 
 /** Close enough to the spot beside the player to stand there, in metres. */
@@ -42,6 +43,10 @@ export class Follower {
   #since = RETHINK
   #target: Point
   #standing = false
+  /** The idle they hold indoors, theirs for good. */
+  #stance: string
+  /** Where on the street they come back out, while they are inside a building. */
+  #wayOut: Point | undefined
 
   constructor(
     npcId: string,
@@ -55,7 +60,33 @@ export class Follower {
     this.#space = deps.space
     this.#options = deps.options
     this.#owned = deps.owned
+    this.#stance = stanceFor(npcId)
     this.#target = { x: walker.x, z: walker.z }
+  }
+
+  /** True while they are inside a building, off the street. */
+  get visiting(): boolean {
+    return this.#wayOut !== undefined
+  }
+
+  /**
+   * Inside a building, standing on the spot the room gave them. The way back
+   * out is that building's doorstep, or the spot they left the street from
+   * when the building has none; a visit from inside one building to another
+   * moves the way out with it.
+   */
+  visit(stay: Visit, doorstep: Point | undefined): void {
+    this.#wayOut = doorstep ?? this.#wayOut ?? { x: this.walker.x, z: this.walker.z }
+    this.walker.enter(stay.interiorId, stay.at, stay.heading ?? 0, this.#stance)
+  }
+
+  /** Back out on the doorstep, standing until the player moves off. Not inside: nothing to do. */
+  leave(): void {
+    const out = this.#wayOut
+    if (!out) return
+    this.#wayOut = undefined
+    this.#standing = true
+    this.walker.exit(out.x, out.z)
   }
 
   view(): WalkerView {

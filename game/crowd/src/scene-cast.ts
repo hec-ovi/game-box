@@ -7,6 +7,16 @@ import type { CrowdActor, CrowdCast } from './ports.ts'
 /** The part of `@gb/cast` the crowd uses. A test can stand in for it without the art pack. */
 export type CastSpawner = Pick<Cast, 'spawn'>
 
+/**
+ * Where a body goes when it is indoors: the object an interior is built under,
+ * by interior id, which is `@gb/scene`'s `buildInterior(...).root` for the
+ * room the game has standing. Nothing for a room that is not built, and the
+ * body is simply not drawn until it comes back out.
+ */
+export interface CrowdRooms {
+  root(interiorId: string): Object3D | undefined
+}
+
 interface Body {
   readonly member: CastMember
   readonly variant: number
@@ -24,13 +34,15 @@ interface Body {
 export class SceneCast implements CrowdCast {
   readonly root: Object3D
   #cast: CastSpawner
+  #rooms: CrowdRooms | undefined
   #free = new Map<string, Body[]>()
   /** The body each person out here is wearing, by their NPC id. */
   #worn = new Map<string, CastMember>()
 
-  constructor(cast: CastSpawner, root: Object3D) {
+  constructor(cast: CastSpawner, root: Object3D, rooms?: CrowdRooms) {
     this.#cast = cast
     this.root = root
+    this.#rooms = rooms
   }
 
   /** Bodies parked for reuse. Grows to the busiest moment the player has seen, then stops. */
@@ -60,7 +72,7 @@ export class SceneCast implements CrowdCast {
     body.member.object.visible = true
     this.root.add(body.member.object)
     this.#worn.set(npc.id, body.member)
-    return new BodyActor(body, this.root, (returned) => this.#give(npc.id, base, returned))
+    return new BodyActor(body, this.root, this.#rooms, (returned) => this.#give(npc.id, base, returned))
   }
 
   /** The right look if one is parked, otherwise any body of the same kind, otherwise none. */
@@ -89,14 +101,16 @@ export class SceneCast implements CrowdCast {
 class BodyActor implements CrowdActor {
   #body: Body
   #root: Object3D
+  #rooms: CrowdRooms | undefined
   #park: (body: Body) => void
   #live = true
   /** Where this body is looking, its own so the cast may hold on to it. */
   #eye = new Vector3()
 
-  constructor(body: Body, root: Object3D, park: (body: Body) => void) {
+  constructor(body: Body, root: Object3D, rooms: CrowdRooms | undefined, park: (body: Body) => void) {
     this.#body = body
     this.#root = root
+    this.#rooms = rooms
     this.#park = park
   }
 
@@ -126,6 +140,24 @@ class BodyActor implements CrowdActor {
     if (this.#live) this.#body.member.lookAway()
   }
 
+  /** Indoors: the one body moves under the room, or out of sight when no room of that id is standing. The street draws nothing of them. */
+  enter(interiorId: string): void {
+    if (!this.#live) return
+    const object = this.#body.member.object
+    const room = this.#rooms?.root(interiorId)
+    object.removeFromParent()
+    if (room) room.add(object)
+    object.visible = room !== undefined
+  }
+
+  exit(): void {
+    if (!this.#live) return
+    const object = this.#body.member.object
+    object.removeFromParent()
+    this.#root.add(object)
+    object.visible = true
+  }
+
   release(): void {
     if (!this.#live) return
     this.#live = false
@@ -133,7 +165,8 @@ class BodyActor implements CrowdActor {
     this.#body.member.lookAway()
     this.#body.member.stopGesture()
     this.#body.member.object.visible = false
-    this.#root.remove(this.#body.member.object)
+    // wherever it is standing, on the street or in a room
+    this.#body.member.object.removeFromParent()
     this.#park(this.#body)
   }
 }

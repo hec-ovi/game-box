@@ -93,6 +93,40 @@ describe('SceneCast', () => {
     expect(scene.members().get('npc_900001')).toBeUndefined()
   })
 
+  it('moves a body indoors under the room that is standing, out of sight when none is, and back onto the street', () => {
+    const cast = new StubCast()
+    const street = new THREE.Object3D()
+    const room = new THREE.Object3D()
+    const rooms = { root: (interiorId: string) => (interiorId === 'interior_0001' ? room : undefined) }
+    const scene = new SceneCast(cast, street, rooms)
+    const actor = scene.spawn(walkerNpc('npc_900001', 'male', 3))
+    const body = cast.members[0]!.object
+
+    actor.enter!('interior_0001')
+    actor.placeAt(2.5, 0, 3)
+    expect(street.children).toEqual([])
+    expect(room.children).toEqual([body])
+    expect(body.visible).toBe(true)
+    expect(body.position.toArray()).toEqual([2.5, 0, 3])
+    // still theirs while they are in there
+    expect(scene.members().get('npc_900001')).toBe(cast.members[0])
+
+    // a room nobody has built: not drawn anywhere until they come out
+    actor.enter!('interior_0002')
+    expect(room.children).toEqual([])
+    expect(body.visible).toBe(false)
+
+    actor.exit!()
+    expect(street.children).toEqual([body])
+    expect(body.visible).toBe(true)
+
+    // retired from inside a room, the body is parked out of it
+    actor.enter!('interior_0001')
+    actor.release()
+    expect(room.children).toEqual([])
+    expect(scene.parked).toBe(1)
+  })
+
   it('parks a body with its hands down, whatever it was saying when it was retired', () => {
     const cast = new StubCast()
     const scene = new SceneCast(cast, new THREE.Object3D())

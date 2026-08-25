@@ -22,6 +22,7 @@ import type {
   Destination,
   Hazards,
   Point,
+  Visit,
   WalkerView,
 } from './ports.ts'
 import { Ring } from './ring.ts'
@@ -58,6 +59,7 @@ export interface CrowdDeps {
  */
 export class Crowd {
   readonly options: CrowdOptions
+  #world: World
   #nav: CrowdNav
   #cast: CrowdCast
   #people: CrowdPeople
@@ -80,6 +82,7 @@ export class Crowd {
 
   private constructor(deps: CrowdDeps, options: CrowdOptions) {
     this.options = options
+    this.#world = deps.world
     this.#nav = deps.nav
     this.#cast = deps.cast
     this.#people = deps.people ?? STRANGERS
@@ -163,6 +166,28 @@ export class Crowd {
   /** They stop walking with the player. A body the crowd spawned goes back to the cast; one the game handed over does not. */
   stopFollowing(npcId: string): void {
     this.#escort.stop(npcId)
+  }
+
+  /**
+   * A companion comes inside with the player: their one body stands on the
+   * spot the room gave them, in the interior's own metres, in a relaxed idle,
+   * and the street has no body of them until `leave`. Somebody not walking
+   * with the player is nobody's visitor.
+   */
+  visit(npcId: string, stay: Visit): void {
+    this.#escort.visit(npcId, stay, this.#doorstepOf(stay.interiorId))
+  }
+
+  /** Back out on the doorstep of the building they were in, standing there until the player moves off. */
+  leave(npcId: string): void {
+    this.#escort.leave(npcId)
+  }
+
+  /** The doorstep of the building an interior is in, in city metres, or nothing when the crowd cannot name it. */
+  #doorstepOf(interiorId: string): Point | undefined {
+    const plotId = this.#world.interior(interiorId)?.plotId
+    const cell = plotId === undefined ? undefined : this.#places.doorstep(plotId)
+    return cell && this.#ground.centreOf(cell)
   }
 
   /**

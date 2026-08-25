@@ -6,7 +6,7 @@ import type { Ground } from './ground.ts'
 import type { Kerb } from './kerb.ts'
 import type { CrowdOptions } from './options.ts'
 import type { Places } from './places.ts'
-import type { Companion, CrowdCast, CrowdNav, Point, WalkerView } from './ports.ts'
+import type { Companion, CrowdCast, CrowdNav, Point, Visit, WalkerView } from './ports.ts'
 import type { Body, Space } from './space.ts'
 import { Walker } from './walker.ts'
 
@@ -38,7 +38,7 @@ export class Escort {
   #followers: Follower[] = []
   /** Who each companion is, so the game can read them back off the id their view carries. */
   #people = new Map<string, Npc>()
-  /** The same people as bodies, kept in step so reading them every frame allocates nothing. */
+  /** The bodies out on the street, rebuilt when the party changes so reading them every frame allocates nothing. Somebody indoors is not among them. */
   #bodies: Walker[] = []
   #wayX = 0
   #wayZ = 1
@@ -94,8 +94,30 @@ export class Escort {
       finishesCrossings: false,
     })
     this.#followers.push(new Follower(who.npc.id, walker, { ...this.#deps, owned: !who.actor }))
-    this.#bodies.push(walker)
     this.#people.set(who.npc.id, who.npc)
+    this.#rebody()
+  }
+
+  /** One of them goes inside a building. `doorstep` is where they come back out; none means where they stand now. Anybody else is ignored. */
+  visit(npcId: string, stay: Visit, doorstep: Point | undefined): void {
+    const follower = this.#followers.find((one) => one.npcId === npcId)
+    if (!follower) return
+    follower.visit(stay, doorstep)
+    this.#rebody()
+  }
+
+  /** Back out on the street. Somebody not inside, or not one of ours, is left alone. */
+  leave(npcId: string): void {
+    const follower = this.#followers.find((one) => one.npcId === npcId)
+    if (!follower) return
+    follower.leave()
+    this.#rebody()
+  }
+
+  /** The bodies on the street are the followers who are not indoors. */
+  #rebody(): void {
+    this.#bodies.length = 0
+    for (const follower of this.#followers) if (!follower.visiting) this.#bodies.push(follower.walker)
   }
 
   /** The doorstep of the building they are coming out of, or where the player is when there is no such door. */
@@ -110,8 +132,8 @@ export class Escort {
     const index = this.#followers.findIndex((follower) => follower.npcId === npcId)
     if (index === -1) return
     this.#followers.splice(index, 1)[0]!.release()
-    this.#bodies.splice(index, 1)
     this.#people.delete(npcId)
+    this.#rebody()
   }
 
   clear(): void {
@@ -130,9 +152,15 @@ export class Escort {
       this.#wayZ = player.vz / pace
     }
     for (let i = 0; i < this.#followers.length; i++) {
+      const follower = this.#followers[i]!
+      // indoors there is no spot to keep: the walker only turns to whoever is talking to it
+      if (follower.visiting) {
+        follower.walker.advance(seconds)
+        continue
+      }
       const spot = this.#spotFor(i, player)
-      if (spot) this.#followers[i]!.advance(seconds, spot)
-      else this.#followers[i]!.hold(seconds)
+      if (spot) follower.advance(seconds, spot)
+      else follower.hold(seconds)
     }
   }
 

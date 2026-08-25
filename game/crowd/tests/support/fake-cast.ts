@@ -16,6 +16,10 @@ export class FakeActor implements CrowdActor {
   /** Every point the head was asked to look at, in the order it was asked. */
   looks: { x: number; y: number; z: number }[] = []
   looksAway = 0
+  /** The interior the body is in, or nothing on the street. */
+  inside: string | undefined
+  /** Every place the body was put, with the frame it was put in, in order. */
+  placed: { x: number; y: number; z: number; inside: string | undefined }[] = []
 
   constructor(npc: Npc) {
     this.npc = npc
@@ -25,6 +29,15 @@ export class FakeActor implements CrowdActor {
     this.x = x
     this.y = y
     this.z = z
+    this.placed.push({ x, y, z, inside: this.inside })
+  }
+
+  enter(interiorId: string): void {
+    this.inside = interiorId
+  }
+
+  exit(): void {
+    this.inside = undefined
   }
 
   faceTo(heading: number): void {
