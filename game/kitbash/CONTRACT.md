@@ -22,7 +22,7 @@ Builds a plot into a building made of Downtown City MegaKit pieces on a 2 m grid
 | `signsFor(plot, size, charter, cellSize?)`, `lightsFor(plot, size, charter, cellSize?)` | as `building` | |
 | `flavourOf(theme)` | the city's theme text | |
 
-`KitDressing` also carries `prop`, `character`, `pickup` and `surface` from the `Dressing` seam and passes every one of them straight to `rest`: the Downtown kit is a street kit, with no furniture and no people in it.
+`KitDressing` also carries `prop`, `character`, `pickup` and `surface` from the `Dressing` seam and passes every one of them straight to `rest` (`surface(part, size)` with its size): the Downtown kit is a street kit, with no furniture and no people in it.
 
 ## Outputs
 

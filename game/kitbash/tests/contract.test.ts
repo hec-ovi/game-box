@@ -220,7 +220,7 @@ describe('everything that is neither a building nor the ground', () => {
     expect(layered.prop('table').name).toBe('rest:prop')
     expect(layered.character({} as Npc, 'stand').name).toBe('rest:character')
     expect(layered.pickup({} as Item).name).toBe('rest:pickup')
-    expect(layered.surface('floor')).toBe(material)
+    expect(layered.surface('floor', { u: 4, v: 4 })).toBe(material)
   })
 })
 

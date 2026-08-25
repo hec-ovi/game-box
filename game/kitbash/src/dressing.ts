@@ -1,4 +1,4 @@
-import { Greybox, type Dressing } from '@gb/scene'
+import { Greybox, type Dressing, type SurfacePart, type SurfaceSize } from '@gb/scene'
 import type { AnchorKind, CellKind, FurnitureProp, Item, Npc, Plot, World } from '@gb/world'
 import * as THREE from 'three'
 import { assemble } from './assemble.ts'
@@ -84,7 +84,7 @@ export class KitDressing implements Dressing {
     return this.#kit.ground?.material(kind) ?? this.#rest.ground(kind)
   }
 
-  surface(part: 'floor' | 'wall' | 'ceiling'): THREE.Material {
-    return this.#rest.surface(part)
+  surface(part: SurfacePart, size: SurfaceSize): THREE.Material {
+    return this.#rest.surface(part, size)
   }
 }
