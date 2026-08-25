@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { METRICS } from '@gb/world'
-import { CITY_CAR, CrowdRiders, Driver, Driving, DRIVING_CLIP, DRIVER, EYE_HEIGHT } from '../src/index.ts'
+import {
+  CHASE_VIEW,
+  CITY_CAR,
+  CrowdRiders,
+  Driver,
+  Driving,
+  DRIVING_CLIP,
+  DRIVER,
+  EYE_HEIGHT,
+  type DriveGround,
+  type DriveSolid,
+} from '../src/index.ts'
 import {
   FakeBodies,
   FakeCrowd,
@@ -412,5 +423,172 @@ describe('the companions ride with you', () => {
     expect(crowd.resumed).toEqual([{ npcId: 'npc_1', x: 4, z: 5 }])
 
     expect(riders.pickUp('nobody')).toBeUndefined()
+  })
+})
+
+describe('the view from behind the car', () => {
+  /** Standing beside a taxi at the origin, nose down +Z, and getting in. */
+  function driving(over: { ground?: DriveGround; walls?: DriveSolid } = {}) {
+    const rider = new FakeRider()
+    rider.x = 1.6
+    const drive = new Driving({
+      rider,
+      traffic: new FakeTraffic([aTaxi()]),
+      solid: OPEN,
+      ...(over.ground ? { ground: over.ground } : {}),
+      ...(over.walls ? { walls: over.walls } : {}),
+    })
+    drive.act()
+    return { rider, drive }
+  }
+
+  function run(drive: Driving, seconds: number) {
+    for (let t = 0; t < seconds; t += STEP) drive.update(STEP)
+  }
+
+  /** Which way the view is trailing the car from, in the car's own convention. */
+  function trail(drive: Driving): number {
+    const view = drive.chase()!
+    return Math.atan2(drive.car!.x - view.eye.x, drive.car!.z - view.eye.z)
+  }
+
+  /** How far the trail is behind where the car is pointing now, radians. */
+  function lag(drive: Driving): number {
+    const behind = trail(drive) - drive.car!.heading
+    return Math.abs(behind - Math.PI * 2 * Math.round(behind / (Math.PI * 2)))
+  }
+
+  it('sits behind and above the car and looks at it, standing still', () => {
+    const { drive } = driving()
+    run(drive, 1)
+
+    const view = drive.chase()!
+    // the nose points down +Z, so the view is back down -Z, square behind it
+    expect(view.eye.z).toBeCloseTo(-CHASE_VIEW.back, 5)
+    expect(view.eye.x).toBeCloseTo(0, 5)
+    expect(view.eye.y).toBeCloseTo(CHASE_VIEW.height, 5)
+    expect(view.distance).toBeCloseTo(CHASE_VIEW.back, 5)
+    // and it looks at the car, not off down the street
+    expect(view.at.x).toBeCloseTo(0, 5)
+    expect(view.at.z).toBeCloseTo(0, 5)
+    expect(view.at.y).toBeCloseTo(CHASE_VIEW.aim, 5)
+  })
+
+  it('eases round a corner rather than whipping the tail across', () => {
+    const { rider, drive } = driving()
+    rider.press({ forward: 1 })
+    run(drive, 1)
+    expect(lag(drive)).toBeLessThan(0.01)
+
+    // half a second of hard lock: the view is still coming round
+    rider.press({ forward: 1, strafe: 1 })
+    run(drive, 0.5)
+    expect(drive.car!.heading).not.toBeCloseTo(0, 2)
+    expect(lag(drive)).toBeGreaterThan(0.1)
+
+    // and it catches up once the car is straight again
+    rider.press({ forward: 1 })
+    run(drive, 3)
+    expect(lag(drive)).toBeLessThan(0.01)
+  })
+
+  it('pulls back as the speed comes up and settles in again at a stand', () => {
+    const { rider, drive } = driving()
+    rider.press({ forward: 1 })
+    run(drive, 10)
+    expect(drive.car!.speed).toBeCloseTo(CITY_CAR.topSpeed, 1)
+    expect(drive.chase()!.distance).toBeCloseTo(CHASE_VIEW.back + CHASE_VIEW.stretch, 1)
+
+    rider.press({})
+    run(drive, 20)
+    expect(drive.car!.speed).toBe(0)
+    expect(drive.chase()!.distance).toBeCloseTo(CHASE_VIEW.back, 2)
+  })
+
+  it('keeps the car in frame up a slope, and stays out of the road down one', () => {
+    const rise: DriveGround = (_x, z) => Math.max(0, z) * 0.15
+    const up = driving({ ground: rise })
+    up.rider.press({ forward: 1 })
+    for (let t = 0; t < 6; t += STEP) {
+      up.drive.update(STEP)
+      const view = up.drive.chase()!
+      expect(view.eye.y).toBeGreaterThanOrEqual(rise(view.eye.x, view.eye.z) + CHASE_VIEW.clearance - 1e-9)
+    }
+    // the view climbed with the car and is still aimed at its roof line,
+    // trailing the ground by no more than the settle time allows
+    const climbed = up.drive.chase()!
+    const under = rise(up.drive.car!.x, up.drive.car!.z)
+    expect(climbed.eye.y).toBeGreaterThan(CHASE_VIEW.height + 1)
+    expect(climbed.at.y).toBeLessThanOrEqual(under + CHASE_VIEW.aim)
+    expect(climbed.at.y).toBeGreaterThan(under + CHASE_VIEW.aim - 0.6)
+
+    // the same slope the other way: the view is on the crest behind, above the road
+    const fall: DriveGround = (_x, z) => -Math.max(0, z) * 0.15
+    const down = driving({ ground: fall })
+    down.rider.press({ forward: 1 })
+    for (let t = 0; t < 6; t += STEP) {
+      down.drive.update(STEP)
+      const view = down.drive.chase()!
+      expect(view.eye.y).toBeGreaterThanOrEqual(fall(view.eye.x, view.eye.z) + CHASE_VIEW.clearance - 1e-9)
+    }
+    // held up by the crest it is standing on, looking down at the car below
+    expect(down.drive.chase()!.eye.y).toBeGreaterThan(down.drive.chase()!.at.y)
+  })
+
+  it('pulls in rather than sitting inside the building behind it', () => {
+    const wall: DriveSolid = (_x, z) => z <= -5
+    const { drive } = driving({ walls: wall })
+    run(drive, 1)
+
+    const view = drive.chase()!
+    expect(view.distance).toBeLessThan(CHASE_VIEW.back)
+    expect(view.distance).toBeGreaterThanOrEqual(CHASE_VIEW.closest)
+    expect(wall(view.eye.x, view.eye.z)).toBe(false)
+
+    // backed right up to it, the view is at the nearest it goes and no nearer
+    const tight = driving({ walls: (_x, z) => z <= -2 })
+    run(tight.drive, 1)
+    expect(tight.drive.chase()!.distance).toBeCloseTo(CHASE_VIEW.closest, 5)
+  })
+
+  it('holds the settled distance in reverse and stays behind the nose', () => {
+    const { rider, drive } = driving()
+    rider.press({ forward: -1 })
+    run(drive, 3)
+
+    expect(drive.car!.speed).toBeCloseTo(-CITY_CAR.reverseSpeed, 1)
+    expect(drive.chase()!.distance).toBeCloseTo(CHASE_VIEW.back, 2)
+    // the car is backing towards the view, which has not swung round to lead it
+    expect(drive.chase()!.eye.z).toBeLessThan(drive.car!.z)
+    expect(lag(drive)).toBeLessThan(0.01)
+  })
+
+  it('keeps the seat view for whoever asks for it back', () => {
+    const { rider, drive } = driving()
+    expect(drive.view).toBe('chase')
+    run(drive, 1)
+    expect(drive.chase()).toBeDefined()
+    // the player is in the seat either way: only the camera moves
+    expect(rider.seat).toBeDefined()
+
+    expect(drive.switchView()).toBe('seat')
+    run(drive, 1)
+    expect(drive.chase()).toBeUndefined()
+    expect(rider.seat?.y).toBeCloseTo(EYE_HEIGHT, 5)
+
+    expect(drive.switchView()).toBe('chase')
+    expect(drive.chase()!.distance).toBeCloseTo(CHASE_VIEW.back, 5)
+  })
+
+  it('has no view to place while the player is on foot', () => {
+    const rider = new FakeRider()
+    rider.x = 1.6
+    const drive = new Driving({ rider, traffic: new FakeTraffic([aTaxi()]), solid: OPEN })
+    expect(drive.chase()).toBeUndefined()
+
+    drive.act()
+    expect(drive.chase()).toBeDefined()
+    drive.act()
+    expect(drive.chase()).toBeUndefined()
   })
 })

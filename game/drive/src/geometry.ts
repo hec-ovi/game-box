@@ -81,3 +81,8 @@ export function patchesOf(car: Point, heading: number): { x: number; z: number; 
 export function away(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.z - b.z)
 }
+
+/** An angle difference brought back into -pi..pi, so easing takes the short way round. */
+export function wrap(angle: number): number {
+  return angle - Math.PI * 2 * Math.round(angle / (Math.PI * 2))
+}

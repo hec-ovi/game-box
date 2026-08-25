@@ -6,6 +6,11 @@ export interface Point {
   readonly z: number
 }
 
+/** A place in the world: metres, Y up. */
+export interface Place extends Point {
+  readonly y: number
+}
+
 /** Something long lying on the ground: where it is and which way it points. */
 export interface Rolling extends Point {
   /** Radians around Y for a shape whose nose points down +Z. */
@@ -22,7 +27,7 @@ export interface Blocking extends Point {
   readonly radius: number
 }
 
-/** Says whether a point in metres is inside something a car cannot drive through. */
+/** Says whether a point in metres is inside something solid. */
 export type DriveSolid = (x: number, z: number) => boolean
 
 /** How high the ground is under a point, in metres. */
@@ -126,6 +131,22 @@ export interface RiderCrowd {
 /** Where bodies come from. A `@gb/crowd` `SceneCast` is one. */
 export interface RiderCast {
   spawn(npc: Npc): RiderBody
+}
+
+/** Which view is on: from behind the car, or from the driver's seat. */
+export type DriveView = 'chase' | 'seat'
+
+/**
+ * Where a camera behind the car goes this frame. This box has no renderer in
+ * it: it says where the view belongs and the game puts the camera there.
+ */
+export interface ChaseView {
+  /** Where the camera sits. */
+  readonly eye: Place
+  /** What it points at: the car, at its roof line. */
+  readonly at: Place
+  /** How far back on the ground it ended up, which is less than it wanted when something is behind. */
+  readonly distance: number
 }
 
 /** What the crosshair offers: getting into the car in front of you, or getting out. */

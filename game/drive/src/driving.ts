@@ -1,15 +1,18 @@
 import { METRICS } from '@gb/world'
 import { Cabin, doorFor } from './cabin.ts'
 import { PlayerCar } from './car.ts'
-import { away, HALF_LENGTH, HALF_WIDTH, aboard, forwardOf, leftOf } from './geometry.ts'
-import type { Handling } from './handling.ts'
+import { Chase } from './chase.ts'
+import { away, HALF_LENGTH, HALF_WIDTH, aboard, forwardOf, leftOf, wrap } from './geometry.ts'
+import { CITY_CAR, type Handling } from './handling.ts'
 import { nameOf } from './names.ts'
 import type {
   Blocking,
+  ChaseView,
   DriveBodies,
   DriveGround,
   DriveSolid,
   DriveTarget,
+  DriveView,
   Point,
   Rider,
   Riders,
@@ -33,6 +36,12 @@ export interface DrivingDeps {
   readonly rider: Rider
   /** What the car cannot drive through: walls, water, people, other traffic. */
   readonly solid: DriveSolid
+  /**
+   * What the view behind the car cannot sit inside: the buildings alone, not
+   * the people and the traffic the car brakes for. With none, nothing pulls the
+   * view in.
+   */
+  readonly walls?: DriveSolid
   /** How high the road is. Flat if nothing says otherwise. */
   readonly ground?: DriveGround
   /** The cars driving themselves. With none there is nothing to get into. */
@@ -59,24 +68,29 @@ export interface DrivingDeps {
 export class Driving {
   readonly #rider: Rider
   readonly #solid: DriveSolid
+  readonly #walls: DriveSolid | undefined
   readonly #ground: DriveGround
   #traffic: RoadTraffic | undefined
   #bodies: DriveBodies | undefined
   readonly #outdoors: () => boolean
   readonly #tuning: Handling | undefined
   readonly #cabin: Cabin
+  readonly #chase: Chase
   #car: PlayerCar | undefined
   #driving = false
+  #view: DriveView = 'chase'
 
   constructor(deps: DrivingDeps) {
     this.#rider = deps.rider
     this.#solid = deps.solid
+    this.#walls = deps.walls
     this.#ground = deps.ground ?? FLAT
     this.#traffic = deps.traffic
     this.#bodies = deps.bodies
     this.#outdoors = deps.outdoors ?? (() => true)
     this.#tuning = deps.tuning
     this.#cabin = new Cabin(deps.riders)
+    this.#chase = new Chase(deps.tuning ?? CITY_CAR)
   }
 
   /**
@@ -98,6 +112,27 @@ export class Driving {
   /** The player's car, driving or parked. */
   get car(): Moving | undefined {
     return this.#car
+  }
+
+  /** Which view is on: from behind the car, or from the driver's seat. */
+  get view(): DriveView {
+    return this.#view
+  }
+
+  /** The other one, and it is the one that is on from here. */
+  switchView(): DriveView {
+    this.#view = this.#view === 'chase' ? 'seat' : 'chase'
+    if (this.#view === 'chase' && this.#car) this.#chase.aim(this.#car, this.#ground, this.#walls)
+    return this.#view
+  }
+
+  /**
+   * Where a camera behind the car goes this frame. Nothing while the player is
+   * on foot, and nothing while the seat view is the one that is on: then the
+   * view is the player's own eye, which the seat already carries.
+   */
+  chase(): ChaseView | undefined {
+    return this.#driving && this.#view === 'chase' ? this.#chase.view : undefined
   }
 
   /** Who is riding with the player, by npc id. */
@@ -142,6 +177,7 @@ export class Driving {
     car.show(this.#ground)
     this.#cabin.carry(car, car.heading, this.#ground)
     this.#sit(wrap(car.heading - before))
+    if (this.#view === 'chase') this.#chase.step(seconds, car, this.#ground, this.#walls)
   }
 
   /** The player's car as something you cannot walk through, when nobody is in it. */
@@ -199,6 +235,7 @@ export class Driving {
     // whichever way they were looking when they opened the door, they are
     // looking out of the windscreen once they are behind the wheel
     this.#sit(wrap(car.heading + Math.PI - this.#rider.heading))
+    if (this.#view === 'chase') this.#chase.aim(car, this.#ground, this.#walls)
   }
 
   #leave(): void {
@@ -248,9 +285,4 @@ export function nearestOn(car: Point, heading: number, from: Point): Point {
 
 function clamp(value: number, low: number, high: number): number {
   return Math.max(low, Math.min(high, value))
-}
-
-/** An angle difference brought back into -pi..pi. */
-function wrap(angle: number): number {
-  return angle - Math.PI * 2 * Math.round(angle / (Math.PI * 2))
 }
