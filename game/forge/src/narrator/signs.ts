@@ -3,7 +3,7 @@ import type { Charter } from '@gb/world'
 import { flavourOf } from '../theme/flavour.ts'
 import { wordsFor } from '../theme/words.ts'
 import { NamePool } from './name-pool.ts'
-import { placeName } from './places.ts'
+import { placeName, type Standing } from './places.ts'
 
 /**
  * The name over a door, written from the theme's own vocabulary and the town's
@@ -25,9 +25,9 @@ export class Signs {
     this.#rng = new Rng(`narrator/${seed}`)
   }
 
-  /** The sign over one door. Same seed, same theme, same story, same index: same sign. */
-  over(charter: Charter, theme: string, index: number, premise?: string): string {
-    return placeName(charter, index, this.#pool(theme, premise), this.#rng.fork(`place/${index}`))
+  /** The sign over one door. Same seed, same theme, same story, same street, same index: same sign. */
+  over(charter: Charter, theme: string, index: number, standing: Standing = {}): string {
+    return placeName(charter, index, this.#pool(theme, standing.premise), this.#rng.fork(`place/${index}`), standing.street)
   }
 
   /** One pool per town: the same theme and story deal the same heads. */

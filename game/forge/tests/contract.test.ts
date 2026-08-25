@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { PlayerState } from '@gb/play'
 import { validateQuest, type QuestDoc } from '@gb/quest'
-import { questView, World, type WorldDoc } from '@gb/world'
+import { questView, ROOM_USES, World, type WorldDoc } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { Forge, OfflineNarrator, summarise } from '../src/index.ts'
 import { ownedItems, Player } from './player.ts'
@@ -43,6 +43,11 @@ describe('Forge', () => {
     // nobody shares a name
     const names = world.npcs().map((n) => n.name)
     expect(new Set(names).size).toBe(names.length)
+
+    // every room says which routine dressed it, so a furnisher reads the room and no table of kinds
+    for (const interior of world.interiors()) {
+      for (const room of interior.rooms) expect(ROOM_USES, `${interior.id}/${room.id} carries no use`).toContain(room.use)
+    }
 
     // every NPC stands on an anchor that exists, doing something that has a name
     for (const npc of world.npcs()) {

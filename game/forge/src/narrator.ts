@@ -40,19 +40,10 @@ export interface InstanceStock {
 }
 
 /** One building's own shell: everything a narrator is shown to write the place whole. */
-export interface InstanceRequest {
-  /** The word of the kind of place it is. */
-  readonly kind: Word
-  /** What that word means: the charter behind it, with its label, its names and its rumours. */
-  readonly charter: Charter
-  readonly theme: string
+export interface InstanceRequest extends PlaceRequest {
   readonly rooms: readonly RoomKind[]
   readonly posts: readonly InstancePost[]
   readonly things: readonly InstanceStock[]
-  /** What the city is about, in the few lines `premiseLines` renders it as. Absent when nobody wrote one. */
-  readonly premise?: string
-  /** Where this building falls in the town's own count of plots. */
-  readonly index: number
 }
 
 export interface InstancePerson extends NpcProfile {
@@ -64,13 +55,17 @@ export interface InstanceThing extends ItemProfile {
   readonly thingId: string
 }
 
-/** One building that does not open, waiting for the sign over its door. */
+/** One building as a narrator is shown it: what it is, where it stands, and what town it is in. */
 export interface PlaceRequest {
+  /** The word of the kind of place it is. */
   readonly kind: Word
+  /** What that word means: the charter behind it, with its label, its names and its rumours. */
   readonly charter: Charter
   readonly theme: string
   /** Where this building falls in the town's own count of plots. */
   readonly index: number
+  /** The street its door is on. Absent when the door stands on no street band. */
+  readonly street?: string
   /** What the city is about, in the few lines `premiseLines` renders it as. Absent when nobody wrote one. */
   readonly premise?: string
 }
@@ -141,8 +136,8 @@ export interface Narrator {
    */
   writePremise?(input: { theme: string; seed: string; brief?: string; asks?: Asks }): Promise<History>
   nameCity(input: { theme: string; seed: string; premise?: Premise }): Promise<string>
-  /** A sign for one place. `premise` is the town's story as `premiseLines` renders it, when it has one. */
-  namePlace(input: { kind: Word; charter: Charter; theme: string; index: number; premise?: string }): Promise<string>
+  /** A sign for one place: `street` is the one its door is on, `premise` the town's story as `premiseLines` renders it, when it has one. */
+  namePlace(input: { kind: Word; charter: Charter; theme: string; index: number; street?: string; premise?: string }): Promise<string>
   /** The signs over every door that does not open, one per request in request order. */
   namePlaces?(requests: readonly PlaceRequest[]): Promise<readonly string[]>
   /** One person for one post. `premise` is the town's story as `premiseLines` renders it, when it has one. */

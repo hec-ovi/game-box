@@ -21,6 +21,7 @@ import { paintStreets } from './layout/streets.ts'
 import type { Narrator, WorldSummary } from './narrator.ts'
 import { writeEachPlace } from './narrator/one-at-a-time.ts'
 import { Signs } from './narrator/signs.ts'
+import { StreetNames } from './narrator/streets.ts'
 import { readHistory } from './premise/history.ts'
 import { surfacesOf } from './populate.ts'
 import { questDemand } from './quests/demand.ts'
@@ -105,6 +106,7 @@ export class Forge {
       ...(premise ? { premise } : {}),
       density: brief.density,
       signs: new Signs(brief.seed),
+      streets: StreetNames.of(world),
       doors: rng.fork('doors'),
       people: rng,
     })
@@ -129,6 +131,7 @@ export class Forge {
       ...(premise ? { premise } : {}),
       density: EXTEND_DENSITY,
       signs: new Signs(world.seed),
+      streets: StreetNames.of(world),
       // the town's own stream: how big a share of it opens is a fact about the
       // town, so an extension spends what is left of that rather than drawing again
       doors: new Rng(world.seed).fork('doors'),

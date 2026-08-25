@@ -3,8 +3,14 @@ import type { Charter } from '@gb/world'
 import type { Words } from '../theme/words.ts'
 import { NamePool, type Head } from './name-pool.ts'
 
-/** The tails a numbered address takes. */
+/** The tails a street in a sign's own name takes. */
 const ROWS: readonly string[] = ['Row', 'Street', 'Lane', 'Yard']
+
+/** Where a place stands: the town's story as `premiseLines` renders it, and the street its door is on, when either is known. */
+export interface Standing {
+  readonly premise?: string | undefined
+  readonly street?: string | undefined
+}
 
 /** A slot in a charter's name template. */
 const SLOT = /\{(family|adjective|noun)\}/g
@@ -54,7 +60,7 @@ function fill(template: string, head: string, words: Words, rng: Rng): string {
  * heirs, a first name with the trade, a trade plainly stated after a place, a
  * numbered address, or the old "The X Y". The trade is the charter's own word.
  */
-function compose(head: Head, charter: Charter, words: Words, rng: Rng): string {
+function compose(head: Head, charter: Charter, words: Words, rng: Rng, street: string | undefined): string {
   const naming = new Naming(charter)
   const trade = naming.trade(rng, label(charter))
   switch (head.shape) {
@@ -75,7 +81,7 @@ function compose(head: Head, charter: Charter, words: Words, rng: Rng): string {
     case 'place':
       return rng.chance(0.6) ? `${head.word} ${trade}` : `${head.word} ${rng.pick(ROWS)} ${trade}`
     case 'number':
-      return `${head.word} ${rng.pick(words.nouns)} ${rng.pick(ROWS)}`
+      return `${head.word} ${street ?? `${rng.pick(words.nouns)} ${rng.pick(ROWS)}`}`
   }
 }
 
@@ -85,9 +91,10 @@ const label = (charter: Charter): string => charter.label.replace(/\b[a-z]/g, (l
 /**
  * A name for one place: the head is the pool's, taken by the place's index in
  * the town so no word heads two signs in a city, and the seed picks the rest.
+ * A numbered address is on the street the door is on, when that is known.
  */
-export function placeName(charter: Charter, index: number, pool: NamePool, rng: Rng): string {
-  return compose(pool.headAt(index), charter, pool.words, rng)
+export function placeName(charter: Charter, index: number, pool: NamePool, rng: Rng, street?: string): string {
+  return compose(pool.headAt(index), charter, pool.words, rng, street)
 }
 
 /** The word a sign is remembered by: the first one that is not an article. */

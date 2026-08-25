@@ -1,5 +1,5 @@
 import type { Rng } from '@gb/kit'
-import type { Cell, StreetLine } from './bands.ts'
+import { covers, type Cell, type StreetLine } from './bands.ts'
 
 /**
  * Avenues: the spines a town is read by.
@@ -75,10 +75,6 @@ export class Avenues {
 
   /** True when the cell stands in an avenue's band: its roadway or either pavement. */
   has(cell: Cell): boolean {
-    return within(this.#columns, cell.x) || within(this.#rows, cell.y)
+    return this.#columns.some((line) => covers(line, cell.x)) || this.#rows.some((line) => covers(line, cell.y))
   }
-}
-
-function within(lines: readonly StreetLine[], at: number): boolean {
-  return lines.some((line) => at >= line.start && at < line.start + line.width)
 }

@@ -1,6 +1,6 @@
+import { RECIPES } from '@gb/kitbash'
 import { MAX_CHARTERS, type Charter, type ResolvedCharter, type Word } from '@gb/world'
 import { drawOf } from '../interior/draw.ts'
-import { builtFor } from './built.ts'
 import { signageFor, suitsFor, tintFor } from './look.ts'
 
 /** A charter a city would not take, and why. Reported, never hidden. */
@@ -44,11 +44,15 @@ export function declareCharters(written: readonly Charter[], presets: readonly R
   return { charters: [...byWord.values()].sort((a, b) => a.word.localeCompare(b.word)), dropped }
 }
 
-/** The charter plus everything the engine derives from its axes. */
+/**
+ * The charter plus everything the engine derives from its axes. The wall
+ * pieces are `@gb/kitbash`'s own row for the frontage and the openness, so
+ * the file carries what the kit builds and no table of pieces lives here.
+ */
 function resolve(charter: Charter): ResolvedCharter {
   return {
     ...charter,
-    built: builtFor(charter.street.frontage, charter.street.openness),
+    built: RECIPES[charter.street.frontage][charter.street.openness],
     signage: signageFor(charter.street.voice),
     tint: tintFor(charter.street.frontage),
     suits: suitsFor(charter),

@@ -1,4 +1,5 @@
 import { Rng } from '@gb/kit'
+import { RECIPES } from '@gb/kitbash'
 import { SHIPPED_CHARTERS, type Charter, type Premise } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { Forge, OfflineNarrator } from '../src/index.ts'
@@ -76,6 +77,8 @@ describe('a kind of place the history invents', () => {
     expect(dropped).toEqual([])
     expect(world.check()).toEqual([])
     expect(world.charter('jail')?.blade).toBe('JAIL')
+    // the wall pieces are the kit's own row for how the jail meets the street, so it is drawn as the file says
+    expect(world.charter('jail')?.built).toEqual(RECIPES[JAIL.street.frontage][JAIL.street.openness])
     expect(world.charters().length).toBe(SHIPPED_CHARTERS.length + 1)
 
     const jails = world.plotsOfKind('jail')

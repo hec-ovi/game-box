@@ -23,7 +23,8 @@ export async function writeEachPlace(narrator: Singular, requests: readonly Inst
 async function writePlace(narrator: Singular, request: InstanceRequest): Promise<Instance> {
   const { kind, charter, theme } = request
   const story = request.premise ? { premise: request.premise } : {}
-  const name = await narrator.namePlace({ kind, charter, theme, index: request.index, ...story })
+  const street = request.street ? { street: request.street } : {}
+  const name = await narrator.namePlace({ kind, charter, theme, index: request.index, ...street, ...story })
   const [people, things] = await Promise.all([
     Promise.all(
       request.posts.map(async (post): Promise<InstancePerson> => {

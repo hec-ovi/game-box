@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { Forge, OfflineNarrator } from '../src/index.ts'
 import type { Instance, InstanceRequest, Narrator, NpcProfile, PlaceRequest, WorldSummary } from '../src/narrator.ts'
 import { headOf } from '../src/narrator/places.ts'
+import { StreetNames } from '../src/narrator/streets.ts'
 import type { Premise } from '@gb/world'
 import { buildTown, digest } from './support.ts'
 
@@ -218,6 +219,52 @@ describe('the signs over the doors', () => {
     expect(shut.slice(2).every((plot, at) => plot.name === `Sign ${asked[0]![at + 2]!.index} ${world.charter(plot.kind)!.label}`)).toBe(true)
     // and no open door was named that way
     for (const interior of world.interiors()) expect(world.plot(interior.plotId)!.name).not.toMatch(/^Sign /)
+  })
+
+  it('tells every narrator the street a door is on, and a numbered address is on that street', async () => {
+    const offline = new OfflineNarrator('kettle-row')
+    const asked: PlaceRequest[] = []
+    const narrator: Narrator = {
+      writePremise: (input) => offline.writePremise(input),
+      nameCity: (input) => offline.nameCity(input),
+      namePlace: (input) => offline.namePlace(input),
+      describeNpc: (input) => offline.describeNpc(input),
+      describeItem: (input) => offline.describeItem(input),
+      writeQuests: (input) => offline.writeQuests(input),
+      writeInstances: (requests) => {
+        asked.push(...requests)
+        return offline.writeInstances(requests)
+      },
+      namePlaces: async (requests) => {
+        asked.push(...requests)
+        return []
+      },
+    }
+    const built = await new Forge(narrator).build({ ...BRIEF, seed: 'kettle-row' })
+    if (!built.ok) throw new Error('the town would not build')
+    const { world } = built.value
+    const streets = StreetNames.of(world)
+
+    // every door, open or shut, is on a named street, and the town's streets are all different
+    expect(asked.length).toBe(world.plots().length)
+    for (const request of asked) expect(request.street, `plot ${request.index} is on no street`).toBeTruthy()
+    expect(new Set(streets.all).size).toBe(streets.all.length)
+    expect(new Set(asked.map((request) => request.street))).toEqual(new Set(streets.all))
+    for (const name of streets.all) expect(name).toMatch(/^[A-Z][a-z]+ (Street|Row|Lane|Avenue)$/)
+
+    // a sign that is an address is the address of the door it hangs over
+    const numbered = world.plots().filter((plot) => /^\d+ /.test(plot.name))
+    expect(numbered.length).toBeGreaterThan(0)
+    for (const plot of numbered) expect(plot.name).toBe(`${plot.name.split(' ')[0]} ${streets.at(plot.entrance.cell, plot.entrance.facing)}`)
+
+    // and a building added later stands on the street it always did
+    const added = await new Forge(narrator).extend(world, 3)
+    if (!added.ok) throw new Error('the town would not extend')
+    expect(StreetNames.of(world).all).toEqual(streets.all)
+    for (const id of added.value) {
+      const plot = world.plot(id)!
+      expect(asked.find((request) => request.index === world.plots().indexOf(plot))?.street).toBe(streets.at(plot.entrance.cell, plot.entrance.facing))
+    }
   })
 
   it("hands the owner's brief and asks to the history writer, and the asks on to the quest writer", async () => {

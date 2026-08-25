@@ -55,6 +55,8 @@ export interface PlannedSite extends Chosen {
   readonly style: string
   /** The sign over its door, written in the box. A place that opens is renamed by whoever writes it. */
   readonly sign: string
+  /** The street its door is on. */
+  readonly street?: string
   /** Present only for the doors that open. */
   readonly inside?: PlannedInside
 }

@@ -72,8 +72,8 @@ export class OfflineNarrator implements Narrator {
     return cityName(wordsFor(flavourOf(input.theme)), this.#rng.fork(`city/${input.seed}`), livesOn)
   }
 
-  async namePlace(input: { charter: Charter; theme: string; index: number; premise?: string }): Promise<string> {
-    return this.#signs.over(input.charter, input.theme, input.index, input.premise)
+  async namePlace(input: { charter: Charter; theme: string; index: number; street?: string; premise?: string }): Promise<string> {
+    return this.#signs.over(input.charter, input.theme, input.index, input)
   }
 
   /** The plural, one place at a time: nothing here is slow, so nothing here fans out. */

@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@gb/kit": "workspace:*",
+    "@gb/kitbash": "workspace:*",
     "@gb/quest": "workspace:*",
     "@gb/world": "workspace:*",
     "zod": "^4.4.3"

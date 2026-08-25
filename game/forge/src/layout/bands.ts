@@ -72,6 +72,11 @@ export interface StreetLine {
   readonly centre: number
 }
 
+/** True when a coordinate falls inside the band: its roadway or either pavement. */
+export function covers(line: StreetLine, at: number): boolean {
+  return at >= line.start && at < line.start + line.width
+}
+
 /** The one place a band's geometry is worked out from where it starts and what it is. */
 export function lineAt(start: number, kind: BandKind): StreetLine {
   const band = BANDS[kind]

@@ -5,6 +5,7 @@ import { planInterior } from '../interior/plan.ts'
 import type { InstanceRequest, PlaceRequest } from '../narrator.ts'
 import { premiseLines } from '../premise/render.ts'
 import type { Signs } from '../narrator/signs.ts'
+import type { StreetNames } from '../narrator/streets.ts'
 import { bodyFor, itemsFor, occupancy, roleFor, surfacesOf } from '../populate.ts'
 import { callsForDancing } from '../premise/wants.ts'
 import { priceOf } from '../prices.ts'
@@ -17,6 +18,8 @@ export interface RaiseSetup {
   readonly premise?: Premise
   readonly density: number
   readonly signs: Signs
+  /** What every street in the town is called. */
+  readonly streets: StreetNames
   /** Which doors open, decided over the whole town at once. */
   readonly doors: Rng
   /** The stream every interior's people and things are drawn from. */
@@ -41,13 +44,29 @@ export function planRaise(world: World, chosen: readonly Chosen[], setup: RaiseS
   const style = `${setup.theme.split(/\s+/)[0]?.toLowerCase() ?? 'plain'}-`
   const story = setup.premise ? premiseLines(setup.premise) : undefined
 
-  return chosen.map((one, at) => ({
-    ...one,
-    index: first + at,
-    style: style + one.charter.word,
-    sign: setup.signs.over(one.charter, setup.theme, first + at, story),
-    ...(open.has(String(at)) ? { inside: planInside(world, one, setup, counts) } : {}),
-  }))
+  return chosen.map((one, at) => {
+    const street = setup.streets.at(one.site.entrance, one.site.facing)
+    return {
+      ...one,
+      index: first + at,
+      style: style + one.charter.word,
+      sign: setup.signs.over(one.charter, setup.theme, first + at, { premise: story, street }),
+      ...(street ? { street } : {}),
+      ...(open.has(String(at)) ? { inside: planInside(world, one, setup, counts) } : {}),
+    }
+  })
+}
+
+/** One building as every narrator is shown it: what it is, the street it is on, and the town's story. */
+function placeRequest(one: PlannedSite, setup: RaiseSetup, premise: string | undefined): PlaceRequest {
+  return {
+    kind: one.charter.word,
+    charter: one.charter,
+    theme: setup.theme,
+    index: one.index,
+    ...(one.street ? { street: one.street } : {}),
+    ...(premise ? { premise } : {}),
+  }
 }
 
 /**
@@ -59,11 +78,7 @@ export function instanceRequests(planned: readonly PlannedSite[], setup: RaiseSe
   return planned
     .filter((one): one is PlannedSite & { inside: PlannedInside } => one.inside !== undefined)
     .map((one) => ({
-      kind: one.charter.word,
-      charter: one.charter,
-      theme: setup.theme,
-      ...(premise ? { premise } : {}),
-      index: one.index,
+      ...placeRequest(one, setup, premise),
       rooms: one.inside.plan.rooms.map((room) => room.kind),
       posts: one.inside.posts.map((post) => ({ postId: post.anchor.id, role: post.role, index: post.index })),
       things: one.inside.things.map((thing) => ({ thingId: thing.thingId, archetype: thing.archetype, index: thing.index })),
@@ -73,9 +88,7 @@ export function instanceRequests(planned: readonly PlannedSite[], setup: RaiseSe
 /** Every door that does not open, for a narrator that hangs those signs itself. */
 export function signRequests(planned: readonly PlannedSite[], setup: RaiseSetup): PlaceRequest[] {
   const premise = setup.premise ? premiseLines(setup.premise) : undefined
-  return planned
-    .filter((one) => one.inside === undefined)
-    .map((one) => ({ kind: one.charter.word, charter: one.charter, theme: setup.theme, index: one.index, ...(premise ? { premise } : {}) }))
+  return planned.filter((one) => one.inside === undefined).map((one) => placeRequest(one, setup, premise))
 }
 
 /**

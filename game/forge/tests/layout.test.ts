@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { BANDS, briefContract, Forge, MOUNTAIN_CELLS, OfflineNarrator } from '../src/index.ts'
 import { BLOCKS_MAX } from '../src/brief.ts'
 import { avenueCount, Avenues } from '../src/layout/avenues.ts'
+import { streetLines } from '../src/layout/lines.ts'
 import { MAX_BLOCK, MIN_BLOCK, planStreets, widestGrid } from '../src/layout/plan.ts'
 import { cutsFourWays } from '../src/layout/plots.ts'
 import { buildTown, digest } from './support.ts'
@@ -115,6 +116,8 @@ describe('the street plan', () => {
 
       const { world } = await buildTown(seed, brief)
       expect([world.grid.width, world.grid.height], seed).toEqual([plan.size.width, plan.size.height])
+      // and the bands read back off the road graph are the ones the plan laid, roads out left aside
+      expect(streetLines(world), seed).toEqual({ columns: plan.columns, rows: plan.rows })
 
       // and every band is painted where the plan put it, at its own class's
       // width: pavement, roadway, pavement, read across the middle of a block
