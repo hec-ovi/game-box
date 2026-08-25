@@ -1,17 +1,17 @@
 # @gb/bundle contract
 
-contractVersion: 0.3.0
+contractVersion: 0.4.0
 
 ## Purpose
 
-The file a city travels in: world, quests and the art packs it needs, sealed behind one hash, plus the save that belongs to it.
+The file a city travels in: world, quests and the art packs it needs, sealed behind one hash, brought up to what the format promises when it is older, plus the save that belongs to it.
 
 ## Inputs
 
 | Param | Schema | Preconditions |
 |---|---|---|
 | `Bundle.pack(world, quests, options?)` | a `@gb/world` `World`, validated quests | `options.requires` names the art packs the renderer needs, each at the version the city was built against |
-| `Bundle.open(value, have?)` | [schema/bundle.json](schema/bundle.json), and the packs the reader has loaded | any untrusted file, including one downloaded from a stranger. `have` is the caller's own runtime, not file data, so it is taken as given |
+| `Bundle.open(value, have?)` | [schema/bundle.json](schema/bundle.json), `schemaVersion` 1 or 2, and the packs the reader has loaded | any untrusted file, including one downloaded from a stranger. `have` is the caller's own runtime, not file data, so it is taken as given |
 | `Bundle.save(bundle, player, log)` | an opened bundle, `@gb/play` state, `@gb/quest` log | all three from the same session |
 | `Bundle.resume(bundle, value)` | [schema/save.json](schema/save.json) | the save names this bundle's world id; its content hash may be another version's, see below |
 | `comparePacks(requires, have)` | two lists of `AssetPackRef` | none |
@@ -21,8 +21,8 @@ The file a city travels in: world, quests and the art packs it needs, sealed beh
 
 | Param | Schema | Postconditions |
 |---|---|---|
-| `pack` | [schema/bundle.json](schema/bundle.json) | `contentHash` covers everything else in the file |
-| `open` | `{ world, quests, requires, packs, contentHash }` | the world is sound and every quest is playable in it |
+| `pack` | [schema/bundle.json](schema/bundle.json) | `schemaVersion` 2: the world inside carries its charters and a `use` on every room, whatever the `World` held; `contentHash` covers everything else in the file |
+| `open` | `{ world, quests, requires, packs, upgraded, contentHash }` | the world is sound, every plot's kind of place is declared in it, and every quest is playable in it. `upgraded` is true when the file was written before charters and the presets it was drawn with were written in on the way, see below |
 | `save` | [schema/save.json](schema/save.json) | carries the world id, the bundle's content hash, and what each quest was called |
 | `resume` | `{ player, log, report }` | against the same hash, the log is open on exactly the steps it was saved on and `report.dropped` is empty; against another version, everything that resolves is kept and the report says what was not |
 | `comparePacks` | `PackReport`: `{ verdicts, asBuilt }` | one verdict per pack the file names, in the order it names them |
@@ -31,14 +31,61 @@ The file a city travels in: world, quests and the art packs it needs, sealed beh
 
 ## Errors (closed set)
 
-- `invalid-bundle`: not a bundle, or the world inside is not a world.
+- `invalid-bundle`: not a bundle, or the world inside is not a world. Carries the paths that failed, which is where a value the reader's build does not ship shows up.
 - `content-changed`: the hash does not match the contents. Someone edited the file; nothing is loaded.
+- `unknown-kind`: a plot or an interior is of a kind of place the file does not declare. Carries the words, sorted, each once. Nothing is loaded: that plot cannot be drawn at all.
 - `unsound-world`: the world inside fails its integrity check.
 - `broken-quest`: a quest inside cannot be played in this world. Carries which and why.
 - `invalid-save`: not a save.
 - `save-mismatch`: the save names another city's world id.
 
 Art the reader does not have is not in this set. A city always opens; see below. A save from another version of this city is not in it either: it resumes, and the report says what it lost.
+
+## What an import reports, and what it refuses
+
+The stance is report, not refuse: a city opens whenever it can be drawn, and
+`open` says what the reader should know about it. What it says:
+
+- `packs`: how the reader's art stands against the art the file names, see "Opening a city whose art has moved on".
+- `upgraded`: the file was written before charters and has been read against the presets it was drawn with, see "Opening a city written before charters".
+
+What it refuses, in order, the first failure stopping the load: a document
+that is not a bundle, a hash that does not match, a kind of place no charter
+declares (`unknown-kind`), a world that is not sound, a quest that cannot be
+played. A value outside the closed lists of the reader's build (a room use,
+a finish, an anchor kind it does not ship) fails at `@gb/world`'s boundary as
+`invalid-bundle` with the path, because the world schema is that build's own;
+a file from a newer build fails there whole rather than half-loading.
+
+`unknown-kind` is the one place the stance flips. A plot whose word names no
+charter in the file, and none of the presets when the file declares nothing,
+has no frontage, no rooms and no sign to draw from, so there is nothing to
+report about it; the word is the whole message.
+
+## Opening a city written before charters
+
+A `schemaVersion` 1 file names each kind of place by one of the fourteen
+preset words and carries no `charters`; its rooms carry no `use`. Every build
+keeps those presets (`@gb/world`'s `SHIPPED_CHARTERS`), so the file still
+reads, but it reads against a table in the reader's build, and a later build
+could redraw it. So `open` makes it self-describing on the way in:
+
+- `world.charters` is the fourteen presets, in the order the world normalises a declared list to;
+- every room without a `use` gets one, off its label through the charter of the interior it is in (`roomUseOf`);
+- `plot.kind`, `interior.kind` and everything else stay byte for byte as written.
+
+The file on disk is not touched, and its identity is not either:
+`contentHash` is the hash it was shared with, so every save written against
+it resumes whole. `upgraded` is true. Packing the opened city again writes a
+`schemaVersion` 2 file that carries the charters and the uses, hashes to a
+new string, and opens with `upgraded: false` and nothing left to write:
+writing the presets in is a fixed point. A version 2 file opened by a build
+that reads only version 1 fails its schema instead of being drawn against
+that build's presets, which is the fail-closed rule doing its job.
+
+`pack` runs the same step over whatever `World` it is given, so a file it
+writes is self-describing whether the world declared charters or was founded
+on the presets alone.
 
 ## Resuming in a rebuilt city
 
@@ -95,7 +142,7 @@ answer for every city exported so far.
 
 ## What a city has to record to replay the same for everybody
 
-Two halves, and only one of them is here.
+Three things, and only one of them is here.
 
 **The envelope names the art.** `requires` is the renderer's shopping list:
 pack, version, and the sha256 of the pack's own manifest. It is inside the
@@ -104,15 +151,14 @@ the city. Naming a pack is what turns "your city looks different from mine"
 into a named disagreement.
 
 **The document pins the choices.** Which building model a plot got is a
-per-plot fact and belongs on `@gb/world`'s `Plot`, not in this envelope. This
-box cannot hold it even if it wanted to: `open` parses `doc.world` through
-`@gb/world`'s own schema, which strips every key that box does not publish, so
-a pin smuggled into the envelope is gone before the world is loaded. It also
-has to survive outside a bundle, because `Forge.extend` and `@gb/scene` are
-handed a `World` and never a file.
+per-plot fact on `@gb/world`'s `Plot.design`, not in this envelope. `open`
+parses `doc.world` through `@gb/world`'s own schema, which strips every key
+that box does not publish, so a pin smuggled into the envelope is gone before
+the world is loaded.
 
-Until that lands, `requires` is the whole of the promise: it tells a reader the
-art is different, not which plots changed.
+**The document declares its places.** What a kind of place is (its frontage,
+its rooms, its sign, its tint) is `world.charters`, and a version 2 file
+always carries them, so no table in the reader's build can move a building.
 
 ## The hash, and what it is for
 
@@ -138,19 +184,20 @@ the art it was designed against.
 
 ## Invariants
 
-- Nothing is trusted on the way in: shape, then hash, then world soundness, then every quest, in that order, and the first failure stops the load.
+- Nothing is trusted on the way in: shape, then hash, then every kind of place resolving to a charter, then world soundness, then every quest, in that order, and the first failure stops the load.
 - The hash is over a stable serialisation, so two people who generated the same city get the same hash whatever order their keys ended up in.
 - A save is resumed against the city it names by world id. Against the same content hash every id it carries resolves; against another version of the city an id that does not resolve is dropped and reported, never left pointing at a different thing, and a quest id is held to the title the save recorded.
 - Resuming never writes: the save handed in is read, and what it loses is in the report rather than on disk.
-- Opening never rewrites the city. Whatever the reader's art turns out to be, the world that comes out of `open` is byte for byte the world that went into `pack`, and the disagreement lands in `packs` instead.
+- Opening never rewrites a city and never writes to disk. What comes out of `open` is the world that went into `pack`, byte for byte, with one addition for a file written before charters: the presets it was drawn with and the use of every room, written in so the file stops depending on a table in anybody's build. `plot.kind` is never changed, and the disagreement about art lands in `packs`.
 - Art packs are named and versioned in the file, so a missing or different pack is a named answer rather than a city that quietly renders wrong.
+- A kind of place is a fact about the file. A plot whose word the file does not declare is refused by name, never drawn as something else.
 - Static world data and playthrough state never mix: sharing a bundle shares no progress.
 - The published schemas are what this box generates today. Most of what is in them belongs to `@gb/world`, `@gb/quest` and `@gb/play`, so they go stale when one of those boxes adds a field and nothing here changes; `tests/published-schema.test.ts` is what notices, and it costs a file read.
 
 ## How to modify this blackbox safely
 
-Adding a field to the bundle changes every hash, so it needs `schemaVersion: 2` and a migration that can still open version 1. Regenerate `schema/` (`pnpm --filter @gb/bundle run generate`) and run `pnpm --filter @gb/bundle test`.
+`schemaVersion` 2 is what `pack` writes; 1 is read and brought up to 2 on open (`src/self-describing.ts`). Adding a field to the envelope changes every hash, so it needs `schemaVersion: 3` and a step that can still open 1 and 2. Regenerate `schema/` (`pnpm --filter @gb/bundle run generate`) and run `pnpm --filter @gb/bundle test`.
 
 A change in `@gb/world`, `@gb/quest` or `@gb/play` also changes what this box publishes, without a line here moving. Run `pnpm --filter @gb/bundle run generate` and commit the result in the same change; the drift test will fail until you do.
 
-`tests/fixtures/sealed-bundle.json` is a city sealed by this packer and kept as it was shared. It is never regenerated: it is the only proof that a file somebody already has still opens, still plays every quest in it, and still reseals to the hash it was shared with.
+`tests/fixtures/sealed-bundle.json` is a `schemaVersion` 1 city sealed by this packer before charters and kept as it was shared. It is never regenerated: it is the only proof that a file somebody already has still opens under the hash it was shared with, still plays every quest in it, and comes out carrying the presets it was drawn with and nothing else changed.

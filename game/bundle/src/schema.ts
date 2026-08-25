@@ -14,7 +14,8 @@ export const AssetPackRefSchema = z.object({
 
 export const BundleSchema = z.object({
   format: z.literal('game-box.bundle'),
-  schemaVersion: z.literal(1),
+  /** 2 carries a self-describing world: its charters and every room's use written in. 1 is read against the presets and brought up to 2 on open. */
+  schemaVersion: z.literal([1, 2]),
   /** Sha-256 of everything static in here. An import that hashes differently is refused. */
   contentHash: z.string().regex(/^[a-f0-9]{64}$/),
   world: worldContract.schema,

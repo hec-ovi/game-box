@@ -8,10 +8,12 @@ import { reconcilePlayer } from './resume/player.ts'
 import { reconcileProgress } from './resume/progress.ts'
 import { Resolver } from './resume/resolver.ts'
 import { bundleContract, saveContract, type AssetPackRef, type BundleDoc, type SaveDoc } from './schema.ts'
+import { SelfDescribing } from './self-describing.ts'
 import { contentHash } from './stable-json.ts'
 
 export type BundleError =
   | { readonly code: 'invalid-bundle'; readonly violations: readonly SchemaViolation[] }
+  | { readonly code: 'unknown-kind'; readonly words: readonly string[] }
   | { readonly code: 'unsound-world'; readonly problems: readonly IntegrityProblem[] }
   | { readonly code: 'broken-quest'; readonly questId: string; readonly problems: readonly QuestProblem[] }
   | { readonly code: 'content-changed'; readonly expected: string; readonly actual: string }
@@ -24,6 +26,8 @@ export interface OpenedBundle {
   readonly requires: readonly AssetPackRef[]
   /** The art the file names against the art the reader said they have. */
   readonly packs: PackReport
+  /** True when the file was written before charters and its presets and room uses were written in on the way. */
+  readonly upgraded: boolean
   readonly contentHash: string
 }
 
@@ -47,8 +51,8 @@ export class Bundle {
   ): Promise<BundleDoc> {
     const body = {
       format: 'game-box.bundle' as const,
-      schemaVersion: 1 as const,
-      world: world.toJSON(),
+      schemaVersion: 2 as const,
+      world: new SelfDescribing(world.charters()).describe(world.toJSON()).doc,
       quests: [...quests],
       requires: [...(options.requires ?? [])],
       createdWith: { generator: options.generator ?? 'forge', version: options.version ?? '0.1.0' },
@@ -57,9 +61,11 @@ export class Bundle {
   }
 
   /**
-   * Open an untrusted bundle: shape, hash, world soundness, then every quest.
-   * `have` is the art the reader has loaded. A city opens whatever the answer
-   * is; `packs` says how far the reader's art is from the maker's.
+   * Open an untrusted bundle: shape, hash, every kind of place resolving to a
+   * charter, world soundness, then every quest. A file from before charters
+   * is read against the presets and comes out carrying them. `have` is the
+   * art the reader has loaded. A city opens whatever the answer is; `packs`
+   * says how far the reader's art is from the maker's.
    */
   static async open(value: unknown, have: readonly AssetPackRef[] = []): Promise<Result<OpenedBundle, BundleError>> {
     const parsed = bundleContract.parse(value)
@@ -70,7 +76,12 @@ export class Bundle {
     const actual = await contentHash(body)
     if (actual !== claimed) return err({ code: 'content-changed', expected: claimed, actual })
 
-    const world = World.load(doc.world)
+    const describer = SelfDescribing.of(doc.world)
+    const unknown = describer.unknownWords(doc.world)
+    if (unknown.length > 0) return err({ code: 'unknown-kind', words: unknown })
+    const described = describer.describe(doc.world)
+
+    const world = World.load(described.doc)
     if (!world.ok) {
       return world.error.code === 'inconsistent-world'
         ? err({ code: 'unsound-world', problems: world.error.problems })
@@ -99,6 +110,7 @@ export class Bundle {
       quests,
       requires: doc.requires,
       packs: comparePacks(doc.requires, have),
+      upgraded: described.upgraded,
       contentHash: claimed,
     })
   }

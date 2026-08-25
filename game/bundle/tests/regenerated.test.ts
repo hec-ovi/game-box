@@ -10,8 +10,12 @@ import { Bundle, type OpenedBundle, type ResumeEntry } from '../src/index.ts'
  * seed or not, and the save the player wrote against the first build is opened
  * against the second. Two offline authors on one seed stand in for that: the
  * streets are the same, ids are minted in the same order, and what each id
- * names is different, or missing.
+ * names is different, or missing. `SHARED` writes more of everything than
+ * `REBUILT`, so every kind of thing has an id the rebuilt town has not got.
  */
+const SHARED = 'three'
+const REBUILT = 'six'
+
 async function town(author: string): Promise<OpenedBundle> {
   const forge = new Forge(new OfflineNarrator(author))
   const built = await forge.build({ theme: 'harbour town', seed: 'bundle-test', blocksX: 2, blocksY: 2, blockCells: 14 })
@@ -44,8 +48,8 @@ const has = (entries: readonly ResumeEntry[], entry: ResumeEntry) => entries.som
 
 describe('a save opened in a rebuilt city', () => {
   it('keeps what still resolves, drops the rest, and says which was which', async () => {
-    const first = await town('two')
-    const second = await town('one')
+    const first = await town(SHARED)
+    const second = await town(REBUILT)
     expect(second.contentHash).not.toBe(first.contentHash)
     const moved = whatMoved(first, second)
     const gone = { item: moved.item.gone!, npc: moved.npc.gone!, anchor: moved.anchor.gone! }
@@ -131,7 +135,7 @@ describe('a save opened in a rebuilt city', () => {
   })
 
   it('puts a player standing in a room the city has not got back at the start', async () => {
-    const city = await town('one')
+    const city = await town(REBUILT)
     const player = PlayerState.create(city.world.id, 0)
     player.setWhere({ x: 2, z: 3, heading: 1, interiorId: 'interior_0001' })
     const save = Bundle.save(city, player, QuestLog.create(city.quests, player))
@@ -145,8 +149,8 @@ describe('a save opened in a rebuilt city', () => {
   })
 
   it('resolves a quest by id alone when the save was written before titles were recorded', async () => {
-    const first = await town('two')
-    const second = await town('one')
+    const first = await town(SHARED)
+    const second = await town(REBUILT)
     const quest = first.quests[0]!
     const player = PlayerState.create(first.world.id, 0)
     const log = QuestLog.create(first.quests, player)
