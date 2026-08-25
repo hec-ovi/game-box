@@ -1,9 +1,10 @@
-import { SIGN } from '@gb/kitbash'
+import { SIGN, lightsFor } from '@gb/kitbash'
 import type { Dressing } from '@gb/scene'
 import type { AnchorKind, CellKind, FurnitureProp, Item, Npc, Plot } from '@gb/world'
 import * as THREE from 'three'
 import { Entrances } from './entrance.ts'
 import type { Library } from './library.ts'
+import { BuildingLights, type LightEmitter } from './lights.ts'
 import { orient, turnsFor } from './orient.ts'
 import { designFor } from './pin.ts'
 
@@ -28,16 +29,24 @@ export interface BuildingSize {
  * on one material; this lifts those meshes off the kit's building and hangs
  * them on the prefab, so a prefab street still has names over its doors and the
  * whole town's signage is still one draw.
+ *
+ * What the building throws onto the street is published beside it: `lights`
+ * answers the lit lobby and the screens off the geometry the plot is drawn
+ * with, and the kit's own emitters for the signs it hung.
  */
 export class PrefabDressing implements Dressing {
   readonly #library: Library
   readonly #rest: Dressing
   readonly #entrances: Entrances
+  readonly #lights: BuildingLights
+  /** Plots the dressing behind hung signs on, so their lights are published with them. */
+  readonly #signed = new Set<string>()
 
   constructor(library: Library, rest: Dressing) {
     this.#library = library
     this.#rest = rest
     this.#entrances = new Entrances(library.catalogue.atlas.finishes)
+    this.#lights = new BuildingLights(library.catalogue.atlas.finishes, library.tints)
   }
 
   building(plot: Plot, size: BuildingSize): THREE.Object3D {
@@ -56,8 +65,24 @@ export class PrefabDressing implements Dressing {
     const building = new THREE.Group()
     building.name = plot.id
     building.add(mesh)
-    for (const sign of signsOn(this.#rest.building(plot, size))) building.add(sign)
+    const signs = signsOn(this.#rest.building(plot, size))
+    if (signs.length) this.#signed.add(plot.id)
+    for (const sign of signs) building.add(sign)
     return building
+  }
+
+  /**
+   * The light this plot's building throws, in its own frame: the lobby of a
+   * door you can walk through, one emitter per screen, and the kit's own for
+   * every sign `building` hung. Asked after `building`, since that is what
+   * decides whether signs were hung; a plot the catalogue handed to the
+   * dressing behind has nothing of its own here.
+   */
+  lights(plot: Plot, size: BuildingSize): LightEmitter[] {
+    const design = designFor(this.#library.catalogue, plot, size)
+    const geometry = design ? this.#library.geometry(design.model) : undefined
+    const own = design && geometry ? this.#lights.of(orient(geometry, turnsFor(plot.entrance.facing), design.mirror), plot.entrance.facing, plot.interiorId !== undefined, design.rooms) : []
+    return this.#signed.has(plot.id) ? [...own, ...lightsFor(plot, size)] : own
   }
 
   prop(prop: FurnitureProp): THREE.Object3D {

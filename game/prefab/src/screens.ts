@@ -18,9 +18,9 @@ export const SCREEN_SIZE = 256
 
 /**
  * The screens in the order they sit in the strip. Which one a panel carries is
- * the plot's own uv shift, so the count is what the shift is folded onto.
+ * the plot's own uv shift folded onto this count, in `pictureFor`.
  */
 export const SCREEN_PICTURES: readonly string[] = ['portrait', 'bottle', 'figure', 'bowl', 'bloom', 'skyline']
 
-/** The finish a lit screen wears. A face on this layer is a panel, not a wall. */
+/** The finish a lit screen wears. A face on this layer is a panel, not a wall; the plate's edges wear its own dark colour. */
 export const DISPLAY_FINISH = 'display'

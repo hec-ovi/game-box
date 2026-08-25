@@ -1,8 +1,7 @@
 {
   "id": "corpo-a",
-  "family": "a",
   "facade": "facade-a-3",
-  "note": "a dark corporate slab: a deep entrance bay, a lit board over the parapet, a banner beside the door, two cyan seams up the front and a lit parapet stepped back off the street",
+  "note": "a dark corporate slab: a deep entrance bay, a lit board over the parapet from three storeys up, a banner well clear of the door and a lit parapet stepped back off the street",
   "kinds": [
     "office",
     "hotel",
@@ -16,13 +15,6 @@
   },
   "shopfront": true,
   "fascia": true,
-  "lines": {
-    "section": "ground",
-    "count": 2,
-    "spread": "third",
-    "colour": "cyan",
-    "thickness": 0.08
-  },
   "displays": [
     "board",
     "banner"

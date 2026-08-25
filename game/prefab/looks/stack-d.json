@@ -1,8 +1,7 @@
 {
   "id": "stack-d",
-  "family": "d",
   "facade": "facade-d-2",
-  "note": "a lit middle with a dark cap: glazing over the entrance floor, cyan seams at street level",
+  "note": "a lit middle with a dark cap: glazing over the entrance floor, a cyan tube round the top",
   "kinds": [
     "office",
     "apartment",
@@ -16,12 +15,5 @@
   },
   "shopfront": true,
   "glass": "body",
-  "lines": {
-    "section": "ground",
-    "count": 2,
-    "spread": "quarter",
-    "colour": "cyan",
-    "thickness": 0.1
-  },
   "crown": "cyan"
 }

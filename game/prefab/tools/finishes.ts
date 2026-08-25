@@ -31,7 +31,7 @@ export const GRID = { facade: FACADE.grid, shopfront: SHOPFRONT.grid } as const
 
 const FOLDER = resolve(import.meta.dirname, '../finishes')
 
-/** One look's wall above the street: what four bays by two floors are made of. */
+/** One look's wall: what four bays by two floors are made of, above the street and on the base under it. */
 export async function facadePicture(look: Look): Promise<Tile> {
   return await committed(`${look.facade}.png`)
 }

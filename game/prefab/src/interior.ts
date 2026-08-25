@@ -30,6 +30,7 @@ import type { Node } from 'three/webgpu'
 import { layerIndex } from './layer.ts'
 import { ROOM_BANKS, ROOM_SIZE } from './rooms.ts'
 import { surfaceFrame } from './surface.ts'
+import { WALL } from './wall.ts'
 
 /**
  * What is behind the glass, drawn in the fragment shader.
@@ -77,9 +78,10 @@ const NEAR_DARK = 0.25
  * How dark a floor, a ceiling or a side wall is against the back wall.
  *
  * The picture is a photograph of a room from its window, so it belongs on the
- * back wall; the other four faces sample the row or the column of it they meet
- * and would smear that across half a pane. Taking them well down turns the
- * smear into what it should have been, which is a surface out of the light.
+ * back wall. The other four faces wear the same picture folded round the back
+ * edges, read along the depth of the room, so a side wall is shelves and light
+ * fittings seen sideways rather than one column of the picture drawn out across
+ * three metres. Taken down, because they are out of the light.
  */
 const SIDE_DARK = 0.4
 
@@ -132,36 +134,38 @@ export interface WindowKind {
   readonly shortest: number
 }
 
-/** A wall above the street: a bay of curtain wall, six panes, an office or a flat behind it. */
+/**
+ * A wall above the street: a bay of curtain wall, six panes, an office or a
+ * flat behind it. The bay is 3 m and the opening 2.1 m, and a room 2.4 m deep
+ * behind that is a room; the picture carries its own depth past the box.
+ */
 export const FACADE: WindowKind = {
   grid: { across: 4, down: 2 },
   frame: { across: 0.15, down: 0.17 },
   panes: { across: 3, down: 2, mullion: 0.055 },
-  deep: 3.4,
+  deep: 2.4,
   keys: 1,
   street: false,
   shortest: 1.6,
 }
 
-/** Street level: one wide pane a player stands a metre from, and most of them are open. */
+/**
+ * Street level: one wide pane a player stands a metre from, and most of them
+ * are open. The opening is 2.6 m wide and the floor 3 m deep, the shallow end
+ * of a real shop floor, so what is seen through the glass is the shop and not
+ * the tunnel to it.
+ */
 export const SHOPFRONT: WindowKind = {
   grid: { across: 2, down: 1 },
   frame: { across: 0.07, down: 0.11 },
   panes: { across: 2, down: 1, mullion: 0.03 },
-  deep: 5,
+  deep: 3,
   keys: 0.32,
   street: true,
   shortest: 1.6,
 }
 
-/**
- * A layer named `wall:<picture>` is one of the pack's tiling wall pictures, and
- * the shader cuts bays out of it. The rest of the name is the committed file it
- * came from, so a manifest says which picture a layer holds.
- */
-export const WALL = 'wall:'
-
-/** Which kind of window a finish wears, if any: a roof, a door and a neon tube have none. */
+/** Which kind of window a finish wears, if any: a base, a door and a neon tube have none. */
 export function windowsOn(finish: string): WindowKind | undefined {
   if (finish.startsWith(WALL)) return FACADE
   if (finish === 'glass') return SHOPFRONT
@@ -220,8 +224,6 @@ export class InteriorWindows {
 
         // a bay is the size it really is however the producer stretched the
         // picture onto that wall, and whichever way round the building is
-        const along = frame.along
-        const down = frame.down
         const wide = frame.wide.div(bay.x)
         const tall = frame.tall.div(bay.y)
 
@@ -253,21 +255,33 @@ export class InteriorWindows {
         // vertices and leaves the room where it was
         const face = normalize(normalWorld)
         const view = normalize(positionWorld.sub(cameraPosition))
-        const ray = vec3(view.dot(along.normalize()), view.dot(down.normalize()), max(view.dot(face).negate(), 1e-3))
+        const ray = vec3(view.dot(frame.along.normalize()), view.dot(frame.down.normalize()), max(view.dot(face).negate(), 1e-3))
         const from = vec3(at.x.mul(wide), at.y.mul(tall), 0)
-        const hit = min(min(reach(from.x, wide, ray.x), reach(from.y, tall, ray.y)), pane.w.div(ray.z))
+        const toSide = reach(from.x, wide, ray.x)
+        const toFloor = reach(from.y, tall, ray.y)
+        const toBack = pane.w.div(ray.z)
+        const hit = min(min(toSide, toFloor), toBack)
         const met = from.add(ray.mul(hit))
         const sideways = clamp(met.x.div(wide), 0, 1)
+        const upward = clamp(met.y.div(tall), 0, 1)
         const behind = clamp(met.z.div(pane.w), 0, 1)
         const wall = smoothstep(BACK_WALL, 1, behind)
+
+        // the picture belongs on the back wall, and the other four faces wear
+        // it folded round the back edges: a side wall reads it along the depth,
+        // the floor and the ceiling read it back from the glass, and each one
+        // meets the back wall on the row or column it shares with it
+        const onBack = toBack.lessThanEqual(toSide).and(toBack.lessThanEqual(toFloor))
+        const onSide = toSide.lessThan(toBack).and(toSide.lessThanEqual(toFloor))
+        const along = select(ray.x.greaterThanEqual(0), behind, float(1).sub(behind))
+        const back = select(ray.y.greaterThanEqual(0), behind, float(1).sub(behind))
+        const u = select(onBack, sideways, select(onSide, along, sideways))
+        const v = select(onBack, upward, select(onSide, upward, back))
 
         // one fetch, at the level the wall itself is being read at. The hit
         // point jumps where the ray changes face, and a mip chosen off that
         // would band along every one of those lines
-        const inside = texture(
-          rooms,
-          vec2(mix(sideways, float(1).sub(sideways), step(0.5, hash(seed.add(6151)))), clamp(met.y.div(tall), 0, 1)),
-        )
+        const inside = texture(rooms, vec2(mix(u, float(1).sub(u), step(0.5, hash(seed.add(6151)))), v))
           .depth(picture)
           .level(max(max(aa.x, aa.y).mul(ROOM_SIZE).log2(), 0)).rgb
 

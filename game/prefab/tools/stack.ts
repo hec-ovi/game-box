@@ -14,8 +14,17 @@ const STOREY = 3.2
 /** The board on the parapet storey: how much of that face it takes, and the rows it stands on. */
 const BOARD = { share: 0.78, low: 4, high: 28, least: 3 } as const
 
-/** The banner beside the entrance: the column it starts at, how wide, and the rows it stands on. */
-const BANNER = { left: 3, wide: 12, low: 2, high: 25 } as const
+/** The banner beside the entrance: the column it starts at, how wide at most, the narrowest worth hanging, and the rows it stands on. */
+const BANNER = { left: 3, wide: 12, least: 7, low: 2, high: 25 } as const
+
+/**
+ * How far an advert keeps from the entrance, in the producer's 10 cm cells: one
+ * of the city's 2 m cells, which is the entrance cell's own width. A banner
+ * ends that far short of the door, and a board hangs only where the parapet
+ * storey starts that far above the door head, which puts it above the sign
+ * `@gb/kitbash` writes over the door as well.
+ */
+export const CLEAR = 20
 
 /**
  * The bands one building stands on, chosen so the stack adds up to the exact
@@ -73,24 +82,6 @@ export function verbsFor(look: Look, bucket: Bucket, project: string): string[][
     if (high - low >= 4) verbs.push(['put', 'panel', `2,${low}`, `${face - 3},${high}`, '--section', 'ground', '--side', 'S'])
   }
 
-  if (look.lines && (look.lines.section !== 'body' || stack.bodyFloors > 0)) {
-    const spread = bucket.front / (look.lines.spread === 'third' ? 3 : 4)
-    verbs.push([
-      'line',
-      look.lines.section,
-      '--side',
-      'S',
-      '--count',
-      String(look.lines.count),
-      '--spacing',
-      metres(spread),
-      '--colour',
-      look.lines.colour,
-      '--thickness',
-      metres(look.lines.thickness),
-    ])
-  }
-
   if (look.glass === 'crown') verbs.push(['set-band', 'crown', '--template', 'bulk-glass'])
   if (look.crown) verbs.push(['crown', 'crown', '--colour', look.crown])
   verbs.push(['build'])
@@ -98,16 +89,15 @@ export function verbsFor(look: Look, bucket: Bucket, project: string): string[][
 }
 
 /**
- * Where a look's lit screens land, in the producer's own 10 cm cells.
+ * Where a look's lit screens land, in the producer's own 10 cm cells, and
+ * never over or beside the door.
  *
  * A board goes across the parapet storey, wide and high enough to be read from
- * the far pavement, which is what every reference puts over a street. A banner
- * stands beside the entrance at the left margin, clear of the door in the
- * middle of the face, clear of the fascia band above it and clear of the neon
- * runs, which sit in the middle third.
- *
- * Both are left off where the band they belong on has no room: a one storey
- * building has a 0.8 m parapet, and a board squeezed into that is a stripe.
+ * the far pavement, and only where that storey starts `CLEAR` above the door
+ * head: on a three storey building and up, which leaves the entrance and the
+ * sign over it a whole storey of wall to themselves. A banner stands at the
+ * left margin of the street level and ends `CLEAR` short of the door; a front
+ * too narrow to hold `BANNER.least` of it that way carries none.
  *
  * A board is measured against the parapet's own face, not the plot's frontage,
  * because a look that steps its top storey back off the street has that much
@@ -116,15 +106,18 @@ export function verbsFor(look: Look, bucket: Bucket, project: string): string[][
 function displays(look: Look, bucket: Bucket, stack: Stack): string[][] {
   const wants = look.displays ?? []
   const verbs: string[][] = []
+  const doorHead = Math.round(look.door.tall * 10)
 
-  if (wants.includes('board') && stack.crown >= BOARD.least) {
+  if (wants.includes('board') && stack.crown >= BOARD.least && Math.round((stack.ground + stack.bodyFloors * stack.bodyFloor) * 10) >= doorHead + CLEAR) {
     const parapet = Math.round((bucket.front - (look.setback ?? 0) * 2) * 10)
     const wide = Math.round(parapet * BOARD.share)
     const left = Math.round((parapet - wide) / 2)
     verbs.push(panel(left, BOARD.low, left + wide - 1, BOARD.high, 'crown'))
   }
-  if (wants.includes('banner') && Math.round(stack.ground * 10) - 3 > BANNER.high && Math.round(look.door.tall * 10) + 3 > BANNER.high) {
-    verbs.push(panel(BANNER.left, BANNER.low, BANNER.left + BANNER.wide - 1, BANNER.high, 'ground'))
+  if (wants.includes('banner') && doorHead + 3 > BANNER.high) {
+    const doorLeft = Math.round((bucket.front - look.door.wide) * 5)
+    const right = Math.min(BANNER.left + BANNER.wide - 1, doorLeft - CLEAR - 1)
+    if (right - BANNER.left + 1 >= BANNER.least) verbs.push(panel(BANNER.left, BANNER.low, right, BANNER.high, 'ground'))
   }
   return verbs
 }

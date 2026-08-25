@@ -1,18 +1,18 @@
 {
   "pack": "gb-buildings",
-  "version": "1.5.0",
-  "sha256": "2f8ff4c23617d6b2dd7790627e5c771e92b6bdbc14f924ebc24b8ce69414558b",
+  "version": "1.6.0",
+  "sha256": "90c52ad6625878c7663a1f325100634b91ef9616b49d7c57b6bb23a78f8a167e",
   "producer": "glb-buildings@6e05c32",
   "atlas": {
     "colour": {
       "size": 256,
-      "layers": 19,
-      "sha256": "2b8d712f598f9d4171096235b02b8692c7f56b690cb5dea55fd05a0e66492240"
+      "layers": 22,
+      "sha256": "41ccfba8e631ea8691bb1b0bacd8fc720f8d11e9a30a40d65cf45f9507df7fba"
     },
     "emissive": {
       "size": 256,
-      "layers": 19,
-      "sha256": "69c0e2bbfcdf784b12c52b38aaee173eaa0889507e9f835563691ae77b27c892"
+      "layers": 22,
+      "sha256": "ca0405f6692d80446c4307371b9f1ccd4555c0171e706ff75256644efdc1b89e"
     },
     "rooms": {
       "size": 256,
@@ -32,10 +32,13 @@
       "wall:facade-b-3",
       "wall:facade-d-2",
       "wall:facade-c",
-      "a:base",
-      "b:base",
-      "c:base",
-      "d:base",
+      "base:facade-b",
+      "base:facade-c-2",
+      "base:facade-a-3",
+      "base:facade-d",
+      "base:facade-b-3",
+      "base:facade-d-2",
+      "base:facade-c",
       "door",
       "display",
       "glass",
@@ -60,7 +63,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 240,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -78,7 +81,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 240,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -96,7 +99,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 240,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -114,7 +117,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 240,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -132,7 +135,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -150,7 +153,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -168,7 +171,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -186,7 +189,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -204,7 +207,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -222,7 +225,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -240,7 +243,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -258,7 +261,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -276,7 +279,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -294,7 +297,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -312,7 +315,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -330,7 +333,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -348,7 +351,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 252,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -366,7 +369,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 252,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -384,7 +387,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 252,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -402,7 +405,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 252,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -420,7 +423,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 252,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -438,7 +441,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 252,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -456,7 +459,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 252,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -474,7 +477,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 252,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -492,7 +495,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 252,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -510,7 +513,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 252,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -528,7 +531,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 252,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -546,7 +549,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 252,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -564,7 +567,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 252,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -582,7 +585,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 252,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -600,7 +603,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 252,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -618,7 +621,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 252,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -636,7 +639,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 264,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -654,7 +657,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 264,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -672,7 +675,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 264,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -690,7 +693,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 264,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -708,7 +711,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 264,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -726,7 +729,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 264,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -744,7 +747,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 264,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -762,7 +765,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 264,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -780,7 +783,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 264,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -798,7 +801,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 264,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -816,7 +819,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 264,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -834,7 +837,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 264,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -852,7 +855,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 264,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -870,7 +873,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 264,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -888,7 +891,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 264,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -906,7 +909,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 264,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -924,7 +927,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 272,
+      "triangles": 196,
       "door": {
         "along": 0
       }
@@ -942,7 +945,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 272,
+      "triangles": 196,
       "door": {
         "along": 0
       }
@@ -960,7 +963,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 272,
+      "triangles": 196,
       "door": {
         "along": 0
       }
@@ -978,7 +981,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 272,
+      "triangles": 196,
       "door": {
         "along": 0
       }
@@ -996,7 +999,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 272,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -1014,7 +1017,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 272,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -1032,7 +1035,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 272,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -1050,7 +1053,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 272,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -1068,7 +1071,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 272,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -1086,7 +1089,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 272,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -1104,7 +1107,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 272,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -1122,7 +1125,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 272,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -1140,7 +1143,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 272,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -1158,7 +1161,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 272,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -1176,7 +1179,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 272,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -1194,7 +1197,7 @@
         "shop",
         "hotel"
       ],
-      "triangles": 272,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -2364,7 +2367,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 240,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -2382,7 +2385,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 240,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -2400,7 +2403,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 240,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -2418,7 +2421,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 240,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -2436,7 +2439,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 240,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -2454,7 +2457,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 240,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -2472,7 +2475,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 240,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -2490,7 +2493,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 240,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -2508,7 +2511,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -2526,7 +2529,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -2544,7 +2547,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -2562,7 +2565,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -2580,7 +2583,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -2598,7 +2601,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -2616,7 +2619,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -2634,7 +2637,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -2652,7 +2655,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 264,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -2670,7 +2673,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 264,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -2688,7 +2691,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 264,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -2706,7 +2709,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 264,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -2724,7 +2727,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 264,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -2742,7 +2745,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 264,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -2760,7 +2763,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 264,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -2778,7 +2781,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 264,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -2796,7 +2799,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 264,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -2814,7 +2817,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 264,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -2832,7 +2835,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 264,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -2850,7 +2853,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 264,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -2868,7 +2871,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 264,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -2886,7 +2889,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 264,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -2904,7 +2907,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 264,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -2922,7 +2925,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 264,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -2940,7 +2943,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 276,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -2958,7 +2961,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 276,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -2976,7 +2979,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 276,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -2994,7 +2997,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 276,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -3012,7 +3015,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 276,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -3030,7 +3033,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 276,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -3048,7 +3051,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 276,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -3066,7 +3069,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 276,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -3084,7 +3087,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 276,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -3102,7 +3105,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 276,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -3120,7 +3123,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 276,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -3138,7 +3141,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 276,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -3156,7 +3159,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 276,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -3174,7 +3177,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 276,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -3192,7 +3195,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 276,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -3210,7 +3213,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 276,
+      "triangles": 212,
       "door": {
         "along": 0
       }
@@ -3228,7 +3231,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 284,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -3246,7 +3249,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 284,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -3264,7 +3267,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 284,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -3282,7 +3285,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 284,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -3300,7 +3303,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 284,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -3318,7 +3321,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 284,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -3336,7 +3339,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 284,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -3354,7 +3357,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 284,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -3372,7 +3375,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 284,
+      "triangles": 220,
       "door": {
         "along": 0
       }
@@ -3390,7 +3393,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 284,
+      "triangles": 220,
       "door": {
         "along": 0
       }
@@ -3408,7 +3411,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 284,
+      "triangles": 220,
       "door": {
         "along": 0
       }
@@ -3426,7 +3429,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 284,
+      "triangles": 220,
       "door": {
         "along": 0
       }
@@ -3444,7 +3447,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 284,
+      "triangles": 220,
       "door": {
         "along": 0
       }
@@ -3462,7 +3465,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 284,
+      "triangles": 220,
       "door": {
         "along": 0
       }
@@ -3480,7 +3483,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 284,
+      "triangles": 220,
       "door": {
         "along": 0
       }
@@ -3498,7 +3501,7 @@
         "station",
         "apartment"
       ],
-      "triangles": 284,
+      "triangles": 220,
       "door": {
         "along": 0
       }
@@ -4668,7 +4671,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 272,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -4686,7 +4689,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 272,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -4704,7 +4707,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 272,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -4722,7 +4725,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 272,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -4740,7 +4743,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 272,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -4758,7 +4761,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 272,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -4776,7 +4779,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 272,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -4794,7 +4797,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 272,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -4812,7 +4815,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 272,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -4830,7 +4833,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 272,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -4848,7 +4851,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 272,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -4866,7 +4869,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 272,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -4884,7 +4887,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 272,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -4902,7 +4905,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 272,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -4920,7 +4923,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 272,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -4938,7 +4941,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 272,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -4956,7 +4959,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 284,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -4974,7 +4977,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 284,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -4992,7 +4995,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 284,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -5010,7 +5013,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 284,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -5028,7 +5031,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 284,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -5046,7 +5049,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 284,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -5064,7 +5067,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 284,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -5082,7 +5085,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 284,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -5100,7 +5103,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 284,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -5118,7 +5121,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 284,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -5136,7 +5139,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 284,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -5154,7 +5157,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 284,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -5172,7 +5175,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 284,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -5190,7 +5193,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 284,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -5208,7 +5211,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 284,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -5226,7 +5229,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 284,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -5244,7 +5247,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 296,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -5262,7 +5265,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 296,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -5280,7 +5283,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 296,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -5298,7 +5301,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 296,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -5316,7 +5319,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 296,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -5334,7 +5337,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 296,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -5352,7 +5355,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 296,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -5370,7 +5373,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 296,
+      "triangles": 188,
       "door": {
         "along": 0
       }
@@ -5388,7 +5391,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 296,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -5406,7 +5409,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 296,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -5424,7 +5427,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 296,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -5442,7 +5445,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 296,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -5460,7 +5463,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 296,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -5478,7 +5481,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 296,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -5496,7 +5499,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 296,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -5514,7 +5517,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 296,
+      "triangles": 200,
       "door": {
         "along": 0
       }
@@ -5532,7 +5535,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 304,
+      "triangles": 196,
       "door": {
         "along": 0
       }
@@ -5550,7 +5553,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 304,
+      "triangles": 196,
       "door": {
         "along": 0
       }
@@ -5568,7 +5571,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 304,
+      "triangles": 196,
       "door": {
         "along": 0
       }
@@ -5586,7 +5589,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 304,
+      "triangles": 196,
       "door": {
         "along": 0
       }
@@ -5604,7 +5607,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 304,
+      "triangles": 196,
       "door": {
         "along": 0
       }
@@ -5622,7 +5625,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 304,
+      "triangles": 196,
       "door": {
         "along": 0
       }
@@ -5640,7 +5643,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 304,
+      "triangles": 196,
       "door": {
         "along": 0
       }
@@ -5658,7 +5661,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 304,
+      "triangles": 196,
       "door": {
         "along": 0
       }
@@ -5676,7 +5679,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 304,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -5694,7 +5697,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 304,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -5712,7 +5715,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 304,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -5730,7 +5733,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 304,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -5748,7 +5751,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 304,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -5766,7 +5769,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 304,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -5784,7 +5787,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 304,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -5802,7 +5805,7 @@
         "restaurant",
         "bar"
       ],
-      "triangles": 304,
+      "triangles": 208,
       "door": {
         "along": 0
       }
@@ -5820,7 +5823,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -5838,7 +5841,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -5856,7 +5859,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -5874,7 +5877,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -5892,7 +5895,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -5910,7 +5913,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -5928,7 +5931,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -5946,7 +5949,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -5964,7 +5967,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -5982,7 +5985,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -6000,7 +6003,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -6018,7 +6021,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -6036,7 +6039,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -6054,7 +6057,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -6072,7 +6075,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -6090,7 +6093,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -6108,7 +6111,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -6126,7 +6129,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -6144,7 +6147,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -6162,7 +6165,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -6180,7 +6183,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -6198,7 +6201,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -6216,7 +6219,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -6234,7 +6237,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -6252,7 +6255,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -6270,7 +6273,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -6288,7 +6291,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -6306,7 +6309,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -6324,7 +6327,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -6342,7 +6345,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -6360,7 +6363,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -6378,7 +6381,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 228,
+      "triangles": 164,
       "door": {
         "along": 0
       }
@@ -6396,7 +6399,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -6414,7 +6417,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -6432,7 +6435,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -6450,7 +6453,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -6468,7 +6471,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -6486,7 +6489,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -6504,7 +6507,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -6522,7 +6525,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -6540,7 +6543,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -6558,7 +6561,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -6576,7 +6579,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -6594,7 +6597,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -6612,7 +6615,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -6630,7 +6633,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -6648,7 +6651,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -6666,7 +6669,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 240,
+      "triangles": 176,
       "door": {
         "along": 0
       }
@@ -6684,7 +6687,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 248,
+      "triangles": 184,
       "door": {
         "along": 0
       }
@@ -6702,7 +6705,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 248,
+      "triangles": 184,
       "door": {
         "along": 0
       }
@@ -6720,7 +6723,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 248,
+      "triangles": 184,
       "door": {
         "along": 0
       }
@@ -6738,7 +6741,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 248,
+      "triangles": 184,
       "door": {
         "along": 0
       }
@@ -6756,7 +6759,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 248,
+      "triangles": 184,
       "door": {
         "along": 0
       }
@@ -6774,7 +6777,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 248,
+      "triangles": 184,
       "door": {
         "along": 0
       }
@@ -6792,7 +6795,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 248,
+      "triangles": 184,
       "door": {
         "along": 0
       }
@@ -6810,7 +6813,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 248,
+      "triangles": 184,
       "door": {
         "along": 0
       }
@@ -6828,7 +6831,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 248,
+      "triangles": 184,
       "door": {
         "along": 0
       }
@@ -6846,7 +6849,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 248,
+      "triangles": 184,
       "door": {
         "along": 0
       }
@@ -6864,7 +6867,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 248,
+      "triangles": 184,
       "door": {
         "along": 0
       }
@@ -6882,7 +6885,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 248,
+      "triangles": 184,
       "door": {
         "along": 0
       }
@@ -6900,7 +6903,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 248,
+      "triangles": 184,
       "door": {
         "along": 0
       }
@@ -6918,7 +6921,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 248,
+      "triangles": 184,
       "door": {
         "along": 0
       }
@@ -6936,7 +6939,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 248,
+      "triangles": 184,
       "door": {
         "along": 0
       }
@@ -6954,7 +6957,7 @@
         "station",
         "workshop"
       ],
-      "triangles": 248,
+      "triangles": 184,
       "door": {
         "along": 0
       }
@@ -7260,7 +7263,7 @@
         "house",
         "clinic"
       ],
-      "triangles": 192,
+      "triangles": 180,
       "door": {
         "along": 0
       }
@@ -7278,7 +7281,7 @@
         "house",
         "clinic"
       ],
-      "triangles": 192,
+      "triangles": 180,
       "door": {
         "along": 0
       }
@@ -7296,7 +7299,7 @@
         "house",
         "clinic"
       ],
-      "triangles": 192,
+      "triangles": 180,
       "door": {
         "along": 0
       }
@@ -7314,7 +7317,7 @@
         "house",
         "clinic"
       ],
-      "triangles": 192,
+      "triangles": 180,
       "door": {
         "along": 0
       }
@@ -7332,7 +7335,7 @@
         "house",
         "clinic"
       ],
-      "triangles": 192,
+      "triangles": 180,
       "door": {
         "along": 0
       }
@@ -7350,7 +7353,7 @@
         "house",
         "clinic"
       ],
-      "triangles": 192,
+      "triangles": 180,
       "door": {
         "along": 0
       }
@@ -7368,7 +7371,7 @@
         "house",
         "clinic"
       ],
-      "triangles": 192,
+      "triangles": 180,
       "door": {
         "along": 0
       }
@@ -7386,7 +7389,7 @@
         "house",
         "clinic"
       ],
-      "triangles": 192,
+      "triangles": 180,
       "door": {
         "along": 0
       }
@@ -7404,7 +7407,7 @@
         "house",
         "clinic"
       ],
-      "triangles": 192,
+      "triangles": 180,
       "door": {
         "along": 0
       }
@@ -7422,7 +7425,7 @@
         "house",
         "clinic"
       ],
-      "triangles": 192,
+      "triangles": 180,
       "door": {
         "along": 0
       }
@@ -7440,7 +7443,7 @@
         "house",
         "clinic"
       ],
-      "triangles": 192,
+      "triangles": 180,
       "door": {
         "along": 0
       }
@@ -7458,7 +7461,7 @@
         "house",
         "clinic"
       ],
-      "triangles": 192,
+      "triangles": 180,
       "door": {
         "along": 0
       }
@@ -7476,7 +7479,7 @@
         "house",
         "clinic"
       ],
-      "triangles": 192,
+      "triangles": 180,
       "door": {
         "along": 0
       }
@@ -7494,7 +7497,7 @@
         "house",
         "clinic"
       ],
-      "triangles": 192,
+      "triangles": 180,
       "door": {
         "along": 0
       }
@@ -7512,7 +7515,7 @@
         "house",
         "clinic"
       ],
-      "triangles": 192,
+      "triangles": 180,
       "door": {
         "along": 0
       }
@@ -7530,7 +7533,7 @@
         "house",
         "clinic"
       ],
-      "triangles": 192,
+      "triangles": 180,
       "door": {
         "along": 0
       }

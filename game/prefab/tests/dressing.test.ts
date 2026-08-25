@@ -1,11 +1,11 @@
-import { KitDressing, SIGN, placeholderKit } from '@gb/kitbash'
+import { KitDressing, SIGN, lightsFor, placeholderKit } from '@gb/kitbash'
 import { Greybox, buildCity } from '@gb/scene'
 import { World } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { PrefabDressing } from '../src/dressing.ts'
 import { PROUD } from '../src/fit.ts'
-import { FINISHES, catalogueOf, libraryOf, plotOf } from './support.ts'
+import { FINISHES, PLATE, catalogueOf, libraryOf, plotOf } from './support.ts'
 
 const catalogue = catalogueOf()
 const dressing = new PrefabDressing(libraryOf(catalogue), new Greybox())
@@ -29,12 +29,15 @@ function finishesOn(object: THREE.Object3D): string[] {
   return [...seen].sort((a, b) => a - b).map((index) => FINISHES[index]!)
 }
 
+/** The fixture plot turned a quarter: the same 8 by 12 m shape with its door on an east or west wall. */
+const turned = { x: 4, y: 4, w: 6, h: 4 }
+
 describe('dressing a plot', () => {
   it('puts the door on the wall the entrance is on, at all four points of the compass', () => {
     const north = doorAt(dressing.building(plotOf({ entrance: { cell: { x: 6, y: 3 }, facing: 'north' } }), { width: 8, depth: 12, height: 7.2 }))
     const south = doorAt(dressing.building(plotOf({ entrance: { cell: { x: 6, y: 10 }, facing: 'south' } }), { width: 8, depth: 12, height: 7.2 }))
-    const west = doorAt(dressing.building(plotOf({ entrance: { cell: { x: 3, y: 6 }, facing: 'west' } }), { width: 12, depth: 8, height: 7.2 }))
-    const east = doorAt(dressing.building(plotOf({ entrance: { cell: { x: 8, y: 6 }, facing: 'east' } }), { width: 12, depth: 8, height: 7.2 }))
+    const west = doorAt(dressing.building(plotOf({ rect: turned, entrance: { cell: { x: 3, y: 6 }, facing: 'west' } }), { width: 12, depth: 8, height: 7.2 }))
+    const east = doorAt(dressing.building(plotOf({ rect: turned, entrance: { cell: { x: 10, y: 6 }, facing: 'east' } }), { width: 12, depth: 8, height: 7.2 }))
 
     expect(north.z).toBeCloseTo(-6)
     expect(south.z).toBeCloseTo(6)
@@ -95,5 +98,40 @@ describe('dressing a plot', () => {
     const materials = building.children.map((child) => ((child as THREE.Mesh).material as THREE.Material).name)
     expect(materials).toContain(SIGN.material)
     expect(materials.filter((name) => name === 'prefab:facade')).toHaveLength(1)
+  })
+
+  it('publishes the light a building throws: its lit lobby, each screen, and the signs it hung', () => {
+    const size = { width: 8, depth: 12, height: 7.2 }
+    const shop = { pack: 'test', model: 'shop-8x12x2', mirror: false, rooms: 0 }
+
+    // a door you can walk through, on the north wall, 25 cm out from a 10 cm plate
+    const open = plotOf({ interiorId: 'interior_0001', design: shop })
+    dressing.building(open, size)
+    const lit = dressing.lights(open, size)
+    expect(lit.map((light) => light.kind)).toEqual(['entrance', 'screen'])
+    const [lobby, screen] = lit
+    expect(lobby!.position.map((v) => +v.toFixed(2))).toEqual([0, 1.05, -6.25])
+    expect(lobby!.colour).toBe(0xffdbaa)
+    expect(lobby!.intensity).toBeGreaterThan(0)
+    expect(lobby!.radius).toBeLessThanOrEqual(16)
+
+    // the plate, turned with the building, at the mean colour of the fixture's grey picture
+    expect(screen!.position.map((v) => +v.toFixed(2))).toEqual([-PLATE.x, PLATE.y, -6.25])
+    expect(screen!.colour).toBe(0x808080)
+    expect(screen!.intensity).toBeCloseTo(PLATE.wide * PLATE.tall * 20 * (128 / 255) ** 2.2 * 1.9, 3)
+
+    // a door nobody can walk through throws nothing
+    const shut = plotOf({ design: shop })
+    dressing.building(shut, size)
+    expect(dressing.lights(shut, size).map((light) => light.kind)).toEqual(['screen'])
+
+    // and the kit's own emitters ride along for the signs it hung
+    const kit = new KitDressing(placeholderKit('a neon city'), new Greybox())
+    const withSigns = new PrefabDressing(libraryOf(catalogue), kit)
+    const named = plotOf({ kind: 'bar', name: 'The Long Wire', design: shop })
+    withSigns.building(named, size)
+    const kinds = withSigns.lights(named, size).map((light) => light.kind)
+    expect(kinds.slice(1)).toEqual(lightsFor(named, size).map((light) => light.kind))
+    expect(kinds).toContain('doorlamp')
   })
 })

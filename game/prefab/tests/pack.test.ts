@@ -9,13 +9,15 @@ import { bucketKey, bucketOf, everyBucket } from '../src/bucket.ts'
 import { Catalogue } from '../src/catalogue.ts'
 import { sha256 } from '../src/digest.ts'
 import { DOOR_FINISH, OPEN_DOOR_FINISH } from '../src/entrance.ts'
+import { PROUD } from '../src/fit.ts'
 import { windowsOn } from '../src/interior.ts'
 import { ROOM_BANKS, ROOM_PICTURES, ROOM_SIZE } from '../src/rooms.ts'
 import { DISPLAY_FINISH, SCREEN_PICTURES, SCREEN_SIZE } from '../src/screens.ts'
 import { DOOR, doorTile } from '../tools/doors.ts'
 import { io } from '../tools/intake.ts'
-import { wallFinish } from '../tools/layers.ts'
+import { baseFinish, stretchOf, wallFinish } from '../src/wall.ts'
 import { loadLooks } from '../tools/look.ts'
+import { CLEAR } from '../tools/stack.ts'
 import { verifyPack } from '../tools/verify.ts'
 
 const pack = new URL('../pack/', import.meta.url)
@@ -24,8 +26,72 @@ const manifest = JSON.parse(new TextDecoder().decode(document)) as unknown
 const mesh = new Uint8Array(readFileSync(new URL('buildings.glb', pack)))
 const strip = new Uint8Array(readFileSync(new URL('buildings-rooms.png', pack)))
 const screens = new Uint8Array(readFileSync(new URL('buildings-screens.png', pack)))
+const colour = new Uint8Array(readFileSync(new URL('buildings-colour.png', pack)))
 const catalogue = Catalogue.parse(manifest)
 const looks = loadLooks(new URL('../looks/', import.meta.url).pathname)
+const pictures = [...new Set(looks.map((look) => look.facade))]
+
+/** Every model in the pack, in metres, with each vertex's layer name. */
+async function models(): Promise<Array<{ id: string; storeys: number; vertices: Array<{ x: number; y: number; z: number; u: number; v: number; finish: string }> }>> {
+  const doc = await io.readBinary(mesh)
+  const out = []
+  for (const node of doc.getRoot().listNodes()) {
+    const geometry = node.getMesh()
+    const model = catalogue.model(node.getName())
+    if (!geometry || !model) continue
+    const scale = node.getScale()
+    const lift = node.getTranslation()
+    const vertices = []
+    for (const primitive of geometry.listPrimitives()) {
+      const positions = primitive.getAttribute('POSITION')!
+      const uvs = primitive.getAttribute('TEXCOORD_0')!
+      const layers = primitive.getAttribute('_LAYER')!
+      const point: number[] = []
+      const at: number[] = []
+      for (let i = 0; i < positions.getCount(); i++) {
+        positions.getElement(i, point)
+        uvs.getElement(i, at)
+        vertices.push({
+          x: point[0]! * scale[0]! + lift[0]!,
+          y: point[1]! * scale[1]! + lift[1]!,
+          z: point[2]! * scale[2]! + lift[2]!,
+          u: at[0]!,
+          v: at[1]!,
+          finish: catalogue.atlas.finishes[Math.round(layers.getScalar(i))]!,
+        })
+      }
+    }
+    out.push({ id: model.id, storeys: model.storeys, vertices })
+  }
+  return out
+}
+
+type Vertex = Awaited<ReturnType<typeof models>>[number]['vertices'][number]
+
+/** The plates on the display layer, told apart by where they stand: the front face of each, and its extent. */
+function plates(vertices: readonly Vertex[]): Array<{ low: number[]; high: number[]; u: number[]; v: number[] }> {
+  const found = new Map<string, { low: number[]; high: number[]; u: number[]; v: number[] }>()
+  for (const vertex of vertices) {
+    if (vertex.finish !== DISPLAY_FINISH) continue
+    // a banner stands on the street level and a board on a parapet storey, and no look carries two of either
+    const key = vertex.y < 3.5 ? 'banner' : 'board'
+    const plate = found.get(key) ?? { low: [Infinity, Infinity, Infinity], high: [-Infinity, -Infinity, -Infinity], u: [Infinity, -Infinity], v: [Infinity, -Infinity] }
+    for (const [c, value] of [vertex.x, vertex.y, vertex.z].entries()) {
+      plate.low[c] = Math.min(plate.low[c]!, value)
+      plate.high[c] = Math.max(plate.high[c]!, value)
+    }
+    found.set(key, plate)
+  }
+  for (const plate of found.values()) {
+    for (const vertex of vertices) {
+      // the front face: the plate's own outermost z, where the picture is read
+      if (vertex.finish !== DISPLAY_FINISH || vertex.z < plate.high[2]! - 0.001 || vertex.y < plate.low[1]! - 0.001 || vertex.y > plate.high[1]! + 0.001) continue
+      plate.u = [Math.min(plate.u[0]!, vertex.u), Math.max(plate.u[1]!, vertex.u)]
+      plate.v = [Math.min(plate.v[0]!, vertex.v), Math.max(plate.v[1]!, vertex.v)]
+    }
+  }
+  return [...found.values()]
+}
 
 describe('the shipped pack', () => {
   it('is the file its manifest describes', () => {
@@ -50,7 +116,6 @@ describe('the shipped pack', () => {
     // one layer per committed wall picture, so a bar and a corporate slab are
     // not the same surface and two looks wearing one picture pay for it once.
     // Every one of them is a layer the shader cuts windows out of
-    const pictures = [...new Set(looks.map((look) => look.facade))]
     expect(catalogue.atlas.finishes.filter((finish) => windowsOn(finish))).toEqual([...pictures.map(wallFinish), 'glass'])
     expect(catalogue.atlas.finishes).toContain(DISPLAY_FINISH)
     expect(windowsOn(DISPLAY_FINISH)).toBeUndefined()
@@ -58,6 +123,34 @@ describe('the shipped pack', () => {
       expect(catalogue.atlas.finishes).toContain(finish)
       expect(windowsOn(finish)).toBeUndefined()
     }
+  })
+
+  it('lays every wall picture down twice, so the base under a look is that look at the same scale', async () => {
+    const { data, info } = await sharp(Buffer.from(colour)).removeAlpha().raw().toBuffer({ resolveWithObject: true })
+    const size = catalogue.atlas.colour.size
+    const layer = (finish: string) => {
+      const index = catalogue.atlas.finishes.indexOf(finish)
+      expect(index, finish).toBeGreaterThanOrEqual(0)
+      return data.subarray(index * size * size * info.channels, (index + 1) * size * size * info.channels)
+    }
+    for (const picture of pictures) {
+      expect(windowsOn(baseFinish(picture))).toBeUndefined()
+      expect(Buffer.compare(layer(baseFinish(picture)), layer(wallFinish(picture))), picture).toBe(0)
+    }
+    // the producer tiles a base square by the metre and lays the wall over two
+    // floors, so the shader stretches a base's v to the wall's own scale
+    expect(stretchOf(baseFinish(pictures[0]!))).toBeCloseTo(12 / 6.42, 6)
+    expect(stretchOf(wallFinish(pictures[0]!))).toBe(1)
+    expect(catalogue.atlas.finishes.filter((finish) => !finish.startsWith('wall:') && !finish.startsWith('base:'))).toEqual([
+      DOOR_FINISH,
+      DISPLAY_FINISH,
+      'glass',
+      'neon:cyan',
+      'neon:teal',
+      'neon:magenta',
+      'neon:amber',
+      OPEN_DOOR_FINISH,
+    ])
   })
 
   it('says which pack it is, hashing the manifest that names every file in it', async () => {
@@ -86,26 +179,50 @@ describe('the shipped pack', () => {
     expect({ doors: doors > 0, baked }).toEqual({ doors: true, baked: 0 })
   })
 
-  it('lays every screen panel out inside one picture, so a plot picks one screen for the whole of it', async () => {
-    const doc = await io.readBinary(mesh)
-    const wearing = catalogue.atlas.finishes.indexOf(DISPLAY_FINISH)
+  it('lays every screen panel out as exactly one picture, so the whole panel is the picture and a plot picks one screen for all of it', async () => {
     let panels = 0
-    let out = 0
-    for (const primitive of doc.getRoot().listMeshes().flatMap((one) => one.listPrimitives())) {
-      const layers = primitive.getAttribute('_LAYER')!
-      const uvs = primitive.getAttribute('TEXCOORD_0')!
-      const point: number[] = []
-      for (let i = 0; i < layers.getCount(); i++) {
-        if (Math.round(layers.getScalar(i)) !== wearing) continue
+    const wrong: string[] = []
+    for (const model of await models()) {
+      for (const plate of plates(model.vertices)) {
         panels++
-        uvs.getElement(i, point)
-        // the runtime slides a whole number of pictures onto this, and reads
-        // the whole number back to pick which screen the panel carries. A uv
-        // outside one picture would tear a second screen across the panel
-        if (point[0]! < -0.01 || point[0]! > 1.01) out++
+        // the runtime slides a whole number of pictures onto this and reads the
+        // whole number back to pick which screen the panel carries; the face
+        // spans one picture each way, so the picture fills it edge to edge
+        const spans = [plate.u[1]! - plate.u[0]!, plate.v[1]! - plate.v[0]!]
+        if (Math.abs(spans[0]! - 1) > 0.01 || Math.abs(spans[1]! - 1) > 0.01 || plate.u[0]! < -0.01) {
+          wrong.push(`${model.id}: u ${plate.u.map((v) => v.toFixed(3)).join('..')} v ${plate.v.map((v) => v.toFixed(3)).join('..')}`)
+        }
       }
     }
-    expect({ panels: panels > 0, out }).toEqual({ panels: true, out: 0 })
+    expect({ panels: panels > 100, wrong }).toEqual({ panels: true, wrong: [] })
+  })
+
+  it('keeps every advert at least one city cell clear of the door, sideways or above its head', async () => {
+    const wrong: string[] = []
+    let panels = 0
+    for (const model of await models()) {
+      const door = model.vertices.filter((vertex) => vertex.finish === DOOR_FINISH)
+      const left = Math.min(...door.map((vertex) => vertex.x))
+      const right = Math.max(...door.map((vertex) => vertex.x))
+      const head = Math.max(...door.map((vertex) => vertex.y))
+      for (const plate of plates(model.vertices)) {
+        panels++
+        const clear = CLEAR / 10
+        const beside = plate.high[0]! <= left - clear || plate.low[0]! >= right + clear
+        const above = plate.low[1]! >= head + clear
+        if (!beside && !above) wrong.push(`${model.id}: plate x ${plate.low[0]!.toFixed(2)}..${plate.high[0]!.toFixed(2)} y from ${plate.low[1]!.toFixed(2)}, door x ${left.toFixed(2)}..${right.toFixed(2)} head ${head.toFixed(2)}`)
+      }
+    }
+    expect({ panels: panels > 100, wrong }).toEqual({ panels: true, wrong: [] })
+  })
+
+  it('lights nothing beside a door: the only tube on a building is the one round its parapet', async () => {
+    const wrong: string[] = []
+    for (const model of await models()) {
+      const lowest = Math.min(...model.vertices.filter((vertex) => vertex.finish.startsWith('neon:')).map((vertex) => vertex.y))
+      if (lowest < storeyHeight(model.storeys) - PROUD - 0.2) wrong.push(`${model.id}: a tube from ${lowest.toFixed(2)} m`)
+    }
+    expect(wrong).toEqual([])
   })
 
   it('is one entrance in two states, so only the lobby tells the two doors apart', async () => {

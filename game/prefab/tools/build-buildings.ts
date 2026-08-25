@@ -30,7 +30,7 @@ import { verifyPack } from './verify.ts'
 import { writePack } from './write.ts'
 
 const PACK = 'gb-buildings'
-const VERSION = '1.5.0'
+const VERSION = '1.6.0'
 
 const args = process.argv.slice(2)
 const jobs = Math.max(1, Number(flag('--jobs') ?? 8))
@@ -50,7 +50,7 @@ try {
   const textures = await drawTextures(producer, homes, looks)
   const swatches = new Map<string, string>()
   for (const look of looks) {
-    const built = await producer.build(`swatch-${look.id}`, swatchVerbs(`gb-family-${look.family}`), `gb-family-${look.family}`, textures.get(look.id))
+    const built = await producer.build(`swatch-${look.id}`, swatchVerbs('gb'), 'gb', textures.get(look.id))
     swatches.set(look.id, built.file)
   }
   const atlas = await buildAtlas(looks, swatches, layers)

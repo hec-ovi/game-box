@@ -1,11 +1,12 @@
 import type { CityNight } from '@gb/kitbash'
 import type * as THREE from 'three'
-import { float, mix, texture, uv } from 'three/tsl'
+import { float, mix, texture, uniformArray, uv, vec2 } from 'three/tsl'
 import { MeshStandardNodeMaterial } from 'three/webgpu'
 import { SCREEN, WallScreens } from './display.ts'
 import { InteriorWindows, ROOM } from './interior.ts'
 import { layerIndex } from './layer.ts'
 import { GLOW, MATERIAL_NAME } from './pack.ts'
+import { stretchOf } from './wall.ts'
 
 /** Roughness and metalness of a prefab wall: coated, dark, not a mirror. */
 const SURFACE = { roughness: 0.68, metalness: 0.05 } as const
@@ -31,13 +32,15 @@ export interface PrefabAtlas {
  *
  * An array texture rather than an atlas because the producer's wall pictures
  * tile: a facade runs several bays across one wall, and only a layer of its own
- * lets the sampler wrap it without bleeding into the picture next door.
+ * lets the sampler wrap it without bleeding into the picture next door. A base
+ * layer is read with its v stretched, so the same picture lands at the same
+ * scale on the wall above the street and on the walls a band is composed on.
  *
  * The windows are not in the picture. `InteriorWindows` cuts them out of the
  * wall arithmetically and draws the room behind each one, so a facade has depth
  * through it from the pavement instead of a lit rectangle. `WallScreens` does
- * the same for the panels: the housing, the lamp grid and the line of light
- * round a board are all arithmetic over one picture.
+ * the same for the panels: the picture and the lamp grid over it are
+ * arithmetic over one fetch.
  *
  * The two never meet. A layer either has windows in it or it is a screen, so a
  * fragment pays for one of them and a wall fragment pays for neither beyond the
@@ -49,8 +52,10 @@ export interface PrefabAtlas {
  */
 export function prefabMaterial(atlas: PrefabAtlas, night: CityNight): THREE.Material {
   const layer = layerIndex()
-  const wall = texture(atlas.colour, uv()).depth(layer)
-  const burning = texture(atlas.emissive, uv()).depth(layer).rgb.mul(float(GLOW))
+  const stretch = uniformArray<'float'>(atlas.finishes.map(stretchOf), 'float')
+  const at = uv().mul(vec2(1, stretch.element(layer)))
+  const wall = texture(atlas.colour, at).depth(layer)
+  const burning = texture(atlas.emissive, at).depth(layer).rgb.mul(float(GLOW))
   const room = new InteriorWindows(atlas.rooms, night, atlas.finishes).glazing()
   const panel = new WallScreens(atlas.screens, atlas.finishes).panel()
 

@@ -1,8 +1,19 @@
+import { METRICS, PLOT_BAND } from '@gb/world'
 import { describe, expect, it } from 'vitest'
+import { everyBucket } from '../src/bucket.ts'
 import { InvalidCatalogue } from '../src/catalogue.ts'
 import { catalogueOf, plotOf } from './support.ts'
 
 describe('the catalogue', () => {
+  it('expects exactly the shapes the city is cut in, in metres', () => {
+    const shapes = everyBucket()
+    const cells = (range: { min: number; max: number }) => range.max - range.min + 1
+    expect(shapes).toHaveLength(cells(PLOT_BAND.frontage) * cells(PLOT_BAND.depth) * cells(PLOT_BAND.storeys))
+    expect(new Set(shapes.map((shape) => shape.front))).toEqual(new Set([6, 8, 10, 12].map((cellsAcross) => (cellsAcross / 2) * METRICS.cellSize)))
+    expect(Math.min(...shapes.map((shape) => shape.depth))).toBe(PLOT_BAND.depth.min * METRICS.cellSize)
+    expect(Math.max(...shapes.map((shape) => shape.storeys))).toBe(PLOT_BAND.storeys.max)
+  })
+
   it('refuses anything that is not a manifest', () => {
     expect(() => catalogueOf({ models: [] })).toThrow(InvalidCatalogue)
     expect(() => catalogueOf({ sha256: 'not a hash' })).toThrow(InvalidCatalogue)
@@ -16,7 +27,7 @@ describe('the catalogue', () => {
   it('reads the shape in the door’s frame, so a turned plot is the same shape', () => {
     const catalogue = catalogueOf()
     const facing = catalogue.design(plotOf({ entrance: { cell: { x: 6, y: 3 }, facing: 'north' } }), { width: 8, depth: 12 })
-    const turned = catalogue.design(plotOf({ entrance: { cell: { x: 3, y: 6 }, facing: 'west' } }), { width: 12, depth: 8 })
+    const turned = catalogue.design(plotOf({ rect: { x: 4, y: 4, w: 6, h: 4 }, entrance: { cell: { x: 3, y: 6 }, facing: 'west' } }), { width: 12, depth: 8 })
     expect(facing?.model).toBe(turned?.model)
   })
 

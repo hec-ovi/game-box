@@ -1,6 +1,7 @@
 import type { CityNight } from '@gb/kitbash'
 import * as THREE from 'three'
 import type { Catalogue } from './catalogue.ts'
+import { screenTints, type ScreenTint } from './lights.ts'
 import { prefabMaterial, type PrefabAtlas } from './material.ts'
 import { LAYER_ATTRIBUTE } from './pack.ts'
 
@@ -31,11 +32,14 @@ export interface LibrarySpec {
 export class Library {
   readonly catalogue: Catalogue
   readonly material: THREE.Material
+  /** The mean colour and brightness of each screen picture, in strip order, so a screen can light the street its own colour. */
+  readonly tints: readonly ScreenTint[]
   readonly #geometries: ReadonlyMap<string, THREE.BufferGeometry>
 
-  private constructor(catalogue: Catalogue, material: THREE.Material, geometries: Map<string, THREE.BufferGeometry>) {
+  private constructor(catalogue: Catalogue, material: THREE.Material, tints: readonly ScreenTint[], geometries: Map<string, THREE.BufferGeometry>) {
     this.catalogue = catalogue
     this.material = material
+    this.tints = tints
     this.#geometries = geometries
   }
 
@@ -54,7 +58,7 @@ export class Library {
     if (missing.length) throw new LibraryIncomplete(missing)
 
     const geometries = new Map(spec.catalogue.models.map((model) => [model.id, found.get(model.id)!]))
-    return new Library(spec.catalogue, prefabMaterial(spec.atlas, spec.night), geometries)
+    return new Library(spec.catalogue, prefabMaterial(spec.atlas, spec.night), screenTints(spec.atlas.screens), geometries)
   }
 
   /** The model's own geometry, in its own frame, door on the south wall. */

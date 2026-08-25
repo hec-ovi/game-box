@@ -1,8 +1,7 @@
 {
   "id": "shop-b",
-  "family": "b",
   "facade": "facade-b-3",
-  "note": "a shopfront: a wide door, a lit banner beside it, a fascia band over it and three magenta tubes across the frontage",
+  "note": "a shopfront: a wide door, a lit banner well clear of it, a fascia band over it and a magenta tube round the top",
   "kinds": [
     "shop",
     "market",
@@ -16,13 +15,6 @@
   },
   "shopfront": true,
   "fascia": true,
-  "lines": {
-    "section": "ground",
-    "count": 3,
-    "spread": "quarter",
-    "colour": "magenta",
-    "thickness": 0.08
-  },
   "displays": [
     "banner"
   ],

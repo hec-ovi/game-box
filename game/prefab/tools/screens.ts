@@ -6,7 +6,7 @@ import { SCREEN_PICTURES, SCREEN_SIZE } from '../src/screens.ts'
 import { decode, encode, Picture, PNG, type Rgb, type Tile } from './paint.ts'
 
 /**
- * What the screens on the walls show, and the housing they sit in.
+ * What the screens on the walls show, and the plate they are.
  *
  * Most of them are committed pictures in `screens/`, ours, from our own
  * prompts, so they travel inside a world file with no third party licence near
@@ -35,8 +35,8 @@ const INK = {
   ice: [0.8, 0.95, 1.0],
 } as const satisfies Record<string, Colour>
 
-/** The housing a screen sits in: dark, brushed, and no lighter than the wall it hangs on. */
-const HOUSING: Rgb = [13, 14, 16]
+/** The plate a screen is: dark, brushed, and no lighter than the wall it hangs on. Only its edges are ever seen. */
+const PLATE: Rgb = [13, 14, 16]
 
 /** How much of a picture the key light takes off the far side of it. */
 const FALL = 0.34
@@ -139,9 +139,9 @@ function exposed(light: Float32Array, size: number, contrast: number, grain?: Rn
   return out
 }
 
-/** The housing a screen is set into: what the fragments outside the lit face wear. */
-export async function housingTile(size: number): Promise<Tile> {
-  return await new Picture(size, 'display').paint({ x0: 0, y0: 0, x1: 1, y1: 1 }, { colour: HOUSING, grain: 1.5 }).tile()
+/** The plate a screen is: what its edges wear, since its face is all picture. */
+export async function plateTile(size: number): Promise<Tile> {
+  return await new Picture(size, 'display').paint({ x0: 0, y0: 0, x1: 1, y1: 1 }, { colour: PLATE, grain: 1.5 }).tile()
 }
 
 /**

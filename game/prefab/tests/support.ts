@@ -6,13 +6,18 @@ import { DOOR_FINISH, OPEN_DOOR_FINISH } from '../src/entrance.ts'
 import { Library } from '../src/library.ts'
 import type { PrefabAtlas } from '../src/material.ts'
 import { LAYER_ATTRIBUTE } from '../src/pack.ts'
+import { DISPLAY_FINISH } from '../src/screens.ts'
 
 /**
  * What the fixture pack paints, in the order the strips stack it. The door
- * plate the test buildings carry is layer 1, and the entrance you can walk
- * through is last, exactly as the shipped pack stacks them.
+ * plate the test buildings carry is layer 1, the entrance you can walk through
+ * is last, exactly as the shipped pack stacks them, and the screen plate the
+ * shop carries is after it.
  */
-export const FINISHES: readonly string[] = ['wall:facade-a', DOOR_FINISH, 'glass', OPEN_DOOR_FINISH]
+export const FINISHES: readonly string[] = ['wall:facade-a', DOOR_FINISH, 'glass', OPEN_DOOR_FINISH, DISPLAY_FINISH]
+
+/** The screen plate the fixture shop carries beside its door, in metres. */
+export const PLATE = { wide: 1.2, tall: 2.4, deep: 0.1, x: -2.5, y: 1.4 } as const
 
 /** A catalogue with two looks on one shape, so a pick has something to choose between. */
 export function catalogueOf(over: Partial<CatalogueDoc> = {}): Catalogue {
@@ -40,7 +45,7 @@ export function catalogueOf(over: Partial<CatalogueDoc> = {}): Catalogue {
 /**
  * A library of boxes at the sizes the catalogue names, so the dressing can be
  * tested without the shipped pack: a door plate on the south wall marks which
- * way the model is facing.
+ * way the model is facing, and the shop carries a screen plate beside it.
  */
 export function libraryOf(catalogue: Catalogue): Library {
   const scene = new THREE.Group()
@@ -48,7 +53,9 @@ export function libraryOf(catalogue: Catalogue): Library {
     const height = 4 + (model.storeys - 1) * 3.2
     const shell = box(model.front, height, model.depth, 0, height / 2, 0, 0)
     const door = box(1, 2.1, 0.1, 0, 1.05, model.depth / 2, 1)
-    const mesh = new THREE.Mesh(merge([shell, door]), new THREE.MeshBasicMaterial())
+    const parts = [shell, door]
+    if (model.look === 'shop') parts.push(box(PLATE.wide, PLATE.tall, PLATE.deep, PLATE.x, PLATE.y, model.depth / 2, FINISHES.indexOf(DISPLAY_FINISH)))
+    const mesh = new THREE.Mesh(merge(parts), new THREE.MeshBasicMaterial())
     mesh.name = model.id
     scene.add(mesh)
   }

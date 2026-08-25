@@ -1,7 +1,7 @@
 import { DOOR_FINISH, OPEN_DOOR_FINISH } from '../src/entrance.ts'
-import { WALL } from '../src/interior.ts'
 import { DISPLAY_FINISH } from '../src/screens.ts'
-import { FAMILIES, NEONS, type Look } from './look.ts'
+import { baseFinish, wallFinish } from '../src/wall.ts'
+import { NEONS, type Look } from './look.ts'
 
 /**
  * Pixels a side, per layer. A wall picture holds four bays by two floors, which
@@ -13,11 +13,6 @@ export const EMISSIVE_SIZE = 256
 
 /** What the pack stores 1.0 of glow as, so a tube and a lit window share one 8-bit map. */
 export const GLOW_BAKE = 2
-
-/** The layer a committed wall picture lands on. `windowsOn` reads the prefix. */
-export function wallFinish(picture: string): string {
-  return WALL + picture
-}
 
 export class UnknownFinish extends Error {
   readonly code = 'unknown-finish'
@@ -36,13 +31,12 @@ export class UnknownFinish extends Error {
  * layer of its own lets the sampler wrap one without bleeding into the picture
  * next door.
  *
- * The wall above the street is a layer per committed picture, and a look names
- * the one it wears, so a bar and a corporate slab on the same street are not
- * the same surface and two looks that want one picture pay for it once.
- * Everything else is shared: the doors, the glazing and the screen housing
- * because a door is a door, the base because it is the plain heavy wall a
- * composed band stands on, and the tubes because they are the four colours
- * `docs/LOOK.md` settles on.
+ * A look names the picture it wears, and the picture lands twice: as the wall
+ * above the street, which the shader cuts windows into, and as the base, the
+ * same picture on the walls a band is composed on, with no windows in it. Two
+ * looks naming one picture pay for the pair once. Everything else is shared:
+ * the doors, the glazing and the screen plate because a door is a door, and
+ * the tubes because they are the four colours `docs/LOOK.md` settles on.
  *
  * The lit entrance is last, and nothing is ever baked onto it: no look asks for
  * it and `forMaterial` cannot reach it. The runtime moves a plot's door onto it
@@ -60,9 +54,10 @@ export class Layers {
   }
 
   static of(looks: readonly Look[]): Layers {
+    const pictures = [...new Set(looks.map((look) => look.facade))]
     return new Layers([
-      ...[...new Set(looks.map((look) => look.facade))].map(wallFinish),
-      ...FAMILIES.map((family) => `${family}:base`),
+      ...pictures.map(wallFinish),
+      ...pictures.map(baseFinish),
       DOOR_FINISH,
       DISPLAY_FINISH,
       'glass',
@@ -96,11 +91,11 @@ export class Layers {
 
 function finishOf(material: string, look: Look): string {
   if (material === 'facade') return wallFinish(look.facade)
-  // a band somebody has composed on wears the producer's plain wall rather than
-  // the bay-and-floor picture, because a window drawn in the middle of a bay is
-  // exactly where a composed element goes. The pack's base finish is that same
-  // plain heavy wall at the same tile, so the two are one layer
-  if (material === 'base' || material === 'concrete' || material === 'roof' || material === 'wall') return `${look.family}:base`
+  // a band somebody has composed on wears the plain wall rather than the
+  // bay-and-floor picture, because a window drawn in the middle of a bay is
+  // exactly where a composed element goes. The base is that same picture with
+  // no windows cut into it
+  if (material === 'base' || material === 'concrete' || material === 'roof' || material === 'wall') return baseFinish(look.facade)
   if (material === 'door') return DOOR_FINISH
   if (material === 'screen') return DISPLAY_FINISH
   if (material === 'glass-band') return 'glass'
