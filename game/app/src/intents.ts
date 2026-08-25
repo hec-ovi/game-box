@@ -8,6 +8,7 @@ import type { Player } from './player.ts'
 import type { Reporting } from './reporting.ts'
 import type { Talking } from './talking.ts'
 import type { Travel } from './travel.ts'
+import type { View } from './view.ts'
 
 /**
  * What the player did in the interface, carried to whoever owns it. `@gb/hud`
@@ -25,6 +26,7 @@ export class Intents {
   #machines: Machines
   #counters: Counters
   #travel: Travel
+  #view: View | undefined
   #leave: () => void
   #releasePointer: () => void
 
@@ -39,6 +41,8 @@ export class Intents {
     machines: Machines
     counters: Counters
     travel: Travel
+    /** What the player set about the screen. Without one, the corner view and full screen do nothing. */
+    view?: View
     /** The way out of the game, which the game itself does not decide. */
     leave: () => void
     releasePointer: () => void
@@ -53,6 +57,7 @@ export class Intents {
     this.#machines = input.machines
     this.#counters = input.counters
     this.#travel = input.travel
+    this.#view = input.view
     this.#leave = input.leave
     this.#releasePointer = input.releasePointer
   }
@@ -119,6 +124,15 @@ export class Intents {
       case 'weather':
         this.#set(this.#conditions.setWeather(intent.weather))
         return
+      // the view: the corner map is this box's to draw or not, and full screen
+      // is the browser's to grant. Neither button reads its own click; both
+      // read what the game pushes back, so the answer comes from the change
+      case 'minimap':
+        if (this.#view) this.#view.minimap = intent.shown
+        return
+      case 'fullscreen':
+        this.#view?.fullscreen(intent.on)
+        return
       // the counter: the hud names the offer and this box pays for it, takes
       // the thing and pushes the counter again without it
       case 'buy':
@@ -145,8 +159,12 @@ export class Intents {
         this.#hud.show({ window: null })
         this.#travel.board(intent.stationId)
         return
+      // the interface asks before it reports this, so there is nothing left to
+      // confirm here and the other answer is nothing to do
       case 'exit':
         this.#leave()
+        return
+      case 'stay':
         return
     }
   }

@@ -5,6 +5,12 @@ export interface Vec2 {
   readonly z: number
 }
 
+/** A heading as a bearing: radians clockwise from north, in one turn. What the map, the compass and the corner all take. */
+export function bearing(radians: number): number {
+  const turn = Math.PI * 2
+  return ((radians % turn) + turn) % turn
+}
+
 /** Says whether a point in metres is inside something you cannot walk through. */
 export type Solid = (x: number, z: number) => boolean
 

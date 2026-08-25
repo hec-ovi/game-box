@@ -85,6 +85,11 @@
       .gb-boot[data-aside='true'] .gb-boot-fold {
         display: none;
       }
+      /* a face the panel is not showing is out of the page, not merely faded:
+         the folds are flex containers, so `hidden` needs saying again here */
+      .gb-boot [hidden] {
+        display: none;
+      }
       .gb-boot-card {
         width: min(38rem, calc(100vw - var(--gb-s6)));
         max-height: calc(100vh - var(--gb-s6));
@@ -99,6 +104,10 @@
         display: flex;
         flex-direction: column;
         gap: var(--gb-s3);
+      }
+      /* the landing lays cities out side by side, so it is given the room */
+      .gb-boot[data-face='home'] .gb-boot-card {
+        width: min(58rem, calc(100vw - var(--gb-s6)));
       }
       .gb-boot-title {
         margin: 0;
@@ -270,49 +279,64 @@
         }
       }
 
-      /* the shelf: one row per city, the last one played first and marked */
+      /* the shelf: one box per city, the last one played first and marked */
       .gb-boot-shelf {
         list-style: none;
         margin: 0;
         padding: 0;
-        display: flex;
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+        gap: var(--gb-s3);
       }
       .gb-boot-shelved {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto auto;
-        grid-template-areas:
-          'name open remove'
-          'about open remove';
-        column-gap: var(--gb-s2);
-        align-items: center;
-        padding: var(--gb-s2) var(--gb-s2);
-        border-top: 1px solid var(--gb-edge);
+        display: flex;
+        flex-direction: column;
+        gap: var(--gb-s1);
+        padding: var(--gb-s3);
+        border: 1px solid var(--gb-edge);
+        background: var(--gb-well);
       }
       .gb-boot-shelved[data-last='true'] {
+        border-color: var(--gb-accent-deep);
         background: var(--gb-lift);
       }
       .gb-boot-shelved-name {
-        grid-area: name;
-        font: 600 0.95rem/1.3 var(--gb-display);
+        font: 600 1rem/1.25 var(--gb-display);
         letter-spacing: 0.03em;
       }
       .gb-boot-shelved[data-last='true'] .gb-boot-shelved-name {
         color: var(--gb-accent);
       }
       .gb-boot-shelved-about {
-        grid-area: about;
         color: var(--gb-dim);
         font-size: 0.85rem;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 3;
         overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
       }
-      .gb-boot-shelved button:nth-of-type(1) {
-        grid-area: open;
+      .gb-boot-shelved-meta {
+        margin-top: auto;
+        padding-top: var(--gb-s2);
+        color: var(--gb-faint);
+        font-size: 0.78rem;
+        font-family: var(--gb-mono);
       }
-      .gb-boot-shelved button:nth-of-type(2) {
-        grid-area: remove;
+      .gb-boot-shelved-playing {
+        color: var(--gb-accent);
+        font-size: 0.78rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .gb-boot-shelved-buttons {
+        display: flex;
+        gap: var(--gb-s2);
+        margin-top: var(--gb-s2);
+      }
+      .gb-boot-shelved-buttons button:first-child {
+        flex: 1;
+      }
+      .gb-boot-shelved-buttons button:last-child {
         color: var(--gb-dim);
       }
     </style>
@@ -320,13 +344,42 @@
   <body>
     <div id="game"></div>
 
-    <section class="gb-boot" id="boot" aria-label="Make a city">
+    <section class="gb-boot" id="boot" data-face="make" aria-label="game-box">
       <div class="gb-boot-card">
         <form data-boot="form" novalidate>
           <h1 class="gb-boot-title">game-box</h1>
-          <p class="gb-boot-sub">Every field is optional. Left blank, the city decides for itself; the same answers make the same city every time.</p>
+          <p class="gb-boot-sub" data-boot="sub">Every field is optional. Left blank, the city decides for itself; the same answers make the same city every time.</p>
 
-          <div class="gb-boot-fold">
+          <section class="gb-boot-fold" data-boot="home" aria-label="Your cities" hidden>
+            <h2 class="gb-boot-head">Your cities</h2>
+            <p class="gb-boot-note" data-boot="library-empty">Nothing on the shelf yet. Every city you make or open is kept here, with its playthrough.</p>
+            <ul class="gb-boot-shelf" data-boot="library"></ul>
+
+            <label class="gb-boot-field">
+              <span>Open a city somebody sent you</span>
+              <input data-boot="open" type="file" accept=".json,.gbworld.json,application/json" />
+            </label>
+
+            <h2 class="gb-boot-head">Your settings</h2>
+            <label class="gb-boot-field">
+              <span>Video on the screens</span>
+              <input data-boot="screens" type="url" autocomplete="off" spellcheck="false" placeholder="https://... a video of your own" />
+            </label>
+            <p class="gb-boot-note">
+              Left blank, every television plays the schedule its town writes for itself. A source that will not play leaves that schedule running. It is kept in this browser and never written into a city, so a file you send somebody carries nothing of it.
+            </p>
+
+            <h2 class="gb-boot-head">Add to a city</h2>
+            <label class="gb-boot-field">
+              <span>Open a pack onto the city on the shelf</span>
+              <input data-boot="apply" type="file" accept=".json,.gbpack.json,application/json" />
+            </label>
+            <p class="gb-boot-note">
+              A pack is what somebody built onto this city later. It applies to this one city and no other, and it comes back with what it added. Grow writes the next block of buildings and hands you the pack for it.
+            </p>
+          </section>
+
+          <div class="gb-boot-fold" data-boot="make">
             <label class="gb-boot-field">
               <span>Theme</span>
               <input data-boot="theme" type="text" maxlength="60" autocomplete="off" spellcheck="false" value="quiet coastal town" />
@@ -388,32 +441,11 @@
               <input data-boot="model" type="checkbox" />
               <span>Write the history, the names, the people and the jobs with the local model</span>
             </label>
-
-            <label class="gb-boot-field">
-              <span>Or open a city file</span>
-              <input data-boot="open" type="file" accept=".json,.gbworld.json,application/json" />
-            </label>
-
-            <h2 class="gb-boot-head">Your settings</h2>
-            <label class="gb-boot-field">
-              <span>Video on the screens</span>
-              <input data-boot="screens" type="url" autocomplete="off" spellcheck="false" placeholder="https://... a video of your own" />
-            </label>
-            <p class="gb-boot-note">
-              Left blank, every television plays the schedule its town writes for itself. A source that will not play leaves that schedule running. It is kept in this browser and never written into a city, so a file you send somebody carries nothing of it.
-            </p>
-
-            <h2 class="gb-boot-head">Add to a city</h2>
-            <label class="gb-boot-field">
-              <span>Open a pack onto the city on the shelf</span>
-              <input data-boot="apply" type="file" accept=".json,.gbpack.json,application/json" />
-            </label>
-            <p class="gb-boot-note">
-              A pack is what somebody built onto this city later. It applies to this one city and no other, and it comes back with what it added. Grow writes the next block of buildings and hands you the pack for it.
-            </p>
           </div>
 
           <div class="gb-boot-buttons">
+            <button type="button" data-boot="new" hidden>New city</button>
+            <button type="button" data-boot="home-again" hidden>Your cities</button>
             <button type="submit" data-boot="generate" disabled>Generate</button>
             <button type="button" data-boot="export" disabled>Export</button>
             <button type="button" data-boot="grow" disabled>Grow and pack</button>
@@ -423,12 +455,6 @@
 
           <p class="gb-boot-status" data-boot="status" role="status" data-working="true">Loading the game</p>
         </form>
-
-        <section class="gb-boot-fold" aria-label="Your cities">
-          <h2 class="gb-boot-head">Your cities</h2>
-          <p class="gb-boot-note" data-boot="library-empty">Nothing on the shelf yet. Every city you make or open is kept here, with its playthrough.</p>
-          <ul class="gb-boot-shelf" data-boot="library"></ul>
-        </section>
       </div>
     </section>
 

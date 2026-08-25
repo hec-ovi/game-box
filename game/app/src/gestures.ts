@@ -1,8 +1,5 @@
-import type { CastMember } from '@gb/cast'
 import type { Answer } from '@gb/talk'
-
-/** A set of bodies by NPC id, as `@gb/crowd` and `@gb/cast` both publish it. */
-export type Bodies = () => ReadonlyMap<string, CastMember> | undefined
+import type { Members } from './members.ts'
 
 /**
  * How a reply reads on the body. Both are in `@gb/cast`'s `GESTURES`, so they
@@ -29,23 +26,19 @@ const DIRECTIONS: readonly { means: Answer; said: RegExp }[] = [
  * person speaks at a time, because one person is being talked to.
  */
 export class Gestures {
-  #where: readonly Bodies[]
+  #members: Members
   #going: string | undefined
 
-  /**
-   * Where bodies come from, asked in order: the pavement first, because
-   * somebody out walking is not also standing behind their own counter. Both
-   * boxes answer the same question in the same shape, so there is one lookup.
-   */
-  constructor(...where: Bodies[]) {
-    this.#where = where
+  /** Whoever is drawing a body for somebody, wherever they are standing. */
+  constructor(members: Members) {
+    this.#members = members
   }
 
   /** They have started saying something. The line is open until it stops. */
   start(npcId: string): void {
     if (this.#going === npcId) return
     this.stop()
-    const member = this.#member(npcId)
+    const member = this.#members.of(npcId)
     if (!member) return
     member.speak(true)
     this.#going = npcId
@@ -57,7 +50,7 @@ export class Gestures {
    */
   pulse(npcId: string): void {
     if (this.#going !== npcId) return
-    this.#member(npcId)?.pulse()
+    this.#members.of(npcId)?.pulse()
   }
 
   /**
@@ -75,7 +68,7 @@ export class Gestures {
    * over the talking hands, because it is the last thing they do with the turn.
    */
   answer(npcId: string, answer: Answer): void {
-    const member = this.#member(npcId)
+    const member = this.#members.of(npcId)
     if (!member) return
     member.gesture(ANSWERS[answer])
     this.#going = npcId
@@ -84,22 +77,9 @@ export class Gestures {
   /** They have finished. The line closes and their hands come back to whatever they were doing. */
   stop(): void {
     if (this.#going === undefined) return
-    const member = this.#member(this.#going)
+    const member = this.#members.of(this.#going)
     member?.speak(false)
     member?.stopGesture()
     this.#going = undefined
-  }
-
-  /**
-   * The body this person is wearing this frame. Asked again every time and
-   * never kept: `@gb/crowd` recycles a retired walker's body onto the next
-   * person out, so a member held from one turn to the next is a stranger's arms.
-   */
-  #member(npcId: string): CastMember | undefined {
-    for (const bodies of this.#where) {
-      const found = bodies()?.get(npcId)
-      if (found) return found
-    }
-    return undefined
   }
 }

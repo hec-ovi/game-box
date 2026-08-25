@@ -61,7 +61,7 @@ describe('the panel is up before anything loads', () => {
   beforeEach(servePage)
 
   it('serves the whole form in the page itself, so first paint is the panel', () => {
-    const fields = within(screen.getByRole('region', { name: 'Make a city' }))
+    const fields = within(screen.getByRole('region', { name: 'game-box' }))
     expect(fields.getByLabelText(/theme/i)).toBeTruthy()
     expect(fields.getByLabelText(/what the city is about/i).tagName).toBe('TEXTAREA')
     expect(fields.getByLabelText(/main quest/i)).toBeTruthy()
@@ -72,8 +72,10 @@ describe('the panel is up before anything loads', () => {
     expect(fields.getByRole('button', { name: /generate/i })).toBeTruthy()
     expect(fields.getByRole('button', { name: /export/i })).toBeTruthy()
     expect(fields.getByRole('status').textContent).toMatch(/loading/i)
-    // the way out of the game lands here, so the shelf is on the same card
-    expect(fields.getByRole('region', { name: 'Your cities' })).toBeTruthy()
+    // and the landing screen with it, folded away behind the form until the
+    // shelf has been read: neither face waits on a second request
+    expect(document.querySelector('[data-boot="library"]')).toBeTruthy()
+    expect(document.querySelector<HTMLElement>('[data-boot="home"]')!.hidden).toBe(true)
   })
 
   it('paints the same defaults the generator would use, so the fields never lie', () => {
@@ -85,7 +87,7 @@ describe('the panel is up before anything loads', () => {
 
   it('offers the catalogue\'s own style choices and nothing outside them, and says why', () => {
     panel()
-    const fields = within(screen.getByRole('region', { name: 'Make a city' }))
+    const fields = within(screen.getByRole('region', { name: 'game-box' }))
     // the world's closed lists, with a first choice that leaves it to the generator
     for (const axis of ['neon', 'density', 'wear'] as const) {
       const options = [...fields.getByLabelText(new RegExp(axis, 'i')).querySelectorAll('option')]
@@ -239,11 +241,12 @@ describe('the panel', () => {
     expect(closed).toBe(1)
   })
 
-  it('lists the shelf newest first with the last city marked, and reports Open and Remove by key', async () => {
+  it('lays the shelf out newest first with the last city marked, saying enough about each to know it again', async () => {
     const front = panel()
     const picked: string[] = []
     const removed: string[] = []
     front.on({ ...QUIET_HANDLERS, pick: (key) => void picked.push(key), remove: (key) => void removed.push(key) })
+    front.face = 'home'
     front.waiting()
     expect(screen.getByText(/nothing on the shelf/i).hidden).toBe(false)
 
@@ -254,21 +257,55 @@ describe('the panel', () => {
       seed: key,
       blocks: 2,
       model: false,
+      brief: `Everything ${name} is about`,
       hash: key,
       source: 'made',
       openedAt,
+      madeAt: Date.now(),
     })
-    front.library([shelved('new', 'Grey Slip', 20), shelved('old', 'Kell Point', 10)])
-    const rows = screen.getAllByRole('listitem')
-    expect(rows.map((row) => row.dataset.last)).toEqual(['true', 'false'])
+    front.library([
+      { entry: shelved('new', 'Grey Slip', 20), played: true },
+      { entry: shelved('old', 'Kell Point', 10), played: false },
+    ])
+    const boxes = screen.getAllByRole('listitem')
+    expect(boxes.map((box) => box.dataset.last)).toEqual(['true', 'false'])
     expect(screen.getByText(/nothing on the shelf/i).hidden).toBe(true)
-    expect(within(rows[0]!).getByRole('button', { name: /open grey slip/i }).textContent).toBe('Continue')
+    expect(within(boxes[0]!).getByRole('button', { name: /open grey slip/i }).textContent).toBe('Continue')
+
+    // enough on each box to know the city again: its name, what it is about,
+    // how big it is and when it was written, and whether a game is waiting in it
+    expect(boxes[0]!.textContent).toContain('Grey Slip')
+    expect(boxes[0]!.textContent).toContain('Everything Grey Slip is about')
+    expect(boxes[0]!.textContent).toMatch(/2 blocks/)
+    expect(boxes[0]!.textContent).toMatch(/made now|seconds ago/)
+    expect(boxes[0]!.textContent).toMatch(/playthrough in progress/i)
+    expect(boxes[1]!.textContent).not.toMatch(/playthrough in progress/i)
 
     const user = userEvent.setup()
-    await user.click(within(rows[1]!).getByRole('button', { name: /open kell point/i }))
-    await user.click(within(rows[0]!).getByRole('button', { name: /remove grey slip/i }))
+    await user.click(within(boxes[1]!).getByRole('button', { name: /open kell point/i }))
+    await user.click(within(boxes[0]!).getByRole('button', { name: /remove grey slip/i }))
     expect(picked).toEqual(['old'])
     expect(removed).toEqual(['new'])
+  })
+
+  it('swaps between the cities you have and the form that makes another, and only one is on the page', async () => {
+    const front = panel()
+    front.on(QUIET_HANDLERS)
+    front.face = 'home'
+    const fold = (name: string) => document.querySelector<HTMLElement>(`[data-boot="${name}"]`)!
+    expect(screen.getByRole('region', { name: 'Your cities' })).toBeTruthy()
+    expect(fold('make').hidden).toBe(true)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /new city/i }))
+    expect(front.face).toBe('make')
+    expect(screen.getByLabelText(/theme/i)).toBeTruthy()
+    // a face the panel is not showing is out of the page, accessibility tree included
+    expect(screen.queryByRole('region', { name: 'Your cities' })).toBeNull()
+    expect(fold('home').hidden).toBe(true)
+
+    await user.click(screen.getByRole('button', { name: /your cities/i }))
+    expect(front.face).toBe('home')
   })
 })
 
@@ -581,13 +618,44 @@ describe('the front door end to end', () => {
     localStorage.clear()
   })
 
-  it('waits for the player when the address bar asked for nothing', async () => {
+  it('opens on the form when the shelf is empty, so a first run is not a grid with nothing in it', async () => {
     const { boot, panel } = open()
     await boot.start(new URLSearchParams(''))
     expect(started).toEqual([])
     expect(panel.open).toBe(true)
+    expect(panel.face).toBe('make')
     expect(screen.getByRole<HTMLButtonElement>('button', { name: /generate/i }).disabled).toBe(false)
   })
+
+  it('lands on the cities the player has when the address bar names none, and enters only on a pick', async () => {
+    const shelf = new MemoryShelf()
+    const { boot } = open(DOWN, shelf)
+    await boot.start(new URLSearchParams('?seed=landing&theme=quiet%20coastal%20town&blocks=1'))
+    await boot.generate({ ...DEFAULTS, blocks: 1, seed: 'landing-two' })
+    const [first, second] = [started[0]!, started[1]!]
+    // a playthrough was left in the first city and none in the second
+    options[0]!.save!.write({ marker: 'played' })
+
+    // a fresh page with nothing in the address bar: the front door, not a city
+    started.length = 0
+    const again = open(DOWN, shelf)
+    await again.boot.start(new URLSearchParams(''))
+    expect(started).toEqual([])
+    expect(again.panel.open).toBe(true)
+    expect(again.panel.face).toBe('home')
+
+    // both cities are on it, newest first, and the one with a game in it says so
+    const named = (box: HTMLElement) => within(box).getByText(/./, { selector: '.gb-boot-shelved-name' }).textContent
+    const boxes = screen.getAllByRole('listitem')
+    expect(boxes.map(named)).toEqual([second, first])
+    expect(boxes[1]!.dataset.played).toBe('true')
+    expect(boxes[0]!.dataset.played).toBe('false')
+
+    // and the game starts on the pick, with the playthrough that city kept
+    await userEvent.setup().click(within(boxes[1]!).getByRole('button', { name: /^open/i }))
+    await waitFor(() => expect(started).toEqual([first]))
+    expect(options.at(-1)!.save!.read()).toEqual({ marker: 'played' })
+  }, 60_000)
 
   it('builds what the address bar asked for and gets out of the way', async () => {
     const { boot, panel } = open()
@@ -652,17 +720,21 @@ describe('the front door end to end', () => {
 
     // the proof that the shelf is read and the brief is not built again: the
     // document under that key is swapped for another city's, and that is the
-    // city that comes back, with the address bar naming the same brief
+    // city that comes back when the address bar names the same brief, which is
+    // what a refresh of a city being played is
     const other = await new CityMaker(new Sidecar(DOWN)).build({ ...DEFAULTS, blocks: 1, seed: 'swapped' }, QUIET)
     if (!other.ok) throw new Error(other.message)
     await shelf.put(entry!, other.value.document)
     started.length = 0
-    await open(DOWN, shelf).boot.start(new URLSearchParams(''))
+    await open(DOWN, shelf).boot.start(new URLSearchParams('?seed=comeback&theme=quiet%20coastal%20town&blocks=1'))
     expect(started).toEqual([other.value.bundle.world.name])
 
-    // and the address bar still naming that brief is the same refresh
+    // and picking it off the landing screen opens the same document
     started.length = 0
-    await open(DOWN, shelf).boot.start(new URLSearchParams('?seed=comeback&theme=quiet%20coastal%20town&blocks=1'))
+    const again = open(DOWN, shelf)
+    await again.boot.start(new URLSearchParams(''))
+    expect(started).toEqual([])
+    await again.boot.pick(entry!.key)
     expect(started).toEqual([other.value.bundle.world.name])
   }, 60_000)
 
@@ -796,7 +868,7 @@ describe('the front door end to end', () => {
     await boot.start(new URLSearchParams(''))
     expect(panel.open).toBe(true)
 
-    await userEvent.setup().upload(screen.getByLabelText(/city file/i), new File([written[0]!], name))
+    await userEvent.setup().upload(screen.getByLabelText(/city somebody sent you/i), new File([written[0]!], name))
 
     await waitFor(() => expect(started).toEqual([made.value.bundle.world.name]), { timeout: 20_000 })
     expect(panel.open).toBe(false)
@@ -810,7 +882,7 @@ describe('the front door end to end', () => {
     await boot.start(new URLSearchParams(''))
 
     const junk = new File(['{"format":"not-a-bundle"}'], 'holiday-photos.json', { type: 'application/json' })
-    await userEvent.setup().upload(screen.getByLabelText(/city file/i), junk)
+    await userEvent.setup().upload(screen.getByLabelText(/city somebody sent you/i), junk)
 
     await waitFor(() => expect(screen.getByRole('status').textContent).toMatch(/will not open/i), { timeout: 20_000 })
     expect(started).toEqual([])

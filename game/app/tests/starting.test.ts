@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { Bundle, type OpenedBundle } from '@gb/bundle'
-import { Cast, CastDressing, type CastMember } from '@gb/cast'
+import { World } from '@gb/world'
+import { CastDressing } from '@gb/cast'
 import { Greybox } from '@gb/scene'
 import { Sidecar } from '@gb/sidecar'
 import * as THREE from 'three'
@@ -9,49 +10,9 @@ import { DEFAULTS } from '../src/boot/brief.ts'
 import { CityMaker } from '../src/boot/city-maker.ts'
 import { Game } from '../src/game.ts'
 import type { SaveStore } from '../src/session.ts'
-import type { Stage } from '../src/stage.ts'
 import type { Vec2 } from '../src/walk.ts'
-
-/**
- * The stage with the GPU taken out: a real camera, a real scene and a real
- * canvas, and nothing drawn. Everything else the game is made of runs without
- * one, so the game built against this is the game the browser builds.
- */
-class Bench implements Stage {
-  readonly canvas: HTMLCanvasElement
-  readonly camera = new THREE.PerspectiveCamera(75, 16 / 9, 0.1, 500)
-  readonly scene = new THREE.Scene()
-  showing: THREE.Object3D | undefined
-  night = -1
-  reflected = 0
-  frame: ((seconds: number) => void) | undefined
-
-  constructor(mount: HTMLElement) {
-    this.canvas = document.createElement('canvas')
-    mount.append(this.canvas)
-  }
-
-  plainDaylight(): void {}
-  reflect(): void {
-    this.reflected += 1
-  }
-  indoors(): void {}
-  grade(night: number): void {
-    this.night = night
-  }
-  show(root: THREE.Object3D): void {
-    if (this.showing) this.scene.remove(this.showing)
-    this.showing = root
-    this.scene.add(root)
-  }
-  start(frame: (seconds: number) => void): void {
-    this.frame = frame
-  }
-  draw(): void {}
-  dispose(): void {
-    this.canvas.remove()
-  }
-}
+import { Bench } from './support/bench.ts'
+import { PaperCast } from './support/paper-cast.ts'
 
 /**
  * The window the interface opens on a key. The counter is a second frame with
@@ -61,52 +22,9 @@ function windowOn(mount: HTMLElement): Element {
   return mount.querySelector('.gb-window-room:not(.gb-counter-room) .gb-window')!
 }
 
-/** Everything anybody's body was asked to do while somebody was talking to them, and whose body did it. */
-const moved: { object: THREE.Object3D; clip: string }[] = []
-
-/** A body, the shape the art pack hands one over in, with nothing inside it. */
-function body(npcId: string): CastMember {
-  const object = new THREE.Object3D()
-  let playing: string | undefined
-  let gesturing: string | undefined
-  let speaking = false
-  return {
-    npcId,
-    object,
-    outfit: 'plain',
-    build: 'regular',
-    play: (clip: string) => void (playing = clip),
-    get playing() {
-      return playing
-    },
-    gesture: (clip: string) => {
-      gesturing = clip
-      moved.push({ object, clip })
-    },
-    stopGesture: () => void (gesturing = undefined),
-    get gesturing() {
-      return gesturing
-    },
-    holding: undefined,
-    speak: (on: boolean) => {
-      speaking = on
-      moved.push({ object, clip: on ? 'speaking' : 'quiet' })
-    },
-    pulse: () => void moved.push({ object, clip: 'pulse' }),
-    get speaking() {
-      return speaking
-    },
-    pace: () => {},
-    attend: () => {},
-    resume: () => {},
-    attending: false,
-    lookAt: () => {},
-    lookAway: () => {},
-  }
-}
-
-/** The art pack with no art in it: it still hands out a body per person. */
-const wardrobe = { spawn: (npc: { id: string }) => body(npc.id), update: () => {} } as unknown as Cast
+/** The art pack with no art in it, and everything anybody's body was asked to do while somebody was talking to them. */
+const paper = new PaperCast()
+const moved = paper.moved
 
 /** Nothing is listening on the sidecar, so every reply comes off the city's own data. */
 const offline = () => new Sidecar({ fetch: () => Promise.reject(new Error('nothing listening')) })
@@ -124,6 +42,29 @@ function store(): SaveStore & { writes: number; kept: () => unknown } {
     clear: () => void (held = undefined),
     kept: () => held,
   }
+}
+
+/**
+ * A town with two subway entrances a walk apart, so there is somewhere to ride
+ * to. How many stations a generated town gets is a roll on its own, so the ride
+ * is played on a town that says outright it has two.
+ */
+async function twoStations(): Promise<OpenedBundle> {
+  const world = World.create({ name: 'Ridebury', theme: 'plain', seed: 'ride', width: 40, height: 20 })
+  for (const [index, x] of [2, 30].entries()) {
+    const made = world.addPlot({
+      kind: 'station',
+      name: `${['Copper', 'Anchor'][index]} Gate`,
+      rect: { x, y: 2, w: 4, h: 4 },
+      entrance: { cell: { x: x + 2, y: 6 }, facing: 'south' },
+      storeys: 1,
+      style: 'brick',
+    })
+    if (!made.ok) throw new Error(JSON.stringify(made.error))
+  }
+  const opened = await Bundle.open(await Bundle.pack(world, []))
+  if (!opened.ok) throw new Error(`the town will not open: ${JSON.stringify(opened.error)}`)
+  return opened.value
 }
 
 /** The city the panel makes, sealed. Reopened per game, so no two share a world. */
@@ -149,6 +90,7 @@ afterEach(() => {
   for (const game of running) game.dispose()
   running = []
   moved.length = 0
+  paper.spawned.length = 0
   document.body.innerHTML = ''
 })
 
@@ -157,8 +99,8 @@ async function play(options: { save?: SaveStore } = {}): Promise<{ game: Game; b
   document.body.append(mount)
   let bench: Bench | undefined
   const game = await Game.start(mount, await city(), {
-    dressing: new CastDressing(wardrobe),
-    cast: wardrobe,
+    dressing: new CastDressing(paper.cast),
+    cast: paper.cast,
     sidecar: offline(),
     stage: (into) => Promise.resolve((bench = new Bench(into))),
     ...(options.save ? { save: options.save } : {}),
@@ -357,7 +299,7 @@ describe('what the interface is handed', () => {
   })
 
   it('rides between stations under a veil, and lands the player a step off the other doorstep', async () => {
-    const bundle = await city()
+    const bundle = await twoStations()
     const { game, mount } = await playPlain({ bundle })
     game.frame(1 / 60)
 
@@ -460,6 +402,7 @@ describe('talking to somebody out on the pavement', () => {
     expect(panel()).toContain(firstName)
     game.intent({ kind: 'talk-closed' })
     moved.length = 0
+  paper.spawned.length = 0
 
     // the next person along: the conversation, the name on the panel and the
     // body that talks are all theirs, measured rather than assumed
@@ -473,4 +416,37 @@ describe('talking to somebody out on the pavement', () => {
     expect(panel()).not.toContain(firstName)
     expect(moved.every((arms) => arms.object !== firstBody)).toBe(true)
   }, 60_000)
+})
+
+describe('where the game says to go', () => {
+  const corner = (mount: HTMLElement) => mount.querySelector<HTMLElement>('.gb-minimap')
+
+  it('draws the corner view and moves it as the player walks', async () => {
+    const { game, mount } = await playPlain()
+    game.frame(1 / 60)
+
+    // the corner is drawn from what the game pushes and from nothing else, so
+    // a minimap on screen is a minimap this box windowed and handed over
+    expect(corner(mount)).toBeTruthy()
+    const first = corner(mount)!.innerHTML
+    expect(first).not.toBe('')
+
+    // a walk along the pavement moves what is in it
+    for (const code of ['KeyD', 'ShiftLeft']) document.dispatchEvent(new KeyboardEvent('keydown', { code }))
+    for (let step = 0; step < 300; step++) game.frame(1 / 60)
+    for (const code of ['KeyD', 'ShiftLeft']) document.dispatchEvent(new KeyboardEvent('keyup', { code }))
+    expect(corner(mount)!.innerHTML).not.toBe(first)
+  }, 30_000)
+
+  it('takes the corner view away indoors, where a room has its own metres', async () => {
+    const { game, mount } = await playPlain()
+    game.frame(1 / 60)
+    expect(corner(mount)?.dataset.state).toBe('open')
+
+    expect(game.look().target).toMatch(/^Go into /)
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE' }))
+    game.frame(1 / 60)
+    expect(game.look().place).toBe('interior')
+    expect(corner(mount)?.dataset.state).not.toBe('open')
+  }, 30_000)
 })

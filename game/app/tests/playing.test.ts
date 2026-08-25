@@ -16,6 +16,7 @@ import type { Machines } from '../src/machines.ts'
 import { Conditions } from '../src/conditions.ts'
 import type { Chart } from '../src/chart.ts'
 import type { Guide } from '../src/guide.ts'
+import { Intents } from '../src/intents.ts'
 import { Interaction } from '../src/interaction.ts'
 import { Player } from '../src/player.ts'
 import type { Stage } from '../src/stage.ts'
@@ -24,6 +25,8 @@ import type { Sky } from '../src/sky.ts'
 import { Stashing } from '../src/stashing.ts'
 import type { Street } from '../src/street.ts'
 import type { Talking } from '../src/talking.ts'
+import type { Travel } from '../src/travel.ts'
+import { View } from '../src/view.ts'
 import { pick, Targeting, type Target } from '../src/targets.ts'
 import type { Vec2 } from '../src/walk.ts'
 import { CityArt } from '../src/rooms.ts'
@@ -460,5 +463,92 @@ describe('putting a thing down', () => {
     await bar.user.keyboard('e')
     expect(bar.player.inventory()).toEqual(['item_0001'])
     expect(bar.log.status('quest_0001')).toBe('active')
+  })
+})
+
+describe('what the settings tab does to the screen', () => {
+  function tab() {
+    const pushed: HudPatch[] = []
+    const hud = { show: (patch: HudPatch) => void pushed.push(patch), announce: () => {} } as unknown as Hud
+    const player = PlayerState.create('world_0001')
+    const log = QuestLog.create([], player)
+    const conditions = new Conditions(player.clock)
+    let report: Reporting
+    const view = new View(() => report.refresh())
+    report = new Reporting({ world: World.create({ name: 'Fordwater', theme: 'plain', seed: 'screen', width: 24, height: 14 }), log, player, hud, conditions, view })
+    let left = 0
+    const intents = new Intents({
+      log,
+      hud,
+      report,
+      talking: { say: async () => {}, choose: async () => {}, end: () => {} } as unknown as Talking,
+      body: { setTyping: () => {} } as unknown as Player,
+      chart: { open: false } as unknown as Chart,
+      conditions,
+      machines: {} as Machines,
+      counters: {} as Counters,
+      travel: {} as Travel,
+      view,
+      leave: () => void left++,
+      releasePointer: () => {},
+    })
+    return { intents, view, pushed, left: () => left, settings: () => pushed.filter((patch) => patch.settings).at(-1)!.settings! }
+  }
+
+  it('draws the corner view or takes it off, and the tab reads what the game pushed back', () => {
+    const { intents, settings } = tab()
+    intents.handle({ kind: 'weather', weather: 'clear' })
+    expect(settings().minimap).toBe(true)
+
+    intents.handle({ kind: 'minimap', shown: false })
+    expect(settings().minimap).toBe(false)
+    intents.handle({ kind: 'minimap', shown: true })
+    expect(settings().minimap).toBe(true)
+  })
+
+  it('goes full screen through the browser and reads the answer off the document, not off the click', () => {
+    const asked: boolean[] = []
+    let filling: Element | null = null
+    Object.defineProperty(document, 'fullscreenElement', { configurable: true, get: () => filling })
+    document.documentElement.requestFullscreen = () => {
+      asked.push(true)
+      return Promise.resolve()
+    }
+    document.exitFullscreen = () => {
+      asked.push(false)
+      return Promise.resolve()
+    }
+
+    const { intents, view, settings } = tab()
+    intents.handle({ kind: 'weather', weather: 'clear' })
+    expect(settings().fullscreen).toBe(false)
+
+    // the click is a request, and the browser may refuse it or the player may
+    // leave with a key of its own, so nothing is pushed until the document says
+    intents.handle({ kind: 'fullscreen', on: true })
+    expect(asked).toEqual([true])
+    expect(settings().fullscreen).toBe(false)
+
+    filling = document.documentElement
+    document.dispatchEvent(new Event('fullscreenchange'))
+    expect(settings().fullscreen).toBe(true)
+
+    intents.handle({ kind: 'fullscreen', on: false })
+    filling = null
+    document.dispatchEvent(new Event('fullscreenchange'))
+    expect(asked).toEqual([true, false])
+    expect(settings().fullscreen).toBe(false)
+    view.dispose()
+  })
+
+  it('hands the game back on the answer the interface already asked for, and does nothing with the other one', () => {
+    const { intents, left, view } = tab()
+    // the interface asks "you sure" in place, so this arrives having been said
+    // yes to: asking a second time on the way out would be asking twice
+    intents.handle({ kind: 'exit' })
+    expect(left()).toBe(1)
+    intents.handle({ kind: 'stay' })
+    expect(left()).toBe(1)
+    view.dispose()
   })
 })

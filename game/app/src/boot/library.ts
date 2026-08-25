@@ -19,6 +19,8 @@ export interface Shelved {
   readonly source: 'made' | 'opened'
   /** Milliseconds since the epoch. The newest is the city the player was last in. */
   readonly openedAt: number
+  /** When the document under this key was written, for the landing screen to say. Absent on a row shelved before it was kept. */
+  readonly madeAt?: number
 }
 
 /**
@@ -135,6 +137,7 @@ export class Library {
       hash: city.bundle.contentHash,
       source,
       openedAt: this.#now(),
+      madeAt: this.#now(),
     }
     await this.#shelf.put(entry, city.document)
     return entry

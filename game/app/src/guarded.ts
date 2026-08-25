@@ -1,15 +1,15 @@
 import { Greybox, type Dressing } from '@gb/scene'
+import { carryOver } from './seam.ts'
 
 /**
  * A dressing that cannot take the game down with it. If a piece of art fails to
  * build, the greybox answers for that one thing and the city carries on: a
  * broken pack is a duller street, never a blank screen.
  *
- * What a dressing answers only if it can is carried over when it has it: the
- * far look of a building, the light it throws onto the street, worn road paint
- * and its own rubbish. `@gb/scene` reads each by asking whether it is there, so
- * one dropped on the way through is a town dressed whole at every distance and
- * a city with no lights in it.
+ * Only what there is a greybox answer for is guarded. Everything else the
+ * dressing behind speaks for is carried over as it stands, the far look of a
+ * building and the light it throws onto the street included, so nothing is
+ * dropped on the way through.
  */
 export function guarded(dressing: Dressing, fallback: Dressing = new Greybox()): Dressing {
   const complained = new Set<string>()
@@ -52,6 +52,7 @@ export function guarded(dressing: Dressing, fallback: Dressing = new Greybox()):
   const clutter = dressing.clutter?.bind(dressing)
   if (clutter) safe.clutter = () => guard('rubbish', () => clutter(), () => fallback.clutter?.() ?? fallback.ground('sidewalk'))
 
-  const bodies = (dressing as { members?: () => ReadonlyMap<string, unknown> }).members?.bind(dressing)
-  return bodies ? Object.assign(safe, { members: bodies }) : safe
+  // and the rest of what it answers for, the bodies the cast spawned among
+  // them: there is no greybox to fall back to for those, so they go through
+  return carryOver(safe, dressing)
 }

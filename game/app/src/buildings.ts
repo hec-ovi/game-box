@@ -1,7 +1,9 @@
+import type { CastMember } from '@gb/cast'
 import type { PlayerState } from '@gb/play'
-import type { CityBuild, InteriorBuild } from '@gb/scene'
+import type { CityBuild, Dressing, InteriorBuild } from '@gb/scene'
 import type { Interior, World } from '@gb/world'
 import { alsoBlockedBy } from './bodies.ts'
+import type { Bodies } from './members.ts'
 import type { Locks } from './locks.ts'
 import type { Player } from './player.ts'
 import type { CityArt } from './rooms.ts'
@@ -53,6 +55,8 @@ export class Buildings {
 
   #place: Place = { kind: 'city' }
   #away = new Set<string>()
+  /** The bodies each standing room's own art drew, by interior id: its art spawned the people in it, so nobody else has them. */
+  #drawn = new Map<string, Bodies>()
 
   constructor(input: {
     world: World
@@ -108,6 +112,18 @@ export class Buildings {
   /** The room of an interior that is standing, for whoever draws a body under it. Nothing is built to answer. */
   room(interiorId: string): InteriorBuild | undefined {
     return this.#city.interiors.has(interiorId) ? this.#city.interior(interiorId) : undefined
+  }
+
+  /**
+   * The bodies the room the player is standing in was dressed with. An
+   * interior is dressed by its own art, so the people at their posts in here
+   * were spawned by that art and are in no other set: the city's own dressing
+   * never saw them. Nothing outdoors, and nothing for a room whose art draws
+   * no bodies of its own.
+   */
+  bodiesHere(): ReadonlyMap<string, CastMember> | undefined {
+    if (this.#place.kind !== 'interior') return undefined
+    return this.#drawn.get(this.#place.interior.id)?.()
   }
 
   enter(plotId: string): void {
@@ -183,10 +199,22 @@ export class Buildings {
     const room = charter ? this.#room?.(interior, charter) : undefined
     const built = this.#art.inRoom(room?.dressing, () => this.#city.interior(interior.id))
     if (!built) return undefined
+    // this art spawned the people standing in here, so it is the only place
+    // they can be looked up; a room built again is dressed again, and the set
+    // it hands back this time is the one with the bodies now on the floor
+    this.#remember(interior.id, room?.dressing)
     if (room) built.root.add(room.decor)
     this.#asLeft(built, interior.id)
     for (const [npcId, body] of built.people) body.visible = !this.#away.has(npcId)
     return built
+  }
+
+  /** Which set of bodies belongs to a room, and forget the rooms `@gb/scene` has let go since. */
+  #remember(interiorId: string, art: Dressing | undefined): void {
+    for (const id of this.#drawn.keys()) if (!this.#city.interiors.has(id)) this.#drawn.delete(id)
+    const bodies = (art as { members?: Bodies } | undefined)?.members
+    if (bodies) this.#drawn.set(interiorId, () => bodies.call(art))
+    else this.#drawn.delete(interiorId)
   }
 
   /**

@@ -1,4 +1,4 @@
-import { Cast, CastDressing, parseWardrobe, type CastMember } from '@gb/cast'
+import { Cast, CastDressing, parseWardrobe } from '@gb/cast'
 import { FurnishDressing, loadFurnish } from '@gb/furnish'
 import { KitDressing, loadKit, type CityNight } from '@gb/kitbash'
 import { PrefabDressing, loadPrefab, type Catalogue } from '@gb/prefab'
@@ -6,6 +6,7 @@ import { Greybox, type Dressing } from '@gb/scene'
 import type { Interior, ResolvedCharter } from '@gb/world'
 import type * as THREE from 'three'
 import { guarded } from './guarded.ts'
+import { carryOver } from './seam.ts'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
 
@@ -67,9 +68,9 @@ export async function loadDressing(theme: string, base = ''): Promise<ArtPack> {
 
 /**
  * One dressing out of two. How a building looks from far off and what light it
- * throws onto the street are the building dressing's own answers, and neither
- * the furniture nor the people layered over it carries them through, so the
- * city takes those two off the building layer and everything else off the front
+ * throws onto the street are the building dressing's own answers, and the
+ * people layered over the chain do not carry the far look through, so the city
+ * takes both off the building layer directly and everything else off the front
  * of the chain. Without them `@gb/scene` dresses every building in town whole
  * at open and lights the street from nothing.
  */
@@ -84,10 +85,9 @@ function overBuildings(front: Dressing, buildings: Dressing): Dressing {
   }
   if (buildings.shell) composed.shell = (plot, size, charter) => buildings.shell!(plot, size, charter)
   if (buildings.lights) composed.lights = (plot, size, charter) => buildings.lights!(plot, size, charter)
-  if (front.marking) composed.marking = (paint) => front.marking!(paint)
-  if (front.clutter) composed.clutter = () => front.clutter!()
-  const bodies = (front as { members?: () => ReadonlyMap<string, CastMember> }).members
-  return bodies ? Object.assign(composed, { members: () => bodies.call(front) }) : composed
+  // everything else is the front of the chain's: the road paint, the rubbish,
+  // the bodies the cast spawned, and whatever the seam grows next
+  return carryOver(composed, front, ['shell', 'lights'])
 }
 
 async function loadPeople(base: string): Promise<Cast | undefined> {

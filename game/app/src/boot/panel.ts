@@ -1,7 +1,6 @@
 import type { CityBrief } from './brief.ts'
 import { CityForm } from './form.ts'
-import { LibraryView } from './library-view.ts'
-import type { Shelved } from './library.ts'
+import { LibraryView, type OnTheShelf } from './library-view.ts'
 
 export interface PanelHandlers {
   generate(brief: CityBrief): void
@@ -22,9 +21,22 @@ export interface PanelHandlers {
 }
 
 /**
+ * Which face the panel is showing: the cities the player has, or the form that
+ * makes another one.
+ */
+export type PanelFace = 'home' | 'make'
+
+/** What each face says under the title. */
+const SUBS: Record<PanelFace, string> = {
+  home: 'Pick a city to play, open one somebody sent you, or make a new one.',
+  make: 'Every field is optional. Left blank, the city decides for itself; the same answers make the same city every time.',
+}
+
+/**
  * The front door. Its markup is in `index.html`, so it is on screen with the
  * first byte of the page rather than after the renderer, the art and the city
- * have loaded; this drives it. The form and the library are its two halves.
+ * have loaded; this drives it. It has two faces: the cities the player already
+ * has, laid out to be picked from, and the form that makes a new one.
  */
 export class Panel {
   #root: HTMLElement
@@ -33,12 +45,18 @@ export class Panel {
   #open: HTMLInputElement
   #apply: HTMLInputElement
   #screens: HTMLInputElement
+  #home: HTMLElement
+  #make: HTMLElement
+  #sub: HTMLElement
+  #new: HTMLButtonElement
+  #homeAgain: HTMLButtonElement
   #generate: HTMLButtonElement
   #export: HTMLButtonElement
   #grow: HTMLButtonElement
   #cancel: HTMLButtonElement
   #close: HTMLButtonElement
   #status: HTMLElement
+  #face: PanelFace = 'make'
   #playing = false
   #handlers: PanelHandlers = {
     generate: () => {},
@@ -62,6 +80,11 @@ export class Panel {
     }
     this.#form = new CityForm(find)
     this.#library = new LibraryView(find)
+    this.#home = find('home')
+    this.#make = find('make')
+    this.#sub = find('sub')
+    this.#new = find('new')
+    this.#homeAgain = find('home-again')
     this.#open = find('open')
     this.#apply = find('apply')
     this.#screens = find('screens')
@@ -71,6 +94,7 @@ export class Panel {
     this.#cancel = find('cancel')
     this.#close = find('close')
     this.#status = find('status')
+    this.face = 'make'
 
     find<HTMLFormElement>('form').addEventListener('submit', (event) => {
       event.preventDefault()
@@ -89,6 +113,8 @@ export class Panel {
     })
     this.#screens.addEventListener('change', () => this.#handlers.settings(this.settings))
     this.#library.on({ open: (key) => this.#handlers.pick(key), remove: (key) => this.#handlers.remove(key) })
+    this.#new.addEventListener('click', () => void (this.face = 'make'))
+    this.#homeAgain.addEventListener('click', () => void (this.face = 'home'))
     this.#export.addEventListener('click', () => this.#handlers.save())
     this.#grow.addEventListener('click', () => this.#handlers.grow())
     this.#cancel.addEventListener('click', () => this.#handlers.cancel())
@@ -109,6 +135,22 @@ export class Panel {
     return this.#form.brief
   }
 
+  get face(): PanelFace {
+    return this.#face
+  }
+
+  /** Show one face or the other. The other one leaves the page rather than being scrolled past. */
+  set face(face: PanelFace) {
+    this.#face = face
+    this.#root.dataset.face = face
+    this.#home.hidden = face !== 'home'
+    this.#make.hidden = face !== 'make'
+    this.#new.hidden = face !== 'home'
+    this.#homeAgain.hidden = face !== 'make'
+    this.#generate.hidden = face !== 'make'
+    this.#sub.textContent = SUBS[face]
+  }
+
   /** What the player set that belongs to them rather than to any city. */
   get settings(): { screens: string } {
     return { screens: this.#screens.value.trim() }
@@ -122,9 +164,9 @@ export class Panel {
     this.#form.brief = brief
   }
 
-  /** The shelf, newest first. */
-  library(entries: readonly Shelved[]): void {
-    this.#library.render(entries)
+  /** The cities on the shelf, newest first. */
+  library(cities: readonly OnTheShelf[]): void {
+    this.#library.render(cities)
   }
 
   get open(): boolean {
@@ -133,7 +175,20 @@ export class Panel {
 
   show(): void {
     this.#root.hidden = false
-    this.#form.focus()
+    this.#focus()
+  }
+
+  /**
+   * Where the keyboard lands when the panel comes up: the first way in on the
+   * face it is showing. On the landing that is the city the player would go
+   * back to, and with an empty shelf the way to make one; on the form it is the
+   * first field. Escape is bound on the panel, so it is also what keeps the way
+   * back to the city on a key.
+   */
+  #focus(): void {
+    if (this.#face === 'make') return this.#form.focus()
+    const first = this.#home.querySelector<HTMLButtonElement>('.gb-boot-shelved button')
+    ;(first ?? this.#new).focus()
   }
 
   hide(): void {

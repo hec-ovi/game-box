@@ -21,6 +21,7 @@ import { Compass } from '../src/compass.ts'
 import { Conditions } from '../src/conditions.ts'
 import { Escorts } from '../src/escorts.ts'
 import { Gestures } from '../src/gestures.ts'
+import { Members } from '../src/members.ts'
 import { Guide } from '../src/guide.ts'
 import { Intents } from '../src/intents.ts'
 import { DAY, darkness, INDOORS, lookOf, NIGHT } from '../src/night.ts'
@@ -44,7 +45,9 @@ import { CLOSE_FOV, WIDE_FOV, Zoom } from '../src/zoom.ts'
 import type { Counters } from '../src/counters.ts'
 import type { Locks } from '../src/locks.ts'
 import type { Machines } from '../src/machines.ts'
+import { Minimap } from '../src/minimap.ts'
 import { CityArt } from '../src/rooms.ts'
+import { carryOver } from '../src/seam.ts'
 import { anyWorld, doorwaysOnly, fittings, lockUp } from './support/parts.ts'
 
 /** A quest doc, run past the same door the game runs one past, on a world that has everything. */
@@ -1796,7 +1799,7 @@ describe('a conversation you can click through', () => {
       hud,
       body: { setTyping: () => {} } as unknown as Player,
       attending: { hold: () => {}, release: () => {} } as unknown as Attending,
-      gestures: new Gestures(() => new Map([[npcId, arms.member]])),
+      gestures: new Gestures(new Members(() => new Map([[npcId, arms.member]]))),
       report: new Reporting({ world, log, player, hud, conditions: new Conditions(player.clock) }),
     })
     // the game pushes `@gb/talk`'s own moves, which carry the action the
@@ -1962,7 +1965,7 @@ describe('a conversation you can click through', () => {
     const counter = body(CLIPS.idle)
     let outside: ReadonlyMap<string, CastMember> = new Map([['npc_0001', pavement.member]])
     const inside = new Map([['npc_0001', counter.member]])
-    const gestures = new Gestures(() => outside, () => inside)
+    const gestures = new Gestures(new Members(() => outside, () => inside))
 
     // somebody out walking is not also standing behind their own counter
     gestures.start('npc_0001')
@@ -2313,7 +2316,7 @@ describe('what a stage direction does to the body', () => {
   function arms() {
     const moved: string[] = []
     const member = { playing: CLIPS.idle, gesture: (clip: string) => void moved.push(clip), stopGesture: () => {} } as unknown as CastMember
-    return { moved, gestures: new Gestures(() => new Map([['npc_0001', member]])) }
+    return { moved, gestures: new Gestures(new Members(() => new Map([['npc_0001', member]]))) }
   }
 
   it('plays a nod or a shake of the head when the words say so, and nothing for anything else', () => {
@@ -2514,5 +2517,179 @@ describe('the city round the player', () => {
     // the chain, the whole town is unlit and every building is dressed whole
     expect(city.lights.emitters.length).toBeGreaterThan(0)
     expect(city.root.children.some((child) => child.name.startsWith('city:'))).toBe(true)
+  })
+})
+
+describe('what a wrapper in front of a dressing carries', () => {
+  /** A dressing with an answer of its own that the seam has never heard of. */
+  class Extra extends Greybox {
+    counted = 0
+    tally(): number {
+      this.counted += 1
+      return this.counted
+    }
+  }
+
+  it('carries every answer it does not speak for itself, whatever that answer turns out to be', () => {
+    const behind = new Extra()
+    const front = guarded(behind) as unknown as { tally?: () => number; ground: Greybox['ground'] }
+
+    // the guard names six answers and guards four more; everything else the
+    // dressing behind speaks for comes through bound to it, so a capability
+    // added to a seam is not lost on the way in with nothing to say so
+    expect(front.tally).toBeDefined()
+    expect(front.tally!()).toBe(1)
+    expect(behind.counted).toBe(1)
+
+    // and the same through the seam a room's art is aimed through
+    const seam = new CityArt(front as unknown as Dressing).seam as unknown as { tally?: () => number }
+    expect(seam.tally!()).toBe(2)
+  })
+
+  it('leaves an answer the front speaks for itself alone', () => {
+    const behind = new Extra()
+    const marker = new THREE.MeshBasicMaterial()
+    const front = carryOver<Dressing>({ ...bare(behind), ground: () => marker }, behind, ['shell'])
+
+    // the front's own ground stands, and the far look it deliberately takes off
+    // another dressing is not filled in behind its back
+    expect(front.ground('street')).toBe(marker)
+    expect(front.shell).toBeUndefined()
+  })
+})
+
+/** The six a dressing must answer, forwarded, so a test can wrap one without writing them out. */
+function bare(dressing: Dressing): Dressing {
+  return {
+    building: (plot, size, charter) => dressing.building(plot, size, charter),
+    prop: (prop) => dressing.prop(prop),
+    character: (npc, doing) => dressing.character(npc, doing),
+    pickup: (item) => dressing.pickup(item),
+    ground: (kind) => dressing.ground(kind),
+    surface: (part, size) => dressing.surface(part, size),
+  }
+}
+
+describe('the corner view and the screen', () => {
+  /** A town two hundred cells across with a building beside the player and one right across it. */
+  function spread() {
+    const world = World.create({ name: 'Longreach', theme: 'plain', seed: 'corner', width: 200, height: 200 })
+    const near = world.addPlot({ kind: 'shop', name: 'Near Stores', rect: { x: 48, y: 48, w: 4, h: 4 }, entrance: { cell: { x: 50, y: 52 }, facing: 'south' }, storeys: 1, style: 'brick' })
+    const far = world.addPlot({ kind: 'shop', name: 'Far Stores', rect: { x: 180, y: 180, w: 4, h: 4 }, entrance: { cell: { x: 182, y: 184 }, facing: 'south' }, storeys: 1, style: 'brick' })
+    if (!near.ok || !far.ok) throw new Error('the town would not take its plots')
+    return { world, near: near.value.id, far: far.value.id }
+  }
+
+  function corner(world: World, options: { goals?: readonly Marked[]; entered?: readonly string[] } = {}) {
+    const { pushed, hud } = screenful()
+    let heading = 0
+    let at: Vec2 = { x: 100, z: 100 }
+    let outdoors = true
+    const minimap = new Minimap({
+      world,
+      hud,
+      heading: () => heading,
+      standing: () => at,
+      outdoors: () => outdoors,
+      goals: () => options.goals ?? [],
+      entered: () => options.entered ?? [],
+    })
+    return {
+      minimap,
+      pushed,
+      last: () => pushed.filter((patch) => 'minimap' in patch).at(-1)?.minimap,
+      walkTo: (next: Vec2) => void (at = next),
+      turnTo: (yaw: number) => void (heading = yaw),
+      goInside: () => void (outdoors = false),
+    }
+  }
+
+  it('pushes the streets round the player, windowed, and takes it away indoors', () => {
+    const { world, near } = spread()
+    const view = corner(world, { goals: [{ label: 'The job', x: 120, z: 120, line: 'main' }], entered: [] })
+
+    view.minimap.update(1)
+    const drawn = view.last()!
+    // where they stand and which way they face, in the map's own cells
+    expect(drawn.x).toBeCloseTo(50, 6)
+    expect(drawn.y).toBeCloseTo(50, 6)
+    expect(drawn.facing).toBeCloseTo(0, 6)
+    // the building beside them is on it and the one across town is not: the
+    // hud never reads the city, so what is not windowed here is never drawn
+    expect(drawn.plots.map((plot) => plot.id)).toEqual([near])
+    expect(drawn.radius).toBeGreaterThan(0)
+    // and where they are headed, wearing the same mark the plan pins
+    expect(drawn.marks).toEqual([{ x: 60, y: 60, label: 'The job', kind: 'goal', line: 'main' }])
+
+    // a room has its own metres, so the streets outside are taken off
+    view.goInside()
+    view.minimap.update(1)
+    expect(view.last()).toBeNull()
+  })
+
+  it('follows the player as they walk and as they turn on the spot', () => {
+    const { world } = spread()
+    const view = corner(world)
+    view.minimap.update(1)
+    const before = view.last()!
+
+    view.turnTo(-Math.PI / 2)
+    view.minimap.update(1 / 60)
+    expect(view.last()!.facing).toBeCloseTo(Math.PI / 2, 6)
+
+    view.walkTo({ x: 140, z: 100 })
+    view.minimap.update(1 / 60)
+    expect(view.last()!.x).toBeCloseTo(70, 6)
+    expect(view.last()!.x).not.toBeCloseTo(before.x, 6)
+  })
+
+  it('marks the doors of the places the player has already walked into', () => {
+    const { world, near } = spread()
+    const inside = world.plot(near)!.interiorId
+    const view = corner(world, { entered: inside ? [inside] : [] })
+    view.minimap.update(1)
+    expect(view.last()!.doors).toEqual(inside ? [{ id: near, name: 'Near Stores', x: 50.5, y: 52.5 }] : [])
+  })
+})
+
+describe('the two lines of work on the plan and in the corner', () => {
+  /** Two objectives from two quests, the story and an errand, each pointing at its own building. */
+  function bothLines(world: World): Marked[] {
+    const [bar, shop] = world.plots()
+    return marked(
+      world,
+      [
+        { questId: 'quest_0001', questTitle: 'The story', stepId: 'step_0001', text: 'Go to the bar', place: { plotId: bar!.id } },
+        { questId: 'quest_0002', questTitle: 'An errand', stepId: 'step_0001', text: 'Go to the shop', place: { plotId: shop!.id } },
+      ],
+      (questId) => (questId === 'quest_0001' ? 'main' : 'side'),
+    )
+  }
+
+  it('pins every live quest on both, the story apart from the errand', () => {
+    const world = town()
+    const goals = bothLines(world)
+    expect(goals.map((goal) => goal.line)).toEqual(['main', 'side'])
+
+    const plan = screenful()
+    new Chart({ world, hud: plan.hud, you: () => ({ position: { x: 5, z: 21 }, heading: 0 }), goals: () => goals, entered: () => [] }).draw()
+    const pinned = plan.pushed.at(-1)!.map!.marks!.filter((mark) => mark.kind === 'goal')
+    expect(pinned.map((mark) => mark.line)).toEqual(['main', 'side'])
+    expect(pinned.map((mark) => mark.label)).toEqual(['The Copper Wheel', 'Kell Supply'])
+
+    // the corner wears the same marks, so a place on the plan and the same
+    // place in the corner are one place. A goal with no line reads as an
+    // errand, so the story carries its own
+    const near = screenful()
+    new Minimap({
+      world,
+      hud: near.hud,
+      heading: () => 0,
+      standing: () => ({ x: 5, z: 21 }),
+      outdoors: () => true,
+      goals: () => goals,
+      entered: () => [],
+    }).update(1)
+    expect(near.pushed.at(-1)!.minimap!.marks).toEqual(pinned)
   })
 })

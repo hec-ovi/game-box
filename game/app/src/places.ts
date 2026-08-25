@@ -1,5 +1,19 @@
+import type { MapPlot } from '@gb/hud'
 import type { Objective, QuestKind } from '@gb/quest'
 import type { World } from '@gb/world'
+
+/**
+ * Every building on the plan: its footprint in cells, its name for the hover
+ * and its charter's standing for its fill. The plan and the corner draw the
+ * same city, so both read it from here and neither surveys anything: the grid
+ * the city was generated on is the plan.
+ */
+export function planOf(world: World): MapPlot[] {
+  return world.plots().map((plot) => {
+    const prominence = world.charter(plot.kind)?.prominence
+    return { id: plot.id, rect: plot.rect, label: plot.name, ...(prominence ? { prominence } : {}) }
+  })
+}
 
 /** Somewhere a quest points at, found on the city. */
 export interface Marked {

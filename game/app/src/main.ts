@@ -1,7 +1,8 @@
 /**
  * Boot. The panel in `index.html` is already on screen; this gives it something
  * to do. A city comes from `?bundle=`, from `?seed=` and `?theme=`, from the
- * shelf the player was last on, or from whatever they type into the panel.
+ * landing screen the player picks it off, or from whatever they type into the
+ * form.
  */
 import { Boot } from './boot/boot.ts'
 import { IndexedShelf } from './boot/indexed-shelf.ts'

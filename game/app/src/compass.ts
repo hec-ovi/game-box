@@ -1,6 +1,6 @@
 import type { CompassGoal, Hud } from '@gb/hud'
 import type { Guide } from './guide.ts'
-import type { Vec2 } from './walk.ts'
+import { bearing, type Vec2 } from './walk.ts'
 
 /** How often the walk to the goal is measured again while the player is moving, in seconds. */
 const EVERY = 1
@@ -84,8 +84,3 @@ function same(a: CompassGoal | undefined, b: CompassGoal | undefined): boolean {
   return a.label === b.label && a.line === b.line && Math.abs(a.bearing - b.bearing) < STILL && Math.round(a.distance) === Math.round(b.distance)
 }
 
-/** Radians clockwise from north, in one turn. */
-function bearing(radians: number): number {
-  const turn = Math.PI * 2
-  return ((radians % turn) + turn) % turn
-}

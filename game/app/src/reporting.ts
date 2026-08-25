@@ -1,10 +1,11 @@
-import type { Carried, Hud, OwnedPlace } from '@gb/hud'
+import type { Carried, Hud, OwnedPlace, SettingsView } from '@gb/hud'
 import type { PlayerState } from '@gb/play'
 import type { Change, Objective, QuestKind, QuestLog, Reward } from '@gb/quest'
 import type { World } from '@gb/world'
 import { codexOf } from './codex.ts'
 import type { Conditions } from './conditions.ts'
 import { marked, type Marked, type Whereabouts } from './places.ts'
+import type { View } from './view.ts'
 
 /** What a box handed back: changes to announce, or an error to let go. */
 export type Reported = { ok: true; value: readonly Change[] } | { ok: false; error: unknown }
@@ -22,6 +23,7 @@ export class Reporting {
   #player: PlayerState
   #hud: Hud
   #conditions: Conditions
+  #view: View | undefined
   #out: Whereabouts
   #changed: () => void
   #paid: (reward: Reward) => void
@@ -35,6 +37,8 @@ export class Reporting {
     player: PlayerState
     hud: Hud
     conditions: Conditions
+    /** What the player set about the screen. Without one the tab reads its own defaults: the corner view on, the game in a window. */
+    view?: View
     /** Where somebody out walking is, for the pins. Nobody is out by default. */
     out?: Whereabouts
     changed?: () => void
@@ -46,6 +50,7 @@ export class Reporting {
     this.#player = input.player
     this.#hud = input.hud
     this.#conditions = input.conditions
+    this.#view = input.view
     this.#out = input.out ?? (() => undefined)
     this.#changed = input.changed ?? (() => {})
     this.#paid = input.paid ?? (() => {})
@@ -136,7 +141,12 @@ export class Reporting {
     this.#pushedAt = at
     const quests = this.#log.journal()
     this.#timed = quests.some((page) => page.timer !== undefined)
-    this.#hud.show({ settings: this.#conditions.view(), quests })
+    this.#hud.show({ settings: this.#settings(), quests })
+  }
+
+  /** The clock, the sky and the screen, which the tab reads as one. */
+  #settings(): SettingsView {
+    return { ...this.#conditions.view(), ...(this.#view ? this.#view.settings : {}) }
   }
 
   refresh(): void {
@@ -152,7 +162,7 @@ export class Reporting {
       quests,
       codex: codexOf(this.#world, this.#player),
       homes: this.#homes(),
-      settings: this.#conditions.view(),
+      settings: this.#settings(),
     })
     this.#changed()
   }

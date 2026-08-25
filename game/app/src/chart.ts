@@ -1,7 +1,7 @@
 import type { Hud, MapMark, MapPlot, MapStation } from '@gb/hud'
 import type { World } from '@gb/world'
-import { interiorPlot, type Marked } from './places.ts'
-import type { Vec2 } from './walk.ts'
+import { interiorPlot, planOf, type Marked } from './places.ts'
+import { bearing, type Vec2 } from './walk.ts'
 
 /** Where the player is standing and which way they are looking. */
 export interface Pose {
@@ -56,10 +56,7 @@ export class Chart {
     this.#entered = input.entered
     this.#stations = input.stations ?? []
     this.#boarding = input.boarding ?? (() => undefined)
-    this.#plan = this.#world.plots().map((plot) => {
-      const prominence = this.#world.charter(plot.kind)?.prominence
-      return { id: plot.id, rect: plot.rect, label: plot.name, ...(prominence ? { prominence } : {}) }
-    })
+    this.#plan = planOf(this.#world)
     this.#landmarks = this.#plan.filter((plot) => plot.prominence === 'landmark').map((plot) => plot.id)
   }
 
@@ -139,8 +136,3 @@ export class Chart {
   }
 }
 
-/** Radians clockwise from north, in one turn. */
-function bearing(radians: number): number {
-  const turn = Math.PI * 2
-  return ((radians % turn) + turn) % turn
-}

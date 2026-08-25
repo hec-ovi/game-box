@@ -97,10 +97,16 @@ export class Boot {
   }
 
   /**
-   * What the address bar asked for, or the city the player was last in. With
-   * neither, the panel waits: a bare address is a form, not an eleven second
-   * white screen. A refresh comes back to the same city, model or not, because
-   * the city is on the shelf rather than written again.
+   * What the address bar named, or the front door. A city named in the address
+   * bar is opened straight away, because that is how a city is shared: by file,
+   * or by the seed and theme that build it, and asking for the one already on
+   * the shelf comes back to it rather than writing it again.
+   *
+   * Named nothing, the player lands on their own cities and picks one. Nothing
+   * is generated and nothing is entered on its own: a bare address that dropped
+   * somebody into a town they did not choose is the game choosing for them. An
+   * empty shelf lands on the form instead, because a grid with nothing in it is
+   * a dead end on a first run.
    */
   async start(query: URLSearchParams): Promise<void> {
     this.#asked = query
@@ -118,8 +124,12 @@ export class Boot {
       return
     }
 
-    if (asked && !(last && sameBrief(asked, briefOf(last)))) return this.generate(asked)
-    if (last) return this.pick(last.key)
+    if (asked) {
+      if (last && sameBrief(asked, briefOf(last))) return this.pick(last.key)
+      return this.generate(asked)
+    }
+
+    this.#panel.face = last ? 'home' : 'make'
     this.#panel.waiting()
   }
 
@@ -246,9 +256,10 @@ export class Boot {
     this.#running?.abort()
   }
 
-  /** The way out of the game: the panel, with the shelf on it. */
+  /** The way out of the game: the front door, on the player's own cities. */
   showPanel(): void {
     this.#game?.handOverKeys(true)
+    this.#panel.face = 'home'
     this.#panel.show()
   }
 
@@ -331,8 +342,14 @@ export class Boot {
     this.#game.handOverKeys(false)
   }
 
+  /**
+   * The shelf onto the landing screen, each city with whether a playthrough is
+   * waiting in it. The saves are this layer's, keyed the same way the shelf is,
+   * so the library never has to know they exist.
+   */
   async #shelve(): Promise<void> {
-    this.#panel.library(await this.#library.entries())
+    const entries = await this.#library.entries()
+    this.#panel.library(entries.map((entry) => ({ entry, played: localSaves(entry.key).read() !== undefined })))
   }
 
   #step = async (text: string): Promise<void> => {

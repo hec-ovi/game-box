@@ -1,5 +1,5 @@
 import type { Dressing } from '@gb/scene'
-import type { CastMember } from '@gb/cast'
+import { carryOver } from './seam.ts'
 
 /**
  * The art the city is built with, and the art one room is built with.
@@ -30,14 +30,11 @@ export class CityArt {
       ground: (kind) => front().ground(kind),
       surface: (part, size) => front().surface(part, size),
     }
-    // how a building looks from far off, what it throws onto the street, the
-    // road paint and the rubbish are the city's, never a room's
-    if (city.shell) seam.shell = (plot, size, charter) => city.shell!(plot, size, charter)
-    if (city.lights) seam.lights = (plot, size, charter) => city.lights!(plot, size, charter)
-    if (city.marking) seam.marking = (paint) => city.marking!(paint)
-    if (city.clutter) seam.clutter = () => city.clutter!()
-    const bodies = (city as { members?: () => ReadonlyMap<string, CastMember> }).members
-    this.seam = bodies ? Object.assign(seam, { members: () => bodies.call(city) }) : seam
+    // only what a room is dressed for stands aside for one. How a building
+    // looks from far off, what it throws onto the street, the road paint, the
+    // rubbish and everything else the city answers for are the city's, never a
+    // room's, and they come over whatever they turn out to be
+    this.seam = carryOver(seam, city)
   }
 
   /** Build one room in its own art. Whatever the build answers comes back. */

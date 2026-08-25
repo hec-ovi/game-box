@@ -1,5 +1,5 @@
 import type { OpenedBundle } from '@gb/bundle'
-import type { Cast, CastMember } from '@gb/cast'
+import type { Cast } from '@gb/cast'
 import { SceneCast } from '@gb/crowd'
 import { CrowdRiders, Driving } from '@gb/drive'
 import { questTargets } from '@gb/forge'
@@ -28,6 +28,8 @@ import { Intents } from './intents.ts'
 import { Interaction } from './interaction.ts'
 import { Locks } from './locks.ts'
 import { Machines } from './machines.ts'
+import { Members, type Bodies } from './members.ts'
+import { Minimap } from './minimap.ts'
 import type { RoomArt } from './pack.ts'
 import { Player } from './player.ts'
 import { createStage } from './renderer.ts'
@@ -47,6 +49,7 @@ import { Street } from './street.ts'
 import { Talking } from './talking.ts'
 import { Travel } from './travel.ts'
 import { pick, Targeting, type Target } from './targets.ts'
+import { View } from './view.ts'
 
 export interface GameOptions {
   dressing: Dressing
@@ -108,6 +111,8 @@ export class Game {
   #chart: Chart
   #travel: Travel
   #compass: Compass
+  #minimap: Minimap
+  #view: View
   #targeting: Targeting
   #art: CityArt
   #intents: Intents
@@ -178,12 +183,16 @@ export class Game {
     // the clock and the sky are the player's to turn, by key and by the
     // settings tab alike, so one hand on them serves both
     const conditions = new Conditions(clock)
+    // and the screen: the corner view and full screen, which the tab reads off
+    // what the game pushes back rather than off the button that was pressed
+    this.#view = new View(() => this.#report.refresh())
     this.#report = new Reporting({
       world: this.#world,
       log: this.#log,
       player: this.#player,
       hud: this.#hud,
       conditions,
+      view: this.#view,
       // a pin on somebody who is out walking goes where they are heading
       out: (npcId) => this.#street.whereabouts(npcId),
       // a job that paid out a house or a car: the city is told whose the place
@@ -192,6 +201,7 @@ export class Game {
       changed: () => {
         this.keep()
         this.#compass.dirty()
+        this.#minimap.dirty()
         this.#escorts.dirty()
         // the board moved: who has to stay in, and who is walking with the
         // player, are both read off it
@@ -326,10 +336,20 @@ export class Game {
     this.#rewards = new Rewards({ world: this.#world, player: this.#player, locks: this.#locks, garage: this.#garage, report: this.#report })
     this.#street.setPlayerCar(this.#garage)
 
+    // where anybody's body comes from: the pavement, the room the player is
+    // standing in, which is dressed by its own art and hands out its own
+    // bodies, and the city's own dressing. Asked in that order and asked
+    // fresh, never kept
+    const city = (input.dressing as { members?: Bodies }).members?.bind(input.dressing)
+    const members = new Members(
+      () => this.#riderCast?.members(),
+      () => this.#buildings.bodiesHere(),
+      () => city?.(),
+    )
+
     // the crowd turns the people it is walking; the people at their posts in a
-    // room are this box's own bodies, and with the art pack they come out of
-    // their stance to face the player
-    const heads = (input.dressing as { members?: () => ReadonlyMap<string, CastMember> }).members?.()
+    // room are the art pack's bodies, and it brings them out of their stance
+    // to face the player
     this.#attending = new Attending({
       street: this.#street,
       eye: this.#stage.camera.position,
@@ -339,7 +359,7 @@ export class Game {
       post: (npcId): Post | undefined => {
         const body = this.#buildings.inside?.people.get(npcId)
         if (!body) return undefined
-        const member = heads?.get(npcId)
+        const member = members.of(npcId)
         return member ? { body, member } : { body }
       },
     })
@@ -352,11 +372,9 @@ export class Game {
       hud: this.#hud,
       body: this.#body,
       attending: this.#attending,
-      // one lookup for both: `@gb/crowd` answers it in the same shape the room
-      // does, and the crowd is asked first because somebody out walking is not
-      // also standing behind their own counter. Asked fresh every time, never
-      // kept: bodies are recycled, and a held one is a stranger's arms
-      gestures: new Gestures(() => this.#riderCast?.members(), () => heads),
+      // the same lookup the person being talked to was found through, so the
+      // hands that talk are the body they are actually wearing
+      gestures: new Gestures(members),
       // naming their stock opens the counter they keep; a word, a key or a
       // door that changed hands is one the locks and the inventory read
       wares: (npcId) => this.#counters.open(npcId),
@@ -398,6 +416,18 @@ export class Game {
       standing: () => this.#body.position,
       outdoors: () => this.#buildings.outdoors,
     })
+    // the streets round the player in the corner, windowed here because the
+    // interface never reads the city: the same goals the plan pins, and the
+    // doors of every place they have already walked into
+    this.#minimap = new Minimap({
+      world: this.#world,
+      hud: this.#hud,
+      heading: () => this.#body.heading,
+      standing: () => this.#body.position,
+      outdoors: () => this.#buildings.outdoors,
+      goals: () => this.#report.goals(),
+      entered: () => this.#player.discovered().places,
+    })
 
     this.#targeting = new Targeting({
       world: this.#world,
@@ -422,6 +452,7 @@ export class Game {
       machines: this.#machines,
       counters: this.#counters,
       travel: this.#travel,
+      view: this.#view,
       leave: input.leave,
       // a page with no pointer lock to give back has nothing to release
       releasePointer: () => document.exitPointerLock?.(),
@@ -555,6 +586,7 @@ export class Game {
 
     this.#chart.update(seconds)
     this.#compass.update(seconds)
+    this.#minimap.update(seconds)
     this.#target = pick(this.#body.position, this.#body.heading, this.#targeting.list())
     const prompt = this.#talking.active || !this.#target ? null : { key: 'E', text: this.#target.label }
     this.#hud.show({ prompt })
@@ -634,6 +666,7 @@ export class Game {
     this.keep()
     this.#screens?.close()
     this.#interaction.dispose()
+    this.#view.dispose()
     this.#body.dispose()
     this.#hud.destroy()
     this.#stage.dispose()
