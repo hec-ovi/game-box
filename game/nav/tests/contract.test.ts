@@ -260,3 +260,47 @@ function priceOf(w: World, path: readonly Cell[]): number {
 function key(w: World, cell: Cell): string {
   return `${cell.y * w.grid.width + cell.x}`
 }
+
+describe('CityNav locks', () => {
+  /** The town with its second interior door locked, and a key on the pavement that opens it. */
+  function lockedTown() {
+    const doc = world.toJSON() as { interiors: Array<{ id: string; doors: Array<{ id: string; from: string; to: string; locked: boolean }>; rooms: Array<{ id: string }> }>; items: unknown[]; placements: unknown[] }
+    const interior = doc.interiors.find((i) => i.doors.length >= 3 && i.rooms.length >= 3)!
+    const inner = interior.doors[1]!
+    inner.locked = true
+    const street = world.plots()[0]!.entrance.cell
+    doc.items.push({ id: 'item_9001', name: 'Back-room key', description: 'Opens one door.', archetype: 'key', opens: { doorId: inner.id } })
+    doc.placements.push({ at: 'ground', itemId: 'item_9001', cell: street })
+    const loaded = World.load(doc)
+    if (!loaded.ok) throw new Error(JSON.stringify(loaded.error).slice(0, 400))
+    return { locked: loaded.value, interior, inner, street }
+  }
+
+  it('a room behind a locked door is unreachable until the door is unlocked', () => {
+    const { locked, interior, inner, street } = lockedTown()
+    const nav = CityNav.from(locked)
+    const front = interior.doors[0]!.to
+    const behind = interior.doors[interior.doors.length - 1]!.to
+
+    expect(nav.locked(inner.id)).toBe(true)
+    expect(nav.reachableRoom(locked, street, interior.id, front)).toBe(true)
+    expect(nav.reachableRoom(locked, street, interior.id, behind)).toBe(false)
+
+    nav.setLocked(inner.id, false)
+    expect(nav.locked(inner.id)).toBe(false)
+    expect(nav.reachableRoom(locked, street, interior.id, behind)).toBe(true)
+
+    nav.setLocked(inner.id, true)
+    expect(nav.reachableRoom(locked, street, interior.id, behind)).toBe(false)
+  })
+
+  it('answers unknown doors and rooms without throwing', () => {
+    const nav = CityNav.from(world)
+    const street = world.plots()[0]!.entrance.cell
+    expect(nav.locked('door_9999')).toBeUndefined()
+    nav.setLocked('door_9999', true)
+    expect(nav.reachableRoom(world, street, 'interior_9999', 'room_0001')).toBe(false)
+    expect(nav.reachableRoom(world, street, world.interiors()[0]!.id, 'room_9999')).toBe(false)
+    expect(nav.reachableRoom(world, { x: 0, y: 0 }, world.interiors()[0]!.id, world.interiors()[0]!.rooms[0]!.id)).toBe(false)
+  })
+})

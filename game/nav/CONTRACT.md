@@ -1,10 +1,10 @@
 # @gb/nav contract
 
-contractVersion: 0.2.0
+contractVersion: 0.3.0
 
 ## Purpose
 
-Walking routes across a generated city, read straight off its grid: who can get where, by which way, and how far.
+Walking routes across a generated city, read straight off its grid: who can get where, by which way, how far, and which rooms a lock keeps you out of.
 
 ## Inputs
 
@@ -15,6 +15,8 @@ Walking routes across a generated city, read straight off its grid: who can get 
 | `reachableFrom(start)` | a cell coordinate | a start you cannot stand on reaches nothing |
 | `pathToDoor(world, from, plotId)` | a plot id | unknown ids return undefined |
 | `waypoints(path)` | a path from `path()` | |
+| `reachableRoom(world, from, interiorId, roomId)` | a cell, an interior id and one of its room ids | unknown ids answer false |
+| `setLocked(doorId, locked)` / `locked(doorId)` | a door id | an unknown id is ignored, and reads back undefined |
 
 ## Outputs
 
@@ -25,6 +27,8 @@ Walking routes across a generated city, read straight off its grid: who can get 
 | `reachableFrom` | `Reach` | everywhere that start can walk to, in one pass over the grid |
 | `waypoints` | `Point[]` in metres | the same route with straight stretches collapsed to their corners |
 | `walkable(cell)` | boolean | false outside the grid |
+| `reachableRoom` | boolean | true exactly when `reachable(from, doorstep)` holds for the interior's plot and every door on some way from the street to the room is unlocked |
+| `locked` | boolean or undefined | the door's current state; starts at the file's `Door.locked` |
 
 A `Reach` is a lookup, never another search:
 
@@ -43,9 +47,13 @@ None. Every question has an answer: no route is `undefined`, not an exception.
 
 A doorstep is an ordinary walkable cell. A companion spawned at `plot.entrance.cell`, or a walker on any pavement cell, routes with the same `path(from, to)` as everyone else; `pathToDoor` is only `path` with the destination looked up by plot id. Nothing is registered ahead of time.
 
+## Locked doors
+
+Rooms are the nodes and doors the edges of a graph read off `Interior.doors` (`from` is `outside` or a room, `to` a room). A locked door cuts its edge in both directions, so `reachableRoom` is false for every room only reachable through it, and a quest that needs a key is not reported completable. `setLocked` is how play tells nav the player got past a lock (a key in the inventory, a password typed): nav keeps the state and never decides it.
+
 ## Dependencies
 
-- `@gb/world` contract (game/world/CONTRACT.md): the grid, and `CELL_KINDS` with its table "The cells a city is laid in" (the walking column is what `WALK_COST` prices).
+- `@gb/world` contract (game/world/CONTRACT.md): the grid, `interiors()` with each `Door` (`from`, `to`, `locked`), `interior(id).plotId` for the doorstep, and `CELL_KINDS` with its table "The cells a city is laid in" (the walking column is what `WALK_COST` prices).
 
 ## Invariants
 

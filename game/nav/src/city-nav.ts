@@ -1,6 +1,7 @@
 import type { CellKind, World } from '@gb/world'
 import type { Cell, Point } from './cells.ts'
 import { FloodFill } from './flood.ts'
+import { DoorGraph } from './door-graph.ts'
 import { CostGrid } from './grid.ts'
 import { PathSearch } from './path-search.ts'
 import type { Reach } from './reach.ts'
@@ -20,19 +21,21 @@ export class CityNav {
   readonly #grid: CostGrid
   readonly #search: PathSearch
   readonly #flood: FloodFill
+  readonly #doors: DoorGraph
   readonly #cellSize: number
 
-  private constructor(grid: CostGrid, cellSize: number) {
+  private constructor(grid: CostGrid, doors: DoorGraph, cellSize: number) {
     this.width = grid.width
     this.height = grid.height
     this.#grid = grid
     this.#cellSize = cellSize
     this.#search = new PathSearch(grid)
     this.#flood = new FloodFill(grid)
+    this.#doors = doors
   }
 
   static from(world: World, costs: Partial<Record<CellKind, number>> = {}): CityNav {
-    return new CityNav(CostGrid.from(world, costs), world.cellSize)
+    return new CityNav(CostGrid.from(world, costs), new DoorGraph(world), world.cellSize)
   }
 
   walkable(cell: Cell): boolean {
@@ -71,6 +74,27 @@ export class CityNav {
     const plot = world.plot(plotId)
     if (!plot) return undefined
     return this.path(from, plot.entrance.cell)
+  }
+
+  /** Whether a door is locked; undefined when the city has no such door. */
+  locked(doorId: string): boolean | undefined {
+    return this.#doors.locked(doorId)
+  }
+
+  /** Locks or unlocks a door, which cuts or restores the edge through it. Unknown ids are ignored. */
+  setLocked(doorId: string, locked: boolean): void {
+    this.#doors.setLocked(doorId, locked)
+  }
+
+  /**
+   * Can a room be reached on foot: the walk to its building's doorstep, then
+   * through its doors, none of them locked. A quest that needs a key is not
+   * completable until `setLocked(door, false)`.
+   */
+  reachableRoom(world: World, from: Cell, interiorId: string, roomId: string): boolean {
+    const plot = world.plot(world.interior(interiorId)?.plotId ?? '')
+    if (!plot) return false
+    return this.#doors.opens(interiorId, roomId) && this.reachable(from, plot.entrance.cell)
   }
 
   /**
