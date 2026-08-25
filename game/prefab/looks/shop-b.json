@@ -2,7 +2,7 @@
   "id": "shop-b",
   "facade": "facade-b-3",
   "note": "a shopfront: a wide door, a lit banner well clear of it, a fascia band over it and a magenta tube round the top",
-  "kinds": [
+  "tags": [
     "shop",
     "market",
     "cafe",

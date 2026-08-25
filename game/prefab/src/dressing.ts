@@ -1,6 +1,6 @@
 import { SIGN, lightsFor } from '@gb/kitbash'
 import type { Dressing } from '@gb/scene'
-import type { AnchorKind, CellKind, FurnitureProp, Item, Npc, Plot } from '@gb/world'
+import type { AnchorKind, CellKind, FurnitureProp, Item, Npc, Plot, ResolvedCharter } from '@gb/world'
 import * as THREE from 'three'
 import { Entrances } from './entrance.ts'
 import type { Library } from './library.ts'
@@ -20,6 +20,10 @@ export interface BuildingSize {
  * shape for, and a pin this copy of the pack cannot honour, are handed straight
  * to the dressing behind, so a footprint nobody baked is a kit building rather
  * than a hole in the street.
+ *
+ * Which look a plot may wear is its charter's `suits`, handed in beside the
+ * plot by whoever resolved the charter, and handed on whole to the dressing
+ * behind, which reads the rest of it.
  *
  * A plot with an interior gets the entrance you can walk through. It is the
  * same building on the same layer count: one attribute rewritten on the copy
@@ -49,10 +53,10 @@ export class PrefabDressing implements Dressing {
     this.#lights = new BuildingLights(library.catalogue.atlas.finishes, library.tints)
   }
 
-  building(plot: Plot, size: BuildingSize): THREE.Object3D {
-    const design = designFor(this.#library.catalogue, plot, size)
+  building(plot: Plot, size: BuildingSize, charter: ResolvedCharter): THREE.Object3D {
+    const design = designFor(this.#library.catalogue, plot, size, charter.suits)
     const geometry = design ? this.#library.geometry(design.model) : undefined
-    if (!design || !geometry) return this.#rest.building(plot, size)
+    if (!design || !geometry) return this.#rest.building(plot, size, charter)
 
     const turned = orient(geometry, turnsFor(plot.entrance.facing), design.mirror, design.rooms)
     if (plot.interiorId !== undefined) this.#entrances.open(turned)
@@ -65,7 +69,7 @@ export class PrefabDressing implements Dressing {
     const building = new THREE.Group()
     building.name = plot.id
     building.add(mesh)
-    const signs = signsOn(this.#rest.building(plot, size))
+    const signs = signsOn(this.#rest.building(plot, size, charter))
     if (signs.length) this.#signed.add(plot.id)
     for (const sign of signs) building.add(sign)
     return building
@@ -78,11 +82,11 @@ export class PrefabDressing implements Dressing {
    * decides whether signs were hung; a plot the catalogue handed to the
    * dressing behind has nothing of its own here.
    */
-  lights(plot: Plot, size: BuildingSize): LightEmitter[] {
-    const design = designFor(this.#library.catalogue, plot, size)
+  lights(plot: Plot, size: BuildingSize, charter: ResolvedCharter): LightEmitter[] {
+    const design = designFor(this.#library.catalogue, plot, size, charter.suits)
     const geometry = design ? this.#library.geometry(design.model) : undefined
     const own = design && geometry ? this.#lights.of(orient(geometry, turnsFor(plot.entrance.facing), design.mirror), plot.entrance.facing, plot.interiorId !== undefined, design.rooms) : []
-    return this.#signed.has(plot.id) ? [...own, ...lightsFor(plot, size)] : own
+    return this.#signed.has(plot.id) ? [...own, ...lightsFor(plot, size, charter)] : own
   }
 
   prop(prop: FurnitureProp): THREE.Object3D {

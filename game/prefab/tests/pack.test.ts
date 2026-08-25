@@ -1,6 +1,6 @@
 import { Forge, OfflineNarrator } from '@gb/forge'
 import { storeyHeight } from '@gb/scene'
-import { BUILDING_KINDS } from '@gb/world'
+import { SHIPPED_CHARTERS } from '@gb/world'
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import sharp from 'sharp'
@@ -19,6 +19,7 @@ import { baseFinish, stretchOf, wallFinish } from '../src/wall.ts'
 import { loadLooks } from '../tools/look.ts'
 import { CLEAR } from '../tools/stack.ts'
 import { verifyPack } from '../tools/verify.ts'
+import { plotOf } from './support.ts'
 
 const pack = new URL('../pack/', import.meta.url)
 const document = new Uint8Array(readFileSync(new URL('buildings.json', pack)))
@@ -314,9 +315,18 @@ describe('the shipped pack', () => {
     expect(shapes.size).toBeGreaterThan(20)
   })
 
-  it('gives every trade something on every shape', () => {
-    const kinds = catalogue.kindsCovered()
-    expect([...kinds].sort()).toEqual([...BUILDING_KINDS].sort())
+  it('claims every preset charter, and an invented word by the tags its charter carries', () => {
+    expect(catalogue.suits(SHIPPED_CHARTERS)).toEqual({ ok: true })
+    const size = { width: 8, depth: 12 }
+    const claimed = (design: { model: string } | undefined, suits: readonly string[]) => catalogue.model(design?.model ?? '')?.tags.some((tag) => suits.includes(tag))
+    for (const charter of SHIPPED_CHARTERS) {
+      expect(claimed(catalogue.design(plotOf({ kind: charter.word }), size, charter.suits), charter.suits), charter.word).toBe(true)
+    }
+    // a word no look has heard of, whose charter says it is a narrow painted bar
+    const speakeasy = ['bar', 'narrow', 'painted', 'speakeasy']
+    expect(catalogue.model(catalogue.design(plotOf({ kind: 'speakeasy' }), size, speakeasy)!.model)?.tags).toContain('bar')
+    // and one nothing claims is named, so a pack can be asked before a city is built against it
+    expect(catalogue.suits([{ word: 'vault', suits: ['sealed', 'vault'] }])).toEqual({ ok: false, missing: ['vault'] })
     for (const bucket of everyBucket()) {
       const looks = new Set(catalogue.bucket(bucket).map((model) => model.look))
       expect(looks.size, bucketKey(bucket)).toBeGreaterThanOrEqual(8)

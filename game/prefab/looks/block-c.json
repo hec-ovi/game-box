@@ -2,7 +2,7 @@
   "id": "block-c",
   "facade": "facade-c-2",
   "note": "a residential block: a plain street wall, a modest door and one teal line round a stepped parapet",
-  "kinds": [
+  "tags": [
     "house",
     "apartment",
     "chapel",

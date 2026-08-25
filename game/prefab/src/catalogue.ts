@@ -1,5 +1,5 @@
 import { contract, Rng, type SchemaViolation } from '@gb/kit'
-import { BUILDING_KINDS, type AssetPackRef, type BuildingKind, type Plot } from '@gb/world'
+import type { AssetPackRef, Plot, ResolvedCharter } from '@gb/world'
 import { z } from 'zod'
 import { bucketKey, bucketOf, type Bucket } from './bucket.ts'
 import { sha256 } from './digest.ts'
@@ -11,6 +11,18 @@ import { sha256 } from './digest.ts'
  */
 const ROOM_SHIFTS = 48
 
+/**
+ * What a tag looks like: the same word shape `@gb/world` writes a charter's
+ * `suits` in, so a look and a charter can only ever meet on a word both could
+ * have written. Membership is not checked here. What kinds of place exist is
+ * the world file's to say, and a pack that refused a word it had not heard of
+ * would drop a whole city to the kit over one institutional look.
+ */
+export const TAG = /^[a-z][a-z0-9-]{0,23}$/
+
+/** The tags a plot's charter says a look may match: `ResolvedCharter.suits`. */
+export type Suits = readonly string[]
+
 const ModelSchema = z.object({
   /** `<look>-<front>x<depth>x<storeys>`. */
   id: z.string().min(1),
@@ -18,8 +30,8 @@ const ModelSchema = z.object({
   front: z.number().positive(),
   depth: z.number().positive(),
   storeys: z.number().int().positive(),
-  /** Trades this look suits. The pick filters on it before it draws. */
-  kinds: z.array(z.enum(BUILDING_KINDS)).min(1),
+  /** What this look suits, matched against a charter's `suits`. The pick filters on it before it draws. */
+  tags: z.array(z.string().regex(TAG)).min(1),
   triangles: z.number().int().nonnegative(),
   /** Where the door's middle sits along the front face, from its middle, in metres. */
   door: z.object({ along: z.number() }),
@@ -67,6 +79,12 @@ export interface Design {
 export interface Uncovered {
   readonly ok: false
   readonly missing: readonly Bucket[]
+}
+
+export interface Unsuited {
+  readonly ok: false
+  /** The words no look in the pack claims, so their plots draw from the whole shape. */
+  readonly missing: readonly string[]
 }
 
 export class InvalidCatalogue extends Error {
@@ -165,17 +183,18 @@ export class Catalogue {
    * hangs off the plot's own id, kind and style and takes nothing from a shared
    * stream, so dressing one plot cannot move another.
    *
-   * Undefined when the catalogue has nothing this shape, which is the signal to
-   * let the kit answer instead.
+   * `suits` is what the plot's charter says a look may match, and a look is
+   * suited when it shares a tag with it. Undefined when the catalogue has
+   * nothing this shape, which is the signal to let the kit answer instead.
    */
-  design(plot: Plot, size: { width: number; depth: number }): Design | undefined {
+  design(plot: Plot, size: { width: number; depth: number }, suits: Suits): Design | undefined {
     const members = this.bucket(bucketOf(plot, size))
     if (members.length === 0) return undefined
 
     // a house, a chapel and a bar on one footprint should not be the same
-    // building; where nothing in the bucket claims the trade, the whole bucket
-    // answers rather than leaving the plot bare
-    const suited = members.filter((model) => model.kinds.includes(plot.kind))
+    // building; where nothing in the bucket claims the charter, the whole
+    // bucket answers rather than leaving the plot bare
+    const suited = members.filter((model) => claims(model, suits))
     const candidates = suited.length > 0 ? suited : members
 
     const rng = new Rng(`prefab/${plot.id}/${plot.kind}/${plot.style}`)
@@ -199,10 +218,16 @@ export class Catalogue {
     return missing.length === 0 ? { ok: true } : { ok: false, missing }
   }
 
-  /** Every trade the catalogue can answer for, on every shape it holds. */
-  kindsCovered(): readonly BuildingKind[] {
-    const kinds = new Set<BuildingKind>()
-    for (const model of this.models) for (const kind of model.kinds) kinds.add(kind)
-    return [...kinds]
+  /** Whether every charter asked for has a look that claims it. Every look is baked at every shape, so the pack answers for all of them at once. */
+  suits(charters: Iterable<Pick<ResolvedCharter, 'word' | 'suits'>>): { ok: true } | Unsuited {
+    const missing: string[] = []
+    for (const charter of charters) {
+      if (!this.models.some((model) => claims(model, charter.suits))) missing.push(charter.word)
+    }
+    return missing.length === 0 ? { ok: true } : { ok: false, missing }
   }
+}
+
+function claims(model: ModelSpec, suits: Suits): boolean {
+  return model.tags.some((tag) => suits.includes(tag))
 }

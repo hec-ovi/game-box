@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { BUILDING_KINDS, type BuildingKind } from '@gb/world'
+import { TAG } from '../src/catalogue.ts'
 
 /** The four tube colours the whole catalogue is lit with. `docs/LOOK.md`'s palette. */
 export const NEONS = ['cyan', 'teal', 'magenta', 'amber'] as const
@@ -32,8 +32,14 @@ export interface Look {
    * runtime choice would be a second thing a world file does not record.
    */
   readonly facade: string
-  /** Trades this look suits. The catalogue filters by it before it picks. */
-  readonly kinds: readonly BuildingKind[]
+  /**
+   * What this look suits: words a charter's `suits` may carry, each the shape
+   * `TAG` says. A trade (`bar`, `house`), a frontage, a material or a
+   * prominence; the catalogue picks the look for any plot whose charter shares
+   * one. Only the shape is checked, since which words exist is the world file's
+   * to say.
+   */
+  readonly tags: readonly string[]
   readonly door: { readonly wide: number; readonly tall: number }
   /** A band over the shopfront. */
   readonly fascia?: boolean
@@ -66,8 +72,8 @@ function check(look: Look, file: string): Look {
     throw new Error(`${file}: ${why}`)
   }
   if (!look.facade) fail('a look has to name the wall picture it wears, from finishes/')
-  if (look.kinds.length === 0) fail('a look has to say which trades it suits')
-  for (const kind of look.kinds) if (!BUILDING_KINDS.includes(kind)) fail(`${kind} is not a building kind`)
+  if (look.tags.length === 0) fail('a look has to say what it suits')
+  for (const tag of look.tags) if (!TAG.test(tag)) fail(`${tag} is not a tag: lowercase, a letter first, at most 24 characters`)
   if (look.crown && !NEONS.includes(look.crown)) fail(`${look.crown} is not one of ${NEONS.join(', ')}`)
   for (const display of look.displays ?? []) if (!DISPLAYS.includes(display)) fail(`${display} is not one of ${DISPLAYS.join(', ')}`)
   if (look.door.tall > 3) fail('a door taller than 3 m does not fit the shortest ground floor')

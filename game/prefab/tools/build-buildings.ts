@@ -14,13 +14,15 @@ import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { everyBucket, type Bucket } from '../src/bucket.ts'
-import type { CatalogueDoc, ModelSpec } from '../src/catalogue.ts'
+import { flag } from './args.ts'
+import type { CatalogueDoc } from '../src/catalogue.ts'
 import { buildAtlas, swatchVerbs } from './atlas.ts'
 import { intake, type Baked } from './intake.ts'
 import { ROOM_SIZE } from '../src/rooms.ts'
 import { SCREEN_SIZE } from '../src/screens.ts'
 import { COLOUR_SIZE, EMISSIVE_SIZE, Layers } from './layers.ts'
 import { loadLooks, type Look } from './look.ts'
+import { modelOf, PACK, serialise, VERSION } from './manifest.ts'
 import { Producer } from './producer.ts'
 import { buildRooms } from './rooms.ts'
 import { buildScreens } from './screens.ts'
@@ -29,12 +31,9 @@ import { verbsFor } from './stack.ts'
 import { verifyPack } from './verify.ts'
 import { writePack } from './write.ts'
 
-const PACK = 'gb-buildings'
-const VERSION = '1.6.0'
-
 const args = process.argv.slice(2)
-const jobs = Math.max(1, Number(flag('--jobs') ?? 8))
-const out = resolve(import.meta.dirname, '..', flag('--out') ?? 'pack')
+const jobs = Math.max(1, Number(flag(args, '--jobs') ?? 8))
+const out = resolve(import.meta.dirname, '..', flag(args, '--out') ?? 'pack')
 const looksFolder = resolve(import.meta.dirname, '../looks')
 
 const homes = join(tmpdir(), `gb-prefab-${process.pid}`)
@@ -66,16 +65,7 @@ try {
   const baked = await pool(jobsList, jobs, async ({ look, bucket }) => bake(producer, look, bucket, textures.get(look.id)!, layers))
   const seconds = (Date.now() - started) / 1000
 
-  const models: ModelSpec[] = baked.map(({ look, bucket, model }) => ({
-    id: model.id,
-    look: look.id,
-    front: bucket.front,
-    depth: bucket.depth,
-    storeys: bucket.storeys,
-    kinds: [...look.kinds],
-    triangles: model.triangles,
-    door: { along: 0 },
-  }))
+  const models = baked.map(({ look, bucket, model }) => modelOf(look, bucket, model.id, model.triangles))
 
   const mesh = await writePack(baked.map((one) => one.model))
   await verifyPack(mesh, new Map(baked.map(({ bucket, model }) => [model.id, bucket])), layers.names)
@@ -100,7 +90,7 @@ try {
   await writeFile(join(out, 'buildings-emissive.png'), atlas.emissive)
   await writeFile(join(out, 'buildings-rooms.png'), rooms.strip)
   await writeFile(join(out, 'buildings-screens.png'), screens.strip)
-  await writeFile(join(out, 'buildings.json'), `${JSON.stringify(manifest, null, 2)}\n`)
+  await writeFile(join(out, 'buildings.json'), serialise(manifest))
 
   const triangles = models.reduce((sum, model) => sum + model.triangles, 0)
   const trimmed = baked.reduce((sum, one) => sum + one.model.trimmed, 0)
@@ -143,7 +133,3 @@ async function pool<In, Out>(items: readonly In[], width: number, work: (item: I
   return out
 }
 
-function flag(name: string): string | undefined {
-  const at = args.indexOf(name)
-  return at >= 0 ? args[at + 1] : undefined
-}

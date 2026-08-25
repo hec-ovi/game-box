@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { CityNight } from '@gb/kitbash'
-import type { Plot } from '@gb/world'
+import { SHIPPED_CHARTERS, type Plot, type ResolvedCharter } from '@gb/world'
 import { Catalogue, type CatalogueDoc } from '../src/catalogue.ts'
 import { DOOR_FINISH, OPEN_DOOR_FINISH } from '../src/entrance.ts'
 import { Library } from '../src/library.ts'
@@ -34,9 +34,9 @@ export function catalogueOf(over: Partial<CatalogueDoc> = {}): Catalogue {
       finishes: [...FINISHES],
     },
     models: [
-      { id: 'shop-8x12x2', look: 'shop', front: 8, depth: 12, storeys: 2, kinds: ['shop', 'cafe'], triangles: 12, door: { along: 0 } },
-      { id: 'home-8x12x2', look: 'home', front: 8, depth: 12, storeys: 2, kinds: ['house'], triangles: 12, door: { along: 0 } },
-      { id: 'works-8x12x2', look: 'works', front: 8, depth: 12, storeys: 2, kinds: ['workshop', 'shop'], triangles: 12, door: { along: 0 } },
+      { id: 'shop-8x12x2', look: 'shop', front: 8, depth: 12, storeys: 2, tags: ['shop', 'cafe'], triangles: 12, door: { along: 0 } },
+      { id: 'home-8x12x2', look: 'home', front: 8, depth: 12, storeys: 2, tags: ['house'], triangles: 12, door: { along: 0 } },
+      { id: 'works-8x12x2', look: 'works', front: 8, depth: 12, storeys: 2, tags: ['workshop', 'shop'], triangles: 12, door: { along: 0 } },
     ],
     ...over,
   })
@@ -66,6 +66,13 @@ export function atlasOf(): PrefabAtlas {
   const layers = FINISHES.length
   const pixels = () => new THREE.DataArrayTexture(new Uint8Array(4 * 4 * layers * 4).fill(128), 4, 4, layers)
   return { colour: pixels(), emissive: pixels(), rooms: pixels(), screens: pixels(), finishes: [...FINISHES] }
+}
+
+/** The preset charter the plot's word names, which is what `@gb/scene` resolves and hands the dressing beside the plot. */
+export function charterOf(plot: Plot): ResolvedCharter {
+  const charter = SHIPPED_CHARTERS.find((preset) => preset.word === plot.kind)
+  if (!charter) throw new Error(`${plot.kind} is not a preset`)
+  return charter
 }
 
 export function plotOf(over: Partial<Plot> = {}): Plot {

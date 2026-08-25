@@ -1,16 +1,21 @@
 import { KitDressing, SIGN, lightsFor, placeholderKit } from '@gb/kitbash'
 import { Greybox, buildCity } from '@gb/scene'
-import { World } from '@gb/world'
+import { World, type Plot, type ResolvedCharter } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { PrefabDressing } from '../src/dressing.ts'
+import { PrefabDressing, type BuildingSize } from '../src/dressing.ts'
 import { PROUD } from '../src/fit.ts'
-import { FINISHES, PLATE, catalogueOf, libraryOf, plotOf } from './support.ts'
+import { FINISHES, PLATE, catalogueOf, charterOf, libraryOf, plotOf } from './support.ts'
 
 const catalogue = catalogueOf()
 const dressing = new PrefabDressing(libraryOf(catalogue), new Greybox())
 
 /** Where the door plate ended up, in the building's own frame. */
+/** The plot, its size and its charter, the way the scene hands them over. */
+function handed(plot: Plot, size: BuildingSize): [Plot, BuildingSize, ResolvedCharter] {
+  return [plot, size, charterOf(plot)]
+}
+
 function doorAt(object: THREE.Object3D): THREE.Vector3 {
   const mesh = object.children[0] as THREE.Mesh
   const box = new THREE.Box3()
@@ -34,10 +39,10 @@ const turned = { x: 4, y: 4, w: 6, h: 4 }
 
 describe('dressing a plot', () => {
   it('puts the door on the wall the entrance is on, at all four points of the compass', () => {
-    const north = doorAt(dressing.building(plotOf({ entrance: { cell: { x: 6, y: 3 }, facing: 'north' } }), { width: 8, depth: 12, height: 7.2 }))
-    const south = doorAt(dressing.building(plotOf({ entrance: { cell: { x: 6, y: 10 }, facing: 'south' } }), { width: 8, depth: 12, height: 7.2 }))
-    const west = doorAt(dressing.building(plotOf({ rect: turned, entrance: { cell: { x: 3, y: 6 }, facing: 'west' } }), { width: 12, depth: 8, height: 7.2 }))
-    const east = doorAt(dressing.building(plotOf({ rect: turned, entrance: { cell: { x: 10, y: 6 }, facing: 'east' } }), { width: 12, depth: 8, height: 7.2 }))
+    const north = doorAt(dressing.building(...handed(plotOf({ entrance: { cell: { x: 6, y: 3 }, facing: 'north' } }), { width: 8, depth: 12, height: 7.2 })))
+    const south = doorAt(dressing.building(...handed(plotOf({ entrance: { cell: { x: 6, y: 10 }, facing: 'south' } }), { width: 8, depth: 12, height: 7.2 })))
+    const west = doorAt(dressing.building(...handed(plotOf({ rect: turned, entrance: { cell: { x: 3, y: 6 }, facing: 'west' } }), { width: 12, depth: 8, height: 7.2 })))
+    const east = doorAt(dressing.building(...handed(plotOf({ rect: turned, entrance: { cell: { x: 10, y: 6 }, facing: 'east' } }), { width: 12, depth: 8, height: 7.2 })))
 
     expect(north.z).toBeCloseTo(-6)
     expect(south.z).toBeCloseTo(6)
@@ -48,7 +53,7 @@ describe('dressing a plot', () => {
   })
 
   it('stands the building on the plot, inside the relief it is allowed', () => {
-    const building = dressing.building(plotOf(), { width: 8, depth: 12, height: 7.2 })
+    const building = dressing.building(...handed(plotOf(), { width: 8, depth: 12, height: 7.2 }))
     const box = new THREE.Box3().setFromObject(building)
     expect(box.min.y).toBeCloseTo(0)
     expect(box.max.y).toBeLessThanOrEqual(7.2 + PROUD)
@@ -60,12 +65,12 @@ describe('dressing a plot', () => {
 
   it('gives a plot you can walk into the entrance you can walk through, and leaves every other door plain', () => {
     const size = { width: 8, depth: 12, height: 7.2 }
-    expect(finishesOn(dressing.building(plotOf(), size))).toEqual(['wall:facade-a', 'door'])
-    expect(finishesOn(dressing.building(plotOf({ interiorId: 'interior_0001' }), size))).toEqual(['wall:facade-a', 'door:open'])
+    expect(finishesOn(dressing.building(...handed(plotOf(), size)))).toEqual(['wall:facade-a', 'door'])
+    expect(finishesOn(dressing.building(...handed(plotOf({ interiorId: 'interior_0001' }), size)))).toEqual(['wall:facade-a', 'door:open'])
   })
 
   it('hands a shape it has no model for to the dressing behind', () => {
-    const building = dressing.building(plotOf({ storeys: 9 }), { width: 8, depth: 12, height: 29.6 })
+    const building = dressing.building(...handed(plotOf({ storeys: 9 }), { width: 8, depth: 12, height: 29.6 }))
     expect(building.children.some((child) => child.name.endsWith(':shell'))).toBe(true)
   })
 
@@ -94,7 +99,7 @@ describe('dressing a plot', () => {
     const withSigns = new PrefabDressing(libraryOf(catalogue), kit)
     const plot = plotOf({ kind: 'bar', name: 'The Long Wire' })
 
-    const building = withSigns.building(plot, { width: 8, depth: 12, height: 7.2 })
+    const building = withSigns.building(plot, { width: 8, depth: 12, height: 7.2 }, charterOf(plot))
     const materials = building.children.map((child) => ((child as THREE.Mesh).material as THREE.Material).name)
     expect(materials).toContain(SIGN.material)
     expect(materials.filter((name) => name === 'prefab:facade')).toHaveLength(1)
@@ -106,8 +111,8 @@ describe('dressing a plot', () => {
 
     // a door you can walk through, on the north wall, 25 cm out from a 10 cm plate
     const open = plotOf({ interiorId: 'interior_0001', design: shop })
-    dressing.building(open, size)
-    const lit = dressing.lights(open, size)
+    dressing.building(open, size, charterOf(open))
+    const lit = dressing.lights(open, size, charterOf(open))
     expect(lit.map((light) => light.kind)).toEqual(['entrance', 'screen'])
     const [lobby, screen] = lit
     expect(lobby!.position.map((v) => +v.toFixed(2))).toEqual([0, 1.05, -6.25])
@@ -122,16 +127,16 @@ describe('dressing a plot', () => {
 
     // a door nobody can walk through throws nothing
     const shut = plotOf({ design: shop })
-    dressing.building(shut, size)
-    expect(dressing.lights(shut, size).map((light) => light.kind)).toEqual(['screen'])
+    dressing.building(shut, size, charterOf(shut))
+    expect(dressing.lights(shut, size, charterOf(shut)).map((light) => light.kind)).toEqual(['screen'])
 
     // and the kit's own emitters ride along for the signs it hung
     const kit = new KitDressing(placeholderKit('a neon city'), new Greybox())
     const withSigns = new PrefabDressing(libraryOf(catalogue), kit)
     const named = plotOf({ kind: 'bar', name: 'The Long Wire', design: shop })
-    withSigns.building(named, size)
-    const kinds = withSigns.lights(named, size).map((light) => light.kind)
-    expect(kinds.slice(1)).toEqual(lightsFor(named, size).map((light) => light.kind))
+    withSigns.building(named, size, charterOf(named))
+    const kinds = withSigns.lights(named, size, charterOf(named)).map((light) => light.kind)
+    expect(kinds.slice(1)).toEqual(lightsFor(named, size, charterOf(named)).map((light) => light.kind))
     expect(kinds).toContain('doorlamp')
   })
 })

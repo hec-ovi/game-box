@@ -1,6 +1,6 @@
 {
   "pack": "gb-buildings",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "sha256": "90c52ad6625878c7663a1f325100634b91ef9616b49d7c57b6bb23a78f8a167e",
   "producer": "glb-buildings@6e05c32",
   "atlas": {
@@ -56,7 +56,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -74,7 +74,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -92,7 +92,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -110,7 +110,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -128,7 +128,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -146,7 +146,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -164,7 +164,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -182,7 +182,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -200,7 +200,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -218,7 +218,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -236,7 +236,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -254,7 +254,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -272,7 +272,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -290,7 +290,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -308,7 +308,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -326,7 +326,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -344,7 +344,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -362,7 +362,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -380,7 +380,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -398,7 +398,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -416,7 +416,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -434,7 +434,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -452,7 +452,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -470,7 +470,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -488,7 +488,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -506,7 +506,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -524,7 +524,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -542,7 +542,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -560,7 +560,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -578,7 +578,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -596,7 +596,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -614,7 +614,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -632,7 +632,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -650,7 +650,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -668,7 +668,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -686,7 +686,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -704,7 +704,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -722,7 +722,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -740,7 +740,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -758,7 +758,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -776,7 +776,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -794,7 +794,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -812,7 +812,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -830,7 +830,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -848,7 +848,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -866,7 +866,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -884,7 +884,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -902,7 +902,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -920,7 +920,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -938,7 +938,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -956,7 +956,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -974,7 +974,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -992,7 +992,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -1010,7 +1010,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -1028,7 +1028,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -1046,7 +1046,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -1064,7 +1064,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -1082,7 +1082,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -1100,7 +1100,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -1118,7 +1118,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -1136,7 +1136,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -1154,7 +1154,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -1172,7 +1172,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -1190,7 +1190,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "bar",
         "restaurant",
         "cafe",
@@ -1208,7 +1208,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1226,7 +1226,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1244,7 +1244,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1262,7 +1262,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1280,7 +1280,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1298,7 +1298,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1316,7 +1316,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1334,7 +1334,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1352,7 +1352,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1370,7 +1370,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1388,7 +1388,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1406,7 +1406,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1424,7 +1424,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1442,7 +1442,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1460,7 +1460,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1478,7 +1478,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1496,7 +1496,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1514,7 +1514,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1532,7 +1532,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1550,7 +1550,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1568,7 +1568,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1586,7 +1586,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1604,7 +1604,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1622,7 +1622,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1640,7 +1640,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1658,7 +1658,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1676,7 +1676,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1694,7 +1694,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1712,7 +1712,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1730,7 +1730,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1748,7 +1748,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1766,7 +1766,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1784,7 +1784,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1802,7 +1802,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1820,7 +1820,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1838,7 +1838,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1856,7 +1856,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1874,7 +1874,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1892,7 +1892,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1910,7 +1910,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1928,7 +1928,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1946,7 +1946,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1964,7 +1964,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -1982,7 +1982,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -2000,7 +2000,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -2018,7 +2018,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -2036,7 +2036,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -2054,7 +2054,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -2072,7 +2072,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -2090,7 +2090,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -2108,7 +2108,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -2126,7 +2126,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -2144,7 +2144,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -2162,7 +2162,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -2180,7 +2180,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -2198,7 +2198,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -2216,7 +2216,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -2234,7 +2234,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -2252,7 +2252,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -2270,7 +2270,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -2288,7 +2288,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -2306,7 +2306,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -2324,7 +2324,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -2342,7 +2342,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "apartment",
         "chapel",
@@ -2360,7 +2360,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2378,7 +2378,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2396,7 +2396,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2414,7 +2414,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2432,7 +2432,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2450,7 +2450,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2468,7 +2468,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2486,7 +2486,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2504,7 +2504,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2522,7 +2522,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2540,7 +2540,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2558,7 +2558,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2576,7 +2576,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2594,7 +2594,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2612,7 +2612,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2630,7 +2630,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2648,7 +2648,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2666,7 +2666,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2684,7 +2684,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2702,7 +2702,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2720,7 +2720,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2738,7 +2738,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2756,7 +2756,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2774,7 +2774,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2792,7 +2792,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2810,7 +2810,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2828,7 +2828,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2846,7 +2846,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2864,7 +2864,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2882,7 +2882,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2900,7 +2900,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2918,7 +2918,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2936,7 +2936,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2954,7 +2954,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2972,7 +2972,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -2990,7 +2990,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3008,7 +3008,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3026,7 +3026,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3044,7 +3044,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3062,7 +3062,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3080,7 +3080,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3098,7 +3098,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3116,7 +3116,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3134,7 +3134,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3152,7 +3152,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3170,7 +3170,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3188,7 +3188,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3206,7 +3206,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3224,7 +3224,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3242,7 +3242,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3260,7 +3260,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3278,7 +3278,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3296,7 +3296,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3314,7 +3314,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3332,7 +3332,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3350,7 +3350,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3368,7 +3368,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3386,7 +3386,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3404,7 +3404,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3422,7 +3422,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3440,7 +3440,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3458,7 +3458,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3476,7 +3476,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3494,7 +3494,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "hotel",
         "clinic",
@@ -3512,7 +3512,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3530,7 +3530,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3548,7 +3548,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3566,7 +3566,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3584,7 +3584,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3602,7 +3602,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3620,7 +3620,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3638,7 +3638,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3656,7 +3656,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3674,7 +3674,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3692,7 +3692,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3710,7 +3710,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3728,7 +3728,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3746,7 +3746,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3764,7 +3764,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3782,7 +3782,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3800,7 +3800,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3818,7 +3818,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3836,7 +3836,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3854,7 +3854,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3872,7 +3872,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3890,7 +3890,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3908,7 +3908,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3926,7 +3926,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3944,7 +3944,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3962,7 +3962,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3980,7 +3980,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -3998,7 +3998,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4016,7 +4016,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4034,7 +4034,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4052,7 +4052,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4070,7 +4070,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4088,7 +4088,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4106,7 +4106,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4124,7 +4124,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4142,7 +4142,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4160,7 +4160,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4178,7 +4178,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4196,7 +4196,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4214,7 +4214,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4232,7 +4232,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4250,7 +4250,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4268,7 +4268,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4286,7 +4286,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4304,7 +4304,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4322,7 +4322,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4340,7 +4340,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4358,7 +4358,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4376,7 +4376,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4394,7 +4394,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4412,7 +4412,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4430,7 +4430,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4448,7 +4448,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4466,7 +4466,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4484,7 +4484,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4502,7 +4502,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4520,7 +4520,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4538,7 +4538,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4556,7 +4556,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4574,7 +4574,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4592,7 +4592,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4610,7 +4610,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4628,7 +4628,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4646,7 +4646,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "house",
         "chapel",
         "cafe",
@@ -4664,7 +4664,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -4682,7 +4682,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -4700,7 +4700,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -4718,7 +4718,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -4736,7 +4736,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -4754,7 +4754,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -4772,7 +4772,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -4790,7 +4790,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -4808,7 +4808,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -4826,7 +4826,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -4844,7 +4844,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -4862,7 +4862,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -4880,7 +4880,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -4898,7 +4898,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -4916,7 +4916,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -4934,7 +4934,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -4952,7 +4952,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -4970,7 +4970,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -4988,7 +4988,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5006,7 +5006,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5024,7 +5024,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5042,7 +5042,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5060,7 +5060,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5078,7 +5078,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5096,7 +5096,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5114,7 +5114,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5132,7 +5132,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5150,7 +5150,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5168,7 +5168,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5186,7 +5186,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5204,7 +5204,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5222,7 +5222,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5240,7 +5240,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5258,7 +5258,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5276,7 +5276,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5294,7 +5294,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5312,7 +5312,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5330,7 +5330,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5348,7 +5348,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5366,7 +5366,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5384,7 +5384,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5402,7 +5402,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5420,7 +5420,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5438,7 +5438,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5456,7 +5456,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5474,7 +5474,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5492,7 +5492,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5510,7 +5510,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5528,7 +5528,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5546,7 +5546,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5564,7 +5564,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5582,7 +5582,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5600,7 +5600,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5618,7 +5618,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5636,7 +5636,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5654,7 +5654,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5672,7 +5672,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5690,7 +5690,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5708,7 +5708,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5726,7 +5726,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5744,7 +5744,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5762,7 +5762,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5780,7 +5780,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5798,7 +5798,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "shop",
         "market",
         "cafe",
@@ -5816,7 +5816,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -5834,7 +5834,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -5852,7 +5852,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -5870,7 +5870,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -5888,7 +5888,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -5906,7 +5906,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -5924,7 +5924,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -5942,7 +5942,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -5960,7 +5960,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -5978,7 +5978,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -5996,7 +5996,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6014,7 +6014,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6032,7 +6032,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6050,7 +6050,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6068,7 +6068,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6086,7 +6086,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6104,7 +6104,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6122,7 +6122,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6140,7 +6140,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6158,7 +6158,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6176,7 +6176,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6194,7 +6194,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6212,7 +6212,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6230,7 +6230,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6248,7 +6248,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6266,7 +6266,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6284,7 +6284,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6302,7 +6302,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6320,7 +6320,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6338,7 +6338,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6356,7 +6356,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6374,7 +6374,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6392,7 +6392,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6410,7 +6410,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6428,7 +6428,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6446,7 +6446,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6464,7 +6464,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6482,7 +6482,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6500,7 +6500,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6518,7 +6518,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6536,7 +6536,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6554,7 +6554,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6572,7 +6572,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6590,7 +6590,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6608,7 +6608,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6626,7 +6626,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6644,7 +6644,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6662,7 +6662,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6680,7 +6680,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6698,7 +6698,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6716,7 +6716,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6734,7 +6734,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6752,7 +6752,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6770,7 +6770,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6788,7 +6788,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6806,7 +6806,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6824,7 +6824,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6842,7 +6842,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6860,7 +6860,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6878,7 +6878,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6896,7 +6896,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6914,7 +6914,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6932,7 +6932,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6950,7 +6950,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "office",
         "apartment",
         "hotel",
@@ -6968,7 +6968,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -6986,7 +6986,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7004,7 +7004,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7022,7 +7022,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7040,7 +7040,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7058,7 +7058,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7076,7 +7076,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7094,7 +7094,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7112,7 +7112,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7130,7 +7130,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7148,7 +7148,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7166,7 +7166,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7184,7 +7184,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7202,7 +7202,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7220,7 +7220,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7238,7 +7238,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7256,7 +7256,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7274,7 +7274,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7292,7 +7292,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7310,7 +7310,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7328,7 +7328,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7346,7 +7346,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7364,7 +7364,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7382,7 +7382,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7400,7 +7400,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7418,7 +7418,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7436,7 +7436,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7454,7 +7454,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7472,7 +7472,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7490,7 +7490,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7508,7 +7508,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7526,7 +7526,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7544,7 +7544,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7562,7 +7562,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7580,7 +7580,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7598,7 +7598,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7616,7 +7616,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7634,7 +7634,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7652,7 +7652,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7670,7 +7670,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7688,7 +7688,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7706,7 +7706,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7724,7 +7724,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7742,7 +7742,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7760,7 +7760,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7778,7 +7778,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7796,7 +7796,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7814,7 +7814,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7832,7 +7832,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7850,7 +7850,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7868,7 +7868,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7886,7 +7886,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7904,7 +7904,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7922,7 +7922,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7940,7 +7940,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7958,7 +7958,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7976,7 +7976,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -7994,7 +7994,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -8012,7 +8012,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -8030,7 +8030,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -8048,7 +8048,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -8066,7 +8066,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -8084,7 +8084,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -8102,7 +8102,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "apartment",
         "office",
         "hotel",
@@ -8120,7 +8120,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8138,7 +8138,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8156,7 +8156,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8174,7 +8174,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8192,7 +8192,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8210,7 +8210,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8228,7 +8228,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8246,7 +8246,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8264,7 +8264,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8282,7 +8282,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8300,7 +8300,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8318,7 +8318,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8336,7 +8336,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8354,7 +8354,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8372,7 +8372,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8390,7 +8390,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 1,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8408,7 +8408,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8426,7 +8426,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8444,7 +8444,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8462,7 +8462,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8480,7 +8480,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8498,7 +8498,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8516,7 +8516,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8534,7 +8534,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8552,7 +8552,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8570,7 +8570,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8588,7 +8588,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8606,7 +8606,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8624,7 +8624,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8642,7 +8642,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8660,7 +8660,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8678,7 +8678,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 2,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8696,7 +8696,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8714,7 +8714,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8732,7 +8732,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8750,7 +8750,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8768,7 +8768,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8786,7 +8786,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8804,7 +8804,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8822,7 +8822,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8840,7 +8840,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8858,7 +8858,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8876,7 +8876,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8894,7 +8894,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8912,7 +8912,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8930,7 +8930,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8948,7 +8948,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8966,7 +8966,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 3,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -8984,7 +8984,7 @@
       "front": 6,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -9002,7 +9002,7 @@
       "front": 6,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -9020,7 +9020,7 @@
       "front": 6,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -9038,7 +9038,7 @@
       "front": 6,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -9056,7 +9056,7 @@
       "front": 8,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -9074,7 +9074,7 @@
       "front": 8,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -9092,7 +9092,7 @@
       "front": 8,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -9110,7 +9110,7 @@
       "front": 8,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -9128,7 +9128,7 @@
       "front": 10,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -9146,7 +9146,7 @@
       "front": 10,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -9164,7 +9164,7 @@
       "front": 10,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -9182,7 +9182,7 @@
       "front": 10,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -9200,7 +9200,7 @@
       "front": 12,
       "depth": 10,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -9218,7 +9218,7 @@
       "front": 12,
       "depth": 12,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -9236,7 +9236,7 @@
       "front": 12,
       "depth": 14,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",
@@ -9254,7 +9254,7 @@
       "front": 12,
       "depth": 16,
       "storeys": 4,
-      "kinds": [
+      "tags": [
         "warehouse",
         "workshop",
         "market",

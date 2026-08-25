@@ -1,5 +1,5 @@
 import type { Plot } from '@gb/world'
-import type { Catalogue, Design } from './catalogue.ts'
+import type { Catalogue, Design, Suits } from './catalogue.ts'
 
 /**
  * What a plot is drawn with: the design written into the world file if it
@@ -24,9 +24,9 @@ import type { Catalogue, Design } from './catalogue.ts'
  * one. Picking a different model instead would look exactly like the city the
  * file describes, which is the failure worth being loud about.
  */
-export function designFor(catalogue: Catalogue, plot: Plot, size: { width: number; depth: number }): Design | undefined {
+export function designFor(catalogue: Catalogue, plot: Plot, size: { width: number; depth: number }, suits: Suits): Design | undefined {
   const pinned = plot.design
-  if (!pinned) return catalogue.design(plot, size)
+  if (!pinned) return catalogue.design(plot, size, suits)
   if (pinned.pack !== catalogue.pack) return undefined
   if (!catalogue.model(pinned.model)) return undefined
   return { model: pinned.model, mirror: pinned.mirror, rooms: pinned.rooms }
