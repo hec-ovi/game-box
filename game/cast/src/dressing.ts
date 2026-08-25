@@ -1,5 +1,5 @@
-import { Greybox, type Dressing } from '@gb/scene'
-import type { AnchorKind, CellKind, FurnitureProp, Item, Npc, Plot } from '@gb/world'
+import { Greybox, type BuildingSize, type Dressing, type SurfacePart, type SurfaceSize } from '@gb/scene'
+import type { AnchorKind, CellKind, FurnitureProp, Item, Npc, Plot, ResolvedCharter } from '@gb/world'
 import type * as THREE from 'three'
 import { Cast } from './cast.ts'
 import type { CastMember } from './member.ts'
@@ -7,16 +7,24 @@ import type { CastMember } from './member.ts'
 /**
  * The dressing that puts real people in the world. Everything that is not a
  * person still comes from the greybox, so the city can gain real art one kind
- * of thing at a time.
+ * of thing at a time. The seam's optional parts are forwarded when the
+ * dressing behind has them, so its doorstep lamps are not lost on the way.
  */
 export class CastDressing implements Dressing {
   #cast: Cast
   #rest: Dressing
   #members = new Map<string, CastMember>()
 
+  readonly lights?: NonNullable<Dressing['lights']>
+  readonly marking?: NonNullable<Dressing['marking']>
+  readonly clutter?: NonNullable<Dressing['clutter']>
+
   constructor(cast: Cast, rest: Dressing = new Greybox()) {
     this.#cast = cast
     this.#rest = rest
+    if (rest.lights) this.lights = (plot, size, charter) => rest.lights!(plot, size, charter)
+    if (rest.marking) this.marking = (paint) => rest.marking!(paint)
+    if (rest.clutter) this.clutter = () => rest.clutter!()
   }
 
   /** Everybody who has been placed, so the game can change what they are doing. */
@@ -30,8 +38,8 @@ export class CastDressing implements Dressing {
     return member.object
   }
 
-  building(plot: Plot, size: { width: number; depth: number; height: number }): THREE.Object3D {
-    return this.#rest.building(plot, size)
+  building(plot: Plot, size: BuildingSize, charter: ResolvedCharter): THREE.Object3D {
+    return this.#rest.building(plot, size, charter)
   }
 
   prop(prop: FurnitureProp): THREE.Object3D {
@@ -46,7 +54,7 @@ export class CastDressing implements Dressing {
     return this.#rest.ground(kind)
   }
 
-  surface(part: 'floor' | 'wall' | 'ceiling'): THREE.Material {
-    return this.#rest.surface(part)
+  surface(part: SurfacePart, size: SurfaceSize): THREE.Material {
+    return this.#rest.surface(part, size)
   }
 }

@@ -1,6 +1,6 @@
 # @gb/cast contract
 
-contractVersion: 0.8.1
+contractVersion: 0.9.0
 
 ## Purpose
 
@@ -38,7 +38,7 @@ The city is cyberpunk at night, so the clothes are near-black coated garments wi
 | `HANDHELD` | clip name to `{ prop, bone }` | which clips put something in a hand, and which hand |
 | `parseWardrobe(value)` | `Wardrobe`: `{ characters: WardrobeEntry[] }`, each `{ id, body, file, roles, themes, styles, brows, beard? }` | throws rather than returning a wardrobe the game cannot use |
 | `chooseCharacter(wardrobe, npc, theme)` | a `WardrobeEntry` | always returns one: nobody is naked |
-| `CastDressing` | a `@gb/scene` `Dressing`, plus `members()` | real people, everything else delegated to the greybox |
+| `CastDressing` | a `@gb/scene` `Dressing`, plus `members()` | real people; `building`, `prop`, `pickup`, `ground` and `surface` go to the dressing behind (the `Greybox` unless one is given) with everything the seam hands over, and `lights`, `marking` and `clutter` are there when that dressing has them |
 
 ## Errors (closed set)
 
@@ -52,8 +52,8 @@ Everything after loading is forgiving: an unknown clip or gesture name is ignore
 
 ## Dependencies
 
-- `@gb/world` contract: `Npc`, `BODY_KINDS`, `ANCHOR_KINDS`, `NPC_ROLES`, `METRICS.furniture`.
-- `@gb/scene` contract: the `Dressing` seam.
+- `@gb/world` contract: `Npc`, `BODY_KINDS`, `ANCHOR_KINDS`, `NPC_ROLES`, `METRICS.furniture`, and what the seam hands through: `Plot`, `ResolvedCharter`, `FurnitureProp`, `Item`, `CellKind`.
+- `@gb/scene` contract: the `Dressing` seam, `Greybox`, `BuildingSize`, `SurfacePart`, `SurfaceSize`.
 - `three`.
 
 ## The pack this box loads
@@ -203,7 +203,9 @@ A shelf's first clip is the plainest reading of that stance, because it is what 
 
 ### Moving along
 
-`GAITS` is every clip that carries a body forward, with the ground speed it was authored for: how fast the planted foot slides back under the body, measured on the clip's keyframes. `Walk_Loop` and `Walk_Formal_Loop` 0.98 m/s, `Walk_Carry_Loop` 0.65, `Push_Loop` 0.30, `Jog_Fwd_Loop` 5.9, `Sprint_Loop` 8.9 (the packs' runs are authored fast, with a short contact and a long flight). `member.pace(v)` scales the playing gait to `v` over its authored speed, held between 0.7 and 1.4 so a body moving slower than its clip never drops into slow motion; past that the feet skate by the remainder.
+`GAITS` is every clip that carries a body forward, with the ground speed it was authored for: how fast the planted foot slides back under the body, measured on the clip's keyframes. `Walk_Loop` and `Walk_Formal_Loop` 0.98 m/s, `Walk_Carry_Loop` 0.65, `Push_Loop` 0.30, `Jog_Fwd_Loop` 5.9, `Sprint_Loop` 8.9 (the packs' runs are authored fast, with a short contact and a long flight). `member.pace(v)` scales the playing gait to `v` over its authored speed, held between 0.7 and 1.65: slower drops a body into slow motion, faster into a flicker, so past either end the feet skate by the remainder.
+
+The ceiling is where the street's briskest walker lands. Pedestrians move between 1.19 and 1.61 m/s (the player's 1.4 walk with 15 percent of spread), and the walk clips are 1.5 steps a second with a 0.65 m step at 0.98 m/s, so 1.61 is 1.64 times the clip: 2.5 steps a second, a hurried short step at the top of a brisk walk, the feet still planted (measured on the ball bones' contact velocity against the root). Retuning the walks' speed number would only move the skating, because the number is the clip's real ground speed. `tests/contract.test.ts` paces a walk at 1.61 and reads the clip running at that ratio.
 
 `WALKS` is the two walks a pedestrian may be given and `walkFor(npcId)` draws one off the id, so a street is not in step. `CLIPS.walk` is still a walk for a caller with nobody in mind.
 

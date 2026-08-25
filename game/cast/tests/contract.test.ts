@@ -131,6 +131,14 @@ describe('Cast', () => {
     other.update(0.8)
     expect(thigh(slow).angleTo(thigh(plain)), 'four fifths of the speed did not slow the clip to match').toBeLessThan(1e-3)
 
+    // the street's briskest walker, 1.61 m/s over a 0.98 walk, is honoured rather than capped
+    const brisk = cast.spawn(person({ id: 'npc_brisk' }), CLIPS.walk)
+    const paced = other.spawn(person({ id: 'npc_brisk' }), CLIPS.walk)
+    brisk.pace(1.61)
+    cast.update(0.5)
+    other.update(0.5 * (1.61 / GAITS[CLIPS.walk]!))
+    expect(thigh(brisk).angleTo(thigh(paced)), 'the brisk walk was capped short of the speed asked').toBeLessThan(1e-3)
+
     // a stance is not a gait: pacing it does nothing
     const still = cast.spawn(person({ id: 'npc_still' }), CLIPS.idle)
     const same = other.spawn(person({ id: 'npc_still' }), CLIPS.idle)

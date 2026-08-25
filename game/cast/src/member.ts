@@ -39,9 +39,11 @@ export interface CastMember {
 
 /**
  * A gait played slower than this drops into slow motion and faster than this
- * into a flicker, so the feet are let skate past these instead.
+ * into a flicker, so the feet are let skate past these instead. The ceiling is
+ * set by the street: its briskest walkers move at 1.61 m/s over walks authored
+ * at 0.98, and at 1.65 a walk is 2.5 steps a second with the feet still planted.
  */
-const PACE_RANGE = { slowest: 0.7, fastest: 1.4 }
+const PACE_RANGE = { slowest: 0.7, fastest: 1.65 }
 
 /** Past this angle off the way a seated body faces, the head cannot reach and the body stands up. */
 const BEHIND = (100 * Math.PI) / 180
