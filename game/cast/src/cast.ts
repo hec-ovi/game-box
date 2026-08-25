@@ -8,6 +8,7 @@ import { CastError } from './error.ts'
 import { Hairdresser } from './hairdresser.ts'
 import { chooseLook } from './look.ts'
 import { Person, type CastMember } from './member.ts'
+import { Props } from './props/props.ts'
 import { chooseCharacter, parseWardrobe, type Wardrobe } from './wardrobe.ts'
 
 /**
@@ -43,6 +44,7 @@ export class Cast {
   #wardrobe: Wardrobe = { characters: [] }
   #people: Person[] = []
   #hair = new Hairdresser()
+  #props = new Props()
 
   private constructor() {}
 
@@ -96,7 +98,7 @@ export class Cast {
     object.userData.outfit = entry.id
     object.add(body)
 
-    const person = new Person(npc, object, body, entry.id, this.#clips, this.#additive)
+    const person = new Person(npc, object, body, entry.id, this.#clips, this.#additive, this.#props)
     this.#people.push(person)
     // never the rest pose: a clip the library has not got would leave them T-posing
     person.play(this.#standing(doing), 0)

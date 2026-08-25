@@ -1,7 +1,7 @@
-import { BODY_KINDS } from '@gb/world'
+import type { BodyKind } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { loadCast, person, wardrobe } from './pack.ts'
+import { BODIES, loadCast, person, wardrobe } from './pack.ts'
 
 const cast = await loadCast()
 
@@ -34,7 +34,41 @@ function look(member: { object: THREE.Object3D; outfit: string }): Look {
   return { outfit: member.outfit, hair, brows, beard, colour, materials }
 }
 
-const street = (count: number, base: 'male' | 'female') =>
+function meshNamed(object: THREE.Object3D, name: string | RegExp): THREE.Mesh {
+  let found: THREE.Mesh | undefined
+  object.traverse((child) => {
+    const mesh = child as THREE.Mesh
+    if (mesh.isMesh && (typeof name === 'string' ? mesh.name === name : name.test(mesh.name))) found = mesh
+  })
+  if (!found) throw new Error(`no mesh named ${name}`)
+  return found
+}
+
+/** The skin as a set of points with normals, in the bind space every piece was refitted into. */
+function surfaceOf(skin: THREE.Mesh) {
+  const position = skin.geometry.getAttribute('position') as THREE.BufferAttribute
+  const normal = skin.geometry.getAttribute('normal') as THREE.BufferAttribute
+  const points = Array.from({ length: position.count }, (_, v) => new THREE.Vector3().fromBufferAttribute(position, v))
+  const normals = Array.from({ length: position.count }, (_, v) => new THREE.Vector3().fromBufferAttribute(normal, v))
+  return {
+    /** Signed distance off the nearest skin vertex along its normal; a point off the scalp reads as outside. */
+    depthOf(point: THREE.Vector3): number {
+      let best = Infinity
+      let nearest = 0
+      for (let v = 0; v < points.length; v++) {
+        const d = points[v]!.distanceToSquared(point)
+        if (d < best) {
+          best = d
+          nearest = v
+        }
+      }
+      if (Math.sqrt(best) > 0.05) return Infinity
+      return point.clone().sub(points[nearest]!).dot(normals[nearest]!)
+    },
+  }
+}
+
+const street = (count: number, base: BodyKind) =>
   Array.from({ length: count }, (_, index) =>
     look(cast.spawn(person({ id: `npc_${base}_${index}`, role: 'resident', appearance: { base, variant: index % 8 } }))),
   )
@@ -58,8 +92,34 @@ describe('what a person is made of', () => {
     }
   })
 
+  /**
+   * What the owner saw as bald people: the pack's hair is cut for a smaller
+   * head than this body's, and worn as it comes two fifths of a buzz cut lies
+   * under the scalp with only a patch showing. The build holds every piece
+   * outside the skin; this reads the rest-pose geometry, which both were
+   * refitted into, against the skin's own normals.
+   */
+  it('keeps every hairstyle, beard and added brow outside the skin, so a cut shows as a cut', () => {
+    for (const entry of wardrobe.characters) {
+      const member = cast.spawn(person({ id: `npc_scalp_${entry.id}`, role: entry.roles[0] as never, appearance: { base: entry.body, variant: 1 } }))
+      const skin = meshNamed(member.object, /^Super/i)
+      const surface = surfaceOf(skin)
+      // the first pair of brows is the body's own, placed by the artist
+      for (const piece of [...entry.styles, ...entry.brows.slice(1), ...(entry.beard ? [entry.beard] : [])]) {
+        const hair = meshNamed(member.object, piece)
+        const position = hair.geometry.getAttribute('position') as THREE.BufferAttribute
+        let under = 0
+        const point = new THREE.Vector3()
+        for (let vertex = 0; vertex < position.count; vertex++) {
+          if (surface.depthOf(point.fromBufferAttribute(position, vertex)) < -0.002) under++
+        }
+        expect(under / position.count, `${entry.id}: ${(100 * under / position.count).toFixed(0)}% of ${piece} is under the skin`).toBeLessThan(0.02)
+      }
+    }
+  })
+
   it('colours the hair and the eyebrows together, instead of leaving the grey of the map', () => {
-    for (const base of BODY_KINDS) {
+    for (const base of BODIES) {
       const haired = street(24, base).filter((one) => one.hair !== 'bald')
       expect(haired.length, `${base}: nobody on the street has hair`).toBeGreaterThan(10)
       for (const one of haired) {
@@ -74,7 +134,7 @@ describe('what a person is made of', () => {
 
 describe('how much a street varies', () => {
   it('cuts hair from the whole set, with bald one of the choices rather than the only one', () => {
-    for (const base of BODY_KINDS) {
+    for (const base of BODIES) {
       const cuts = street(80, base).map((one) => one.hair)
       const styles = new Set(cuts)
       const bald = cuts.filter((cut) => cut === 'bald').length
@@ -85,7 +145,7 @@ describe('how much a street varies', () => {
   })
 
   it('spreads the hair colours across the palette', () => {
-    for (const base of BODY_KINDS) {
+    for (const base of BODIES) {
       const colours = new Set(street(80, base).map((one) => one.colour))
       expect(colours.size, `${base}: a street of 80 has only ${colours.size} hair colours`).toBeGreaterThanOrEqual(12)
     }
@@ -94,7 +154,7 @@ describe('how much a street varies', () => {
   it('shares the tinted materials, so a crowd does not cost one material each', () => {
     const worn = (count: number) => {
       const materials = new Set<THREE.Material>()
-      for (const base of BODY_KINDS) for (const one of street(count, base)) for (const m of one.materials) materials.add(m)
+      for (const base of BODIES) for (const one of street(count, base)) for (const m of one.materials) materials.add(m)
       return materials.size
     }
     const few = worn(100)

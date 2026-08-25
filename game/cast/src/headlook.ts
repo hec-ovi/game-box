@@ -2,10 +2,12 @@ import * as THREE from 'three'
 
 /**
  * How far each bone in the chain may turn off the pose the clip put it in.
- * Together that is about 77 degrees of yaw and 46 of pitch: enough to notice
- * somebody looking at you, short of the head coming off.
+ * Together that is about 94 degrees of yaw and 52 of pitch, the chest turning
+ * a little under the neck and the head: enough to notice somebody looking at
+ * you, short of the head coming off.
  */
 const CHAIN = [
+  { bone: 'spine_03', yaw: 0.3, pitch: 0.1 },
   { bone: 'neck_01', yaw: 0.45, pitch: 0.3 },
   { bone: 'Head', yaw: 0.9, pitch: 0.5 },
 ] as const

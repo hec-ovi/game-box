@@ -11,7 +11,9 @@ import { hash01 } from './hash.ts'
  * a shared world file looking the same to everyone who opens it.
  *
  * The first clip of a shelf is the plainest reading of that stance, because it
- * is what a caller with nobody in mind gets.
+ * is what a caller with nobody in mind gets. On every standing shelf that is a
+ * relaxed idle: the packs' own `Idle_Loop` is a ready stance (feet staggered,
+ * knees bent, hands off the hips) and is not shipped.
  *
  * Every name here is a clip in the shipped library, and the tests fail if one
  * goes missing, so a renamed clip is caught at build time rather than as a
@@ -19,21 +21,33 @@ import { hash01 } from './hash.ts'
  */
 export const CLIPS_FOR_ANCHOR: Record<AnchorKind, readonly [string, ...string[]]> = {
   // loitering: nothing to do and nothing to lean on
-  stand: ['Idle_Loop', 'Idle_FoldArms_Loop', 'Idle_TalkingPhone_Loop', 'Idle_Drink_Loop'],
-  sit: ['Sitting_Idle_Loop', 'Sitting_Talking_Loop', 'Sitting_Phone_Loop'],
-  'sit-drink': ['Sitting_Drink_Loop', 'Sitting_Talking_Loop', 'Sitting_Idle_Loop'],
+  stand: [
+    'Idle_Relaxed_Loop',
+    'Idle_Scratch_Loop',
+    'Idle_Pockets_Loop',
+    'Idle_Hip_Loop',
+    'Idle_Folded_Loop',
+    'Idle_Phone_Loop',
+    'Idle_Drink_Loop',
+  ],
+  // a chair at a table: soles on the floor
+  sit: ['Sitting_Idle_Loop', 'Sitting_Talking_Loop', 'Sitting_Eat_Loop', 'Sitting_Drink_Loop', 'Sitting_Phone_Loop'],
+  // a stool at a bar: hips at `stoolHeight`, feet on the rail
+  'sit-drink': ['Sitting_StoolDrink_Loop', 'Sitting_Stool_Loop', 'Sitting_StoolTalk_Loop', 'Sitting_StoolPhone_Loop'],
   // hands on the counter, and the same stance calling an order across it
   serve: ['Idle_Rail_Loop', 'Idle_Rail_Call'],
   cook: ['Idle_Bench_Loop', 'Farm_Watering'],
   // the two working stances are two bodies: one sits in the chair at the desk,
-  // the other stands at the bench with its hands on the top
+  // the other stands at the bench with its hands on the top, or kneels at its foot
   'work-desk': ['Sitting_Desk_Loop', 'Sitting_Phone_Loop', 'Sitting_Idle_Loop'],
-  'work-bench': ['Idle_Rail_Loop', 'Idle_Bench_Loop'],
+  'work-bench': ['Idle_Rail_Loop', 'Idle_Bench_Loop', 'Kneel_Fix_Loop'],
   sleep: ['Sleep_Loop'],
-  browse: ['Idle_Browse_Loop', 'Idle_Loop', 'Idle_FoldArms_Loop'],
-  // propped on a wall: shoulders against it, feet out in front, hands free
-  lean: ['Idle_Wall_Loop', 'Idle_WallCross_Loop', 'Idle_WallSmoke_Loop', 'Idle_WallPhone_Loop'],
-  guard: ['Idle_FoldArms_Loop', 'Idle_Loop', 'Idle_TalkingPhone_Loop'],
+  // at a shelf: on the feet looking, crouched at the bottom of it, or picking off it
+  browse: ['Idle_Browse_Loop', 'Idle_Relaxed_Loop', 'Idle_Folded_Loop', 'Crouch_Idle_Loop', 'Farm_Harvest'],
+  // propped on a wall: shoulders against it, feet out in front, hands free; or squatting against it
+  lean: ['Idle_Wall_Loop', 'Idle_WallCross_Loop', 'Idle_WallSmoke_Loop', 'Idle_WallPhone_Loop', 'Crouch_Idle_Loop'],
+  guard: ['Idle_Folded_Loop', 'Idle_Relaxed_Loop', 'Idle_Torch_Loop', 'Idle_Phone_Loop'],
+  dance: ['Dance_Loop', 'Dance_Slow_Loop'],
 }
 
 /**
@@ -44,13 +58,12 @@ export const CLIPS_FOR_ANCHOR: Record<AnchorKind, readonly [string, ...string[]]
  */
 export function clipForAnchor(kind: AnchorKind, npcId = ''): string {
   const shelf = CLIPS_FOR_ANCHOR[kind] ?? [CLIPS.idle]
-  if (shelf.length === 1 || !npcId) return shelf[0]!
-  return shelf[Math.floor(hash01(`${npcId}/${kind}`) * shelf.length)]!
+  return npcId ? pick(shelf, `${npcId}/${kind}`) : shelf[0]
 }
 
 /** Clips the game asks for by name outside the anchor table. */
 export const CLIPS = {
-  idle: 'Idle_Loop',
+  idle: 'Idle_Relaxed_Loop',
   walk: 'Walk_Loop',
   run: 'Jog_Fwd_Loop',
   talk: 'Idle_Talking_Loop',
@@ -59,7 +72,36 @@ export const CLIPS = {
   pickUp: 'PickUp_Table',
   give: 'Interact',
   drive: 'Driving_Loop',
+  /** Standing up out of a chair, and sitting back down into it; both keep the root where it is. */
+  standUp: 'Sitting_Exit',
+  sitDown: 'Sitting_Enter',
 } as const
+
+/**
+ * Every clip that moves a body along, with the ground speed it was authored
+ * for in metres per second: how fast the planted foot slides back under the
+ * body, measured on the clip's own keyframes. Move a body at that speed and
+ * its feet neither skate nor float. `CastMember.pace` scales the clip toward
+ * whatever speed the body is really moving at.
+ */
+export const GAITS: Readonly<Record<string, number>> = {
+  Walk_Loop: 0.98,
+  Walk_Formal_Loop: 0.98,
+  Walk_Carry_Loop: 0.65,
+  Jog_Fwd_Loop: 5.9,
+  Sprint_Loop: 8.9,
+  Push_Loop: 0.3,
+}
+
+/**
+ * The walks a pedestrian may be given, so a street does not walk in step.
+ * `walkFor` draws one off the person's id.
+ */
+export const WALKS: readonly [string, ...string[]] = ['Walk_Loop', 'Walk_Formal_Loop']
+
+export function walkFor(npcId: string): string {
+  return pick(WALKS, `${npcId}/walk`)
+}
 
 /**
  * The clips that may be layered over another one. A gesture is added to the
@@ -90,6 +132,17 @@ export const GESTURES: readonly string[] = [
  */
 export function clipsUsed(): string[] {
   return [
-    ...new Set([...Object.values(CLIPS_FOR_ANCHOR).flat(), ...Object.values(CLIPS), ...GESTURES]),
+    ...new Set([
+      ...Object.values(CLIPS_FOR_ANCHOR).flat(),
+      ...Object.values(CLIPS),
+      ...Object.keys(GAITS),
+      ...WALKS,
+      ...GESTURES,
+    ]),
   ].sort()
+}
+
+function pick(shelf: readonly [string, ...string[]], key: string): string {
+  if (shelf.length === 1) return shelf[0]
+  return shelf[Math.floor(hash01(key) * shelf.length)]!
 }

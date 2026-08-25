@@ -1,8 +1,8 @@
 import { ANCHOR_KINDS, BODY_KINDS } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { Cast, CastDressing, CastError, CLIPS_FOR_ANCHOR, clipsUsed } from '../src/index.ts'
-import { animsBytes, loadCast, person, wardrobe } from './pack.ts'
+import { Cast, CastDressing, CastError, CLIPS, CLIPS_FOR_ANCHOR, clipsUsed, GAITS, WALKS, walkFor } from '../src/index.ts'
+import { animsBytes, loadCast, person, RAIL, wardrobe } from './pack.ts'
 import { posedBounds } from './posing.ts'
 
 const cast = await loadCast()
@@ -36,12 +36,12 @@ describe('Cast', () => {
     for (const kind of ANCHOR_KINDS) expect(Cast.doingAt(kind)).toBe(CLIPS_FOR_ANCHOR[kind][0])
   })
 
-  it('dresses everybody, on the skeleton the clips were made for', () => {
+  it('dresses every body kind, on the skeleton the clips were made for', () => {
     for (const base of BODY_KINDS) {
       const member = cast.spawn(person({ id: `npc_${base}`, appearance: { base, variant: 1 } }))
       const entry = wardrobe.characters.find((candidate) => candidate.id === member.outfit)
       expect(entry, `${base} was given ${member.outfit}, which is not in the wardrobe`).toBeDefined()
-      expect(entry!.body).toBe(base)
+      expect(entry!.body, `a ${base} is wearing ${member.outfit}, off the ${entry!.body} rail`).toBe(RAIL[base])
 
       const skinned: THREE.SkinnedMesh[] = []
       member.object.traverse((child) => {
@@ -113,6 +113,31 @@ describe('Cast', () => {
       return bone!.quaternion.clone()
     }
     expect(poseOf(a).angleTo(poseOf(b))).toBeGreaterThan(0)
+  })
+
+  it('gives each pedestrian a walk of their own, and paces a gait to the speed the body moves at', async () => {
+    expect(walkFor('npc_0042')).toBe(walkFor('npc_0042'))
+    expect(new Set(Array.from({ length: 40 }, (_, n) => walkFor(`npc_${n}`)))).toEqual(new Set(WALKS))
+    for (const gait of Object.keys(GAITS)) expect(GAITS[gait], `${gait} has no speed`).toBeGreaterThan(0)
+
+    const thigh = (member: { object: THREE.Object3D }) => member.object.getObjectByName('thigh_l')!.quaternion.clone()
+    // the same person in two casts: one walking at four fifths of the clip's
+    // speed for a second, one at the clip's own speed for four fifths of one
+    const other = await loadCast()
+    const slow = cast.spawn(person({ id: 'npc_pace' }), CLIPS.walk)
+    const plain = other.spawn(person({ id: 'npc_pace' }), CLIPS.walk)
+    slow.pace(GAITS[CLIPS.walk]! * 0.8)
+    cast.update(1.0)
+    other.update(0.8)
+    expect(thigh(slow).angleTo(thigh(plain)), 'four fifths of the speed did not slow the clip to match').toBeLessThan(1e-3)
+
+    // a stance is not a gait: pacing it does nothing
+    const still = cast.spawn(person({ id: 'npc_still' }), CLIPS.idle)
+    const same = other.spawn(person({ id: 'npc_still' }), CLIPS.idle)
+    still.pace(3)
+    cast.update(0.5)
+    other.update(0.5)
+    expect(thigh(still).angleTo(thigh(same))).toBeLessThan(1e-3)
   })
 
   it('ignores a clip it does not have rather than falling over', () => {

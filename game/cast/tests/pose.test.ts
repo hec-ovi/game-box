@@ -1,8 +1,8 @@
-import { ANCHOR_KINDS, BODY_KINDS, METRICS } from '@gb/world'
+import { ANCHOR_KINDS, METRICS } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { Cast, CLIPS, CLIPS_FOR_ANCHOR, clipsUsed, GESTURES } from '../src/index.ts'
-import { loadCast, person } from './pack.ts'
+import { BODIES, loadCast, person } from './pack.ts'
 import { centroid, headBone, partsOf, posed, posedBounds, skinsOf, skullOf, type Skin } from './posing.ts'
 
 const cast = await loadCast()
@@ -26,6 +26,25 @@ function jointHeight(object: THREE.Object3D, name: string): number {
   const bone = object.getObjectByName(name)
   if (!bone) throw new Error(`this character has no ${name} bone`)
   return bone.getWorldPosition(new THREE.Vector3()).y
+}
+
+/** Every joint's world position, by name. */
+function jointsOf(object: THREE.Object3D): (name: string) => THREE.Vector3 {
+  object.updateMatrixWorld(true)
+  return (name) => {
+    const bone = object.getObjectByName(name)
+    if (!bone) throw new Error(`this character has no ${name} bone`)
+    return bone.getWorldPosition(new THREE.Vector3())
+  }
+}
+
+/** The angle at a joint between the two bones that meet there, in degrees: 180 is straight. */
+function angleAt(joint: THREE.Vector3, from: THREE.Vector3, to: THREE.Vector3): number {
+  return degrees(from.clone().sub(joint).angleTo(to.clone().sub(joint)))
+}
+
+function jointZ(object: THREE.Object3D, name: string): number {
+  return jointsOf(object)(name).z
 }
 
 /** The skin and clothes, without the hair pieces bolted on at spawn. */
@@ -64,7 +83,7 @@ describe('what a spawned person is doing', () => {
   it('never stands in the rest pose, whatever anchor they are on', () => {
     for (const kind of ANCHOR_KINDS) {
       for (const clip of CLIPS_FOR_ANCHOR[kind]) {
-        for (const base of BODY_KINDS) {
+        for (const base of BODIES) {
           const member = cast.spawn(person({ id: `npc_${clip}_${base}`, appearance: { base, variant: 1 } }), clip)
           cast.update(0.4)
           expect(member.playing, `nothing is playing on the ${kind} anchor`).toBe(clip)
@@ -73,6 +92,48 @@ describe('what a spawned person is doing', () => {
             `${base} on a ${kind} anchor is still in the rest pose, playing ${clip}`,
           ).toBeGreaterThan(5)
         }
+      }
+    }
+  })
+
+  /**
+   * What the owner saw: the packs' standing idle is a ready stance, feet
+   * staggered, knees bent, hands held off the hips. The first pick of every
+   * standing shelf, and the idle everything falls back to, has to be somebody
+   * at ease instead. Measured on the rig's own joints.
+   */
+  it('stands at ease first: feet level and knees straight on every standing shelf, hands hanging on the idle', () => {
+    const hanging = new Set([CLIPS.idle, Cast.doingAt('stand')])
+    const firsts = new Set([...hanging, ...(['browse', 'guard'] as const).map((kind) => Cast.doingAt(kind))])
+    for (const clip of firsts) {
+      const member = cast.spawn(person({ id: `npc_ease_${clip}` }), clip)
+      for (let step = 0; step <= 10; step++) {
+        cast.update(step === 0 ? 0.001 : 0.25)
+        const joints = jointsOf(member.object)
+        const stagger = Math.abs(joints('foot_l').z - joints('foot_r').z)
+        expect(stagger, `${clip}: the feet are staggered by ${stagger.toFixed(2)} m`).toBeLessThan(0.08)
+        for (const side of ['l', 'r']) {
+          const knee = angleAt(joints(`calf_${side}`), joints(`thigh_${side}`), joints(`foot_${side}`))
+          expect(knee, `${clip}: the ${side} knee is bent to ${knee.toFixed(0)} degrees`).toBeGreaterThan(160)
+          if (!hanging.has(clip)) continue
+          const elbow = angleAt(joints(`lowerarm_${side}`), joints(`upperarm_${side}`), joints(`hand_${side}`))
+          expect(elbow, `${clip}: the ${side} elbow is bent to ${elbow.toFixed(0)} degrees`).toBeGreaterThan(150)
+          const hand = joints(`hand_${side}`).distanceTo(joints('pelvis'))
+          expect(hand, `${clip}: the ${side} hand is ${hand.toFixed(2)} m off the hips`).toBeLessThan(0.25)
+        }
+      }
+    }
+  })
+
+  it('keeps every body on its feet on the floor, through every standing stance', () => {
+    const standing = (['stand', 'browse', 'guard', 'dance', 'serve', 'cook', 'work-bench'] as const).flatMap((kind) => CLIPS_FOR_ANCHOR[kind])
+    for (const clip of new Set(standing)) {
+      const member = cast.spawn(person({ id: `npc_floor_${clip}` }), clip)
+      for (let step = 0; step <= 8; step++) {
+        cast.update(step === 0 ? 0.001 : 0.3)
+        const lowest = posedBounds(member.object).min.y
+        expect(lowest, `${clip}: a foot is ${(-lowest).toFixed(3)} m through the floor`).toBeGreaterThan(-0.02)
+        expect(lowest, `${clip}: the body floats ${lowest.toFixed(3)} m over the floor`).toBeLessThan(0.03)
       }
     }
   })
@@ -87,7 +148,7 @@ describe('what a spawned person is doing', () => {
     const STANDOFF = 0.44
     let worst = 0
     for (const clip of CLIPS_FOR_ANCHOR.lean) {
-      for (const base of BODY_KINDS) {
+      for (const base of BODIES) {
         const member = cast.spawn(person({ id: `npc_lean_${clip}_${base}`, appearance: { base, variant: 1 } }), clip)
         for (let step = 0; step <= 12; step++) {
           cast.update(step === 0 ? 0.001 : 0.2)
@@ -107,7 +168,7 @@ describe('what a spawned person is doing', () => {
   })
 
   it('stands a bench worker up with their hands on the top, and sits a desk worker down', () => {
-    for (const base of BODY_KINDS) {
+    for (const base of BODIES) {
       const bench = cast.spawn(person({ id: `npc_bench_${base}`, appearance: { base, variant: 1 } }), Cast.doingAt('work-bench'))
       const desk = cast.spawn(person({ id: `npc_desk_${base}`, appearance: { base, variant: 1 } }), Cast.doingAt('work-desk'))
       cast.update(0.4)
@@ -129,6 +190,52 @@ describe('what a spawned person is doing', () => {
   })
 
   /**
+   * The raised seat. A bar stool's pad is `stoolHeight`; the body sits on it
+   * the way the chair clip sits on `seatHeight` (the same give into the pad,
+   * the same root-to-hips offset, so an anchor is placed the same way) with
+   * the feet tucked onto a rail under it. Both numbers are published for
+   * `@gb/forge` and `@gb/furnish`.
+   */
+  it('sits a drinker on a bar stool, hips on the pad and soles on a rail under it', () => {
+    const SOLES_UNDER_THE_PAD = 0.37
+    for (const base of BODIES) {
+      const stool = cast.spawn(person({ id: `npc_stool_${base}`, appearance: { base, variant: 1 } }), Cast.doingAt('sit-drink'))
+      const chair = cast.spawn(person({ id: `npc_chair_${base}`, appearance: { base, variant: 1 } }), Cast.doingAt('sit'))
+      cast.update(0.4)
+      const onStool = posedBounds(stool.object)
+      const lift = METRICS.furniture.stoolHeight - METRICS.furniture.seatHeight
+      // the same body with the same give into the pad, lifted by the difference in pads
+      const hipsUp = jointHeight(stool.object, 'pelvis') - jointHeight(chair.object, 'pelvis')
+      expect(Math.abs(hipsUp - lift), `${base}'s hips rose ${hipsUp.toFixed(3)} m onto the stool`).toBeLessThan(0.01)
+      expect(posedBounds(chair.object).min.y, `${base} on a chair is off the floor`).toBeLessThan(0.02)
+      // the feet on a rail: the published drop, and never dangling to the floor
+      const under = METRICS.furniture.stoolHeight - onStool.min.y
+      expect(Math.abs(under - SOLES_UNDER_THE_PAD), `${base}'s soles hang ${under.toFixed(2)} m under the pad`).toBeLessThan(0.03)
+      // the same root-to-hips offset as the chair, so a stool anchor is a chair anchor 30 cm up
+      expect(Math.abs(jointZ(stool.object, 'pelvis') - jointZ(chair.object, 'pelvis')), `${base}'s hips moved along the seat`).toBeLessThan(0.02)
+    }
+  })
+
+  it('kneels a bench worker with both hands at the counter face, knee high', () => {
+    for (const base of BODIES) {
+      const member = cast.spawn(person({ id: `npc_kneel_${base}`, appearance: { base, variant: 1 } }), 'Kneel_Fix_Loop')
+      for (let step = 0; step <= 12; step++) {
+        cast.update(step === 0 ? 0.001 : 0.25)
+        const joints = jointsOf(member.object)
+        expect(jointHeight(member.object, 'pelvis'), `${base} is not kneeling`).toBeLessThan(0.55)
+        for (const side of ['l', 'r']) {
+          const hand = joints(`hand_${side}`)
+          // the root is the counter's front face and a body at rotation.y = 0 faces -Z
+          expect(hand.z, `${base}'s ${side} hand is ${(-hand.z).toFixed(2)} m into the counter`).toBeGreaterThan(-0.06)
+          expect(hand.y, `${base}'s ${side} hand works at ${hand.y.toFixed(2)} m`).toBeGreaterThan(0.2)
+          expect(hand.y, `${base}'s ${side} hand works at ${hand.y.toFixed(2)} m`).toBeLessThan(0.6)
+        }
+        expect(posedBounds(member.object).min.y, `${base} is through the floor`).toBeGreaterThan(-0.02)
+      }
+    }
+  })
+
+  /**
    * Where `@gb/forge` puts a sleep anchor, and how high the clip carries the
    * body. The clip is authored lying on the floor of its own file and lifted
    * onto the mattress here, the same way the sitting clip puts a body's hips at
@@ -137,7 +244,7 @@ describe('what a spawned person is doing', () => {
   it('lays a sleeper out along the bed at mattress height, centred on the anchor', () => {
     const HALF = 0.98
     const mattress = METRICS.furniture.mattressHeight
-    for (const base of BODY_KINDS) {
+    for (const base of BODIES) {
       const member = cast.spawn(person({ id: `npc_sleep_${base}`, appearance: { base, variant: 1 } }), Cast.doingAt('sleep'))
       cast.update(0.4)
       const bounds = posedBounds(member.object)
@@ -158,7 +265,7 @@ describe('what a spawned person is doing', () => {
     expect(Cast.doingAt('sit-drink'), 'a drinker is doing exactly what somebody in a chair is doing').not.toBe(
       Cast.doingAt('sit'),
     )
-    for (const base of BODY_KINDS) {
+    for (const base of BODIES) {
       const member = cast.spawn(person({ id: `npc_drink_${base}`, appearance: { base, variant: 1 } }), Cast.doingAt('sit-drink'))
       let lowest = Infinity
       let highest = 0
@@ -189,7 +296,7 @@ describe('what a spawned person is doing', () => {
         for (const gesture of GESTURES) cases.push([clip, gesture])
       }
 
-      for (const base of BODY_KINDS) {
+      for (const base of BODIES) {
         const member = cast.spawn(person({ id: `npc_head_${base}`, appearance: { base, variant: 1 } }))
         const skins = bodySkins(member.object)
         const head = partsOf(skins, /^Head$/)
@@ -226,7 +333,7 @@ describe('what a spawned person is doing', () => {
 
 describe('which way a spawned person faces', () => {
   it('faces -Z at rotation.y = 0, so what is in front has the smaller z', () => {
-    for (const base of BODY_KINDS) {
+    for (const base of BODIES) {
       const member = cast.spawn(person({ id: `npc_facing_${base}`, appearance: { base, variant: 1 } }))
       cast.update(0.001)
       const { face, head } = landmarks(member.object)

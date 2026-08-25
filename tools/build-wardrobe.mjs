@@ -28,6 +28,7 @@ import { join, resolve } from 'node:path'
 import { GarmentPainter } from './wardrobe/painter.mjs'
 import { Palette } from './wardrobe/palette.mjs'
 import { agree, refit } from './wardrobe/refit.mjs'
+import { settleOnSkin } from './wardrobe/scalp.mjs'
 import { normalizeWeights, trimCovered } from './wardrobe/skin.mjs'
 import { SourceReader } from './wardrobe/source.mjs'
 import { cutAbove, dropHem } from './wardrobe/tailor.mjs'
@@ -43,6 +44,12 @@ const OUT = join(DIST, 'characters')
  * left under the clothes pokes through them and costs triangles for nothing.
  */
 const BARE = new Set(['neck_01', 'Head'])
+
+/** How far outside the skin a hair, brow or beard vertex is held, in metres. */
+const ON_THE_SKIN = 0.003
+
+/** The body's own pieces that sit on the skin rather than being it. */
+const ON_THE_FACE = new Set(['Eyes', 'Eyebrows'])
 
 const reader = new SourceReader()
 await MeshoptEncoder.ready
@@ -65,6 +72,13 @@ for (const outfit of manifest.outfits) {
   const skin = doc.getRoot().listSkins()[0]
   if (!skin) throw new Error(`${bodyFile}: no skin`)
   const kept = trimCovered(doc, skin, BARE)
+  // what is left of the body is the skin the hair has to stay outside of;
+  // the eyes and the body's own eyebrows are on it, not part of it
+  const bare = doc
+    .getRoot()
+    .listNodes()
+    .filter((node) => node.getMesh() && !ON_THE_FACE.has(node.getName()))
+    .map((node) => node.getMesh())
 
   const painter = new GarmentPainter(palette)
   let shifted = 0
@@ -92,13 +106,15 @@ for (const outfit of manifest.outfits) {
   // otherwise pass the check for the clothes
   const hair = manifest.hair[outfit.body] ?? { styles: [] }
   const styles = []
+  let settled = 0
   for (const style of hair.styles) {
-    const worn = wear(doc, skin, await hairPiece(style), style, { name: nodeName('hair', style) })
+    const worn = wear(doc, skin, await hairPiece(style), style, { name: nodeName('hair', style), onSkin: bare })
     shifted = Math.max(shifted, worn.shifted)
+    settled = Math.max(settled, worn.settled)
     styles.push(nodeName('hair', style))
   }
   const beard = hair.beard ? nodeName('beard', hair.beard) : undefined
-  if (hair.beard) wear(doc, skin, await hairPiece(hair.beard), hair.beard, { name: beard })
+  if (hair.beard) settled = Math.max(settled, wear(doc, skin, await hairPiece(hair.beard), hair.beard, { name: beard, onSkin: bare }).settled)
 
   // the body brings one pair of eyebrows; the other pair is a second shape to
   // pick from, so two people with the same hair still have different faces
@@ -106,7 +122,7 @@ for (const outfit of manifest.outfits) {
   rename(doc, 'Eyebrows', brows[0])
   if (hair.brows) {
     brows.push(nodeName('brows', hair.brows))
-    wear(doc, skin, await hairPiece(hair.brows), hair.brows, { name: brows[1] })
+    settled = Math.max(settled, wear(doc, skin, await hairPiece(hair.brows), hair.brows, { name: brows[1], onSkin: bare }).settled)
   }
 
   await tidy(doc)
@@ -126,7 +142,8 @@ for (const outfit of manifest.outfits) {
   console.log(
     `${outfit.id}: ${outfit.parts.length} garments (${repainted}), ${styles.length} hairstyles,` +
       ` ${brows.length} brow shapes${beard ? ', a beard' : ''};` +
-      ` refitted by up to ${(shifted * 100).toFixed(1)} cm, ${evened} skin weights evened,` +
+      ` refitted by up to ${(shifted * 100).toFixed(1)} cm, hair lifted out of the skin by up to ${(settled * 1000).toFixed(1)} mm,` +
+      ` ${evened} skin weights evened,` +
       ` bare skin kept down to y=${kept.toFixed(3)} m` +
       ` -> ${(statSync(join(DIST, file)).size / 1e6).toFixed(2)} MB`,
   )
@@ -155,15 +172,18 @@ function rename(doc, from, to) {
  * Merges one part in, refits it to the body and moves it onto the body's own
  * skin. `name` renames the part's node, which is how the game finds a
  * hairstyle to show or hide at spawn; `drop` names nodes not worn at all,
- * which is where the pack's belts, bracers and buckles go.
+ * which is where the pack's belts, bracers and buckles go; `onSkin` names the
+ * bare skin meshes the part is held outside of, which hair needs and clothes
+ * do not.
  */
-function wear(doc, skin, part, what, { name, drop } = {}) {
+function wear(doc, skin, part, what, { name, drop, onSkin } = {}) {
   const partSkin = part.getRoot().listSkins()[0]
   if (!partSkin) throw new Error(`${what}: no skin`)
   agree(skin, partSkin, what)
   const dropped = new Set(drop ?? [])
   for (const node of part.getRoot().listNodes()) if (dropped.has(node.getName())) node.dispose()
   const { shifted, top } = refit(part, skin, partSkin)
+  const settled = onSkin ? -settleOnSkin(part, onSkin, ON_THE_SKIN).deepest : 0
 
   const scene = doc.getRoot().getDefaultScene() ?? doc.getRoot().listScenes()[0]
   const merged = mergeDocuments(doc, part)
@@ -180,7 +200,7 @@ function wear(doc, skin, part, what, { name, drop } = {}) {
   // the part brought a second copy of the skeleton with it; the joints it
   // pointed at go with the pruning
   merged.get(partSkin).dispose()
-  return { shifted, top }
+  return { shifted, top, settled }
 }
 
 /**

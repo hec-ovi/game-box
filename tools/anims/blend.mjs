@@ -22,6 +22,8 @@ import { Track } from './track.mjs'
 /** Which bones a movement is allowed to reach. */
 export const TORSO = /^(spine_|neck_|Head$)/
 export const ARMS = /^(clavicle_|upperarm_|lowerarm_|hand_|index_|middle_|pinky_|ring_|thumb_)/
+export const LEFT_ARM = /^(clavicle_|upperarm_|lowerarm_|hand_|index_\d\d_|middle_\d\d_|pinky_\d\d_|ring_\d\d_|thumb_\d\d_)(leaf_)?l$/
+export const RIGHT_ARM = /^(clavicle_|upperarm_|lowerarm_|hand_|index_\d\d_|middle_\d\d_|pinky_\d\d_|ring_\d\d_|thumb_\d\d_)(leaf_)?r$/
 export const UPPER = new RegExp(`${TORSO.source}|${ARMS.source}`)
 
 export class MotionBlender {

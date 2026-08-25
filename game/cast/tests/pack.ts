@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { Npc } from '@gb/world'
+import type { BodyKind, Npc } from '@gb/world'
 import { Cast, parseWardrobe, type Wardrobe } from '../src/index.ts'
 
 const DIST = join(import.meta.dirname, '..', '..', '..', 'assets', 'dist')
@@ -17,6 +17,12 @@ function read(path: string): ArrayBuffer {
 }
 
 export const wardrobe: Wardrobe = parseWardrobe(JSON.parse(readFileSync(join(DIST, 'wardrobe.json'), 'utf8')))
+
+/** The bodies the shipped wardrobe dresses: what every measurement here is taken on. */
+export const BODIES: readonly BodyKind[] = [...new Set(wardrobe.characters.map((entry) => entry.body))]
+
+/** Whose rail each body kind dresses from, as the contract promises: the pack has one build per sex. */
+export const RAIL: Readonly<Record<BodyKind, BodyKind>> = { male: 'male', female: 'female', 'hero-male': 'male', 'hero-female': 'female' }
 
 export function animsBytes(): ArrayBuffer {
   return read(join(DIST, 'anims.glb'))

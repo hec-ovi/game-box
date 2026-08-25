@@ -65,7 +65,7 @@ describe('the head-look layer', () => {
     run(2)
 
     const after = facing(member.object, head, rest)
-    expect(degrees(after.angleTo(before)), 'the head came off').toBeLessThan(85)
+    expect(degrees(after.angleTo(before)), 'the head came off').toBeLessThan(100)
   })
 
   it('eases back to the clip when the player walks away', () => {
@@ -125,6 +125,21 @@ describe('the gesture layer', () => {
     run(1)
     expect(seatedTalking.gesturing).toBeUndefined()
     expect(apart(seated, seatedTalking, 'lowerarm_r'), 'the gesture did not let go').toBeLessThan(0.01)
+  })
+
+  it('leaves a busy hand where the clip put it: the phone is not waved about', () => {
+    const still = cast.spawn(person({ id: 'npc_caller' }), 'Idle_Phone_Loop')
+    const talking = cast.spawn(person({ id: 'npc_caller' }), 'Idle_Phone_Loop')
+    talking.gesture(CLIPS.talk)
+    let phoneArm = 0
+    let otherArm = 0
+    for (let step = 0; step < 60; step++) {
+      cast.update(0.05)
+      phoneArm = Math.max(phoneArm, degrees(boneOf(still.object, 'lowerarm_r').quaternion.angleTo(boneOf(talking.object, 'lowerarm_r').quaternion)))
+      otherArm = Math.max(otherArm, degrees(boneOf(still.object, 'lowerarm_l').quaternion.angleTo(boneOf(talking.object, 'lowerarm_l').quaternion)))
+    }
+    expect(phoneArm, 'the gesture moved the hand with the phone in it').toBeLessThan(0.01)
+    expect(otherArm, 'the gesture did not reach the free arm').toBeGreaterThan(3)
   })
 
   it('plays every gesture the table offers', () => {

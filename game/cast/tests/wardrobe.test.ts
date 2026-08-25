@@ -1,7 +1,7 @@
 import { BODY_KINDS, NPC_ROLES } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { chooseCharacter, parseWardrobe, type Wardrobe } from '../src/index.ts'
-import { person, wardrobe } from './pack.ts'
+import { person, RAIL, wardrobe } from './pack.ts'
 
 const seaside: Wardrobe = {
   characters: [
@@ -43,11 +43,11 @@ describe('the wardrobe', () => {
     expect(again.id).toBe(once.id)
   })
 
-  it('has something cut for every role the world can station, on either body', () => {
+  it('has something cut for every role the world can station, on every body kind, off the rail the contract names', () => {
     for (const role of NPC_ROLES) {
       for (const base of BODY_KINDS) {
         const worn = chooseCharacter(wardrobe, person({ id: `npc_${role}_${base}`, role, appearance: { base, variant: 0 } }), '')
-        expect(worn.body, `a ${base} ${role} is wearing ${worn.id}, which is cut for a ${worn.body}`).toBe(base)
+        expect(worn.body, `a ${base} ${role} is wearing ${worn.id}, which is cut for a ${worn.body}`).toBe(RAIL[base])
         expect(worn.roles, `nothing in the wardrobe is made for a ${role}: they fell back to ${worn.id}`).toContain(role)
       }
     }
