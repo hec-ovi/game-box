@@ -1,31 +1,32 @@
-import type { BuildingKind } from '@gb/world'
+import type { Finish } from '@gb/world'
 import type { FurnishStyle } from './palette.ts'
 
 /**
- * Which interior language a building is dressed in.
+ * Which interior language a finish is dressed in.
  *
- * The world says what a building is, and the finish follows from that: the
- * places people live in are moulded and warm, everything worked in is machined
- * and cool. Exhaustive over the vocabulary, so a new kind of building has to
+ * The charter says what a place is finished like, and the language follows
+ * from that: `domestic` is moulded and warm, and every finish somebody works
+ * in is machined and cool. Exhaustive over `FINISHES`, so a new finish has to
  * say which it is before it compiles.
  */
-const FINISH: Record<BuildingKind, FurnishStyle> = {
-  apartment: 'home',
-  house: 'home',
-  hotel: 'home',
-  bar: 'corpo',
-  cafe: 'corpo',
-  chapel: 'corpo',
-  clinic: 'corpo',
-  market: 'corpo',
-  office: 'corpo',
-  restaurant: 'corpo',
-  shop: 'corpo',
-  station: 'corpo',
-  warehouse: 'corpo',
-  workshop: 'corpo',
+const STYLE: Record<Finish, FurnishStyle> = {
+  domestic: 'home',
+  civic: 'corpo',
+  industrial: 'corpo',
+  corporate: 'corpo',
+  worn: 'corpo',
 }
 
-export function finishOf(kind: BuildingKind): FurnishStyle {
-  return FINISH[kind]
+/** The finish a bare dressing stands in, for an interior that names none. */
+const FINISH: Record<FurnishStyle, Finish> = {
+  home: 'domestic',
+  corpo: 'corporate',
+}
+
+export function styleOf(finish: Finish): FurnishStyle {
+  return STYLE[finish]
+}
+
+export function finishOf(style: FurnishStyle): Finish {
+  return FINISH[style]
 }

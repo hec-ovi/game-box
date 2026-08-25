@@ -1,6 +1,6 @@
 # @gb/furnish contract
 
-contractVersion: 0.10.0
+contractVersion: 0.11.0
 
 ## Purpose
 
@@ -12,7 +12,7 @@ Dresses the inside of a building: every piece of furniture the generator can pla
 |---|---|---|
 | `new FurnishDressing(kit, rest?, style?, choices?, slot?)` | a `FurnishLibrary`, the `Dressing` behind it (defaults to `@gb/scene`'s `Greybox`), `'corpo'` or `'home'` (defaults to `'corpo'`), which entry of each surface pool to paint with (defaults to the first), and which of the town's screenings its televisions are on (defaults to the first) | |
 | `FurnishDressing.as(style)` | `'corpo'` or `'home'` | |
-| `FurnishDressing.room(interior)` | a `@gb/world` `Interior` | its rooms tile the interior and every door sits on a room edge, which is what `@gb/forge` builds |
+| `FurnishDressing.room(interior, charter?)` | a `@gb/world` `Interior`, and the `ResolvedCharter` its `kind` resolves to (`world.charter(interior.kind)`) | its rooms tile the interior and every door sits on a room edge, which is what `@gb/forge` builds. The charter is what a file from before finishes and room uses is read through; an interior a `World` hands out carries its `finish` already |
 | `FurnishDressing.prop(prop)` | a `@gb/world` `FurnitureProp` | |
 | `FurnishDressing.contactHeight(prop)` | a `@gb/world` `FurnitureProp` | |
 | `FurnishDressing.pickup(item)` | a `@gb/world` `Item` | |
@@ -26,8 +26,9 @@ Dresses the inside of a building: every piece of furniture the generator can pla
 
 | Param | Schema | Postconditions |
 |---|---|---|
-| `room(interior)` | `FurnishRoom` | that interior's own room, in the language its building's finish gives it: `dressing` to build it with and `decor` to add to what came back. See **Standing a room up** |
-| `FurnishRoom.style` | `FurnishStyle` | the language the room came out in: `finishOf(interior.kind)`, whatever language the dressing that made it was in |
+| `room(interior, charter?)` | `FurnishRoom` | that interior's own room, in the language its finish gives it: `dressing` to build it with and `decor` to add to what came back. See **Standing a room up** |
+| `FurnishRoom.finish` | `Finish` | the finish the room was dressed to: `interior.finish`, else the charter's, else the one this dressing's own language stands for |
+| `FurnishRoom.style` | `FurnishStyle` | the language the room came out in: `styleOf(finish)`, whatever language the dressing that made it was in |
 | `FurnishRoom.dressing` | `Dressing` | paints this interior's own floor, walls and ceiling, drawn from its id, so the shop is not the same room as the flat above it |
 | `FurnishRoom.decor` | `THREE.Mesh` | every bay of every wall of the interior, one indexed mesh on the one shared material, in the interior's own coordinates. One draw, whatever the bay count |
 | `FurnishRoom.bays` | `PlacedBay[]` | `kind`, `roomId`, `side`, the `face` the wall stands on, the stretch it claims (`from`, `to`) along the wall's own axis, that stretch in `cells`, and how far it stands off the wall (`depth`) |
@@ -38,14 +39,16 @@ Dresses the inside of a building: every piece of furniture the generator can pla
 | `surface(part)` | `THREE.Material` | the floor, walls or ceiling of a room in this dressing's language, pattern and finish, tiling at the real-world size of its image whatever size the room is, carrying the room's own probe so a polished one reflects something. The same look is always the same instance. A pack with no surfaces in it hands the question to `rest` |
 | `as(style)` | `FurnishDressing` | the same library and the same material in the other language |
 | `loadFurnish` / `furnishKit` | `FurnishLibrary` | `geometry(prop, style, slot?)` gives the built mesh's buffer on one of the town's screenings, `screenings(prop, style)` how many a piece has, `contact(prop)` how high off the floor a body meets it, `staffContact(prop)` the second surface of a piece worked from both sides, `heightOf(prop, style)` how tall it stands measured off the triangles, `item(item)` and `itemGeometry(archetype, cast)` the buffer for a thing you pick up, `castOf(item)` which cast it drew, `material` the one shared instance, `seed` the town's, and `surfaces` the tiling floor and walls when the pack carries them |
-| `finishOf(kind)` | `FurnishStyle` | which language a kind of building is dressed in: `home` for an apartment, a house and a hotel, `corpo` for everything worked in. Exhaustive over `BUILDING_KINDS` |
+| `styleOf(finish)` | `FurnishStyle` | which language a finish is dressed in: `home` for `domestic`, `corpo` for `civic`, `industrial`, `corporate` and `worn`. Exhaustive over `FINISHES` |
+| `finishOf(style)` | `Finish` | the finish a bare dressing stands in: `domestic` for `home`, `corporate` for `corpo` |
 | `ContactKind` | `'work' \| 'rest'` | which surface of a piece a body meets, as `@gb/world`'s `PropSpec` names it |
 | `ITEM_SPECS` | `Record<ItemArchetype, ItemSpec>` | **what a thing you pick up is**: `width`, `depth` and `height` in metres, and the matter its casts are made of. Covers all 25 of `@gb/world`'s `ITEM_ARCHETYPES` |
 | `ITEM_CASTS` | `number` | how many ways one archetype is drawn: 3 |
 | `castIndex(seed, itemId)` | `number` | which cast that item drew |
 | `itemCast(seed, archetype, index)` | `ItemCast` | one cast: its body, fittings and mark, its moulding, its proportions and whether its one bright detail is lit |
 | `MATTER` | `Record<Matter, Look>` | what a carried thing can be made of: paper, board, glass, ceramic, timber, steel, leather, cloth, plastic, and the three that emit |
-| `BAY_SPECS`, `BAY_TASTE` | the eight kinds a bay can be, how wide each may be in cells, how far it stands off the wall and how low, and how often each language reaches for it | |
+| `BAY_SPECS` | the eight kinds a bay can be, how wide each may be in cells, how far it stands off the wall and how low | |
+| `BAY_TASTE`, `USE_TASTE`, `tasteOf(finish, use)` | `Record<Finish, Taste>`, `Partial<Record<RoomUse, ...>>`, `Taste` | how often each finish reaches for each kind, how a room's use multiplies that row (a kind left out keeps its weight), and the two multiplied: the row a wall draws from. A room with no use draws from the finish's row itself |
 | `WALL` | metres | every height a wall is divided at: the head of the field, the rail over it, the niche sill and head, the shelf ledges and their pitch |
 | `WALL_CONTACTS` | metres | every height the vocabulary can offer to stand something on, each one once: a shelf's lowest ledge and a niche's sill are two metres and land on the same number whenever the worktop and the service counter agree |
 | `SIDES` | `'north' \| 'south' \| 'east' \| 'west'` | which wall of a room a bay is on |
@@ -80,7 +83,7 @@ Nothing else can fail. Nothing here loads a model, so nothing can arrive missing
 ## Dependencies
 
 - `@gb/scene` contract: the `Dressing` seam this implements, `Greybox` as the layer behind it, and the shell `buildInterior` puts a room in.
-- `@gb/world` contract: `PROP_SPECS`, `PROP_CELL` and `footprintOf`, the one table of what a piece of furniture claims and where a body meets it, which this box builds to and `@gb/forge` places from; `FURNITURE_PROPS`, `ITEM_ARCHETYPES` and `BUILDING_KINDS`; the `Interior` document a room's walls and its finish are read off; and `METRICS`, which is the one place a contact height and a wall thickness live.
+- `@gb/world` contract: `PROP_SPECS`, `PROP_CELL` and `footprintOf`, the one table of what a piece of furniture claims and where a body meets it, which this box builds to and `@gb/forge` places from; `FURNITURE_PROPS` and `ITEM_ARCHETYPES`; the `Interior` document a room's walls, its `finish` and each room's `use` are read off, `FINISHES` and `ROOM_USES` those two vocabularies, and `ResolvedCharter` with `roomUseOf(room, charter)` for a file that left either out; and `METRICS`, which is the one place a contact height, a wall thickness and where a stool's soles rest live.
 - `@gb/kit` contract: `Rng`, forked per language, per prop, per archetype and cast, per room and per wall.
 - `three`, and its node renderer (`three/webgpu`, `three/tsl`).
 - Four tiling images, packed by `tools/build-kit.ts` into `assets/dist/interior-kit.glb` (48 KB). Three are ours, generated from our own prompts and committed at `assets/gen/`: board-formed concrete for a corpo wall, polished concrete for its floor, moulded plastic for a home. The fourth is the Downtown kit's street concrete, CC0, which floors a flat and is the only one carrying relief of its own. `assets/dist` is not in the repository, so a fresh clone runs `node tools/fetch-assets.mjs` and then `node game/furnish/tools/build-kit.ts` before an interior has real surfaces. Furniture and wall bays need neither step.
@@ -90,12 +93,12 @@ Nothing else can fail. Nothing here loads a model, so nothing can arrive missing
 Two lines beyond what a room already took, because a wall's bays are geometry and `@gb/scene` builds the shell:
 
 ```ts
-const room = dressing.room(interior)
+const room = dressing.room(interior, world.charter(interior.kind))
 const built = buildInterior(world, interior, room.dressing)
 built.root.add(room.decor)
 ```
 
-`room.dressing` in place of the plain one is what gives that interior its own floor and walls; `room.decor` is what makes the walls a run of bays instead of one surface. Leave either out and the room still builds, one flatter than the other.
+`room.dressing` in place of the plain one is what gives that interior its own floor and walls; `room.decor` is what makes the walls a run of bays instead of one surface. Leave either out and the room still builds, one flatter than the other. The charter is what a room's use is read through when the file left `Room.use` out; leave it out and such a room draws from its finish's row alone.
 
 ## Invariants
 
@@ -107,6 +110,7 @@ built.root.add(room.decor)
 - A prop declares a `contact` or a `height`, never both, and the plant declares neither because nobody touches it and its own proportions are the point.
 - **A till and a coffee machine stand on a counter, and the number they are lifted by is the drawn top.** `contactHeight(prop)` publishes the contact height a host was drawn to, `@gb/forge` writes it as `Furniture.lift` and `@gb/scene` draws the piece there: the lifted piece's base lands on the host's top plate to the micron, and its footprint fits inside the host's, which the tests hold for both hosts in both languages.
 - The contact surface is read off the triangles, never off the bounding box, because the top of a chair is its backrest and the top of a bed is its headboard. `rest` (a seat, a mattress) is the widest level plate that looks up; `work` (a counter, a desk, a hob, the run beside a sink) is the highest one covering at least a quarter of the piece's own footprint. Nothing draws a lid under something that sits on it, or that hidden plate would be the widest one on the piece.
+- **A stool's rail is where the soles rest.** `@gb/cast`'s stool clips tuck the feet back under the seat and stand the soles `METRICS.reach.stoolSoles` (0.38) off the floor, 0.37 under a pad at `stoolHeight`, so the rail's top face is drawn on that number the way the pad is: measured off the triangles, a level plate at 0.380 in both languages, and a test holds it there.
 - The bar counter is the only piece worked from both sides, so it is the only one with two surfaces. The customer's drink stands on the rail at the front at `barCounterHeight`; the bartender's forearms rest on the shelf behind it at `serviceCounterHeight`, which is where `@gb/cast`'s lean clip holds a body's hands (1.02 to 1.04). `@gb/world` holds the two level at 1.0, so the rail and the shelf are two slabs side by side on one carcass, each drawn on its own number, the rail in the top look and the shelf in the board look. `staffContact` publishes the second one, and no triangle between them is degenerate: 194 triangles corpo, 260 home, none of zero area.
 - **A bed is as long as the body that lies on it.** `@gb/cast`'s lying clip is centred on its own root and reaches 0.96 m either way, so the mattress has to draw 1.92 m of level pad. That is what makes the bed 2.1 m deep: 10 cm of headboard at the back and 1.97 m of mattress in front of it. Measured off the drawn pad, the level surface at `mattressHeight` runs 1.970 m in corpo and 1.934 m in home, where the moulded edge rounds off the last centimetres, both over the 1.92 m the test holds them to. Centring the sleeper shares the overhang between the head and the foot; the length is the mattress's.
 - Every prop's origin is the centre of its base and its front looks north, which is where `@gb/scene` points a prop at rotation zero.
@@ -126,16 +130,17 @@ built.root.add(room.decor)
 ### The walls
 
 - **A wall is a run of bays.** Every room is a rectangle and `@gb/scene` stands a wall on each of its edges, half a wall thickness inside it. That face is divided at its doorways, and each stretch left is cut into an even rhythm of bays: whole 10 cm cells, all within one cell of each other, so a wall reads as a rhythm rather than a row of different-sized boxes.
-- A bay is `plain` (the base wall shows), `panel` (a slab standing 3 cm proud with a seam either side), `niche` (a surround with a lit strip under its head and things standing on its sill), `shelf` (two or three ledges between cheeks, with things on them), `frame` (a poster on a raised mount), `grille` (louvres over a dark back), `strip` (a light line up the wall in its own channel) or `window` (a pane onto the city, in a frame). Which one goes where is a weighted draw over that language's taste, filtered by what fits; the vocabulary and the taste are `src/walls/bays.ts` and the placement is `src/walls/plan.ts`, so either can be retuned without touching a triangle.
+- A bay is `plain` (the base wall shows), `panel` (a slab standing 3 cm proud with a seam either side), `niche` (a surround with a lit strip under its head and things standing on its sill), `shelf` (two or three ledges between cheeks, with things on them), `frame` (a poster on a raised mount), `grille` (louvres over a dark back), `strip` (a light line up the wall in its own channel) or `window` (a pane onto the city, in a frame). Which one goes where is a weighted draw over the row the building's finish gives, tilted by what the room is for, filtered by what fits; the vocabulary is `src/walls/bays.ts`, the taste `src/walls/taste.ts` and the placement `src/walls/plan.ts`, so any of them can be retuned without touching a triangle.
 - **Nothing recesses.** The wall `@gb/scene` builds is solid, so a bay stands off its face and never into it, and what reads as a recess is the surround round it standing proud. The deepest bay is 14 cm, well inside the 35 cm the player's own radius already holds them off a wall, so no bay is collision and none of them is published as a blocker.
 - **A bay never lands in a doorway.** The run is cut at every door on that wall at the width `@gb/scene` cuts the hole (the door width plus 20 cm) with 15 cm of reveal either side, so furniture cannot be sealed in behind a bay and a doorway is never half a panel.
 - **A bay never fights the furniture in front of it.** A piece of furniture in that room is taken as the box around it, however it is turned; if it overlaps the bay and stands closer to the wall than the bay reaches, then the bay is only allowed when its lowest projecting part is above the top of that piece. So a shelf can run over a sofa and cannot run through a wardrobe. The one exception is `panel`, which is 3 cm and disappears behind anything standing against the wall.
 - The furniture heights that rule reads are measured off the triangles that were built (`heightOf`), not off what a prop declares, for the same reason a contact height is.
+- **The taste is the finish's, tilted by the use.** A `corporate` wall is mostly machined panel with services on show; `domestic` stands more things on more things; `civic` runs bare stretches and framed notices; `industrial` racks and vents; `worn` is mostly bare and unlit. Then the room says what it is for: a store or a kitchen leans to shelves and hangs no pictures, a washroom to grilles, a bedroom to pictures and windows, a taproom to lit niches, a ward to bare wall. A room whose use the file left out is read through its charter (`roomUseOf`), and one with no charter draws from the finish's row alone, so an old file dressed with its charter builds the same walls, vertex for vertex, as the same file with every room stamped.
 - **A shelf you can put something on is a contact surface.** Every niche sill and every shelf ledge is drawn with its top face on the number exactly, the same contract a worktop is held to, and `FurnishRoom.contacts` publishes the ones that room actually has. The two that a body reaches for come from `METRICS.furniture`: a niche sill is at `serviceCounterHeight` and the lowest ledge is a `worktopHeight`.
 - The field of bays ends at 2.4 m and a shelf's ledges are pitched off `worktopHeight`, so the two numbers are not free of each other: the highest ledge keeps a whole pitch of clear air under the head of the field, which leaves the lit channel over the wall to itself.
 - **The things standing in a niche or on a shelf are decoration.** A cup, a bottle, a canister, a box, a tray, a stack. They are not `@gb/world` furniture, nothing can pick one up and nothing collides with one. Each is a whole number of cells across and exactly one deep, so they land on the same lattice as the bay and fit the shallow shelf a wall can afford.
 - Over the field of bays runs a rail with a lit channel under it, over every stretch of wall with nothing standing that high in front of it. That is the room's own light: emissive faces above 1, so the app's bloom finds them. There is no light object anywhere in this box.
-- Same seed, same walls, vertex for vertex, and two seeds give two different rooms. Every draw comes from an `Rng` forked per language, per interior, per room and per wall, then per bay, so retuning the taste cannot move the furniture and retuning what stands in a niche cannot change which bay is a niche.
+- Same seed, same walls, vertex for vertex, and two seeds give two different rooms. Every draw comes from an `Rng` forked per language, per interior, per room and per wall, then per bay, so retuning the taste cannot move the furniture and retuning what stands in a niche cannot change which bay is a niche. A weight of zero takes a kind out of the draw without moving the stream.
 
 ### The screens
 
@@ -157,7 +162,7 @@ built.root.add(room.decor)
 - **Variation is per prop kind, not per instance.** One draw from a stream forked per language and per prop decides the edge profile, the corner radii, what holds the piece up and whether a strip is lit, and the wall is a kind like any other. So the chairs in a room match and every bay in a building is moulded the same way, which is what a real room looks like and what keeps geometry shared.
 - A wall bay is drawn at two points per rounded corner rather than the catalog's four. A bay's radius is capped by how thin it is, so a 6 mm fillet at four steps is triangles nobody can see: it is the whole difference between a moulded room costing 35,000 triangles and costing 19,000.
 - The two languages differ in palette and in taste, never in size: corpo is square in plan with chamfered edges, thin metal frames and cool white strips; home is radiused, moulded, on plinths, with warm coves. A corpo chair and a home chair put a body in the same place.
-- **Which language a room gets is the building's finish, not the caller's choice.** `room(interior)` reads `finishOf(interior.kind)`: the places people live in (an apartment, a house, a hotel) are `home`, and everything worked in is `corpo`. A dressing made in either language hands back the same room for the same building, so a flat is moulded and warm whichever dressing the app happens to hold. `prop` and `surface` on an unbound dressing stay in that dressing's own language, which is what the preview and the tests use. The table is exhaustive over `BUILDING_KINDS`, so a new kind of building says which it is before it compiles.
+- **Which language a room gets is the interior's finish, not the caller's choice.** `room(interior, charter?)` reads `interior.finish`, which `@gb/world` writes from the charter: `domestic` is `home`, and `civic`, `industrial`, `corporate` and `worn` are `corpo`. A dressing made in either language hands back the same room for the same interior, so a flat is moulded and warm whichever dressing the app happens to hold. A file from before finishes reads its charter's, and an interior with neither is dressed in the dressing's own language, the way `prop` and `surface` on an unbound dressing are, which is what the preview and the tests use. The table is exhaustive over `FINISHES`, so a new finish says which it is before it compiles. No building kind is read anywhere in the box.
 
 ### The surfaces
 
@@ -186,17 +191,17 @@ The pack is 48 KB on disk, five webp layers across four surfaces. Every layer is
 
 Screens cost bytes and nothing else. Against the same catalog without them: no triangle and no draw anywhere moved, and the buffers went 1.70 MB to 1.81 MB and 1.70 MB to 1.80 MB, +220 KB in all, +6.5%. That is the four byte attribute on every vertex in the box (206 KB) plus the six screenings of the television (14 KB).
 
-Measured headless in Node on a generated town of nine blocks, whole rooms, shell and pickups included, each room in the language its building's finish gives it:
+Measured headless in Node on a generated town of nine blocks, whole rooms, shell and pickups included, each room in the language its finish gives it:
 
-| room | finish | pieces | items | bays | furnished | furnished + walls | greybox |
-|---|---|---|---|---|---|---|---|
-| cafe | corpo | 17 | 2 | 72 | 39 draws, 8,734 tris, 8 mats | 40 draws, 13,582 tris | 39 draws, 1,348 tris, 9 mats |
-| restaurant | corpo | 14 | 1 | 76 | 36 draws, 6,960 tris, 6 mats | 37 draws, 13,344 tris | 36 draws, 700 tris, 7 mats |
-| office | corpo | 14 | 2 | 57 | 38 draws, 7,598 tris, 6 mats | 39 draws, 12,246 tris | 38 draws, 928 tris, 7 mats |
-| clinic | corpo | 10 | 2 | 84 | 26 draws, 6,798 tris, 6 mats | 27 draws, 14,078 tris | 26 draws, 580 tris, 7 mats |
-| hotel | home | 8 | 3 | 58 | 32 draws, 5,580 tris, 7 mats | 33 draws, 17,708 tris | 32 draws, 856 tris, 8 mats |
+| room | finish | language | pieces | items | bays | furnished | furnished + walls | greybox |
+|---|---|---|---|---|---|---|---|---|
+| cafe | corporate | corpo | 17 | 2 | 72 | 39 draws, 8,734 tris, 8 mats | 40 draws, 14,006 tris | 39 draws, 1,348 tris, 9 mats |
+| restaurant | corporate | corpo | 14 | 1 | 76 | 36 draws, 6,960 tris, 6 mats | 37 draws, 13,272 tris | 36 draws, 700 tris, 7 mats |
+| office | corporate | corpo | 14 | 2 | 57 | 38 draws, 7,598 tris, 6 mats | 39 draws, 12,430 tris | 38 draws, 928 tris, 7 mats |
+| clinic | civic | corpo | 10 | 2 | 84 | 26 draws, 6,798 tris, 6 mats | 27 draws, 11,686 tris | 26 draws, 580 tris, 7 mats |
+| hotel | domestic | home | 8 | 3 | 58 | 32 draws, 5,580 tris, 7 mats | 33 draws, 15,572 tris | 32 draws, 856 tris, 8 mats |
 
-`node game/furnish/tools/print-cost.ts` prints the table. **One draw for the walls, whatever the bay count**: 57 bays and 84 bays both cost the same one mesh, and a finer rhythm or a bigger vocabulary buys triangles, never draws. Home walls are about twice corpo because every corner of every bay is moulded.
+`node game/furnish/tools/print-cost.ts` prints the table. **One draw for the walls, whatever the bay count**: 57 bays and 84 bays both cost the same one mesh, and a finer rhythm or a bigger vocabulary buys triangles, never draws. Home walls cost more than corpo because every corner of every bay is moulded, and a civic wall costs less than a corporate one of more bays because its taste runs to bare stretches.
 
 Giving the items shapes cost a room **no draw and one material fewer**: they were already an object each, they now draw with the furniture's material instead of the layer behind, so every room in the table lost a material.
 
@@ -218,13 +223,13 @@ Every item geometry is indexed, on the one shared material and agreeing attribut
 
 ## How to modify this blackbox safely
 
-A prop's footprint or its contact height is `@gb/world`'s `PROP_SPECS`, which `@gb/forge` places from and this box builds to, so a change there is a change to both at once and the tests here measure the drawn triangles against it. **`footprintOf(prop)` is the whole answer to how much floor a piece needs**: 16 of the 24 fill their declared rectangle to the millimetre and none of them exceeds it, the widest shortfall being a coffee machine at 0.433 m in the 0.5 m it claimed, so a planner sizes a slot from the table and never from the triangles. What a prop looks like is one file per family under `src/props/`, one exported builder per prop kind, all of them drawing through `Solid.block` in `src/build/solid.ts`, or through `src/build/bar.ts`, which is the same block laid on its side; nothing else may make geometry, and nothing in the box is loaded from a model file: the one `.glb` it reads carries four tiling images. Which language a kind of building is dressed in is `src/style/finish.ts` alone.
+A prop's footprint or its contact height is `@gb/world`'s `PROP_SPECS`, which `@gb/forge` places from and this box builds to, so a change there is a change to both at once and the tests here measure the drawn triangles against it. **`footprintOf(prop)` is the whole answer to how much floor a piece needs**: 16 of the 24 fill their declared rectangle to the millimetre and none of them exceeds it, the widest shortfall being a coffee machine at 0.433 m in the 0.5 m it claimed, so a planner sizes a slot from the table and never from the triangles. What a prop looks like is one file per family under `src/props/`, one exported builder per prop kind, all of them drawing through `Solid.block` in `src/build/solid.ts`, or through `src/build/bar.ts`, which is the same block laid on its side; nothing else may make geometry, and nothing in the box is loaded from a model file: the one `.glb` it reads carries four tiling images. Which language a finish is dressed in is `src/style/finish.ts` alone.
 
 A carried thing is the same shape of code one folder over. How big it is and what it is made of is `src/items/specs.ts` plus `src/items/matter.ts`; how much a cast may swing is `src/items/cast.ts`; what one looks like is one file per family under `src/items/` (`paper.ts`, `vessel.ts`, `pack.ts`, `tool.ts`), one exported builder per archetype.
 
 Look at the result before believing it. `npx vite --port 5311`, then `/game/furnish/tools/preview/index.html`, which draws on the renderer the game uses and prints the draws and triangles the frame really costs. `?show=counter` stands one of every archetype on a counter (`?view=hand|near|far`, `?x=`, `?cast=`, `?some=a,b,c`, `?batch=1`, `?labels=1`); `?show=room` puts the surfaces on a plain room with the lit channel round it, and `?probe=0` takes the probe back off them.
 
-A wall is four files and they do not overlap: `src/walls/bays.ts` is the vocabulary and the heights, `src/walls/runs.ts` reads a room out of the world document as four walls with their doorways and their furniture, `src/walls/plan.ts` decides which bay goes where, and `src/walls/draw.ts` draws one. `src/walls/things.ts` is what stands in a niche. Retuning how often a wall carries a shelf is the taste table in `bays.ts` alone; changing what a shelf looks like is `draw.ts` alone.
+A wall is five files and they do not overlap: `src/walls/bays.ts` is the vocabulary and the heights, `src/walls/taste.ts` how often a finish and a use reach for each, `src/walls/runs.ts` reads a room out of the world document as four walls with their doorways, their furniture and their use, `src/walls/plan.ts` decides which bay goes where, and `src/walls/draw.ts` draws one. `src/walls/things.ts` is what stands in a niche. Retuning how often a store carries a shelf is `taste.ts` alone; changing what a shelf looks like is `draw.ts` alone.
 
 What the two languages are made of is `src/style/palette.ts`, and how much a variant may swing is the taste table in `src/style/variant.ts`. What a floor or a wall is laid in is `src/surfaces/surfaces.ts` plus the sources named in `tools/pack.ts`; the pattern itself is `src/surfaces/pattern.ts`, and the tiling rule is written twice in `src/surfaces/tiling.ts`, once for the GPU and once for the CPU the tests measure, so both change together. What a polished floor reflects is `src/surfaces/probe.ts` alone, and the two light numbers in it are a calibration: raise them and the probe stops being a reflection and starts being a light that floods the room. The surfaces in it are not dials at all: each is its pool's colour times what the picture lays on it, so they follow the light. The screen's entry is not a dial either: it is the radiance `screenAverage()` measured, so retuning the picture moves the light on its own. A new generated surface follows `tools/textures/README.md`, lands in `assets/gen/`, is named in `tools/pack.ts`, and needs its average brightness and how many metres one tile covers in `SURFACE_TEXTURES` (`node game/furnish/tools/print-grain.ts` prints the first). Adding one changes what the pack has to carry, so `node game/furnish/tools/build-kit.ts` runs again: a pack missing any node gives no surfaces at all and every room falls back to flat colour.
 

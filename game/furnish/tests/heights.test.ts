@@ -1,4 +1,4 @@
-import { FURNITURE_PROPS, PROP_SPECS, footprintOf, type AnchorKind, type FurnitureProp } from '@gb/world'
+import { FURNITURE_PROPS, METRICS, PROP_SPECS, footprintOf, type AnchorKind, type FurnitureProp } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { FURNISH_STYLES } from '../src/index.ts'
@@ -24,17 +24,15 @@ const TOUCHING: readonly AnchorKind[] = ['sit', 'sit-drink', 'serve', 'cook', 'w
  * loses its body and another gains one, and a floor is a number somebody
  * lowers.
  *
- * A bar stool is deliberately absent. There is no clip that sits a body on a
- * raised seat, so `@gb/forge` sits drinkers on table chairs and a stool is a
- * piece a body walks round; it comes back carrying `sit-drink` the day
- * `@gb/cast` ships the pose, and this is where that is noticed. `lean` is
- * absent for a different reason: a leaning body is stationed at a spot on the
- * floor and names no prop at all.
+ * A drinker sits on a bar stool (`@gb/cast`'s stool clips carry their own
+ * height) and a chair is for sitting. `lean` is absent because a leaning body
+ * is stationed at a spot on the floor and names no prop at all.
  */
 const TOUCHED: Partial<Record<FurnitureProp, readonly AnchorKind[]>> = {
   'bar-counter': ['serve'],
+  'bar-stool': ['sit-drink'],
   bed: ['sleep'],
-  chair: ['sit', 'sit-drink'],
+  chair: ['sit'],
   counter: ['serve'],
   'office-chair': ['work-desk'],
   sofa: ['sit'],
@@ -81,6 +79,19 @@ describe('the height a body meets', () => {
         const drawn = contactOf(dressing.prop(prop), spec.contact.kind)
         expect(drawn, `${style} ${prop}`).toBeCloseTo(spec.contact.height, EXACT)
       }
+    }
+  })
+
+  it('puts the stool\'s rail where the stool clip rests the soles, under the pad', () => {
+    // the seated feet tuck back under the seat and stand on a rail: the pad is
+    // at `stoolHeight` and the soles `METRICS.reach.stoolSoles` off the floor
+    const soles = METRICS.reach.stoolSoles
+    expect(PROP_SPECS['bar-stool'].contact!.height - soles).toBeCloseTo(0.37, 9)
+    for (const style of FURNISH_STYLES) {
+      const stool = dressingIn(style).prop('bar-stool')
+      const rail = plates(stool).find((plate) => Math.abs(plate.y - soles) < 1e-5)
+      expect(rail, `${style} stool rail at ${soles}`).toBeDefined()
+      expect(rail!.area, `${style} stool rail`).toBeGreaterThan(0.02)
     }
   })
 

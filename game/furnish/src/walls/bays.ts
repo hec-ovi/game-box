@@ -7,13 +7,12 @@
  * light strip or a window.
  *
  * This file is the vocabulary and nothing else: how wide a bay of each kind may
- * be, how far it stands off the wall, the lowest part of it that sticks out,
- * and how often each language reaches for it. Where a bay goes is `plan.ts` and
- * what it looks like is `draw.ts`, so the distribution can be retuned without
- * touching the geometry and the other way round.
+ * be, how far it stands off the wall, and the lowest part of it that sticks
+ * out. How often a wall reaches for each is `taste.ts`, where a bay goes is
+ * `plan.ts` and what it looks like is `draw.ts`, so the distribution can be
+ * retuned without touching the geometry and the other way round.
  */
 import { METRICS } from '@gb/world'
-import type { FurnishStyle } from '../style/palette.ts'
 
 export type BayKind = 'plain' | 'panel' | 'niche' | 'shelf' | 'frame' | 'grille' | 'strip' | 'window'
 
@@ -83,33 +82,6 @@ export const BAY_SPECS: Record<BayKind, BaySpec> = {
   grille: { cells: [4, 9], depth: WALL.grille.depth, low: WALL.grille.low },
   strip: { cells: [4, 12], depth: WALL.strip.depth, low: WALL.strip.low },
   window: { cells: [8, 16], depth: WALL.window.depth, low: WALL.window.low, outsideOnly: true },
-}
-
-/** How often each language reaches for each kind. Retune here, nowhere else. */
-export const BAY_TASTE: Record<FurnishStyle, readonly (readonly [BayKind, number])[]> = {
-  // corpo: mostly flat panel with a machined rhythm, services on show, a lit
-  // case rather than a shelf of clutter
-  corpo: [
-    ['plain', 3],
-    ['panel', 9],
-    ['niche', 3],
-    ['shelf', 2],
-    ['frame', 2],
-    ['grille', 3],
-    ['strip', 2],
-    ['window', 3],
-  ],
-  // home: a cabin wall, more things standing on things, warmer and busier
-  home: [
-    ['plain', 3],
-    ['panel', 8],
-    ['niche', 4],
-    ['shelf', 4],
-    ['frame', 3],
-    ['grille', 1],
-    ['strip', 2],
-    ['window', 4],
-  ],
 }
 
 /** A bay with something standing off the wall in it, so two in a row read as one. */

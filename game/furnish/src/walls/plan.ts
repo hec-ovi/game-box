@@ -4,8 +4,9 @@
  * A run of wall is cut at its doorways, and each stretch that is left is
  * divided into an even rhythm of bays: whole 10 cm room cells, all within a
  * cell of each other, so a wall reads as a rhythm rather than as a row of
- * different-sized boxes. Then each bay is dealt a kind from the language's
- * taste, filtered by what will actually fit there.
+ * different-sized boxes. Then each bay is dealt a kind from the taste of the
+ * building's finish tilted by the room's use, filtered by what will actually
+ * fit there.
  *
  * This is the distribution and nothing else. It draws from a stream forked per
  * room and per wall, so retuning the taste cannot move the furniture, and
@@ -13,9 +14,10 @@
  */
 import { Rng } from '@gb/kit'
 import { PROP_CELL, type Interior } from '@gb/world'
-import type { FurnishStyle } from '../style/palette.ts'
-import { BAY_SPECS, BAY_TASTE, WALL, isFeature, type BayKind } from './bays.ts'
-import { clears, runsOf, segmentsOf, type Span, type TopOf, type WallRun } from './runs.ts'
+import type { RoomDress } from '../dress.ts'
+import { BAY_SPECS, WALL, isFeature, type BayKind } from './bays.ts'
+import { clears, runsOf, segmentsOf, useOf, type Span, type TopOf, type WallRun } from './runs.ts'
+import { tasteOf, type Taste } from './taste.ts'
 
 /** How wide a bay wants to be, in cells. The rhythm settles near this. */
 const PREFERRED_PROP_CELLS = 7
@@ -39,25 +41,21 @@ export interface PlannedRun {
 }
 
 /** Every wall of every room in one interior, divided into bays. */
-export function planInterior(
-  interior: Interior,
-  style: FurnishStyle,
-  seed: string,
-  topOf: TopOf,
-): PlannedRun[] {
-  const root = new Rng(seed).fork('furnish').fork('walls').fork(style).fork(interior.id)
+export function planInterior(interior: Interior, dress: RoomDress, seed: string, topOf: TopOf): PlannedRun[] {
+  const root = new Rng(seed).fork('furnish').fork('walls').fork(dress.style).fork(interior.id)
   const planned: PlannedRun[] = []
 
   for (const room of interior.rooms) {
+    const taste = tasteOf(dress.finish, useOf(room, dress.charter))
     for (const run of runsOf(interior, room, topOf)) {
       const rng = root.fork(room.id).fork(run.side)
-      planned.push({ run, bays: baysOf(run, style, rng), bands: bandsOf(run) })
+      planned.push({ run, bays: baysOf(run, taste, rng), bands: bandsOf(run) })
     }
   }
   return planned
 }
 
-function baysOf(run: WallRun, style: FurnishStyle, rng: Rng): PlannedBay[] {
+function baysOf(run: WallRun, taste: Taste, rng: Rng): PlannedBay[] {
   const bays: PlannedBay[] = []
   const segments = segmentsOf(run)
 
@@ -65,7 +63,7 @@ function baysOf(run: WallRun, style: FurnishStyle, rng: Rng): PlannedBay[] {
     const stream = rng.fork(`run${at}`)
     let last: BayKind = 'plain'
     for (const [index, span] of dividedInto(segments[at]!).entries()) {
-      const kind = kindFor(run, span.cells, spanOf(span), style, last, stream.fork(`bay${index}`))
+      const kind = kindFor(run, span.cells, spanOf(span), taste, last, stream.fork(`bay${index}`))
       last = kind
       bays.push({ ...spanOf(span), kind, cells: span.cells, label: `${run.roomId}/${run.side}/${at}/${index}` })
     }
@@ -112,23 +110,17 @@ function dividedInto(span: Span): CellSpan[] {
   return divided
 }
 
-/** What this bay may be, and which of those the language reaches for. */
-function kindFor(
-  run: WallRun,
-  cells: number,
-  span: Span,
-  style: FurnishStyle,
-  last: BayKind,
-  rng: Rng,
-): BayKind {
-  const allowed = BAY_TASTE[style].filter(([kind]) => {
+/** What this bay may be, and which of those the room reaches for. */
+function kindFor(run: WallRun, cells: number, span: Span, taste: Taste, last: BayKind, rng: Rng): BayKind {
+  const allowed = (Object.entries(taste) as [BayKind, number][]).filter(([kind, weight]) => {
+    if (weight <= 0) return false
     if (kind === last && isFeature(kind)) return false
     const spec = BAY_SPECS[kind]
     if (cells < spec.cells[0] || cells > spec.cells[1]) return false
     if (spec.outsideOnly && !run.outside) return false
     return spec.behindFurniture || clears(run, span, spec.depth, spec.low)
   })
-  return allowed.length ? rng.weighted(allowed as [BayKind, number][]) : 'plain'
+  return allowed.length ? rng.weighted(allowed) : 'plain'
 }
 
 /**

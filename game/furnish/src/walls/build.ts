@@ -15,7 +15,7 @@ import { Rng } from '@gb/kit'
 import type { Interior } from '@gb/world'
 import * as THREE from 'three'
 import { Solid } from '../build/solid.ts'
-import type { FurnishStyle } from '../style/palette.ts'
+import type { RoomDress } from '../dress.ts'
 import { variantOf } from '../style/variant.ts'
 import { BAY_SPECS, type BayKind } from './bays.ts'
 import { BAY_DRAWS, drawRail, type BayFrame } from './draw.ts'
@@ -60,15 +60,15 @@ const YAW: Record<Side, number> = {
   east: -Math.PI / 2,
 }
 
-export function buildWalls(interior: Interior, style: FurnishStyle, seed: string, topOf: TopOf): BuiltWalls {
+export function buildWalls(interior: Interior, dress: RoomDress, seed: string, topOf: TopOf): BuiltWalls {
   const solid = new Solid()
-  const variant = variantOf(style, WALL_KIND, seed)
-  const decor = new Rng(seed).fork('furnish').fork('wall-decor').fork(style).fork(interior.id)
+  const variant = variantOf(dress.style, WALL_KIND, seed)
+  const decor = new Rng(seed).fork('furnish').fork('wall-decor').fork(dress.style).fork(interior.id)
   const bays: PlacedBay[] = []
   const contacts = new Set<number>()
   const standsOn = (height: number): void => void contacts.add(height)
 
-  for (const planned of planInterior(interior, style, seed, topOf)) {
+  for (const planned of planInterior(interior, dress, seed, topOf)) {
     const { run } = planned
 
     for (const [at, band] of planned.bands.entries()) {
@@ -106,7 +106,7 @@ export function buildWalls(interior: Interior, style: FurnishStyle, seed: string
   }
 
   const geometry = solid.geometry()
-  geometry.name = `furnish:walls:${style}:${interior.id}`
+  geometry.name = `furnish:walls:${dress.style}:${interior.id}`
   return { geometry, bays, contacts: [...contacts].sort((one, two) => one - two), triangles: solid.triangles }
 }
 

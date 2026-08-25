@@ -1,6 +1,7 @@
 import type { Dressing } from '@gb/scene'
-import type { Interior } from '@gb/world'
+import type { Finish, Interior } from '@gb/world'
 import * as THREE from 'three'
+import type { RoomDress } from './dress.ts'
 import type { FurnishDressing } from './dressing.ts'
 import type { FurnishLibrary } from './kit/library.ts'
 import type { FurnishStyle } from './style/palette.ts'
@@ -33,7 +34,10 @@ import { buildWalls, type PlacedBay } from './walls/build.ts'
  */
 export class FurnishRoom {
   readonly interiorId: string
+  /** The language the room came out in. */
   readonly style: FurnishStyle
+  /** The finish its walls drew their taste from. */
+  readonly finish: Finish
   /** Hand this to `buildInterior`. */
   readonly dressing: Dressing
   /** Add this to the root `buildInterior` gives back. */
@@ -44,11 +48,12 @@ export class FurnishRoom {
   readonly contacts: readonly number[]
   readonly triangles: number
 
-  constructor(kit: FurnishLibrary, dressing: FurnishDressing, style: FurnishStyle, interior: Interior) {
-    const walls = buildWalls(interior, style, kit.seed, (prop) => kit.heightOf(prop, style))
+  constructor(kit: FurnishLibrary, dressing: FurnishDressing, dress: RoomDress, interior: Interior) {
+    const walls = buildWalls(interior, dress, kit.seed, (prop) => kit.heightOf(prop, dress.style))
 
     this.interiorId = interior.id
-    this.style = style
+    this.style = dress.style
+    this.finish = dress.finish
     this.dressing = dressing
     this.decor = new THREE.Mesh(walls.geometry, kit.material)
     this.decor.name = `furnish:walls:${interior.id}`

@@ -10,7 +10,7 @@
  * the run, the doorways no bay may touch, and the furniture standing in front
  * of it. No geometry, so it can be checked without building anything.
  */
-import { METRICS, footprintOf, type Interior } from '@gb/world'
+import { METRICS, footprintOf, roomUseOf, type Interior, type ResolvedCharter, type RoomUse } from '@gb/world'
 
 type Room = Interior['rooms'][number]
 type Furniture = Interior['furniture'][number]
@@ -79,6 +79,11 @@ interface Edge {
   /** +1 when the room is on the high side of the wall, -1 when it is on the low side. */
   readonly inward: number
   readonly along: 'x' | 'y'
+}
+
+/** Which routine dressed a room: what the file says, or what its charter asks for when the file left it out. */
+export function useOf(room: Room, charter: ResolvedCharter | undefined): RoomUse | undefined {
+  return room.use ?? (charter && roomUseOf(room, charter))
 }
 
 /** The four walls of one room, ready to be divided into bays. */

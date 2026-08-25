@@ -3,12 +3,14 @@ import * as THREE from 'three'
 import { beforeAll, describe, expect, it } from 'vitest'
 import {
   BAY_SPECS,
+  BAY_TASTE,
   FURNISH_STYLES,
   FurnishDressing,
   SOLID_MATERIAL,
   WALL,
   WALL_CONTACTS,
   furnishKit,
+  tasteOf,
   type PlacedBay,
 } from '../src/index.ts'
 import { dressingIn, meshesOf, plates, surfacedDressing, town } from './support.ts'
@@ -142,6 +144,18 @@ describe('a wall is a run of bays', () => {
       expect(bounds.min.y, interior.id).toBeGreaterThanOrEqual(0)
       expect(bounds.max.y, interior.id).toBeLessThanOrEqual(WALL.rail.top + 1e-6)
     }
+  })
+})
+
+describe('what a wall reaches for', () => {
+  it('is the finish\'s row tilted by the room\'s use, and a room with no use is the row itself', () => {
+    expect(tasteOf('industrial', undefined)).toEqual(BAY_TASTE.industrial)
+    // a store racks its walls and hangs no pictures; a kitchen the same way
+    expect(tasteOf('industrial', 'store').shelf).toBeGreaterThan(BAY_TASTE.industrial.shelf)
+    expect(tasteOf('industrial', 'store').frame).toBe(0)
+    expect(tasteOf('domestic', 'kitchen').frame).toBe(0)
+    // a kind the use says nothing about keeps its finish's weight
+    expect(tasteOf('domestic', 'kitchen').window).toBe(BAY_TASTE.domestic.window)
   })
 })
 

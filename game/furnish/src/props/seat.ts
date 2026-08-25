@@ -1,3 +1,4 @@
+import { METRICS } from '@gb/world'
 import * as THREE from 'three'
 import { everyCorner } from '../build/outline.ts'
 import { strip, support } from '../build/parts.ts'
@@ -12,6 +13,9 @@ import type { Build, PropBuilder } from './builder.ts'
 
 /** How far a backrest leans off vertical. */
 const LEAN = (6 * Math.PI) / 180
+
+/** A stool's rail: its top face is where the stool clip rests the soles, and this is how thick it is. */
+const RAIL = { top: METRICS.reach.stoolSoles, thick: 0.02 }
 
 export const chair: PropBuilder = (build) => {
   const { solid, variant, width, depth, contact } = build
@@ -132,12 +136,13 @@ export const barStool: PropBuilder = (build) => {
     arc: 4,
     look: variant.palette.frame,
   })
-  // the footrest: a body on a stool at bar height needs somewhere to put its feet
+  // the rail: the stool clip tucks the feet back under the seat and stands the
+  // soles here, so the rail's top is drawn on that number the way the pad is
   solid.block({
     width: width * 0.62,
     depth: width * 0.62,
-    y0: contact * 0.26,
-    y1: contact * 0.26 + 0.02,
+    y0: RAIL.top - RAIL.thick,
+    y1: RAIL.top,
     corner: everyCorner((width * 0.62) / 2),
     arc: 5,
     look: variant.palette.frame,

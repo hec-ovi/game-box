@@ -1,10 +1,10 @@
 import { Greybox, type Dressing } from '@gb/scene'
-import type { AnchorKind, CellKind, FurnitureProp, Interior, Item, Npc, Plot } from '@gb/world'
+import type { AnchorKind, CellKind, FurnitureProp, Interior, Item, Npc, Plot, ResolvedCharter } from '@gb/world'
 import * as THREE from 'three'
 import type { FurnishLibrary } from './kit/library.ts'
 import { FurnishRoom } from './room.ts'
 import { screenSlot } from './screens/screening.ts'
-import { finishOf } from './style/finish.ts'
+import { finishOf, styleOf } from './style/finish.ts'
 import type { FurnishStyle } from './style/palette.ts'
 import { FIRST_CHOICES, surfaceChoices, type SurfaceChoices } from './surfaces/choose.ts'
 import type { SurfacePart } from './surfaces/surfaces.ts'
@@ -22,7 +22,7 @@ import type { SurfacePart } from './surfaces/surfaces.ts'
  * the same library, so an app that knows which building it is entering pays
  * nothing for the second language: one library, one material, two dressings.
  * `room` hands back a sibling bound to one interior, in the language that
- * building's finish asks for, whose floor, walls and ceiling are that
+ * interior's finish asks for, whose floor, walls and ceiling are that
  * interior's own, plus the bays its walls are made of, and whose screens are
  * on that interior's own channel.
  */
@@ -54,9 +54,17 @@ export class FurnishDressing implements Dressing {
       : new FurnishDressing(this.#kit, this.#rest, style, this.#choices, this.#slot)
   }
 
-  /** This interior's own room: its language, its surfaces, its bays, and what its screens are showing. */
-  room(interior: Interior): FurnishRoom {
-    const style = finishOf(interior.kind)
+  /**
+   * This interior's own room: its language, its surfaces, its bays, and what
+   * its screens are showing.
+   *
+   * The finish is the interior's own, or its charter's when the file left it
+   * out, or this dressing's when it has neither. The charter is also where a
+   * room's use is read off for a file written before rooms carried one.
+   */
+  room(interior: Interior, charter?: ResolvedCharter): FurnishRoom {
+    const finish = interior.finish ?? charter?.finish ?? finishOf(this.style)
+    const style = styleOf(finish)
     const bound = new FurnishDressing(
       this.#kit,
       this.#rest,
@@ -64,7 +72,7 @@ export class FurnishDressing implements Dressing {
       surfaceChoices(this.#kit.seed, style, interior.id),
       screenSlot(this.#kit.seed, interior.id),
     )
-    return new FurnishRoom(this.#kit, bound, style, interior)
+    return new FurnishRoom(this.#kit, bound, { style, finish, charter }, interior)
   }
 
   /**

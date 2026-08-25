@@ -3,7 +3,8 @@ export { FurnishDressing } from './dressing.ts'
 export { FurnishRoom } from './room.ts'
 export { FurnishError, type FurnishErrorCode } from './errors.ts'
 export { type ContactKind } from './kit/contact.ts'
-export { finishOf } from './style/finish.ts'
+export { finishOf, styleOf } from './style/finish.ts'
+export { type RoomDress } from './dress.ts'
 export { ITEM_SPECS, type ItemSpec } from './items/specs.ts'
 export { ITEM_CASTS, castIndex, itemCast, type ItemCast } from './items/cast.ts'
 export { MATTER, type Matter } from './items/matter.ts'
@@ -27,14 +28,8 @@ export { SCREEN_SLOTS, screenSlot, screeningOf, type Screening } from './screens
 export { SCREEN_LIGHT, pictureAt, type Rgb } from './screens/picture.ts'
 export { screenAverage } from './screens/light.ts'
 export { type Variant, variantOf } from './style/variant.ts'
-export {
-  BAY_SPECS,
-  BAY_TASTE,
-  WALL,
-  WALL_CONTACTS,
-  type BayKind,
-  type BaySpec,
-} from './walls/bays.ts'
+export { BAY_SPECS, WALL, WALL_CONTACTS, type BayKind, type BaySpec } from './walls/bays.ts'
+export { BAY_TASTE, USE_TASTE, tasteOf, type Taste } from './walls/taste.ts'
 export { type PlacedBay } from './walls/build.ts'
 export { SIDES, type Side } from './walls/runs.ts'
 export { SurfaceLibrary, mapsOf, type SurfaceMaps } from './surfaces/library.ts'

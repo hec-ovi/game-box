@@ -78,13 +78,13 @@ for (const placement of world.toJSON().placements) {
 console.log('a whole room, shell included. Every piece of furniture in it is one mesh on one material,')
 console.log('every thing lying on it is another, and every bay of every wall of the interior is one more.\n')
 console.log(
-  `${'room'.padEnd(12)}${'finish'.padEnd(7)}${'pieces'.padStart(6)}${'items'.padStart(6)}${'bays'.padStart(6)}   ` +
+  `${'room'.padEnd(12)}${'finish'.padEnd(11)}${'language'.padEnd(9)}${'pieces'.padStart(6)}${'items'.padStart(6)}${'bays'.padStart(6)}   ` +
     `${'furnished'.padEnd(30)}${'furnished + walls'.padEnd(30)}greybox`,
 )
 for (const interior of [...world.interiors()].sort((a, b) => b.furniture.length - a.furniture.length)) {
-  const room = furnished.room(interior)
+  const room = furnished.room(interior, world.charter(interior.kind))
   console.log(
-    `${interior.kind.padEnd(12)}${room.style.padEnd(7)}${String(interior.furniture.length).padStart(4)}` +
+    `${interior.kind.padEnd(12)}${room.finish.padEnd(11)}${room.style.padEnd(9)}${String(interior.furniture.length).padStart(4)}` +
       `${String(placedIn.get(interior.id) ?? 0).padStart(6)}${String(room.bays.length).padStart(6)}   ` +
       `${cost(interior.id, furnished, false).padEnd(30)}${cost(interior.id, furnished, true).padEnd(30)}` +
       `${cost(interior.id, greybox, false)}`,
@@ -93,7 +93,7 @@ for (const interior of [...world.interiors()].sort((a, b) => b.furniture.length 
 
 function cost(id: string, dressing: Dressing, walls: boolean): string {
   const interior = world.interior(id)!
-  const room = dressing instanceof FurnishDressing ? dressing.room(interior) : undefined
+  const room = dressing instanceof FurnishDressing ? dressing.room(interior, world.charter(interior.kind)) : undefined
   const shell = buildInterior(world, interior, room?.dressing ?? dressing)
   if (walls && room) shell.root.add(room.decor)
 

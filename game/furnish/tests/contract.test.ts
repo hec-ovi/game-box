@@ -2,6 +2,7 @@ import { Greybox } from '@gb/scene'
 import {
   FURNITURE_PROPS,
   METRICS,
+  roomUseOf,
   type AnchorKind,
   type CellKind,
   type FurnitureProp,
@@ -18,7 +19,6 @@ import {
   FurnishError,
   SOLID_MATERIAL,
   SURFACE_PARTS,
-  finishOf,
   furnishKit,
 } from '../src/index.ts'
 import { dressingIn, meshesOf, town, trianglesOf } from './support.ts'
@@ -119,20 +119,56 @@ describe('the room a building gets', () => {
   it('is dressed in the language its finish asks for: a flat is a home, a bar is corpo', async () => {
     const world = await town()
     const interiors = [...world.interiors()]
-    const flat = interiors.find((interior) => finishOf(interior.kind) === 'home')
-    const bar = interiors.find((interior) => finishOf(interior.kind) === 'corpo')
+    const flat = interiors.find((interior) => interior.finish === 'domestic')
+    const bar = interiors.find((interior) => interior.finish === 'corporate')
     expect(flat, 'a home in town').toBeDefined()
     expect(bar, 'a corpo place in town').toBeDefined()
 
-    // whichever language the dressing was made in, the room follows the building
+    // whichever language the dressing was made in, the room follows the finish
     for (const style of FURNISH_STYLES) {
       const dressing = dressingIn(style)
       const home = dressing.room(flat!)
       const corpo = dressing.room(bar!)
       expect(home.style).toBe('home')
+      expect(home.finish).toBe('domestic')
       expect(corpo.style).toBe('corpo')
+      expect(corpo.finish).toBe('corporate')
       expect((home.dressing.prop('chair') as THREE.Mesh).geometry).toBe((dressingIn('home').prop('chair') as THREE.Mesh).geometry)
       expect((corpo.dressing.prop('chair') as THREE.Mesh).geometry).toBe((dressingIn('corpo').prop('chair') as THREE.Mesh).geometry)
+    }
+  })
+
+  it('reads a file from before finishes and uses off its charter, and builds the same walls', async () => {
+    const world = await town()
+    for (const interior of world.interiors()) {
+      const charter = world.charter(interior.kind)!
+      expect(interior.finish, interior.kind).toBe(charter.finish)
+
+      // the same interior written both ways: every room stamped, and none of them
+      const { finish: _, ...older } = interior
+      const stamped = { ...interior, rooms: interior.rooms.map((room) => ({ ...room, use: roomUseOf(room, charter) })) }
+      const bare = { ...older, rooms: interior.rooms.map(({ use, ...room }) => room) }
+      expect(stamped.rooms.every((room) => room.use), interior.kind).toBe(true)
+
+      const today = dressingIn('corpo').room(stamped)
+      const before = dressingIn('corpo').room(bare, charter)
+      expect(before.finish, interior.kind).toBe(today.finish)
+      expect(before.bays.map((bay) => bay.kind), interior.kind).toEqual(today.bays.map((bay) => bay.kind))
+      expect([...(before.decor.geometry.getAttribute('position').array as Float32Array)]).toEqual([
+        ...(today.decor.geometry.getAttribute('position').array as Float32Array),
+      ])
+    }
+  })
+
+  it('stays in the dressing\'s own language for an interior that names no finish and brings no charter', async () => {
+    const world = await town()
+    const { finish, ...bare } = [...world.interiors()][0]!
+    expect(finish).toBeDefined()
+
+    for (const style of FURNISH_STYLES) {
+      const room = dressingIn(style).room(bare)
+      expect(room.style, style).toBe(style)
+      expect(room.finish, style).toBe(style === 'home' ? 'domestic' : 'corporate')
     }
   })
 })
