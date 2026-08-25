@@ -6,7 +6,7 @@ import { AsksSchema, BriefSchema } from './asks.ts'
 import { BackgroundSchema, LifeSchema } from './life.ts'
 import { PremiseSchema } from './premise.ts'
 import { ChartersSchema } from './resolved.ts'
-import { ROOM_USES } from './traits.ts'
+import { FINISHES, ROOM_USES } from './traits.ts'
 import { WordSchema } from './word.ts'
 import {
   ANCHOR_KINDS,
@@ -93,6 +93,8 @@ export const InteriorSchema = z.object({
   plotId: id('plot'),
   /** The plot's word. */
   kind: WordSchema,
+  /** The language its rooms are dressed in. Absent is read back as its charter's. */
+  finish: z.enum(FINISHES).optional(),
   /** Interior footprint in metres. */
   size: z.object({ w: z.number().positive(), h: z.number().positive() }),
   rooms: z.array(RoomSchema).min(1),

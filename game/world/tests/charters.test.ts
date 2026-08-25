@@ -212,6 +212,42 @@ describe('what a room is for and what a person there is doing', () => {
   })
 })
 
+describe('the finish a building is dressed in', () => {
+  it('writes the charter\'s finish into a new interior, and reads it back into a file that left it out', () => {
+    const world = town([jail()])
+    const plot = world.addPlot({ ...site, kind: 'jail', name: 'Holding House' })
+    if (!plot.ok) throw new Error('plot')
+    const roomId = world.mintId('room')
+    const interior: Interior = {
+      id: world.mintId('interior'),
+      plotId: plot.value.id,
+      kind: 'jail',
+      size: { w: 8, h: 8 },
+      rooms: [{ id: roomId, kind: 'main', use: 'ward', name: 'Cell row', rect: { x: 0, y: 0, w: 8, h: 8 } }],
+      doors: [{ id: world.mintId('door'), from: 'outside', to: roomId, pos: { x: 4, y: 0 }, rot: 180, locked: false }],
+      furniture: [],
+      anchors: [],
+    }
+    expect(world.addInterior(interior).ok).toBe(true)
+    expect(world.interior(interior.id)?.finish).toBe('civic')
+    expect(world.toJSON().interiors[0]?.finish).toBe('civic')
+
+    // a file written before interiors carried a finish keeps its bytes and still reads one
+    const before = JSON.parse(JSON.stringify(world.toJSON()))
+    delete before.interiors[0].finish
+    const loaded = World.load(JSON.parse(JSON.stringify(before)))
+    expect(loaded.ok).toBe(true)
+    if (!loaded.ok) return
+    expect(loaded.value.interiors().map((i) => i.finish)).toEqual(['civic'])
+    expect('finish' in loaded.value.toJSON().interiors[0]!).toBe(false)
+
+    before.interiors[0].finish = 'baroque'
+    const refused = World.load(before)
+    expect(refused.ok).toBe(false)
+    if (!refused.ok) expect(refused.error.code).toBe('invalid-document')
+  })
+})
+
 describe('what a holding is made of', () => {
   it('puts every archetype in exactly one class', () => {
     const placed = Object.values(HOLDING_ARCHETYPES).flat()

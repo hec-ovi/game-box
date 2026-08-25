@@ -113,11 +113,12 @@ export const FURNITURE_PROPS = [
 ] as const
 
 /**
- * The bodies an NPC can be built on. Every value must be a body the cast ships:
- * the two everyday builds and the two heavier ones from the same pack, all on
- * the canonical 65-joint skeleton.
+ * The bodies an NPC can be built on: one mesh per sex, which is all the
+ * shipped pack holds (its two files are these two, each with a light and a
+ * dark skin sheet), both on the canonical 65-joint skeleton. A build the pack
+ * does not ship is not a body.
  */
-export const BODY_KINDS = ['male', 'female', 'hero-male', 'hero-female'] as const
+export const BODY_KINDS = ['male', 'female'] as const
 
 export const FACINGS = ['north', 'east', 'south', 'west'] as const
 

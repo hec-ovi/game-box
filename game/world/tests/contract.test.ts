@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   ANCHOR_KINDS,
   BODY_KINDS,
+  CELL_KINDS,
   FURNITURE_PROPS,
   footprintOf,
   inPlotBand,
@@ -499,6 +500,10 @@ describe('the heights a body is animated against', () => {
     // pad gives, which is what a cushion does
     expect(furniture.seatHeight).toBeGreaterThanOrEqual(reach.seatContact)
     expect(furniture.seatHeight - reach.seatContact).toBeLessThanOrEqual(reach.padGive)
+    // the stool clip carries its own height: hips on the pad, soles on the rail under it
+    expect(furniture.stoolHeight).toBeGreaterThanOrEqual(reach.stoolContact)
+    expect(furniture.stoolHeight - reach.stoolContact).toBeLessThanOrEqual(reach.padGive)
+    expect(reach.stoolSoles).toBeLessThan(reach.stoolContact)
   })
 })
 
@@ -518,24 +523,40 @@ function problemsOf(loaded: ReturnType<typeof World.load>): string[] {
 }
 
 describe('the bodies and the stances', () => {
-  it('takes a person on a hero body dancing, because both are in the shipped packs', () => {
+  it('takes a person on either shipped body dancing, and refuses a build the pack does not hold', () => {
     const { world, interior } = hamlet()
     const doc = docOf(world)
     const roomId = interior.rooms[0]!.id
     doc.interiors[0].anchors.push({ id: 'anchor_9001', kind: 'dance', roomId, pos: { x: 2, y: 2 }, rot: 0 })
-    doc.npcs.push({
+    const dancer = {
       id: 'npc_9001',
       name: 'Bo',
       role: 'patron',
-      appearance: { base: 'hero-male', variant: 0 },
+      appearance: { base: 'male', variant: 0 },
       station: { interiorId: interior.id, anchorId: 'anchor_9001' },
       personality: 'Never stops moving.',
       knowledge: [],
-    })
-    const loaded = World.load(doc)
-    expect(loaded.ok).toBe(true)
-    expect(BODY_KINDS).toContain('hero-female')
+    }
+    doc.npcs.push(dancer)
+    expect(World.load(JSON.parse(JSON.stringify(doc))).ok).toBe(true)
+    expect(BODY_KINDS).toEqual(['male', 'female'])
     expect(ANCHOR_KINDS).toContain('dance')
+
+    dancer.appearance.base = 'hero-male'
+    expect(violationsOf(World.load(doc))).toContain('npcs.1.appearance.base')
+  })
+})
+
+describe('the cells a city is laid in', () => {
+  it('reads every kind back off the grid, and refuses a char outside the vocabulary', () => {
+    const { world } = hamlet()
+    CELL_KINDS.forEach((kind, x) => world.grid.set(x, 15, kind))
+    expect(CELL_KINDS.map((_, x) => world.grid.at(x, 15))).toEqual([...CELL_KINDS])
+    expect(World.load(docOf(world)).ok).toBe(true)
+
+    const doc = docOf(world)
+    doc.grid.rows[15] = `?${doc.grid.rows[15].slice(1)}`
+    expect(problemsOf(World.load(doc))).toContainEqual(expect.stringContaining('unknown cell char "?"'))
   })
 })
 

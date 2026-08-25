@@ -43,15 +43,18 @@ export const METRICS = {
     seated: { palm: 0.72, wrist: 0.787 },
     /** Sat down with the soles on the floor: the underside a pad has to hold. */
     seatContact: 0.423,
-    /** How far a pad may be above `seatContact` before a body floats on it. */
+    /** Sat on a stool with the feet on its rail, the clip carrying its own height: the underside, and where the soles rest. */
+    stoolContact: 0.723,
+    stoolSoles: 0.38,
+    /** How far a pad may be above a body's underside before it floats on it. */
     padGive: 0.03,
   },
 
   /**
    * Where a body meets a piece of furniture: the surface it sits, sleeps or
    * works on. The art is built to these heights, so a seat is one number rather
-   * than one per box. Each one a body reaches for is held to `reach` above; the
-   * one that carries no stance says so.
+   * than one per box. Every one a body reaches for or sits on is held to
+   * `reach` above.
    */
   furniture: {
     /**
@@ -68,7 +71,7 @@ export const METRICS = {
      */
     worktopHeight: 1.0,
     tableHeight: 0.75,
-    /** A bar stool's pad, set for the bar it stands at. No clip sits this high. */
+    /** A bar stool's pad: where the stool clips put the hips, with the soles on a rail 0.37 m under it. */
     stoolHeight: 0.75,
     /** Where a sitting body's hips land. */
     seatHeight: 0.45,

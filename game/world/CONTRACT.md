@@ -1,6 +1,6 @@
 # @gb/world contract
 
-contractVersion: 0.10.0
+contractVersion: 0.11.0
 
 ## Purpose
 
@@ -17,7 +17,7 @@ Holds a city: what it was asked to be, the kinds of place it has and what each o
 | `World.recordCharters(charters)` | `ResolvedCharter[]`, 1 to `MAX_CHARTERS` (24), see [schema/world.json](schema/world.json) `charters` | the list is checked and normalised here, and must still hold every word a plot already has. Replaces the declared list |
 | `World.recordCatalogues(refs)` | `AssetPackRef[]`, at most `MAX_CATALOGUES`: `{ pack, version, sha256? }` | the list is checked here, and must still name every catalogue a plot is already pinned to. Replaces the recorded list |
 | `World.recordDesign(plotId, design)` | `PlotDesign`: `{ pack, model, mirror, rooms }` | the plot exists and `pack` is one of the recorded catalogues |
-| `World.addInterior(interior)` | `interior` in [schema/world.json](schema/world.json) | its `plotId` exists |
+| `World.addInterior(interior)` | `interior` in [schema/world.json](schema/world.json) | its `plotId` exists. A `finish` left out is written from the plot's charter |
 | `World.addNpc(npc)` / `addItem(item, placement)` | same | referenced interior, anchor and item exist |
 
 ## Outputs
@@ -27,7 +27,8 @@ Holds a city: what it was asked to be, the kinds of place it has and what each o
 | `World.toJSON()` | [schema/world.json](schema/world.json) | complete document; id counters included so a later session keeps minting fresh ids |
 | `World.check()` | `IntegrityProblem[]` | empty means every reference resolves and the grid agrees with the plots |
 | `buildSites(w, h)` | `Rect[]` | free footprints that touch a sidewalk: where a later generation pass may build |
-| queries: `plot`, `npc`, `item`, `interior`, `plotsOfKind(word)`, `npcsIn`, `positionOf` | plain records | undefined when the id is unknown, never a throw |
+| queries: `plot`, `npc`, `item`, `interior`, `plotsOfKind(word)`, `npcsIn`, `positionOf` | plain records | undefined when the id is unknown, never a throw. `interior(id)` and `interiors()` always carry `finish`, see below |
+| `CELL_KINDS`, `CELL`, `Grid` | the closed cell vocabulary; the char each kind is written as; the matrix | what each kind means for walking, driving and drawing, see below |
 | `World.charters()`, `World.charter(word)` | `ResolvedCharter[]`; `ResolvedCharter` or nothing | the kinds of place this city has: its own list when the file carries one, else `SHIPPED_CHARTERS`. Nothing means no charter declares the word |
 | `CharterSchema`, `ResolvedCharterSchema`, `ChartersSchema` | zod, with `charterContract`, `resolvedCharterContract`, `chartersContract` | what a generator writes, what the file carries, and the whole list, see below |
 | `SHIPPED_CHARTERS`, `BUILDING_KINDS` | fourteen `ResolvedCharter`s; their words as a tuple | the presets every city was built from before charters, in the order a mix draws them. `BUILDING_KINDS` and `BuildingKind` are the preset word list for this release only |
@@ -122,11 +123,17 @@ today. Their `finish` is `domestic` for house, apartment and hotel and
 languages keeps today's picture by reading `domestic` as home and the rest
 as its other.
 
-**Rooms and anchors.** `Room.use` is which routine dressed a room; a file
-that left it out reads it back with `roomUseOf(room, charter)`, off the
+**Rooms, anchors and finish.** `Room.use` is which routine dressed a room; a
+file that left it out reads it back with `roomUseOf(room, charter)`, off the
 room's `kind` through the rooms its charter asks for, which is total.
 `Anchor.doing` is an optional phrase for the talk, what whoever stands there
-is doing, only ever printed.
+is doing, only ever printed. `Interior.finish` (`FINISHES`) is the language
+its rooms are dressed in, so a furnisher reads the interior and no table of
+kinds: `addInterior` writes the plot's charter's `finish` into a new interior
+that brought none, and an interior a `World` hands out (`interior(id)`,
+`interiors()`) always carries one, read off the charter when the file left it
+out. The file itself is left as written: a city exported before interiors
+carried a finish saves back byte for byte.
 
 ## The history a city was built against
 
@@ -225,7 +232,27 @@ art is drawn for exactly those shapes; a plot outside it is still a sound
 world (the document allows up to 40 storeys), it is dressed from the kit
 instead of the catalogue.
 
-## What a mountain cell means
+## The cells a city is laid in
+
+`CELL_KINDS` is every kind of cell the grid holds, `CELL` the char each one is
+written as, and this table what each means. Whoever routes (`@gb/nav`), drives
+(`@gb/traffic`, `@gb/drive`) or draws (`@gb/scene`, `@gb/land`) reads it here
+and keeps no list of its own; a char outside it fails `load`.
+
+| kind | char | walking | driving | drawn as |
+|---|---|---|---|---|
+| `empty` | `.` | crossed | never | unbuilt ground at road level, inside the town; the only ground `buildSites` offers a later plot |
+| `street` | `S` | crossed, at a price | the only ground a car drives | the roadway, kerb to kerb, at zero |
+| `sidewalk` | `W` | where people walk | never | the pavement, `METRICS.street.curbHeight` above the roadway, a kerb closing the drop |
+| `building` | `B` | never; the way in is the plot's entrance door | never | a plot's footprint, the building standing on it |
+| `park` | `P` | crossed | never | open ground at pavement height, never built on |
+| `mountain` | `M` | never | never | the valley wall, see below |
+| `water` | `~` | never | never | standing water at zero |
+
+Heights are `@gb/scene`'s to draw and `@gb/nav`'s to price; what is passable is
+written here so the three cannot disagree.
+
+### What a mountain cell means
 
 A `mountain` cell (`M`) is the valley wall. The city is a valley with far
 limits, and the wall is where the built ground ends:
@@ -262,7 +289,7 @@ draws the city draws no kerb against it, and whoever routes never crosses it.
 - **A plot's design is a fact about the file, never re-derived.** Nothing here chooses a model, and nothing rewrites one that is written down, so the same file is the same city on every machine and in every version of the art.
 - **`plot.interiorId` is exactly the set of doors that open.** A plot with an interior can be walked into and a plot without one cannot, and the two directions are checked: an interior whose plot does not point back at it is refused. There is no second field saying the same thing.
 - The grid is the single source of truth for what occupies a cell, which is what makes "add three more houses later" a lookup rather than a regeneration.
-- Vocabularies (`ROOM_KINDS`, `ROOM_USES`, `ANCHOR_KINDS`, `NPC_ROLES`, `ITEM_ARCHETYPES`, `FURNITURE_PROPS`, `BODY_KINDS`, `FACINGS`, `ROAD_KINDS`, `KIT_PIECES`, `BACKGROUND_UNLOCKS`, `NEON_LEVELS`, `DENSITY_LEVELS`, `WEAR_LEVELS`, and the twelve charter axes) are closed: every value names a routine the engine runs or a thing it ships. What a place is, is closed by the world document instead, in its charters. `BODY_KINDS` is the four bodies of the shipped pack, `male`, `female`, `hero-male` and `hero-female`, every one on the canonical 65-joint skeleton (`tools/check-rig.mjs` passes both hero files). `dance` is an anchor kind because a dance clip ships.
+- Vocabularies (`CELL_KINDS`, `ROOM_KINDS`, `ROOM_USES`, `ANCHOR_KINDS`, `NPC_ROLES`, `ITEM_ARCHETYPES`, `FURNITURE_PROPS`, `BODY_KINDS`, `FACINGS`, `ROAD_KINDS`, `KIT_PIECES`, `BACKGROUND_UNLOCKS`, `NEON_LEVELS`, `DENSITY_LEVELS`, `WEAR_LEVELS`, and the twelve charter axes) are closed: every value names a routine the engine runs or a thing it ships. What a place is, is closed by the world document instead, in its charters. `BODY_KINDS` is the two bodies of the shipped pack, `male` and `female`: its two files are one mesh per sex, each with a light and a dark skin sheet, both on the canonical 65-joint skeleton, and a heavier build would be a name for the same mesh until a pack ships one. `dance` is an anchor kind because a dance clip ships.
 - **Which doors open is a fact about the file, not a list of kinds.** `plot.interiorId` is the whole answer, and what makes a door worth opening is what the place turns out to hold, which nothing here can know. There is no vocabulary of enterable kinds.
 - An anchor kind is one stance, not one job: `work-desk` is sat in the chair at a desk, `work-bench` is on their feet at a bench with their hands on the top. Two stances at one surface height are two kinds, because a clip is chosen from the kind alone.
 - An item carries what it is (archetype, value, bulk, who owns it). `value` is whole credits, 0 or more, the price a counter sells it for; a file that leaves it out reads as 0, so every city exported without prices still opens. Whether it matters to a quest is not stored here: `@gb/quest` answers that from the live quest log.
@@ -288,10 +315,11 @@ draws the city draws no kerb against it, and whoever routes never crosses it.
   | `worktopHeight` | the same stance: a hob, a bench, a run beside a sink | palms 0.972, wrists 1.041 | 1.0 |
   | `tableHeight` | sat at a desk, leaning in | palms 0.720, wrists 0.787 | 0.75 |
   | `seatHeight` | sat down, soles on the floor | body's underside 0.423 | 0.45, so the pad gives 2.7 cm |
+  | `stoolHeight` | sat on a stool, feet on the rail under the seat (`Sitting_Stool_Loop` and the clips posed from it) | body's underside 0.723, soles 0.38 off the floor | 0.75, so the pad gives 2.7 cm and the rail sits 0.37 under it |
 
   A worktop is the same number as a service counter because one standing clip serves both and there is no lower standing pose on this rig. They stay two names because they are two surfaces, and the day a lower clip exists a worktop drops on its own.
 - **A bar counter is one height on both sides.** The customer's rail at `barCounterHeight` and the staff shelf behind it at `serviceCounterHeight` are both 1.0, inside the standing reach, so a body leaning on the rail keeps its forearms on it rather than through its front face. `PROP_SPECS['bar-counter'].staffContact` publishes the shelf.
-- **One height carries no stance at all**, and nothing should read it as one. `stoolHeight` (0.75) is set for the bar the stool stands at, and the only seated clip has its soles on the floor with the body's underside at 0.423, so no body on this rig sits on one properly.
+- **A stool is its own stance.** The stool clips carry their own height: hips on the pad at `stoolHeight`, shins back under the seat, soles on a rail `METRICS.reach.stoolSoles` (0.38) off the floor. `PROP_SPECS['bar-stool']` rests a body there and a chair at `seatHeight`, 0.30 lower with the soles on the floor, so a body sat for one on the other is in the air.
 - A city spec is measured against the world document's own bounds before a single cell is allocated (grid 4-1024 a side, name 80 characters, theme 60, seed 120, cellSize up to 16, `asks.style` inside its enums), so a world that `found` hands back is a world that `load` accepts. Nothing large is ever built only to fail validation after it has been written.
 - **The brief and the asks are facts about the file**, written at `found` like the premise and never rewritten here, so a city grown later is grown to what it was asked for.
 
@@ -302,7 +330,7 @@ draws the city draws no kerb against it, and whoever routes never crosses it.
 The heights in `METRICS` are not free numbers: `METRICS.reach` was measured by
 skinning `assets/dist/anims.glb` onto all twelve characters in
 `assets/dist/characters/` and reading the lowest point of the hands, the
-buttocks and the thighs with the root on the floor. `@gb/cast`'s pose tests
+buttocks, the thighs and, on a stool, the soles, with the root on the floor. `@gb/cast`'s pose tests
 take the same measurement from the other side. Change a clip and both move.
 
 Add fields as optional and bump the minor contractVersion; a required field or a changed meaning needs `schemaVersion: 2` alongside the old shape. Vocabularies may gain values freely and lose them only with a migration, because worlds already exported use them. A preset in `src/charters/presets/` carries the values its kind has always been drawn with; change one and every city built without charters changes with it, so the forge's golden hash is the gate. Regenerate `schema/world.json` in the same change (`pnpm --filter @gb/world run generate`) and run `pnpm --filter @gb/world test`.

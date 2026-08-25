@@ -2,7 +2,7 @@
 export { World, type WorldError, type PlotSpec } from './world.ts'
 export { type CitySpec } from './model/city-spec.ts'
 export { questView, type QuestView } from './quest-view.ts'
-export { Grid, CELL, type CellKind, type Rect } from './grid.ts'
+export { Grid, CELL, CELL_KINDS, type CellKind, type Rect } from './grid.ts'
 export { METRICS, cellCentre, type Metrics } from './metrics.ts'
 export {
   PROP_SPECS,

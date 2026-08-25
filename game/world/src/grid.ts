@@ -4,18 +4,41 @@
  * and "put a building here" cheap.
  */
 
+/**
+ * Every kind of cell the grid holds. Closed: whoever routes, drives or draws
+ * the city reads what a kind means off this list and CONTRACT.md, never off a
+ * list of its own.
+ */
+export const CELL_KINDS = [
+  /** Unbuilt ground inside the town, at road level: walked across, never driven, where a later plot goes. */
+  'empty',
+  /** The roadway, kerb to kerb, at road level: the only ground a car drives, crossed by a walker. */
+  'street',
+  /** The pavement, a kerb above the roadway: where people walk. */
+  'sidewalk',
+  /** A plot's footprint: nothing crosses it, the way in is the plot's entrance door. */
+  'building',
+  /** Open ground at pavement height: walked, never driven, never built on. */
+  'park',
+  /** The valley wall: nothing crosses it, and the ground rises from the pavement top away from the town. */
+  'mountain',
+  /** Standing water at road level: nothing crosses it. */
+  'water',
+] as const
+
+export type CellKind = (typeof CELL_KINDS)[number]
+
+/** The char each kind is written as in the file. */
 export const CELL = {
   empty: '.',
   street: 'S',
   sidewalk: 'W',
   building: 'B',
   park: 'P',
-  /** The valley wall: impassable, rising from the pavement top away from the town. */
   mountain: 'M',
   water: '~',
-} as const
+} as const satisfies Record<CellKind, string>
 
-export type CellKind = keyof typeof CELL
 export type CellChar = (typeof CELL)[CellKind]
 
 const KIND_BY_CHAR = new Map<string, CellKind>(

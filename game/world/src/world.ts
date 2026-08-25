@@ -8,6 +8,7 @@ import { catalogueListContract, plotDesignContract, type AssetPackRef, type Plot
 import type { Asks } from './model/asks.ts'
 import type { Premise } from './model/premise.ts'
 import { chartersContract, type ResolvedCharter } from './model/resolved.ts'
+import type { Finish } from './model/traits.ts'
 import { worldContract, type Interior, type Item, type Npc, type Placement, type Plot, type WorldDoc } from './model/schema.ts'
 import type { Facing } from './model/vocabulary.ts'
 
@@ -157,8 +158,9 @@ export class World {
     return this.#doc.items
   }
 
+  /** Every building you can walk into, each carrying the finish its rooms are dressed in. */
   interiors(): readonly Interior[] {
-    return this.#doc.interiors
+    return this.#doc.interiors.map((interior) => this.#dressed(interior))
   }
 
   placements(): readonly Placement[] {
@@ -178,7 +180,19 @@ export class World {
   }
 
   interior(id: string): Interior | undefined {
-    return this.#doc.interiors.find((i) => i.id === id)
+    const found = this.#doc.interiors.find((i) => i.id === id)
+    return found && this.#dressed(found)
+  }
+
+  /** An interior as it is handed out: a file that left `finish` out reads it off the charter. */
+  #dressed(interior: Interior): Interior {
+    const finish = this.#finishOf(interior)
+    return finish === interior.finish ? interior : { ...interior, finish }
+  }
+
+  /** The language an interior's rooms are dressed in: its own, else its charter's. */
+  #finishOf(interior: Interior): Finish | undefined {
+    return interior.finish ?? this.charter(interior.kind)?.finish
   }
 
   hasPlot(id: string): boolean {
@@ -310,9 +324,12 @@ export class World {
     return ok(checked.value)
   }
 
+  /** Open a plot: the interior is written with the finish its charter gives it, unless it brought one. */
   addInterior(interior: Interior): Result<Interior, WorldError> {
     const plot = this.plot(interior.plotId)
     if (!plot) return err({ code: 'unknown-reference', message: `interior points at missing plot ${interior.plotId}` })
+    const finish = this.#finishOf(interior)
+    if (finish) interior.finish = finish
     this.#doc.interiors.push(interior)
     plot.interiorId = interior.id
     return ok(interior)
