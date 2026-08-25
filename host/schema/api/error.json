@@ -13,8 +13,14 @@
           "type": "string",
           "enum": [
             "invalid_request_error",
+            "rate_limit_error",
             "server_error"
           ]
+        },
+        "code": {
+          "type": "string",
+          "const": "model-busy",
+          "description": "What a caller can act on. model-busy: the upstream is rate-limited, wait Retry-After seconds."
         }
       },
       "required": [

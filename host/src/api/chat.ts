@@ -1,5 +1,5 @@
 import { violationText } from '../contract.ts'
-import { collect, generate, type GenerateRequest, type TokenEvent } from '../llm/index.ts'
+import { collect, generate, type GenerateRequest, type LlmError, type TokenEvent } from '../llm/index.ts'
 import { samplingOf } from '../llm/sampling.ts'
 import { errorBody } from './errors.ts'
 import { nextCallId, nextCompletionId, nowUnix } from './ids.ts'
@@ -13,7 +13,12 @@ import {
 } from './schema.ts'
 
 export type ChatResult =
-  | { readonly kind: 'json'; readonly status: number; readonly body: ChatResponse | ErrorBody }
+  | {
+      readonly kind: 'json'
+      readonly status: number
+      readonly headers?: Readonly<Record<string, string>>
+      readonly body: ChatResponse | ErrorBody
+    }
   | { readonly kind: 'stream'; readonly chunks: AsyncIterable<ChatStreamEvent> }
 
 /**
@@ -33,11 +38,7 @@ export async function chat(rawBody: string): Promise<ChatResult> {
   const request = parsed.value
 
   const stream = await generate(llmRequestFrom(request))
-  if (!stream.ok) {
-    return stream.error.code === 'invalid-request'
-      ? refuse(400, stream.error.message)
-      : { kind: 'json', status: 502, body: errorBody(stream.error.message, 'server_error') }
-  }
+  if (!stream.ok) return failure(stream.error)
 
   const model = request.model ?? 'game-box/standin'
   const id = nextCompletionId()
@@ -116,4 +117,25 @@ function toolCall(event: Extract<TokenEvent, { type: 'tool-call' }>): ChatToolCa
 
 function refuse(status: number, message: string): ChatResult {
   return { kind: 'json', status, body: errorBody(message, 'invalid_request_error') }
+}
+
+/**
+ * A busy model is not a broken one: it gets 429 and how long to wait, so a
+ * caller can hold off instead of giving up or hammering. Retrying is the
+ * caller's decision; this service never retries for it.
+ */
+function failure(error: LlmError): ChatResult {
+  switch (error.code) {
+    case 'invalid-request':
+      return refuse(400, error.message)
+    case 'busy':
+      return {
+        kind: 'json',
+        status: 429,
+        headers: { 'retry-after': String(error.retryAfterSeconds) },
+        body: errorBody(error.message, 'rate_limit_error', 'model-busy'),
+      }
+    case 'upstream':
+      return { kind: 'json', status: 502, body: errorBody(error.message, 'server_error') }
+  }
 }

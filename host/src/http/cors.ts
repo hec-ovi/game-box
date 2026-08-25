@@ -20,6 +20,8 @@ export function corsHeaders(origin: string | undefined): Headers {
     vary: 'origin',
     'access-control-allow-methods': 'GET, POST, OPTIONS',
     'access-control-allow-headers': 'content-type, authorization',
+    // a page can only read a header it is told about, and the wait on a 429 is one it needs
+    'access-control-expose-headers': 'retry-after',
     'access-control-max-age': '86400',
   }
 }

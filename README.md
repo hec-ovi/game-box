@@ -89,13 +89,14 @@ curl -s -X POST 127.0.0.1:8976/v1/chat/completions \
 
 The `model` field in the reply is the answer. `game-box/standin` means no upstream was read, so either nothing is configured or the environment did not reach the process. Any other name is the model that answered.
 
-**The sidecar, in front of a hosted model.** The same sidecar, routed through OpenRouter to `stealth/ox-alpha` instead of a machine of your own. The key is read from the environment, sent only to OpenRouter, and never written to a tracked file: copy `.env.example` to `.env` and fill it in.
+**The sidecar, in front of a hosted model.** The same sidecar, routed through OpenRouter to `stealth/ox-alpha` instead of a machine of your own. The key is read from the environment, sent only to OpenRouter, and never written to a tracked file: copy `.env.example` to `.env`, fill it in, and run the same `pnpm -C host dev`.
 
 ```
-GAME_BOX_LLM_UPSTREAM=openrouter node --env-file=.env --experimental-strip-types host/src/main.ts
+GAME_BOX_LLM_UPSTREAM=openrouter
+OPENROUTER_API_KEY=sk-or-...
 ```
 
-A URL is always called without credentials, so a key sitting in your environment is never handed to a server of your own.
+A free model is rate-limited often. The sidecar answers that as `429` with a `Retry-After`, and the game waits it out and asks again rather than treating the model as gone.
 
 Then add `&model` to the URL, or `--model` to `gb build`, and the names, the history, the people and the quests come from the endpoint instead of the offline author.
 

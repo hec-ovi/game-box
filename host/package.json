@@ -1,6 +1,6 @@
 {
   "name": "game-box-host",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "description": "Local AI sidecar for game clients: OpenAI-compatible chat, speech recognition and speech synthesis on 127.0.0.1.",

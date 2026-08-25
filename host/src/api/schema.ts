@@ -83,9 +83,12 @@ export const ChatStreamEventSchema = z
   })
   .meta({ $id: 'game-box.dev/api/chat-stream-event', title: 'streaming chat completion chunk (SSE data payload)' })
 
+const CODE_DESCRIPTION = 'What a caller can act on. model-busy: the upstream is rate-limited, wait Retry-After seconds.'
+
 const ErrorDetailSchema = z.strictObject({
   message: z.string().min(1),
-  type: z.enum(['invalid_request_error', 'server_error']),
+  type: z.enum(['invalid_request_error', 'rate_limit_error', 'server_error']),
+  code: z.literal('model-busy').meta({ description: CODE_DESCRIPTION }).optional(),
 })
 
 export const ErrorSchema = z
@@ -122,4 +125,5 @@ export type ChatStreamEvent = z.infer<typeof ChatStreamEventSchema>
 export type ChatToolCall = z.infer<typeof ToolCallSchema>
 export type ErrorBody = z.infer<typeof ErrorSchema>
 export type ErrorType = z.infer<typeof ErrorDetailSchema>['type']
+export type ErrorCode = NonNullable<z.infer<typeof ErrorDetailSchema>['code']>
 export type RealtimeServerEvent = z.infer<typeof RealtimeServerEventSchema>

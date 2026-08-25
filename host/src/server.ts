@@ -68,7 +68,7 @@ async function completions(request: IncomingMessage, response: ServerResponse, c
   if (!body.ok) return refuse(response, 413, 'request body is too large', cors)
 
   const result = await chat(body.value)
-  if (result.kind === 'json') return json(response, result.status, result.body, cors)
+  if (result.kind === 'json') return json(response, result.status, result.body, { ...cors, ...result.headers })
 
   openStream(response, cors)
   for await (const chunk of result.chunks) {
