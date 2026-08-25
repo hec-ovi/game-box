@@ -67,7 +67,11 @@ async function completions(request: IncomingMessage, response: ServerResponse, c
   const body = await readBody(request)
   if (!body.ok) return refuse(response, 413, 'request body is too large', cors)
 
-  const result = await chat(body.value)
+  // A caller that hangs up takes the engine's work with it: nothing keeps
+  // decoding for a reply nobody will read.
+  const gone = new AbortController()
+  response.once('close', () => gone.abort())
+  const result = await chat(body.value, gone.signal)
   if (result.kind === 'json') return json(response, result.status, result.body, { ...cors, ...result.headers })
 
   openStream(response, cors)

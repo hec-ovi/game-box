@@ -1,5 +1,5 @@
 /** A mock OpenAI-compatible server, so the proxy engine can be tested for real. */
-import { createServer, type Server } from 'node:http'
+import { createServer, type Server, type ServerResponse } from 'node:http'
 import { stop } from './host.ts'
 
 /** One request the engine received, as it arrived on the wire. */
@@ -17,13 +17,23 @@ export interface RunningUpstream {
   answerWith(payloads: readonly string[]): void
   /** Turn every request away with a status, for a test that needs the engine to refuse. */
   refuseWith(status: number, headers?: Readonly<Record<string, string>>): void
+  /** Answer the next request with its payloads and then never end the reply, like an engine that keeps decoding. */
+  hold(): HeldReply
   close(): Promise<void>
+}
+
+/** A reply held open: when the request reached the engine, and when the host hung up on it. */
+export interface HeldReply {
+  readonly arrived: Promise<void>
+  readonly hungUp: Promise<void>
 }
 
 interface Answer {
   readonly status: number
   readonly headers: Readonly<Record<string, string>>
   readonly payloads: readonly string[]
+  /** Called with the reply instead of ending it. */
+  readonly hold?: (response: ServerResponse) => void
 }
 
 /** Answers `POST /v1/chat/completions` with one SSE event per payload. */
@@ -41,7 +51,10 @@ export async function startUpstream(payloads: readonly string[]): Promise<Runnin
       })
       response.writeHead(answer.status, answer.headers)
       for (const payload of answer.payloads) response.write(`data: ${payload}\n\n`)
-      response.end()
+      const { hold, ...ending } = answer
+      if (hold === undefined) return response.end()
+      hold(response)
+      answer = ending
     })
   })
   const port = await open(server)
@@ -54,6 +67,18 @@ export async function startUpstream(payloads: readonly string[]): Promise<Runnin
     refuseWith: (status, headers = {}) => {
       answer = { status, headers, payloads: [] }
     },
+    hold: () => {
+      const arrival = deferred()
+      const hangUp = deferred()
+      answer = {
+        ...answer,
+        hold: (response) => {
+          arrival.resolve()
+          response.once('close', () => hangUp.resolve())
+        },
+      }
+      return { arrived: arrival.promise, hungUp: hangUp.promise }
+    },
     close: () => stop(server),
   }
 }
@@ -65,4 +90,12 @@ function open(server: Server): Promise<number> {
       resolve(typeof address === 'object' && address !== null ? address.port : 0)
     })
   })
+}
+
+function deferred(): { promise: Promise<void>; resolve: () => void } {
+  let resolve: () => void = () => {}
+  const promise = new Promise<void>((done) => {
+    resolve = done
+  })
+  return { promise, resolve }
 }

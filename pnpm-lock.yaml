@@ -216,6 +216,9 @@ importers:
       '@gb/kit':
         specifier: workspace:*
         version: link:../kit
+      '@gb/kitbash':
+        specifier: workspace:*
+        version: link:../kitbash
       '@gb/quest':
         specifier: workspace:*
         version: link:../quest

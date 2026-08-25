@@ -1,6 +1,6 @@
 # host contract
 
-contractVersion: 0.5.0
+contractVersion: 0.6.0
 
 ## Purpose
 
@@ -20,6 +20,8 @@ GAME_BOX_LLM_UPSTREAM=http://127.0.0.1:8080 \
   node --experimental-strip-types tools/forced-call.ts   # does a forced tool call come back as one?
 GAME_BOX_LLM_UPSTREAM=openrouter \
   node --env-file=.env --experimental-strip-types tools/forced-call.ts [model ...]   # the same, per hosted model
+node --experimental-strip-types tools/replay.ts request.json [times] [at-once] [cap-seconds]
+  # a saved request through the running service, several at once: seconds, call or prose, fits or not
 ```
 
 Node 22 or newer, one dependency (zod), no build step. The port comes from `GAME_BOX_PORT` (default 8976) and the socket is bound to 127.0.0.1 only.
@@ -114,12 +116,65 @@ and a system line asking for the quest as JSON:
 - `response_format: {"type": "json_schema"}` built from the tool's parameters
   is enforced by the grammar from the first token: 5 of 5 replies sent
   directly were bare JSON objects fitting the schema, `next` an array, about
-  14 s each. Through this service, with the same prompt: 20 of 20 non-streamed and 5 of 5 streamed forced calls came back as the call, 0 prose, `next` an array in every one, 11 to 17 s each.
+  14 s each.
 
-So a server of your own is sent the tool's parameters as `response_format`,
-`tool_choice: "none"`, and its `tools` as they are, and the JSON it writes is
-read back as the call. OpenRouter is sent the choice itself, which it honours
-(see below).
+So a server of your own is sent the tool's parameters as `response_format`
+and nothing of the tools themselves, and the JSON it writes is read back as
+the call. OpenRouter is sent the choice itself, which it honours (see below).
+
+### Why the tools stay out of that request
+
+llama-server does not enforce a `response_format` grammar while `tools` ride
+beside it, whatever the `tool_choice`. Measured on 2026-08-25 (b10603,
+gemma-4-26b-a4b, `--jinja`) with the quest tool's 10.8 KB schema, the same
+prompt and seed at temperature 0: step ids came back `step_001` and
+`step_0005_a` against `^step_[0-9]{4,}$` with the tools sent, and
+`step_0001` without them, four shapes each. Through the service with the tools
+sent, 9 of 16 replayed quests and 2 of 4 in a live build came back as prose
+the check refused on those ids, and 4 of 7 charter attempts in that build ran
+past the caller's 300 s. So on this path the engine sees the parameters as the
+grammar and the messages as they are, and nothing of the tool's `description`:
+a caller says what it wants in its messages.
+
+### What the grammar is handed
+
+The schema in that `response_format` is the tool's parameters with every
+`pattern` the engine's grammar cannot enforce exactly taken out, and the rest
+spelled the way it reads them. The reply is still checked against the
+parameters as written, so a pattern left out of the grammar is not left out of
+the answer: a reply that breaks it stays prose.
+
+Measured on 2026-08-25 against the same server, reading
+`common/json-schema-to-grammar.cpp`:
+
+- A character class goes into the string rule as it is, so a class that
+  matches a quote (`[^{}]`, `.`) lets the model write the closing quote
+  without closing the string. The grammar keeps both readings alive; once the
+  reply drifts off the schema anywhere after that (a fourth item in an array
+  of three, a rumour over its length), only the reading inside the string is
+  left, and in it `}` can never be written again, so the reply runs until the
+  context is full. The charter's `names` items carry
+  `^(?:[^{}]|\{(?:family|adjective|noun)\})+$`: alone at the engine, with
+  a two-item cap and a prompt asking for five, 3 of 3 seeds ran to the
+  300-token probe cap with the pattern and 3 of 3 ended at about 45 tokens
+  without it.
+- An escape it does not know (`\d`, `\s`, `\w`) makes it accept any string.
+- Whenever a pattern is present it ignores `minLength` and `maxLength`.
+
+So a pattern is sent when it is anchored `^...$` and made only of literal
+characters, escaped regex characters, classes that neither negate nor contain
+a quote or a backslash, groups, alternation and quantifiers; `\d` is written
+as `[0-9]`. Any other pattern is left out, and the string is bounded by its
+`minLength` and `maxLength`, which the grammar does enforce.
+
+Measured after, on 2026-08-25 through this service with `tools/replay.ts`,
+on the requests a live build had sent (the charter whose attempt had run past
+300 s, and a quest), each copy on its own seed, four at once: 16 of 16 charter
+calls came back as the call and fit, 26 to 38 s; 16 of 16 quest calls came
+back as the call and fit, 43 to 71 s four at once and 14 to 23 s one at a
+time; 0 prose, nothing past a cap. Before, on the same engine the same day:
+4 of 7 charter attempts in a live build ran past 300 s and 9 of 16 replayed
+quests came back as prose.
 
 On either path a reply that arrives as prose carrying a JSON block that fits
 the tool's parameters (the whole text, the inside of a code fence, or the
@@ -135,6 +190,15 @@ external `$ref`) validates nothing, so no call is rebuilt against it.
 The text of a forced reply is held until the reply ends, since only then is
 it known whether it was the call; a streamed forced call therefore arrives as
 its call chunk and the closing chunk together.
+
+## A caller that leaves
+
+A client that closes its connection before the reply is done takes the
+engine's work with it: the request to the upstream is aborted, and llama-server
+frees the slot as the connection drops (measured: a slot processing a 5,787
+token prompt was idle within a second of the client aborting). A reply that
+runs away therefore costs the engine a slot only for as long as its caller
+waits, never to the end of the context.
 
 ## A busy model
 
@@ -219,7 +283,9 @@ None. This service knows about text, audio, tools and models; it does not know w
 - Sampler settings are the caller's to make. None is defaulted, none is dropped: what a request pins reaches the engine, and what it leaves out is left out.
 - A rate limit is answered as 429 with a wait, never as a failure, and never retried inside this service.
 - A credential is read from the environment, sent only to the upstream it belongs to, and scrubbed out of every error this service returns. A URL you configure yourself is always called unauthenticated.
-- Tool definitions are forwarded to the engine unchanged. A call the request insists on is asked for in the shape the upstream honours, and comes back in the OpenAI shape with its arguments as JSON text; when it was rebuilt from prose the reply says so. A caller that offers a tool gets either a complete call or an error, never a half-built one.
+- Tool definitions are forwarded to the engine unchanged, except where a call is forced through a grammar: there the tool's parameters are the grammar and nothing else of it is sent. A call the request insists on is asked for in the shape the upstream honours, and comes back in the OpenAI shape with its arguments as JSON text; when it was rebuilt from prose the reply says so. A caller that offers a tool gets either a complete call or an error, never a half-built one.
+- A grammar is handed only what it enforces exactly; the reply is checked against the parameters as written.
+- A caller that closes its connection ends the engine's work on its request.
 - Speaking and acting are not exclusive: a reply that carries both text and a call keeps both, because a character who says something while doing it must not lose either half.
 - A WS `error` event leaves the recognition session exactly as it was.
 - Audio only ever crosses a boundary as a schema-validated base64 envelope, never as bare bytes.

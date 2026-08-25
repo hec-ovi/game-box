@@ -43,11 +43,13 @@ const backoff = new Backoff()
  * ever sent: the model must finish naturally. A rate limit is answered as
  * `busy` with how long to wait, never as a failure, and never retried here.
  * A call the request insists on comes back as one call whichever way the
- * engine wrote it.
+ * engine wrote it. `gone` firing closes the connection to the engine, which
+ * is how it learns to stop.
  */
 export async function generate(
   upstream: Upstream,
   request: GenerateRequest,
+  gone?: AbortSignal,
 ): Promise<Result<AsyncIterable<TokenEvent>, LlmError>> {
   const { body, forced } = upstreamRequest(upstream, request)
 
@@ -57,6 +59,7 @@ export async function generate(
       method: 'POST',
       headers: { 'content-type': 'application/json', ...upstream.headers },
       body: JSON.stringify(body),
+      signal: gone ?? null,
     })
   } catch (cause) {
     return err(failed(upstream, String(cause)))

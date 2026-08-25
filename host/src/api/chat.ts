@@ -24,8 +24,9 @@ export type ChatResult =
 /**
  * `POST /v1/chat/completions`. The body is validated before any other layer is
  * called, and a reply keeps both what the speaker said and what they did.
+ * `gone` is the caller leaving: the engine is told to stop when it fires.
  */
-export async function chat(rawBody: string): Promise<ChatResult> {
+export async function chat(rawBody: string, gone?: AbortSignal): Promise<ChatResult> {
   let body: unknown
   try {
     body = JSON.parse(rawBody)
@@ -37,7 +38,7 @@ export async function chat(rawBody: string): Promise<ChatResult> {
   if (!parsed.ok) return refuse(400, violationText(parsed.error))
   const request = parsed.value
 
-  const stream = await generate(llmRequestFrom(request))
+  const stream = await generate(llmRequestFrom(request), gone)
   if (!stream.ok) return failure(stream.error)
 
   const model = request.model ?? 'game-box/standin'

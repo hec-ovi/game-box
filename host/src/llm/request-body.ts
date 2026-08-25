@@ -1,4 +1,5 @@
 import { forcedTool } from './forced.ts'
+import { grammarSchema } from './grammar-schema.ts'
 import type { Asked } from './forced-reply.ts'
 import { samplingOf } from './sampling.ts'
 import type { GenerateRequest, Tool } from './schema.ts'
@@ -19,8 +20,13 @@ export interface UpstreamRequest {
  * The JSON body an upstream is sent. Messages, sampler settings and tools go
  * as they are, and no output-length cap is ever added. A call the request
  * insists on is asked for in the shape this upstream honours: the tool choice
- * itself, or the tool's parameters as `response_format` with the choice set
- * to `none`, so the engine writes the arguments as its whole answer.
+ * itself, or the tool's parameters as `response_format` and nothing else of
+ * the tools, so the engine writes the arguments as its whole answer. The
+ * tools stay out of that request because llama-server does not enforce a
+ * `response_format` grammar while they are present (measured: ids written
+ * `step_001` against `^step_[0-9]{4,}$` with the tools sent, `step_0001`
+ * without). The schema sent is the one the grammar can end, see
+ * `grammar-schema.ts`.
  */
 export function upstreamRequest(upstream: Upstream, request: GenerateRequest): UpstreamRequest {
   const body: Record<string, unknown> = {
@@ -36,7 +42,8 @@ export function upstreamRequest(upstream: Upstream, request: GenerateRequest): U
   if (tool === undefined) return { body, forced: undefined }
   if (upstream.forcing === 'tool-choice') return { body, forced: { tool, asked: 'call' } }
 
-  body.tool_choice = 'none'
-  body.response_format = { type: 'json_schema', json_schema: { name: tool.function.name, schema: tool.function.parameters } }
+  delete body.tools
+  delete body.tool_choice
+  body.response_format = { type: 'json_schema', json_schema: { name: tool.function.name, schema: grammarSchema(tool.function.parameters) } }
   return { body, forced: { tool, asked: 'json' } }
 }

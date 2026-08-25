@@ -37,6 +37,23 @@ const REQUEST = {
 /** The shape the game sends when it wants data: one tool, and the choice naming it. */
 const FORCED = { ...REQUEST, tool_choice: { type: 'function', function: { name: 'give_quest' } } }
 
+/** Strings bounded three ways: an escape the grammar lacks, a class that matches a quote, and a plain class. */
+const SIGN_PARAMETERS = {
+  type: 'object',
+  properties: {
+    id: { type: 'string', pattern: '^npc_\\d{4,}$' },
+    sign: { type: 'string', minLength: 1, maxLength: 60, pattern: '^(?:[^{}]|\\{(?:family|noun)\\})+$' },
+    blade: { type: 'string', pattern: '^[A-Z0-9 ]{2,8}$' },
+  },
+  required: ['id', 'sign', 'blade'],
+}
+const SIGN_PLACE = { type: 'function', function: { name: 'sign_place', parameters: SIGN_PARAMETERS } }
+const SIGN_FORCED = {
+  messages: REQUEST.messages,
+  tools: [SIGN_PLACE],
+  tool_choice: { type: 'function', function: { name: 'sign_place' } },
+}
+
 /** An engine asked for JSON through its grammar writes the arguments as its whole answer. */
 function jsonAnswer(text: string): string[] {
   return [
@@ -59,11 +76,12 @@ after(async () => {
   await upstream.close()
 })
 
-function post(body: unknown): Promise<Response> {
+function post(body: unknown, signal?: AbortSignal): Promise<Response> {
   return fetch(`${host.base}/v1/chat/completions`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
+    ...(signal === undefined ? {} : { signal }),
   })
 }
 
@@ -122,12 +140,13 @@ describe('an upstream engine', () => {
 
 // llama-server reads a named tool choice as `auto` and answers prose, and a
 // `required` reply the model resists never ends (measured on b10603 with
-// gemma-4-26b-a4b). Its grammar does force a JSON schema, so a forced call
-// goes out as one, and the JSON it writes is read back as the call.
+// gemma-4-26b-a4b). Its grammar does force a JSON schema, as long as no
+// tools ride beside it, so a forced call goes out as the schema alone, and
+// the JSON it writes is read back as the call.
 describe('a forced call on a server of your own', () => {
   after(() => upstream.answerWith(SPEAKING_AND_ACTING))
 
-  it('is asked for as the tool\'s parameters, and the JSON that comes back is the call', async () => {
+  it('is asked for as the tool\'s parameters alone, and the JSON that comes back is the call', async () => {
     upstream.answerWith(jsonAnswer('{"questId":"quest_0001"}'))
 
     const body = await (await post(FORCED)).json()
@@ -137,8 +156,7 @@ describe('a forced call on a server of your own', () => {
       type: 'json_schema',
       json_schema: { name: 'give_quest', schema: GIVE_QUEST.function.parameters },
     })
-    assert.equal(sent?.tool_choice, 'none')
-    assert.deepEqual(sent?.tools, [GIVE_QUEST])
+    assert.ok(!('tools' in (sent ?? {})) && !('tool_choice' in (sent ?? {})), 'the tools reached the engine beside the grammar')
     assert.ok(chatResponseContract.is(body), `response off-contract: ${JSON.stringify(body)}`)
     const choice = body.choices[0]
     assert.equal(choice?.finish_reason, 'tool_calls')
@@ -157,6 +175,50 @@ describe('a forced call on a server of your own', () => {
     assert.equal(body.choices[0]?.finish_reason, 'stop')
     assert.equal(body.choices[0]?.message.tool_calls, undefined)
     assert.equal(body.choices[0]?.message.content, '{"quest":"quest_0001"}')
+  })
+
+  // llama.cpp's grammar copies a character class into the string rule as it
+  // is, so a class that matches a quote lets a string never end (measured: a
+  // charter ran past 300 s where it ends in 25 s without the pattern), and an
+  // escape it does not know makes it accept any string (measured: step ids
+  // like `step_0008_a` against `^step_\d{4,}$`).
+  it('hands the grammar only the patterns it can end', async () => {
+    upstream.answerWith(jsonAnswer('{"id":"npc_0001","sign":"{family} CUSTOMS","blade":"CUSTOMS"}'))
+
+    const body = await (await post(SIGN_FORCED)).json()
+    const sent = upstream.seen.at(-1)?.body
+    const schema = (sent?.response_format as { json_schema: { schema: typeof SIGN_PARAMETERS } }).json_schema.schema
+
+    assert.equal(schema.properties.id.pattern, '^npc_[0-9]{4,}$')
+    assert.deepEqual(schema.properties.sign, { type: 'string', minLength: 1, maxLength: 60 })
+    assert.equal(schema.properties.blade.pattern, SIGN_PARAMETERS.properties.blade.pattern)
+    assert.ok(chatResponseContract.is(body), `response off-contract: ${JSON.stringify(body)}`)
+    assert.equal(body.choices[0]?.message.tool_calls?.[0]?.function.name, 'sign_place')
+  })
+
+  it('still checks the reply against the pattern the grammar was not handed', async () => {
+    upstream.answerWith(jsonAnswer('{"id":"npc_0001","sign":"{street} CUSTOMS","blade":"CUSTOMS"}'))
+
+    const body = await (await post(SIGN_FORCED)).json()
+
+    assert.ok(chatResponseContract.is(body), `response off-contract: ${JSON.stringify(body)}`)
+    assert.equal(body.choices[0]?.finish_reason, 'stop')
+    assert.equal(body.choices[0]?.message.tool_calls, undefined)
+  })
+
+  // A caller that gives up on a runaway reply used to leave the engine
+  // decoding it to the end of its context, one slot gone for good.
+  it('hangs up on the engine when the caller hangs up', { timeout: 5000 }, async () => {
+    upstream.answerWith(['{"choices":[{"index":0,"delta":{"content":"{"},"finish_reason":null}]}'])
+    const held = upstream.hold()
+    const caller = new AbortController()
+    const reply = post(FORCED, caller.signal).catch(() => undefined)
+
+    await held.arrived
+    caller.abort()
+
+    await held.hungUp
+    await reply
   })
 })
 

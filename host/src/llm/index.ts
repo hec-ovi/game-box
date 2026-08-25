@@ -10,9 +10,9 @@ import { generate as proxy } from './upstream.ts'
  * The whole boundary. Validates the request, then streams events that each
  * validate against the token-event contract, always ending in exactly one
  * `done`. Engine selection is internal and comes from the environment: see
- * `configured.ts`.
+ * `configured.ts`. `gone` aborts the engine's work, for a caller that left.
  */
-export async function generate(request: unknown): Promise<Result<AsyncIterable<TokenEvent>, LlmError>> {
+export async function generate(request: unknown, gone?: AbortSignal): Promise<Result<AsyncIterable<TokenEvent>, LlmError>> {
   const parsed = generateRequestContract.parse(request)
   if (!parsed.ok) return err(invalidRequest(parsed.error))
 
@@ -20,7 +20,7 @@ export async function generate(request: unknown): Promise<Result<AsyncIterable<T
   if (!upstream.ok) return upstream
   if (upstream.value === undefined) return ok(checked(fromArray(standin(parsed.value))))
 
-  const proxied = await proxy(upstream.value, parsed.value)
+  const proxied = await proxy(upstream.value, parsed.value, gone)
   if (!proxied.ok) return proxied
   return ok(checked(proxied.value))
 }
