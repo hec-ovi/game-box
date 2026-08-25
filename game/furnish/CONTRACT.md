@@ -1,6 +1,6 @@
 # @gb/furnish contract
 
-contractVersion: 0.12.0
+contractVersion: 0.13.0
 
 ## Purpose
 
@@ -21,7 +21,7 @@ Dresses the inside of a building: every piece of furniture the generator can pla
 | `loadFurnish(scenes, seed?)` | one `THREE.Object3D`, or the array `GLTFLoader` hands back as `gltf.scenes`, and the town's seed | a scene holding the packed interior surfaces |
 | `furnishKit(seed?)` | the town's seed | |
 
-`FurnishDressing` also carries `building`, `character` and `ground` from the `Dressing` seam and passes each of them straight to `rest`: this box answers for the inside of a building and nothing else.
+`FurnishDressing` also carries `building`, `character` and `ground` from the `Dressing` seam and passes each of them straight to `rest`: this box answers for the inside of a building and nothing else. The parts a dressing may leave out (`shell`, `lights`, `marking`, `clutter`) are on it exactly when `rest` has them, and answer out of `rest`, so `@gb/scene`'s question about each keeps the answer the dressing behind would have given.
 
 ## Outputs
 
@@ -30,7 +30,7 @@ Dresses the inside of a building: every piece of furniture the generator can pla
 | `room(interior, charter?)` | `FurnishRoom` | that interior's own room, in the language its finish gives it: `dressing` to build it with and `decor` to add to what came back. See **Standing a room up** |
 | `FurnishRoom.finish` | `Finish` | the finish the room was dressed to: `interior.finish`, else the charter's, else the one this dressing's own language stands for |
 | `FurnishRoom.style` | `FurnishStyle` | the language the room came out in: `styleOf(finish)`, whatever language the dressing that made it was in |
-| `FurnishRoom.dressing` | `Dressing` | paints this interior's own floor, walls and ceiling, drawn from its id, so the shop is not the same room as the flat above it |
+| `FurnishRoom.dressing` | `FurnishDressing` | paints this interior's own floor, walls and ceiling, drawn from its id, so the shop is not the same room as the flat above it |
 | `FurnishRoom.decor` | `THREE.Mesh` | everything in the interior that is its own and not a shared piece: every bay of every wall, what every screen is showing printed on the glass of the machine the file put there, and the lit tiles under its dancers. One indexed mesh on the one shared material, in the interior's own coordinates. One draw, whatever the count |
 | `FurnishRoom.bays` | `PlacedBay[]` | `kind`, `roomId`, `side`, the `face` the wall stands on, the stretch it claims (`from`, `to`) along the wall's own axis, that stretch in `cells`, and how far it stands off the wall (`depth`) |
 | `FurnishRoom.contacts` | metres | every height in that room a body can put something down on, exactly: niche sills, shelf ledges and the booth's top |

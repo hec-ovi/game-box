@@ -1,4 +1,3 @@
-import type { Dressing } from '@gb/scene'
 import type { Finish, Interior } from '@gb/world'
 import * as THREE from 'three'
 import { Solid } from './build/solid.ts'
@@ -47,7 +46,7 @@ export class FurnishRoom {
   /** The finish its walls drew their taste from. */
   readonly finish: Finish
   /** Hand this to `buildInterior`. */
-  readonly dressing: Dressing
+  readonly dressing: FurnishDressing
   /** Add this to the root `buildInterior` gives back. */
   readonly decor: THREE.Mesh
   /** Every bay on every wall of the interior, in interior metres. */

@@ -16,7 +16,8 @@ import type { SurfacePart } from './surfaces/surfaces.ts'
  * that tile at real-world size.
  *
  * Everything else, the buildings, the people, the ground outside, goes straight
- * to the dressing behind it.
+ * to the dressing behind it, and the parts of the seam a dressing may leave out
+ * are there exactly when the one behind has them, so wrapping drops nothing.
  *
  * A dressing speaks one language. `as` hands back a sibling in the other over
  * the same library, so an app that knows which building it is entering pays
@@ -33,6 +34,17 @@ export class FurnishDressing implements Dressing {
   readonly #slot: number
   readonly style: FurnishStyle
 
+  /**
+   * The far look, the light a building throws, the road paint and the rubbish:
+   * the seam's optional parts, none of them this box's. `@gb/scene` asks
+   * whether a dressing has one at all, so each is on this object only when the
+   * dressing behind has it to give.
+   */
+  declare readonly shell?: NonNullable<Dressing['shell']>
+  declare readonly lights?: NonNullable<Dressing['lights']>
+  declare readonly marking?: NonNullable<Dressing['marking']>
+  declare readonly clutter?: NonNullable<Dressing['clutter']>
+
   constructor(
     kit: FurnishLibrary,
     rest: Dressing = new Greybox(),
@@ -45,6 +57,10 @@ export class FurnishDressing implements Dressing {
     this.#choices = choices
     this.#slot = slot
     this.style = style
+    if (rest.shell) this.shell = rest.shell.bind(rest)
+    if (rest.lights) this.lights = rest.lights.bind(rest)
+    if (rest.marking) this.marking = rest.marking.bind(rest)
+    if (rest.clutter) this.clutter = rest.clutter.bind(rest)
   }
 
   /** The same furniture in the other language. */

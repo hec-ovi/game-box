@@ -1,4 +1,4 @@
-import { Greybox, type BuildingSize, type SurfacePart } from '@gb/scene'
+import { Greybox, type BuildingSize, type Dressing, type SurfacePart } from '@gb/scene'
 import {
   FURNITURE_PROPS,
   METRICS,
@@ -51,6 +51,28 @@ class Behind extends Greybox {
   override ground(kind: CellKind): THREE.Material {
     this.asked.push(`ground:${kind}`)
     return super.ground(kind)
+  }
+}
+
+/** A dressing with a far look of its own, so a call that reached it is visible in what came back. */
+class Whole extends Greybox {
+  override shell(plot: Plot, size: BuildingSize, charter: ResolvedCharter): THREE.Object3D {
+    const object = super.shell(plot, size, charter)
+    object.name = `far:${plot.id}`
+    return object
+  }
+}
+
+/** The seam at its thinnest: a dressing that answers only what every dressing must. */
+function bare(): Dressing {
+  const grey = new Greybox()
+  return {
+    building: (plot, size, charter) => grey.building(plot, size, charter),
+    prop: (prop) => grey.prop(prop),
+    character: (npc, doing) => grey.character(npc, doing),
+    pickup: (item) => grey.pickup(item),
+    ground: (kind) => grey.ground(kind),
+    surface: (part) => grey.surface(part),
   }
 }
 
@@ -219,5 +241,23 @@ describe('the rest of the dressing', () => {
     // answered here and never handed on
     expect(trianglesOf(furnished.pickup(item))).toBeGreaterThan(0)
     expect(behind.asked).not.toContain(`pickup:${item.id}`)
+  })
+
+  it('carries the far look, the light, the paint and the rubbish the dressing behind publishes', async () => {
+    const world = await town()
+    const plot = world.plots()[0]!
+    const charter = world.charter(plot.kind)!
+    const size = { width: 6, depth: 6, height: 4 }
+    const behind = new Whole()
+    const furnished = new FurnishDressing(furnishKit(), behind)
+
+    // @gb/scene reads these by asking whether the dressing has one, so being there is half the test
+    for (const part of ['shell', 'lights', 'marking', 'clutter'] as const) expect(part in furnished, part).toBe(true)
+    expect(furnished.shell!(plot, size, charter).name).toBe(`far:${plot.id}`)
+    expect(furnished.lights!(plot, size, charter)).toEqual(behind.lights(plot, size))
+
+    // and a dressing behind with none of them leaves the question answerable
+    const plain = new FurnishDressing(furnishKit(), bare())
+    for (const part of ['shell', 'lights', 'marking', 'clutter'] as const) expect(part in plain, part).toBe(false)
   })
 })
