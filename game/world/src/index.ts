@@ -1,5 +1,5 @@
 /** @gb/world: the city, its buildings, its people and their things. See CONTRACT.md. */
-export { World, type WorldError } from './world.ts'
+export { World, type WorldError, type DoorSite, type MachineSite } from './world.ts'
 export { type CitySpec } from './model/city-spec.ts'
 export { questView, type QuestView } from './quest-view.ts'
 export { Grid, CELL, CELL_KINDS, type CellKind, type Rect } from './grid.ts'
@@ -17,6 +17,17 @@ export {
 export { PLOT_BAND, plotShape, inPlotBand, type CellRange, type PlotShape } from './plot-band.ts'
 export { ROAD_WIDTHS, WIDEST_ROADWAY_CELLS, type RoadWidth } from './roads.ts'
 export { checkIntegrity, type IntegrityProblem } from './integrity.ts'
+export { AccessSchema, accessContract, OwnerSchema, PLAYER, type Access, type Owner } from './model/access.ts'
+export {
+  MachineSchema,
+  MACHINE_PROPS,
+  MACHINE_PROGRAMS,
+  isMachineProp,
+  type Machine,
+  type MachineProp,
+  type MachineProgram,
+} from './model/machine.ts'
+export { CAR_MODELS, type CarModel } from './model/cars.ts'
 export {
   worldContract,
   plotSpecContract,
@@ -35,6 +46,7 @@ export {
   type Door,
   type Anchor,
   type Furniture,
+  type FurnitureInput,
   type Npc,
   type ItemInput,
   type Item,
@@ -80,6 +92,7 @@ export {
   FINISHES,
   PROMINENCES,
   SPRAWLS,
+  TRANSITS,
   type RoomUse,
   type Frontage,
   type Openness,
@@ -92,6 +105,7 @@ export {
   type Finish,
   type Prominence,
   type Sprawl,
+  type Transit,
 } from './model/traits.ts'
 export { KIT_PIECES, type KitPiece } from './model/pieces.ts'
 export { SHIPPED_CHARTERS, BUILDING_KINDS, type BuildingKind } from './charters/presets/index.ts'

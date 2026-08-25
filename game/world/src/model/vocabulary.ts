@@ -68,6 +68,8 @@ export const ITEM_ARCHETYPES = [
   'envelope',
   'key',
   'keycard',
+  /** Ownership of an interior: buying it makes the place yours. */
+  'deed',
   'bag',
   'briefcase',
   'toolbox',
@@ -110,6 +112,15 @@ export const FURNITURE_PROPS = [
   'tv',
   'coffee-machine',
   'jukebox',
+  /** A desktop computer on a desk. */
+  'terminal',
+  'laptop',
+  'tablet',
+  'monitor',
+  /** A security camera, high on a wall, watching one room. */
+  'camera',
+  /** A steel-bar door standing across a room opening. */
+  'bars-door',
 ] as const
 
 /**

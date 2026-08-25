@@ -298,6 +298,10 @@ describe('questView', () => {
     expect(view.hasAnchor(interior.id, 'anchor_9999')).toBe(false)
     // an anchor that exists, but not in the interior asked about
     expect(view.hasAnchor('interior_9999', serve)).toBe(false)
+
+    expect(view.hasDoor(interior.doors[0]!.id)).toBe(true)
+    expect(view.hasDoor('door_9999')).toBe(false)
+    expect(view.hasMachine('machine_0001')).toBe(false)
   })
 })
 
@@ -730,8 +734,8 @@ describe('the sizes everything is drawn and planned from', () => {
       const spec = PROP_SPECS[prop]
       expect(spec.cells[0], prop).toBeGreaterThan(0)
       expect(spec.cells[1], prop).toBeGreaterThan(0)
-      // a piece on a counter claims no floor, and a rug stops nobody
-      if (spec.onSurface) expect(spec.blocks, prop).toBe(false)
+      // a piece on a counter or a wall claims no floor, and a rug stops nobody
+      if (spec.onSurface || spec.mounted) expect(spec.blocks, prop).toBe(false)
     }
     expect(footprintOf('table')).toEqual({ width: 10 * PROP_CELL, depth: 10 * PROP_CELL })
     expect(PROP_SPECS.chair.contact).toEqual({ kind: 'rest', height: METRICS.furniture.seatHeight })

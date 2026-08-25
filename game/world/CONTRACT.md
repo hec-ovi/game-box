@@ -1,10 +1,10 @@
 # @gb/world contract
 
-contractVersion: 0.12.0
+contractVersion: 0.13.0
 
 ## Purpose
 
-Holds a city: what it was asked to be, the kinds of place it has and what each one is, its grid of streets and plots, the buildings you can enter, the people stationed in them with their own lives, the things lying around and what they cost, the sizes everything is drawn and cut to, and refuses any state that does not hold together.
+Holds a city: what it was asked to be, the kinds of place it has and what each one is, its grid of streets and plots, the buildings you can enter, the people stationed in them with their own lives, the things lying around and what they cost, the locks on its doors and screens and what opens them, whose home each place is, where fast travel boards, the sizes everything is drawn and cut to, and refuses any state that does not hold together.
 
 ## Inputs
 
@@ -20,6 +20,7 @@ Holds a city: what it was asked to be, the kinds of place it has and what each o
 | `World.addInterior(interior)` | `interior` in [schema/world.json](schema/world.json) | its `plotId` exists. A `finish` left out is written from the plot's charter |
 | `World.addNpc(npc)` / `addItem(item, placement)` | `npc`, `item` and `placement` in the same schema | referenced interior, anchor and item exist |
 | `World.addRoad(nodes, segments)` | `roads.nodes` and `roads.segments` in the same schema | none: the graph is checked by `check()` and refused by `load` |
+| `World.recordOwner(interiorId, owner)` | an interior id; `Owner`: `PLAYER` or an npc id | the interior exists and the person does. Writes `owner`, drops `forSale`: a place with an owner is off the market |
 
 **One rule at both doors.** Every add reads its record through the same
 schema `load` reads a file with, so a record added at runtime is what the
@@ -38,11 +39,17 @@ take. A refusal writes nothing: no id, no ground, no record.
 | `World.check()` | `IntegrityProblem[]` | empty means every reference resolves and the grid agrees with the plots |
 | `buildSites(w, h)` | `Rect[]` | free footprints that touch a sidewalk: where a later generation pass may build |
 | queries: `plot`, `npc`, `item`, `interior`, `plotsOfKind(word)`, `npcsIn`, `positionOf` | plain records | undefined when the id is unknown, never a throw. `interior(id)` and `interiors()` always carry `finish`, see below |
+| `door(doorId)`, `machine(machineId)` | `DoorSite { interiorId, door }`; `MachineSite { interiorId, furniture }` | the door or the piece carrying that machine, wherever in the city it is; undefined when unknown |
+| `home()`, `homes()` | an `Interior` or nothing; `Interior[]` | the interiors whose `owner` is `PLAYER`, in file order; `home()` is the first |
+| `stations()` | `Plot[]` | every plot whose charter's `transit` is `subway`: where fast travel boards |
+| `AccessSchema`, `accessContract`, `OwnerSchema`, `PLAYER` | zod; `Access` is `{ doorId }` or `{ interiorId }`; `Owner` is `'player'` or an npc id | what a key, a card or an access reward names, and whose a place is |
+| `MachineSchema`, `MACHINE_PROPS`, `MACHINE_PROGRAMS`, `isMachineProp` | zod; the four screen kinds; what a screen runs | see "Machines, cameras and bars" |
+| `CAR_MODELS` | the seven cars `cars.glb` ships | what a car reward names |
 | `CELL_KINDS`, `CELL`, `Grid` | the closed cell vocabulary; the char each kind is written as; the matrix | what each kind means for walking, driving and drawing, see below |
 | `World.charters()`, `World.charter(word)` | `ResolvedCharter[]`; `ResolvedCharter` or nothing | the kinds of place this city has: its own list when the file carries one, else `SHIPPED_CHARTERS`. Nothing means no charter declares the word |
 | `CharterSchema`, `ResolvedCharterSchema`, `ChartersSchema` | zod, with `charterContract`, `resolvedCharterContract`, `chartersContract` | what a generator writes, what the file carries, and the whole list, see below |
 | `SHIPPED_CHARTERS`, `BUILDING_KINDS` | fourteen `ResolvedCharter`s; their words as a tuple | the presets every city was built from before charters, in the order a mix draws them. `BUILDING_KINDS` and `BuildingKind` are the preset word list for this release only |
-| `ROOM_USES`, `FRONTAGES`, `OPENNESS`, `MATERIALS`, `SIGN_VOICES`, `ACCESS_KINDS`, `SERVICES`, `WORK_KINDS`, `HOLDINGS`, `FINISHES`, `PROMINENCES`, `SPRAWLS`, `KIT_PIECES` | closed lists | the axes a charter is written on, and the wall pieces a resolved one may name |
+| `ROOM_USES`, `FRONTAGES`, `OPENNESS`, `MATERIALS`, `SIGN_VOICES`, `ACCESS_KINDS`, `TRANSITS`, `SERVICES`, `WORK_KINDS`, `HOLDINGS`, `FINISHES`, `PROMINENCES`, `SPRAWLS`, `KIT_PIECES` | closed lists | the axes a charter is written on, and the wall pieces a resolved one may name |
 | `HOLDING_ARCHETYPES` | `Record<Holding, ItemArchetype[]>` | what each class of holding is made of; every archetype is in exactly one class |
 | `ROOM_USE_KIND`, `roomKindOf(spec)`, `roomUseOf(room, charter)` | `Record<RoomUse, RoomKind>`; `RoomKind`; `RoomUse` | the label a use cuts to, the label a charter's room takes, and which routine dressed a room, read off its label through the charter when the file left `use` out |
 | `World.catalogues()` | `AssetPackRef[]` | what this city was designed against. Empty means the file records none |
@@ -50,7 +57,7 @@ take. A refusal writes nothing: no id, no ground, no record.
 | `World.brief()`, `World.asks()` | a string or nothing; `Asks` or nothing | what the owner asked for, in their words, as it was typed. Nothing means they gave only the theme |
 | `PROP_SPECS`, `PROP_CELL`, `footprintOf(prop)` | `Record<FurnitureProp, PropSpec>`, `0.1`, `{ width, depth }` in metres | one entry per `FURNITURE_PROPS` value: the floor it claims and the height a body meets it at |
 | `PLOT_BAND`, `plotShape(plot)`, `inPlotBand(shape)` | cell ranges; `{ frontage, depth, storeys }` in cells read in the door's frame; boolean | how a city is cut, see below |
-| `questView(world)` | `QuestView` | the five questions `@gb/quest` asks of a world: `hasNpc`, `hasPlot`, `hasInterior`, `hasItem`, `hasAnchor(interiorId, anchorId)` |
+| `questView(world)` | `QuestView` | the seven questions `@gb/quest` asks of a world: `hasNpc`, `hasPlot`, `hasInterior`, `hasItem`, `hasAnchor(interiorId, anchorId)`, `hasDoor(doorId)`, `hasMachine(machineId)` |
 
 ## What a city was designed against
 
@@ -99,9 +106,10 @@ declares it. Nothing here branches on a word.
 - street: `frontage` (`FRONTAGES`), `openness` (`OPENNESS`, the upper
   window rhythm: dense every module, even every second, sparse every third),
   `material` (`MATERIALS`), `voice` (`SIGN_VOICES`);
-- behaviour: `access` (`ACCESS_KINDS`), `service` (`SERVICES`), `work` (up
-  to 3 of `WORK_KINDS`), `holding` (up to 3 of `HOLDINGS`), `finish`
-  (`FINISHES`);
+- behaviour: `access` (`ACCESS_KINDS`), `transit?` (`TRANSITS`: `subway`
+  makes the entrance a station fast travel boards at; absent is `none`),
+  `service` (`SERVICES`), `work` (up to 3 of `WORK_KINDS`), `holding` (up to
+  3 of `HOLDINGS`), `finish` (`FINISHES`);
 - rooms: `hall?`, `main`, `services` (up to 5, each with `weight` 1 to 3,
   `spare?`, `shut?`), every room a `use` from `ROOM_USES` (one value per
   dressing routine that exists) and a display `name`, plus `kind?` for a
@@ -128,7 +136,8 @@ been drawn with, in the order a mix has always drawn them. A file with no
 loads, checks and hashes as it did. A file that carries `charters` is read
 against those alone: it is self-describing, and a preset it wants has to be
 in the list. Presets are all `access: open`, which is how every door opens
-today. Their `finish` is `domestic` for house, apartment and hotel and
+today, and `station` carries `transit: subway`, so every city built from the
+presets has somewhere to board. Their `finish` is `domestic` for house, apartment and hotel and
 `corporate`, `civic` or `industrial` for the rest, so a furnisher with two
 languages keeps today's picture by reading `domestic` as home and the rest
 as its other.
@@ -144,6 +153,73 @@ that brought none, and an interior a `World` hands out (`interior(id)`,
 `interiors()`) always carries one, read off the charter when the file left it
 out. A loaded file is left as written: a city exported before interiors
 carried a finish saves back byte for byte.
+
+## Locks, keys, cards and deeds
+
+A door carries `locked`, and a locked door carries at least one way past it,
+all of them facts about the file:
+
+- **`Door.keyItemId`**: the item that opens it, a `key` or a `keycard`.
+- **`Door.password`**: free text (60 characters) a quest hands out and the
+  player types. Only ever compared and printed.
+- **`Item.opens`** (`Access`): what a `key` or `keycard` opens from its own
+  side: `{ doorId }` is that one door, `{ interiorId }` is that interior's
+  street door and no door inside it. A card for somebody's home is a card
+  naming their interior. `opens` on any other archetype fails the schema; a
+  card with no `opens` is a prop.
+- A locked door with no key item, no password and no key or card in the world
+  that opens it is `inconsistent-world`: a lock nothing opens is a room nobody
+  can write a quest through.
+
+**Whose a place is.** `Interior.owner` is `PLAYER` or an npc id; absent is
+nobody's. `Interior.forSale` is the whole credits its deed sells for; absent
+is not for sale. A `deed` item carries `deedTo`, the interior it is ownership
+of (required on a deed, refused on anything else), so a deed can lie on a
+counter with `value` as its price like any other thing. Buying it is
+`recordOwner(interiorId, PLAYER)`: the owner is written and `forSale` comes
+off. `home()` is the first interior the player owns and `homes()` all of them,
+so a second house bought is found the same way. The playthrough holds what the
+player put in it; the file holds whose it is.
+
+## Machines, cameras and bars
+
+Four furniture kinds are screens: `terminal` (a desktop), `laptop`, `tablet`
+and `monitor`, all `onSurface` so they stand on a desk or a counter with
+`lift` and `on` like a till. Every piece of one carries **`Furniture.machine`**
+and no other piece does (the schema refuses both ways): `id` (`machine_0001`,
+unique in the city), `locked` (false when the file leaves it out), `password?`
+(free text, what a quest hands out to open it), and `program`, one of
+`MACHINE_PROGRAMS`: `ledger`, `camera-feed`, `mail`, `snake`, `tetris`,
+`blank`. Each value is an app the screen can run; what a program shows is the
+generator's text elsewhere, never a value here. `machine(machineId)` finds the
+piece anywhere in the city.
+
+A **`camera`** hangs on a wall (`mounted`, claims no floor, at its `lift`) and
+carries `watches`, a room of its own interior: what a `camera-feed` screen in
+that interior shows. A **`bars-door`** is a steel-bar door standing across an
+opening: it carries `doorId`, a door of its own interior, and that door's
+`locked` is the state it shows. Both fields are required on their kind and
+refused on any other. Which of these a place has, and whether the study is
+locked, is what the instance brief asks for and the generator writes; nothing
+here decides it.
+
+## Where fast travel boards
+
+A charter with `transit: subway` makes every plot of that kind a station: its
+entrance is the subway entrance the player walks up to. `stations()` lists
+those plots, so the map can offer them and nothing scans charters itself. The
+shipped `station` preset carries it; an invented charter may too. What the
+ride costs and where the player lands is the playthrough's.
+
+## What a quest may hand out, from here
+
+A reward is the quest box's to define; the things it names are these, ids and
+closed lists only: credits are a number; an item is an item id; access is an
+`Access` (`{ doorId }` or `{ interiorId }`, the same shape a card opens); a
+car is a `CarModel` from `CAR_MODELS`, the seven cars `cars.glb` ships.
+`questView` answers `hasDoor` and `hasMachine` beside the five older questions
+so a lock, a hack or an access reward validates against the city like a
+person or a thing does.
 
 ## The history a city was built against
 
@@ -226,8 +302,9 @@ value, `cells` (the floor it claims, across the front then front to back, in
 `rest` for a seat or a mattress, at a `METRICS.furniture` height), `height`
 for a piece nobody touches, `staffContact` for the bar counter's shelf worked
 from the far side, `onSurface` for a piece that stands on a counter top, and
-`blocks` (whether a body walks around it: a rug and a till stop nobody).
-`footprintOf(prop)` is the same footprint in metres. The planner keeps pieces
+`mounted` for a piece that hangs on a wall at its `lift` and claims no floor,
+and `blocks` (whether a body walks around it: a rug, a till and a camera stop
+nobody). `footprintOf(prop)` is the same footprint in metres. The planner keeps pieces
 apart by this table and the renderer builds to it, so a chair is never
 planned against a table drawn another size.
 
@@ -288,6 +365,7 @@ draws the city draws no kerb against it, and whoever routes never crosses it.
 ## Dependencies
 
 - `@gb/kit` contract (game/kit/CONTRACT.md): ids, results, schema validation.
+- `CAR_MODELS` names the seven nodes of `assets/dist/cars.glb`, which `@gb/traffic` builds and draws; the list lives here because a world file may name a car and `@gb/traffic` depends on this box.
 
 ## Invariants
 
@@ -300,9 +378,12 @@ draws the city draws no kerb against it, and whoever routes never crosses it.
 - **A plot's design is a fact about the file, never re-derived.** Nothing here chooses a model, and nothing rewrites one that is written down, so the same file is the same city on every machine and in every version of the art.
 - **`plot.interiorId` is exactly the set of doors that open.** A plot with an interior can be walked into and a plot without one cannot, and the two directions are checked: an interior whose plot does not point back at it is refused. There is no second field saying the same thing.
 - The grid is the single source of truth for what occupies a cell, which is what makes "add three more houses later" a lookup rather than a regeneration.
-- Vocabularies (`CELL_KINDS`, `ROOM_KINDS`, `ROOM_USES`, `ANCHOR_KINDS`, `NPC_ROLES`, `ITEM_ARCHETYPES`, `FURNITURE_PROPS`, `BODY_KINDS`, `FACINGS`, `ROAD_KINDS`, `KIT_PIECES`, `BACKGROUND_UNLOCKS`, `NEON_LEVELS`, `DENSITY_LEVELS`, `WEAR_LEVELS`, and the twelve charter axes) are closed: every value names a routine the engine runs or a thing it ships. What a place is, is closed by the world document instead, in its charters. `BODY_KINDS` is the two bodies of the shipped pack, `male` and `female`: its two files are one mesh per sex, each with a light and a dark skin sheet, both on the canonical 65-joint skeleton, and a heavier build would be a name for the same mesh until a pack ships one. `dance` is an anchor kind because a dance clip ships.
+- Vocabularies (`CELL_KINDS`, `ROOM_KINDS`, `ROOM_USES`, `ANCHOR_KINDS`, `NPC_ROLES`, `ITEM_ARCHETYPES`, `FURNITURE_PROPS`, `MACHINE_PROGRAMS`, `CAR_MODELS`, `BODY_KINDS`, `FACINGS`, `ROAD_KINDS`, `KIT_PIECES`, `BACKGROUND_UNLOCKS`, `NEON_LEVELS`, `DENSITY_LEVELS`, `WEAR_LEVELS`, and the thirteen charter axes) are closed: every value names a routine the engine runs or a thing it ships. What a place is, is closed by the world document instead, in its charters. `BODY_KINDS` is the two bodies of the shipped pack, `male` and `female`: its two files are one mesh per sex, each with a light and a dark skin sheet, both on the canonical 65-joint skeleton, and a heavier build would be a name for the same mesh until a pack ships one. `dance` is an anchor kind because a dance clip ships.
 - **Which doors open is a fact about the file, not a list of kinds.** `plot.interiorId` is the whole answer, and what makes a door worth opening is what the place turns out to hold, which nothing here can know. There is no vocabulary of enterable kinds.
 - An anchor kind is one stance, not one job: `work-desk` is sat in the chair at a desk, `work-bench` is on their feet at a bench with their hands on the top. Two stances at one surface height are two kinds, because a clip is chosen from the kind alone.
+- **A lock is a fact about the file, and so is what opens it.** A locked door names a key item, a password, or is named by a key or card somewhere in the world; a machine's lock and password ride on the piece. Whether the player has got past one is playthrough state and lives in `@gb/play`.
+- **A screen is a machine and a machine is a screen.** `machine` is on every piece of `MACHINE_PROPS` and nothing else; `watches` on every camera and nothing else; `doorId` on every bars-door and nothing else. A machine id is taken once in the city.
+- **Whose a place is, is a fact about the file.** `owner` names the player or a person the city holds; `recordOwner` is the only writer and takes the place off the market as it writes.
 - An item carries what it is (archetype, value, bulk, who owns it). `value` is whole credits, 0 or more, the price a counter sells it for; a file that leaves it out reads as 0, so every city exported without prices still opens. Whether it matters to a quest is not stored here: `@gb/quest` answers that from the live quest log.
 - One world unit is one metre; cell coordinates convert through `cellSize`, and `METRICS` holds the proportions everything is sized from.
 - **Width is a property of the class of road, not one number for all of them.** `METRICS.road` holds every class at its own width, in whole cells, and `ROAD_KINDS` is the closed vocabulary a segment's `kind` comes from:

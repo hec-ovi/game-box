@@ -13,6 +13,7 @@ import {
   SERVICES,
   SIGN_VOICES,
   SPRAWLS,
+  TRANSITS,
   WORK_KINDS,
 } from './traits.ts'
 import { ROOM_KINDS } from './vocabulary.ts'
@@ -87,6 +88,8 @@ export const CharterSchema = z.object({
     voice: z.enum(SIGN_VOICES),
   }),
   access: z.enum(ACCESS_KINDS),
+  /** Whether its entrance is a station fast travel boards at. Absent is none. */
+  transit: z.enum(TRANSITS).optional(),
   service: z.enum(SERVICES),
   work: subset(WORK_KINDS, 3),
   holding: subset(HOLDINGS, 3),

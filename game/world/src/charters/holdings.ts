@@ -10,7 +10,7 @@ export const HOLDING_ARCHETYPES: Record<Holding, readonly ItemArchetype[]> = {
   goods: ['crate', 'box', 'parcel'],
   food: ['plate', 'cup'],
   drink: ['bottle', 'glass'],
-  papers: ['book', 'ledger', 'envelope', 'keycard'],
+  papers: ['book', 'ledger', 'envelope', 'keycard', 'deed'],
   tools: ['toolbox', 'wrench', 'fuelcan'],
   valuables: ['cash', 'gem', 'painting', 'statue'],
   medicine: ['medkit'],

@@ -39,6 +39,8 @@ export interface PropSpec {
   readonly staffContact?: number
   /** True for a piece that stands on a counter top rather than on the floor. */
   readonly onSurface?: boolean
+  /** True for a piece that hangs on a wall at its `lift` and claims no floor: a camera. */
+  readonly mounted?: boolean
   /** Whether a body has to walk around it. A rug and a till stop nobody. */
   readonly blocks: boolean
 }
@@ -90,6 +92,13 @@ export const PROP_SPECS: Record<FurnitureProp, PropSpec> = {
   tv: tall([10, 3], 0.65),
   'coffee-machine': onTop([6, 5], 0.45),
   jukebox: tall([8, 5], 1.5),
+  terminal: onTop([5, 5], 0.45),
+  laptop: onTop([4, 3], 0.25),
+  tablet: onTop([3, 2], 0.15),
+  monitor: onTop([6, 2], 0.45),
+  camera: { cells: [2, 2], height: 0.25, mounted: true, blocks: false },
+  /** A metre wide, standing in the opening of the door it names. */
+  'bars-door': tall([10, 2], 2.2),
 }
 
 /** The floor a piece claims, in metres. */

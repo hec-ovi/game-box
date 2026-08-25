@@ -366,6 +366,13 @@
               "private"
             ]
           },
+          "transit": {
+            "type": "string",
+            "enum": [
+              "none",
+              "subway"
+            ]
+          },
           "service": {
             "type": "string",
             "enum": [
@@ -1258,6 +1265,23 @@
               "worn"
             ]
           },
+          "owner": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "player"
+              },
+              {
+                "type": "string",
+                "pattern": "^npc_\\d{4,}$"
+              }
+            ]
+          },
+          "forSale": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000000
+          },
           "size": {
             "type": "object",
             "properties": {
@@ -1417,6 +1441,11 @@
                 "keyItemId": {
                   "type": "string",
                   "pattern": "^item_\\d{4,}$"
+                },
+                "password": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 60
                 }
               },
               "required": [
@@ -1463,7 +1492,13 @@
                     "rug",
                     "tv",
                     "coffee-machine",
-                    "jukebox"
+                    "jukebox",
+                    "terminal",
+                    "laptop",
+                    "tablet",
+                    "monitor",
+                    "camera",
+                    "bars-door"
                   ]
                 },
                 "roomId": {
@@ -1498,6 +1533,47 @@
                 "on": {
                   "type": "string",
                   "pattern": "^prop_\\d{4,}$"
+                },
+                "machine": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^machine_\\d{4,}$"
+                    },
+                    "locked": {
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    "password": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 60
+                    },
+                    "program": {
+                      "type": "string",
+                      "enum": [
+                        "ledger",
+                        "camera-feed",
+                        "mail",
+                        "snake",
+                        "tetris",
+                        "blank"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "program"
+                  ]
+                },
+                "watches": {
+                  "type": "string",
+                  "pattern": "^room_\\d{4,}$"
+                },
+                "doorId": {
+                  "type": "string",
+                  "pattern": "^door_\\d{4,}$"
                 }
               },
               "required": [
@@ -1797,6 +1873,7 @@
               "envelope",
               "key",
               "keycard",
+              "deed",
               "bag",
               "briefcase",
               "toolbox",
@@ -1832,6 +1909,38 @@
           "ownerNpcId": {
             "type": "string",
             "pattern": "^npc_\\d{4,}$"
+          },
+          "opens": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "doorId": {
+                    "type": "string",
+                    "pattern": "^door_\\d{4,}$"
+                  }
+                },
+                "required": [
+                  "doorId"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "interiorId": {
+                    "type": "string",
+                    "pattern": "^interior_\\d{4,}$"
+                  }
+                },
+                "required": [
+                  "interiorId"
+                ]
+              }
+            ]
+          },
+          "deedTo": {
+            "type": "string",
+            "pattern": "^interior_\\d{4,}$"
           }
         },
         "required": [

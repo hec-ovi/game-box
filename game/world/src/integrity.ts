@@ -1,12 +1,11 @@
 import { charterOf } from './charters/declared.ts'
+import { checkAccess } from './checks/access.ts'
+import { checkMachines } from './checks/machines.ts'
+import { Report, type IntegrityProblem } from './checks/report.ts'
 import { Grid } from './grid.ts'
 import type { WorldDoc } from './model/schema.ts'
 
-/** One thing that is internally inconsistent, pointed at where it is. */
-export interface IntegrityProblem {
-  readonly where: string
-  readonly message: string
-}
+export type { IntegrityProblem }
 
 /**
  * Everything a JSON Schema cannot say: that ids are unique, that every
@@ -14,14 +13,9 @@ export interface IntegrityProblem {
  * plots drawn on it. A generated world that fails this is rejected whole.
  */
 export function checkIntegrity(doc: WorldDoc): IntegrityProblem[] {
-  const problems: IntegrityProblem[] = []
-  const fail = (where: string, message: string) => problems.push({ where, message })
-
-  const seen = new Set<string>()
-  const claim = (where: string, id: string) => {
-    if (seen.has(id)) fail(where, `duplicate id ${id}`)
-    seen.add(id)
-  }
+  const report = new Report()
+  const fail = (where: string, message: string) => report.fail(where, message)
+  const claim = (where: string, id: string) => report.claim(where, id)
 
   const plots = new Map(doc.plots.map((p) => [p.id, p]))
   const interiors = new Map(doc.interiors.map((i) => [i.id, i]))
@@ -90,8 +84,6 @@ export function checkIntegrity(doc: WorldDoc): IntegrityProblem[] {
       claim(`${where} door`, door.id)
       if (door.from !== 'outside' && !rooms.has(door.from)) fail(where, `door ${door.id} comes from unknown room ${door.from}`)
       if (!rooms.has(door.to)) fail(where, `door ${door.id} leads to unknown room ${door.to}`)
-      if (door.keyItemId && !items.has(door.keyItemId)) fail(where, `door ${door.id} needs unknown key ${door.keyItemId}`)
-      if (door.locked && !door.keyItemId) fail(where, `door ${door.id} is locked with no key item`)
     }
 
     const props = new Set(interior.furniture.map((f) => f.id))
@@ -164,5 +156,7 @@ export function checkIntegrity(doc: WorldDoc): IntegrityProblem[] {
     if (segment.from === segment.to) fail(where, 'starts and ends at the same node')
   }
 
-  return problems
+  checkAccess(doc, report)
+  checkMachines(doc, report)
+  return report.problems
 }

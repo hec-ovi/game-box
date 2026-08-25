@@ -160,6 +160,31 @@ describe('the kinds of place a city has', () => {
   })
 })
 
+describe('where fast travel boards', () => {
+  it('lists the plots whose charter makes the entrance a subway station, and carries the mark through a save', () => {
+    const world = World.create(spec)
+    world.paint({ x: 0, y: 5, w: 16, h: 1 }, 'sidewalk')
+    const halt = world.addPlot({ ...site, kind: 'station', name: 'Ridge Halt' })
+    const bar = world.addPlot({ ...site, rect: { x: 8, y: 1, w: 4, h: 4 }, entrance: { cell: { x: 9, y: 5 }, facing: 'south' }, kind: 'bar', name: 'The Nail' })
+    if (!halt.ok || !bar.ok) throw new Error('fixture')
+    expect(world.stations().map((p) => p.id)).toEqual([halt.value.id])
+    expect(world.charter('station')?.transit).toBe('subway')
+    expect(world.charter('bar')?.transit).toBeUndefined()
+
+    const underground = town([jail({ transit: 'subway' })])
+    const cells = underground.addPlot({ ...site, kind: 'jail', name: 'Holding House' })
+    if (!cells.ok) throw new Error('fixture')
+    const reloaded = World.load(JSON.parse(JSON.stringify(underground.toJSON())))
+    expect(reloaded.ok).toBe(true)
+    if (reloaded.ok) expect(reloaded.value.stations().map((p) => p.id)).toEqual([cells.value.id])
+    expect(town([jail()]).stations()).toEqual([])
+
+    const tram = World.found({ ...spec, charters: [jail({ transit: 'tram' as never })] })
+    expect(tram.ok).toBe(false)
+    if (!tram.ok) expect(tram.error.code).toBe('invalid-document')
+  })
+})
+
 describe('what a room is for and what a person there is doing', () => {
   const rect = { x: 0, y: 0, w: 6, h: 6 }
 

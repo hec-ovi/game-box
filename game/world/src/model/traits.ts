@@ -60,6 +60,9 @@ export const FINISHES = ['domestic', 'civic', 'industrial', 'corporate', 'worn']
 /** How the place stands out on a map. */
 export const PROMINENCES = ['background', 'notable', 'landmark'] as const
 
+/** What its entrance is for travel: a subway station is where fast travel boards. */
+export const TRANSITS = ['none', 'subway'] as const
+
 /** How much of a plot the building wants. */
 export const SPRAWLS = ['narrow', 'wide', 'block'] as const
 
@@ -75,3 +78,4 @@ export type Holding = (typeof HOLDINGS)[number]
 export type Finish = (typeof FINISHES)[number]
 export type Prominence = (typeof PROMINENCES)[number]
 export type Sprawl = (typeof SPRAWLS)[number]
+export type Transit = (typeof TRANSITS)[number]

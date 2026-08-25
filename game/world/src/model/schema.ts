@@ -1,9 +1,12 @@
 import { contract } from '@gb/kit'
 import { z } from 'zod'
 import { METRICS } from '../metrics.ts'
+import { AccessSchema, OwnerSchema } from './access.ts'
 import { AssetPackRefSchema, MAX_CATALOGUES, PlotDesignSchema } from './design.ts'
 import { AsksSchema, BriefSchema } from './asks.ts'
+import { id } from './ids.ts'
 import { BackgroundSchema, LifeSchema } from './life.ts'
+import { isMachineProp, MachineSchema, PasswordSchema } from './machine.ts'
 import { PremiseSchema } from './premise.ts'
 import { ChartersSchema } from './resolved.ts'
 import { FINISHES, ROOM_USES } from './traits.ts'
@@ -18,11 +21,6 @@ import {
   ROAD_KINDS,
   ROOM_KINDS,
 } from './vocabulary.ts'
-
-const id = (kind: string) =>
-  z
-    .string()
-    .regex(new RegExp(`^${kind}_\\d{4,}$`), `expected a ${kind} id like ${kind}_0001`)
 
 const Cell = z.object({ x: z.number().int().min(0), y: z.number().int().min(0) })
 const RectSchema = z.object({
@@ -64,6 +62,22 @@ export const FurnitureSchema = z.object({
    * till. A piece with a host carries `lift`, and it is the host's own top.
    */
   on: id('prop').optional(),
+  /** What the app opens at it. On every piece of a machine kind, and nothing else. */
+  machine: MachineSchema.optional(),
+  /** The room a camera watches, in the same interior. On a camera and nothing else. */
+  watches: id('room').optional(),
+  /** The opening a bars-door stands across, in the same interior. On a bars-door and nothing else. */
+  doorId: id('door').optional(),
+}).superRefine((piece, ctx) => {
+  const rules: Array<['machine' | 'watches' | 'doorId', string, boolean]> = [
+    ['machine', 'a machine kind', isMachineProp(piece.prop)],
+    ['watches', 'a camera', piece.prop === 'camera'],
+    ['doorId', 'a bars-door', piece.prop === 'bars-door'],
+  ]
+  for (const [field, who, wanted] of rules) {
+    if ((piece[field] !== undefined) === wanted) continue
+    ctx.addIssue({ code: 'custom', path: [field], message: wanted ? `${who} carries ${field}` : `only ${who} carries ${field}` })
+  }
 })
 
 export const RoomSchema = z.object({
@@ -86,6 +100,8 @@ export const DoorSchema = z.object({
   locked: z.boolean().default(false),
   /** The item that unlocks it, when locked. */
   keyItemId: id('item').optional(),
+  /** The password that unlocks it, when locked and a quest hands one out. */
+  password: PasswordSchema.optional(),
 })
 
 export const InteriorSchema = z.object({
@@ -95,6 +111,10 @@ export const InteriorSchema = z.object({
   kind: WordSchema,
   /** The language its rooms are dressed in. Absent is read back as its charter's. */
   finish: z.enum(FINISHES).optional(),
+  /** Whose home it is: one of the city's people, or the player. Absent is nobody's. */
+  owner: OwnerSchema.optional(),
+  /** Whole credits its deed sells for. Absent is not for sale. */
+  forSale: z.number().int().min(0).max(10000000).optional(),
   /** Interior footprint in metres. */
   size: z.object({ w: z.number().positive(), h: z.number().positive() }),
   rooms: z.array(RoomSchema).min(1),
@@ -165,6 +185,17 @@ export const ItemSchema = z.object({
   bulk: z.enum(['pocket', 'bag', 'two-handed']).default('pocket'),
   /** Taking an owned item without permission is stealing. */
   ownerNpcId: id('npc').optional(),
+  /** What a key or a keycard opens: one door, or an interior's street door. */
+  opens: AccessSchema.optional(),
+  /** The interior a deed is ownership of. On every deed, and nothing else. */
+  deedTo: id('interior').optional(),
+}).superRefine((item, ctx) => {
+  if (item.opens && item.archetype !== 'key' && item.archetype !== 'keycard') {
+    ctx.addIssue({ code: 'custom', path: ['opens'], message: 'only a key or a keycard opens something' })
+  }
+  if ((item.deedTo !== undefined) !== (item.archetype === 'deed')) {
+    ctx.addIssue({ code: 'custom', path: ['deedTo'], message: item.deedTo ? 'only a deed is ownership of an interior' : 'a deed names the interior it is ownership of' })
+  }
 })
 
 export const PlacementSchema = z.discriminatedUnion('at', [
@@ -238,6 +269,8 @@ export type Room = z.infer<typeof RoomSchema>
 export type Door = z.infer<typeof DoorSchema>
 export type Anchor = z.infer<typeof AnchorSchema>
 export type Furniture = z.infer<typeof FurnitureSchema>
+/** A piece as a file may carry it: a machine's `locked` still to fill. */
+export type FurnitureInput = z.input<typeof FurnitureSchema>
 export type Npc = z.infer<typeof NpcSchema>
 /** An item as a file may carry it: `value` and `bulk` still to fill. */
 export type ItemInput = z.input<typeof ItemSchema>

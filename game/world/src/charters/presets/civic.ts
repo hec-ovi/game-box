@@ -41,6 +41,7 @@ export const station: ResolvedCharter = {
   size: { storeys: [1, 2], sprawl: 'wide' },
   street: { frontage: 'curtain', openness: 'dense', material: 'metal', voice: 'sober' },
   access: 'open',
+  transit: 'subway',
   service: 'counter',
   work: ['watch', 'desk'],
   holding: ['personal', 'goods'],

@@ -3,6 +3,7 @@ import { charterOf, declaredCharters } from './charters/declared.ts'
 import { CELL, Grid, type Rect } from './grid.ts'
 import { checkIntegrity, type IntegrityProblem } from './integrity.ts'
 import { METRICS, cellCentre } from './metrics.ts'
+import { PLAYER, type Owner } from './model/access.ts'
 import { citySpecContract, type CitySpec } from './model/city-spec.ts'
 import { catalogueListContract, plotDesignContract, type AssetPackRef, type PlotDesign } from './model/design.ts'
 import type { Asks } from './model/asks.ts'
@@ -18,6 +19,8 @@ import {
   plotSpecContract,
   roadsContract,
   worldContract,
+  type Door,
+  type Furniture,
   type Interior,
   type InteriorInput,
   type Item,
@@ -37,6 +40,18 @@ export type WorldError =
   | { readonly code: 'inconsistent-world'; readonly problems: readonly IntegrityProblem[] }
   | { readonly code: 'no-space'; readonly message: string }
   | { readonly code: 'unknown-reference'; readonly message: string }
+
+/** A door, and the interior it is in. */
+export interface DoorSite {
+  readonly interiorId: string
+  readonly door: Door
+}
+
+/** A machine, as the piece of furniture that carries it, and the interior it is in. */
+export interface MachineSite {
+  readonly interiorId: string
+  readonly furniture: Furniture
+}
 
 /**
  * A city and everyone in it. Holds the data, answers questions about it, and
@@ -209,6 +224,39 @@ export class World {
     return interior.finish ?? this.charter(interior.kind)?.finish
   }
 
+  /** A door anywhere in the city, with the interior it is in. */
+  door(doorId: string): DoorSite | undefined {
+    for (const interior of this.#doc.interiors) {
+      const door = interior.doors.find((d) => d.id === doorId)
+      if (door) return { interiorId: interior.id, door }
+    }
+    return undefined
+  }
+
+  /** A machine anywhere in the city, as the piece that carries it, with the interior it is in. */
+  machine(machineId: string): MachineSite | undefined {
+    for (const interior of this.#doc.interiors) {
+      const furniture = interior.furniture.find((f) => f.machine?.id === machineId)
+      if (furniture) return { interiorId: interior.id, furniture }
+    }
+    return undefined
+  }
+
+  /** Every interior the player owns, in file order. */
+  homes(): readonly Interior[] {
+    return this.interiors().filter((interior) => interior.owner === PLAYER)
+  }
+
+  /** The player's home: the first interior they own, or nothing when they own none. */
+  home(): Interior | undefined {
+    return this.homes()[0]
+  }
+
+  /** Every plot whose entrance is a subway station: where fast travel boards. */
+  stations(): readonly Plot[] {
+    return this.#doc.plots.filter((plot) => this.charter(plot.kind)?.transit === 'subway')
+  }
+
   hasPlot(id: string): boolean {
     return this.plot(id) !== undefined
   }
@@ -223,6 +271,14 @@ export class World {
 
   hasInterior(id: string): boolean {
     return this.interior(id) !== undefined
+  }
+
+  hasDoor(doorId: string): boolean {
+    return this.door(doorId) !== undefined
+  }
+
+  hasMachine(machineId: string): boolean {
+    return this.machine(machineId) !== undefined
   }
 
   plotsOfKind(kind: string): readonly Plot[] {
@@ -346,6 +402,23 @@ export class World {
     if (!opened.ok) return opened
     this.#doc.interiors.push(checked.value)
     return ok(checked.value)
+  }
+
+  /**
+   * Write down whose an interior is: a deed bought makes it the player's. A
+   * place with an owner is off the market, so its price comes off with it.
+   */
+  recordOwner(interiorId: string, owner: Owner): Result<Interior, WorldError> {
+    const interior = this.#doc.interiors.find((i) => i.id === interiorId)
+    if (!interior) return err({ code: 'unknown-reference', message: `no interior ${interiorId} to own` })
+    if (owner !== PLAYER && !this.hasNpc(owner)) {
+      return err({ code: 'unknown-reference', message: `interior ${interiorId} cannot belong to missing npc ${owner}` })
+    }
+    const { forSale: _sold, ...kept } = interior
+    const written = read(interiorContract, { ...kept, owner })
+    if (!written.ok) return written
+    this.#doc.interiors[this.#doc.interiors.indexOf(interior)] = written.value
+    return ok(this.#dressed(written.value))
   }
 
   addNpc(npc: Npc): Result<Npc, WorldError> {
