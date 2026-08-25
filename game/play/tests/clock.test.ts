@@ -90,26 +90,34 @@ describe('GameClock', () => {
     expect(clock.weather).toBe('rain')
   })
 
-  it('is dark from 20:00 to 05:59 and reads the hour in plain words', () => {
+  it('is dark from 18:00 to 05:59 and reads the hour around the sun in plain words', () => {
     const clock = clockOf()
     const darkAt = (hour: number, minute = 0) => {
       clock.setTime(hour, minute)
       return clock.isDark
     }
 
-    expect(darkAt(19, 59)).toBe(false)
-    expect(darkAt(20)).toBe(true)
+    expect(darkAt(17, 59)).toBe(false)
+    expect(darkAt(18)).toBe(true)
     expect(darkAt(3)).toBe(true)
     expect(darkAt(5, 59)).toBe(true)
     expect(darkAt(6)).toBe(false)
     expect(darkAt(13)).toBe(false)
 
-    clock.setTime(21)
+    clock.setTime(20)
     expect(clock.phase).toBe('evening')
     expect(clock.reading).toBe('late evening')
     clock.setTime(4)
     expect(clock.phase).toBe('before-dawn')
     expect(clock.reading).toBe('just before dawn')
+    clock.setTime(6)
+    expect(clock.phase).toBe('dawn')
+    clock.setTime(7, 25)
+    expect(clock.phase).toBe('dawn')
+    clock.setTime(16, 35)
+    expect(clock.phase).toBe('dusk')
+    clock.setTime(21)
+    expect(clock.phase).toBe('night')
   })
 
   it('counts whole seconds since day one for the quest clock event', () => {

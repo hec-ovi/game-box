@@ -4,7 +4,7 @@ contractVersion: 0.5.0
 
 ## Purpose
 
-The playthrough: what the player carries, what they stole, what they left standing somewhere, what they can afford, what they have been told, who is walking with them, where they are standing, which job they are following, what they have found, what each person holds of them, and what time it is.
+The playthrough: what the player carries, what they stole, what they left standing somewhere, what they can afford, what they have been told, who is walking with them, where they are standing, which job they are tracking, what they have found, what each person holds of them, and what time it is.
 
 ## Inputs
 
@@ -36,7 +36,7 @@ The playthrough: what the player carries, what they stole, what they left standi
 | `toJSON()` | [schema/player-state.json](schema/player-state.json) | a complete save for this world, clock included |
 | queries: `has`, `isStolen`, `inventory`, `money`, `flag`, `reputation`, `companions`, `isCompanion` | plain values | unknown flags read `false`, unknown factions read `0` |
 | `where` | `{ x, z, heading, interiorId? }` or nothing | a copy, so writing to it changes no state; the heading is inside one turn |
-| `tracked` | a quest id or nothing | whatever was last followed, resolved against nothing |
+| `tracked` | a quest id or nothing | whatever was last tracked, resolved against nothing |
 | `placedAt(itemId)` | `{ interiorId, anchorId }` or nothing | where the player left that thing |
 | `placed()` | `[{ itemId, interiorId, anchorId }]` | everything they left somewhere, each thing once |
 | `discovered()` | [schema/player-state.json](schema/player-state.json) `codex` | `{ places, people: [{ npcId, unlocked }] }`, each in the order first found; a copy |
@@ -47,7 +47,7 @@ The playthrough: what the player carries, what they stole, what they left standi
 | `clock.day`, `clock.hour`, `clock.minute`, `clock.secondsOfDay` | numbers | day counts from 1; `secondsOfDay` is fractional, the rest are whole |
 | `clock.rate`, `clock.weather` | a number above 0, one of `WEATHERS` | the rate it runs at, and what the sky was last set to |
 | `clock.paused` | boolean | whether it is stopped; `rate` is what `resume` brings back |
-| `clock.isDark` | boolean | true from 20:00 up to 05:59, whatever the weather |
+| `clock.isDark` | boolean | true from 18:00 up to 05:59, whatever the weather: the hour after dusk ends until the hour before dawn |
 | `clock.phase`, `clock.reading` | one of `DAY_PHASES`, a plain sentence fragment | `reading` is the phase in words ("late evening", "just before dawn"), written to go in front of a language model |
 | `clock.totalSeconds` | whole seconds | game seconds since day 1 at 00:00; this is the number the `clock` game event carries |
 
@@ -154,9 +154,9 @@ this city has not got, from a room that was never in it: it loads, and
 `place(itemId, null)` forgets the entry, which puts the thing back wherever the
 city file had it rather than leaving it standing nowhere.
 
-## The quest being followed
+## The quest being tracked
 
-`tracked` is the quest the player chose to follow, the one the objectives panel
+`tracked` is the quest the player chose to track, the one the objectives panel
 and the map pins are pointed at. To this box it is a name and nothing else: it is
 never looked up, so a save can carry a quest that has since been finished, given
 up, or that this city never had, and it still loads. The caller holds the quest
@@ -169,14 +169,16 @@ set, so the caller decides what a name it cannot find means, and clears it with
 
 | Hours | Phase | Reading |
 |---|---|---|
-| 23:00-02:59 | `night` | the dead of night |
-| 03:00-04:59 | `before-dawn` | just before dawn |
-| 05:00-06:59 | `dawn` | first light |
-| 07:00-10:59 | `morning` | mid morning |
+| 21:00-03:59 | `night` | the dead of night |
+| 04:00-05:59 | `before-dawn` | just before dawn |
+| 06:00-07:59 | `dawn` | first light |
+| 08:00-10:59 | `morning` | mid morning |
 | 11:00-13:59 | `midday` | the middle of the day |
-| 14:00-16:59 | `afternoon` | the afternoon |
-| 17:00-19:59 | `dusk` | sundown |
-| 20:00-22:59 | `evening` | late evening |
+| 14:00-15:59 | `afternoon` | the afternoon |
+| 16:00-17:59 | `dusk` | sundown |
+| 18:00-20:59 | `evening` | late evening |
+
+The spans sit on the sun as `@gb/land` draws it (its contract's theme table): sunrise 07:25 and sunset 16:35 on the temperate theme, 06:32 to 17:28 arid, 07:44 to 16:16 maritime. `SUNRISE_HOUR` (7) and `SUNSET_HOUR` (16) are the whole hours the temperate sun crosses the horizon; `dawn` is the hour before and the hour of sunrise, `dusk` the hour of sunset and the one after, and `isDark` covers what is left between them. A caller jumping the clock to a phase lands on its first hour: 06:00 for `dawn`, 16:00 for `dusk`.
 
 The rate is game seconds per real second. The default is `DEFAULT_RATE` (24): a whole day passes in one real hour, so an hour of game time takes two and a half real minutes. A new playthrough opens on day 1 at 08:00 under a clear sky.
 

@@ -103,7 +103,7 @@ export class PlayerState {
   }
 
   /**
-   * The quest the player chose to follow. Just a name to this box: it can be one
+   * The quest the player chose to track. Just a name to this box: it can be one
    * that has since been finished, given up or never existed here, and the caller
    * that knows the quests decides what to do about that.
    */
@@ -111,7 +111,7 @@ export class PlayerState {
     return this.#doc.tracked
   }
 
-  /** Follow a quest, or nothing to follow none. */
+  /** Track a quest, or nothing to track none. */
   setTracked(questId: string | null | undefined): void {
     const id = questId?.trim()
     if (id) this.#doc.tracked = id

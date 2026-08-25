@@ -86,7 +86,7 @@ export const PlayerStateSchema = z.object({
   clock: ClockSchema.optional(),
   /** Where the player stood when the save was written. Absent in saves written before places. */
   where: WhereSchema.optional(),
-  /** The quest the player chose to follow. Absent when they are following none. */
+  /** The quest the player chose to track. Absent when they track none. */
   tracked: z.string().min(1).optional(),
   /** Things the player carried off and left somewhere the city did not put them. */
   moved: z.array(PlacedItemSchema).optional(),

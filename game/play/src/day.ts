@@ -21,9 +21,17 @@ export const MAX_RATE = SECONDS_PER_DAY
 /** A new playthrough opens in the morning, with the town awake. */
 export const DEFAULT_START_HOUR = 8
 
-/** The sun is down from 20:00 up to 05:59. */
-export const DARK_FROM_HOUR = 20
-export const DARK_UNTIL_HOUR = 6
+/**
+ * The phases and the dark hours follow the sun as `@gb/land` draws it: on the
+ * temperate theme it rises at 07:25 and sets at 16:35 (arid 06:32 to 17:28,
+ * maritime 07:44 to 16:16), with twilight about an hour either side. So `dawn`
+ * is the hour before and the hour of sunrise, `dusk` the hour of and the hour
+ * after sunset, and it is dark from 18:00 up to 05:59.
+ */
+export const SUNRISE_HOUR = 7
+export const SUNSET_HOUR = 16
+export const DARK_FROM_HOUR = SUNSET_HOUR + 2
+export const DARK_UNTIL_HOUR = SUNRISE_HOUR - 1
 
 /** The closed set of readings an hour can have. */
 export const DAY_PHASES = [
@@ -41,14 +49,14 @@ export type DayPhase = (typeof DAY_PHASES)[number]
 
 /** Hour spans in order, each running up to (not including) `untilHour`. */
 const SPANS: readonly { readonly untilHour: number; readonly phase: DayPhase }[] = [
-  { untilHour: 3, phase: 'night' },
-  { untilHour: 5, phase: 'before-dawn' },
-  { untilHour: 7, phase: 'dawn' },
+  { untilHour: 4, phase: 'night' },
+  { untilHour: SUNRISE_HOUR - 1, phase: 'before-dawn' },
+  { untilHour: SUNRISE_HOUR + 1, phase: 'dawn' },
   { untilHour: 11, phase: 'morning' },
   { untilHour: 14, phase: 'midday' },
-  { untilHour: 17, phase: 'afternoon' },
-  { untilHour: 20, phase: 'dusk' },
-  { untilHour: 23, phase: 'evening' },
+  { untilHour: SUNSET_HOUR, phase: 'afternoon' },
+  { untilHour: SUNSET_HOUR + 2, phase: 'dusk' },
+  { untilHour: 21, phase: 'evening' },
   { untilHour: HOURS_PER_DAY, phase: 'night' },
 ]
 
