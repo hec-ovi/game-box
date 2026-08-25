@@ -1,8 +1,9 @@
 import { METRICS, World } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { CITY_DRIVING } from '../src/idm.ts'
-import { Traffic, type CarView, type Obstacle, type Obstacles, type Point } from '../src/index.ts'
+import { Traffic, type Obstacle, type Obstacles } from '../src/index.ts'
 import { lattice } from './city.ts'
+import { clearance, relative, Walker } from './walker.ts'
 
 const CAR_LENGTH = METRICS.vehicle.carLength
 const STEP = 1 / 60
@@ -36,13 +37,6 @@ function street(options = {}) {
   const lane = traffic.graph.lanes.find((l) => l.id === car.trackId)!
   const from = lane.path.nearestTo(car).s
   return { traffic, people, car, lane, from, room: lane.length - from }
-}
-
-/** Where a point sits relative to a car: metres up the road, metres off to the side. */
-function relative(car: CarView, p: Point): { along: number; across: number } {
-  const dx = p.x - car.x
-  const dz = p.z - car.z
-  return { along: dx * Math.sin(car.heading) + dz * Math.cos(car.heading), across: -dx * Math.cos(car.heading) + dz * Math.sin(car.heading) }
 }
 
 describe('somebody in the road', () => {
@@ -89,8 +83,41 @@ describe('somebody in the road', () => {
       traffic.update(STEP, { x: car.x, z: car.z })
       closest = Math.min(closest, relative(car, people.spots[0]!).along)
     }
-    expect(closest, 'drove over them').toBeGreaterThan(CAR_LENGTH / 2)
+    // nose to the person's near edge: the half metre it keeps, exactly
+    expect(closest - CAR_LENGTH / 2 - 0.5).toBeCloseTo(0.5, 6)
     expect(car.speed).toBeLessThan(0.05)
+  })
+
+  it('is never driven onto, nose, flank or tail, over a walk through the traffic', () => {
+    const walker = new Walker('a', { x: 40, z: 40 })
+    const traffic = open(lattice({ across: 4, down: 4, span: 13, seed: 'a' }), { maxCars: 24, seed: 'a', obstacles: walker })
+    walker.roam(traffic.graph.lanes)
+    traffic.populate(walker)
+
+    const was = new Map<string, { x: number; z: number }>()
+    let overlaps = 0
+    let closestAhead = Number.POSITIVE_INFINITY
+    let stops = 0
+    for (let frame = 0; frame < 10800; frame++) {
+      walker.step(STEP, traffic.cars())
+      was.clear()
+      for (const car of traffic.cars()) was.set(car.id, { x: car.x, z: car.z })
+      traffic.update(STEP, walker)
+      for (const car of traffic.cars()) {
+        if (clearance(car, walker) < walker.radius) overlaps++
+        if (car.speed < 0.01 && clearance(car, walker) < 3) stops++
+        const before = was.get(car.id)
+        const moved = before !== undefined && (car.x !== before.x || car.z !== before.z)
+        const { along, across } = relative(car, walker)
+        // a car that moved with the walker squarely in front of it kept its half metre
+        if (moved && along > CAR_LENGTH / 2 && Math.abs(across) <= METRICS.vehicle.carWidth / 2) {
+          closestAhead = Math.min(closestAhead, along - CAR_LENGTH / 2 - walker.radius)
+        }
+      }
+    }
+    expect(stops, 'no car ever stopped for the walker, so the walk proves nothing').toBeGreaterThan(0)
+    expect(overlaps, 'frames with a car on the walker').toBe(0)
+    expect(closestAhead).toBeGreaterThanOrEqual(0.5 - 1e-9)
   })
 
   it('is driven around the moment they step back onto the pavement', () => {

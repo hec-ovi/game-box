@@ -8,7 +8,7 @@ import { CITY_DRIVING, idmAcceleration } from './idm.ts'
 import { JunctionControl } from './junctions.ts'
 import { LaneGraph } from './lane-graph.ts'
 import { ahead, join, leave } from './queue.ts'
-import { Runoffs } from './runoff.ts'
+import { Runoff, Runoffs } from './runoff.ts'
 import { RUNOFF, withDefaults, type Settings, type TrafficOptions } from './settings.ts'
 import { Spawner } from './spawner.ts'
 import { Lane, Link, type Track } from './track.ts'
@@ -27,6 +27,7 @@ const SPAWNS_PER_UPDATE = 2
 const LAST_GAP = 0.5
 
 const CAR_LENGTH = METRICS.vehicle.carLength
+const HALF_LENGTH = CAR_LENGTH / 2
 
 /**
  * Cars driving a generated city. Reads the road graph once, then every frame
@@ -55,7 +56,7 @@ export class Traffic {
     const road = graph.lanes.reduce((total, lane) => total + lane.length, 0)
     this.#capacity = Math.max(1, Math.min(settings.maxCars, Math.floor(road / ROAD_PER_CAR)))
     this.#runoffs = new Runoffs(graph, RUNOFF)
-    this.#hazards = new Hazards(settings.obstacles, roadsOf(graph, this.#runoffs))
+    this.#hazards = new Hazards(settings.obstacles, [...roadsOf(graph, this.#runoffs)])
     this.#junctions = new JunctionControl(CAR_LENGTH + CITY_DRIVING.minGap, this.#hazards)
     this.#spawner = new Spawner(graph, settings, this.#hazards, CAR_LENGTH)
   }
@@ -176,14 +177,26 @@ export class Traffic {
     return accel
   }
 
-  /** The car in front, on this track or on the one it is about to enter. */
+  /**
+   * The car in front, on this track or on the one it is about to enter. Where
+   * the road itself ends, the end is the car in front: one that never moves,
+   * so a car eases to a stop at it and stands there instead of hitting it.
+   */
   #leader(car: Car): { gap: number; speed: number } {
     const front = ahead(car)
     if (front) return { gap: front.s - car.s - CAR_LENGTH, speed: front.speed }
     const next = car.track instanceof Link ? car.track.to : car.next
     const first = next?.last
     if (next && first) return { gap: car.remaining + first.s - CAR_LENGTH, speed: first.speed }
+    if (this.#roadEnds(car)) return { gap: car.remaining - HALF_LENGTH, speed: 0 }
     return { gap: Number.POSITIVE_INFINITY, speed: 0 }
+  }
+
+  /** True when nothing follows the track this car is on: the run off the map, or a dead end in town. */
+  #roadEnds(car: Car): boolean {
+    if (car.track instanceof Runoff) return true
+    if (!(car.track instanceof Lane)) return false
+    return this.graph.linksFrom(car.track).length === 0 && this.#runoffs.after(car.track) === undefined
   }
 
   #move(car: Car): void {
@@ -198,6 +211,12 @@ export class Traffic {
     const room = car.clearAhead - LAST_GAP
     if (advance > room) {
       advance = Math.max(0, room)
+      speed = 0
+    }
+    // and no part of it ever moves onto anybody: a tail swinging through a
+    // turn stops for whoever is standing beside it, the way the nose does
+    if (advance > 0 && this.#hazards.touches(car, car.s + advance, LAST_GAP)) {
+      advance = 0
       speed = 0
     }
     car.s += advance

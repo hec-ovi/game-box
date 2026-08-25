@@ -29,15 +29,15 @@ function corners(car: CarView): Array<{ x: number; z: number }> {
  * One car driven until the road under it runs out, with the player following it
  * so it is never out of sight. Answers where it ended up.
  */
-function drive(world: World) {
+function drive(world: World, step = 1 / 60) {
   const traffic = open(world, { maxCars: 1 })
   const town = { x: 40, z: 10 }
   traffic.populate(town)
   const first = traffic.cars()[0]
   if (!first) throw new Error('no car spawned')
   let watch = { x: first.x, z: first.z }
-  for (let frame = 0; frame < 3000; frame++) {
-    traffic.update(1 / 60, watch)
+  for (let frame = 0; frame < 50 / step; frame++) {
+    traffic.update(step, watch)
     const car = traffic.cars().find((other) => other.id === first.id)
     if (!car) break
     watch = { x: car.x, z: car.z }
@@ -152,18 +152,19 @@ describe('Traffic', () => {
     expect(deadEnd.cell, 'a car left the roadway').toBe('street')
   })
 
-  it('takes a car that has run out of road only once the player cannot see it go', () => {
+  // at a smooth sixty frames a second, and at the longest step a car integrates
+  it.each([1 / 60, 0.1])('takes a car that has run out of road only once the player cannot see it go, at %s s a frame', (step) => {
     const world = lattice({ across: 2, down: 1, span: 40, kind: 'exit' })
-    const { traffic, car, watch } = drive(world)
+    const { traffic, car, watch } = drive(world, step)
     expect(car, 'a car was taken away in front of the player').toBeDefined()
 
-    // twelve seconds standing still, still watched: it stays
-    for (let frame = 0; frame < 900; frame++) traffic.update(1 / 60, watch)
+    // fifteen seconds standing still, still watched: it stays
+    for (let frame = 0; frame < 15 / step; frame++) traffic.update(step, watch)
     expect(traffic.cars().some((other) => other.id === car!.id)).toBe(true)
 
     // the player turns back into town, and only then is it taken off the road
     const town = { x: 40, z: 10 }
-    for (let frame = 0; frame < 900; frame++) traffic.update(1 / 60, town)
+    for (let frame = 0; frame < 15 / step; frame++) traffic.update(step, town)
     expect(traffic.cars().some((other) => other.id === car!.id)).toBe(false)
   })
 

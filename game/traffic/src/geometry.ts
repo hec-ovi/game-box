@@ -56,6 +56,11 @@ export class Path {
   readonly points: readonly Point[]
   readonly length: number
   readonly #upto: Float64Array
+  /** The box the path fits in, for a cheap answer to "could this point be anywhere near it". */
+  readonly #minX: number
+  readonly #maxX: number
+  readonly #minZ: number
+  readonly #maxZ: number
 
   constructor(points: readonly Point[]) {
     if (points.length < 2) throw new Error('a path needs at least two points')
@@ -67,6 +72,15 @@ export class Path {
       this.#upto[i] = total
     }
     this.length = total
+    this.#minX = Math.min(...points.map((p) => p.x))
+    this.#maxX = Math.max(...points.map((p) => p.x))
+    this.#minZ = Math.min(...points.map((p) => p.z))
+    this.#maxZ = Math.max(...points.map((p) => p.z))
+  }
+
+  /** False when the point is further than `margin` from the box the path fits in, so nothing nearer needs measuring. */
+  near(p: Point, margin: number): boolean {
+    return p.x >= this.#minX - margin && p.x <= this.#maxX + margin && p.z >= this.#minZ - margin && p.z <= this.#maxZ + margin
   }
 
   static straight(from: Point, to: Point): Path {
@@ -137,4 +151,17 @@ export class Path {
     }
     return lo
   }
+}
+
+/**
+ * How far a point is from a rectangle `halfLength` ahead and behind `centre`
+ * along `dir` and `halfWidth` either side of it. Zero inside. This is what a
+ * car's footprint is to somebody standing next to it, tail and sides included.
+ */
+export function clearanceFrom(centre: Point, dir: Point, halfLength: number, halfWidth: number, p: Point): number {
+  const dx = p.x - centre.x
+  const dz = p.z - centre.z
+  const along = Math.abs(dx * dir.x + dz * dir.z)
+  const across = Math.abs(dx * dir.z - dz * dir.x)
+  return Math.hypot(Math.max(0, along - halfLength), Math.max(0, across - halfWidth))
 }
