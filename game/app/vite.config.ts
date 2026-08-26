@@ -7,13 +7,11 @@ export default defineConfig({
   server: {
     port: 5180,
     host: true,
-    watch: {
-      usePolling: true,
-      interval: 100,
-    },
-    hmr: {
-      clientPort: 5180,
-    },
+    // A bind mount delivers no inotify events, so a container has to poll to
+    // see an edit. On the machine itself inotify works, and polling the whole
+    // workspace would spin a core beside the game.
+    ...(process.env['GAME_BOX_POLL'] ? { watch: { usePolling: true, interval: 300 } } : {}),
+    hmr: { clientPort: 5180 },
   },
   build: { target: 'es2023' },
 })

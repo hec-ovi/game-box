@@ -1,0 +1,31 @@
+services:
+  game-box:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: game-box
+    ports:
+      - "5180:5180"
+      - "8976:8976"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - GAME_BOX_HOST=0.0.0.0
+      # `.env` is written for running on the machine itself, where 127.0.0.1 is
+      # the machine. In here 127.0.0.1 is the container, so the upstream is
+      # named again and `.env` cannot reach in and point it at a loopback with
+      # nothing on it. `host.docker.internal` is the machine from inside;
+      # a sibling container is its service name on a network they share.
+      - GAME_BOX_LLM_UPSTREAM=${GAME_BOX_DOCKER_LLM_UPSTREAM:-http://host.docker.internal:8080}
+      # a bind mount delivers no inotify events, so the dev server polls in here
+      # and nowhere else
+      - GAME_BOX_POLL=1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # the workspace as it stands, installs and all. pnpm links every package
+    # through paths inside the repo, so the tree is self-consistent wherever it
+    # is mounted, and one bind is the whole of it.
+    volumes:
+      - .:/app
+    restart: unless-stopped

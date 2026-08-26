@@ -169,6 +169,8 @@ describe('a credential', () => {
     )
 
     assert.equal(result.ok, false)
-    assert.equal(result.error.message, 'status ***')
+    assert.ok(!result.error.message.includes('404'))
+    // and it still says where it was trying to go
+    assert.ok(result.error.message.includes('/nope/v1/chat/completions'))
   })
 })

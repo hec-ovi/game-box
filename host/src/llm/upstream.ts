@@ -96,10 +96,15 @@ function isBusy(payload: Payload): boolean {
 /**
  * A credential must never come back out, whatever a transport error put in its
  * message, so it is scrubbed from every failure this reports.
+ *
+ * The address is named. A connection that never opened says only "fetch
+ * failed", which is the same sentence whether the engine is down, the port is
+ * wrong, or the process is in a container where 127.0.0.1 is the container.
  */
 function failed(upstream: Upstream, message: string): LlmError {
   const secret = upstream.secret ?? ''
-  return upstreamFailed(secret === '' ? message : message.split(secret).join('***'))
+  const said = `${message} (${upstream.completions})`
+  return upstreamFailed(secret === '' ? said : said.split(secret).join('***'))
 }
 
 /** OpenAI SSE payloads turned into token events, with tool calls reassembled. */
