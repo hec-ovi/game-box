@@ -2,7 +2,6 @@ import type { OpenedBundle } from '@gb/bundle'
 import type { Cast } from '@gb/cast'
 import { SceneCast } from '@gb/crowd'
 import { CrowdRiders, Driving } from '@gb/drive'
-import { questTargets } from '@gb/forge'
 import { Hud, type HudIntent, type Notice } from '@gb/hud'
 import { CityNav } from '@gb/nav'
 import type { KitDressing } from '@gb/kitbash'
@@ -178,9 +177,6 @@ export class Game {
       nav,
       ...(this.#sky.ground ? { ground: this.#sky.ground } : {}),
       playerOutdoors: () => (this.#buildings.outdoors ? this.#body.position : undefined),
-      // whoever a job is waiting on stays at their post, so a step that sends
-      // the player to somebody never sends them to an empty room
-      atWork: () => questTargets(this.#log.objectives()),
     })
 
     this.#body = new Player(this.#stage.camera, this.#stage.canvas, this.#street.solid())
@@ -211,9 +207,7 @@ export class Game {
         this.#compass.dirty()
         this.#minimap.dirty()
         this.#escorts.dirty()
-        // the board moved: who has to stay in, and who is walking with the
-        // player, are both read off it
-        this.#street.reconsider()
+        // the board moved: who is walking with the player is read off it
         this.#companions.sync()
       },
     })
@@ -417,6 +411,9 @@ export class Game {
       hud: this.#hud,
       you: standing,
       goals: () => this.#report.goals(),
+      // and where there is work waiting: a player who holds no job has to be
+      // able to read off the plan where to go and get one
+      offers: () => this.#report.offers(),
       entered: () => this.#player.discovered().places,
       stations: this.#travel.marks,
       boarding: () => (this.#buildings.outdoors ? this.#travel.boarding(this.#body.position) : undefined),

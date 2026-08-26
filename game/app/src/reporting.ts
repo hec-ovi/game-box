@@ -4,7 +4,7 @@ import type { Change, Objective, QuestKind, QuestLog, Reward } from '@gb/quest'
 import type { World } from '@gb/world'
 import { codexOf } from './codex.ts'
 import type { Conditions } from './conditions.ts'
-import { marked, type Marked, type Whereabouts } from './places.ts'
+import { marked, offered, type Marked, type Whereabouts } from './places.ts'
 import type { View } from './view.ts'
 
 /** What a box handed back: changes to announce, or an error to let go. */
@@ -89,6 +89,11 @@ export class Reporting {
   /** Where every live quest is sending the player, for the plan: the story and the errands apart. */
   goals(): Marked[] {
     return marked(this.#world, this.#log.objectives(), (questId) => this.lineOf(questId), this.#out)
+  }
+
+  /** Where there is work to pick up: whoever is holding a job the player has not taken. */
+  offers(): Marked[] {
+    return offered(this.#world, this.#log, this.#out)
   }
 
   /** The story or an errand. A quest with no page yet reads as an errand. */

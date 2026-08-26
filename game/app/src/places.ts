@@ -55,6 +55,35 @@ export function marked(world: World, objectives: readonly Objective[], lineOf: (
   return found
 }
 
+/** The quest log as this reads it: who is holding work the player has not taken. */
+export interface OnOffer {
+  offeredBy(npcId: string): readonly { readonly kind: QuestKind }[]
+}
+
+/**
+ * Where there is work to pick up: everybody holding a job the player could
+ * take, at the door of the place they keep or wherever they are walking. A
+ * player who has taken nothing has nowhere to start otherwise, because the
+ * only thing that puts a mark on the plan today is a step already on the board.
+ */
+export function offered(world: World, log: OnOffer, out: Whereabouts = () => undefined): Marked[] {
+  const found: Marked[] = []
+  const seen = new Set<string>()
+
+  for (const npc of world.npcs()) {
+    const work = log.offeredBy(npc.id)[0]
+    if (!work) continue
+    const place = somebody(world, npc.id, out)
+    if (!place) continue
+    // two people behind one counter are one door to walk to
+    const where = `${place.x}/${place.z}`
+    if (seen.has(where)) continue
+    seen.add(where)
+    found.push({ ...place, line: work.kind })
+  }
+  return found
+}
+
 type Spot = Omit<Marked, 'line'>
 
 /**
@@ -108,17 +137,18 @@ function whereItLies(world: World, itemId: string, out: Whereabouts): Spot | und
  * Where a person is: out walking, the door they are heading for, so the pin
  * and the route go where they will be found rather than to an empty room; on
  * the pavement with nowhere in particular to go, the spot they stand on; and
- * otherwise their post.
+ * otherwise the door of the place they keep, which is the building the plan
+ * writes a name on.
  */
 function somebody(world: World, npcId: string, out: Whereabouts): Spot | undefined {
   const npc = world.npc(npcId)
   if (!npc) return undefined
   const away = out(npcId)
-  if (away && 'plotId' in away) {
-    const door = atPlot(world, away.plotId)
-    return door ? { ...door, label: npc.name } : undefined
-  }
-  const at = away ?? world.positionOf(npcId)
+  const post = npc.station ? interiorPlot(world, npc.station.interiorId) : undefined
+  const plotId = away && 'plotId' in away ? away.plotId : away ? undefined : post
+  const door = plotId ? atPlot(world, plotId) : undefined
+  if (door) return { ...door, label: npc.name }
+  const at = away && 'x' in away ? away : world.positionOf(npcId)
   return at ? { label: npc.name, x: at.x, z: at.z } : undefined
 }
 

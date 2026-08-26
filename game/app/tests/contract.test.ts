@@ -25,7 +25,7 @@ import { Members } from '../src/members.ts'
 import { Guide } from '../src/guide.ts'
 import { Intents } from '../src/intents.ts'
 import { DAY, darkness, INDOORS, lookOf, NIGHT } from '../src/night.ts'
-import { marked, type Marked } from '../src/places.ts'
+import { marked, offered, type Marked } from '../src/places.ts'
 import { Companions } from '../src/companions.ts'
 import { Playthrough } from '../src/playthrough.ts'
 import { Reporting } from '../src/reporting.ts'
@@ -1835,6 +1835,20 @@ describe('a conversation you can click through', () => {
     expect(reached()).toBe(0)
   })
 
+  it('puts one opening turn on the panel however often the player walks up', async () => {
+    const { npcId, talking, pushed } = chatting()
+    for (let visit = 0; visit < 3; visit++) {
+      pushed.length = 0
+      await talking.start(npcId)
+      talking.end()
+    }
+    // `@gb/talk` greets afresh on every opening and keeps each greeting in the
+    // transcript, so three walk-ups leave three hellos in it. What nobody
+    // answered is not history: the panel draws the one they are being given
+    const third = pushed.find((patch) => patch.talk?.speaker !== undefined)!.talk!
+    expect(third.turns!.map((turn) => turn.who)).toEqual(['them'])
+  })
+
   it('carries on where the two of them left off, so walking back up is not meeting a stranger', async () => {
     const { npcId, talking, pushed } = chatting()
     await talking.start(npcId)
@@ -2076,17 +2090,26 @@ describe('what a pedestrian keeps out of', () => {
 })
 
 describe('who goes out walking', () => {
-  it('keeps everybody a job is waiting on at their post, and still sends somebody out', () => {
+  it('leaves everybody the city stationed at their post, and puts the loose on the pavement', () => {
     const { world } = anchorage()
     const nav = CityNav.from(world)
-    // two behind one counter: a third of the town rounds up to one of them, in
-    // the city's own order
-    expect(new Street({ world, nav, playerOutdoors: () => undefined }).residents().map((npc) => npc.id)).toEqual(['npc_0001'])
+    // both of them are behind the counter the city put them behind: the player
+    // who walks into the bar finds the bar staffed, and neither of them tells
+    // anybody about that counter from the middle of a road
+    expect(new Street({ world, nav, playerOutdoors: () => undefined }).residents()).toEqual([])
 
-    // a step waiting on the first sends the second out instead, so the player
-    // sent to Wren finds Wren
-    const waitingOnWren = new Street({ world, nav, playerOutdoors: () => undefined, atWork: () => new Set(['npc_0001']) })
-    expect(waitingOnWren.residents().map((npc) => npc.id)).toEqual(['npc_0002'])
+    // somebody the city stationed nowhere is out there, because there is
+    // nowhere else to look for them
+    const loose = world.addNpc({
+      id: 'npc_0003',
+      name: 'Kit Marlow',
+      role: 'courier',
+      appearance: { base: 'male', variant: 1 },
+      personality: 'Always moving.',
+      knowledge: ['Every shortcut in town.'],
+    })
+    if (!loose.ok) throw new Error(JSON.stringify(loose.error))
+    expect(new Street({ world, nav, playerOutdoors: () => undefined }).residents().map((npc) => npc.id)).toEqual(['npc_0003'])
   })
 })
 
@@ -2099,8 +2122,45 @@ describe('where a pin goes for somebody who is out', () => {
     expect(marked(world, [talkTo], () => 'side', () => ({ plotId }))).toEqual([{ label: 'Wren Ashby', x: 11, z: 13, plotId, line: 'side' }])
     // out with nowhere in particular to go: where they are
     expect(marked(world, [talkTo], () => 'side', () => ({ x: 30, z: 40 }))).toEqual([{ label: 'Wren Ashby', x: 30, z: 40, line: 'side' }])
-    // at their post: the room, which is the building
-    expect(marked(world, [talkTo], () => 'side')).toEqual([{ label: 'Wren Ashby', x: world.positionOf('npc_0001')!.x, z: world.positionOf('npc_0001')!.z, line: 'side' }])
+    // at their post: the door of the place they keep, so the plan writes that
+    // building's name on itself and a route can walk to it
+    expect(marked(world, [talkTo], () => 'side')).toEqual([
+      { label: 'Wren Ashby', x: world.positionOf('npc_0001')!.x, z: world.positionOf('npc_0001')!.z, plotId, line: 'side' },
+    ])
+  })
+})
+
+describe('where there is work to pick up', () => {
+  const job = checked({
+    format: 'game-box.quest',
+    schemaVersion: 1,
+    id: 'quest_0001',
+    kind: 'main',
+    title: 'A word with Wren',
+    summary: 'She wants a word.',
+    giverNpcId: 'npc_0001',
+    difficulty: 'small',
+    startStepId: 'step_0001',
+    reward: rewardFor('small'),
+    steps: [
+      { id: 'step_0001', objective: 'Fetch the glass', kind: 'collect', itemId: 'item_0001', next: ['step_0002'] },
+      { id: 'step_0002', objective: 'Done', kind: 'complete' },
+    ],
+  })
+
+  it('marks the door of whoever is holding a job, and stops once it is taken', () => {
+    const { world, plotId } = anchorage()
+    const player = PlayerState.create(world.id)
+    const log = QuestLog.create([job], player)
+
+    // a player who holds nothing has no pins at all, so the only thing that can
+    // say where to start is who is still holding work
+    expect(marked(world, log.objectives(), () => 'main')).toEqual([])
+    expect(offered(world, log)).toEqual([{ label: 'Wren Ashby', x: 11, z: 13, plotId, line: 'main' }])
+
+    // taken, and it is a job on the board rather than one to pick up
+    expect(log.start('quest_0001').ok).toBe(true)
+    expect(offered(world, log)).toEqual([])
   })
 })
 
@@ -2696,5 +2756,20 @@ describe('the two lines of work on the plan and in the corner', () => {
       entered: () => [],
     }).update(1)
     expect(near.pushed.at(-1)!.minimap!.marks).toEqual(pinned)
+  })
+
+  it('writes the name of every place with work waiting on the plan', () => {
+    const world = town()
+    const [bar] = world.plots()
+    const offers: Marked[] = [{ label: 'Wren Ashby', x: 0, z: 0, plotId: bar!.id, line: 'main' }]
+
+    const plan = screenful()
+    new Chart({ world, hud: plan.hud, you: () => ({ position: { x: 5, z: 21 }, heading: 0 }), goals: () => [], offers: () => offers, entered: () => [] }).draw()
+    const map = plan.pushed.at(-1)!.map!
+
+    // a player holding no job has no pins at all, so the one thing that says
+    // where to start is the name of the place somebody is holding work in
+    expect(map.marks!.every((mark) => mark.kind === 'you')).toBe(true)
+    expect(map.plots!.filter((plot) => plot.named).map((plot) => plot.label)).toContain('The Copper Wheel')
   })
 })

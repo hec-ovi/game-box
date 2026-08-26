@@ -29,6 +29,7 @@ export class Chart {
   #hud: Hud
   #you: () => Pose
   #goals: () => readonly Marked[]
+  #offers: () => readonly Marked[]
   #entered: () => readonly string[]
   #stations: readonly MapStation[]
   #boarding: () => string | undefined
@@ -44,6 +45,8 @@ export class Chart {
     hud: Hud
     you: () => Pose
     goals: () => readonly Marked[]
+    /** Where there is work to pick up, so a player holding no job can read where to start. */
+    offers?: () => readonly Marked[]
     entered: () => readonly string[]
     /** Where fast travel boards, and the one the player is standing at. A city with no stations lists none. */
     stations?: readonly MapStation[]
@@ -53,6 +56,7 @@ export class Chart {
     this.#hud = input.hud
     this.#you = input.you
     this.#goals = input.goals
+    this.#offers = input.offers ?? (() => [])
     this.#entered = input.entered
     this.#stations = input.stations ?? []
     this.#boarding = input.boarding ?? (() => undefined)
@@ -117,13 +121,15 @@ export class Chart {
   }
 
   /**
-   * The plan, with the plots that earn a name written on it. Every other
-   * building stays a shape with a hover: a plan with nine hundred names on it
-   * is unreadable, and the player has no reason to read most of them.
+   * The plan, with the plots that earn a name written on it: the landmarks, the
+   * places the quests point at, the places with work waiting in them, and the
+   * places the player has walked into. Every other building stays a shape with
+   * a hover: a plan with nine hundred names on it is unreadable, and the player
+   * has no reason to read most of them.
    */
   #plots(goals: readonly Marked[]): MapPlot[] {
     const named = new Set<string>(this.#landmarks)
-    for (const goal of goals) if (goal.plotId) named.add(goal.plotId)
+    for (const goal of [...goals, ...this.#offers()]) if (goal.plotId) named.add(goal.plotId)
     for (const interiorId of this.#entered()) {
       const plotId = interiorPlot(this.#world, interiorId)
       if (plotId) named.add(plotId)

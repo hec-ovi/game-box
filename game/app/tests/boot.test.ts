@@ -1077,6 +1077,18 @@ describe('the people on the street', () => {
     let asked = 0
     const ground = { heightAt: () => (asked++, 0), walkableAt: () => true }
 
+    // the city stations everybody it writes, so the pavement is drawn from the
+    // people it left loose: one courier with no post is one body out there
+    const loose = world.addNpc({
+      id: 'npc_9001',
+      name: 'Kit Marlow',
+      role: 'courier',
+      appearance: { base: 'male', variant: 1 },
+      personality: 'Always moving.',
+      knowledge: ['Every shortcut in town.'],
+    })
+    if (!loose.ok) throw new Error(JSON.stringify(loose.error))
+
     const street = new Street({ world, nav: CityNav.from(world), ground, playerOutdoors: () => stand })
     street.populate({ spawn: nobody })
     for (let frame = 0; frame < 300; frame++) street.update(1 / 60, stand)
@@ -1087,7 +1099,7 @@ describe('the people on the street', () => {
     expect(asked).toBeGreaterThan(0)
   }, 40_000)
 
-  it('leaves somebody at every post, so a building the player walks into is not empty', async () => {
+  it('leaves every post staffed, so a building the player walks into is not empty', async () => {
     const made = await new CityMaker(new Sidecar(DOWN)).build({ ...DEFAULTS, blocks: 2 }, QUIET)
     if (!made.ok) throw new Error(made.message)
     const world = made.value.bundle.world
@@ -1095,15 +1107,14 @@ describe('the people on the street', () => {
     const street = new Street({ world, nav: CityNav.from(world), playerOutdoors: () => undefined })
     const out = new Set(street.residents().map((npc) => npc.id))
 
-    // the whole town on the pavement is a town where every shop is deserted
-    expect(out.size).toBeGreaterThan(0)
-    expect(out.size).toBeLessThan(world.npcs().length)
-
+    // a body borrowed off a counter is a room the player walked in to see and
+    // found empty, and a greeting about a shelf that is a street away
     const rooms = new Set(world.npcs().flatMap((npc) => (npc.station ? [npc.station.interiorId] : [])))
     expect(rooms.size).toBeGreaterThan(0)
     for (const room of rooms) {
-      const staying = world.npcs().filter((npc) => npc.station?.interiorId === room && !out.has(npc.id))
-      expect(staying.length, `nobody left in ${room}`).toBeGreaterThan(0)
+      const stationed = world.npcs().filter((npc) => npc.station?.interiorId === room)
+      const staying = stationed.filter((npc) => !out.has(npc.id))
+      expect(staying.length, `somebody taken off a post in ${room}`).toBe(stationed.length)
     }
   }, 40_000)
 })

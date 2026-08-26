@@ -8,11 +8,12 @@ import { cityGround, citySolid, type Ground } from './solids.ts'
 import type { Solid, Vec2 } from './walk.ts'
 
 /**
- * How much of the town is out on the pavement at once. The rest are at their
- * posts, which is where the player goes looking for them: a town that empties
- * itself onto the street has nobody behind any counter in it.
+ * How many pedestrians a street is worth at once. It is a ceiling, not a
+ * target: the street holds whoever the city gave no post, and a town whose
+ * whole roster is stationed has an empty pavement until strangers are minted
+ * at play time (docs/CITY.md section 5).
  */
-const OUT_TODAY = 1 / 3
+const PAVEMENT = 14
 
 /**
  * Metres of lane per car. One flat number for a whole town was picked when
@@ -59,12 +60,11 @@ export class Street {
   #nav: CityNav
   #ground: Ground | undefined
   #playerOutdoors: () => Vec2 | undefined
-  #atWork: () => ReadonlySet<string>
   #crowd: Crowd | undefined
   #traffic: Traffic | undefined
   #cars: CarPack | undefined
   #playerCar: PlayerCar | undefined
-  /** Who the crowd may send out today, kept current with who a job is waiting on. */
+  /** Who the crowd may put on the pavement: the people the city gave no post. */
   #out: readonly Npc[] = []
   /**
    * Who is in the road, answered into the same two arrays every frame. Traffic
@@ -81,29 +81,24 @@ export class Street {
     nav: CityNav
     ground?: Ground
     playerOutdoors: () => Vec2 | undefined
-    /** Who has to stay at their post: everybody a job is waiting on. Nobody by default. */
-    atWork?: () => ReadonlySet<string>
   }) {
     this.#world = input.world
     this.#nav = input.nav
     this.#ground = input.ground
     this.#playerOutdoors = input.playerOutdoors
-    this.#atWork = input.atWork ?? (() => new Set())
   }
 
   /**
-   * Put people on the pavement. A street with a few people on it reads as a
-   * place; a street packed with them reads as a crowd scene, and nobody stands
-   * out to talk to.
-   *
+   * Put people on the pavement: whoever the city gave no post, and nobody else.
    * The people out there are the city's own, so somebody the player passes is
-   * somebody who lives here, can be named and can be talked to. Only a share of
-   * the town is offered, so the buildings still have people standing in them.
-   * The landscape is the ground under them, so a companion followed out of town
-   * stands on the hillside rather than at zero.
+   * somebody who lives here, can be named and can be talked to, and what they
+   * say of themselves is said where they are standing. The landscape is the
+   * ground under them, so a companion followed out of town stands on the
+   * hillside rather than at zero. With nobody loose the pavement is empty and
+   * the crowd still walks the player's companions.
    */
   populate(cast: CrowdCast): void {
-    this.reconsider()
+    this.#out = this.residents()
     this.#crowd = Crowd.create(
       {
         world: this.#world,
@@ -113,52 +108,22 @@ export class Street {
         ...(this.#ground ? { ground: this.#ground } : {}),
         ...(this.#out.length > 0 ? { people: { street: (_serial, rng) => rng.pick(this.#out) } } : {}),
       },
-      { population: 14 },
+      { population: Math.min(PAVEMENT, this.#out.length) },
     )
   }
 
   /**
-   * Who is out today, for the crowd to draw the street from. Three rules keep
-   * the buildings from emptying onto the pavement: **nobody is the last person
-   * out of a room**, so every building the player can walk into still has
-   * somebody standing in it; no more than a share of the town is out at once,
-   * so a bar keeps its regulars rather than its bartender on their own; and
-   * **nobody a job is waiting on goes out**, so a step that sends the player to
-   * somebody finds them at their post. Anybody the city stationed nowhere is
-   * always out, because there is nowhere to look for them. The city's own order
-   * decides, so the same town sends the same people out every time and
-   * somebody found at their post is there on the next visit.
+   * Who is out there, for the crowd to draw the street from: everybody the city
+   * stationed nowhere, because there is nowhere else to look for them. Anybody
+   * with a post keeps it. A person's post is what `@gb/talk` builds their
+   * greeting from, so a bartender walked onto a crossing tells the player about
+   * a shelf that is a street away; and a town this size has three open places,
+   * so one body borrowed off a counter empties the room the player came in to
+   * see. The city's own order decides, so the same town puts the same people on
+   * the same pavement every time.
    */
   residents(): readonly Npc[] {
-    const people = this.#world.npcs()
-    const atWork = this.#atWork()
-    const atTheirPost = new Map<string, number>()
-    for (const npc of people) {
-      const room = npc.station?.interiorId
-      if (room) atTheirPost.set(room, (atTheirPost.get(room) ?? 0) + 1)
-    }
-
-    const share = Math.ceil(people.length * OUT_TODAY)
-    const out: Npc[] = []
-    let stationed = 0
-    for (const npc of people) {
-      const room = npc.station?.interiorId
-      if (!room) {
-        out.push(npc)
-        continue
-      }
-      const left = atTheirPost.get(room) ?? 0
-      if (stationed >= share || left <= 1 || atWork.has(npc.id)) continue
-      atTheirPost.set(room, left - 1)
-      stationed += 1
-      out.push(npc)
-    }
-    return out
-  }
-
-  /** The board moved: whoever a job now waits on stays in, from the next person the crowd sends out. */
-  reconsider(): void {
-    this.#out = this.residents()
+    return this.#world.npcs().filter((npc) => npc.station?.interiorId === undefined)
   }
 
   /**

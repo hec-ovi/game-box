@@ -81,6 +81,24 @@ beforeAll(async () => {
 async function city(): Promise<OpenedBundle> {
   const opened = await Bundle.open(JSON.parse(JSON.stringify(sealed)))
   if (!opened.ok) throw new Error(`the city the panel made will not open: ${opened.error.code}`)
+  // everybody the generator writes is stationed, and a stationed person keeps
+  // their post: the pavement is drawn from the people the city left loose, so
+  // a town that is to have anybody out on it has to have some
+  for (const [id, name, role] of [
+    ['npc_9001', 'Kit Marlow', 'courier'],
+    ['npc_9002', 'Sena Roque', 'wanderer'],
+    ['npc_9003', 'Tam Ubeda', 'guard'],
+  ] as const) {
+    const loose = opened.value.world.addNpc({
+      id,
+      name,
+      role,
+      appearance: { base: 'male', variant: 1 },
+      personality: 'Always moving.',
+      knowledge: ['Every shortcut in town.'],
+    })
+    if (!loose.ok) throw new Error(JSON.stringify(loose.error))
+  }
   return opened.value
 }
 

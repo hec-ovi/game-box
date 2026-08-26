@@ -52,6 +52,13 @@ export class Talking {
   #sessions = new Sessions()
   #open: Conversation | undefined
   #speakerId = ''
+  /**
+   * The opening lines each person has already said on the panel. Every opening
+   * puts a fresh greeting in their transcript, so a player who walks up, walks
+   * off and walks back up has a column of hellos nobody answered; the panel
+   * draws the newest and leaves the rest off.
+   */
+  #greeted = new Map<string, Set<string>>()
 
   constructor(input: {
     world: World
@@ -115,10 +122,31 @@ export class Talking {
     this.#hud.show({
       talk: {
         speaker: this.#world.npc(npcId)?.name ?? 'Someone',
-        turns: conversation.history().map(turnOf),
+        turns: this.#read(npcId, conversation.history(), opened.value.opening.line),
         moves: this.#clickable(opened.value.opening.moves),
       },
     })
+  }
+
+  /**
+   * The transcript as the player reads it: everything the two of them said,
+   * and one greeting, this one. A greeting the player answered is history and
+   * stays; one they walked away from is not, so walking up three times leaves
+   * one hello on the panel rather than three.
+   */
+  #read(npcId: string, history: readonly Turn[], opening: string): TalkTurn[] {
+    const before = this.#greeted.get(npcId) ?? new Set<string>()
+    const turns = history.map(turnOf)
+    const shown: TalkTurn[] = []
+    let answered = false
+    for (let index = turns.length - 1; index >= 0; index--) {
+      const turn = turns[index]!
+      if (turn.who === 'you') answered = true
+      const walkedAway = !answered && index < turns.length - 1 && turn.who === 'them' && before.has(turn.says)
+      if (!walkedAway) shown.unshift(turn)
+    }
+    this.#greeted.set(npcId, before.add(opening))
+    return shown
   }
 
   /** Send a line to whoever the player is talking to and play back the reply. */
