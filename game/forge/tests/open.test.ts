@@ -43,18 +43,24 @@ const ABSOLUTE = [2, 12, 30]
 const sizes = await Promise.all(ABSOLUTE.map((blocks) => town('doors-absolute', blocks)))
 
 describe('a town of frontage with a few doors that open', () => {
-  it('opens a handful of places, growing with how far a city is across and never with its plots', () => {
-    // never a share of the plots: a ten-block town opened 24 doors and a
-    // fifty-block one 493 when it was. It grows with the walk instead, so a
-    // city you cannot cross on foot is worth crossing
+  it('opens doors in step with how many buildings there are, so a bigger city is not a thinner one', () => {
+    // it used to follow how far the town was across, and a town spreads as its
+    // span while it fills as its span squared, so every city built bigger came
+    // out thinner: a twenty by twenty town of 2,781 buildings opened eleven
+    // doors. It follows the buildings now
     const opened = sizes.map((built) => built.world.interiors().length)
-    const wanted = sizes.map((built) => openPlacesFor(built.world.grid.width * built.world.cellSize))
+    const wanted = sizes.map((built) => openPlacesFor(built.world.plots().length))
     expect(opened, `${opened.join(', ')} places over ${ABSOLUTE.join(', ')} blocks`).toEqual(wanted)
     expect(opened[0], 'a town you can walk across wants no more than a handful').toBe(OPEN_PLACES)
-    expect(opened[2]!, 'a city opens more doors than a hamlet').toBeGreaterThan(opened[0]!)
-    const share = opened[2]! / sizes[2]!.world.plots().length
-    expect(share, 'the doors are creeping back towards a share of the plots').toBeLessThan(0.02)
+    expect(opened[2]!, 'a city opens far more doors than a hamlet').toBeGreaterThan(opened[0]! * 10)
+
+    // still mostly frontage: a city where every other building opens is not a
+    // city, it is a corridor of doors
     const plots = sizes.map((built) => built.world.plots().length)
+    const share = opened[2]! / plots[2]!
+    expect(share, 'the doors are creeping towards a share of every plot').toBeLessThan(0.05)
+    // and the count keeps step with the size rather than flattening off
+    expect(opened[2]! / opened[1]!, 'a city is barely better off than a town').toBeGreaterThan(1.5)
     expect(plots[2]! / plots[0]!, 'the three sizes are not far enough apart to prove anything').toBeGreaterThan(50)
     // and everybody in the file is in one of them
     for (const built of sizes) {

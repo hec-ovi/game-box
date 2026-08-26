@@ -133,10 +133,13 @@ export class Forge {
     // the town is cut into its named parts before a plot is placed, so every
     // plot can say which one it stands in as it goes up
     const districts = await this.#cut(world, streets, rng.fork('districts'), premise)
-    await this.#raise(world, this.#townSites(brief, streets, rng, premise, world, districts), {
+    // the sites are chosen before the doors are counted, because how many open
+    // follows how many buildings there are and not how far the town spreads
+    const sites = this.#townSites(brief, streets, rng, premise, world, districts)
+    await this.#raise(world, sites, {
       theme: brief.theme,
       ...(premise ? { premise } : {}),
-      places: brief.openPlaces ?? openPlacesFor(world.grid.width * world.cellSize),
+      places: brief.openPlaces ?? openPlacesFor(sites.length),
       signs: new Signs(brief.seed),
       streets: StreetNames.of(world),
       doors: rng.fork('doors'),

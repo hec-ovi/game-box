@@ -30,18 +30,21 @@ describe('a town offers as much as it holds', () => {
   })
 
   it('gives a city no more to do than a town, because a city\'s size is scenery', () => {
-    // nine times the buildings, the same places open and about the same cast in
-    // them, so about the same amount of work: a share of the plots wrote 159
-    // jobs into a twenty-block town and 3 into a two-block one
+    // nine times the buildings, and the work follows the cast rather than the
+    // scenery: a share of every plot wrote 159 jobs into a twenty-block town
+    // and 3 into a two-block one
     expect(city.world.plots().length).toBeGreaterThan(town.world.plots().length * 5)
-    // a city opens more doors than a town, but nothing like a share of its plots
+    // a city opens more doors than a town, and is still mostly frontage
     expect(city.world.interiors().length).toBeGreaterThanOrEqual(town.world.interiors().length)
-    expect(city.world.interiors().length / city.world.plots().length).toBeLessThan(0.02)
+    expect(city.world.interiors().length / city.world.plots().length).toBeLessThan(0.05)
+    // the work follows the cast up to a ceiling, and past it a bigger city is a
+    // bigger place to walk around rather than a longer list of errands: nobody
+    // plays three hundred side jobs, and each one is a call before the city can
+    // be walked into
+    expect(city.quests.length).toBeGreaterThanOrEqual(town.quests.length)
     expect(city.quests.length).toBeLessThan(town.quests.length * 5)
-    // the work follows the cast, and the cast is whoever stands in those places
     const density = (built: typeof city) => built.quests.length / built.world.npcs().length
-    expect(density(city)).toBeGreaterThan(density(town) * 0.6)
-    expect(density(city)).toBeLessThan(density(town) * 1.6)
+    expect(density(city), 'a city writes work for a share of a much bigger cast').toBeLessThan(density(town))
   })
 
   it('does not offer every town of one size the same amount of work', async () => {
