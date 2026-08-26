@@ -79,7 +79,7 @@ describe('gb', () => {
 
   it('refuses a city too big for a world to hold', async () => {
     const io = capture()
-    const code = await run(['build', '--blocks', '24x1', '--cells', '40', '--out', join(dir, 'huge.json'), ...[]], io.io)
+    const code = await run(['build', '--blocks', '60x1', '--cells', '40', '--out', join(dir, 'huge.json'), ...[]], io.io)
 
     expect(code).toBe(1)
     expect(io.err.join('\n')).not.toBe('')
