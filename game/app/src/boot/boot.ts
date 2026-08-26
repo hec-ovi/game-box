@@ -76,6 +76,9 @@ export class Boot {
     // one client for the whole page, so a busy model is announced on whatever
     // interface is up when the sidecar starts waiting it out
     this.#sidecar = new Sidecar({ ...input.sidecar, onBusy: (wait) => this.#notices.busy(wait) })
+    // and the panel writes a field of a brief through the same one, so the form
+    // and the city it builds are talking to one model
+    this.#panel.sidecar = this.#sidecar
     this.#start = input.start ?? Game.start
     this.#art = input.art ?? loadDressing
     this.#maker = new CityMaker(this.#sidecar)

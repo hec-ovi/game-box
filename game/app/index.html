@@ -300,7 +300,6 @@
       }
       .gb-boot ::-webkit-scrollbar-thumb {
         background: var(--gb-edge-lit);
-        border-radius: 3px;
       }
       .gb-boot ::-webkit-scrollbar-thumb:hover {
         background: var(--gb-accent);
@@ -416,7 +415,6 @@
         color: #ffffff;
         background: linear-gradient(90deg, rgba(47, 217, 230, 0.35) 0%, rgba(8, 18, 24, 0.95) 100%);
         border: 1px solid var(--gb-accent);
-        border-radius: 4px;
         box-shadow: 0 0 20px rgba(47, 217, 230, 0.4), inset 0 0 12px rgba(47, 217, 230, 0.2);
         cursor: pointer;
         z-index: 5;
@@ -504,7 +502,6 @@
         min-height: 40px;
         background: linear-gradient(90deg, #101c22 0%, #081014 100%);
         border: 1px solid rgba(47, 217, 230, 0.3);
-        border-radius: 4px;
         color: var(--gb-dim);
         font-family: var(--gb-display);
         font-size: 12px;
@@ -599,7 +596,6 @@
       }
       .gb-boot-shelved {
         border: 1px solid rgba(47, 217, 230, 0.3);
-        border-radius: 4px;
         background: rgba(4, 8, 12, 0.88);
         backdrop-filter: blur(12px);
         box-shadow: 0 6px 22px rgba(0, 0, 0, 0.8);
@@ -657,7 +653,7 @@
         text-transform: uppercase;
       }
 
-      /* Stat Telemetry Capsule Cards (High-Contrast Dual-Color Readout) */
+      /* The counts on a shelf card */
       .gb-boot-shelved-holds {
         display: flex;
         flex-wrap: wrap;
@@ -672,7 +668,6 @@
         padding: 5px 10px;
         background: rgba(2, 5, 8, 0.9);
         border: 1px solid rgba(47, 217, 230, 0.2);
-        border-radius: 3px;
         box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.7);
         min-width: 64px;
       }
@@ -740,7 +735,6 @@
         display: inline-flex;
         align-items: center;
         padding: 2px 8px;
-        border-radius: 3px;
         background: rgba(34, 197, 94, 0.15);
         border: 1px solid rgba(34, 197, 94, 0.6);
         color: #4ade80;
@@ -750,7 +744,6 @@
         display: inline-flex;
         align-items: center;
         padding: 2px 8px;
-        border-radius: 3px;
         background: rgba(47, 217, 230, 0.15);
         border: 1px solid rgba(47, 217, 230, 0.6);
         color: #2fd9e6;
@@ -824,7 +817,6 @@
         padding: 40px 28px;
         background: rgba(6, 12, 16, 0.8);
         border: 1px dashed var(--gb-edge-lit);
-        border-radius: 4px;
         color: var(--gb-dim);
         text-align: center;
         font-size: 14px;
@@ -860,7 +852,7 @@
         height: 100%;
       }
 
-      /* 2x2 Grid (4 Quadrants) for Step 1 - All Elements 100% Visible Without Scrolling */
+      /* Step one: four panels in a square, all of it on screen without a scroll */
       .gb-boot-wizard-pane {
         display: flex;
         flex-direction: column;
@@ -894,7 +886,6 @@
         padding: 12px 16px;
         background: rgba(3, 8, 12, 0.92);
         border: 1px solid rgba(47, 217, 230, 0.22);
-        border-radius: 4px;
         box-shadow: 0 4px 18px rgba(0, 0, 0, 0.7), inset 0 0 16px rgba(47, 217, 230, 0.03);
         position: relative;
         box-sizing: border-box;
@@ -943,121 +934,6 @@
         text-transform: uppercase;
       }
 
-      /* Distinct Glowing Gold AI Accelerators */
-      .gb-hud-ai-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 12px;
-        background: linear-gradient(90deg, rgba(255, 179, 0, 0.25) 0%, rgba(24, 20, 10, 0.95) 100%);
-        border: 1px solid rgba(255, 193, 7, 0.8);
-        border-radius: 3px;
-        color: #ffecb3;
-        font-family: var(--gb-display);
-        font-size: 10px;
-        font-weight: 800;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        cursor: pointer;
-        box-shadow: 0 0 14px rgba(255, 193, 7, 0.35);
-        transition: all 0.15s ease;
-      }
-      .gb-hud-ai-btn:hover {
-        background: linear-gradient(90deg, rgba(255, 179, 0, 0.5) 0%, rgba(36, 30, 15, 0.98) 100%);
-        box-shadow: 0 0 24px rgba(255, 193, 7, 0.7);
-        transform: translateY(-1px);
-        color: #ffffff;
-      }
-
-      /* Preset Quick-Chips */
-      .gb-preset-chips {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 6px;
-      }
-      .gb-preset-lbl {
-        color: #8ea8b0;
-        font-family: var(--gb-display);
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-      }
-      .gb-preset-chip {
-        padding: 5px 10px;
-        background: rgba(8, 20, 28, 0.85);
-        border: 1px solid rgba(47, 217, 230, 0.25);
-        border-radius: 3px;
-        color: #a2d6e3;
-        font-family: var(--gb-display);
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        cursor: pointer;
-        transition: all 0.12s ease;
-      }
-      .gb-preset-chip:hover {
-        background: rgba(18, 40, 52, 0.95);
-        border-color: var(--gb-accent);
-        color: #ffffff;
-        box-shadow: 0 0 10px rgba(47, 217, 230, 0.35);
-      }
-
-      /* Visual Asset Template Selector */
-      .gb-template-select-group {
-        width: 100%;
-      }
-      .gb-btn-template {
-        width: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 6px 12px;
-        min-height: 38px;
-        background: linear-gradient(90deg, rgba(8, 20, 28, 0.9) 0%, rgba(4, 10, 14, 0.95) 100%);
-        border: 1px solid rgba(47, 217, 230, 0.35);
-        border-radius: 4px;
-        color: #d1f4f8;
-        font-family: var(--gb-sans);
-        font-size: 12px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.15s ease;
-        box-sizing: border-box;
-      }
-      .gb-btn-template:hover {
-        background: linear-gradient(90deg, rgba(16, 36, 48, 0.95) 0%, rgba(8, 20, 28, 0.98) 100%);
-        border-color: var(--gb-accent);
-        box-shadow: 0 0 16px rgba(47, 217, 230, 0.3);
-      }
-      .gb-btn-template .gb-i {
-        width: 16px;
-        height: 16px;
-        flex: none;
-      }
-      .gb-template-title {
-        flex: 1;
-        text-align: left;
-        color: #2fd9e6;
-        font-family: var(--gb-mono);
-        font-size: 11.5px;
-        font-weight: 700;
-      }
-      .gb-template-badge {
-        padding: 2px 8px;
-        background: rgba(47, 217, 230, 0.15);
-        border: 1px solid rgba(47, 217, 230, 0.4);
-        border-radius: 3px;
-        color: var(--gb-accent-lit);
-        font-family: var(--gb-display);
-        font-size: 9.5px;
-        font-weight: 800;
-        letter-spacing: 0.1em;
-      }
-
       /* Cyber Input Fields with Floating Labels */
       .gb-cyber-field {
         position: relative;
@@ -1076,7 +952,6 @@
       .gb-cyber-field.gb-floating textarea {
         background: rgba(2, 5, 8, 0.95);
         border: 1px solid rgba(47, 217, 230, 0.35);
-        border-radius: 4px;
         padding: 16px 12px 6px 12px;
         color: #ffffff;
         font-size: 13.5px;
@@ -1113,7 +988,6 @@
         font-size: 9.5px;
         color: var(--gb-accent-lit);
         background: #040a0e;
-        border-radius: 2px;
       }
       .gb-cyber-field.gb-field-flex.gb-floating textarea {
         height: 105px;
@@ -1129,7 +1003,7 @@
         font-family: var(--gb-sans);
       }
 
-      /* Step 2 Architecture Summary Banner (Row 1) */
+      /* Step two: what step one asked for, carried along the top */
       .gb-story-arch-banner {
         display: flex;
         flex-direction: column;
@@ -1137,7 +1011,6 @@
         padding: 8px 14px;
         background: linear-gradient(90deg, rgba(4, 12, 18, 0.95) 0%, rgba(2, 6, 10, 0.98) 100%);
         border: 1px solid rgba(47, 217, 230, 0.3);
-        border-radius: 4px;
         flex: none;
       }
       .gb-story-arch-grid {
@@ -1177,7 +1050,7 @@
         color: #8ea8b0;
       }
 
-      /* Step 2 Story Panels (Row 2) */
+      /* Step two: the story, the side jobs and the tone */
       .gb-story-columns {
         display: grid;
         grid-template-columns: 1fr 1fr 1fr;
@@ -1185,33 +1058,49 @@
         flex: 1;
         min-height: 0;
       }
-      .gb-btn-ai-enhance {
+      /* The buttons that have the local model write a field of the brief */
+      .gb-write-row {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        padding-top: 4px;
+      }
+      .gb-write-foot {
+        margin-top: auto;
+      }
+      .gb-btn-write {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
         height: 30px;
-        padding: 0 10px;
+        padding: 0 12px;
         font-family: var(--gb-display);
         font-size: 10.5px;
         font-weight: 700;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        background: linear-gradient(90deg, rgba(255, 179, 0, 0.2) 0%, rgba(20, 16, 8, 0.95) 100%);
-        border: 1px solid rgba(255, 193, 7, 0.45);
-        color: #ffca28;
-        border-radius: 3px;
+        background: linear-gradient(90deg, rgba(47, 217, 230, 0.16) 0%, rgba(6, 14, 20, 0.95) 100%);
+        border: 1px solid rgba(47, 217, 230, 0.45);
+        color: var(--gb-accent-lit);
         cursor: pointer;
-        transition: all 0.15s ease;
-        margin-top: auto;
+        transition: background var(--gb-t-state) var(--gb-in), border-color var(--gb-t-state) var(--gb-in), color var(--gb-t-state) var(--gb-in);
       }
-      .gb-btn-ai-enhance:hover {
-        background: linear-gradient(90deg, rgba(255, 179, 0, 0.35) 0%, rgba(32, 24, 10, 0.98) 100%);
-        border-color: #ffd54f;
+      .gb-btn-write:hover:not(:disabled) {
+        background: linear-gradient(90deg, rgba(47, 217, 230, 0.3) 0%, rgba(10, 22, 30, 0.98) 100%);
+        border-color: var(--gb-accent);
         color: #ffffff;
-        box-shadow: 0 0 14px rgba(255, 193, 7, 0.4);
+      }
+      .gb-btn-write:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      .gb-btn-write .gb-i {
+        width: 16px;
+        height: 16px;
+        flex: none;
       }
 
-      /* Step 3 2-Column Review Grid (Row 1) & Bottom Actions (Row 2) */
+      /* Step three: the brief read back, and the way in */
       .gb-compile-review-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -1243,7 +1132,6 @@
         padding: 8px 12px;
         background: rgba(2, 6, 10, 0.85);
         border: 1px solid rgba(47, 217, 230, 0.2);
-        border-radius: 4px;
         display: flex;
         flex-direction: column;
         gap: 2px;
@@ -1252,7 +1140,6 @@
         padding: 12px 18px;
         background: rgba(4, 10, 16, 0.95);
         border: 1px solid rgba(47, 217, 230, 0.35);
-        border-radius: 4px;
         display: flex;
         flex-direction: column;
         gap: 4px;
@@ -1263,11 +1150,6 @@
         font-family: var(--gb-sans);
         font-size: 13px;
         line-height: 1.45;
-      }
-      .gb-compile-desc .gb-accent-hl {
-        color: var(--gb-accent-lit);
-        font-weight: 800;
-        font-family: var(--gb-mono);
       }
       .gb-compile-actions-strip {
         display: flex;
@@ -1297,15 +1179,14 @@
         margin-top: auto;
       }
 
-      /* Live World Telemetry & Statistics HUD (Total Buildings, Cars, Doors, Districts) */
+      /* The readouts on step one: the grid, the doors and the height the brief asked for */
       .gb-live-telemetry {
         display: grid;
-        grid-template-columns: repeat(6, 1fr);
+        grid-template-columns: repeat(3, 1fr);
         gap: 6px;
         padding: 10px 12px;
         background: rgba(2, 6, 10, 0.95);
         border: 1px solid rgba(47, 217, 230, 0.3);
-        border-radius: 4px;
         box-shadow: inset 0 0 16px rgba(47, 217, 230, 0.08);
       }
       .gb-telem-item {
@@ -1322,7 +1203,7 @@
       }
       .gb-telem-num {
         font-family: var(--gb-mono);
-        font-size: 22px;
+        font-size: 20px;
         font-weight: 900;
         line-height: 1;
         color: #2fd9e6;
@@ -1337,14 +1218,13 @@
         text-transform: uppercase;
       }
 
-      /* Global High-Tech Floating Tooltip */
+      /* The tag that follows the pointer */
       .gb-cyber-tooltip {
         position: fixed;
         z-index: 10000;
         pointer-events: none;
         background: rgba(3, 9, 14, 0.96);
         border: 1px solid var(--gb-accent);
-        border-radius: 4px;
         padding: 8px 12px;
         color: #d1f3f7;
         font-family: var(--gb-display);
@@ -1362,7 +1242,7 @@
         transform: translateY(0);
       }
 
-      /* Confirmation Modal Dialog for Compile Game */
+      /* The one question before a city is written */
       .gb-compile-modal {
         position: fixed;
         inset: 0;
@@ -1387,7 +1267,6 @@
         max-width: 90vw;
         background: linear-gradient(180deg, rgba(8, 16, 22, 0.98) 0%, rgba(3, 8, 12, 0.98) 100%);
         border: 2px solid var(--gb-accent);
-        border-radius: 6px;
         box-shadow: 0 0 32px rgba(47, 217, 230, 0.5), 0 16px 48px rgba(0, 0, 0, 0.95);
         padding: 24px 28px;
         display: flex;
@@ -1423,49 +1302,31 @@
       .gb-modal-close:hover {
         color: #ffffff;
       }
+      .gb-modal-body {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-height: 52vh;
+        overflow-y: auto;
+      }
       .gb-modal-intro {
         margin: 0;
         color: #9eb8c0;
         font-size: 12px;
         line-height: 1.4;
       }
-      .gb-modal-specs-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-      }
-      .gb-modal-spec-card {
+      .gb-modal-lines {
         display: flex;
         flex-direction: column;
-        gap: 4px;
-        padding: 10px 12px;
-        background: rgba(2, 6, 10, 0.85);
-        border: 1px solid rgba(47, 217, 230, 0.2);
-        border-radius: 4px;
+        gap: 8px;
       }
-      .gb-modal-spec-card.gb-modal-card-wide {
-        grid-column: span 2;
-      }
-      .gb-spec-label {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        color: var(--gb-accent);
-        font-family: var(--gb-display);
-        font-size: 9.5px;
-        font-weight: 700;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-      }
-      .gb-spec-val {
-        font-family: var(--gb-display);
-        font-size: 12px;
-        font-weight: 800;
-        color: #ffffff;
-      }
-      .gb-spec-sub {
-        color: #6e97a3;
-        font-size: 10.5px;
+      .gb-modal-line {
+        margin: 0;
+        padding-left: 12px;
+        border-left: 2px solid rgba(47, 217, 230, 0.35);
+        color: #d7eef3;
+        font-size: 12.5px;
+        line-height: 1.45;
       }
       .gb-modal-footer {
         display: flex;
@@ -1505,7 +1366,6 @@
         padding: 8px 12px;
         background: rgba(2, 6, 10, 0.85);
         border: 1px solid rgba(47, 217, 230, 0.2);
-        border-radius: 4px;
         box-sizing: border-box;
       }
       .gb-dial-control {
@@ -1537,7 +1397,6 @@
         flex: none;
         background: rgba(8, 18, 24, 0.95);
         border: 1px solid rgba(47, 217, 230, 0.35);
-        border-radius: 4px;
         overflow: hidden;
         box-sizing: border-box;
       }
@@ -1552,7 +1411,6 @@
         border: none !important;
         border-left: 1px solid rgba(47, 217, 230, 0.15) !important;
         border-right: 1px solid rgba(47, 217, 230, 0.15) !important;
-        border-radius: 0 !important;
         color: #2fd9e6;
         font-family: var(--gb-mono);
         font-size: 13.5px;
@@ -1577,7 +1435,6 @@
         margin: 0;
         background: rgba(47, 217, 230, 0.12);
         border: none;
-        border-radius: 0;
         color: #8ec3cf;
         font-family: var(--gb-sans);
         font-size: 11px;
@@ -1642,13 +1499,11 @@
         background: rgba(2, 6, 10, 0.9);
         padding: 3px;
         border: 1px solid rgba(47, 217, 230, 0.2);
-        border-radius: 4px;
       }
       .gb-seg-pill {
         padding: 5px 4px;
         background: transparent;
         border: 1px solid transparent;
-        border-radius: 3px;
         color: #6d8e99;
         font-family: var(--gb-display);
         font-size: 10px;
@@ -1670,58 +1525,7 @@
       }
 
       /* Zonal District Allocation Chips */
-      .gb-zones-pills {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-      }
-      .gb-zone-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 8px;
-        background: rgba(8, 18, 24, 0.9);
-        border: 1px solid rgba(47, 217, 230, 0.25);
-        border-radius: 3px;
-        color: #c0ebf2;
-        font-size: 10px;
-        font-weight: 600;
-        cursor: default;
-      }
-
       /* Atmosphere & Premise Bottom Left Action */
-      .gb-premise-foot {
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-        margin-top: auto;
-        padding-top: 4px;
-      }
-      .gb-btn-ai-prompt {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        height: 32px;
-        padding: 0 12px;
-        font-family: var(--gb-display);
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        background: linear-gradient(90deg, rgba(255, 179, 0, 0.2) 0%, rgba(20, 16, 8, 0.95) 100%);
-        border: 1px solid rgba(255, 193, 7, 0.45);
-        color: #ffca28;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.15s ease;
-      }
-      .gb-btn-ai-prompt:hover {
-        background: linear-gradient(90deg, rgba(255, 179, 0, 0.35) 0%, rgba(32, 24, 10, 0.98) 100%);
-        border-color: #ffd54f;
-        color: #ffffff;
-        box-shadow: 0 0 16px rgba(255, 193, 7, 0.4);
-      }
-
       /* Architecture Dedicated Actions Sub-Panel & Square Tiles */
       .gb-arch-actions-panel {
         display: flex;
@@ -1731,14 +1535,9 @@
         padding-top: 8px;
         border-top: 1px solid rgba(47, 217, 230, 0.2);
       }
-      .gb-panel-subhead {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
       .gb-actions-grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(2, 1fr);
         gap: 8px;
       }
       .gb-action-tile {
@@ -1751,7 +1550,6 @@
         padding: 6px 4px;
         background: linear-gradient(180deg, #0d1a22 0%, #060d12 100%);
         border: 1px solid rgba(47, 217, 230, 0.35);
-        border-radius: 4px;
         color: #d1f4f8;
         font-family: var(--gb-display);
         font-size: 10px;
@@ -1826,7 +1624,6 @@
         padding: 16px;
         background: rgba(4, 10, 15, 0.88);
         border: 1px solid rgba(47, 217, 230, 0.25);
-        border-radius: 4px;
       }
       .gb-summary-card.gb-card-arch {
         border-color: rgba(0, 230, 118, 0.4);
@@ -2113,12 +1910,10 @@
         padding: 18px 20px;
         background: rgba(8, 15, 19, 0.7);
         border: 1px solid rgba(47, 217, 230, 0.2);
-        border-radius: 4px;
       }
       .gb-boot-block .gb-boot-row {
         background: rgba(4, 9, 12, 0.9);
         border: 1px solid var(--gb-edge);
-        border-radius: 4px;
         min-height: 48px;
       }
 
@@ -2133,7 +1928,6 @@
         min-height: 52px;
         padding: var(--gb-s2) var(--gb-s3);
         border-bottom: 1px solid var(--gb-edge);
-        border-radius: 4px;
         position: relative;
         transition:
           transform var(--gb-t-press) var(--gb-in),
@@ -2157,7 +1951,6 @@
       .gb-boot-tile {
         width: 34px;
         height: 34px;
-        border-radius: 4px;
         background: var(--gb-lift);
         display: flex;
         align-items: center;
@@ -2204,7 +1997,6 @@
         min-width: 0;
         background: var(--gb-well);
         border: 1px solid var(--gb-edge);
-        border-radius: 4px;
         transition: all var(--gb-t-state) var(--gb-in);
       }
       .gb-boot-field:has(:focus-visible),
@@ -2266,7 +2058,6 @@
         background: var(--gb-lift);
         color: var(--gb-accent);
         border: 1px solid var(--gb-edge-lit);
-        border-radius: 3px;
         font-family: var(--gb-display);
         font-size: 11px;
         font-weight: 600;
@@ -2299,7 +2090,6 @@
         height: 22px;
         background: var(--gb-well);
         border: 1px solid var(--gb-edge);
-        border-radius: 11px;
         transition: all var(--gb-t-state) var(--gb-in);
       }
       .gb-boot .gb-boot-switch > span::after {
@@ -2309,7 +2099,6 @@
         left: 2px;
         width: 16px;
         height: 16px;
-        border-radius: 50%;
         background: var(--gb-off);
         transition: transform var(--gb-t-state) var(--gb-in), background-color var(--gb-t-state) var(--gb-in);
       }
@@ -2362,7 +2151,6 @@
       .gb-btn {
         padding: 0;
         border: 1px solid var(--gb-edge-lit);
-        border-radius: 4px;
         background: var(--gb-lift);
         color: var(--gb-ink);
         font: inherit;
@@ -2454,7 +2242,6 @@
       }
       .gb-btn .gb-key {
         margin-left: var(--gb-s1);
-        border-radius: 2px;
       }
 
       /* Big Icon Buttons in Header and Footer */
@@ -2468,7 +2255,6 @@
         min-height: 46px;
         padding: 0 !important;
         margin: 0 !important;
-        border-radius: 6px;
         background: linear-gradient(135deg, rgba(20, 36, 44, 0.92) 0%, rgba(8, 16, 20, 0.98) 100%);
         border: 1px solid rgba(47, 217, 230, 0.35);
         color: var(--gb-accent-lit);
@@ -2524,7 +2310,6 @@
         padding: 6px 12px;
         background: rgba(3, 7, 10, 0.98);
         border: 1px solid var(--gb-accent);
-        border-radius: 4px;
         color: #ffffff;
         font-family: var(--gb-display);
         font-size: 13px;
@@ -2719,7 +2504,7 @@
     <section class="gb-boot" id="boot" data-face="home" aria-label="game-box">
       <div class="gb-boot-card gb-c14 gb-edged" data-boot="card">
         <div class="gb-boot-card-in">
-          <!-- Top HUD Header Banner (Solid top-left, chamfered bottom-right) -->
+          <!-- The crown: the way home, the name of the face showing, and what it is for -->
           <header class="gb-boot-crown">
             <button type="button" class="gb-hud-btn gb-btn-huge-back" data-boot="back-home" aria-label="Back Home">
               <span class="gb-i gb-i-24" data-icon="back"></span>
@@ -2727,7 +2512,7 @@
             </button>
             <div class="gb-boot-crown-headings">
               <h1 class="gb-boot-title gb-t7" data-boot="title">game-box</h1>
-              <p class="gb-boot-sub gb-t2" data-boot="sub">Pick a city to play, open one somebody sent you, or make a new one.</p>
+              <p class="gb-boot-sub gb-t2" data-boot="sub">Pick a game to play, open one somebody sent you, or make a new one.</p>
             </div>
           </header>
 
@@ -2741,20 +2526,20 @@
             <label class="gb-sr-only" for="boot-apply">Open a pack onto the city on the shelf</label>
             <input id="boot-apply" data-boot="apply" type="file" accept=".json,.gbpack.json,application/json" class="gb-sr-only" />
 
-            <!-- HOME VIEW: Fullscreen 2-Column HUD Layout (Left Fixed Rail + Right Shelf) -->
+            <!-- HOME: what you can do down the left, the cities you already have on the right -->
             <section class="gb-boot-fold gb-boot-home" data-boot="home" aria-label="Your cities">
               <div class="gb-boot-home-layout">
-                <!-- Left Menu Column: Create Game, Import City, Settings + Non-Jitter Rollover Hint Text -->
+                <!-- The rail, with the reserved line under it that holds its height empty -->
                 <nav class="gb-boot-home-rail">
-                  <button type="button" class="gb-hud-btn" data-boot="crown-new" data-lit="true" aria-label="Create Game" data-hint="Launch the complete game creation pipeline: design city architecture, generate history and quests, and populate live NPC instances.">
+                  <button type="button" class="gb-hud-btn" data-boot="crown-new" data-lit="true" aria-label="Create Game" data-hint="Make a new city: its theme, what it is about, its look and size, then the story it hands out.">
                     <span class="gb-i gb-i-20" data-icon="city"></span>
                     <span>Create Game</span>
                   </button>
-                  <label class="gb-hud-btn" for="boot-open" aria-label="Import City" data-hint="Import a saved city file (.json / .gbworld) from your computer into the local game archive.">
+                  <label class="gb-hud-btn" for="boot-open" aria-label="Import City" data-hint="Open a .gbworld.json file somebody sent you, exactly as Export wrote it.">
                     <span class="gb-i gb-i-20" data-icon="door"></span>
                     <span>Import City</span>
                   </label>
-                  <label class="gb-hud-btn" for="boot-screens" aria-label="Settings" data-hint="Configure broadcast video feeds and custom game environment settings.">
+                  <label class="gb-hud-btn" for="boot-screens" aria-label="Settings" data-hint="What your own televisions play: the address of a video, kept in this browser and never written into a city.">
                     <span class="gb-i gb-i-20" data-icon="settings"></span>
                     <span>Settings</span>
                   </label>
@@ -2762,7 +2547,7 @@
                   <p class="gb-boot-rail-hint" data-boot="intel-text" aria-live="polite"></p>
                 </nav>
 
-                <!-- Right / Center Main Cities Shelf -->
+                <!-- The shelf: a card per city, newest first -->
                 <div class="gb-boot-home-main">
                   <div class="gb-boot-shelf-block">
                     <h2 class="gb-boot-heading gb-t5"><span class="gb-i gb-i-16" data-icon="city"></span>Your games</h2>
@@ -2773,405 +2558,365 @@
               </div>
             </section>
 
-            <!-- MAKE VIEW: Dedicated 3-Step Multi-Stage Pipeline Wizard (100% Full Width 3-Column Grid) -->
+            <!-- MAKE: the form that writes a new city, in three steps over one brief -->
             <div class="gb-boot-fold gb-boot-make" data-boot="make" data-wizard-step="1" hidden>
-              <!-- Hidden accessibility hooks for automated test queries -->
+              <!-- The steps and the way back, reachable by name for the keyboard and the tests -->
               <nav class="gb-sr-only" data-boot="rail">
-                <button type="button" data-boot="wizard-tab" data-step="1" aria-current="true">1. Architecture</button>
-                <button type="button" data-boot="wizard-tab" data-step="2" aria-current="false">2. Quests & Lore</button>
-                <button type="button" data-boot="wizard-tab" data-step="3" aria-current="false">3. Compile Game</button>
-                <button type="button" class="gb-hud-btn gb-btn-ai-all" data-boot="ai-all" aria-label="AI Fast Track">⚡ AI Fast Track</button>
+                <button type="button" data-boot="wizard-tab" data-step="1" aria-current="true">1. The city</button>
+                <button type="button" data-boot="wizard-tab" data-step="2" aria-current="false">2. The writing</button>
+                <button type="button" data-boot="wizard-tab" data-step="3" aria-current="false">3. Build it</button>
                 <button type="button" class="gb-hud-btn" data-boot="home-again" aria-label="Your cities">Your cities</button>
               </nav>
 
-              <!-- Main Pipeline Step Panes -->
+              <!-- One pane per step; only the one the player is on is in the page -->
               <div class="gb-boot-rows" data-boot="rows">
-                <!-- STEP 1: CITY ARCHITECTURE & ZONES (100% Full Width 2x2 Cyber Grid: 4 Visible Panels, No Scroll) -->
+                <!-- STEP 1: THE CITY (2x2 grid of panels, no scroll) -->
                 <section class="gb-boot-wizard-pane gb-pane-grid-4" data-pane="1" data-section="city">
-                  <!-- Panel 1: Top-Left - Urban Theme & Premise -->
-                  <div class="gb-cyber-panel gb-flex-col">
+                  <!-- Panel 1: Top-Left - Theme and premise -->
+                  <div class="gb-cyber-panel">
                     <div class="gb-panel-head">
-                      <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="city"></span>ATMOSPHERE & PREMISE</span>
+                      <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="city"></span>THEME &amp; PREMISE</span>
                     </div>
                     <div class="gb-cyber-field gb-floating">
                       <input id="boot-theme" data-boot="theme" type="text" maxlength="60" autocomplete="off" spellcheck="false" placeholder=" " value="quiet coastal town" />
                       <label for="boot-theme">Urban Theme</label>
                     </div>
-                    <p class="gb-field-desc">Short evocative title for the setting (e.g. Quiet Coastal Town, Neon Megacity, Rust Foundry).</p>
+                    <p class="gb-field-desc">The setting in a handful of words: quiet coastal town, neon megacity, rust foundry.</p>
+                    <div class="gb-write-row">
+                      <button type="button" class="gb-btn-write" data-write="theme" data-hint="Have the local model write the theme, reading whatever else you have already typed.">
+                        <span class="gb-i gb-i-16" data-icon="write"></span>
+                        <span data-label>Write the theme</span>
+                      </button>
+                    </div>
                     <div class="gb-cyber-field gb-field-flex gb-floating">
                       <textarea id="boot-brief" data-boot="brief" spellcheck="false" placeholder=" "></textarea>
-                      <label for="boot-brief">What the city is about (Atmospheric Backstory)</label>
+                      <label for="boot-brief">What the city is about</label>
                     </div>
-                    <p class="gb-field-desc">In your own words, as long as you like. The procedural history, architecture, and character lore are written from this.</p>
-
-                    <!-- Bottom-Left AI Prompt Writer Button -->
-                    <div class="gb-premise-foot">
-                      <button type="button" class="gb-btn-ai-prompt" data-boot="ai-brief" data-hint="Uses AI to generate a creative urban theme title and evocative narrative backstory brief.">
-                        <span class="gb-i gb-i-16" data-icon="sparkle"></span>
-                        <span>✨ AI Prompt Writer</span>
+                    <p class="gb-field-desc">In your own words, as long as you like. The history, the places and the people are written from this.</p>
+                    <div class="gb-write-row gb-write-foot">
+                      <button type="button" class="gb-btn-write" data-write="brief" data-hint="Have the local model write the premise, reading whatever else you have already typed.">
+                        <span class="gb-i gb-i-16" data-icon="write"></span>
+                        <span data-label>Write the premise</span>
                       </button>
                     </div>
                   </div>
 
-                  <!-- Panel 2: Top-Right - Visual Aesthetics (Asset Template & Segmented Switches) -->
+                  <!-- Panel 2: Top-Right - The look, three closed lists -->
                   <div class="gb-cyber-panel">
                     <div class="gb-panel-head">
-                      <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="settings"></span>VISUAL AESTHETICS</span>
+                      <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="settings"></span>THE LOOK</span>
                     </div>
                     <div class="gb-aesthetics-grid">
-                      <div class="gb-aes-item" data-hint="Select the visual asset texture pack and material templates for buildings, facades, and interior decors.">
-                        <label class="gb-cyber-lbl">Visual Asset Template</label>
-                        <div class="gb-template-select-group">
-                          <button type="button" class="gb-btn-template" data-boot="select-template" data-hint="Select visual texture packs, facade shaders, and interior decor sets (opens asset template manager).">
-                            <span class="gb-i gb-i-16" data-icon="item"></span>
-                            <span class="gb-template-title">Cyber-Metropolis v2.0 (Default Assets)</span>
-                            <span class="gb-template-badge">CHANGE TEMPLATE</span>
-                          </button>
-                        </div>
-                      </div>
-                      <div class="gb-aes-item" data-hint="Controls nighttime neon sign glow density and holographic advertisements throughout the streets.">
+                      <div class="gb-aes-item" data-hint="How much of the town is lit by neon signs and video walls after dark.">
                         <label for="boot-neon" class="gb-cyber-lbl">Neon Illumination</label>
-                        <span class="gb-sr-only" data-boot="step-neon"><select id="boot-neon" data-boot="neon"></select></span>
-                        <div class="gb-seg-pills" data-sync-select="boot-neon">
-                          <button type="button" class="gb-seg-pill" data-val="" aria-checked="true" data-hint="Default balanced neon distribution.">ANY</button>
-                          <button type="button" class="gb-seg-pill" data-val="dark" data-hint="Minimalist low-light streets with dimmed or unpowered signage.">DARK</button>
-                          <button type="button" class="gb-seg-pill" data-val="some" data-hint="Moderate storefront neon and occasional advertising signs.">SOME</button>
-                          <button type="button" class="gb-seg-pill" data-val="lit" data-hint="Vibrant cyberpunk city illuminated by glaring neon lights and video walls.">LIT</button>
+                        <span class="gb-sr-only"><select id="boot-neon" data-boot="neon"></select></span>
+                        <div class="gb-seg-pills" data-pills="neon">
+                          <button type="button" class="gb-seg-pill" data-val="" aria-checked="true" data-hint="Leave it to the generator.">ANY</button>
+                          <button type="button" class="gb-seg-pill" data-val="dark" data-hint="Low-light streets with dimmed or unpowered signage.">DARK</button>
+                          <button type="button" class="gb-seg-pill" data-val="some" data-hint="Shopfront neon and the odd advertising sign.">SOME</button>
+                          <button type="button" class="gb-seg-pill" data-val="lit" data-hint="Streets lit end to end by neon and video walls.">LIT</button>
                         </div>
                       </div>
-                      <div class="gb-aes-item" data-hint="Adjusts building clustering density per block and spacing of open plazas.">
+                      <div class="gb-aes-item" data-hint="How tightly the buildings are packed onto each block.">
                         <label for="boot-density" class="gb-cyber-lbl">Urban Density</label>
-                        <span class="gb-sr-only" data-boot="step-density"><select id="boot-density" data-boot="density"></select></span>
-                        <div class="gb-seg-pills" data-sync-select="boot-density">
-                          <button type="button" class="gb-seg-pill" data-val="" aria-checked="true" data-hint="Standard procedural block density.">ANY</button>
-                          <button type="button" class="gb-seg-pill" data-val="sparse" data-hint="Open roads with wide sidewalks, courtyards, and detached structures.">SPARSE</button>
-                          <button type="button" class="gb-seg-pill" data-val="mixed" data-hint="Varied skyline with a blend of dense urban corners and open avenues.">MIXED</button>
-                          <button type="button" class="gb-seg-pill" data-val="dense" data-hint="Tightly packed high-density building plots with narrow alleyways.">DENSE</button>
+                        <span class="gb-sr-only"><select id="boot-density" data-boot="density"></select></span>
+                        <div class="gb-seg-pills" data-pills="density">
+                          <button type="button" class="gb-seg-pill" data-val="" aria-checked="true" data-hint="Leave it to the generator.">ANY</button>
+                          <button type="button" class="gb-seg-pill" data-val="sparse" data-hint="Wide pavements, courtyards and detached buildings.">SPARSE</button>
+                          <button type="button" class="gb-seg-pill" data-val="mixed" data-hint="Dense corners and open avenues in the same town.">MIXED</button>
+                          <button type="button" class="gb-seg-pill" data-val="dense" data-hint="Tightly packed plots and narrow alleyways.">DENSE</button>
                         </div>
                       </div>
-                      <div class="gb-aes-item" data-hint="Sets the physical weathering, grime, rust, and surface wear on building facades.">
-                        <label for="boot-wear" class="gb-cyber-lbl">Facade Weathering & Wear</label>
-                        <span class="gb-sr-only" data-boot="step-wear"><select id="boot-wear" data-boot="wear"></select></span>
-                        <div class="gb-seg-pills" data-sync-select="boot-wear">
-                          <button type="button" class="gb-seg-pill" data-val="" aria-checked="true" data-hint="Default mixed architectural condition.">ANY</button>
-                          <button type="button" class="gb-seg-pill" data-val="kept" data-hint="Clean, polished corporate glass and well-maintained modern materials.">KEPT</button>
-                          <button type="button" class="gb-seg-pill" data-val="lived-in" data-hint="Authentic lived-in city streets with realistic weathering and signage.">LIVED-IN</button>
-                          <button type="button" class="gb-seg-pill" data-val="run-down" data-hint="Gritty, peeling paint, grime-stained concrete, and weathered rust.">RUN-DOWN</button>
+                      <div class="gb-aes-item" data-hint="How worn the facades are: the grime, the rust and the peeling paint.">
+                        <label for="boot-wear" class="gb-cyber-lbl">Facade Weathering &amp; Wear</label>
+                        <span class="gb-sr-only"><select id="boot-wear" data-boot="wear"></select></span>
+                        <div class="gb-seg-pills" data-pills="wear">
+                          <button type="button" class="gb-seg-pill" data-val="" aria-checked="true" data-hint="Leave it to the generator.">ANY</button>
+                          <button type="button" class="gb-seg-pill" data-val="kept" data-hint="Clean glass and well-kept modern materials.">KEPT</button>
+                          <button type="button" class="gb-seg-pill" data-val="lived-in" data-hint="Real weathering and signage on streets people use.">LIVED-IN</button>
+                          <button type="button" class="gb-seg-pill" data-val="run-down" data-hint="Peeling paint, stained concrete and rust.">RUN-DOWN</button>
                         </div>
                       </div>
                     </div>
-                    <p class="gb-boot-note gb-t2" style="margin-top: auto; font-size: 10px; line-height: 1.35; color: #5c7882;">
-                      The look is one catalogue of buildings, facades and clothes, so those three are the whole of the style. A period or a look outside it (medieval, pastel, brutalist) cannot be drawn and is not offered.
+                    <p class="gb-boot-note gb-t2">
+                      The look is one catalogue of buildings, facades and clothes, so those three are the whole of the style. A period or a look outside it
+                      (medieval, pastel, brutalist) cannot be drawn and is not offered.
                     </p>
                   </div>
 
-                  <!-- Panel 3: Bottom-Left - Grid Dimensions & Seed -->
+                  <!-- Panel 3: Bottom-Left - Size and seed -->
                   <div class="gb-cyber-panel">
                     <div class="gb-panel-head">
-                      <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="map"></span>GRID DIMENSIONS & SEED</span>
+                      <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="map"></span>SIZE &amp; SEED</span>
                     </div>
-                    <div class="gb-cyber-dial-card" data-hint="Total street blocks across and down the procedural city grid (4 to 116). Larger grids produce larger explorable worlds.">
+                    <div class="gb-cyber-dial-card" data-hint="Street blocks across and down the city grid (1 to 116). A bigger grid is a bigger town to walk.">
                       <div class="gb-dial-control">
-                        <label class="gb-cyber-lbl" for="boot-blocks">Blocks Across & Down</label>
+                        <label class="gb-cyber-lbl" for="boot-blocks">Blocks Across &amp; Down</label>
                         <div class="gb-num-stepper-group">
-                          <button type="button" class="gb-num-step-btn" data-step-field="blocks" data-step-dir="-1" aria-label="Decrease" data-hint="Decrease block count by 1">
+                          <button type="button" class="gb-num-step-btn" data-step-field="blocks" data-step-dir="-1" aria-label="One block fewer" data-hint="One block fewer">
                             <span class="gb-i gb-i-14" data-icon="chevron-left"></span>
                           </button>
-                          <input id="boot-blocks" data-boot="blocks" type="number" min="1" max="116" step="1" value="20" data-hint="Type or use slider to set block count (4 to 116)." />
-                          <button type="button" class="gb-num-step-btn" data-step-field="blocks" data-step-dir="1" aria-label="Increase" data-hint="Increase block count by 1">
+                          <input id="boot-blocks" data-boot="blocks" type="number" min="1" max="116" step="1" value="20" data-hint="Type the block count, or drag the slider (1 to 116)." />
+                          <button type="button" class="gb-num-step-btn" data-step-field="blocks" data-step-dir="1" aria-label="One block more" data-hint="One block more">
                             <span class="gb-i gb-i-14" data-icon="chevron-right"></span>
                           </button>
                         </div>
-                        <input type="range" class="gb-cyber-range" min="4" max="116" value="20" data-sync="blocks" data-hint="Drag slider to adjust procedural grid size (4 to 116)." />
+                        <input type="range" class="gb-cyber-range" min="1" max="116" value="20" data-sync="blocks" data-hint="Drag to set the grid size (1 to 116)." />
                       </div>
                     </div>
-                    <div class="gb-cyber-dial-card" data-hint="Number of interactive building instances with explorable interiors and rooms (2 to 24).">
+                    <div class="gb-cyber-dial-card" data-hint="How many doors in the town open onto a furnished place with people in it. Left blank, the generator chooses.">
                       <div class="gb-dial-control">
-                        <label class="gb-cyber-lbl" for="boot-places">Building Instances</label>
+                        <label class="gb-cyber-lbl" for="boot-places">Doors That Open</label>
                         <div class="gb-num-stepper-group">
-                          <button type="button" class="gb-num-step-btn" data-step-field="places" data-step-dir="-1" aria-label="Decrease" data-hint="Decrease building instances count by 1">
+                          <button type="button" class="gb-num-step-btn" data-step-field="places" data-step-dir="-1" aria-label="One door fewer" data-hint="One door fewer">
                             <span class="gb-i gb-i-14" data-icon="chevron-left"></span>
                           </button>
-                          <input id="boot-places" data-boot="places" type="number" min="1" max="24" step="1" placeholder="3" data-hint="Type or use slider to set building instances (2 to 24)." />
-                          <button type="button" class="gb-num-step-btn" data-step-field="places" data-step-dir="1" aria-label="Increase" data-hint="Increase building instances count by 1">
+                          <input id="boot-places" data-boot="places" type="number" min="1" max="24" step="1" placeholder="3" data-hint="Type how many doors open, or drag the slider (1 to 24). Blank leaves it to the generator." />
+                          <button type="button" class="gb-num-step-btn" data-step-field="places" data-step-dir="1" aria-label="One door more" data-hint="One door more">
                             <span class="gb-i gb-i-14" data-icon="chevron-right"></span>
                           </button>
                         </div>
-                        <input type="range" class="gb-cyber-range" min="2" max="24" value="3" data-sync="places" data-hint="Drag slider to adjust number of interactive building instances (2 to 24)." />
+                        <input type="range" class="gb-cyber-range" min="1" max="24" value="3" data-sync="places" data-hint="Drag to set how many doors open (1 to 24)." />
                       </div>
                     </div>
                     <div class="gb-cyber-dial-card" data-hint="Tallest building the city may raise, in storeys (1 to 40). Above four storeys a plot is built from the street kit, so a high ceiling gives the downtown a skyline of towers.">
                       <div class="gb-dial-control">
                         <label class="gb-cyber-lbl" for="boot-storeys">Tallest Building</label>
                         <div class="gb-num-stepper-group">
-                          <button type="button" class="gb-num-step-btn" data-step-field="storeys" data-step-dir="-1" aria-label="Decrease" data-hint="Decrease the storey ceiling by 1">
+                          <button type="button" class="gb-num-step-btn" data-step-field="storeys" data-step-dir="-1" aria-label="One storey fewer" data-hint="One storey fewer">
                             <span class="gb-i gb-i-14" data-icon="chevron-left"></span>
                           </button>
-                          <input id="boot-storeys" data-boot="storeys" type="number" min="1" max="40" step="1" placeholder="24" data-hint="Type or use slider to set the storey ceiling (1 to 40)." />
-                          <button type="button" class="gb-num-step-btn" data-step-field="storeys" data-step-dir="1" aria-label="Increase" data-hint="Increase the storey ceiling by 1">
+                          <input id="boot-storeys" data-boot="storeys" type="number" min="1" max="40" step="1" placeholder="24" data-hint="Type the storey ceiling, or drag the slider (1 to 40). Blank leaves it to the generator." />
+                          <button type="button" class="gb-num-step-btn" data-step-field="storeys" data-step-dir="1" aria-label="One storey more" data-hint="One storey more">
                             <span class="gb-i gb-i-14" data-icon="chevron-right"></span>
                           </button>
                         </div>
-                        <input type="range" class="gb-cyber-range" min="4" max="40" value="24" data-sync="storeys" data-hint="Drag slider to adjust the tallest building the city may raise (4 to 40)." />
+                        <input type="range" class="gb-cyber-range" min="4" max="40" value="24" data-sync="storeys" data-hint="Drag to set the tallest building the city may raise (4 to 40)." />
                       </div>
                     </div>
                     <div class="gb-cyber-field gb-floating">
                       <div class="gb-seed-group">
                         <input id="boot-seed" data-boot="seed" type="text" maxlength="120" autocomplete="off" spellcheck="false" placeholder=" " value="town" />
                         <label for="boot-seed">Generator Seed</label>
-                        <button type="button" class="gb-hud-btn gb-btn-roll" data-boot="roll" data-hint="Roll a completely fresh deterministic seed string.">
+                        <button type="button" class="gb-hud-btn gb-btn-roll" data-boot="roll" data-hint="Roll a fresh seed nobody has played.">
                           <span class="gb-i gb-i-16" data-icon="seed"></span>
                           <span>Fresh seed</span>
                         </button>
                       </div>
                     </div>
-                    <p class="gb-field-desc">Deterministic random seed string that controls mathematical road placement and building footprints.</p>
+                    <p class="gb-field-desc">The same theme, seed and size build the same city every time, on any machine.</p>
                   </div>
 
-                  <!-- Panel 4: Bottom-Right - Districts, World Telemetry & Dedicated Actions -->
+                  <!-- Panel 4: Bottom-Right - What was asked for, and the way on -->
                   <div class="gb-cyber-panel">
                     <div class="gb-panel-head">
-                      <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="seed"></span>DISTRICTS & WORLD TELEMETRY</span>
+                      <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="seed"></span>WHAT YOU ASKED FOR</span>
                     </div>
 
-                    <!-- Live Entity Estimations & Statistics HUD -->
                     <div class="gb-live-telemetry">
-                      <div class="gb-telem-item" data-hint="Estimated total procedural buildings generated based on grid size and urban density">
-                        <span class="gb-telem-num" data-stat="buildings">160</span>
-                        <span class="gb-telem-lbl">EST. BUILDINGS</span>
+                      <div class="gb-telem-item" data-hint="The street grid this city is founded on, across and down.">
+                        <span class="gb-telem-num" data-said="blocks">20 x 20</span>
+                        <span class="gb-telem-lbl">BLOCKS</span>
                       </div>
-                      <div class="gb-telem-item" data-hint="Total explorable building instances with openable doors and furnished interiors">
-                        <span class="gb-telem-num" data-stat="doors">3</span>
-                        <span class="gb-telem-lbl">INSTANCES</span>
+                      <div class="gb-telem-item" data-hint="How many doors open onto a place you can walk into. Any means the generator chooses.">
+                        <span class="gb-telem-num" data-said="doorsCount">Any</span>
+                        <span class="gb-telem-lbl">DOORS THAT OPEN</span>
                       </div>
-                      <div class="gb-telem-item" data-hint="Total citizen NPCs living in district instances">
-                        <span class="gb-telem-num" data-stat="npcs">12</span>
-                        <span class="gb-telem-lbl">TOTAL NPCS</span>
-                      </div>
-                      <div class="gb-telem-item" data-hint="Total urban district sectors (Downtown Hub, West Bay, Harbor, Neon Strip)">
-                        <span class="gb-telem-num" data-stat="zones">4</span>
-                        <span class="gb-telem-lbl">ZONES</span>
-                      </div>
-                      <div class="gb-telem-item" data-hint="Estimated total automated road traffic vehicles spawned on street network">
-                        <span class="gb-telem-num" data-stat="cars">28</span>
-                        <span class="gb-telem-lbl">TRAFFIC CARS</span>
-                      </div>
-                      <div class="gb-telem-item" data-hint="Estimated total campaign and side quest steps">
-                        <span class="gb-telem-num" data-stat="steps">18</span>
-                        <span class="gb-telem-lbl">QUEST STEPS</span>
+                      <div class="gb-telem-item" data-hint="The storey ceiling the city builds under. Any means the generator chooses.">
+                        <span class="gb-telem-num" data-said="storeysCount">Any</span>
+                        <span class="gb-telem-lbl">TALLEST BUILDING</span>
                       </div>
                     </div>
 
-                    <div class="gb-zones-pills">
-                      <span class="gb-zone-chip" data-hint="Commercial downtown district with high-density storefronts and neon signs."><span class="gb-i gb-i-14" data-icon="city"></span>Downtown Hub (35%)</span>
-                      <span class="gb-zone-chip" data-hint="Residential and apartment sector with alleyways and courtyards."><span class="gb-i gb-i-14" data-icon="home"></span>West Bay (25%)</span>
-                      <span class="gb-zone-chip" data-hint="Waterfront logistics, cargo docks, and warehouse berths."><span class="gb-i gb-i-14" data-icon="map"></span>Harbor (20%)</span>
-                      <span class="gb-zone-chip" data-hint="Commercial nightlife and glowing neon advertising corridor."><span class="gb-i gb-i-14" data-icon="screen"></span>Neon Strip (20%)</span>
-                    </div>
+                    <p class="gb-field-desc">
+                      How many buildings go up, who lives in them, how many cars are on the road and how the quests run are settled while the city is built.
+                      Nothing here can say them before it runs.
+                    </p>
 
-                    <!-- Dedicated ACTIONS Sub-Panel (Save, Generate, Preview, Next) -->
                     <div class="gb-arch-actions-panel">
-                      <div class="gb-panel-subhead">
-                        <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="check"></span>ACTIONS</span>
-                      </div>
                       <div class="gb-actions-grid">
-                        <!-- 1. SAVE: Enabled if any change happened or if never clicked -->
-                        <button type="button" class="gb-action-tile" data-boot="save-city" data-hint="Save current architecture parameters and blueprint configuration snapshot.">
-                          <span class="gb-i gb-i-18" data-icon="check"></span>
-                          <span class="gb-action-title">Save Blueprint</span>
+                        <button type="button" class="gb-action-tile" data-write="all" data-hint="Have the local model write all five: the theme, the premise, the story, the side jobs and the tone.">
+                          <span class="gb-i" data-icon="write"></span>
+                          <span class="gb-action-title" data-label>Write the whole brief</span>
                         </button>
-
-                        <!-- 2. GENERATE: Generates city. Disabled once generated unless values change -->
-                        <button type="button" class="gb-action-tile" data-boot="gen-city" aria-label="Synthesize City Layout" data-hint="Generate and compile the procedural 3D street grid and architectural layouts.">
-                          <span class="gb-i gb-i-18" data-icon="seed"></span>
-                          <span class="gb-action-title">Generate City</span>
-                        </button>
-
-                        <!-- 3. PREVIEW / VIEW BLUEPRINT: Available only once a generation exists -->
-                        <button type="button" class="gb-action-tile" data-boot="view-city" disabled data-hint="View and preview the generated 3D district layout, blueprints, and building placement.">
-                          <span class="gb-i gb-i-18" data-icon="screen"></span>
-                          <span class="gb-action-title">View Blueprint</span>
-                        </button>
-
-                        <!-- 4. NEXT: Proceed to Quest & Lore / History -->
-                        <button type="button" class="gb-action-tile" data-step-nav="2" data-lit="true" data-hint="Proceed to Step 2: Quests, Side Jobs, and Narrative Lore Codex.">
-                          <span class="gb-i gb-i-18" data-icon="chevron-right"></span>
-                          <span class="gb-action-title">Next: Quests & Lore</span>
+                        <button type="button" class="gb-action-tile" data-step-nav="2" data-lit="true" data-hint="On to the story, the side jobs and the tone.">
+                          <span class="gb-i" data-icon="chevron-right"></span>
+                          <span class="gb-action-title">Next: the writing</span>
                         </button>
                       </div>
                     </div>
                   </div>
                 </section>
 
-                <!-- STEP 2: QUESTS & HISTORY (Full Width Architecture Summary Banner on Row 1, 3 Panels on Row 2) -->
+                <!-- STEP 2: THE WRITING (what step one asked for on row 1, three panels on row 2) -->
                 <section class="gb-boot-wizard-pane" data-pane="2" data-section="story" hidden>
-                  <!-- Row 1: Architecture Summary HUD Banner -->
-                  <div class="gb-story-arch-banner" data-hint="Summary of active architecture parameters, procedural geometry, and visual aesthetics from Step 1.">
+                  <div class="gb-story-arch-banner" data-hint="What the first step asked for, carried through.">
                     <div class="gb-story-arch-grid">
                       <div class="gb-arch-summary-item">
-                        <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="city"></span>THEME & ATMOSPHERE</span>
-                        <span class="gb-arch-sum-val" data-summary="theme">Quiet Coastal Town</span>
-                        <span class="gb-arch-sum-sub" data-summary="brief">Procedural city backstory active</span>
+                        <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="city"></span>THEME &amp; PREMISE</span>
+                        <span class="gb-arch-sum-val" data-said="theme">quiet coastal town</span>
+                        <span class="gb-arch-sum-sub" data-said="premise">The generator writes what the city is about</span>
                       </div>
                       <div class="gb-arch-summary-item">
-                        <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="map"></span>GRID & INSTANCES</span>
-                        <span class="gb-arch-sum-val" data-summary="grid">20x20 Grid · Seed: town</span>
-                        <span class="gb-arch-sum-sub" data-summary="places">3 Building Instances</span>
+                        <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="map"></span>SIZE &amp; SEED</span>
+                        <span class="gb-arch-sum-val" data-said="grid">20 by 20 blocks</span>
+                        <span class="gb-arch-sum-sub" data-said="seed">Seed: town</span>
                       </div>
                       <div class="gb-arch-summary-item">
-                        <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="settings"></span>VISUAL SHADERS</span>
-                        <span class="gb-arch-sum-val" data-summary="aesthetics">Neon: Any · Density: Mixed</span>
-                        <span class="gb-arch-sum-sub" data-summary="wear">Wear: Kept · Cyber Kit v2.0</span>
+                        <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="door"></span>WHAT OPENS</span>
+                        <span class="gb-arch-sum-val" data-said="doors">The generator chooses how many doors open</span>
+                        <span class="gb-arch-sum-sub" data-said="storeys">Tallest building: the generator chooses</span>
                       </div>
                       <div class="gb-arch-summary-item">
-                        <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="seed"></span>WORLD TELEMETRY</span>
-                        <span class="gb-arch-sum-val" data-summary="telemetry">~160 Buildings · 4 Zones</span>
-                        <span class="gb-arch-sum-sub" data-summary="cars">28 Traffic Cars</span>
+                        <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="settings"></span>THE LOOK</span>
+                        <span class="gb-arch-sum-val" data-said="look">The generator picks the look</span>
                       </div>
                     </div>
                   </div>
 
-                  <!-- Row 2: 3 Clean Narrative Panels (Without clickable templates, with individual AI enhance buttons) -->
                   <div class="gb-story-columns">
-                    <!-- Column 1: Main Campaign Storyline -->
-                    <div class="gb-cyber-panel gb-flex-grow">
+                    <div class="gb-cyber-panel">
                       <div class="gb-panel-head">
-                        <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="quest-main"></span>CAMPAIGN STORYLINE</span>
+                        <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="quest-main"></span>THE STORY</span>
                       </div>
                       <div class="gb-cyber-field gb-field-flex gb-floating">
                         <textarea id="boot-main" data-boot="main" autocomplete="off" spellcheck="false" placeholder=" "></textarea>
-                        <label for="boot-main">The Main Questline Objective</label>
+                        <label for="boot-main">The main quest</label>
                       </div>
-                      <p class="gb-field-desc">Central storyline arc, corporate heists, or anomalies driving player progression.</p>
-                      <button type="button" class="gb-btn-ai-enhance" data-boot="ai-story-main" data-hint="Uses AI to generate dynamic campaign storylines, corporate conspiracies, or investigative heists.">
-                        <span class="gb-i gb-i-16" data-icon="sparkle"></span>
-                        <span>✨ AI Storyteller</span>
-                      </button>
+                      <p class="gb-field-desc">What the story asks the player to do. Something a person could walk to a place and do.</p>
+                      <div class="gb-write-row gb-write-foot">
+                        <button type="button" class="gb-btn-write" data-write="mainQuest" data-hint="Have the local model write the main quest, reading the rest of the brief.">
+                          <span class="gb-i gb-i-16" data-icon="write"></span>
+                          <span data-label>Write the story</span>
+                        </button>
+                      </div>
                     </div>
 
-                    <!-- Column 2: Side Quests & Errands -->
-                    <div class="gb-cyber-panel gb-flex-grow">
+                    <div class="gb-cyber-panel">
                       <div class="gb-panel-head">
-                        <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="quest-side"></span>SIDE JOBS & ERRANDS</span>
+                        <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="quest-side"></span>SIDE JOBS</span>
                       </div>
                       <div class="gb-cyber-field gb-field-flex gb-floating">
                         <textarea id="boot-side" data-boot="side" autocomplete="off" spellcheck="false" placeholder=" "></textarea>
-                        <label for="boot-side">Side Quests & Town Errands</label>
+                        <label for="boot-side">Side quests and errands</label>
                       </div>
-                      <p class="gb-field-desc">Secondary tasks, bounties, deliveries, and favor missions handed out by local residents.</p>
-                      <button type="button" class="gb-btn-ai-enhance" data-boot="ai-story-side" data-hint="Uses AI to generate local resident favor missions, contraband errands, and investigation jobs.">
-                        <span class="gb-i gb-i-16" data-icon="sparkle"></span>
-                        <span>✨ Enhance with AI</span>
-                      </button>
+                      <p class="gb-field-desc">The kind of small work this town hands out, and who would pay for it.</p>
+                      <div class="gb-write-row gb-write-foot">
+                        <button type="button" class="gb-btn-write" data-write="sideQuests" data-hint="Have the local model write the side jobs, reading the rest of the brief.">
+                          <span class="gb-i gb-i-16" data-icon="write"></span>
+                          <span data-label>Write the side jobs</span>
+                        </button>
+                      </div>
                     </div>
 
-                    <!-- Column 3: Dialogue Tone & Citizen Codex -->
-                    <div class="gb-cyber-panel gb-flex-grow">
+                    <div class="gb-cyber-panel">
                       <div class="gb-panel-head">
-                        <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="person"></span>CITIZEN PERSONALITIES & TONE</span>
+                        <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="person"></span>HOW PEOPLE TALK</span>
                       </div>
                       <div class="gb-cyber-field gb-floating">
                         <input id="boot-tone" data-boot="tone" type="text" autocomplete="off" spellcheck="false" placeholder=" " />
-                        <label for="boot-tone">Dialogue Tone & Personality</label>
+                        <label for="boot-tone">Dialogue tone</label>
                       </div>
-                      <p class="gb-field-desc">Guides conversational style and vocabulary for citizen dialogue (e.g. Grim, warm, cynical, sharp-tongued).</p>
-                      <button type="button" class="gb-btn-ai-enhance" data-boot="ai-story-tone" data-hint="Uses AI to generate distinct citizen speech mannerisms, vocabulary codices, and dialogue tones.">
-                        <span class="gb-i gb-i-16" data-icon="sparkle"></span>
-                        <span>✨ Enhance with AI</span>
-                      </button>
+                      <p class="gb-field-desc">A few adjectives, the way people here sound: guarded, dry, tired.</p>
+                      <div class="gb-write-row gb-write-foot">
+                        <button type="button" class="gb-btn-write" data-write="tone" data-hint="Have the local model write the tone, reading the rest of the brief.">
+                          <span class="gb-i gb-i-16" data-icon="write"></span>
+                          <span data-label>Write the tone</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
 
-                  <!-- External Dedicated Navigation Bar for Step 2 -->
                   <div class="gb-pane-foot-actions">
-                    <button type="button" class="gb-hud-btn" data-step-nav="1" data-hint="Return to Step 1: City Architecture.">
+                    <button type="button" class="gb-hud-btn" data-step-nav="1" data-hint="Back to the city itself.">
                       <span class="gb-i gb-i-16" data-icon="chevron-left"></span>
-                      <span>Back to Architecture</span>
+                      <span>Back to the city</span>
                     </button>
-                    <button type="button" class="gb-hud-btn" data-step-nav="3" data-lit="true" data-hint="Proceed to Step 3: Review & World Compilation.">
-                      <span>Next: Review & Compile</span>
+                    <button type="button" class="gb-hud-btn" data-step-nav="3" data-lit="true" data-hint="On to the last look before it is built.">
+                      <span>Next: read it back</span>
                       <span class="gb-i gb-i-16" data-icon="chevron-right"></span>
                     </button>
                   </div>
                 </section>
 
-                <!-- STEP 3: COMPILE GAME (2 Columns Review on Row 1, Full Description & Compile Button on Row 2) -->
+                <!-- STEP 3: BUILD IT (the brief read back on row 1, the way in on row 2) -->
                 <section class="gb-boot-wizard-pane" data-pane="3" data-section="build" hidden>
-                  <!-- Row 1: 2-Column Final Review (Architecture vs. Narrator & Synthesis) -->
                   <div class="gb-compile-review-grid">
-                    <!-- Column 1: Architecture Specification -->
                     <div class="gb-review-col">
                       <div class="gb-cyber-panel">
                         <div class="gb-panel-head">
-                          <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="city"></span>ARCHITECTURE & GEOMETRY SPECIFICATION</span>
+                          <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="city"></span>THE CITY</span>
                         </div>
                         <div class="gb-review-items-list">
                           <div class="gb-review-item-card">
-                            <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="city"></span>URBAN THEME & ATMOSPHERE</span>
-                            <span class="gb-arch-sum-val" data-review-theme>Quiet Coastal Town</span>
-                            <span class="gb-arch-sum-sub" data-review-brief>Procedural city backstory configured</span>
+                            <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="city"></span>THEME &amp; PREMISE</span>
+                            <span class="gb-arch-sum-val" data-said="theme">quiet coastal town</span>
+                            <span class="gb-arch-sum-sub" data-said="premise">The generator writes what the city is about</span>
                           </div>
                           <div class="gb-review-item-card">
-                            <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="map"></span>GRID LAYOUT & SEED</span>
-                            <span class="gb-arch-sum-val" data-review-grid>20x20 Grid · Seed: town</span>
-                            <span class="gb-arch-sum-sub" data-review-instances-sub>3 Explorable Furnished Building Instances</span>
+                            <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="map"></span>SIZE &amp; SEED</span>
+                            <span class="gb-arch-sum-val" data-said="grid">20 by 20 blocks</span>
+                            <span class="gb-arch-sum-sub" data-said="seed">Seed: town</span>
                           </div>
                           <div class="gb-review-item-card">
-                            <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="settings"></span>VISUAL AESTHETICS & SHADERS</span>
-                            <span class="gb-arch-sum-val" data-review-style>Neon: Any · Density: Mixed · Wear: Kept</span>
-                            <span class="gb-arch-sum-sub">Asset Kit: Cyber-Metropolis v2.0</span>
+                            <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="door"></span>WHAT OPENS</span>
+                            <span class="gb-arch-sum-val" data-said="doors">The generator chooses how many doors open</span>
+                            <span class="gb-arch-sum-sub" data-said="storeys">Tallest building: the generator chooses</span>
                           </div>
                           <div class="gb-review-item-card">
-                            <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="seed"></span>DISTRICT ALLOCATION</span>
-                            <span class="gb-arch-sum-val" data-review-telemetry>~160 Estimated Buildings · 28 Traffic Cars</span>
-                            <span class="gb-arch-sum-sub">4 Zones: Downtown (35%), West Bay (25%), Harbor (20%), Neon Strip (20%)</span>
+                            <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="settings"></span>THE LOOK</span>
+                            <span class="gb-arch-sum-val" data-said="look">The generator picks the look</span>
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    <!-- Column 2: Narrator & Lore Codex -->
                     <div class="gb-review-col">
                       <div class="gb-cyber-panel">
                         <div class="gb-panel-head">
-                          <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="quest-main"></span>NARRATIVE & CODEX SPECIFICATION</span>
+                          <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="quest-main"></span>THE WRITING</span>
                         </div>
                         <div class="gb-review-items-list">
                           <div class="gb-review-item-card">
-                            <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="quest-main"></span>CAMPAIGN STORYLINE ARC</span>
-                            <span class="gb-arch-sum-val" data-review-main>Procedural Main Campaign</span>
+                            <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="quest-main"></span>THE STORY</span>
+                            <span class="gb-arch-sum-val" data-said="story">The generator writes the story</span>
                           </div>
                           <div class="gb-review-item-card">
-                            <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="quest-side"></span>DYNAMIC SIDE ERRANDS</span>
-                            <span class="gb-arch-sum-val" data-review-side>Dynamic Side Missions & Bounties</span>
+                            <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="quest-side"></span>SIDE JOBS</span>
+                            <span class="gb-arch-sum-val" data-said="side">The generator invents the side jobs</span>
                           </div>
                           <div class="gb-review-item-card">
-                            <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="person"></span>CITIZEN PERSONALITIES & TOTAL NPCS</span>
-                            <span class="gb-arch-sum-val" data-review-tone>Tone: Grim, tense, heavy</span>
-                            <span class="gb-arch-sum-sub" data-review-npcs-count>Estimated ~12 Citizen NPCs assigned to building instances</span>
+                            <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="person"></span>HOW PEOPLE TALK</span>
+                            <span class="gb-arch-sum-val" data-said="tone">The generator picks how people talk</span>
+                          </div>
+                          <div class="gb-review-item-card">
+                            <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="screen"></span>THE LOCAL MODEL</span>
+                            <label class="gb-boot-toggle">
+                              <input id="boot-model" data-boot="model" type="checkbox" />
+                              <span class="gb-boot-switch"><span></span></span>
+                              <span class="gb-boot-label">Write it with the local model</span>
+                              <span class="gb-boot-state" data-boot="model-state">Off</span>
+                            </label>
+                            <span class="gb-arch-sum-sub">
+                              On, the model writes the history, the places and the quests, and the Write buttons on this form work. Off, the city is written
+                              from the seed alone.
+                            </span>
                           </div>
                         </div>
-
-                        <!-- Hidden inputs for local model binding -->
-                        <input id="boot-model" data-boot="model" type="checkbox" style="display: none;" />
-                        <span data-boot="model-state" style="display: none;">Off</span>
                       </div>
                     </div>
                   </div>
 
-                  <!-- Row 2: Fixed Descriptive Explanation & Compile Action Button -->
                   <div class="gb-compile-desc-box">
-                    <p class="gb-compile-desc" data-boot="compile-desc">
-                      Ready to generate <span class="gb-accent-hl" data-desc-instances>3 building instances</span> with <span class="gb-accent-hl" data-desc-npcs>12 total NPCs</span> belonging to the district instances in <span class="gb-accent-hl" data-desc-theme>Quiet Coastal Town</span>. Are you sure you want to compile and assemble the game?
-                    </p>
+                    <p class="gb-compile-desc" data-said="ready">A 20 by 20 block city. Build it?</p>
                     <div class="gb-compile-actions-strip">
-                      <button type="button" class="gb-hud-btn" data-step-nav="2" data-hint="Return to Step 2: Quests & Lore.">
+                      <button type="button" class="gb-hud-btn" data-step-nav="2" data-hint="Back to the story, the side jobs and the tone.">
                         <span class="gb-i gb-i-16" data-icon="chevron-left"></span>
-                        <span>Back to Quests & Lore</span>
+                        <span>Back to the writing</span>
                       </button>
-                      <button type="button" class="gb-hud-btn gb-btn-compile-game" data-boot="compile-trigger" data-lit="true" aria-label="Compile and Launch" data-hint="Confirm specifications and compile the full 3D game world.">
+                      <button type="button" class="gb-hud-btn gb-btn-compile-game" data-boot="compile-trigger" data-lit="true" data-hint="Read the brief back one last time, then build the city.">
                         <span class="gb-i gb-i-24" data-icon="check"></span>
-                        <span>🚀 COMPILE AND ASSEMBLE GAME</span>
+                        <span>Build the city</span>
                       </button>
                     </div>
                   </div>
@@ -3179,124 +2924,68 @@
               </div>
             </div>
 
-            <!-- Confirmation Modal Dialog for World Compilation -->
+            <!-- What is about to be built, asked once before anything is written -->
             <div class="gb-compile-modal" data-boot="compile-modal" hidden>
               <div class="gb-compile-modal-backdrop" data-modal-dismiss></div>
-              <div class="gb-compile-modal-dialog">
+              <div class="gb-compile-modal-dialog" role="dialog" aria-modal="true" aria-label="Build this city">
                 <div class="gb-modal-header">
-                  <span class="gb-modal-title"><span class="gb-i gb-i-20" data-icon="settings"></span>CONFIRM WORLD COMPILATION</span>
-                  <button type="button" class="gb-modal-close" data-modal-dismiss aria-label="Close modal">✕</button>
+                  <span class="gb-modal-title"><span class="gb-i gb-i-20" data-icon="city"></span>BUILD THIS CITY</span>
+                  <button type="button" class="gb-modal-close" data-modal-dismiss aria-label="Close">&#10005;</button>
                 </div>
                 <div class="gb-modal-body">
-                  <p class="gb-modal-intro">Ready to assemble and launch the procedural world with the following active parameters:</p>
-                  
-                  <div class="gb-modal-specs-grid">
-                    <div class="gb-modal-spec-card">
-                      <span class="gb-spec-label"><span class="gb-i gb-i-14" data-icon="city"></span>ARCHITECTURE & THEME</span>
-                      <span class="gb-spec-val" data-modal-theme>Quiet Coastal Town</span>
-                      <span class="gb-spec-sub" data-modal-grid>20x20 Grid · 4 District Zones</span>
-                    </div>
-                    <div class="gb-modal-spec-card">
-                      <span class="gb-spec-label"><span class="gb-i gb-i-14" data-icon="screen"></span>POPULATION & DENSITY</span>
-                      <span class="gb-spec-val" data-modal-entities>~160 Buildings · 28 Vehicles</span>
-                      <span class="gb-spec-sub" data-modal-style>Neon: Any · Density: Mixed · Wear: Kept</span>
-                    </div>
-                    <div class="gb-modal-spec-card gb-modal-card-wide">
-                      <span class="gb-spec-label"><span class="gb-i gb-i-14" data-icon="quest-main"></span>CAMPAIGN & NARRATIVE CODEX</span>
-                      <span class="gb-spec-val" data-modal-quest>Procedural Main Questline</span>
-                      <span class="gb-spec-sub" data-modal-tone>Tone: Grim, tense, heavy</span>
-                    </div>
-                  </div>
+                  <p class="gb-modal-intro">This is what is about to be built:</p>
+                  <div class="gb-modal-lines" data-boot="compile-said"></div>
                 </div>
                 <div class="gb-modal-footer">
-                  <button type="button" class="gb-hud-btn" data-modal-dismiss>← Return to Edit</button>
+                  <button type="button" class="gb-hud-btn" data-modal-dismiss>Back to the form</button>
                   <button type="button" class="gb-hud-btn gb-btn-compile-confirm" data-boot="compile-proceed" data-lit="true">
                     <span class="gb-i gb-i-20" data-icon="check"></span>
-                    <span>🚀 Confirm & Assemble Game</span>
+                    <span>Build it</span>
                   </button>
                 </div>
               </div>
             </div>
 
-            <!-- Blueprint Preview Modal Dialog -->
-            <div class="gb-compile-modal" data-boot="blueprint-modal" hidden>
-              <div class="gb-compile-modal-backdrop" data-modal-dismiss></div>
-              <div class="gb-compile-modal-dialog">
-                <div class="gb-modal-header">
-                  <span class="gb-modal-title"><span class="gb-i gb-i-20" data-icon="city"></span>ARCHITECTURE BLUEPRINT PREVIEW</span>
-                  <button type="button" class="gb-modal-close" data-modal-dismiss aria-label="Close blueprint preview">✕</button>
-                </div>
-                <div class="gb-modal-body">
-                  <p class="gb-modal-intro">Generated architectural specifications and procedural city footprint:</p>
-                  
-                  <div class="gb-modal-specs-grid">
-                    <div class="gb-modal-spec-card">
-                      <span class="gb-spec-label"><span class="gb-i gb-i-14" data-icon="city"></span>THEME & GRID</span>
-                      <span class="gb-spec-val" data-bp-theme>Quiet Coastal Town</span>
-                      <span class="gb-spec-sub" data-bp-grid>20x20 Grid · Seed: town</span>
-                    </div>
-                    <div class="gb-modal-spec-card">
-                      <span class="gb-spec-label"><span class="gb-i gb-i-14" data-icon="seed"></span>DISTRICTS & FOOTPRINTS</span>
-                      <span class="gb-spec-val" data-bp-entities>~160 Buildings · 3 Explorable Instances</span>
-                      <span class="gb-spec-sub" data-bp-zones>4 District Zones (Downtown, West Bay, Harbor, Neon)</span>
-                    </div>
-                    <div class="gb-modal-spec-card gb-modal-card-wide">
-                      <span class="gb-spec-label"><span class="gb-i gb-i-14" data-icon="screen"></span>AESTHETIC SPECIFICATION</span>
-                      <span class="gb-spec-val" data-bp-style>Neon: Any · Density: Mixed · Wear: Kept</span>
-                      <span class="gb-spec-sub" data-bp-brief>Atmosphere: In your own words...</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="gb-modal-footer">
-                  <button type="button" class="gb-hud-btn" data-modal-dismiss>← Close Blueprint</button>
-                  <button type="button" class="gb-hud-btn gb-btn-compile-confirm" data-step-nav="2" data-modal-dismiss data-lit="true">
-                    <span class="gb-i gb-i-16" data-icon="chevron-right"></span>
-                    <span>Proceed to Quests & Lore →</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Global High-Tech Floating Tooltip Component -->
+            <!-- The tag that follows the pointer, filled from whatever data-hint it is over -->
             <div class="gb-cyber-tooltip" data-boot="intel-tooltip" aria-hidden="true"></div>
 
-            <!-- Bottom HUD Footer: Seamless Interlocking Chevrons (arrowreview.jpg) -->
+            <!-- The foot: the ways in and out the panel keeps by name, and the step ribbon -->
             <div class="gb-boot-foot">
               <button type="button" class="gb-sr-only" data-boot="new" aria-label="New city" hidden>New city</button>
               <button type="button" class="gb-sr-only" data-boot="grow" aria-label="Grow and pack" disabled>Grow and pack</button>
               <button type="button" class="gb-sr-only" data-boot="cancel" aria-label="Cancel" hidden>Cancel</button>
               <button type="button" class="gb-sr-only" data-boot="close" aria-label="Back to the city" hidden>Back to the city <kbd class="gb-key gb-cut gb-c4">Esc</kbd></button>
 
-              <!-- Seamless Interconnected Pipeline Stepper Ribbon (arrowreview.jpg) -->
+              <!-- The three steps, as chevrons that run into one another -->
               <div class="gb-boot-stepper" data-boot="stepper">
-                <button type="button" class="gb-step-chevron gb-step-arch" data-step-target="1" aria-current="true" data-hint="Step 1: Architect urban layout, building density, district sectors, and visual aesthetics.">
+                <button type="button" class="gb-step-chevron gb-step-arch" data-step-target="1" aria-current="true" data-hint="Step 1: the theme, what the city is about, its look, its size and its seed.">
                   <svg class="gb-chevron-wings" viewBox="0 0 32 32" aria-hidden="true">
                     <path d="M4 6 L14 16 L4 26" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
                     <path d="M16 6 L26 16 L16 26" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
                   </svg>
                   <span class="gb-chevron-trail">»»</span>
                   <span class="gb-chevron-num">01</span>
-                  <span class="gb-chevron-label">ARCHITECTURE</span>
+                  <span class="gb-chevron-label">THE CITY</span>
                   <span class="gb-chevron-trail">»»</span>
                 </button>
-                <button type="button" class="gb-step-chevron gb-step-story" data-step-target="2" aria-current="false" data-hint="Step 2: Define campaign storyline, dynamic side jobs, citizen dialogue tone, and codices.">
+                <button type="button" class="gb-step-chevron gb-step-story" data-step-target="2" aria-current="false" data-hint="Step 2: the story, the side jobs and how people here talk.">
                   <svg class="gb-chevron-wings" viewBox="0 0 32 32" aria-hidden="true">
                     <path d="M4 6 L14 16 L4 26" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
                     <path d="M16 6 L26 16 L16 26" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
                   </svg>
                   <span class="gb-chevron-trail">»»</span>
                   <span class="gb-chevron-num">02</span>
-                  <span class="gb-chevron-label">QUESTS & HISTORY</span>
+                  <span class="gb-chevron-label">THE WRITING</span>
                   <span class="gb-chevron-trail">»»</span>
                 </button>
-                <button type="button" class="gb-step-chevron gb-step-compile" data-step-target="3" aria-current="false" data-hint="Step 3: Review specifications, configure AI synthesis engine, and compile the game.">
+                <button type="button" class="gb-step-chevron gb-step-compile" data-step-target="3" aria-current="false" data-hint="Step 3: read the brief back, choose whether the local model writes it, and build the city.">
                   <svg class="gb-chevron-wings" viewBox="0 0 32 32" aria-hidden="true">
                     <path d="M4 6 L14 16 L4 26" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
                     <path d="M16 6 L26 16 L16 26" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
                   </svg>
                   <span class="gb-chevron-trail">»»</span>
                   <span class="gb-chevron-num">03</span>
-                  <span class="gb-chevron-label">COMPILE INSTANCES</span>
+                  <span class="gb-chevron-label">BUILD IT</span>
                   <span class="gb-chevron-trail">»»</span>
                 </button>
               </div>

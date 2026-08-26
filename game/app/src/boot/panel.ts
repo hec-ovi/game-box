@@ -1,9 +1,10 @@
+import type { Sidecar } from '@gb/sidecar'
 import type { CityBrief } from './brief.ts'
 import { paintIcons } from './chrome.ts'
 import { CityForm } from './form.ts'
+import { Hints } from './hints.ts'
 import { LibraryView, type OnTheShelf } from './library-view.ts'
 import { enters, replays } from './motion.ts'
-import { Sections } from './sections.ts'
 
 export interface PanelHandlers {
   generate(brief: CityBrief): void
@@ -31,10 +32,10 @@ export interface PanelHandlers {
 export type PanelFace = 'home' | 'make'
 
 /** What each face calls itself, and what it says under that. */
-const TITLES: Record<PanelFace, string> = { home: 'game-box', make: 'Game Architect Pipeline' }
+const TITLES: Record<PanelFace, string> = { home: 'game-box', make: 'A new city' }
 const SUBS: Record<PanelFace, string> = {
   home: 'Pick a game to play, open one somebody sent you, or make a new one.',
-  make: 'Step-by-step procedural generation: Architecture → Quests & History → Compile Game.',
+  make: 'Three steps over one brief: the city, the writing, then build it. Every field is optional.',
 }
 
 /**
@@ -48,7 +49,7 @@ export class Panel {
   #card: HTMLElement
   #form: CityForm
   #library: LibraryView
-  #sections: Sections
+  #rail: HTMLElement
   #open: HTMLInputElement
   #apply: HTMLInputElement
   #screens: HTMLInputElement
@@ -93,10 +94,16 @@ export class Panel {
     // the markup declares an icon by name and this draws it, so the panel is
     // one stylesheet and one sprite rather than a paragraph of svg per row
     paintIcons(root)
+    new Hints(root)
     this.#card = find('card')
-    this.#form = new CityForm(find, root)
+    this.#form = new CityForm({
+      find,
+      root,
+      say: (message, trouble) => this.waiting(message, trouble),
+      generate: () => this.#handlers.generate(this.brief),
+    })
     this.#library = new LibraryView(find)
-    this.#sections = new Sections(find)
+    this.#rail = find('rail')
     this.#home = find('home')
     this.#make = find('make')
     this.#title = find('title')
@@ -154,38 +161,6 @@ export class Panel {
       createCity.addEventListener('click', () => void (this.face = 'make'))
     }
 
-    const intelText = root.querySelector<HTMLElement>('[data-boot="intel-text"]')
-    if (intelText) {
-      root.addEventListener('mouseover', (event) => {
-        const target = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-hint]')
-        if (target?.dataset.hint) {
-          intelText.textContent = target.dataset.hint
-          intelText.dataset.visible = 'true'
-        }
-      })
-      root.addEventListener('mouseout', (event) => {
-        const target = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-hint]')
-        if (target) {
-          intelText.textContent = ''
-          intelText.dataset.visible = 'false'
-        }
-      })
-      root.addEventListener('focusin', (event) => {
-        const target = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-hint]')
-        if (target?.dataset.hint) {
-          intelText.textContent = target.dataset.hint
-          intelText.dataset.visible = 'true'
-        }
-      })
-      root.addEventListener('focusout', (event) => {
-        const target = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-hint]')
-        if (target) {
-          intelText.textContent = ''
-          intelText.dataset.visible = 'false'
-        }
-      })
-    }
-
     // the way back is a key as well as a button, and the button prints it
     root.addEventListener('keydown', (event) => {
       if (event.key !== 'Escape' || !this.#playing) return
@@ -196,6 +171,15 @@ export class Panel {
 
   on(handlers: PanelHandlers): void {
     this.#handlers = handlers
+  }
+
+  /**
+   * The page's one sidecar, handed over by whoever built it, so the buttons
+   * that have the local model write a field of the brief reach the same model
+   * the city itself is written by.
+   */
+  set sidecar(sidecar: Sidecar) {
+    this.#form.sidecar = sidecar
   }
 
   get brief(): CityBrief {
@@ -345,7 +329,8 @@ export class Panel {
   }
 
   #busy(working: boolean): void {
-    this.#sections.quiet(working)
+    // the steps go quiet while a city is being written: none of them is the answer to that
+    this.#rail.dataset.quiet = String(working)
     this.#generate.disabled = working
     this.#open.disabled = working
     this.#grow.disabled = working || this.#grow.disabled

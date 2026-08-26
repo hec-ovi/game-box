@@ -24,6 +24,7 @@ const PATHS = {
   item: 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM4 7.5l8 4.5 8-4.5M12 12v9',
   map: 'M9 4L3 6.5v14L9 18l6 2.5 6-2.5v-14L15 6.5 9 4zM9 4v14M15 6.5v14',
   back: 'M19 12H5M12 19l-7-7 7-7',
+  write: 'M4 20h4L18.5 9.5l-4-4L4 16v4zM14.5 5.5l4 4M4 20h16',
 } as const
 
 export type IconName = keyof typeof PATHS

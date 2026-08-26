@@ -362,6 +362,132 @@ describe('the panel', () => {
   })
 })
 
+/** A brief the model could really have written: every field long enough for the contract. */
+const DRAFT = {
+  theme: 'rain-soaked cargo port',
+  brief: 'The port lives off the night freight, and the harbour office has been selling the same berth twice for a decade.',
+  mainQuest: 'Find out who has been selling berth nine twice over, and what the harbour office was paid for it.',
+  sideQuests: 'Fetching manifests, running cash between the berths, and standing watch for people who would rather not be seen.',
+  tone: 'guarded, dry, tired',
+}
+
+/** A sidecar that answers one forced `write_brief` call with that draft. */
+function writes(draft: Record<string, string>, sent: unknown[]): SidecarOptions {
+  return {
+    fetch: (_input, init) => {
+      sent.push(JSON.parse(String(init?.body)))
+      const body = {
+        choices: [{ message: { tool_calls: [{ function: { name: 'write_brief', arguments: JSON.stringify(draft) } }] }, finish_reason: 'tool_calls' }],
+      }
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } }))
+    },
+  }
+}
+
+describe('having the local model write a field of the brief', () => {
+  beforeEach(servePage)
+
+  /** The toggle lives on the last step, so this is the walk a player takes to reach it. */
+  async function turnTheModelOn(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+    await user.click(screen.getByRole('button', { name: /3\. build it/i }))
+    await user.click(screen.getByLabelText(/local model/i))
+    await user.click(screen.getByRole('button', { name: /1\. the city/i }))
+  }
+
+  it('fills the field it sits beside with what the model wrote, and leaves the others alone', async () => {
+    const user = userEvent.setup()
+    const sent: unknown[] = []
+    const front = panel()
+    front.sidecar = new Sidecar(writes(DRAFT, sent))
+    front.on(QUIET_HANDLERS)
+    front.waiting()
+    await turnTheModelOn(user)
+
+    await user.type(screen.getByLabelText(/^the main quest$/i), 'who owns the customs house')
+    await user.click(screen.getByRole('button', { name: /write the premise/i }))
+
+    await waitFor(() => expect(screen.getByLabelText<HTMLTextAreaElement>(/what the city is about/i).value).toBe(DRAFT.brief))
+    // only the box the button sits beside is written: the theme the player left
+    // and the quest they typed both stand
+    expect(front.brief.theme).toBe(DEFAULTS.theme)
+    expect(front.brief.asks?.mainQuest).toBe('who owns the customs house')
+    expect(screen.getByRole('status').textContent).toMatch(/wrote what the city is about/i)
+
+    // and it really was one forced call to the local model, carrying what was already typed
+    expect(sent).toHaveLength(1)
+    const call = sent[0] as { tools: { function: { name: string } }[]; messages: { content: string }[] }
+    expect(call.tools.map((tool) => tool.function.name)).toEqual(['write_brief'])
+    expect(call.messages.map((message) => message.content).join('\n')).toContain('who owns the customs house')
+  })
+
+  it('says it needs the local model when the model is off, and writes nothing', async () => {
+    const user = userEvent.setup()
+    const sent: unknown[] = []
+    const front = panel()
+    front.sidecar = new Sidecar(writes(DRAFT, sent))
+    front.on(QUIET_HANDLERS)
+    front.waiting()
+
+    expect(front.brief.model).toBe(false)
+    await user.click(screen.getByRole('button', { name: /write the theme/i }))
+
+    expect(screen.getByRole('status').textContent).toMatch(/local model/i)
+    expect(screen.getByRole('status').dataset.trouble).toBe('true')
+    // nothing canned went into the field, and nothing went out to the sidecar
+    expect(front.brief.theme).toBe(DEFAULTS.theme)
+    expect(sent).toHaveLength(0)
+  })
+
+  it('says the model did not answer when it will not, rather than falling back on canned words', async () => {
+    const user = userEvent.setup()
+    const front = panel()
+    front.sidecar = new Sidecar(DOWN)
+    front.on(QUIET_HANDLERS)
+    front.waiting()
+    await turnTheModelOn(user)
+
+    await user.click(screen.getByRole('button', { name: /write the theme/i }))
+
+    await waitFor(() => expect(screen.getByRole('status').textContent).toMatch(/did not answer/i))
+    expect(screen.getByRole('status').dataset.trouble).toBe('true')
+    expect(front.brief.theme).toBe(DEFAULTS.theme)
+  }, 30_000)
+})
+
+describe('what the form says it is about to build', () => {
+  beforeEach(servePage)
+
+  it('reads back the size and the doors the player asked for, and asks once before building', async () => {
+    const user = userEvent.setup()
+    const asked: CityBrief[] = []
+    const front = panel()
+    front.on({ ...QUIET_HANDLERS, generate: (brief) => void asked.push(brief) })
+    front.waiting()
+
+    await user.clear(screen.getByLabelText(/blocks/i))
+    await user.type(screen.getByLabelText(/blocks/i), '8')
+    await user.type(screen.getByLabelText(/doors that open/i), '5')
+    await user.type(screen.getByLabelText(/tallest building/i), '12')
+
+    // the readout beside the fields is the fields, not an estimate of anything
+    const said = (key: string) => document.querySelector<HTMLElement>(`[data-said="${key}"]`)!.textContent
+    expect([said('blocks'), said('doorsCount'), said('storeysCount')]).toEqual(['8 x 8', '5', '12'])
+
+    await user.click(screen.getByRole('button', { name: /3\. build it/i }))
+    await user.click(screen.getByRole('button', { name: /build the city/i }))
+
+    const dialog = screen.getByRole('dialog', { name: /build this city/i })
+    expect(dialog.textContent).toContain('8 by 8 block city')
+    expect(dialog.textContent).toContain('5 of its doors open')
+    expect(dialog.textContent).toContain('taller than 12 storeys')
+    // and nothing it cannot know: no building count, no crowd, no traffic
+    expect(dialog.textContent).not.toMatch(/\d+ buildings|\d+ npcs|\d+ (traffic )?(cars|vehicles)|district zones/i)
+
+    await user.click(within(dialog).getByRole('button', { name: /^build it$/i }))
+    expect(asked).toEqual([{ theme: DEFAULTS.theme, seed: DEFAULTS.seed, blocks: 8, places: 5, storeys: 12, model: false }])
+  })
+})
+
 describe('the address bar', () => {
   it('reads a city out of it and writes the same one back', () => {
     const brief = briefFromQuery(new URLSearchParams('?seed=harbour&theme=dusty%20mining%20town&blocks=3'))
