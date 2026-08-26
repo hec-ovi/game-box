@@ -103,6 +103,7 @@ export class LibraryView {
       const confirmLabel = line('gb-boot-remove-warn gb-t1', 'Delete permanently?')
       const cancelBtn = button({
         text: 'Cancel',
+        icon: 'close',
         label: `Cancel deleting ${entry.name}`,
         tooltip: 'Cancel deletion',
         quiet: true,

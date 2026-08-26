@@ -55,7 +55,7 @@ export class Buildings {
 
   #place: Place = { kind: 'city' }
   #away = new Set<string>()
-  #veil?: (title: string) => void
+  #veil: (title: string) => void
   /** The bodies each standing room's own art drew, by interior id: its art spawned the people in it, so nobody else has them. */
   #drawn = new Map<string, Bodies>()
 
@@ -96,7 +96,7 @@ export class Buildings {
     this.#wentIn = input.wentIn ?? (() => {})
     this.#cameOut = input.cameOut
     this.#whoIsOut = input.away
-    this.#veil = input.veil
+    this.#veil = input.veil ?? (() => {})
   }
 
   get place(): Place {
@@ -141,7 +141,7 @@ export class Buildings {
     const built = this.#build(interior)
     if (!built) return
 
-    this.#veil?.(`Entering ${plot?.name ?? 'Interior'}`)
+    this.#veil(`Entering ${plot?.name ?? 'this building'}`)
 
     // somebody out in the street or walking with the player is not also
     // standing behind their own counter. The street stops while the player is
@@ -177,7 +177,7 @@ export class Buildings {
 
   leave(): void {
     if (this.#place.kind !== 'interior') return
-    this.#veil?.('Leaving to District Street')
+    this.#veil('Back out on the street')
     const doorstep = this.#city.doorsteps.get(this.#place.plotId)
     this.#place = { kind: 'city' }
     this.#stage.show(this.#city.root)

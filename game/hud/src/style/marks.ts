@@ -2,10 +2,11 @@
  * What both plans draw, painted once so a city cannot come out one way in the
  * window and another in the corner: the buildings, and the marks over them.
  *
- * The two lines of work never wear one shape in two shades. The story is a
- * solid brass diamond, an errand an open cyan ring: shape and fill both
- * differ, so which is which reads at a glance and at any size, and each mark
- * carries a dark edge, so neither disappears over a lit plot or a black street.
+ * Work is a burning square: orange for the story, yellow for an errand, each
+ * over a soft square of the same colour that stands in for a glow. A job the
+ * player has taken wears a ring round the square as well, so what is on the
+ * board reads apart from what is waiting to be picked up. Every mark carries a
+ * dark edge, so none of them disappears over a lit plot or a black street.
  */
 export const MARKS = `
 /* A building on either plan, in one of three fills: a plot nobody named, one
@@ -19,17 +20,33 @@ export const MARKS = `
 .gb-hud .gb-block[data-prominence='notable'] { fill: var(--gb-plot-notable); }
 .gb-hud .gb-block[data-prominence='landmark'] { fill: var(--gb-plot-landmark); }
 
-.gb-hud .gb-mark-main {
-  fill: var(--gb-main);
+/* Work: the square, the glow behind it and the ring round a job already taken. */
+.gb-hud .gb-mark-quest .gb-mark-core {
+  fill: var(--gb-quest-side);
   stroke: var(--gb-void);
-  stroke-width: 2.5;
+  stroke-width: 2;
   paint-order: stroke fill;
 }
-.gb-hud .gb-mark-side {
-  fill: var(--gb-void);
-  stroke: var(--gb-accent);
-  stroke-width: 3;
+.gb-hud .gb-mark-quest .gb-mark-halo {
+  fill: var(--gb-quest-side-glow);
+  stroke: none;
 }
+.gb-hud .gb-mark-quest .gb-mark-ring {
+  fill: none;
+  stroke: var(--gb-quest-side);
+  stroke-width: 2;
+}
+.gb-hud .gb-mark-quest[data-line='main'] .gb-mark-core { fill: var(--gb-quest-main); }
+.gb-hud .gb-mark-quest[data-line='main'] .gb-mark-halo { fill: var(--gb-quest-main-glow); }
+.gb-hud .gb-mark-quest[data-line='main'] .gb-mark-ring { stroke: var(--gb-quest-main); }
+
+/* A place of the player's own. */
+.gb-hud .gb-mark-home rect, .gb-hud .gb-mark-home path {
+  fill: none;
+  stroke: var(--gb-accent-lit);
+  stroke-width: 2;
+}
+
 /* A doorway the player has walked through: an open square, ink on the dark. */
 .gb-hud .gb-mark-door {
   fill: var(--gb-void);
@@ -37,12 +54,11 @@ export const MARKS = `
   stroke-width: 2;
 }
 /* Where the player is, and which way they are looking. */
-.gb-hud .gb-you path {
+.gb-hud .gb-mark-you path {
   fill: var(--gb-accent);
   stroke: var(--gb-void);
   stroke-width: 1.2;
 }
-/* A goal further out than the panel can show, held at the rim and quieter. */
-.gb-hud .gb-goal[data-edge='true'] .gb-mark-side { stroke: var(--gb-accent-dim); }
-.gb-hud .gb-goal[data-edge='true'] .gb-mark-main { fill: var(--gb-main-dim); }
+/* A goal further out than the corner can show, held at its rim and quieter. */
+.gb-hud .gb-mark[data-edge='true'] { opacity: 0.55; }
 `

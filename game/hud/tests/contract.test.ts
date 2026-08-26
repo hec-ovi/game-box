@@ -1100,7 +1100,7 @@ describe('the map tab', () => {
     const fills = [...panel.querySelectorAll('.gb-plan svg .gb-block')].map((node) => node.getAttribute('data-prominence'))
     expect(fills).toEqual(['landmark', 'background', 'notable'])
 
-    const you = panel.querySelector('.gb-plan .gb-you') as SVGElement
+    const you = panel.querySelector('.gb-plan .gb-mark-you') as SVGElement
     expect(you.getAttribute('transform')).toMatch(/^translate\(6 20\) rotate\(90\) scale\(/)
 
     // Only the plot marked named is written on the plan; the other keeps its name for hovering.
@@ -1108,10 +1108,10 @@ describe('the map tab', () => {
     expect(names).toEqual(['The Copper Wheel'])
     expect(panel.querySelector('.gb-plan .gb-block:nth-child(2) title')?.textContent).toBe('A warehouse')
 
-    const goals = [...panel.querySelectorAll('.gb-plan .gb-goal')]
+    const goals = [...panel.querySelectorAll('.gb-plan .gb-mark-goal')]
     expect(goals.map((node) => node.getAttribute('data-line'))).toEqual(['main', 'side'])
-    expect(goals[0]?.querySelector('path')).not.toBeNull()
-    expect(goals[1]?.querySelector('circle')).not.toBeNull()
+    // a job already taken wears the ring as well as the square
+    for (const goal of goals) expect(goal.querySelector('.gb-mark-ring')).not.toBeNull()
     expect(goals.map((node) => node.querySelector('text')?.textContent)).toEqual(['The Copper Wheel', 'The docks'])
 
     // The bearings under the plan say the same, the story first with its tag.
@@ -1177,7 +1177,7 @@ describe('the map tab', () => {
     // The view survives the next push of the survey: the player moved, the zoom did not.
     hud.show({ map: { ...MAP, marks: [{ x: 7, y: 20, label: 'You', kind: 'you', facing: 0 }] } })
     expect(viewBox(panel)[2]).toBeCloseTo(w, 5)
-    expect(panel.querySelectorAll('.gb-plan .gb-goal')).toHaveLength(0)
+    expect(panel.querySelectorAll('.gb-plan .gb-mark-goal')).toHaveLength(0)
   })
 
   it('points at the tracked steps while there is no survey', () => {
@@ -1506,12 +1506,12 @@ describe('the minimap', () => {
     expect(at(corner.querySelector('.gb-door'))).toEqual([19, 14])
 
     // Facing east turns the arrow ninety degrees and nothing else.
-    expect((corner.querySelector('.gb-you') as SVGElement).getAttribute('transform')).toMatch(
+    expect((corner.querySelector('.gb-mark-you') as SVGElement).getAttribute('transform')).toMatch(
       /^translate\(20 15\) rotate\(90\) scale\(/,
     )
 
     // A goal inside the radius sits where it is; one beyond it is held at the rim and says so.
-    const goals = [...corner.querySelectorAll('.gb-near-goals .gb-goal')]
+    const goals = [...corner.querySelectorAll('.gb-near-goals .gb-mark-goal')]
     expect(goals.map((goal) => goal.getAttribute('data-line'))).toEqual(['main', 'side'])
     expect(at(goals[0] as Element)).toEqual([24, 12])
     expect((goals[0] as HTMLElement).dataset.edge).toBeUndefined()
@@ -1561,16 +1561,18 @@ describe('the two lines of work', () => {
       compass: { facing: 0, goal: { label: 'The Copper Wheel', bearing: 0, distance: 90, line: 'main' } },
     })
 
-    // Two shapes, not one shape in two shades: a solid diamond and an open ring.
+    // One square in two colours, and each one over a glow of its own colour.
     const paint = (node: Element): string[] => [
       getComputedStyle(node).getPropertyValue('fill'),
       getComputedStyle(node).getPropertyValue('stroke'),
     ]
     for (const root of ['.gb-plan', '.gb-near']) {
-      const main = screen.querySelector(`${root} .gb-goal[data-line='main'] .gb-mark-main`) as Element
-      const side = screen.querySelector(`${root} .gb-goal[data-line='side'] .gb-mark-side`) as Element
-      expect(main.tagName).toBe('path')
-      expect(side.tagName).toBe('circle')
+      const main = screen.querySelector(`${root} .gb-mark-goal[data-line='main'] .gb-mark-core`) as Element
+      const side = screen.querySelector(`${root} .gb-mark-goal[data-line='side'] .gb-mark-core`) as Element
+      const glow = screen.querySelector(`${root} .gb-mark-goal[data-line='main'] .gb-mark-halo`) as Element
+      expect(main.tagName).toBe('rect')
+      expect(side.tagName).toBe('rect')
+      expect(glow).not.toBeNull()
       expect(paint(main)).not.toEqual(paint(side))
       for (const value of [...paint(main), ...paint(side)]) expect(value).not.toBe('')
     }
@@ -1579,16 +1581,16 @@ describe('the two lines of work', () => {
     const rows = [...screen.querySelectorAll('.gb-bearings li')]
     expect(rows.map((row) => row.getAttribute('data-line'))).toEqual(['main', 'side'])
 
-    // And so does the compass, in its own medium: the same two shapes, drawn
-    // at strip size, so a place on the plan and the same place on the strip
-    // are recognisably one place.
+    // And so does the compass, in its own medium: the same square in the same
+    // colour, drawn at strip size, so a place on the plan and the same place
+    // on the strip are recognisably one place.
     const strip = screen.querySelector('.gb-compass-mark') as HTMLElement
-    const asMain = strip.querySelector('.gb-mark-main') as Element
-    expect(asMain.tagName).toBe('path')
+    const asMain = strip.querySelector('.gb-mark-core') as Element
+    expect(asMain.tagName).toBe('rect')
+    const mainPaint = paint(asMain)
     hud.show({ compass: { facing: 0, goal: { label: 'The docks', bearing: 0, distance: 90, line: 'side' } } })
-    const asSide = strip.querySelector('.gb-mark-side') as Element
-    expect(asSide.tagName).toBe('circle')
-    expect(paint(asMain)).not.toEqual(paint(asSide))
+    const asSide = strip.querySelector('.gb-mark-core') as Element
+    expect(paint(asSide)).not.toEqual(mainPaint)
   })
 })
 
@@ -1799,15 +1801,7 @@ describe('announcements', () => {
 describe('the layers', () => {
   it('gives every surface its own layer, front to back, with nothing shared', () => {
     const { hud, screen } = mount()
-    hud.show({
-      talk: { speaker: 'Mara Quill' },
-      window: 'quests',
-      counter: { title: 'Bar', offers: [] },
-      screen: { machineId: 'm1', title: 'Terminal', locked: false, program: { kind: 'text', title: 'T', lines: ['Line 1'] } },
-      confirm: { title: 'Quit?', prompt: 'Sure?' },
-      loading: { title: 'Writing', stages: [] },
-      compass: { facing: 0 },
-    })
+    hud.show({ talk: { speaker: 'Mara Quill' }, window: 'quests', loading: { title: 'Writing', stages: [] }, compass: { facing: 0 } })
     const z = (selector: string): number => Number(getComputedStyle(screen.querySelector(selector) as HTMLElement).zIndex)
     const order = [
       '.gb-objectives',

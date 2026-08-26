@@ -1,6 +1,6 @@
 import type { QuestKind } from '@gb/quest'
 import { el, setText, svg } from '../dom.ts'
-import { goalShape } from '../map/marks.ts'
+import { questMark } from '../map/marks.ts'
 import { CARDINALS, distanceText } from '../phrase.ts'
 import { Reveal } from '../reveal.ts'
 import { LAYOUT } from '../style/layout.ts'
@@ -86,8 +86,9 @@ export class CompassSurface implements Surface {
     this.#mark.dataset.line = line
     if (line === this.#shape) return
     this.#shape = line
-    const box = svg('svg', { viewBox: '-10 -10 20 20', width: 14, height: 14, 'aria-hidden': 'true' })
-    box.append(goalShape(line))
+    const box = svg('svg', { viewBox: '-18 -18 36 36', width: 14, height: 14, 'aria-hidden': 'true' })
+    // the strip points at a job the player is on, so it wears the taken mark
+    box.append(questMark(line, true))
     this.#mark.replaceChildren(box)
   }
 }

@@ -31,10 +31,11 @@ export const MAP = `
   pointer-events: none;
 }
 .gb-hud .gb-plan .gb-name text { fill: var(--gb-dim); }
-/* The player, the goals and the doorways are drawn by the shared mark rules;
-   only the name beside a goal belongs to the plan. */
-.gb-hud .gb-plan .gb-goal[data-line='main'] text { fill: var(--gb-main); }
-.gb-hud .gb-plan .gb-goal text { fill: var(--gb-accent); }
+/* The player, the work and the doorways are drawn by the shared mark rules;
+   only the name written beside a mark belongs to the plan. */
+.gb-hud .gb-plan .gb-mark text { fill: var(--gb-quest-side); }
+.gb-hud .gb-plan .gb-mark[data-line='main'] text { fill: var(--gb-quest-main); }
+.gb-hud .gb-plan .gb-mark-home text { fill: var(--gb-accent-lit); }
 /* A station is a square of ink: the one mark that is neither the player nor a goal. */
 .gb-hud .gb-plan .gb-station rect { fill: var(--gb-ink); stroke: var(--gb-void); stroke-width: 1.2; }
 .gb-hud .gb-plan .gb-station text { fill: var(--gb-dim); }
@@ -94,28 +95,6 @@ export const MAP = `
   transition: color var(--gb-t-press) var(--gb-in);
 }
 .gb-hud .gb-bearing:hover, .gb-hud .gb-bearing:focus-visible { color: var(--gb-accent-lit); }
-
-/* Zone boundaries and door marks */
-.gb-hud .gb-zone-shape {
-  fill: transparent;
-  stroke: var(--gb-accent);
-  stroke-width: 0.6;
-  opacity: 0.45;
-  cursor: pointer;
-  transition: opacity var(--gb-t-press) var(--gb-in);
-}
-.gb-hud .gb-zone-shape[data-line='main'] { stroke: var(--gb-main); }
-.gb-hud .gb-zone-shape:hover { opacity: 0.9; fill: var(--gb-lift); }
-
-.gb-hud .gb-door-mark rect {
-  fill: var(--gb-solid);
-  stroke: var(--gb-accent);
-  stroke-width: 1.5;
-}
-.gb-hud .gb-door-mark text {
-  fill: var(--gb-ink);
-  font-weight: 700;
-}
 
 /* Icon explanation guide on the left sidebar */
 .gb-hud .gb-map-legend-guide {

@@ -418,6 +418,8 @@ export class Game {
       entered: () => this.#player.discovered().places,
       stations: this.#travel.marks,
       boarding: () => (this.#buildings.outdoors ? this.#travel.boarding(this.#body.position) : undefined),
+      // and the places they own, so a player who has bought a home can find it
+      homes: () => this.#player.owned(),
     })
     const guide = new Guide({ world: this.#world, nav, from: () => this.#buildings.cityPosition(), goals: followed, steps })
     this.#compass = new Compass({

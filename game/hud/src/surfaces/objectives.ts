@@ -39,7 +39,7 @@ export class ObjectivesSurface implements Surface {
 
   render(state: HudState): void {
     if (state.talk) {
-      this.#key = undefined
+      this.#key = null
       this.node.dataset.mode = 'caller'
       this.node.dataset.line = 'caller'
       this.#head.hidden = true

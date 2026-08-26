@@ -82,13 +82,13 @@ export class CodexTab implements Tab {
 
     if (this.#selected?.kind === 'place') {
       const p = this.#selected.item
-      this.#showAmplified(p.name, 'Urban District Location', p.text, 'door')
+      this.#showAmplified(p.name, 'A place you have found', p.text ?? '', 'door')
     } else if (this.#selected?.kind === 'person') {
       const pr = this.#selected.item
-      const factsText = pr.facts.map((f) => f.text).filter(Boolean).join('\n\n') || 'No facts unlocked yet.'
-      this.#showAmplified(pr.name, pr.role || 'Citizen Profile', factsText, 'person')
+      const known = pr.facts.map((fact) => fact.text).filter(Boolean).join('\n\n')
+      this.#showAmplified(pr.name, pr.role || 'Somebody you have met', known || 'You know nothing about them yet.', 'person')
     } else {
-      this.#showAmplified('Codex Database', 'Urban Archives', 'Select a location or resident to view detailed profile and telemetry.', 'door')
+      this.#showAmplified('Nothing picked', '', 'Pick a place or a person from the list.', 'door')
     }
   }
 

@@ -149,15 +149,20 @@ export interface MapPlot {
   readonly prominence?: MapProminence
 }
 
-/** Something worth pointing at: where the player is, or where they are headed. */
+/**
+ * Something worth pointing at: where the player is, where a job they are on is
+ * sending them, where there is work waiting to be taken, and a place of their
+ * own. A `goal` and an `offer` wear the same square in the same colour; the
+ * goal wears a ring round it as well, because it is work already on the board.
+ */
 export interface MapMark {
   readonly x: number
   readonly y: number
   readonly label: string
-  readonly kind: 'you' | 'goal'
+  readonly kind: 'you' | 'goal' | 'offer' | 'home'
   /** Radians clockwise from north. Only the player mark is drawn facing. */
   readonly facing?: number
-  /** On a goal: the story or an errand, so the two wear different marks. Left out reads as `side`. */
+  /** On a goal or an offer: the story or an errand, so the two burn in different colours. Left out reads as `side`. */
   readonly line?: QuestKind
 }
 

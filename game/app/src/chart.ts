@@ -33,6 +33,7 @@ export class Chart {
   #entered: () => readonly string[]
   #stations: readonly MapStation[]
   #boarding: () => string | undefined
+  #homes: () => readonly string[]
   #plan: MapPlot[]
   #landmarks: readonly string[]
   #named: MapPlot[] | undefined
@@ -51,6 +52,8 @@ export class Chart {
     /** Where fast travel boards, and the one the player is standing at. A city with no stations lists none. */
     stations?: readonly MapStation[]
     boarding?: () => string | undefined
+    /** The interiors the player holds the deed to, so a place of their own is on their map. */
+    homes?: () => readonly string[]
   }) {
     this.#world = input.world
     this.#hud = input.hud
@@ -60,6 +63,7 @@ export class Chart {
     this.#entered = input.entered
     this.#stations = input.stations ?? []
     this.#boarding = input.boarding ?? (() => undefined)
+    this.#homes = input.homes ?? (() => [])
     this.#plan = planOf(this.#world)
     this.#landmarks = this.#plan.filter((plot) => plot.prominence === 'landmark').map((plot) => plot.id)
   }
@@ -89,13 +93,21 @@ export class Chart {
   /** Measure the city and push it, whatever the map face is doing. */
   draw(): void {
     const goals = this.#goals()
+    const offers = this.#offers()
     const boarding = this.#boarding()
     this.#hud.show({
       map: {
         width: this.#world.grid.width,
         height: this.#world.grid.height,
         plots: this.#plots(goals),
-        marks: [this.#here(), ...goals.map((goal) => this.#pin(goal))],
+        marks: [
+          this.#here(),
+          ...goals.map((goal) => this.#pin(goal, 'goal')),
+          // work waiting where the player has not taken it, so somebody
+          // holding nothing can read where to start
+          ...offers.map((offer) => this.#pin(offer, 'offer')),
+          ...this.#ownHomes(),
+        ],
         stations: this.#stations,
         ...(boarding ? { boarding } : {}),
       },
@@ -115,9 +127,26 @@ export class Chart {
     }
   }
 
-  #pin(goal: Marked): MapMark {
+  #pin(goal: Marked, kind: 'goal' | 'offer'): MapMark {
     const size = this.#world.cellSize
-    return { x: goal.x / size, y: goal.z / size, label: goal.label, kind: 'goal', line: goal.line }
+    return { x: goal.x / size, y: goal.z / size, label: goal.label, kind, line: goal.line }
+  }
+
+  /** Every place the player owns, on the plot it is inside. A deed to a room the city has lost marks nothing. */
+  #ownHomes(): MapMark[] {
+    const marks: MapMark[] = []
+    for (const interiorId of this.#homes()) {
+      const plotId = interiorPlot(this.#world, interiorId)
+      const plot = plotId ? this.#world.plot(plotId) : undefined
+      if (!plot) continue
+      marks.push({
+        x: plot.rect.x + plot.rect.w / 2,
+        y: plot.rect.y + plot.rect.h / 2,
+        label: plot.name,
+        kind: 'home',
+      })
+    }
+    return marks
   }
 
   /**
@@ -130,6 +159,10 @@ export class Chart {
   #plots(goals: readonly Marked[]): MapPlot[] {
     const named = new Set<string>(this.#landmarks)
     for (const goal of [...goals, ...this.#offers()]) if (goal.plotId) named.add(goal.plotId)
+    for (const interiorId of this.#homes()) {
+      const plotId = interiorPlot(this.#world, interiorId)
+      if (plotId) named.add(plotId)
+    }
     for (const interiorId of this.#entered()) {
       const plotId = interiorPlot(this.#world, interiorId)
       if (plotId) named.add(plotId)

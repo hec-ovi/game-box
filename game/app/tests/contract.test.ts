@@ -2758,7 +2758,7 @@ describe('the two lines of work on the plan and in the corner', () => {
     expect(near.pushed.at(-1)!.minimap!.marks).toEqual(pinned)
   })
 
-  it('writes the name of every place with work waiting on the plan', () => {
+  it('pins the work waiting to be taken, and names the place it waits in', () => {
     const world = town()
     const [bar] = world.plots()
     const offers: Marked[] = [{ label: 'Wren Ashby', x: 0, z: 0, plotId: bar!.id, line: 'main' }]
@@ -2767,9 +2767,40 @@ describe('the two lines of work on the plan and in the corner', () => {
     new Chart({ world, hud: plan.hud, you: () => ({ position: { x: 5, z: 21 }, heading: 0 }), goals: () => [], offers: () => offers, entered: () => [] }).draw()
     const map = plan.pushed.at(-1)!.map!
 
-    // a player holding no job has no pins at all, so the one thing that says
-    // where to start is the name of the place somebody is holding work in
-    expect(map.marks!.every((mark) => mark.kind === 'you')).toBe(true)
+    // a player holding no job still has somewhere to go: the work is pinned as
+    // an offer, which wears the line's square without the ring a taken job has
+    const waiting = map.marks!.filter((mark) => mark.kind === 'offer')
+    expect(waiting).toEqual([{ x: 0, y: 0, label: 'Wren Ashby', kind: 'offer', line: 'main' }])
+    expect(map.plots!.filter((plot) => plot.named).map((plot) => plot.label)).toContain('The Copper Wheel')
+  })
+
+  it('pins a place the player owns, and writes its name on the plan', () => {
+    const world = town()
+    const [bar] = world.plots()
+    const inside = world.addInterior({
+      id: 'interior_0001',
+      plotId: bar!.id,
+      kind: 'bar',
+      size: { w: 6, h: 4 },
+      rooms: [{ id: 'room_0001', kind: 'main', name: 'The bar', rect: { x: 0, y: 0, w: 6, h: 4 } }],
+      doors: [{ id: 'door_0001', from: 'outside', to: 'room_0001', pos: { x: 3, y: 4 }, rot: 0, locked: false }],
+      furniture: [],
+      anchors: [],
+    })
+    if (!inside.ok) throw new Error(JSON.stringify(inside.error))
+
+    const plan = screenful()
+    new Chart({
+      world,
+      hud: plan.hud,
+      you: () => ({ position: { x: 5, z: 21 }, heading: 0 }),
+      goals: () => [],
+      entered: () => [],
+      homes: () => [inside.value.id],
+    }).draw()
+    const map = plan.pushed.at(-1)!.map!
+
+    expect(map.marks!.filter((mark) => mark.kind === 'home').map((mark) => mark.label)).toEqual(['The Copper Wheel'])
     expect(map.plots!.filter((plot) => plot.named).map((plot) => plot.label)).toContain('The Copper Wheel')
   })
 })

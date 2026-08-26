@@ -1,7 +1,7 @@
 import { el, svg } from '../dom.ts'
 import { LAYOUT } from '../style/layout.ts'
 import type { MapMark, MapPlot, MinimapDoor, MinimapView } from '../types.ts'
-import { doorShape, goalShape, title, youArrow } from './marks.ts'
+import { doorShape, shapeOf, title, youArrow } from './marks.ts'
 
 /** The panel is a square of this many pixels, so a mark's screen size is arithmetic, not a layout read. */
 const SIZE = LAYOUT.minimap
@@ -28,7 +28,7 @@ export class NearPlan {
   #plots = svg('g', { class: 'gb-near-plots' })
   #doors = svg('g', { class: 'gb-near-doors' })
   #goals = svg('g', { class: 'gb-near-goals' })
-  #you = svg('g', { class: 'gb-you' })
+  #you = svg('g', { class: 'gb-mark-you' })
   #pinned: Pinned[] = []
   #plotsKey: string | null = null
   #doorsKey: string | null = null
@@ -117,9 +117,8 @@ function door(at: MinimapDoor, unit: number): SVGElement {
 }
 
 function goalNode(mark: MapMark): SVGElement {
-  const line = mark.line ?? 'side'
-  const node = svg('g', { class: 'gb-goal', 'data-line': line })
-  node.append(goalShape(line), title(mark.label))
+  const node = svg('g', { class: `gb-mark gb-mark-${mark.kind}`, ...(mark.line ? { 'data-line': mark.line } : {}) })
+  node.append(shapeOf(mark), title(mark.label))
   return node
 }
 

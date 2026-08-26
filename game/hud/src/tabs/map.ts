@@ -38,7 +38,7 @@ export class MapTab implements Tab {
     this.node.setAttribute('aria-label', 'Map')
     this.node.addEventListener('keydown', (event) => this.#key(event))
     this.#plan.node.append(this.#tools.node)
-    this.#guide.append(el('h3', 'gb-t1', 'Map Symbols & Guide'), this.#guideList())
+    this.#guide.append(el('h3', 'gb-t1', 'What the marks mean'), this.#guideList())
 
     const sidebarLeft = el('aside', 'gb-map-sidebar gb-map-sidebar-left gb-scrolls')
     sidebarLeft.append(this.#legend.node, this.#stations.node)
@@ -61,22 +61,27 @@ export class MapTab implements Tab {
     })
   }
 
+  /**
+   * What each mark on the plan means. Every row here is a mark the plan can
+   * actually draw: a key that shows a symbol the player will never see is
+   * worse than no key at all.
+   */
   #guideList(): HTMLElement {
     const list = el('ul', 'gb-legend-guide-list')
     const items = [
-      { label: 'Main Story Objective', icon: 'quest-main' as const, color: 'var(--gb-main)' },
-      { label: 'Side Job Location', icon: 'quest-side' as const, color: 'var(--gb-accent)' },
-      { label: 'Building Instance / Door', icon: 'door' as const, color: 'var(--gb-ink)' },
-      { label: 'Transit Station', icon: 'station' as const, color: 'var(--gb-ink)' },
-      { label: 'Player Safehouse', icon: 'home' as const, color: 'var(--gb-accent-lit)' },
+      { label: 'The story, where it is sending you', icon: 'quest-main' as const, colour: 'var(--gb-quest-main)' },
+      { label: 'An errand you have taken', icon: 'quest-side' as const, colour: 'var(--gb-quest-side)' },
+      { label: 'Work waiting to be picked up', icon: 'ring' as const, colour: 'var(--gb-quest-side)' },
+      { label: 'A place of your own', icon: 'home' as const, colour: 'var(--gb-accent-lit)' },
+      { label: 'Where the train boards', icon: 'station' as const, colour: 'var(--gb-ink)' },
     ]
     for (const item of items) {
-      const li = el('li', 'gb-legend-guide-item')
-      const iconSpan = el('span', 'gb-legend-guide-icon')
-      iconSpan.style.color = item.color
-      iconSpan.append(icon(item.icon, ICON_PX.line))
-      li.append(iconSpan, el('span', 'gb-t2', item.label))
-      list.append(li)
+      const row = el('li', 'gb-legend-guide-item')
+      const mark = el('span', 'gb-legend-guide-icon')
+      mark.style.color = item.colour
+      mark.append(icon(item.icon, ICON_PX.line))
+      row.append(mark, el('span', 'gb-t2', item.label))
+      list.append(row)
     }
     return list
   }

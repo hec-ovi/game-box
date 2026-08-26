@@ -67,6 +67,14 @@ export const TOKENS = `
   --gb-phosphor: #6bff9e;
   --gb-phosphor-dim: #1e6b3a;
 
+  /* Work, as it burns on the plan: the story orange, an errand yellow. They
+     are their own colours rather than the accent and the brass, because a mark
+     on the plan has to be found against a city drawn in cyan. */
+  --gb-quest-main: #ff7a1a;
+  --gb-quest-main-glow: rgba(255, 122, 26, 0.45);
+  --gb-quest-side: #ffd633;
+  --gb-quest-side-glow: rgba(255, 214, 51, 0.4);
+
   /* The plan: a plot nobody named, one worth noticing, a landmark. */
   --gb-plot: rgba(47, 217, 230, 0.1);
   --gb-plot-notable: rgba(47, 217, 230, 0.24);
