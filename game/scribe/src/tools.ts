@@ -2,6 +2,7 @@ import { contract, type Contract } from '@gb/kit'
 import { questDraftContract } from '@gb/quest'
 import { CharterSchema, premiseContract, type Charter, type Premise, type Word } from '@gb/world'
 import { z } from 'zod'
+import { briefDraftContract, type BriefDraft } from './brief.ts'
 import { personSchema, type WrittenPerson } from './person.ts'
 import { prompt } from './prompts.ts'
 import { compactSchema, type JsonSchema } from './schema/compact.ts'
@@ -27,6 +28,19 @@ export interface Thing {
   readonly description: string
 }
 export type QuestDraft = typeof questDraftContract extends Contract<infer T> ? T : never
+
+/**
+ * The brief itself, which is the one call that happens before there is a city
+ * at all: somebody at the form asking for a field to be written for them.
+ *
+ * It answers the form's own five fields and nothing else, so what comes back
+ * goes straight into the boxes they are looking at.
+ */
+export const WRITE_BRIEF: Tool<BriefDraft> = {
+  name: 'write_brief',
+  description: prompt('tool-write-brief'),
+  contract: briefDraftContract,
+}
 
 /**
  * The city's history, and the first call of a build.

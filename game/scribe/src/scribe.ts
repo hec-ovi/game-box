@@ -3,6 +3,7 @@ import { OfflineNarrator, premiseLines } from '@gb/forge'
 import { Sidecar } from '@gb/sidecar'
 import type { Charter, ItemArchetype, NpcRole, Premise, Word } from '@gb/world'
 import { Asker, type ScribeProblem } from './asker.ts'
+import { BRIEF_FIELDS, BRIEF_LABELS, type BriefDraft, type BriefField, type BriefSoFar } from './brief.ts'
 import { charterLines } from './charter-lines.ts'
 import { CharterWriter } from './charters.ts'
 import { FamilyClaims } from './claim.ts'
@@ -15,7 +16,7 @@ import { bullets, prompt } from './prompts.ts'
 import { QuestWriter, type QuestInput } from './quests.ts'
 import { NameRegistry } from './registry.ts'
 import { SignNamer, type PlaceRequest } from './signs.ts'
-import { DESCRIBE_ITEM, describeNpcTool, NAME_CITY, NAME_PLACE } from './tools.ts'
+import { DESCRIBE_ITEM, describeNpcTool, NAME_CITY, NAME_PLACE, WRITE_BRIEF } from './tools.ts'
 import { Waves } from './waves.ts'
 
 /**
@@ -109,6 +110,39 @@ export class Scribe implements Narrator {
     const history = await new PremiseWriter({ asker: this.#descriptive, fallback: this.#fallback, charters }).write(input)
     this.#progress.finished(history.livesOn)
     return history
+  }
+
+  /**
+   * Write the fields of a brief for somebody sitting at the form. This is the
+   * one call that happens before there is a city: it answers the form's own
+   * five fields and nothing else, and the ones that were not asked for come
+   * back as they went in.
+   *
+   * There is no fallback. A composed brief would be a canned one, and a canned
+   * brief handed over as the model's answer is the thing this is here to
+   * replace, so a model that will not answer says nothing and the form says so.
+   */
+  async writeBrief(input: { want: readonly BriefField[]; have?: BriefSoFar; seed: string }): Promise<BriefDraft | undefined> {
+    const want = BRIEF_FIELDS.filter((field) => input.want.includes(field))
+    if (want.length === 0) return undefined
+    this.#reseed(input.seed)
+    const have = input.have ?? {}
+    const written = BRIEF_FIELDS.map((field) => (have[field]?.trim() ? `- ${BRIEF_LABELS[field]}: ${have[field]!.trim()}` : undefined)).filter(
+      (line): line is string => line !== undefined,
+    )
+    const answer = await this.#descriptive.ask(
+      WRITE_BRIEF,
+      prompt('write-brief', {
+        wanted: want.map((field) => BRIEF_LABELS[field]).join(', '),
+        sofar: written.length ? prompt('brief-so-far', { fields: written.join('\n') }) : prompt('brief-blank'),
+      }),
+      'brief',
+    )
+    if (!answer) return undefined
+    // only what was asked for is taken: the model is told to give the rest back
+    // word for word and mostly does, but "mostly" would quietly rewrite a field
+    // somebody had typed themselves
+    return { ...answer, ...Object.fromEntries(BRIEF_FIELDS.filter((field) => !want.includes(field)).map((field) => [field, have[field] ?? answer[field]])) }
   }
 
   /** Named after what the town lives on, which is why the history goes out with the question. */
