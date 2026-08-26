@@ -53,6 +53,10 @@ export class Bench implements Stage {
   start(frame: (seconds: number, stall?: Stall) => boolean | void): void {
     this.frame = frame
   }
+  /** No GPU here, so a face comes back as nothing and the panel draws its silhouette. */
+  async snapshot(): Promise<string | undefined> {
+    return undefined
+  }
   draw(): void {}
   dispose(): void {
     this.canvas.remove()

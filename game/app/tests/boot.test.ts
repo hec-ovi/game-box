@@ -11,7 +11,7 @@ import userEvent from '@testing-library/user-event'
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { BLOCKS, DEFAULTS, STYLE, briefFromQuery, briefToQuery, clampBlocks, sameBrief, tidy, type CityBrief } from '../src/boot/brief.ts'
+import { BLOCKS, DEFAULTS, STOREYS, STYLE, briefFromQuery, briefToQuery, clampBlocks, sameBrief, tidy, type CityBrief } from '../src/boot/brief.ts'
 import { Boot, type LoadArt, type Start } from '../src/boot/boot.ts'
 import { CityMaker } from '../src/boot/city-maker.ts'
 import { download, exportName } from '../src/boot/export.ts'
@@ -82,6 +82,14 @@ describe('the panel is up before anything loads', () => {
     const takes = JSON.parse(readFileSync(schema, 'utf8')).properties.blocksX
     expect([DEFAULTS.blocks, BLOCKS.min, BLOCKS.max]).toEqual([takes.default, takes.minimum, takes.maximum])
     expect(blocks.value).toBe(String(takes.default))
+
+    // the same for the tallest building, which is what gives a city a skyline
+    const storeys = document.querySelector<HTMLInputElement>('[data-boot="storeys"]')!
+    const height = JSON.parse(readFileSync(schema, 'utf8')).properties.maxStoreys
+    expect([STOREYS.fallback, STOREYS.min, STOREYS.max]).toEqual([height.default, height.minimum, height.maximum])
+    expect(storeys.min).toBe(String(STOREYS.min))
+    expect(storeys.max).toBe(String(STOREYS.max))
+    expect(storeys.placeholder).toBe(String(height.default))
   })
 
   it('offers the catalogue\'s own style choices and nothing outside them, and says why', () => {
@@ -113,6 +121,7 @@ describe('the panel', () => {
     await user.type(screen.getByLabelText(/seed/i), 'harbour')
     await user.clear(screen.getByLabelText(/blocks/i))
     await user.type(screen.getByLabelText(/blocks/i), '4')
+    await user.type(screen.getByLabelText(/tallest building/i), '30')
     await user.type(screen.getByLabelText(/what the city is about/i), 'a town living off the smuggling run, with the customs house half bought')
     await user.type(screen.getByLabelText(/main quest/i), 'who owns the customs house')
     await user.type(screen.getByLabelText(/tone/i), '  grim  ')
@@ -124,6 +133,7 @@ describe('the panel', () => {
         theme: DEFAULTS.theme,
         seed: 'harbour',
         blocks: 4,
+        storeys: 30,
         model: false,
         brief: 'a town living off the smuggling run, with the customs house half bought',
         asks: { mainQuest: 'who owns the customs house', tone: 'grim', style: { wear: 'run-down' } },
@@ -137,6 +147,7 @@ describe('the panel', () => {
       theme: 'dusty mining town',
       seed: 'ore',
       blocks: 3,
+      storeys: 8,
       model: true,
       brief: 'the seam ran out',
       asks: { sideQuests: 'odd jobs for the miners', style: { neon: 'dark', density: 'sparse' } },
@@ -159,6 +170,29 @@ describe('the panel', () => {
     await user.click(screen.getByRole('button', { name: /generate/i }))
 
     expect(asked[0]!.blocks).toBe(BLOCKS.max)
+  })
+
+  it('carries the tallest building the player asked for through to the generator', async () => {
+    const user = userEvent.setup()
+    const front = panel()
+    front.on(QUIET_HANDLERS)
+    front.waiting()
+
+    // left blank it is the generator's own ceiling, so a bare form is not a flat city
+    expect(front.brief.storeys).toBeUndefined()
+
+    // and a typo is held at the top of what a world file will carry rather than sent
+    await user.type(screen.getByLabelText(/tallest building/i), '400')
+    expect(front.brief.storeys).toBe(STOREYS.max)
+
+    // and it reaches the generator: a ceiling of one builds a town of bungalows
+    const made = new CityMaker(new Sidecar(DOWN))
+    const city = await made.build({ ...DEFAULTS, seed: 'flat', blocks: 2, storeys: STOREYS.min }, QUIET)
+    expect(city.ok).toBe(true)
+    if (!city.ok) return
+    const plots = city.value.bundle.world.plots()
+    expect(plots.length).toBeGreaterThan(10)
+    expect(new Set(plots.map((plot) => plot.storeys))).toEqual(new Set([STOREYS.min]))
   })
 
   it('gives a fresh seed nobody has played', async () => {

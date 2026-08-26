@@ -35,6 +35,7 @@ import { Body, CROUCH_EYE, JUMP_SPEED } from '../src/stance.ts'
 import { Sidecar } from '@gb/sidecar'
 import { Conversation, type TalkMove } from '@gb/talk'
 import type { Player } from '../src/player.ts'
+import type { FaceSource } from '../src/portraits.ts'
 import { Street } from '../src/street.ts'
 import { Talking } from '../src/talking.ts'
 import { pick, Targeting } from '../src/targets.ts'
@@ -1781,7 +1782,7 @@ describe('a conversation you can click through', () => {
     }
   }
 
-  function chatting(model?: { does: string; says: string }) {
+  function chatting(model?: { does: string; says: string }, portraits?: FaceSource) {
     const { world, npcId, itemId } = bar()
     const player = PlayerState.create(world.id)
     const log = QuestLog.create([errand], player)
@@ -1805,6 +1806,7 @@ describe('a conversation you can click through', () => {
       attending: { hold: () => {}, release: () => {} } as unknown as Attending,
       gestures: new Gestures(new Members(() => new Map([[npcId, arms.member]]))),
       report: new Reporting({ world, log, player, hud, conditions: new Conditions(player.clock) }),
+      ...(portraits ? { portraits } : {}),
     })
     // the game pushes `@gb/talk`'s own moves, which carry the action the
     // interface has no use for and this test reads
@@ -1818,6 +1820,32 @@ describe('a conversation you can click through', () => {
     const codex = () => [...pushed].reverse().find((patch) => patch.codex)?.codex
     return { world, npcId, itemId, player, log, talking, pushed, announced, menu, spoken, does, codex, moved: arms.moved, reached: () => reached }
   }
+
+  it('draws the speaker their own face and puts it on the panel after the opening line', async () => {
+    const asked: string[] = []
+    const { npcId, talking, pushed } = chatting(undefined, {
+      of: async (npc) => {
+        asked.push(npc.id)
+        return `data:image/png;base64,${npc.id}`
+      },
+    })
+    await talking.start(npcId)
+    // the face is drawn from the person, not from their name, and it is asked
+    // for once the panel is already up
+    expect(asked).toEqual([npcId])
+    const opened = pushed.findIndex((patch) => patch.talk?.speaker !== undefined)
+    const face = pushed.findIndex((patch) => patch.talk?.portrait !== undefined)
+    expect(face).toBeGreaterThan(opened)
+    expect(pushed[face]!.talk!.portrait).toBe(`data:image/png;base64,${npcId}`)
+  })
+
+  it('says who is talking without a picture of them when no face can be drawn', async () => {
+    const { npcId, talking, pushed } = chatting(undefined, { of: async () => undefined })
+    await talking.start(npcId)
+
+    expect(pushed.find((patch) => patch.talk?.speaker !== undefined)!.talk!.speaker).toBe('Iris Vane')
+    expect(pushed.some((patch) => patch.talk?.portrait !== undefined)).toBe(false)
+  })
 
   it('opens with the speaker already talking, before the player has said anything', async () => {
     const { npcId, talking, pushed, reached } = chatting()

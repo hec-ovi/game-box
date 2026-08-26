@@ -1,5 +1,5 @@
-import { BLOCKS_MAX, MOST_PLACES, OPEN_PLACES } from '@gb/forge'
-import { DENSITY_LEVELS, NEON_LEVELS, WEAR_LEVELS, type Asks } from '@gb/world'
+import { BLOCKS_MAX, MOST_PLACES, OPEN_PLACES, STOREYS_DEFAULT } from '@gb/forge'
+import { DENSITY_LEVELS, NEON_LEVELS, PLOT_BAND, TALLEST_STOREYS, WEAR_LEVELS, type Asks } from '@gb/world'
 
 /**
  * What the player asked for. Theme, seed and size are enough to build a city;
@@ -11,6 +11,8 @@ export interface CityBrief {
   readonly blocks: number
   /** How many doors in the city open. Left out, the generator chooses. */
   readonly places?: number
+  /** The tallest building the city may raise, in storeys. Left out, the generator's own ceiling. */
+  readonly storeys?: number
   /** Write the names, people and quests with the local model rather than offline. */
   readonly model: boolean
   /** What the city is about, in the player's own words. Unbounded: it is theirs. */
@@ -48,9 +50,22 @@ const SEED_LIMIT = 120
 /** How many doors a city opens. The generator's own range, so the field never lies. */
 export const PLACES = { min: 1, max: MOST_PLACES, fallback: OPEN_PLACES } as const
 
+/**
+ * How tall the city may build. The generator's own range again: the top is the
+ * tallest plot a world file will carry, and the bottom of the slider is the
+ * band the building catalogue is drawn for, because asking for less than that
+ * is asking for no skyline at all.
+ */
+export const STOREYS = { min: 1, max: TALLEST_STOREYS, flat: PLOT_BAND.storeys.max, fallback: STOREYS_DEFAULT } as const
+
 export function clampPlaces(value: number): number {
   if (!Number.isFinite(value)) return PLACES.fallback
   return Math.min(PLACES.max, Math.max(PLACES.min, Math.round(value)))
+}
+
+export function clampStoreys(value: number): number {
+  if (!Number.isFinite(value)) return STOREYS.fallback
+  return Math.min(STOREYS.max, Math.max(STOREYS.min, Math.round(value)))
 }
 
 export function clampBlocks(value: number): number {
@@ -67,6 +82,7 @@ export function tidy(brief: CityBrief): CityBrief {
     seed: (brief.seed.trim() || DEFAULTS.seed).slice(0, SEED_LIMIT),
     blocks: clampBlocks(brief.blocks),
     ...(brief.places ? { places: clampPlaces(brief.places) } : {}),
+    ...(brief.storeys ? { storeys: clampStoreys(brief.storeys) } : {}),
     model: brief.model,
     ...(text ? { brief: text } : {}),
     ...(asks ? { asks } : {}),
@@ -97,8 +113,8 @@ export function sameBrief(a: CityBrief, b: CityBrief): boolean {
   return JSON.stringify(tidy(a)) === JSON.stringify(tidy(b))
 }
 
-/** The four the address bar carries. Everything else in it belongs to somebody else. */
-const BRIEF_KEYS = ['theme', 'seed', 'blocks', 'places', 'model']
+/** The ones the address bar carries. Everything else in it belongs to somebody else. */
+const BRIEF_KEYS = ['theme', 'seed', 'blocks', 'places', 'storeys', 'model']
 
 /**
  * The address bar, which is how a city is shared by seed and how the same one is
@@ -111,6 +127,7 @@ export function briefFromQuery(query: URLSearchParams): CityBrief | undefined {
     seed: query.get('seed') ?? DEFAULTS.seed,
     blocks: Number(query.get('blocks') ?? DEFAULTS.blocks),
     ...(query.has('places') ? { places: Number(query.get('places')) } : {}),
+    ...(query.has('storeys') ? { storeys: Number(query.get('storeys')) } : {}),
     model: query.has('model') && query.get('model') !== '0',
   })
 }

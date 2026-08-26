@@ -198,6 +198,30 @@ describe('the looked-at prompt', () => {
 })
 
 describe('conversation', () => {
+  it('draws the speaker their own face when it is given one, and nobody in particular until then', () => {
+    const { hud, screen } = mount()
+
+    hud.show({ talk: { speaker: 'Mara Quill' } })
+    // a face is drawn from a body and arrives after the opening line, so until
+    // it does the panel shows a silhouette rather than an empty box
+    expect(screen.querySelector('.gb-caller-avatar-box .gb-portrait-svg')).not.toBeNull()
+    expect(screen.querySelector('.gb-caller-face')).toBeNull()
+
+    hud.show({ talk: { portrait: 'data:image/png;base64,iVBORw0KGgo=' } })
+    const face = screen.querySelector('.gb-caller-face') as HTMLImageElement
+    expect(face.src).toBe('data:image/png;base64,iVBORw0KGgo=')
+    expect(face.alt).toBe('Mara Quill')
+    expect(screen.querySelector('.gb-caller-avatar-box .gb-portrait-svg')).toBeNull()
+
+    // and it survives the words that follow, which say nothing about a face
+    hud.show({ talk: { reply: 'What of it?' } })
+    expect((screen.querySelector('.gb-caller-face') as HTMLImageElement).src).toBe('data:image/png;base64,iVBORw0KGgo=')
+
+    // somebody else is somebody else: their face is not the last one's
+    hud.show({ talk: { speaker: 'Wren Ashby' } })
+    expect(screen.querySelector('.gb-caller-face')).toBeNull()
+  })
+
   it('takes a typed line and leaves by the button, which says which key does the same', async () => {
     const user = userEvent.setup()
     const { hud, screen, intents } = mount()

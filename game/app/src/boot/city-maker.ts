@@ -62,6 +62,7 @@ export class CityMaker {
       blocksX: brief.blocks,
       blocksY: brief.blocks,
       ...(brief.places ? { openPlaces: brief.places } : {}),
+      ...(brief.storeys ? { maxStoreys: brief.storeys } : {}),
       ...(brief.brief ? { brief: brief.brief } : {}),
       ...(brief.asks ? { asks: brief.asks } : {}),
     })

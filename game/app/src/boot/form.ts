@@ -1,4 +1,4 @@
-import { freshSeed, STYLE, tidy, type CityBrief, type StyleAxis } from './brief.ts'
+import { freshSeed, STOREYS, STYLE, tidy, type CityBrief, type StyleAxis } from './brief.ts'
 import { button } from './chrome.ts'
 
 /** Every field on the form, by the name the markup gives it. */
@@ -19,6 +19,7 @@ export const AI_PRESETS = [
     wear: 'lived-in',
     blocks: 24,
     places: 6,
+    storeys: 34,
   },
   {
     theme: 'quiet coastal fishing harbor',
@@ -31,6 +32,7 @@ export const AI_PRESETS = [
     wear: 'run-down',
     blocks: 16,
     places: 4,
+    storeys: 6,
   },
   {
     theme: 'rustbelt industrial foundry',
@@ -43,6 +45,7 @@ export const AI_PRESETS = [
     wear: 'lived-in',
     blocks: 20,
     places: 5,
+    storeys: 12,
   },
   {
     theme: 'cyberpunk black market district',
@@ -55,6 +58,7 @@ export const AI_PRESETS = [
     wear: 'run-down',
     blocks: 22,
     places: 8,
+    storeys: 28,
   },
 ]
 
@@ -68,6 +72,7 @@ export class CityForm {
   #style: Styles
   #blocks: HTMLInputElement
   #places: HTMLInputElement
+  #storeys: HTMLInputElement
   #model: HTMLInputElement
   #modelState: HTMLElement
   #root: HTMLElement
@@ -79,6 +84,7 @@ export class CityForm {
     this.#style = Object.fromEntries((Object.keys(STYLE) as StyleAxis[]).map((axis) => [axis, find<HTMLSelectElement>(axis)])) as Styles
     this.#blocks = find('blocks')
     this.#places = find('places')
+    this.#storeys = find('storeys')
     this.#model = find('model')
     this.#modelState = find('model-state')
     this.#root = root ?? document.getElementById('boot') ?? document.body
@@ -119,11 +125,14 @@ export class CityForm {
     )
     const placesText = this.#places.value.trim()
     const placesVal = Number(placesText)
+    const storeysText = this.#storeys.value.trim()
+    const storeysVal = Number(storeysText)
     return tidy({
       theme: this.#text.theme.value,
       seed: this.#text.seed.value,
       blocks: Number(this.#blocks.value),
       ...(placesText && !Number.isNaN(placesVal) && placesVal > 0 ? { places: placesVal } : {}),
+      ...(storeysText && !Number.isNaN(storeysVal) && storeysVal > 0 ? { storeys: storeysVal } : {}),
       model: this.#model.checked,
       brief: this.#text.brief.value,
       asks: {
@@ -145,6 +154,7 @@ export class CityForm {
     for (const axis of Object.keys(STYLE) as StyleAxis[]) this.#style[axis].value = brief.asks?.style?.[axis] ?? ''
     this.#blocks.value = String(brief.blocks)
     this.#places.value = brief.places !== undefined ? String(brief.places) : ''
+    this.#storeys.value = brief.storeys !== undefined ? String(brief.storeys) : ''
     this.#model.checked = brief.model
     this.#sayModel()
     this.#syncSummaries()
@@ -209,6 +219,7 @@ export class CityForm {
       this.#style.wear.value = preset.wear
       this.#blocks.value = String(preset.blocks)
       this.#places.value = String(preset.places)
+      this.#storeys.value = String(preset.storeys)
       this.#syncPills()
       this.#syncSliders()
       this.#syncSummaries()
@@ -291,6 +302,14 @@ export class CityForm {
         if (range) range.value = String(next)
         this.#syncSummaries()
         this.#syncTelemetry()
+      } else if (field === 'storeys') {
+        const cur = Number(this.#storeys.value) || STOREYS.fallback
+        const next = Math.max(STOREYS.flat, Math.min(STOREYS.max, cur + dir))
+        this.#storeys.value = String(next)
+        const range = this.#root.querySelector<HTMLInputElement>('.gb-cyber-range[data-sync="storeys"]')
+        if (range) range.value = String(next)
+        this.#syncSummaries()
+        this.#syncTelemetry()
       }
     })
 
@@ -306,6 +325,9 @@ export class CityForm {
         } else if (syncTarget === 'places') {
           const val = Math.max(2, Math.min(24, Math.round(Number(target.value) || 3)))
           this.#places.value = String(val)
+        } else if (syncTarget === 'storeys') {
+          const val = Math.max(STOREYS.flat, Math.min(STOREYS.max, Math.round(Number(target.value) || STOREYS.fallback)))
+          this.#storeys.value = String(val)
         }
         this.#syncSummaries()
         this.#syncTelemetry()
@@ -328,6 +350,14 @@ export class CityForm {
       this.#syncTelemetry()
     })
 
+    this.#storeys.addEventListener('input', () => {
+      const val = Math.max(STOREYS.flat, Math.min(STOREYS.max, Math.round(Number(this.#storeys.value) || STOREYS.fallback)))
+      const range = this.#root.querySelector<HTMLInputElement>('.gb-cyber-range[data-sync="storeys"]')
+      if (range) range.value = String(val)
+      this.#syncSummaries()
+      this.#syncTelemetry()
+    })
+
     // AI Generators
     this.#root.querySelector('[data-boot="ai-arch"]')?.addEventListener('click', () => {
       const preset = AI_PRESETS[Math.floor(Math.random() * AI_PRESETS.length)]!
@@ -338,6 +368,7 @@ export class CityForm {
       this.#style.wear.value = preset.wear
       this.#blocks.value = String(preset.blocks)
       this.#places.value = String(preset.places)
+      this.#storeys.value = String(preset.storeys)
       this.#syncPills()
       this.#syncSliders()
       this.#syncSummaries()
@@ -401,6 +432,7 @@ export class CityForm {
       this.#style.wear.value = preset.wear
       this.#blocks.value = String(preset.blocks)
       this.#places.value = String(preset.places)
+      this.#storeys.value = String(preset.storeys)
       this.#syncPills()
       this.#syncSliders()
       this.#syncSummaries()
@@ -423,6 +455,7 @@ export class CityForm {
       this.#text.brief.value.trim(),
       this.#blocks.value,
       this.#places.value,
+      this.#storeys.value,
       this.#text.seed.value.trim(),
       this.#style.neon.value,
       this.#style.density.value,
@@ -627,6 +660,8 @@ export class CityForm {
     if (blocksRange) blocksRange.value = this.#blocks.value || '20'
     const placesRange = this.#root.querySelector<HTMLInputElement>('.gb-cyber-range[data-sync="places"]')
     if (placesRange) placesRange.value = this.#places.value || '3'
+    const storeysRange = this.#root.querySelector<HTMLInputElement>('.gb-cyber-range[data-sync="storeys"]')
+    if (storeysRange) storeysRange.value = this.#storeys.value || String(STOREYS.fallback)
   }
 
   #syncPills(): void {

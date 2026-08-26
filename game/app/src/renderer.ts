@@ -113,6 +113,23 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
       current = root
       scene.add(root)
     },
+    async snapshot(scene, camera, size) {
+      const target = new THREE.RenderTarget(size, size)
+      const was = renderer.getRenderTarget()
+      try {
+        renderer.setRenderTarget(target)
+        await renderer.renderAsync(scene, camera)
+        const pixels = await renderer.readRenderTargetPixelsAsync(target, 0, 0, size, size)
+        return pngOf(new Uint8ClampedArray(pixels.buffer, pixels.byteOffset, pixels.byteLength), size)
+      } catch (cause) {
+        // a face is worth nothing to fail a conversation over
+        console.warn('no portrait', cause)
+        return undefined
+      } finally {
+        renderer.setRenderTarget(was)
+        target.dispose()
+      }
+    },
     draw() {
       // By hand, for a suspended frame loop. The shadow map only redraws while
       // the node frame advances, which happens inside `setAnimationLoop`, so a
@@ -152,6 +169,27 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
   window.addEventListener('resize', resize)
 
   return stage
+}
+
+/**
+ * Pixels off a render target, as a PNG.
+ *
+ * The rows come back bottom up, the way the graphics API holds them, and a
+ * canvas puts row zero at the top, so they are copied over in reverse.
+ */
+function pngOf(pixels: Uint8ClampedArray, size: number): string | undefined {
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const paint = canvas.getContext('2d')
+  if (!paint) return undefined
+  const image = paint.createImageData(size, size)
+  const stride = size * 4
+  for (let row = 0; row < size; row++) {
+    image.data.set(pixels.subarray((size - 1 - row) * stride, (size - row) * stride), row * stride)
+  }
+  paint.putImageData(image, 0, 0)
+  return canvas.toDataURL('image/png')
 }
 
 function aspect(mount: HTMLElement): number {

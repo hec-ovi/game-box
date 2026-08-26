@@ -45,6 +45,12 @@ export interface Stage {
    * draw, so a stall inside the renderer is caught with the rest.
    */
   start(frame: (seconds: number, stall?: Stall) => boolean | void): void
+  /**
+   * Draw a scene of your own once, off screen, and give back what it drew as an
+   * image the interface can put in an `<img>`. Used for a face: a portrait is
+   * one square of one person, taken once and kept.
+   */
+  snapshot(scene: THREE.Scene, camera: THREE.Camera, size: number): Promise<string | undefined>
   /** Draw one frame now, whatever the browser is doing with its frame loop. */
   draw(): void
   dispose(): void

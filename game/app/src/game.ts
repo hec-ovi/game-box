@@ -42,6 +42,7 @@ import { Screens } from './screens.ts'
 import { Session, type SaveStore } from './session.ts'
 import { atAnOpenDoor, atTheKerb } from './spawn.ts'
 import { Sky } from './sky.ts'
+import { Portraits } from './portraits.ts'
 import type { MakeStage, Stage } from './stage.ts'
 import { Stashing } from './stashing.ts'
 import { tellStory } from './story.ts'
@@ -389,6 +390,10 @@ export class Game {
       wares: (npcId) => this.#counters.open(npcId),
       granted: (grant) => this.#locks.handed(grant),
       over: () => this.#counters.closed(),
+      // their own face on the panel, drawn from the body the city draws them
+      // with. Without an art pack there is no body to draw, and the panel says
+      // who is talking without a picture of them
+      ...(input.cast ? { portraits: new Portraits({ cast: input.cast, stage: this.#stage }) } : {}),
       report: this.#report,
     })
 

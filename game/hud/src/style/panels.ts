@@ -92,10 +92,29 @@ export const PANELS = `
   align-items: center;
   justify-content: center;
 }
-.gb-hud .gb-portrait-svg {
+/* The face the game drew, and the silhouette for whoever it has not drawn yet. */
+.gb-hud .gb-caller-face {
   width: 100%;
   height: 100%;
+  object-fit: cover;
+  display: block;
 }
+.gb-hud .gb-portrait-svg { width: 100%; height: 100%; }
+.gb-hud .gb-portrait-head, .gb-hud .gb-portrait-shoulders {
+  fill: none;
+  stroke: var(--gb-dim);
+  stroke-width: 2.5;
+}
+/* The frame, over whichever of the two is inside it. */
+.gb-hud .gb-portrait-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.gb-hud .gb-portrait-edge { fill: none; stroke: var(--gb-edge-accent); stroke-width: 1.5; }
+.gb-hud .gb-portrait-corner { fill: none; stroke: var(--gb-accent); stroke-width: 2; }
 .gb-hud .gb-caller-name {
   color: var(--gb-accent-lit);
   font-weight: 700;
@@ -116,6 +135,9 @@ export const PANELS = `
   width: 3px;
   height: 8px;
   background: var(--gb-accent);
+}
+/* The bars move only while a line is on its way, so a still panel is a still panel. */
+.gb-hud .gb-caller-voice-wave[data-speaking='true'] .gb-v-bar {
   animation: gb-voice-bar 1.2s ease-in-out infinite alternate;
 }
 @keyframes gb-voice-bar {

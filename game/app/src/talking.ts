@@ -3,10 +3,11 @@ import type { PlayerState } from '@gb/play'
 import type { QuestLog } from '@gb/quest'
 import type { Sidecar } from '@gb/sidecar'
 import { Conversation, Sessions, type ActionName, type Grant, type TalkEvent, type TalkMove, type Turn } from '@gb/talk'
-import type { World } from '@gb/world'
+import type { Npc, World } from '@gb/world'
 import type { Attending } from './attending.ts'
 import type { Gestures } from './gestures.ts'
 import type { Player } from './player.ts'
+import type { FaceSource } from './portraits.ts'
 import type { Reporting } from './reporting.ts'
 
 /**
@@ -52,6 +53,7 @@ export class Talking {
   #sessions = new Sessions()
   #open: Conversation | undefined
   #speakerId = ''
+  #portraits: FaceSource | undefined
   /**
    * The opening lines each person has already said on the panel. Every opening
    * puts a fresh greeting in their transcript, so a player who walks up, walks
@@ -76,6 +78,8 @@ export class Talking {
     granted?: (grant: Grant) => void
     /** The conversation is over, and so is anything it opened. */
     over?: () => void
+    /** Where a face comes from. Without one the panel draws a silhouette. */
+    portraits?: FaceSource
     report: Reporting
   }) {
     this.#world = input.world
@@ -90,6 +94,7 @@ export class Talking {
     this.#granted = input.granted ?? (() => {})
     this.#over = input.over ?? (() => {})
     this.#report = input.report
+    this.#portraits = input.portraits
   }
 
   get active(): boolean {
@@ -119,13 +124,24 @@ export class Talking {
     // they speak first: the opening line is built off the game's own data and
     // costs no model call, and it is already the last turn of the transcript,
     // so the panel has the whole history in it the instant it appears
+    const npc = this.#world.npc(npcId)
     this.#hud.show({
       talk: {
-        speaker: this.#world.npc(npcId)?.name ?? 'Someone',
+        speaker: npc?.name ?? 'Someone',
         turns: this.#read(npcId, conversation.history(), opened.value.opening.line),
         moves: this.#clickable(opened.value.opening.moves),
       },
     })
+    // their face follows: drawing one is a body build and a render, and the
+    // opening line is already on the panel. A face that arrives after the
+    // player has walked off goes to nobody, which is what the check is for
+    if (npc) void this.#face(npcId, npc)
+  }
+
+  /** Draw their face, and put it on the panel if they are still the one being talked to. */
+  async #face(npcId: string, npc: Npc): Promise<void> {
+    const portrait = await this.#portraits?.of(npc)
+    if (portrait && this.#speakerId === npcId) this.#hud.show({ talk: { portrait } })
   }
 
   /**

@@ -333,6 +333,8 @@ export interface TalkTurn {
 /** The conversation as the player sees it. */
 export interface TalkState {
   readonly speaker: string
+  /** The speaker's own face, as an image the interface can draw. Nothing draws a silhouette instead. */
+  readonly portrait?: string
   /** Every turn so far, oldest first. The last one is the turn in front of the player. */
   readonly turns: readonly TalkTurn[]
   /** The moves that are legal this turn. Empty draws no menu at all. */
@@ -349,6 +351,8 @@ export interface TalkState {
  */
 export interface TalkPatch {
   readonly speaker?: string
+  /** The speaker's face, as an image source. Sent with the speaker, or later when it has been drawn. */
+  readonly portrait?: string
   /** Replace the whole transcript, as the game keeps it. */
   readonly turns?: readonly TalkTurn[]
   /** Replace what the speaker says this turn. */

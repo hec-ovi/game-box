@@ -16,8 +16,13 @@ export function mergeTalk(current: TalkState | undefined, patch: TalkPatch | nul
   const blank: TalkState = { speaker: patch.speaker ?? '', turns: [], moves: [], pending: false }
   const base: TalkState = fresh || !current ? blank : current
   const turns = patch.turns ?? base.turns
+  // a face arrives with the speaker when it has already been drawn, and on its
+  // own a moment later when it has not, so a portrait is never lost by a patch
+  // that was only about the words
+  const portrait = patch.portrait ?? (fresh ? undefined : base.portrait)
   return {
     speaker: patch.speaker ?? base.speaker,
+    ...(portrait ? { portrait } : {}),
     turns: editsTurn(patch) ? withTheirs(turns, patch) : turns,
     moves: patch.moves ?? base.moves,
     // A menu arriving is the turn being over, so what is on it is live again.

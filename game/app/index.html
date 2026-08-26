@@ -2900,6 +2900,21 @@
                         <input type="range" class="gb-cyber-range" min="2" max="24" value="3" data-sync="places" data-hint="Drag slider to adjust number of interactive building instances (2 to 24)." />
                       </div>
                     </div>
+                    <div class="gb-cyber-dial-card" data-hint="Tallest building the city may raise, in storeys (1 to 40). Above four storeys a plot is built from the street kit, so a high ceiling gives the downtown a skyline of towers.">
+                      <div class="gb-dial-control">
+                        <label class="gb-cyber-lbl" for="boot-storeys">Tallest Building</label>
+                        <div class="gb-num-stepper-group">
+                          <button type="button" class="gb-num-step-btn" data-step-field="storeys" data-step-dir="-1" aria-label="Decrease" data-hint="Decrease the storey ceiling by 1">
+                            <span class="gb-i gb-i-14" data-icon="chevron-left"></span>
+                          </button>
+                          <input id="boot-storeys" data-boot="storeys" type="number" min="1" max="40" step="1" placeholder="24" data-hint="Type or use slider to set the storey ceiling (1 to 40)." />
+                          <button type="button" class="gb-num-step-btn" data-step-field="storeys" data-step-dir="1" aria-label="Increase" data-hint="Increase the storey ceiling by 1">
+                            <span class="gb-i gb-i-14" data-icon="chevron-right"></span>
+                          </button>
+                        </div>
+                        <input type="range" class="gb-cyber-range" min="4" max="40" value="24" data-sync="storeys" data-hint="Drag slider to adjust the tallest building the city may raise (4 to 40)." />
+                      </div>
+                    </div>
                     <div class="gb-cyber-field gb-floating">
                       <div class="gb-seed-group">
                         <input id="boot-seed" data-boot="seed" type="text" maxlength="120" autocomplete="off" spellcheck="false" placeholder=" " value="town" />

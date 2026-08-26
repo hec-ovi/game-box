@@ -1,6 +1,6 @@
 import type { Objective } from '@gb/quest'
 import { HUD_KEYS } from '../controls.ts'
-import { el, kbd } from '../dom.ts'
+import { el, kbd, svg } from '../dom.ts'
 import { bump } from '../motion.ts'
 import { DECIDE_TAG, moreQuests, noObjectives } from '../phrase.ts'
 import { kindOf, mainWaiting, otherQuests, stepsOf, trackedQuest } from '../tracked.ts'
@@ -44,7 +44,7 @@ export class ObjectivesSurface implements Surface {
       this.node.dataset.line = 'caller'
       this.#head.hidden = true
       this.#more.node.hidden = true
-      this.#list.replaceChildren(this.#callerCard(state.talk.speaker, state.talk.pending))
+      this.#list.replaceChildren(this.#callerCard(state.talk.speaker, state.talk.pending, state.talk.portrait))
       return
     }
 
@@ -74,36 +74,22 @@ export class ObjectivesSurface implements Surface {
     this.#done = new Map(steps.flatMap((step) => (step.count ? [[id(step), step.count.done] as const] : [])))
   }
 
-  #callerCard(speaker: string, pending: boolean): HTMLLIElement {
+  /**
+   * Who is talking, at the top of the corner the objectives usually hold: their
+   * own face where the game has drawn one, the frame it sits in, their name and
+   * the bars that move while their line is arriving.
+   */
+  #callerCard(speaker: string, pending: boolean, portrait: string | undefined): HTMLLIElement {
     const item = el('li', 'gb-caller-card')
     const avatar = el('div', 'gb-caller-avatar-box')
-    avatar.innerHTML = `
-      <svg viewBox="0 0 100 100" class="gb-portrait-svg">
-        <defs>
-          <linearGradient id="cyber-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#2fd9e6" stop-opacity="0.8"/>
-            <stop offset="100%" stop-color="#00e676" stop-opacity="0.3"/>
-          </linearGradient>
-        </defs>
-        <rect x="5" y="5" width="90" height="90" fill="none" stroke="var(--gb-edge-accent)" stroke-width="1.5" />
-        <line x1="2" y1="20" x2="2" y2="5" stroke="var(--gb-accent)" stroke-width="2"/>
-        <line x1="2" y1="5" x2="20" y2="5" stroke="var(--gb-accent)" stroke-width="2"/>
-        <line x1="98" y1="20" x2="98" y2="5" stroke="var(--gb-accent)" stroke-width="2"/>
-        <line x1="98" y1="5" x2="80" y2="5" stroke="var(--gb-accent)" stroke-width="2"/>
-        <line x1="2" y1="80" x2="2" y2="95" stroke="var(--gb-accent)" stroke-width="2"/>
-        <line x1="2" y1="95" x2="20" y2="95" stroke="var(--gb-accent)" stroke-width="2"/>
-        <line x1="98" y1="80" x2="98" y2="95" stroke="var(--gb-accent)" stroke-width="2"/>
-        <line x1="98" y1="95" x2="80" y2="95" stroke="var(--gb-accent)" stroke-width="2"/>
-        <path d="M75 88v-8a16 16 0 0 0-16-16H41a16 16 0 0 0-16 16v8" stroke="var(--gb-dim)" stroke-width="2.5" fill="none"/>
-        <circle cx="50" cy="40" r="16" stroke="var(--gb-dim)" stroke-width="2.5" fill="url(#cyber-grad)"/>
-      </svg>
-    `
+    avatar.append(portrait ? face(portrait, speaker) : silhouette(), corners())
     const name = el('span', 'gb-caller-name gb-t2', speaker)
     const voice = el('div', 'gb-caller-voice-wave')
-    for (let i = 0; i < 14; i++) {
-      const bar = el('span', 'gb-v-bar')
-      bar.style.animationDelay = `${(i * 0.08).toFixed(2)}s`
-      voice.append(bar)
+    voice.dataset.speaking = String(pending)
+    for (let bar = 0; bar < VOICE_BARS; bar++) {
+      const tick = el('span', 'gb-v-bar')
+      tick.style.animationDelay = `${(bar * 0.08).toFixed(2)}s`
+      voice.append(tick)
     }
     item.append(avatar, name, voice)
     return item
@@ -129,6 +115,44 @@ export class ObjectivesSurface implements Surface {
     if (step.hint) item.append(el('span', 'gb-hint-line gb-t2', step.hint))
     return item
   }
+}
+
+/** How many bars the voice line is drawn with. */
+const VOICE_BARS = 14
+
+/** The speaker's own face, drawn by the game from their body. */
+function face(portrait: string, speaker: string): HTMLImageElement {
+  const node = document.createElement('img')
+  node.className = 'gb-caller-face'
+  node.src = portrait
+  node.alt = speaker
+  node.decoding = 'async'
+  return node
+}
+
+/** Nobody in particular, for whoever the game has not drawn a face for yet. */
+function silhouette(): SVGSVGElement {
+  const node = svg('svg', { viewBox: '0 0 100 100', class: 'gb-portrait-svg', 'aria-hidden': 'true' })
+  node.append(
+    svg('path', { class: 'gb-portrait-shoulders', d: 'M75 88v-8a16 16 0 0 0-16-16H41a16 16 0 0 0-16 16v8' }),
+    svg('circle', { class: 'gb-portrait-head', cx: 50, cy: 40, r: 16 }),
+  )
+  return node
+}
+
+/** The frame round the face: a cut corner at each end, drawn over whatever is inside it. */
+function corners(): SVGSVGElement {
+  const node = svg('svg', { viewBox: '0 0 100 100', class: 'gb-portrait-frame', 'aria-hidden': 'true' })
+  node.append(svg('rect', { class: 'gb-portrait-edge', x: 5, y: 5, width: 90, height: 90 }))
+  for (const [x, y, ax, ay] of [
+    [2, 5, 20, 5],
+    [98, 5, 80, 5],
+    [2, 95, 20, 95],
+    [98, 95, 80, 95],
+  ] as const) {
+    node.append(svg('path', { class: 'gb-portrait-corner', d: `M ${x} ${y < 50 ? y + 15 : y - 15} L ${x} ${y} L ${ax} ${ay}` }))
+  }
+  return node
 }
 
 function decide(): HTMLElement {
