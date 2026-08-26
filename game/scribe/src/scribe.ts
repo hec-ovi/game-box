@@ -1,4 +1,4 @@
-import type { History, Instance, InstanceRequest, ItemProfile, Narrator, NpcProfile } from '@gb/forge'
+import type { DistrictRequest, History, Instance, InstanceRequest, ItemProfile, Narrator, NpcProfile } from '@gb/forge'
 import { OfflineNarrator, premiseLines } from '@gb/forge'
 import { Sidecar } from '@gb/sidecar'
 import type { Charter, ItemArchetype, NpcRole, Premise, Word } from '@gb/world'
@@ -7,6 +7,7 @@ import { BRIEF_FIELDS, BRIEF_LABELS, type BriefDraft, type BriefField, type Brie
 import { charterLines } from './charter-lines.ts'
 import { CharterWriter } from './charters.ts'
 import { FamilyClaims } from './claim.ts'
+import { DistrictNamer } from './districts.ts'
 import { InstanceWriter } from './instance.ts'
 import { profileOf } from './person.ts'
 import { Pins } from './pins.ts'
@@ -193,6 +194,21 @@ export class Scribe implements Narrator {
     return new SignNamer({
       asker: this.#descriptive,
       waves: this.#waves,
+      fallback: this.#fallback,
+      registry: this.#registry,
+      progress: this.#progress,
+    }).write(requests)
+  }
+
+  /**
+   * What the parts of the city are called, all in one call, with the town's
+   * history in front of the model and how much of the town each part holds and
+   * which way it lies. Back in the order they were asked for, no two of them
+   * called the same thing.
+   */
+  async nameDistricts(requests: readonly DistrictRequest[]): Promise<string[]> {
+    return new DistrictNamer({
+      asker: this.#descriptive,
       fallback: this.#fallback,
       registry: this.#registry,
       progress: this.#progress,

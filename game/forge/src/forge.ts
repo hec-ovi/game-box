@@ -15,17 +15,20 @@ import { briefContract, type Brief } from './brief.ts'
 import type { Dropped } from './charters/resolve.ts'
 import { openPlacesFor, placesOnNewLand } from './interior/budget.ts'
 import { Avenues } from './layout/avenues.ts'
+import { cutDistricts, districtAt } from './layout/districts.ts'
 import { streetLines } from './layout/lines.ts'
 import { planStreets, type StreetPlan } from './layout/plan.ts'
 import { nearnessIn, sitesInBlock, storeysFor, type PlotSite } from './layout/plots.ts'
 import { layRoads } from './layout/roads.ts'
 import { spreadSites, stationsWanted } from './layout/stations.ts'
 import { paintStreets } from './layout/streets.ts'
-import type { Narrator, SummaryLock, SummaryMachine, WorldSummary } from './narrator.ts'
+import type { DistrictRequest, Narrator, SummaryLock, SummaryMachine, WorldSummary } from './narrator.ts'
+import { districtNames } from './narrator/districts.ts'
 import { writeEachPlace } from './narrator/one-at-a-time.ts'
 import { Signs } from './narrator/signs.ts'
 import { StreetNames } from './narrator/streets.ts'
 import { readHistory } from './premise/history.ts'
+import { premiseLines } from './premise/render.ts'
 import { surfacesOf } from './populate.ts'
 import { questDemand } from './quests/demand.ts'
 import { assemble } from './raise/assemble.ts'
@@ -127,7 +130,10 @@ export class Forge {
     paintStreets(world, streets)
 
     layRoads(world, streets.crossings, streets.exits)
-    await this.#raise(world, this.#townSites(brief, streets, rng, premise, world), {
+    // the town is cut into its named parts before a plot is placed, so every
+    // plot can say which one it stands in as it goes up
+    const districts = await this.#cut(world, streets, rng.fork('districts'), premise)
+    await this.#raise(world, this.#townSites(brief, streets, rng, premise, world, districts), {
       theme: brief.theme,
       ...(premise ? { premise } : {}),
       places: brief.openPlaces ?? openPlacesFor(world.grid.width * world.cellSize),
@@ -227,14 +233,57 @@ export class Forge {
   }
 
   /**
+   * Cuts the town into its named parts and writes them into the world.
+   *
+   * The shapes are arithmetic and the names are invention, like everything
+   * else here: the cut is the seed's, and a narrator that names its districts
+   * is asked for all of them in one call. Whatever it will not write, or names
+   * twice, is composed from the seed instead, so a city always comes out with
+   * every part of it named and no two of them called the same thing.
+   */
+  async #cut(world: World, streets: StreetPlan, rng: Rng, premise: Premise | undefined): Promise<ReadonlyMap<number, string>> {
+    // parks and plazas are cut in with the built blocks: a district is a part
+    // of the town rather than a set of buildings, so the map fills and a green
+    // square belongs to the quarter it stands in. The built blocks come first,
+    // so a block's number here is its number in the plan
+    const ground = [...streets.blocks, ...streets.open.map((one) => one.rect)]
+    const cut = cutDistricts(ground, rng)
+    if (!cut.length) return new Map()
+    const story = premise ? premiseLines(premise) : undefined
+    const requests: DistrictRequest[] = cut.map((one, index) => ({
+      index,
+      theme: world.theme,
+      blocks: one.blocks.length,
+      bearing: one.bearing,
+      ...(story ? { premise: story } : {}),
+    }))
+    const written = (await this.#narrator.nameDistricts?.(requests)) ?? []
+    const names = districtNames(cut, written, { theme: world.theme, seed: world.seed })
+    const districts = cut.map((one, index) => ({
+      id: world.mintId('district'),
+      name: names[index]!,
+      blocks: one.blocks.map((block) => ground[block]!),
+    }))
+    if (!world.recordDistricts(districts).ok) return new Map()
+    return new Map(cut.flatMap((one, index) => one.blocks.map((block) => [block, districts[index]!.id] as const)))
+  }
+
+  /**
    * What a whole town is built out of. What kind of town it is decides the mix,
    * its own history pushes that further, the seed moves it around, and the few
    * places the town is known for, the ones the history demands included, are
    * dropped on seeded sites before the rest is rolled.
    */
-  #townSites(brief: Brief, streets: StreetPlan, rng: Rng, premise: Premise | undefined, world: World): Chosen[] {
+  #townSites(brief: Brief, streets: StreetPlan, rng: Rng, premise: Premise | undefined, world: World, districts: ReadonlyMap<number, string>): Chosen[] {
     const charters = world.charters()
-    const sites = streets.blocks.flatMap((block, index) => sitesInBlock(block, rng.fork(`block/${index}`)))
+    const sites: PlotSite[] = []
+    const inDistrict: (string | undefined)[] = []
+    streets.blocks.forEach((block, index) => {
+      for (const site of sitesInBlock(block, rng.fork(`block/${index}`))) {
+        sites.push(site)
+        inDistrict.push(districts.get(index))
+      }
+    })
     const avenues = Avenues.from(streets.columns, streets.rows)
     const mix = rng.fork('plots')
     const flavour = flavourOf(brief.theme)
@@ -260,7 +309,8 @@ export class Forge {
       if (!charter) continue
       const onAvenue = avenues.has(site.entrance)
       const spot = { onAvenue, nearness: nearnessIn(streets.size, site.entrance) }
-      chosen.push({ site, charter, onAvenue, storeys: storeysFor(charter, brief, siteRng, spot), rng: siteRng })
+      const district = inDistrict[index]
+      chosen.push({ site, charter, onAvenue, ...(district ? { district } : {}), storeys: storeysFor(charter, brief, siteRng, spot), rng: siteRng })
     }
     return chosen
   }
@@ -303,7 +353,17 @@ export class Forge {
       const word = rng.weighted(kindWeights(flavourOf(world.theme), rng.fork(`extend/mix/${i}`), charters, premise?.build))
       const charter = charters.find((one) => one.word === word)!
       const siteRng = rng.fork(`extend/${i}`)
-      chosen.push({ site, charter, onAvenue: false, storeys: storeysFor(charter, EXTEND, siteRng, { onAvenue: false, nearness: 0 }), rng: siteRng })
+      // new land stands in the part of town it was dropped into, so a growth
+      // never adds a building the map cannot label
+      const district = districtAt(world.districts(), site.rect)
+      chosen.push({
+        site,
+        charter,
+        onAvenue: false,
+        ...(district ? { district: district.id } : {}),
+        storeys: storeysFor(charter, EXTEND, siteRng, { onAvenue: false, nearness: 0 }),
+        rng: siteRng,
+      })
     }
     return chosen
   }
@@ -383,6 +443,7 @@ export function summarise(world: World, premise?: Premise): WorldSummary {
     theme: world.theme,
     ...(premise ? { premise } : {}),
     ...(asks ? { asks } : {}),
+    districts: world.districts().map((district) => ({ districtId: district.id, name: district.name })),
     places: world.plots().map((plot) => {
       const interior = world.interiors().find((i) => i.plotId === plot.id)
       const npcs = interior ? world.npcs().filter((n) => n.station?.interiorId === interior.id) : []
@@ -403,6 +464,7 @@ export function summarise(world: World, premise?: Premise): WorldSummary {
         ...(interior ? { interiorId: interior.id } : {}),
         kind: plot.kind,
         name: plot.name,
+        ...(plot.district ? { districtId: plot.district } : {}),
         door: cellCentre(plot.entrance.cell.x, plot.entrance.cell.y, world.cellSize),
         ...(surface ? { stashAnchorId: surface.id } : {}),
         ...(work ? { work } : {}),

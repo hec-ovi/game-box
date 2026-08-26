@@ -1,10 +1,10 @@
 # @gb/world contract
 
-contractVersion: 0.15.0
+contractVersion: 0.16.0
 
 ## Purpose
 
-Holds a city: what it was asked to be, the kinds of place it has and what each one is, its grid of streets and plots, the buildings you can enter, the people stationed in them with their own lives, the things lying around and what they cost, the locks on its doors and screens and what opens them, whose home each place is, where fast travel boards, the sizes everything is drawn and cut to, and refuses any state that does not hold together.
+Holds a city: what it was asked to be, the kinds of place it has and what each one is, its grid of streets and plots, the named parts it is cut into, the buildings you can enter, the people stationed in them with their own lives, the things lying around and what they cost, the locks on its doors and screens and what opens them, whose home each place is, where fast travel boards, the sizes everything is drawn and cut to, and refuses any state that does not hold together.
 
 ## Inputs
 
@@ -13,8 +13,9 @@ Holds a city: what it was asked to be, the kinds of place it has and what each o
 | `World.found(spec)` | `CitySpec`: name, theme, seed, width, height, cellSize?, generator?, premise?, brief?, asks?, charters? | none: the spec is checked here |
 | `World.create(spec)` | same `CitySpec` | the spec must already be sound; a bad one throws. Going: use `found` |
 | `World.load(value)` | [schema/world.json](schema/world.json) | any untrusted JSON, including generated output |
-| `World.addPlot(spec)` | `PlotSpec`: kind, name, rect, entrance, storeys, style, design?, the `plot` record in [schema/world.json](schema/world.json) without its id | footprint is free land; kind is the word of a declared charter; a design names a recorded catalogue |
+| `World.addPlot(spec)` | `PlotSpec`: kind, name, rect, entrance, storeys, style, district?, design?, the `plot` record in [schema/world.json](schema/world.json) without its id | footprint is free land; kind is the word of a declared charter; a design names a recorded catalogue; a district names one the city has cut |
 | `World.recordCharters(charters)` | `ResolvedCharter[]`, 1 to `MAX_CHARTERS` (24), see [schema/world.json](schema/world.json) `charters` | the list is checked and normalised here, and must still hold every word a plot already has. Replaces the declared list |
+| `World.recordDistricts(districts)` | `District[]`, at most `MAX_DISTRICTS` (12), see [schema/world.json](schema/world.json) `districts` | the list is checked here, and must still hold every district a plot already stands in. Replaces the recorded list |
 | `World.recordCatalogues(refs)` | `AssetPackRef[]`, at most `MAX_CATALOGUES`: `{ pack, version, sha256? }` | the list is checked here, and must still name every catalogue a plot is already pinned to. Replaces the recorded list |
 | `World.recordDesign(plotId, design)` | `PlotDesign`: `{ pack, model, mirror, rooms }` | the plot exists and `pack` is one of the recorded catalogues |
 | `World.addInterior(interior)` | `interior` in [schema/world.json](schema/world.json) | its `plotId` exists. A `finish` left out is written from the plot's charter |
@@ -41,6 +42,7 @@ take. A refusal writes nothing: no id, no ground, no record.
 | queries: `plot`, `npc`, `item`, `interior`, `plotsOfKind(word)`, `npcsIn`, `positionOf` | plain records | undefined when the id is unknown, never a throw. `interior(id)` and `interiors()` always carry `finish`, see below |
 | `door(doorId)`, `machine(machineId)` | `DoorSite { interiorId, door }`; `MachineSite { interiorId, furniture }` | the door or the piece carrying that machine, wherever in the city it is; undefined when unknown |
 | `home()`, `homes()` | an `Interior` or nothing; `Interior[]` | the interiors whose `owner` is `PLAYER`, in file order; `home()` is the first |
+| `World.districts()`, `World.district(plotId)` | `District[]`; a `District` or nothing | the named parts of the city, and which one a plot stands in. Empty and nothing mean the city was never cut into any |
 | `stations()` | `Plot[]` | every plot whose charter's `transit` is `subway`: where fast travel boards |
 | `AccessSchema`, `accessContract`, `OwnerSchema`, `PLAYER` | zod; `Access` is `{ doorId }` or `{ interiorId }`; `Owner` is `'player'` or an npc id | what a key, a card or an access reward names, and whose a place is |
 | `MachineSchema`, `MACHINE_PROPS`, `MACHINE_PROGRAMS`, `isMachineProp` | zod; the four screen kinds; what a screen runs | see "Machines, cameras and bars" |
@@ -48,6 +50,7 @@ take. A refusal writes nothing: no id, no ground, no record.
 | `CELL_KINDS`, `CELL`, `Grid` | the closed cell vocabulary; the char each kind is written as; the matrix | what each kind means for walking, driving and drawing, see below |
 | `MAX_GRID_SIDE`, `cellRows(grid)`, `gridField(rows, like?)` | 2048; `string[]`; the `grid` of [schema/world.json](schema/world.json) | the widest a city may be; the picture a document's grid carries, whichever of the two forms it is written in; a picture back as a field in the form `like` is in, or as runs when there is none |
 | `World.charters()`, `World.charter(word)` | `ResolvedCharter[]`; `ResolvedCharter` or nothing | the kinds of place this city has: its own list when the file carries one, else `SHIPPED_CHARTERS`. Nothing means no charter declares the word |
+| `DistrictSchema`, `districtsContract`, `MAX_DISTRICTS` | zod; the contract the whole list is read through; 12 | what a district is and how many a city may have, see below |
 | `CharterSchema`, `ResolvedCharterSchema`, `ChartersSchema` | zod, with `charterContract`, `resolvedCharterContract`, `chartersContract` | what a generator writes, what the file carries, and the whole list, see below |
 | `SHIPPED_CHARTERS` | fourteen `ResolvedCharter`s | the presets a city that declares no charters of its own is built from, in the order a mix draws them |
 | `ROOM_USES`, `FRONTAGES`, `OPENNESS`, `MATERIALS`, `SIGN_VOICES`, `ACCESS_KINDS`, `TRANSITS`, `SERVICES`, `WORK_KINDS`, `HOLDINGS`, `FINISHES`, `PROMINENCES`, `SPRAWLS`, `KIT_PIECES` | closed lists | the axes a charter is written on, and the wall pieces a resolved one may name |
@@ -203,6 +206,30 @@ opening: it carries `doorId`, a door of its own interior, and that door's
 refused on any other. Which of these a place has, and whether the study is
 locked, is what the instance brief asks for and the generator writes; nothing
 here decides it.
+
+## The parts of a city
+
+A **district** is the unit between the city and a plot: what the map labels,
+what a direction is given in ("head west into Kiln Bay"), and what a stranger
+is from.
+
+- **`world.districts`** is the list: each an `id`, a `name` (40 characters, the
+  name on a road sign) and `blocks`, the grid rectangles it holds, one at
+  least. Their union is its shape, so a district is an L, a Z or a T rather
+  than a box, and whoever draws the map draws that union.
+- **`plot.district`** is the one it stands in. `district(plotId)` answers it.
+- `MAX_DISTRICTS` is 12. A district is a name a player holds in their head, and
+  a map carrying more labels than that is a map of labels; a bigger city gets
+  bigger districts, never more of them.
+- A plot naming a district the city has not cut is a dangling reference like
+  any other: `load` refuses the document, `check()` reports it, and both ways
+  to write one (`addPlot`, `recordDistricts` dropping one in use) refuse
+  instead.
+
+Nothing here cuts a city into districts: what shape they are and what they are
+called is the generator's, and the file carries the answer. Both fields are
+optional and `schemaVersion` is still 1, so a city exported before districts
+loads, checks and hashes exactly as it did, and simply has none.
 
 ## Where fast travel boards
 
@@ -417,6 +444,7 @@ draws the city draws no kerb against it, and whoever routes never crosses it.
 - An anchor kind is one stance, not one job: `work-desk` is sat in the chair at a desk, `work-bench` is on their feet at a bench with their hands on the top. Two stances at one surface height are two kinds, because a clip is chosen from the kind alone.
 - **A lock is a fact about the file, and so is what opens it.** A locked door names a key item, a password, or is named by a key or card somewhere in the world; a machine's lock and password ride on the piece. Whether the player has got past one is playthrough state and lives in `@gb/play`.
 - **A screen is a machine and a machine is a screen.** `machine` is on every piece of `MACHINE_PROPS` and nothing else; `watches` on every camera and nothing else; `doorId` on every bars-door and nothing else. A machine id is taken once in the city.
+- **A district is a fact about the file, and every plot says which one it stands in.** The blocks a district holds and what it is called are written down once; nothing here re-cuts a city or renames a part of it, so a file somebody is sent labels its map the way the maker's did.
 - **Whose a place is, is a fact about the file.** `owner` names the player or a person the city holds; `recordOwner` is the only writer and takes the place off the market as it writes.
 - An item carries what it is (archetype, value, bulk, who owns it). `value` is whole credits, 0 or more, the price a counter sells it for; a file that leaves it out reads as 0, so every city exported without prices still opens. Whether it matters to a quest is not stored here: `@gb/quest` answers that from the live quest log.
 - One world unit is one metre; cell coordinates convert through `cellSize`, and `METRICS` holds the proportions everything is sized from.

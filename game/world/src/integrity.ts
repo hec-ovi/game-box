@@ -24,7 +24,9 @@ export function checkIntegrity(doc: WorldDoc): IntegrityProblem[] {
   const items = new Map(doc.items.map((i) => [i.id, i]))
   const nodes = new Set(doc.roads.nodes.map((n) => n.id))
   const catalogues = new Set((doc.catalogues ?? []).map((c) => c.pack))
+  const districts = new Set((doc.districts ?? []).map((d) => d.id))
 
+  for (const district of doc.districts ?? []) claim(`district ${district.id}`, district.id)
   for (const plot of doc.plots) claim(`plot ${plot.id}`, plot.id)
   for (const interior of doc.interiors) claim(`interior ${interior.id}`, interior.id)
   for (const npc of doc.npcs) claim(`npc ${npc.id}`, npc.id)
@@ -46,6 +48,14 @@ export function checkIntegrity(doc: WorldDoc): IntegrityProblem[] {
     }
   }
 
+  for (const district of doc.districts ?? []) {
+    for (const block of district.blocks) {
+      if (block.x + block.w > width || block.y + block.h > height) {
+        fail(`district ${district.id}`, 'a block falls outside the grid')
+      }
+    }
+  }
+
   for (const plot of doc.plots) {
     const where = `plot ${plot.id}`
     const { x, y, w, h } = plot.rect
@@ -58,6 +68,8 @@ export function checkIntegrity(doc: WorldDoc): IntegrityProblem[] {
     if (!onEdge) fail(where, 'entrance cell is not on the footprint edge')
 
     if (!charterOf(doc, plot.kind)) fail(where, `kind ${plot.kind} names no charter this world declares`)
+
+    if (plot.district && !districts.has(plot.district)) fail(where, `district ${plot.district} does not exist`)
 
     if (plot.design && !catalogues.has(plot.design.pack)) {
       fail(where, `design names catalogue ${plot.design.pack}, which this world does not record`)

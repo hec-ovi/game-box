@@ -59,6 +59,7 @@ export {
   type Roads,
 } from './model/schema.ts'
 export { MAX_CATALOGUES, type AssetPackRef, type PlotDesign } from './model/design.ts'
+export { DistrictSchema, districtsContract, MAX_DISTRICTS, type District } from './model/district.ts'
 export { PremiseSchema, premiseContract, type Premise } from './model/premise.ts'
 export { WORD, WordSchema, type Word } from './model/word.ts'
 export {

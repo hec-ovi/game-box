@@ -41,6 +41,7 @@ function put(world: World, one: PlannedSite, names: Names): string | undefined {
     name: names.of(one),
     rect: one.site.rect,
     entrance: { cell: one.site.entrance, facing: one.site.facing },
+    ...(one.district ? { district: one.district } : {}),
     storeys: one.storeys,
     style: one.style,
   })

@@ -118,7 +118,7 @@ export function idsOf(slice: Slice): CornerIds {
  * lying about and what it costs, its locks and screens, and how far it is from
  * the door the errand starts at.
  */
-export function describeSlice(slice: Slice, characters: ReadonlyMap<string, string>): string {
+export function describeSlice(slice: Slice, characters: ReadonlyMap<string, string>, districts: ReadonlyMap<string, string>): string {
   return slice.places
     .map((place) => {
       const away = place === slice.home ? undefined : walk(slice.home, place)
@@ -130,8 +130,11 @@ export function describeSlice(slice: Slice, characters: ReadonlyMap<string, stri
             : `, ${Math.round(away / STEP) * STEP} m from ${slice.home.name}.`
       const character = characters.get(place.name)
       const ids = place.interiorId ? `${place.plotId}, ${place.interiorId}` : place.plotId
+      // the part of town and nothing finer: metres make a writer careful about
+      // geography and careless about the story
+      const district = place.districtId ? districts.get(place.districtId) : undefined
       return [
-        `- ${place.name}, a ${place.kind} (${ids})${where}`,
+        `- ${place.name}, a ${place.kind}${district ? ` in ${district}` : ''} (${ids})${where}`,
         ...(character ? [`    what it is: ${character}`] : []),
         ...placeLines(place),
       ].join('\n')

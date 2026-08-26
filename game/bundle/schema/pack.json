@@ -958,6 +958,10 @@
                   "facing"
                 ]
               },
+              "district": {
+                "type": "string",
+                "pattern": "^district_\\d{4,}$"
+              },
               "style": {
                 "type": "string",
                 "minLength": 1,

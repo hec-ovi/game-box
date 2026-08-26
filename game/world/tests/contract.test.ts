@@ -431,6 +431,93 @@ describe('what a city was designed against', () => {
   })
 })
 
+describe('the parts of the city', () => {
+  /** A hamlet cut into one district, with its bar standing in it. */
+  function cut() {
+    const { world, plot } = hamlet()
+    const district = { id: world.mintId('district'), name: 'Kiln Bay', blocks: [{ x: 0, y: 0, w: 16, h: 5 }] }
+    expect(world.recordDistricts([district]).ok).toBe(true)
+    return { world, plot, district }
+  }
+
+  it('cuts the city into named parts, stands a plot in one, and hands both back after a save and a load', () => {
+    const { world, district } = cut()
+    const site = world.buildSites(3, 3)[0]!
+    const added = world.addPlot({
+      kind: 'house',
+      name: 'Hollis Place',
+      rect: site,
+      entrance: { cell: { x: site.x, y: site.y + site.h }, facing: 'south' },
+      storeys: 1,
+      style: 'western-timber',
+      district: district.id,
+    })
+    expect(added.ok).toBe(true)
+    if (!added.ok) return
+
+    const reloaded = World.load(JSON.parse(JSON.stringify(world.toJSON())))
+    expect(reloaded.ok).toBe(true)
+    if (!reloaded.ok) return
+    expect(reloaded.value.check()).toEqual([])
+    expect(reloaded.value.districts()).toEqual([district])
+    expect(reloaded.value.district(added.value.id)).toEqual(district)
+  })
+
+  it('refuses a district nothing has cut, a list that drops one in use, and a district with no blocks', () => {
+    const { world, district } = cut()
+    const site = world.buildSites(3, 3)[0]!
+    const plotIn = (id: string) => ({
+      kind: 'house' as const,
+      name: 'Hollis Place',
+      rect: site,
+      entrance: { cell: { x: site.x, y: site.y + site.h }, facing: 'south' as const },
+      storeys: 1,
+      style: 'western-timber',
+      district: id,
+    })
+
+    const nowhere = world.addPlot(plotIn('district_0099'))
+    expect(nowhere.ok).toBe(false)
+    if (!nowhere.ok) expect(nowhere.error.code).toBe('unknown-reference')
+    // and it refused before it took the ground
+    expect(world.buildSites(3, 3)).toContainEqual(site)
+
+    expect(world.addPlot(plotIn(district.id)).ok).toBe(true)
+    const dropped = world.recordDistricts([{ id: world.mintId('district'), name: 'Lowgate', blocks: [{ x: 0, y: 0, w: 4, h: 4 }] }])
+    expect(dropped.ok).toBe(false)
+    if (!dropped.ok) expect(dropped.error.code).toBe('unknown-reference')
+
+    const empty = world.recordDistricts([{ ...district, blocks: [] }])
+    expect(empty.ok).toBe(false)
+    if (!empty.ok) expect(empty.error.code).toBe('invalid-document')
+  })
+
+  it('reports a plot standing in a district a document does not carry', () => {
+    const { world, district } = cut()
+    const doc = JSON.parse(JSON.stringify(world.toJSON()))
+    doc.plots[0].district = district.id
+    doc.districts = []
+    const loaded = World.load(doc)
+    expect(loaded.ok).toBe(false)
+    if (!loaded.ok && loaded.error.code === 'inconsistent-world') {
+      expect(loaded.error.problems.some((p) => p.message.includes(`district ${district.id} does not exist`))).toBe(true)
+    } else {
+      throw new Error('expected inconsistent-world')
+    }
+  })
+
+  it('opens a city written before districts existed, and it simply has none', () => {
+    const { world } = hamlet()
+    const doc = JSON.parse(JSON.stringify(world.toJSON()))
+    expect(doc.districts).toBeUndefined()
+    const loaded = World.load(doc)
+    expect(loaded.ok).toBe(true)
+    if (!loaded.ok) return
+    expect(loaded.value.districts()).toEqual([])
+    expect(loaded.value.district(loaded.value.plots()[0]!.id)).toBeUndefined()
+  })
+})
+
 describe('the history a city was built against', () => {
   const premise: Premise = {
     livesOn: 'The stack of fabrication floors under the ring road.',

@@ -1,4 +1,5 @@
 import type { Asks, Charter, ItemArchetype, MachineProgram, Npc, NpcRole, Premise, RoomKind, Word, WorkKind } from '@gb/world'
+import type { Bearing } from './layout/districts.ts'
 import type { History } from './premise/shape.ts'
 
 /**
@@ -73,6 +74,23 @@ export interface InstanceThing extends ItemProfile {
   readonly thingId: string
 }
 
+/**
+ * One part of the city as a narrator is shown it: how much of the town it
+ * holds and which way it lies from the middle of it. No coordinate and no
+ * metre, because a district is the coarsest handle there is on purpose.
+ */
+export interface DistrictRequest {
+  /** Where this district falls in the city's own count of them. */
+  readonly index: number
+  readonly theme: string
+  /** How many of the town's blocks it holds: a corner of it, or most of it. */
+  readonly blocks: number
+  /** Which way it lies from the middle of town. */
+  readonly bearing: Bearing
+  /** What the city is about, in the few lines `premiseLines` renders it as. Absent when nobody wrote one. */
+  readonly premise?: string
+}
+
 /** One building as a narrator is shown it: what it is, where it stands, and what town it is in. */
 export interface PlaceRequest {
   /** The word of the kind of place it is. */
@@ -129,11 +147,15 @@ export interface WorldSummary {
   readonly premise?: Premise
   /** What the owner asked of the writing: the main errand, the side work, the tone. */
   readonly asks?: Asks
+  /** The parts of the city, by name. Absent or empty when it was never cut into any. */
+  readonly districts?: ReadonlyArray<{ readonly districtId: string; readonly name: string }>
   readonly places: ReadonlyArray<{
     readonly plotId: string
     readonly interiorId?: string
     readonly kind: Word
     readonly name: string
+    /** The part of the city it stands in: the coarsest handle a quest writer is given on where it is. */
+    readonly districtId?: string
     /** Where its street door is, in metres: how far a job makes the player walk. */
     readonly door?: { readonly x: number; readonly z: number }
     /** A surface inside it something can be left on, when it has one. */
@@ -168,8 +190,9 @@ export interface WorldSummary {
  * as, and what the main line is about. It may declare kinds of place of its own
  * beside the presets, as `charters`.
  *
- * `namePlaces` is the signs over the doors that do not open, asked for
- * together; a narrator without it gets them written here.
+ * `namePlaces` is the signs over the doors that do not open, and
+ * `nameDistricts` the names of the parts of the city, each asked for
+ * together; a narrator without either gets them written here.
  *
  * `writeInstances` is the one call the generator makes about the places that
  * open: every one of them goes out together, and the answers come back one per
@@ -191,6 +214,12 @@ export interface Narrator {
   namePlace(input: { kind: Word; charter: Charter; theme: string; index: number; street?: string; premise?: string }): Promise<string>
   /** The signs over every door that does not open, one per request in request order. */
   namePlaces?(requests: readonly PlaceRequest[]): Promise<readonly string[]>
+  /**
+   * What the parts of the city are called, all asked for together, one per
+   * request in request order. A blank keeps the name the box composed, and a
+   * narrator without this gets every district named that way.
+   */
+  nameDistricts?(requests: readonly DistrictRequest[]): Promise<readonly string[]>
   /** One person for one post. `premise` is the town's story as `premiseLines` renders it, when it has one. */
   describeNpc(input: {
     role: NpcRole

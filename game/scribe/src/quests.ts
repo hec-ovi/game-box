@@ -121,7 +121,7 @@ export class QuestWriter {
       questKind: index === 0 ? 'main' : 'side',
       questRole: role,
       home: slice.home.name,
-      places: describeSlice(slice, this.#characters),
+      places: describeSlice(slice, this.#characters, city.districts),
       rewardBands: rewardBands(),
       usedTitles: bullets(
         lastFew(earlier.flatMap((entry) => (entry?.title ? [entry.title] : []))),

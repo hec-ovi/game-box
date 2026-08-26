@@ -219,6 +219,9 @@ export function capturing(inner: Narrator, into: Captured, history?: History): N
       return inner.namePlaces!(requests)
     }
   }
+  if (inner.nameDistricts) {
+    narrator.nameDistricts = (requests) => inner.nameDistricts!(requests)
+  }
   return narrator
 }
 

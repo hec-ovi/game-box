@@ -54,6 +54,11 @@ export class CitySummary {
     return this.#summary.asks
   }
 
+  /** What each part of the city is called, by its id: the coarsest handle a quest writer is given on where a place is. */
+  get districts(): ReadonlyMap<string, string> {
+    return new Map((this.#summary.districts ?? []).map((district) => [district.districtId, district.name]))
+  }
+
   /** The town's story as a prompt reads it. */
   get history(): string {
     return this.#summary.premise ? premiseLines(this.#summary.premise) : prompt('no-history')

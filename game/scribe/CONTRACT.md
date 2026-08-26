@@ -1,10 +1,10 @@
 # @gb/scribe contract
 
-contractVersion: 0.7.0
+contractVersion: 0.8.0
 
 ## Purpose
 
-The narrator backed by the local model: the brief itself where the owner asks for one, then the city's history, written from the owner's own brief, with a charter for every kind of place that history invents, then its name and the signs over its doors, whole places and the people in them with their lives, each place written knowing the locks and screens the plan put in it, and the quests they hand out, through those locks, screens and counters where the town has them, each one a forced tool call validated against the schema the tool was built from, every call pinned to a seed of its own.
+The narrator backed by the local model: the brief itself where the owner asks for one, then the city's history, written from the owner's own brief, with a charter for every kind of place that history invents, then its name, the names of the parts of the city and the signs over its doors, whole places and the people in them with their lives, each place written knowing the locks and screens the plan put in it, and the quests they hand out, through those locks, screens and counters where the town has them, each one a forced tool call validated against the schema the tool was built from, every call pinned to a seed of its own.
 
 ## Inputs
 
@@ -14,6 +14,7 @@ The narrator backed by the local model: the brief itself where the owner asks fo
 | `writeBrief(input)` | `want`: which of `theme`, `brief`, `mainQuest`, `sideQuests`, `tone` to write; `have?`: what the owner has typed so far; `seed` | the call made from the form, before there is a city |
 | `writePremise(input)` | `PremiseInput`: `theme`, `seed`, and the owner's `brief?` and `asks?` in `@gb/world`'s shapes | the first call of a build, made before a plot is placed |
 | `namePlaces(requests)` | `PlaceRequest[]`: per building its `kind` (the word of its charter), the `charter` itself, the `theme`, its `index` in the town, the `street?` its door is on, and the city's `premise?` as `premiseLines` renders it | for the buildings that do not open |
+| `nameDistricts(requests)` | `@gb/forge`'s `DistrictRequest[]`: per part its `index` in the city, the `theme`, how many `blocks` of the town it holds, which way it lies (`bearing`), and the city's `premise?` as `premiseLines` renders it | the whole cut, asked for together. No coordinate and no metre is in a request |
 | `namePlace(input)`, `describeNpc(input)` | the `Narrator` shapes: a place's `kind` and `charter`; a person's `role`, `placeKind`, `place` (the charter) and `placeName` | the single-place questions, each told what such a place is here |
 | `writeInstances(requests)` | `@gb/forge`'s `InstanceRequest[]`: for each place its `kind`, its `charter`, the `theme`, its `index`, the `rooms` its shell was cut into, the `posts` to fill (an id, a role and an index each), the `things` lying about (an id, an archetype and an index each), `has` (the instance brief: the rooms behind a lock and how each opens, the screens by room and program, whether a camera watches the door, and the price when the place is for sale), and the city's `premise` once there is one | the ids are the caller's own handles and come straight back on the answer; nothing about any other place may be in a request |
 | `writeQuests(input)` | `QuestInput`: `@gb/forge`'s `WorldSummary` with `asks?` on it, and `sideQuests` | the summary's `premise` is what the quests are written against; its places' `locks`, `machines`, `forSale` and prices are what a job through a door, a screen or a counter is written against |
@@ -28,6 +29,7 @@ Scribe implements `@gb/forge`'s `Narrator`, so a `Forge` takes one and builds a 
 | `writeBrief` | `BriefDraft` (the same five fields) or nothing | the fields in `want` are written; every other field comes back exactly as it was handed in, so a box the owner typed is never quietly rewritten. There is no fallback: a model that will not answer returns nothing, because a composed brief handed over as the model's answer is what this call exists to replace. Every field of the tool carries its own description, so the constrained decoder reads the same thing the prompt says |
 | `nameCity`, `namePlace`, `describeNpc`, `describeItem` | the `Narrator` shapes | always answered: the fallback covers whatever the model cannot. `nameCity` is shown the history, so the town is named after what it lives on. `namePlace` and `describeNpc` are shown what the place's charter says such a place is here. `describeNpc` answers `life` and `background`, every part written, and a name whose family name starts with the letters its index was dealt |
 | `namePlaces` | signs, in the order they were asked for | one per request, twenty to a model call, the history in front of the model and each building's label (what its charter says a person calls it) and street. No word heads two signs in the city: the head being the first word after any "The", possessives dropped. A sign the model repeats is written by the fallback composer |
+| `nameDistricts` | names, in the order they were asked for | one per part, all of them in one model call, the history in front of the model and each part's share of the town and side of it in words rather than in numbers. No two parts of a city are called the same thing: a repeat is quoted back and refused, and a name the model then leaves out, writes too long for the file, or repeats anyway is composed by the fallback narrator |
 | `writeInstances` | `@gb/forge`'s `Instance[]`, in the order the places were asked for | each one carries the place's `name`, its `character` (what the place is, empty when the model wrote none of it), one person per post with the post's own role, their `life` (every field of `@gb/world`'s `Life`) and `background` (at least one fact behind each of the four unlocks), and one named thing per thing handed in, all of it written knowing what the plan put in the place (`has`). No two signs in a city share a head word, and nobody in a city shares a name with anybody else |
 | `writeQuests` | quest documents, sealed | one call per quest, every one of them already accepted by `@gb/quest` against the city it was written for and walked here the way the harness walks it (below); a slot the model cannot fill is filled by the fallback narrator's quest for that slot, so a model that will not write never costs a quest the offline narrator would have written. A job may go through a locked door (`unlock`), a locked screen (`hack`), a game screen (`beat-game`) or a counter (`buy`), hand out a password (`give-password`), and pay `access`, a `car` or a `deed` where the town has the thing. Every call is shown the town's history; the main line is shown `asks.mainQuest`, each side errand `asks.sideQuests`, and all of them `asks.tone` |
 | `problems()` | `ScribeProblem[]`: the `task` (the tool), `at` (the call's position, `charter:jail`, `quest:3`) and the `error` | every call that failed, so a thin world can be explained rather than guessed at |
@@ -191,6 +193,28 @@ other.
 - **The offline composer stays the offline path.** A batch the model will not
   write, and any sign it repeats, comes from `fallback.namePlace`, asked again
   at the next index until its head is free.
+
+### The names of the parts of the city
+
+A district is what the map labels and what somebody says instead of a bearing,
+so its name has to belong to the town it is in.
+
+- **One call for the whole cut.** A city has a handful of parts, so there is
+  never a second batch: they all go out together with the town's history in
+  front of the model, which is what lets one name answer another (a wharf end
+  and the hill above it) instead of each being written in the dark.
+- **What the model is shown is coarse on purpose.** Each part carries how much
+  of the town it holds, in words (`most`, `about a third`, `a small corner`),
+  and which way it lies from the middle of it. No cell, no metre, no shape,
+  because `docs/CITY.md` section 9 makes the district the coarsest handle there
+  is and a writer given metres writes about geography.
+- **No two parts of a city share a name.** A batch that names two of them the
+  same thing is quoted the repeat and asked again; whatever is still repeated,
+  missing, or too long for the world document is composed by the fallback
+  narrator instead, so the answer is always one name per part with no two alike.
+- **The tool's own fields say what a name is.** `name_districts` carries the
+  label and the name, and the name's description is the same rule the prompt
+  gives, so the constrained decoder reads it too.
 
 ### A place written whole
 
@@ -359,7 +383,7 @@ Calls run in waves: `concurrency` of them go out together and all land before th
 - The corner of the city a quest is set in is drawn from the build's seed and the quest's index.
 - The seed a call sends is drawn from its position, so it is the same however the waves fell.
 
-The charters, `namePlaces`, `writeInstances` and quest writing each fan out across the full width. The single-place shapes (`namePlace`, `describeNpc`, `describeItem`) are one call each, in whatever order the caller issues them.
+The charters, `namePlaces`, `writeInstances` and quest writing each fan out across the full width. `nameDistricts` is one call, because a city has a handful of parts. The single-place shapes (`namePlace`, `describeNpc`, `describeItem`) are one call each, in whatever order the caller issues them.
 
 ### The schema the model is handed
 
@@ -379,7 +403,7 @@ A model cannot be specific about a world it cannot see. Every descriptive call i
 
 A new authoring task is a new prompt file, a new tool in `src/tools.ts`, and a method that asks for it with a label for its position. A task that runs many at once also needs a `Pass` in `src/unique.ts`, which is what settles the names in index order. Changing a prompt needs no code change, only a regenerate. `GAME_BOX_SLOTS` is how many calls the engine behind the sidecar serves at once; llama-server reports it as `total_slots` and the sidecar does not pass it on, so it is set by hand or left at the default.
 
-One file per job: `src/premise.ts` writes the city's history, `src/charters.ts` writes the charter behind each kind of place it invents, `src/charter-lines.ts` says what a charter is in the words a prompt reads, `src/asked.ts` renders what the owner typed for each writer, `src/signs.ts` names the buildings that do not open in batches, `src/instance.ts` writes a place whole, `src/brief-lines.ts` says what the plan put in it, `src/person.ts` is the one shape a person is written in, `src/quests.ts` writes the work, `src/neighbourhood.ts` cuts the city into corners a quest can be written about, `src/place-lines.ts` writes one place of a corner out with its locks, screens and prices, `src/locks.ts` reads the city's locks, screens and counters by id, `src/reach.ts` walks a draft the way the harness plays it, `src/tier.ts` reads a quest's tier off its reward, `src/schema/narrow.ts` cuts the quest schema to what a summary can name and `src/schema/corner.ts` pins it to one corner's ids, `src/claim.ts` deals out the family names, `src/head.ts` says what word a sign is read by, `src/registry.ts` keeps what is spent, `src/unique.ts` settles which answer keeps a name, `src/pins.ts` draws the seed a call sends, and `src/progress.ts` says how far it has got.
+One file per job: `src/premise.ts` writes the city's history, `src/charters.ts` writes the charter behind each kind of place it invents, `src/charter-lines.ts` says what a charter is in the words a prompt reads, `src/asked.ts` renders what the owner typed for each writer, `src/signs.ts` names the buildings that do not open in batches, `src/districts.ts` names the parts of the city in one call, `src/instance.ts` writes a place whole, `src/brief-lines.ts` says what the plan put in it, `src/person.ts` is the one shape a person is written in, `src/quests.ts` writes the work, `src/neighbourhood.ts` cuts the city into corners a quest can be written about, `src/place-lines.ts` writes one place of a corner out with its locks, screens and prices, `src/locks.ts` reads the city's locks, screens and counters by id, `src/reach.ts` walks a draft the way the harness plays it, `src/tier.ts` reads a quest's tier off its reward, `src/schema/narrow.ts` cuts the quest schema to what a summary can name and `src/schema/corner.ts` pins it to one corner's ids, `src/claim.ts` deals out the family names, `src/head.ts` says what word a sign is read by, `src/registry.ts` keeps what is spent, `src/unique.ts` settles which answer keeps a name, `src/pins.ts` draws the seed a call sends, and `src/progress.ts` says how far it has got.
 
 A length in a tool's schema is `@gb/world`'s own limit on the field the answer ends up in, never a limit on how much the model may write. The engine does not enforce `maxLength` anyway: it lets the answer run and the contract then throws the whole call away, which is why nothing has a cap the world does not already impose.
 

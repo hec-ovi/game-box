@@ -1,5 +1,6 @@
 import type { Rng } from '@gb/kit'
 import type { Words } from '../theme/words.ts'
+import { uniqueWords } from './unique.ts'
 import { vocabularyOf } from './vocabulary.ts'
 
 /** The shapes a sign takes, named by what its head word is. */
@@ -42,7 +43,7 @@ export class NamePool {
       ...vocabularyOf(`${theme}\n${premise ?? ''}`).map((word) => ({ word, shape: 'place' as const })),
       ...Array.from({ length: NUMBERS }, (_, n) => ({ word: String(n + 1), shape: 'number' as const })),
     ]
-    this.#heads = rng.shuffle(unique(all))
+    this.#heads = rng.shuffle(uniqueWords(all))
   }
 
   /** How many signs the pool heads before it starts numbering them. */
@@ -54,15 +55,4 @@ export class NamePool {
   headAt(index: number): Head {
     return this.#heads[index] ?? { word: String(index + 1), shape: 'number' }
   }
-}
-
-/** One head per word, whichever list said it first, so "Iron" is spent once. */
-function unique(heads: readonly Head[]): Head[] {
-  const seen = new Set<string>()
-  return heads.filter((head) => {
-    const key = head.word.toLowerCase()
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
 }

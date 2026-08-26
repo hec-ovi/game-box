@@ -116,6 +116,35 @@ export function signsTool(labels: readonly string[]): Tool<WrittenSigns> {
   }
 }
 
+/** What each part of the city is called, each carrying the label it was asked under. */
+export interface WrittenDistricts {
+  readonly districts: readonly { readonly district: string; readonly name: string }[]
+}
+
+/**
+ * The names of the parts of a city, asked for together. Every length is
+ * `@gb/world`'s own limit on the field it ends up in, and the fields carry
+ * what a district name is, so the shape of the answer is described where the
+ * model decodes it rather than only in the prompt.
+ */
+export function districtsTool(labels: readonly string[]): Tool<WrittenDistricts> {
+  const district = z.object({
+    district: oneOf(labels).describe('The label of the part of town this name is for, exactly as it was given.'),
+    name: z
+      .string()
+      .min(2)
+      .max(40)
+      .describe(
+        'What people here call that part of town: the name off a road sign, one to three words, built out of what this town lives on or which side of it this part is, and a plain place word (bay, end, row, gate, side, reach). Never the word district, quarter, zone or sector with a number after it, and never a bare compass point.',
+      ),
+  })
+  return {
+    name: 'name_districts',
+    description: prompt('tool-name-districts'),
+    contract: contract('name_districts', z.object({ districts: exactly(district, labels.length) })),
+  }
+}
+
 /** One place and everybody in it, as one answer. */
 export interface WrittenPlace {
   readonly name: string

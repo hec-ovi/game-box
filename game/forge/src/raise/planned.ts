@@ -16,6 +16,8 @@ export interface Chosen {
   readonly storeys: number
   /** Whether its door is on one of the town's avenues. */
   readonly onAvenue: boolean
+  /** The part of the city it stands in. Absent when the city was never cut into any. */
+  readonly district?: string
   /** Its own stream, so the inside is planned off the same seed the outside was. */
   readonly rng: Rng
   /** The building already standing here, when this is a facade a growth may open rather than new land. */

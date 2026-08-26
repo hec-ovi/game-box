@@ -1,13 +1,14 @@
 import { Rng } from '@gb/kit'
 import type { Charter, ItemArchetype, NpcRole, Premise, Word } from '@gb/world'
 import { backgroundOf } from './narrator/background.ts'
+import { districtNames } from './narrator/districts.ts'
 import { knowledgeOf, personalityOf } from './narrator/knowledge.ts'
 import { lifeOf } from './narrator/lives.ts'
 import { cityName } from './narrator/places.ts'
 import { writeEachPlace } from './narrator/one-at-a-time.ts'
 import { Roster } from './narrator/roster.ts'
 import { Signs } from './narrator/signs.ts'
-import type { Instance, InstanceRequest, ItemProfile, Narrator, NpcProfile, WorldSummary } from './narrator.ts'
+import type { DistrictRequest, Instance, InstanceRequest, ItemProfile, Narrator, NpcProfile, WorldSummary } from './narrator.ts'
 import type { History } from './premise/shape.ts'
 import { composePremise, type Written } from './premise/write.ts'
 import { QuestWriter } from './quests/write.ts'
@@ -35,6 +36,7 @@ const ITEM_ASIDES: readonly string[] = [
  * language-model narrator has to match.
  */
 export class OfflineNarrator implements Narrator {
+  #seed: string
   #rng: Rng
   #signs: Signs
   #rosters = new Map<Flavour, Roster>()
@@ -42,6 +44,7 @@ export class OfflineNarrator implements Narrator {
   #written: Written | undefined
 
   constructor(seed: string) {
+    this.#seed = seed
     this.#rng = new Rng(`narrator/${seed}`)
     this.#signs = new Signs(seed)
   }
@@ -74,6 +77,11 @@ export class OfflineNarrator implements Narrator {
 
   async namePlace(input: { charter: Charter; theme: string; index: number; street?: string; premise?: string }): Promise<string> {
     return this.#signs.over(input.charter, input.theme, input.index, input)
+  }
+
+  /** What the parts of the town are called, composed off the theme's own words and the seed. */
+  async nameDistricts(requests: readonly DistrictRequest[]): Promise<readonly string[]> {
+    return districtNames(requests, [], { theme: requests[0]?.theme ?? '', seed: this.#seed })
   }
 
   /** The plural, one place at a time: nothing here is slow, so nothing here fans out. */

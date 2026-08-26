@@ -5,6 +5,8 @@ import { PLOT_BAND, TALLEST_STOREYS } from '../plot-band.ts'
 import { AccessSchema, OwnerSchema } from './access.ts'
 import { AssetPackRefSchema, MAX_CATALOGUES, PlotDesignSchema } from './design.ts'
 import { AsksSchema, BriefSchema } from './asks.ts'
+import { DistrictsSchema } from './district.ts'
+import { CellSchema, PointSchema, RectSchema } from './geometry.ts'
 import { id } from './ids.ts'
 import { BackgroundSchema, LifeSchema } from './life.ts'
 import { isMachineProp, MachineSchema, PasswordSchema } from './machine.ts'
@@ -23,21 +25,12 @@ import {
   ROOM_KINDS,
 } from './vocabulary.ts'
 
-const Cell = z.object({ x: z.number().int().min(0), y: z.number().int().min(0) })
-const RectSchema = z.object({
-  x: z.number().int().min(0),
-  y: z.number().int().min(0),
-  w: z.number().int().min(1),
-  h: z.number().int().min(1),
-})
-const Point = z.object({ x: z.number(), y: z.number() })
-
 export const AnchorSchema = z.object({
   id: id('anchor'),
   kind: z.enum(ANCHOR_KINDS),
   roomId: id('room'),
   /** Metres from the interior origin. */
-  pos: Point,
+  pos: PointSchema,
   /** Degrees, 0 faces north. */
   rot: z.number().min(-360).max(360),
   /** The furniture this anchor belongs to, when it has one. */
@@ -50,7 +43,7 @@ export const FurnitureSchema = z.object({
   id: id('prop'),
   prop: z.enum(FURNITURE_PROPS),
   roomId: id('room'),
-  pos: Point,
+  pos: PointSchema,
   rot: z.number().min(-360).max(360),
   /**
    * Metres off the floor its base stands, for a piece that stands on another
@@ -96,7 +89,7 @@ export const DoorSchema = z.object({
   /** `outside` on the entrance door, otherwise the room you come from. */
   from: z.union([z.literal('outside'), id('room')]),
   to: id('room'),
-  pos: Point,
+  pos: PointSchema,
   rot: z.number().min(-360).max(360),
   locked: z.boolean().default(false),
   /** The item that unlocks it, when locked. */
@@ -133,7 +126,9 @@ export const PlotSchema = z.object({
   rect: RectSchema,
   storeys: z.number().int().min(PLOT_BAND.storeys.min).max(TALLEST_STOREYS),
   /** Where the front door is, and which way it faces. */
-  entrance: z.object({ cell: Cell, facing: z.enum(FACINGS) }),
+  entrance: z.object({ cell: CellSchema, facing: z.enum(FACINGS) }),
+  /** The part of the city it stands in. Absent in a file written before the city had any. */
+  district: id('district').optional(),
   /** Asset style key: which building kit dresses this plot. */
   style: z.string().min(1).max(40),
   interiorId: id('interior').optional(),
@@ -141,7 +136,7 @@ export const PlotSchema = z.object({
   design: PlotDesignSchema.optional(),
 })
 
-export const RoadNodeSchema = z.object({ id: id('node'), cell: Cell })
+export const RoadNodeSchema = z.object({ id: id('node'), cell: CellSchema })
 
 export const RoadSegmentSchema = z.object({
   id: id('road'),
@@ -202,7 +197,7 @@ export const ItemSchema = z.object({
 export const PlacementSchema = z.discriminatedUnion('at', [
   z.object({ at: z.literal('anchor'), itemId: id('item'), interiorId: id('interior'), anchorId: id('anchor') }),
   z.object({ at: z.literal('npc'), itemId: id('item'), npcId: id('npc') }),
-  z.object({ at: z.literal('ground'), itemId: id('item'), cell: Cell }),
+  z.object({ at: z.literal('ground'), itemId: id('item'), cell: CellSchema }),
 ])
 
 /**
@@ -236,6 +231,8 @@ export const WorldSchema = z.object({
   premise: PremiseSchema.optional(),
   /** The kinds of place this city has. Absent means the fourteen shipped presets. */
   charters: ChartersSchema.optional(),
+  /** The named parts of the city. Absent means it was never cut into any. */
+  districts: DistrictsSchema.optional(),
   grid: z
     .object({
       width: GridSide,

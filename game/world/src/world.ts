@@ -7,6 +7,7 @@ import { PLAYER, type Owner } from './model/access.ts'
 import { citySpecContract, type CitySpec } from './model/city-spec.ts'
 import { cellRows, gridField, type GridField } from './model/grid-field.ts'
 import { catalogueListContract, plotDesignContract, type AssetPackRef, type PlotDesign } from './model/design.ts'
+import { districtsContract, type District } from './model/district.ts'
 import type { Asks } from './model/asks.ts'
 import type { Premise } from './model/premise.ts'
 import { chartersContract, type ResolvedCharter } from './model/resolved.ts'
@@ -167,6 +168,33 @@ export class World {
       return err({ code: 'unknown-reference', message: `plot ${orphaned.id} is a ${orphaned.kind}, which this list drops` })
     }
     const written = this.#rewrite({ charters: checked.value })
+    return written.ok ? ok(checked.value) : written
+  }
+
+  /** The named parts of the city. Empty means it was never cut into any. */
+  districts(): readonly District[] {
+    return this.#doc.districts ?? []
+  }
+
+  /** Which part of the city a plot stands in, or nothing when it says none. */
+  district(plotId: string): District | undefined {
+    const named = this.plot(plotId)?.district
+    return named === undefined ? undefined : this.districts().find((one) => one.id === named)
+  }
+
+  /**
+   * Cut the city into its named parts, before any plot says it stands in one.
+   * Replaces whatever was recorded before, and refuses to drop one a plot
+   * already names.
+   */
+  recordDistricts(districts: readonly District[]): Result<readonly District[], WorldError> {
+    const checked = read(districtsContract, districts)
+    if (!checked.ok) return checked
+    const orphaned = this.#doc.plots.find((p) => p.district && !checked.value.some((one) => one.id === p.district))
+    if (orphaned) {
+      return err({ code: 'unknown-reference', message: `plot ${orphaned.id} stands in ${orphaned.district}, which this list drops` })
+    }
+    const written = this.#rewrite({ districts: checked.value })
     return written.ok ? ok(checked.value) : written
   }
 
@@ -336,6 +364,9 @@ export class World {
     }
     if (!this.charter(checked.value.kind)) {
       return err({ code: 'unknown-reference', message: `${checked.value.name} is a ${checked.value.kind}, which this city declares no charter for` })
+    }
+    if (checked.value.district && !this.districts().some((one) => one.id === checked.value.district)) {
+      return err({ code: 'unknown-reference', message: `${checked.value.name} stands in ${checked.value.district}, which this city has not cut` })
     }
     if (checked.value.design) {
       const pinned = this.#pinned(checked.value.name, checked.value.design)
