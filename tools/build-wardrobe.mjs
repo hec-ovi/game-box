@@ -25,6 +25,7 @@ import { MeshoptEncoder } from 'meshoptimizer'
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import { alignOver } from './wardrobe/face.mjs'
 import { GarmentPainter } from './wardrobe/painter.mjs'
 import { Palette } from './wardrobe/palette.mjs'
 import { agree, refit } from './wardrobe/refit.mjs'
@@ -126,13 +127,18 @@ for (const outfit of manifest.outfits) {
   const beard = hair.beard ? nodeName('beard', hair.beard) : undefined
   if (hair.beard) settled = Math.max(settled, wear(doc, skin, await hairPiece(hair.beard), hair.beard, { name: beard, onSkin: bare }).settled)
 
-  // the body brings one pair of eyebrows; the other pair is a second shape to
-  // pick from, so two people with the same hair still have different faces
+  // the body brings one pair of eyebrows, modelled for its own face; the other
+  // pair is a second shape to pick from, so two people with the same hair still
+  // have different faces. It was modelled for the other head, so it is put over
+  // the body's own pair rather than left where the head bone carries it.
   const brows = ['brows_base']
-  rename(doc, 'Eyebrows', brows[0])
+  const ownBrows = rename(doc, 'Eyebrows', brows[0]).getMesh()
+  let aligned = 0
   if (hair.brows) {
     brows.push(nodeName('brows', hair.brows))
-    settled = Math.max(settled, wear(doc, skin, await hairPiece(hair.brows), hair.brows, { name: brows[1], onSkin: bare }).settled)
+    const worn = wear(doc, skin, await hairPiece(hair.brows), hair.brows, { name: brows[1], onSkin: bare, over: ownBrows })
+    settled = Math.max(settled, worn.settled)
+    aligned = worn.aligned
   }
 
   await tidy(doc)
@@ -152,6 +158,7 @@ for (const outfit of manifest.outfits) {
   console.log(
     `${outfit.id}: ${outfit.parts.length} garments (${repainted}), ${styles.length} hairstyles,` +
       ` ${brows.length} brow shapes${beard ? ', a beard' : ''};` +
+      ` borrowed brows put on the face from ${(aligned * 1000).toFixed(1)} mm away,` +
       ` refitted by up to ${(shifted * 100).toFixed(1)} cm, collars opened over the neck by up to ${(lifted * 1000).toFixed(1)} mm,` +
       ` hair lifted out of the skin by up to ${(settled * 1000).toFixed(1)} mm,` +
       ` ${evened} skin weights evened,` +
@@ -187,7 +194,7 @@ function nodeName(kind, source) {
 function rename(doc, from, to) {
   const node = doc.getRoot().listNodes().find((one) => one.getName() === from)
   if (!node) throw new Error(`no node named ${from} to rename to ${to}`)
-  node.setName(to)
+  return node.setName(to)
 }
 
 /**
@@ -196,15 +203,17 @@ function rename(doc, from, to) {
  * hairstyle to show or hide at spawn; `drop` names nodes not worn at all,
  * which is where the pack's belts, bracers and buckles go; `onSkin` names the
  * bare skin meshes the part is held `clearance` outside of, which every piece
- * worn over the head and neck needs.
+ * worn over the head and neck needs; `over` names the body's own piece a
+ * borrowed face piece is laid on top of (see wardrobe/face.mjs).
  */
-function wear(doc, skin, part, what, { name, drop, onSkin, clearance = ON_THE_SKIN } = {}) {
+function wear(doc, skin, part, what, { name, drop, onSkin, over, clearance = ON_THE_SKIN } = {}) {
   const partSkin = part.getRoot().listSkins()[0]
   if (!partSkin) throw new Error(`${what}: no skin`)
   agree(skin, partSkin, what)
   const dropped = new Set(drop ?? [])
   for (const node of part.getRoot().listNodes()) if (dropped.has(node.getName())) node.dispose()
   const { shifted } = refit(part, skin, partSkin)
+  const aligned = over ? alignOver(part, over) : 0
   const settled = onSkin ? -settleOnSkin(part, onSkin, clearance).deepest : 0
   const top = highest(part)
 
@@ -223,7 +232,7 @@ function wear(doc, skin, part, what, { name, drop, onSkin, clearance = ON_THE_SK
   // the part brought a second copy of the skeleton with it; the joints it
   // pointed at go with the pruning
   merged.get(partSkin).dispose()
-  return { shifted, top, settled }
+  return { shifted, top, settled, aligned }
 }
 
 /**

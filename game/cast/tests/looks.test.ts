@@ -21,6 +21,14 @@ const THROUGH = 0.006
 /** How near the skin a garment vertex has to be before it is worth asking whether it is inside it. */
 const OVER = 0.05
 
+/**
+ * How far off the body's own brow ridge another pair of eyebrows may sit, in
+ * metres. The build holds a worn piece 3 mm outside the skin and the ridge's
+ * own normal points up as well as forward, so a pair put on the ridge still
+ * comes to rest a little above it.
+ */
+const ON_THE_RIDGE = 0.003
+
 interface Look {
   readonly outfit: string
   readonly hair: string
@@ -48,6 +56,14 @@ function look(member: { object: THREE.Object3D; outfit: string }): Look {
     colour = `#${(mesh.material as THREE.MeshStandardMaterial).color.getHexString()}`
   })
   return { outfit: member.outfit, hair, brows, beard, colour, materials }
+}
+
+/** The centre of a mesh's own box, where the game has it. */
+function centreOf(mesh: THREE.Mesh): THREE.Vector3 {
+  return new THREE.Box3()
+    .setFromBufferAttribute(mesh.geometry.getAttribute('position') as THREE.BufferAttribute)
+    .applyMatrix4(mesh.matrixWorld)
+    .getCenter(new THREE.Vector3())
 }
 
 function meshNamed(object: THREE.Object3D, name: string | RegExp): THREE.Mesh {
@@ -252,6 +268,33 @@ describe('what a person is made of', () => {
           if (surface.depthOf(point.fromBufferAttribute(position, vertex)) < -0.002) under++
         }
         expect(under / position.count, `${entry.id}: ${(100 * under / position.count).toFixed(0)}% of ${piece} is under the skin`).toBeLessThan(0.02)
+      }
+    }
+  })
+
+  /**
+   * What the owner saw as two pairs of eyebrows on one face: the pack models a
+   * pair for each head, and the second shape a person can be given is the other
+   * head's. Carried across by the head bone it landed 7 mm off this body's brow
+   * ridge and 10 mm out of the plane of its face; settled out of the skin from
+   * there it rode up the forehead until its lash row cleared the eye, and the
+   * lashes read as a second pair of brows under the first. Every pair a person
+   * can be given has to sit on the one brow ridge.
+   */
+  it('puts every pair of eyebrows on the brow ridge, so nobody wears two', () => {
+    for (const entry of wardrobe.characters) {
+      const member = cast.spawn(person({ id: `npc_brows_${entry.id}`, appearance: { base: entry.body, variant: 1 } }))
+      member.object.updateMatrixWorld(true)
+      const eyes = centreOf(meshNamed(member.object, 'Eyes'))
+      expect(entry.brows.length, `${entry.id} carries no eyebrows`).toBeGreaterThan(0)
+      // the first pair is the body's own, placed by the artist: the ridge
+      const ridge = centreOf(meshNamed(member.object, entry.brows[0]!)).y - eyes.y
+      for (const piece of entry.brows.slice(1)) {
+        const off = centreOf(meshNamed(member.object, piece)).y - eyes.y - ridge
+        expect(
+          Math.abs(off),
+          `${entry.id}: ${piece} sits ${(off * 1000).toFixed(1)} mm off the ridge the body's own pair is on`,
+        ).toBeLessThan(ON_THE_RIDGE)
       }
     }
   })
