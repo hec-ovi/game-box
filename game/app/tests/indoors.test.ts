@@ -10,6 +10,7 @@ import userEvent from '@testing-library/user-event'
 import * as THREE from 'three'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Buildings } from '../src/buildings.ts'
+import { Chase } from '../src/chase.ts'
 import { Companions } from '../src/companions.ts'
 import { Conditions } from '../src/conditions.ts'
 import { Intents } from '../src/intents.ts'
@@ -17,7 +18,7 @@ import { Interaction } from '../src/interaction.ts'
 import { Player } from '../src/player.ts'
 import { Reporting } from '../src/reporting.ts'
 import { Screens } from '../src/screens.ts'
-import { Driving } from '@gb/drive'
+import { CHASE_VIEW, Driving } from '@gb/drive'
 import { Garage } from '../src/garage.ts'
 import { Rewards } from '../src/rewards.ts'
 import { atTheKerb } from '../src/spawn.ts'
@@ -366,13 +367,14 @@ function inTown(options: { quest?: boolean; money?: number } = {}) {
     talking,
     companions,
     driving,
+    chase: new Chase({ camera: new THREE.PerspectiveCamera(), driving, hud }),
     locks,
     machines,
     chart: {} as import('../src/chart.ts').Chart,
     guide: { say: () => undefined } as unknown as import('../src/guide.ts').Guide,
     conditions: new Conditions(player.clock),
     report,
-    aimed: () => pick(standing.at, standing.heading, targeting.list()),
+    aimed: () => pick(standing.at, standing.heading, targeting.list(standing.at)),
   })
   const intents = new Intents({
     log,
@@ -400,7 +402,6 @@ function inTown(options: { quest?: boolean; money?: number } = {}) {
     talking,
     buildings,
     companions,
-    targeting,
     intents,
     patches,
     notices,
@@ -413,7 +414,7 @@ function inTown(options: { quest?: boolean; money?: number } = {}) {
     stood: () => stood,
     /** Stand somewhere in the room and look north. */
     standAt: (at: Vec2, heading = 0) => void (standing = { at, heading }),
-    prompt: () => pick(standing.at, standing.heading, targeting.list())?.label,
+    prompt: () => pick(standing.at, standing.heading, targeting.list(standing.at))?.label,
     /** Walk up to a doorstep out in the street and look at the door. */
     outside: (plotId: string) => {
       const at = city.doorsteps.get(plotId)!
@@ -776,10 +777,12 @@ describe('a car a job paid out', () => {
 
     const element = document.createElement('div')
     document.body.append(element)
-    const body = new Player(new THREE.PerspectiveCamera(), element, () => false)
+    const camera = new THREE.PerspectiveCamera()
+    const body = new Player(camera, element, () => false)
     close.push(() => body.dispose())
 
     const driving = new Driving({ rider: body, solid: () => false })
+    const chase = new Chase({ camera, driving, hud })
     const garage = new Garage({
       player,
       driving,
@@ -805,8 +808,47 @@ describe('a car a job paid out', () => {
     // feed and never knows which of them was parked for the player
     driving.open(garage.over({ cars: () => [], handOver: () => undefined }), bodies)
 
-    return { world, player, log, report, rewards, driving, garage, body, parked }
+    return { world, player, log, report, rewards, driving, garage, body, parked, camera, chase }
   }
+
+  it('is driven from behind the car, with the player still in the seat', () => {
+    const town = paid()
+    town.report.report(town.log.start('quest_0003'))
+    town.body.placeAt(doorsteps.house.x, doorsteps.house.z + 1)
+    town.driving.act()
+    town.driving.update(1 / 60)
+
+    // the view `@gb/drive` answers is where the camera goes, and it is behind
+    // the car and above the road rather than at the windscreen
+    const view = town.driving.chase()!
+    expect(view).toBeDefined()
+    town.chase.follow()
+    expect(town.camera.position.x).toBeCloseTo(view.eye.x, 5)
+    expect(town.camera.position.y).toBeCloseTo(view.eye.y, 5)
+    expect(town.camera.position.z).toBeCloseTo(view.eye.z, 5)
+    const car = town.driving.car!
+    expect(Math.hypot(view.eye.x - car.x, view.eye.z - car.z)).toBeCloseTo(CHASE_VIEW.back, 1)
+    expect(view.eye.y).toBeCloseTo(CHASE_VIEW.height, 1)
+
+    // it is aimed at the car, not down whichever way the player was looking,
+    // and it does not carry the seat's roll
+    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(town.camera.quaternion)
+    const toCar = new THREE.Vector3(view.at.x - view.eye.x, view.at.y - view.eye.y, view.at.z - view.eye.z).normalize()
+    expect(forward.dot(toCar)).toBeCloseTo(1, 3)
+    expect(new THREE.Euler().setFromQuaternion(town.camera.quaternion, 'YXZ').z).toBeCloseTo(0, 6)
+
+    // the player is in the seat whichever view is on, so what is in reach is
+    // measured from the car and not from a camera nine metres behind it
+    expect(Math.hypot(town.body.position.x - car.x, town.body.position.z - car.z)).toBeLessThan(2)
+
+    // and the seat is still there for whoever wants it
+    expect(town.chase.swap()).toBe('Driving from the seat.')
+    town.driving.update(1 / 60)
+    expect(town.driving.chase()).toBeUndefined()
+    const seat = town.camera.position.clone()
+    town.chase.follow()
+    expect(town.camera.position.equals(seat)).toBe(true)
+  })
 
   it('is kept, put out at the door of the house the same job handed over, and driven away', () => {
     const town = paid()

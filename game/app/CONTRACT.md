@@ -1,6 +1,6 @@
 # @gb/app contract
 
-contractVersion: 0.20.0
+contractVersion: 0.21.0
 
 ## Purpose
 
@@ -11,7 +11,7 @@ The game you can play: the landing screen your cities are laid out on, the panel
 | Param | Schema | Preconditions |
 |---|---|---|
 | the landing screen | one wide card per city on the shelf, newest first | what the player lands on when the address bar names no city; picking one is what starts a game |
-| the panel | theme, what the city is about (unbounded), the main quest, the side quests, the tone, the style (`neon`, `density`, `wear`, each one of `@gb/world`'s levels), blocks across and down, the seed, whether the local model writes it | on screen with the first byte of the page; every field optional, blank meaning the generator chooses; `blocks` is held to what the generator will found, 1 to 57 |
+| the panel | theme, what the city is about (unbounded), the main quest, the side quests, the tone, the style (`neon`, `density`, `wear`, each one of `@gb/world`'s levels), blocks across and down, the seed, whether the local model writes it | on screen with the first byte of the page; every field optional, blank meaning the generator chooses; `blocks` is held to what the generator will found, 1 to `@gb/forge`'s `BLOCKS_MAX` |
 | a city file | a `.gbworld.json` picked off the player's own machine | the file Export wrote, opened with nothing done to it in between |
 | a pack file | a `.gbpack.json` picked off the player's own machine | cut from the city that is open. A pack names the city it was cut from, so one cut from another is a sentence on the panel |
 | the player's own settings | the address of a video for the televisions | kept in this browser and handed to the game; never part of a brief and never written into a city |
@@ -27,7 +27,7 @@ The game you can play: the landing screen your cities are laid out on, the panel
 | Param | Schema | Postconditions |
 |---|---|---|
 | the running game | | walk, look, go into buildings, talk, take, carry, deliver |
-| the controls | | mouse looks, WASD walks and drives, shift runs, C held crouches, space jumps, E acts on what is in reach (a door, a locked door, a person, a thing to pick up, a screen on a desk, a surface a job wants it left on, a car, a subway entrance), left click on somebody asks them along, right button held looks closer, G says the way to the tracked quest, T turns the time of day, K the weather, P holds the clock. The interface owns the rest, F for full screen among them: N, the Leave button and the way out of Settings all ask "you sure" in place and report `exit` on the yes alone, which opens the panel, and Escape on the panel goes back to the city |
+| the controls | | mouse looks, WASD walks and drives, shift runs, C held crouches, space jumps, E acts on what is in reach (a door, a locked door, a person, a thing to pick up, a screen on a desk, a surface a job wants it left on, a car, a subway entrance), left click on somebody asks them along, right button held looks closer, V swaps the driving view between behind the car and the seat, G says the way to the tracked quest, T turns the time of day, K the weather, P holds the clock. The interface owns the rest, F for full screen among them: N, the Leave button and the way out of Settings all ask "you sure" in place and report `exit` on the yes alone, which opens the panel, and Escape on the panel goes back to the city |
 | a generated city | a sealed `@gb/bundle` document | byte for byte what the same brief builds anywhere else, carrying what the form asked for (`world.brief()`, `world.asks()`) |
 | the shelf | `Library` over `IndexedShelf` (the browser's database) or `MemoryShelf` | every city kept with its document and when it was written, keyed by the brief it was made from or the hash of the file it came in; the save of each keyed the same |
 | the loader | `@gb/hud`'s loading view | while the model writes: the four stages of `@gb/scribe`'s progress, named in the player's words, the town's name on it once the city stage names it; gone before the game's own interface goes up |
@@ -80,7 +80,9 @@ None at the boundary. A city that will not build and a file that will not open a
 - **The way in is only ever offered for a building that opens.** Seven in eight have no interior, and a prompt on one of those is a lie the player walks into.
 - Looking closer narrows the field of view and slows the mouse by the same amount, so the same hand movement covers the same distance on screen however far in you are.
 - The floor has height: the pavement stands a kerb above the road, and walking onto it steps up rather than clipping through. Crouching and standing ease between heights for the same reason.
-- **How many cars a town carries is counted in lanes, not in towns.** One flat number was tuned when every road was one lane each way; an avenue carries four and the road out four, so the same total spread over twice the tarmac left the wide roads empty. It is one car per 110 metres of lane, read off `@gb/traffic`'s own lane graph, which is what the flat number came to on the size of town it was judged on: that town is unchanged and a bigger one gets cars in proportion to the road it has.
+- **A town carries as many cars as the ground the player can see holds.** One car per 110 metres of lane, read off `@gb/traffic`'s own lane graph, counted over the share of that graph inside the 140 m the box spawns and retires cars in. Lane rather than town, because an avenue carries four lanes and the road out four and one flat number per town left the wide roads empty. The bubble rather than the whole network, because every car alive is drawn wherever it is, and a town's whole road counted flat asks for 634 cars at 20 blocks and 3,761 at 50, none of which the player can see. Road density is much the same town to town, so this comes to about 38 cars on any town bigger than the bubble, and to all of the lanes on a town smaller than it.
+- **What is in arm's reach is found by arithmetic, not by walking the town.** The street's doorsteps are held as one flat list, taken again when the city gains one, and narrowed to the reach asked for before a single target is built. Every frame asks what the player could act on and a 50 block city has 16,809 plots; read off the world each frame, that one question was 2.2 ms of it.
+- **Driving is seen from behind the car, and the seat is a key away.** `@gb/drive` says where a view behind the car goes and `V` swaps the two. Only the camera moves: the player is in the driver's seat either way, so what the crosshair offers, how far they can reach, where the companions sit and where everybody is put down are all measured from the seat and never from an eye nine metres back.
 - Boxes that must not know about each other are joined here and only here: the crowd is told what is driving, traffic is told who is walking, both are told the hour so headlamps and lit windows agree with the sky, and none of them imports another.
 - **The people on the street are the city's own residents, and only some of them.** Anybody the player passes can be named and talked to. Nobody is the last person out of a room, so every building that opens still has somebody standing in it; at most a third of the town is out at once, so a bar keeps its regulars rather than its bartender alone; and **nobody a job is waiting on goes out**: `@gb/forge`'s `questTargets(log.objectives())` is read again whenever the board moves, so a step that sends the player to somebody finds them at their post. Who is out is read off the roster in the city's own order, so the same town sends the same people out every time and somebody found at their post is there on the next visit. Anybody the city stationed nowhere is always out, because there is nowhere to look for them.
 - **Somebody who is out walking is not also standing behind their own counter, and the crosshair knows it.** One answer says who is standing in the room, and it settles all three things at once: whose body is drawn, who the prompt may offer, and who the player cannot walk through. That matters because the prompt is scored on how square something is to the aim over how far away it is, so anybody counted as present takes the prompt off whatever is on the counter beside them. Who is out is read once on the way through the door, because the street stops while the player is inside.
@@ -148,6 +150,36 @@ None at the boundary. A city that will not build and a file that will not open a
 - The interface is not in the chain. `@gb/hud` is DOM over the canvas, so the glow and the tint stop at the canvas edge and a panel is never bloomed.
 - Half a game never sits on the page. A city that will not draw takes its stage and its interface back off before the panel says so, and the city itself can still be exported.
 - The look belongs to `@gb/hud`. The panel is the one surface this box draws, because it has to be up before the hud exists; it is written from the hud's own tokens and holds no colour of its own.
+
+## What a frame costs
+
+Measured in Chrome on this machine's WebGL2 fallback (`WebGPURenderer` reports
+no WebGPU and runs the WebGL2 backend), 1920 by 943 at a device pixel ratio of 1,
+standing on the pavement where the player opens their eyes at 22:00, on
+`?theme=neon+downtown&seed=fifty`. Every figure is the median of a few hundred
+frames, taken with the streets already full of traffic. The display-paced loop
+agrees with it: 26.0 ms against the 26.7 below at 20 blocks.
+
+| blocks | plots | cars | frame | of that, this box | draw calls | triangles | programs |
+|---|---|---|---|---|---|---|---|
+| 2 | 32 | 12 | 2.5 ms | 0.34 ms | 103 | 372,357 | 70 |
+| 8 | 438 | 37 | 4.7 ms | 0.45 ms | 232 | 589,443 | 114 |
+| 20 | 2,508 | 38 | 26.7 ms | 0.93 ms | 491 | 1,365,725 | 325 |
+| 50 | 16,809 | 37 | 173 ms | 0.91 ms | 1,427 | 4,972,509 | 1,309 |
+
+"Of that, this box" is `Game.frame`: the clock, the sky, the streaming follow,
+the crowd and the traffic stepped, the compass, the corner view, what is in
+reach, the prompt and the save. The rest of the frame is `Grade.render`, the
+renderer submitting the draw calls in the row. At 20 blocks this box is 3.5% of
+the frame and at 50 blocks 0.5%, so past a few blocks what moves the frame is
+draw calls, triangles and how many distinct shader programs the city needs, one
+per material. It is submission bound and not fill bound: quartering the drawing
+buffer at 20 blocks left the frame exactly where it was.
+
+Inside this box's own share at 20 blocks: the traffic and the crowd stepped
+0.40 ms, the cast 0.20, the lights following the player 0.10, what is in reach
+0.06, the sky 0.08, the corner view and the compass 0.02, the streaming follow
+and the save under 0.05 between them.
 
 ## What the chain costs
 
@@ -230,6 +262,8 @@ One responsibility each. `boot/` is everything before there is a game; the rest 
 | `travel.ts` | the train between stations: where it boards, the veil, and where it puts you down |
 | `screens.ts` | what is playing on the televisions when the player brought their own |
 | `targets.ts` | what can be acted on, and which one is in reach |
+| `doors.ts` | the doors on the street, and the ones within reach of a point |
+| `chase.ts` | the camera while driving: behind the car or in the seat, and the key that swaps them |
 | `stashing.ts` | where a thing in hand can be left, and leaving it there |
 | `locks.ts` | the locks on the doors: what opens one, what happens when it does, and what the playthrough already got past |
 | `machines.ts` | the screen at a desk: opening it, its lock, and the scores it ends on |

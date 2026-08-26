@@ -4,6 +4,7 @@ import type { PlayerState } from '@gb/play'
 import type { QuestLog } from '@gb/quest'
 import type { World } from '@gb/world'
 import type { Buildings } from './buildings.ts'
+import type { Chase } from './chase.ts'
 import type { Chart } from './chart.ts'
 import { typingSomewhere } from './focus.ts'
 import type { Companions } from './companions.ts'
@@ -35,6 +36,7 @@ export class Interaction {
   #talking: Talking
   #companions: Companions
   #driving: Driving
+  #chase: Chase
   #locks: Locks
   #machines: Machines
   #chart: Chart
@@ -56,6 +58,8 @@ export class Interaction {
     talking: Talking
     companions: Companions
     driving: Driving
+    /** The camera while driving, for the key that swaps the two views. */
+    chase: Chase
     locks: Locks
     machines: Machines
     chart: Chart
@@ -75,6 +79,7 @@ export class Interaction {
     this.#talking = input.talking
     this.#companions = input.companions
     this.#driving = input.driving
+    this.#chase = input.chase
     this.#locks = input.locks
     this.#machines = input.machines
     this.#chart = input.chart
@@ -130,6 +135,8 @@ export class Interaction {
         return this.#conditions.nextWeather()
       case 'KeyP':
         return this.#conditions.hold()
+      case 'KeyV':
+        return this.#chase.swap()
       default:
         return undefined
     }

@@ -261,6 +261,25 @@ describe('what the interface is handed', () => {
     expect(page.textContent).toContain(name)
   })
 
+  it('swaps the driving view on the view key, and the controls window says which one is on', async () => {
+    const { game, mount } = await playPlain()
+    game.frame(1 / 60)
+    const page = windowOn(mount)
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '?', code: 'Slash', shiftKey: true }))
+    game.frame(1 / 60)
+    expect(page.getAttribute('data-state')).toBe('open')
+    // driving is seen from behind the car until the player asks for the seat
+    expect(page.textContent).toContain('now from behind the car')
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyV' }))
+    game.frame(1 / 60)
+    expect(page.textContent).toContain('now from the seat')
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyV' }))
+    game.frame(1 / 60)
+    expect(page.textContent).toContain('now from behind the car')
+  })
+
   it('tells the player the town\'s story on the way in, under the codex\'s History heading', async () => {
     const bundle = await city()
     const { game, mount } = await playPlain({ bundle })

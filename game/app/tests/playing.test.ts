@@ -9,6 +9,7 @@ import userEvent from '@testing-library/user-event'
 import * as THREE from 'three'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Buildings } from '../src/buildings.ts'
+import { Chase } from '../src/chase.ts'
 import type { Companions } from '../src/companions.ts'
 import type { Counters } from '../src/counters.ts'
 import type { Locks } from '../src/locks.ts'
@@ -108,18 +109,21 @@ describe('the keys the player presses', () => {
     let got = 0
 
     const body = new Player(camera, element, nowhere)
+    const hud = { typing: input.typing ?? false, show: () => {} } as unknown as Hud
+    const driving = { act: () => void got++, aboard: false, view: 'chase', switchView: () => 'seat' } as unknown as Driving
     const interaction = new Interaction({
       element,
       world: {} as World,
       player: {} as PlayerState,
       log: {} as QuestLog,
-      hud: { typing: input.typing ?? false } as Hud,
+      hud,
       body,
       buildings: {} as Buildings,
       stashing: {} as Stashing,
       talking: { active: false } as Talking,
       companions: {} as Companions,
-      driving: { act: () => void got++ } as unknown as Driving,
+      driving,
+      chase: new Chase({ camera, driving, hud }),
       locks: {} as Locks,
       machines: {} as Machines,
       chart: {} as Chart,
@@ -343,13 +347,14 @@ function inTheBar(kept?: { player: unknown; quests: unknown }) {
     talking: { active: false } as Talking,
     companions: {} as Companions,
     driving,
+    chase: new Chase({ camera, driving, hud }),
     locks,
     machines,
     chart: {} as Chart,
     guide: { say: () => undefined } as unknown as Guide,
     conditions: new Conditions(player.clock),
     report,
-    aimed: () => pick(standing.at, standing.heading, targeting.list()),
+    aimed: () => pick(standing.at, standing.heading, targeting.list(standing.at)),
   })
   close.push(() => interaction.dispose())
 
@@ -357,14 +362,15 @@ function inTheBar(kept?: { player: unknown; quests: unknown }) {
     log,
     player,
     patches,
-    targeting,
     buildings,
+    /** What the player could act on from where they are standing. */
+    listed: () => targeting.list(standing.at),
     user: userEvent.setup(),
     /** Everything the playthrough is written down as, for opening the city again. */
     kept: () => JSON.parse(JSON.stringify({ player: player.toJSON(), quests: log.toJSON() })) as { player: unknown; quests: unknown },
     /** Walk up to something and look at it. North is the way the counter is. */
     standAt: (at: Vec2) => void (standing = { at, heading: 0 }),
-    prompt: () => pick(standing.at, standing.heading, targeting.list())?.label,
+    prompt: () => pick(standing.at, standing.heading, targeting.list(standing.at))?.label,
   }
 }
 
@@ -402,7 +408,7 @@ describe('putting a thing down', () => {
 
     // empty-handed the strongbox is not a prompt at all: a put-down that
     // appears with nothing to put down is a key that does nothing
-    expect(bar.targeting.list().filter((target) => target.kind === 'stash')).toEqual([])
+    expect(bar.listed().filter((target) => target.kind === 'stash')).toEqual([])
     expect(bar.prompt()).toBeUndefined()
 
     bar.standAt(byTheLedger)
@@ -434,7 +440,7 @@ describe('putting a thing down', () => {
 
     // and there is one ledger in the room, not the one the file drew plus the
     // one the player left, either of which could be picked up
-    expect(again.targeting.list().filter((target) => target.kind === 'take')).toHaveLength(1)
+    expect(again.listed().filter((target) => target.kind === 'take')).toHaveLength(1)
   })
 
   it('is not drawn on its shelf as well while the player is carrying it', async () => {
@@ -449,7 +455,7 @@ describe('putting a thing down', () => {
     // second one puts a thing in the world twice under one id
     again.standAt(byTheLedger)
     expect(again.prompt()).toBeUndefined()
-    expect(again.targeting.list().filter((target) => target.kind === 'take')).toEqual([])
+    expect(again.listed().filter((target) => target.kind === 'take')).toEqual([])
   })
 
   it('leaves it where the job asked and not at the first surface in the room', async () => {

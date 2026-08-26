@@ -2,6 +2,7 @@ import type { Driving } from '@gb/drive'
 import type { CityBuild } from '@gb/scene'
 import { METRICS, type World } from '@gb/world'
 import type { Buildings } from './buildings.ts'
+import { StreetDoors } from './doors.ts'
 import type { Locks } from './locks.ts'
 import type { Machines } from './machines.ts'
 import type { Stashing } from './stashing.ts'
@@ -49,7 +50,7 @@ export function pick(from: Vec2, heading: number, targets: readonly Target[], ra
 /** Everything the player could act on where they are standing. */
 export class Targeting {
   #world: World
-  #city: CityBuild
+  #doors: StreetDoors
   #buildings: Buildings
   #stashing: Stashing
   #street: Street
@@ -71,7 +72,7 @@ export class Targeting {
     travel?: Travel
   }) {
     this.#world = input.world
-    this.#city = input.city
+    this.#doors = new StreetDoors(input.world, input.city)
     this.#buildings = input.buildings
     this.#stashing = input.stashing
     this.#street = input.street
@@ -81,20 +82,28 @@ export class Targeting {
     this.#travel = input.travel
   }
 
-  list(): Target[] {
+  /**
+   * What is worth offering from where the player is standing. A street's doors
+   * are narrowed to `range` first: `pick` throws away anything further off
+   * anyway, and a big city has more doors than a frame can afford to list.
+   */
+  list(from: Vec2, range: number = METRICS.player.interactRange): Target[] {
     const wheel = this.#driving.target()
     // behind the wheel the door out is the only thing in reach
     if (this.#driving.aboard) return wheel ? [wheel] : []
     if (!this.#buildings.outdoors) return this.#inTheRoom()
-    return wheel ? [...this.#inTheStreet(), wheel] : this.#inTheStreet()
+    const street = this.#inTheStreet(from, range)
+    if (wheel) street.push(wheel)
+    return street
   }
 
-  #inTheStreet(): Target[] {
-    const doors = this.#world.plots().flatMap((plot) => {
-      const doorstep = this.#city.doorsteps.get(plot.id)
-      if (!doorstep || !plot.interiorId) return []
-      return [{ kind: 'enter' as const, id: plot.id, label: `Go into ${plot.name}`, at: { x: doorstep.x, z: doorstep.z } }]
-    })
+  #inTheStreet(from: Vec2, range: number): Target[] {
+    const doors = this.#doors.near(from, range).map((door) => ({
+      kind: 'enter' as const,
+      id: door.plotId,
+      label: `Go into ${door.name}`,
+      at: { x: door.x, z: door.z },
+    }))
     // somebody walking past is as talkable as somebody behind a counter
     const passers = this.#street.walkers().flatMap((walker) => {
       const npc = this.#world.npc(walker.id)

@@ -24,6 +24,14 @@ const OUT_TODAY = 1 / 3
  */
 const LANE_PER_CAR = 110
 
+/**
+ * How far from the player a car is worth having, in metres. `@gb/traffic`
+ * spawns on lanes within this of the focus and retires past it, so it is also
+ * how much of a town the player ever sees traffic in. It is handed over as
+ * `spawnRadius` so the count below and the box driving the cars are one number.
+ */
+const SEEN_RADIUS = 140
+
 /** The player's own car: solid to walk into, something traffic brakes for, and something nobody walks through. */
 export interface PlayerCar {
   /** The car, driving or parked, with its speed in metres per second along its heading (0 parked); nothing while the player has none. */
@@ -164,7 +172,12 @@ export class Street {
 
     try {
       const bodies = await CarPack.parse(cars, parked)
-      const made = Traffic.fromWorld(this.#world, { bodies, obstacles: this.obstacles(), maxCars: this.carsWorthOf() })
+      const made = Traffic.fromWorld(this.#world, {
+        bodies,
+        obstacles: this.obstacles(),
+        maxCars: this.carsWorthOf(),
+        spawnRadius: SEEN_RADIUS,
+      })
       if (!made.ok) {
         console.warn(`no traffic (${made.error.code}); the roads stay empty`)
         return
@@ -178,9 +191,14 @@ export class Street {
   }
 
   /**
-   * How many cars this town's roads are worth: its own lanes, at one car per
-   * `LANE_PER_CAR` metres of them. `@gb/traffic` holds its own floor of one car
-   * per 40 m on top of this, so a short network cannot be flooded either way.
+   * How many cars this town's roads are worth: the lanes inside `SEEN_RADIUS`,
+   * at one car per `LANE_PER_CAR` metres of them. Every car alive is drawn
+   * whether or not it is anywhere near the player, so the whole network counted
+   * flat is what a big city cannot afford: measured on the `fifty` seed, 20
+   * blocks asks for 634 cars and 50 blocks for 3,761. The share of the network
+   * the player can see comes to about 38 either way, because the road density
+   * is the same town to town. A town smaller than the bubble keeps all of it.
+   * `@gb/traffic` holds its own floor of one car per 40 m on top of this.
    */
   carsWorthOf(): number {
     const graph = LaneGraph.build(this.#world.toJSON().roads, {
@@ -189,7 +207,15 @@ export class Street {
     })
     if (!graph.ok) return 0
     const metres = graph.value.lanes.reduce((lane, each) => lane + each.length, 0)
-    return Math.round(metres / LANE_PER_CAR)
+    return Math.round((metres * this.#seenShare()) / LANE_PER_CAR)
+  }
+
+  /** How much of the town's road is close enough to be seen: all of it in a hamlet, a bubble of it in a city. */
+  #seenShare(): number {
+    const size = this.#world.cellSize
+    const town = this.#world.grid.width * size * (this.#world.grid.height * size)
+    if (!(town > 0)) return 1
+    return Math.min(1, (Math.PI * SEEN_RADIUS * SEEN_RADIUS) / town)
   }
 
   /** The car the player drives, once there is one. A `@gb/drive` `Driving` is one. */
@@ -207,10 +233,15 @@ export class Street {
     return this.#traffic && this.#cars ? { traffic: this.#traffic, bodies: this.#cars } : undefined
   }
 
+  /** The buildings, the water and the land past the grid: what is there whether or not anybody is standing in it. */
+  walls(): Solid {
+    return citySolid(this.#world, this.#ground)
+  }
+
   /** The walls, plus whoever is walking or driving in the way of them. */
   solid(): Solid {
     return alsoBlockedBy(
-      citySolid(this.#world, this.#ground),
+      this.walls(),
       () => this.#crowd?.walkers() ?? [],
       () => [...(this.#traffic?.cars() ?? []), ...(this.#playerCar?.rolling() ?? [])],
     )

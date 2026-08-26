@@ -74,7 +74,13 @@ export class Player {
     if (typing && document.pointerLockElement === this.#element) document.exitPointerLock()
   }
 
+  /**
+   * Where the player is. Riding, that is the seat and not the eye: the view
+   * behind a car sits metres back, and what is in reach is measured from the
+   * person, never from the camera.
+   */
   get position(): Vec2 {
+    if (this.#riding) return { x: this.#riding.x, z: this.#riding.z }
     return { x: this.#camera.position.x, z: this.#camera.position.z }
   }
 

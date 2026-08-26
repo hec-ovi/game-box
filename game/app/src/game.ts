@@ -14,11 +14,12 @@ import type { World } from '@gb/world'
 import * as THREE from 'three'
 import { Attending, type Post } from './attending.ts'
 import { Buildings } from './buildings.ts'
+import { Chase } from './chase.ts'
 import { Chart } from './chart.ts'
 import { Companions } from './companions.ts'
 import { Compass } from './compass.ts'
 import { Conditions } from './conditions.ts'
-import { CONTROLS } from './controls.ts'
+import { controlsFor } from './controls.ts'
 import { Counters } from './counters.ts'
 import { Escorts } from './escorts.ts'
 import { Garage } from './garage.ts'
@@ -79,6 +80,9 @@ export interface GameOptions {
 /** Real seconds between keeping the playthrough, so the clock survives a reload. */
 const KEEP_EVERY = 20
 
+/** How far out the console's `look` reports things, in metres: past arm's reach, so it answers "what is around me". */
+const LOOK_RANGE = 40
+
 /**
  * The game itself: a city you walk around, buildings you go into, people you
  * talk to, things you carry from one to another. Everything it knows how to do
@@ -104,6 +108,7 @@ export class Game {
   #garage: Garage
   #rewards: Rewards
   #driving: Driving
+  #chase: Chase
   #attending: Attending
   #talking: Talking
   #report: Reporting
@@ -124,6 +129,8 @@ export class Game {
   #target: Target | undefined
   #sinceKept = 0
   #paused = false
+  /** The prompt the interface is showing, so the same words are not pushed twice. */
+  #prompted: string | null | undefined
 
   private constructor(input: {
     bundle: OpenedBundle
@@ -318,10 +325,15 @@ export class Game {
     this.#driving = new Driving({
       rider: this.#body,
       solid: this.#street.solid(),
+      // what the view behind the car may not sit inside is the buildings
+      // alone: pulled in for a pedestrian, it would tuck against every person
+      // who walked up behind the car
+      walls: this.#street.walls(),
       ground: this.#street.floor(),
       outdoors: () => this.#buildings.outdoors,
       ...(people && this.#riderCast ? { riders: new CrowdRiders({ crowd: people, cast: this.#riderCast }) } : {}),
     })
+    this.#chase = new Chase({ camera: this.#stage.camera, driving: this.#driving, hud: this.#hud })
     // a car a job paid out stands at the kerb outside the player's own door,
     // on the same feed the town's cars are offered on, so getting into it is
     // getting into any other car
@@ -471,6 +483,7 @@ export class Game {
       talking: this.#talking,
       companions: this.#companions,
       driving: this.#driving,
+      chase: this.#chase,
       locks: this.#locks,
       machines: this.#machines,
       chart: this.#chart,
@@ -480,7 +493,7 @@ export class Game {
       aimed: () => this.#target,
     })
 
-    this.#hud.show({ controls: CONTROLS })
+    this.#hud.show({ controls: controlsFor(this.#driving.view) })
     // the town's story is what everybody in it knows, so the player arrives
     // told it: it is the codex's History heading from the first push
     tellStory(this.#world, this.#player)
@@ -586,6 +599,9 @@ export class Game {
 
     this.#body.update(seconds)
     this.#driving.update(seconds)
+    // the camera last, so driving is seen from behind the car: the seat has
+    // just put the eye at the windscreen and the chase view moves it back
+    this.#chase.follow()
     // the street only carries on while the player is out in it
     if (this.#buildings.outdoors) {
       this.#street.update(seconds, this.#body.position)
@@ -599,9 +615,19 @@ export class Game {
     this.#chart.update(seconds)
     this.#compass.update(seconds)
     this.#minimap.update(seconds)
-    this.#target = pick(this.#body.position, this.#body.heading, this.#targeting.list())
-    const prompt = this.#talking.active || !this.#target ? null : { key: 'E', text: this.#target.label }
-    this.#hud.show({ prompt })
+    this.#target = pick(this.#body.position, this.#body.heading, this.#targeting.list(this.#body.position))
+    this.#offer(this.#talking.active || !this.#target ? null : this.#target.label)
+  }
+
+  /**
+   * What the key would act on, put in front of the player. The interface is
+   * pushed only when the words change: it is the same line for as long as they
+   * stand in front of the same door, and a patch a frame is a patch for nothing.
+   */
+  #offer(label: string | null): void {
+    if (label === this.#prompted) return
+    this.#prompted = label
+    this.#hud.show({ prompt: label ? { key: 'E', text: label } : null })
   }
 
   /**
@@ -666,7 +692,7 @@ export class Game {
       walkers: this.#street.walkerCount,
       cars: this.#street.carCount,
       nearest: this.#targeting
-        .list()
+        .list(this.#body.position, LOOK_RANGE)
         .map((target) => ({ label: target.label, away: Math.hypot(target.at.x - this.#body.position.x, target.at.z - this.#body.position.z) }))
         .toSorted((a, b) => a.away - b.away)
         .slice(0, 3),

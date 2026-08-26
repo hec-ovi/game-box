@@ -691,7 +691,7 @@ describe('what is in reach inside a room', () => {
 
   it('offers the person and the thing beside them when both are actually in the room', () => {
     const { targeting } = walkIn(() => [])
-    const listed = targeting.list()
+    const listed = targeting.list(at)
     expect(listed.map((target) => target.label).toSorted()).toEqual([
       'Step outside',
       'Take the stained glass',
@@ -704,7 +704,7 @@ describe('what is in reach inside a room', () => {
 
   it('leaves out somebody who is out walking the street, so the thing beside them can be taken', () => {
     const { targeting } = walkIn(() => ['npc_0001'])
-    const listed = targeting.list()
+    const listed = targeting.list(at)
 
     expect(listed.map((target) => target.label)).not.toContain('Talk to Wren Ashby')
     // the other one is still behind the counter and still offered
@@ -1541,6 +1541,10 @@ describe('what is in reach out in the street', () => {
   const outside = { outdoors: true } as unknown as Buildings
   const empty = { walkers: () => [] } as unknown as Street
 
+  /** Standing on the open building's doorstep, with both doorsteps inside the reach asked for. */
+  const doorstep = { x: 5, z: 9 }
+  const bothInReach = 20
+
   /** A car sitting in the road, the way `@gb/drive` offers one. */
   const wheel = { kind: 'drive' as const, id: 'car_3', label: 'Get in the taxi', at: { x: 8, z: 20 } }
 
@@ -1565,15 +1569,15 @@ describe('what is in reach out in the street', () => {
   }
 
   it('offers a door only for a building that opens', () => {
-    const listed = targeting({ aboard: false, target: () => undefined }).list()
+    const listed = targeting({ aboard: false, target: () => undefined }).list(doorstep, bothInReach)
     expect(listed).toEqual([{ kind: 'enter', id: open.id, label: 'Go into The Copper Wheel', at: { x: 5, z: 9 } }])
   })
 
   it('offers the car standing in the road, and only the way out once the player is in it', () => {
-    const onFoot = targeting({ aboard: false, target: () => wheel }).list()
+    const onFoot = targeting({ aboard: false, target: () => wheel }).list(doorstep, bothInReach)
     expect(onFoot.map((target) => target.kind)).toEqual(['enter', 'drive'])
 
-    const driving = targeting({ aboard: true, target: () => ({ ...wheel, label: 'Get out' }) }).list()
+    const driving = targeting({ aboard: true, target: () => ({ ...wheel, label: 'Get out' }) }).list(doorstep, bothInReach)
     expect(driving.map((target) => target.label)).toEqual(['Get out'])
   })
 })
@@ -2405,7 +2409,8 @@ describe('fast travel', () => {
       travel,
     })
     const doorstep = city.doorsteps.get(plots[0]!.id)!
-    const aimed = pick({ x: doorstep.x, z: doorstep.z + 2 }, 0, targeting.list())
+    const standing = { x: doorstep.x, z: doorstep.z + 2 }
+    const aimed = pick(standing, 0, targeting.list(standing))
     expect(aimed).toMatchObject({ kind: 'station', id: plots[0]!.id, label: "Take the subway from Mirek's Terminal" })
   })
 
