@@ -1,4 +1,4 @@
-import { SIGN, lightsFor, signsFor } from '@gb/kitbash'
+import { lightsFor, signsFor } from '@gb/kitbash'
 import type { Dressing, SurfacePart, SurfaceSize } from '@gb/scene'
 import type { AnchorKind, CellKind, FurnitureProp, Item, Npc, Plot, ResolvedCharter } from '@gb/world'
 import * as THREE from 'three'
@@ -17,10 +17,24 @@ export interface BuildingSize {
   readonly height: number
 }
 
-/** What a plot is drawn with: its design, that model turned onto the plot, and the street face it ended up with. */
+/** What a plot is drawn with: its design, and that model turned onto the plot. */
 interface Drawn extends Design {
   readonly turned: THREE.BufferGeometry
-  readonly face: StreetFace
+  /**
+   * The street face the model ended up with, read the first time it is asked
+   * for. Only the signage seated on it needs one, and most of the town is a
+   * shell that carries none.
+   */
+  face(): StreetFace
+}
+
+/**
+ * What the dressing behind publishes if its signage is to go on prefab
+ * buildings: the plot's signs as one mesh on the one sign material, in the
+ * building's own frame. `@gb/kitbash` publishes it.
+ */
+export interface Signage {
+  signs?(plot: Plot, size: BuildingSize, charter: ResolvedCharter): THREE.Mesh | undefined
 }
 
 /**
@@ -42,13 +56,13 @@ interface Drawn extends Design {
  * layer count: one attribute rewritten on the copy this plot already owns.
  *
  * Signage keeps its material and its wall. `@gb/kitbash` puts every sign in the
- * city on one material; this lifts those meshes off the kit's building and
- * hangs them on the prefab, so a prefab street still has names over its doors
- * and the whole town's signage is still one draw. It is written against the
- * plot's arithmetic and this building is the one the pack drew, so each fixture
- * is seated on the face it belongs to on the way over: `face` is what the
- * model really has there, and `Fixtures` carries the lamps onto the drawn door
- * and every plate onto the surface under it.
+ * city on one material and hands the plot's over as one mesh, which this hangs
+ * on the prefab, so a prefab street still has names over its doors and the
+ * whole town's signage is still one draw. It is written against the plot's
+ * arithmetic and this building is the one the pack drew, so each fixture is
+ * seated on the face it belongs to on the way over: `face` is what the model
+ * really has there, and `Fixtures` carries the lamps onto the drawn door and
+ * every plate onto the surface under it.
  *
  * What the building throws onto the street is published beside it: `lights`
  * answers the lit lobby and the screens off the geometry the plot is drawn
@@ -56,13 +70,13 @@ interface Drawn extends Design {
  */
 export class PrefabDressing implements Dressing {
   readonly #library: Library
-  readonly #rest: Dressing
+  readonly #rest: Dressing & Signage
   readonly #entrances: Entrances
   readonly #lights: BuildingLights
   /** Plots the dressing behind hung signs on, so their lights are published with them. */
   readonly #signed = new Set<string>()
 
-  constructor(library: Library, rest: Dressing) {
+  constructor(library: Library, rest: Dressing & Signage) {
     this.#library = library
     this.#rest = rest
     this.#entrances = new Entrances(library.catalogue.atlas.finishes)
@@ -82,13 +96,12 @@ export class PrefabDressing implements Dressing {
       glass.name = `${plot.id}:${drawn.model}:glass`
       building.add(glass)
     }
-    const signs = signsOn(this.#rest.building(plot, size, charter))
-    if (signs.length) {
+    const signs = this.#rest.signs?.(plot, size, charter)
+    if (signs) {
       this.#signed.add(plot.id)
-      const fixtures = Fixtures.on(drawn.face, signsFor(plot, size, charter))
-      for (const sign of signs) fixtures.seat(sign)
+      Fixtures.on(drawn.face(), signsFor(plot, size, charter)).seat(signs)
+      building.add(signs)
     }
-    for (const sign of signs) building.add(sign)
     return building
   }
 
@@ -110,7 +123,7 @@ export class PrefabDressing implements Dressing {
    * answers for it and its own arithmetic is the truth.
    */
   face(plot: Plot, size: BuildingSize, charter: ResolvedCharter): StreetFace | undefined {
-    return this.#drawn(plot, size, charter)?.face
+    return this.#drawn(plot, size, charter)?.face()
   }
 
   /** The model this plot is drawn with, turned onto its plot and read. */
@@ -120,7 +133,8 @@ export class PrefabDressing implements Dressing {
     const spec = design ? this.#library.catalogue.model(design.model) : undefined
     if (!design || !geometry || !spec) return undefined
     const turned = orient(geometry, turnsFor(plot.entrance.facing), design.mirror, design.rooms)
-    const face = StreetFace.of(turned, plot.entrance.facing, spec.depth / 2, this.#library.catalogue.atlas.finishes)
+    let read: StreetFace | undefined
+    const face = (): StreetFace => (read ??= StreetFace.of(turned, plot.entrance.facing, spec.depth / 2, this.#library.catalogue.atlas.finishes))
     return { ...design, turned, face }
   }
 
@@ -146,7 +160,7 @@ export class PrefabDressing implements Dressing {
     const own = drawn ? this.#lights.of(drawn.turned, plot.entrance.facing, plot.interiorId !== undefined, drawn.rooms) : []
     if (!this.#signed.has(plot.id)) return own
     const hung = lightsFor(plot, size, charter)
-    return [...own, ...(drawn ? Fixtures.on(drawn.face, signsFor(plot, size, charter)).lit(hung) : hung)]
+    return [...own, ...(drawn ? Fixtures.on(drawn.face(), signsFor(plot, size, charter)).lit(hung) : hung)]
   }
 
   prop(prop: FurnitureProp): THREE.Object3D {
@@ -168,28 +182,4 @@ export class PrefabDressing implements Dressing {
   surface(part: SurfacePart, size: SurfaceSize): THREE.Material {
     return this.#rest.surface(part, size)
   }
-}
-
-/**
- * The signs off a building somebody else made, brought into that building's own
- * frame so they can be hung on another one. They are found by their material,
- * which `@gb/kitbash` publishes as `SIGN` precisely so the one sign batch is
- * addressable from outside.
- */
-function signsOn(building: THREE.Object3D): THREE.Mesh[] {
-  building.updateMatrixWorld(true)
-  const inverse = building.matrixWorld.clone().invert()
-  const found: THREE.Mesh[] = []
-  building.traverse((child) => {
-    const mesh = child as THREE.Mesh
-    if (!mesh.isMesh || Array.isArray(mesh.material)) return
-    if ((mesh.material as THREE.Material).name === SIGN.material) found.push(mesh)
-  })
-
-  for (const mesh of found) {
-    const local = inverse.clone().multiply(mesh.matrixWorld)
-    mesh.removeFromParent()
-    local.decompose(mesh.position, mesh.quaternion, mesh.scale)
-  }
-  return found
 }

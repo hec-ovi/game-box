@@ -6,11 +6,20 @@ import type { Fixture } from './fixture/fixture.ts'
 import { KitUnmergeable } from './kit/error.ts'
 import type { KitLibrary } from './kit/library.ts'
 import { bakeRoom } from './night/room.ts'
+import { FAR_GLASS } from './night/windows.ts'
 
 /** Everything on one material, and which pieces put it there. */
 interface Bucket {
   readonly geometries: THREE.BufferGeometry[]
   readonly pieces: Set<string>
+}
+
+/** How a building is put together: what is drawn into it, and whether it is the near look or the shell. */
+export interface Assembly {
+  /** Drawn from code, already in the building's frame: a subway entrance, a camera over a door. */
+  readonly fixtures?: readonly Fixture[]
+  /** The shell: the panes go on the flat glass, because the room behind one is only worth drawing near. */
+  readonly far?: boolean
 }
 
 /**
@@ -20,10 +29,13 @@ interface Bucket {
  *
  * Panes carry the room they look into as they go by, which is what lets one
  * glass material draw a different interior behind every window without a draw
- * or a triangle of its own. Fixtures drawn from code arrive already in the
- * building's frame and join the bucket of the kit material they are on.
+ * or a triangle of its own. They carry it whichever glass they are drawn on, so
+ * a window lit on the skyline is the same window lit when you walk up to it.
+ * Fixtures drawn from code arrive already in the building's frame and join the
+ * bucket of the kit material they are on.
  */
-export function assemble(placements: readonly Placement[], library: KitLibrary, name: string, fixtures: readonly Fixture[] = []): THREE.Group {
+export function assemble(placements: readonly Placement[], library: KitLibrary, name: string, assembly: Assembly = {}): THREE.Group {
+  const glass = assembly.far ? FAR_GLASS : GLASS
   const buckets = new Map<string, Bucket>()
   const take = (material: string, geometry: THREE.BufferGeometry, piece: string): void => {
     const bucket = buckets.get(material)
@@ -53,10 +65,10 @@ export function assemble(placements: readonly Placement[], library: KitLibrary, 
 
       const geometry = part.geometry.clone().applyMatrix4(matrix)
       if (part.material === GLASS && placement.room) bakeRoom(geometry, placement.room)
-      take(part.material, geometry, placement.piece)
+      take(part.material === GLASS ? glass : part.material, geometry, placement.piece)
     }
   }
-  for (const fixture of fixtures) take(fixture.material, fixture.geometry, fixture.piece)
+  for (const fixture of assembly.fixtures ?? []) take(fixture.material, fixture.geometry, fixture.piece)
 
   const group = new THREE.Group()
   group.name = name

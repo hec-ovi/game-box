@@ -31,10 +31,23 @@ export interface BuildingSize {
   readonly height: number
 }
 
-export interface BuildingPlan {
+/** The walls a plot stands up, and the layout anything hung on them is written against. */
+export interface WallPlan {
   readonly placements: readonly Placement[]
   /** Middle of the doorway on the wall plane, and the way it looks out. */
   readonly door: { readonly position: readonly [number, number, number]; readonly rotationY: number }
+  readonly walls: Walls
+}
+
+/** What signage and fixtures read to find a wall: the faces, the front, which module of it the door is in, and the storeys. */
+export interface Walls {
+  readonly faces: readonly Face[]
+  readonly front: Face
+  readonly doorIndex: number
+  readonly bands: readonly Band[]
+}
+
+export interface BuildingPlan extends WallPlan {
   /** Every lit sign hung on it, in the building's own frame, the box over a subway entrance included. */
   readonly signs: readonly Sign[]
   /** A light for each of them, for whoever lights the walls. */
@@ -45,30 +58,32 @@ export interface BuildingPlan {
 
 /**
  * Turns a plot into the pieces that build it: walls module by module on every
- * face out of the courses its charter was resolved to, the door on the face
- * the entrance says, a flat deck on top, the room every glazed module looks
- * into, the signs hung on its walls and the light each of them throws, and
- * the fixtures its charter calls for: a subway entrance on the doorstep of a
- * station, a camera over the door of a private place.
+ * face out of the courses its charter was resolved to, the door on the face the
+ * entrance says, a flat deck on top, and the room every glazed module looks
+ * into.
+ *
+ * These pieces are planned on their own because a shell is these pieces and
+ * nothing else: laying out signs and fixtures for a building only read from
+ * across the town would be work for something nobody can see.
  *
  * Every draw comes from the plot's own seed, forked per feature, so the same
  * plot is the same building every time and adding a feature here cannot move
  * the windows an existing city already has.
  */
-export function planBuilding(plot: Plot, size: BuildingSize, cellSize: number, charter: PlotCharter): BuildingPlan {
+export function planWalls(plot: Plot, size: BuildingSize, cellSize: number, charter: PlotCharter): WallPlan {
   const recipe = charter.built
-  const rng = new Rng(`${plot.id}:${plot.kind}:${plot.style}`)
+  const rng = seedOf(plot)
   const rhythm = rng.fork('rhythm')
   const interiors = rng.fork('rooms')
-  const signage = rng.fork('signs')
-  const faces = facesOf(size.width, size.depth, MODULE.width)
+  const sides = facesOf(size.width, size.depth, MODULE.width)
+  const faces = Object.values(sides)
   const bands = bandsOf(plot.storeys, size.height)
-  const front = faces[entranceFace(plot)]
+  const front = sides[entranceFace(plot)]
   const doorIndex = doorModule(plot, front, cellSize)
   const [doorX, doorZ] = front.centreOf(doorIndex)
   const placements: Placement[] = []
 
-  for (const face of Object.values(faces)) {
+  for (const face of faces) {
     const phase = rhythm.int(0, 3)
     const doorAt = face.id === front.id ? doorIndex : -1
     for (const [storey, band] of bands.entries()) {
@@ -85,12 +100,29 @@ export function planBuilding(plot: Plot, size: BuildingSize, cellSize: number, c
     }
   }
   placements.push(...deck(size))
+  return { placements, door: { position: [doorX, 0, doorZ], rotationY: front.rotationY }, walls: { faces, front, doorIndex, bands } }
+}
+
+/**
+ * The whole building near the player: its walls, the signs hung on them and the
+ * light each of them throws, and the fixtures its charter calls for, a subway
+ * entrance on the doorstep of a station and a camera over the door of a private
+ * place.
+ */
+export function planBuilding(plot: Plot, size: BuildingSize, cellSize: number, charter: PlotCharter): BuildingPlan {
+  const plan = planWalls(plot, size, cellSize, charter)
+  const { faces, front, doorIndex, bands } = plan.walls
   // every wall is claimed once, by signs first and by the camera after, so nothing is hung through anything else
   const claims = new WallClaims()
-  const signs = planSigns(plot, charter, size.height, Object.values(faces), front, doorIndex, bands, signage, claims)
+  const signs = planSigns(plot, charter, size.height, faces, front, doorIndex, bands, seedOf(plot).fork('signs'), claims)
   const fixtures = planFixtures(plot, charter, front, alongOf(front, doorIndex), cellSize, claims)
   if (fixtures.subway) signs.push(subwaySign(fixtures.subway, charter.blade, front))
-  return { placements, door: { position: [doorX, 0, doorZ], rotationY: front.rotationY }, signs, lights: lightsOf(signs), fixtures }
+  return { ...plan, signs, lights: lightsOf(signs), fixtures }
+}
+
+/** The plot's own seed: every draw a building makes is forked off this one, by name. */
+function seedOf(plot: Plot): Rng {
+  return new Rng(`${plot.id}:${plot.kind}:${plot.style}`)
 }
 
 /**

@@ -1,10 +1,10 @@
 # @gb/kitbash contract
 
-contractVersion: 0.11.0
+contractVersion: 0.12.0
 
 ## Purpose
 
-Builds a plot into a building made of Downtown City MegaKit pieces on a 2 m grid: the footprint it was given, the height its storeys ask for, its door on the wall the entrance faces, and the front its charter was resolved to, so a kind of place the engine has never heard of is built from its file alone. Its windows look into furnished rooms and light up after dark, its walls carry lit signs with its own name on them sized to the fascia and a lamp either side of the door, it says where every one of those lights is so the scene can light the walls from them, and it lines the pavements with street lamps it draws from code. A station gets a subway entrance drawn into it on its doorstep, stairs down into the pavement under a lit box, and a private place a camera over its door, both cut from primitives on the kit's own materials. It also surfaces the ground the buildings stand on, out of the same kit's textures, and takes the whole kit, that ground included, to the tone the town's theme asks for.
+Builds a plot into a building made of Downtown City MegaKit pieces on a 2 m grid: the footprint it was given, the height its storeys ask for, its door on the wall the entrance faces, and the front its charter was resolved to, so a kind of place the engine has never heard of is built from its file alone. Its windows look into furnished rooms and light up after dark, its walls carry lit signs with its own name on them sized to the fascia and a lamp either side of the door, it says where every one of those lights is so the scene can light the walls from them, and it lines the pavements with street lamps it draws from code. From far off it is its shell: the same walls, the same windows and the same roof, with the rooms behind the panes, the signs and the fixtures left out, so the city can batch every plot in town and dress only the buildings round the player. A station gets a subway entrance drawn into it on its doorstep, stairs down into the pavement under a lit box, and a private place a camera over its door, both cut from primitives on the kit's own materials. It also surfaces the ground the buildings stand on, out of the same kit's textures, and takes the whole kit, that ground included, to the tone the town's theme asks for.
 
 ## Inputs
 
@@ -12,7 +12,9 @@ Builds a plot into a building made of Downtown City MegaKit pieces on a 2 m grid
 |---|---|---|
 | `new KitDressing(kit, rest?)` | a `KitLibrary`, and the `Dressing` behind it (defaults to `@gb/scene`'s `Greybox`) | |
 | `KitDressing.building(plot, size, charter)` | a `@gb/world` `Plot`, `{ width, depth, height }` in metres, and the plot's `PlotCharter`: `built`, `signage`, `blade`, `access` and `transit` off `world.charter(plot.kind)` (a whole `ResolvedCharter` fits) | the size matches the plot: `width / rect.w` is the world's cell size |
-| `KitDressing.lights(plot, size, charter)` | as `building` | |
+| `KitDressing.shell(plot, size, charter)` | as `building` | for every plot at open; `lights` is never asked after it |
+| `KitDressing.signs(plot, size, charter)` | as `building` | |
+| `KitDressing.lights(plot, size, charter)` | as `building` | after `building` for that plot |
 | `KitDressing.streetlights(world, spacing?)` | a `@gb/world` `World`, metres between lamps (default `LAMP_SPACING`, 20) | the grid painted, so pavements and roads are where they will be |
 | `KitDressing.setTime(hours)` | hours, 0 to 24, wrapping | cheap enough for every frame; a non-finite reading is ignored |
 | `loadKit(scenes, theme?)` | one `THREE.Object3D`, or the array `GLTFLoader` hands back as `gltf.scenes`; the city's theme text (default `DEFAULT_THEME`) | a scene holding the packed kit, one named node per piece and one per ground surface |
@@ -30,6 +32,8 @@ Builds a plot into a building made of Downtown City MegaKit pieces on a 2 m grid
 | Param | Schema | Postconditions |
 |---|---|---|
 | `building(plot, size, charter)` | `THREE.Object3D` | origin at the centre of its base; one mesh per kit material, never one per piece, plus one more for every sign on it, the subway entrance and the camera welded into those same meshes; a child named `door` at the middle of the doorway, looking out |
+| `shell(plot, size, charter)` | `THREE.Object3D` | the same building from far off, in the same frame: the same walls, panes and roof, one indexed mesh per kit material, the panes on `FAR_GLASS` rather than `GLASS`. No signs, no subway entrance, no camera, no `door` child |
+| `signs(plot, size, charter)` | `THREE.Mesh`, or nothing where the plot carries no sign | the signage `building` hangs on that plot, welded into one mesh on `SIGN.material`, in the building's own frame, for a dressing that draws its buildings some other way and wants the city's names on them |
 | `streetlights(world)` | `THREE.Object3D` named `kit:streetlights` | one `kit:streetlights:posts:<n>` per district holding that district's lamps as an instanced mesh, and one `kit:streetlights:halo` holding every glow in one additive quad buffer. Districts run row-major, so the same town chunks the same way every run. A town with no kerb in it gives the group empty |
 | `setTime(hours)` | nothing | every window and every lamp in the city moves to that hour |
 | `ground(kind)` | `THREE.Material` | the surface that kind of cell is made of, tiling at a real-world size; the same kind is always the same instance. A kit whose pack has no ground surfaces in it hands the question to `rest` |
@@ -37,7 +41,7 @@ Builds a plot into a building made of Downtown City MegaKit pieces on a 2 m grid
 | `KitLibrary.night` | a `CityNight` | `level` (0 by day, 1 in the dark) and `lit` (the share of rooms with the lights on) as node uniforms, plus `hours` and `setTime` |
 | `nightLook(hours)` | `{ level, lit }` | what any hour of the day means, as plain numbers |
 | `lampSpots(world, spacing?)` | `LampSpot[]` | where every lamp stands, in metres, and the way it faces |
-| `PIECES`, `PIECE_IDS`, `KIT_MATERIALS`, `MODULE`, `RELIEF`, `GLASS`, `FAKE_INTERIOR`, `isGlazed` | the catalog, measured from the kit's own files, and the two material names windows hang on | |
+| `PIECES`, `PIECE_IDS`, `KIT_MATERIALS`, `MODULE`, `RELIEF`, `GLASS`, `FAR_GLASS`, `FAKE_INTERIOR`, `isGlazed` | the catalog, measured from the kit's own files, and the material names windows hang on: the kit's own glass near the player, the flat one from far off, and the plane the kit paints behind both | |
 | `STREETLIGHT` | the lamp the box draws: the column, the arm, the head, the strip and the two fittings, in metres | |
 | `ROOM_ATTRIBUTES`, `Room` | the room a pane looks into, and the vertex attributes it rides on: `roomOffset` (from this vertex to the middle of its room's window wall), `roomSize`, `roomLook` | |
 | `GROUND_TEXTURES`, `GROUND_LOOKS`, `PAVEMENT_TONES` | the three tiling surfaces with the metres one tile covers, what each cell kind takes from them, and how much of the kit's own pavement each kind of town keeps | every kind in `@gb/world`'s `CELL` has a look, and every `Flavour` has a share |
@@ -65,7 +69,7 @@ Builds a plot into a building made of Downtown City MegaKit pieces on a 2 m grid
 
 ## Dependencies
 
-- `@gb/scene` contract: the `Dressing` seam this implements, and `Greybox` as the layer behind it.
+- `@gb/scene` contract: the `Dressing` seam this implements, `shell` included, and `Greybox` as the layer behind it. Scene batches every plot's `shell` at open into `city:<material>` and the near buildings' `building` into `detail:<material>`, one draw each.
 - `@gb/world` contract: `Plot`, `World`, `METRICS`, `cellCentre`; `ResolvedCharter` with its `built` (courses in `KIT_PIECES`), `signage` (`Signage`), `blade`, `access` (`ACCESS_KINDS`) and `transit` (`TRANSITS`), which the world resolves once and this box only reads; `Frontage` and `Openness`, the two axes `RECIPES` is keyed on. A plot whose charter carries `transit: subway` is where fast travel boards, and its `entrance.cell` is the doorstep the entrance stands on.
 - `@gb/kit` contract: `Rng`, for determinism.
 - `three`, `three/webgpu` and `three/tsl`: the window and lamp materials are node materials, which is what `WebGPURenderer` needs and what its WebGL2 backend compiles for itself.
@@ -79,6 +83,16 @@ A pane is any surface on the kit's `MI_Glass` material: that name is the hook th
 - A pane carries where it sits inside its own room, never where the room is. Everything the raymarch uses is an offset or a direction, so the numbers stay true whichever frame the pane is drawn in: `@gb/scene` puts every building in the city into shared buffers, which moves the vertices and leaves the distance from a pane to the middle of its own window wall alone.
 - Every room carries a key, 0 to 1. It is lit while the city's lit share is above its key, so the same rooms come on in the same order every night, none of them flickers, and a room with a low key stays lit through the small hours while a high one only burns in the evening.
 - The kit paints a flat grey plane behind its own glass (`MI_FakeInterior`). The pane draws a real room, so that plane is never packed into a building, which is a mesh and about 33 triangles a building saved.
+- Near the player the pane is on the kit's own glass; from far off the same pane is on `FAR_GLASS`, flat. Both read the same three attributes, so a window lit on the skyline is the same window lit in the same bulb when you walk up to it.
+
+## The shell
+
+`@gb/scene` batches every plot in town as its `shell` at open and asks for the whole `building` only within `DETAIL_RADIUS` of the player, so a shell is what most of the city is drawn as at any moment. It is the same walls, the same window openings and the same roof, welded per kit material exactly as a building is, so the town keeps its shape, its height and its tint at every distance and the far city is one draw per material.
+
+- **What it leaves out is what is only read from the pavement.** The signs and the light each of them throws, the subway entrance cut into a station's doorstep, the camera over a private door, and the furnished room behind every pane.
+- **The panes stay, flat.** A window opening with nothing in it reads as a hole, so a shell keeps the pane and draws it on `FAR_GLASS`. It carries the same three room attributes, so the same window is lit at the same hour in the same bulb as when you walk up to it; what changes is what reads them. A flat lit rectangle costs one attribute and a step, against a ray cast into a box with a floor, a back wall, a door, a sofa and a table in it.
+- **It is planned as walls, not as a building with its signage thrown away.** `planWalls` is what a shell is built from, so it lays out no signs, no fixtures and no emitters.
+- **`lights` is never asked after a shell**, so a far building throws nothing onto the street.
 
 ## Signs
 
@@ -144,6 +158,7 @@ The kit is authored bright: red brick and pale concrete. `flavourOf(theme)` read
 - The door is on the wall the entrance cell sits against, in the module nearest the doorstep `@gb/scene` puts on the pavement.
 - Same seed, same city, always. Every draw comes from a `@gb/kit` `Rng` on the plot's id, kind (the word in the file, never a digest of its charter) and style, forked per feature (`rhythm`, `rooms`, `signs`), so adding a feature later cannot move the windows a city already has, and editing a charter's table moves nothing but the walls it names. Where the lamps stand is read off the grid and draws nothing at all.
 - This box holds no clock. It remembers the hour it was told and renders it; whoever owns the clock calls `setTime`. Moving the city through the evening is two uniform writes, about 0.25 us, however many buildings and lamps are standing.
+- A shell stands exactly where its building's walls stand: the same footprint inside `RELIEF`, the same height, the same ground, and nothing on it reaching past the building it stands in for. Its panes carry the same rooms, so the same windows are lit in the same order near and far. Measured over a generated town in `tests/shell.test.ts`.
 - The kit loads once. Buildings clone geometry out of the library, and every piece sharing a material is welded into one mesh, so a building arrives as as many meshes as it has materials on it (4 or 5 out of the packed kit) plus one for its signs, not as many as it has pieces (28 to 146). Lit windows add none of their own. `@gb/scene` then puts every building on one material into one buffer, so a whole town is a draw per material; what this box owes that arrangement is indexed meshes on shared materials, which is exactly what the weld produces.
 - Every sign in the city is drawn with one material, so `@gb/scene` puts the lot in one batch and the whole town's signage is one draw. What varies between signs rides on the vertices: two colours and two glow strengths, the same trick the panes use for their rooms. A sign geometry is indexed, single-material and the same shape as every other one, which is what a batch takes.
 - A sign stays on its own building: never over the parapet, never in the pavement, and never wider than the wall it is on. What will not fit is not drawn rather than shrunk into a smear.
@@ -175,6 +190,19 @@ Measured headless in Node on 350 buildings round 49 blocks of a 157 by 147 town,
 | every sign in the city, in one more batch | 1 | 1 | one instance a building, culled with it |
 
 A building is 8,405 triangles over 4.2 kit materials. It costs no draw of its own: `@gb/scene` puts every building on one material into one buffer, so a town of any size is a draw per material. What this box owes that arrangement is indexed meshes on shared materials, which is what welding a building's pieces per material already produces.
+
+### What the shell saves, and what it cannot
+
+A building against the shell it is drawn as from far off, on the shipped kit over a town of 60 plots of every kind, height and facing (`node tools/measure-shell.ts`):
+
+| | triangles | meshes | to build |
+|---|---|---|---|
+| `building` | 8,758 | 5.3 | 1.61 ms |
+| `shell` | 8,671 | 4.3 | 1.13 ms |
+
+The kit's own walls are what a building weighs and a shell keeps them, so what it saves on the way in is the signage mesh, the fixtures, the emitters and the layout of all three. What it saves in the frame is the fragment: the far town no longer raymarches a room behind every pane, and only the buildings drawn in detail put an emitter in the city's lights.
+
+What it cannot save is those 8,671 triangles, which is the ceiling on how large a city this kit can dress. A forged 50 by 50 block town of 20,233 plots dressed by the kit alone is 215.9M triangles and 27 GB of buffers, shell path and all, against 4.1M and 1.5 GB for the same town on `@gb/prefab`'s pack (`node game/prefab/tools/bench-city.ts --blocks 50 --dressing kit`). The kit dresses the plots the pack has no shape for; the pack dresses the city.
 
 ### What the street lamps cost
 

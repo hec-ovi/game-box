@@ -6,7 +6,7 @@ import { grimeTexture } from '../look/grime.ts'
 import { toneMaterials } from '../look/dress.ts'
 import { TONES } from '../look/tones.ts'
 import { CityNight } from '../night/night.ts'
-import { windowMaterial } from '../night/windows.ts'
+import { FAR_GLASS, farWindowMaterial, windowMaterial } from '../night/windows.ts'
 import { signAtlas } from '../sign/atlas.ts'
 import { signMaterial } from '../sign/material.ts'
 import { SIGN } from '../sign/sign.ts'
@@ -26,9 +26,9 @@ export interface KitPart {
  * here and never load anything themselves, so a city of a thousand plots reads
  * the art exactly once.
  *
- * The library also owns the city's night: one set of uniforms, one glass
- * material, so moving the clock is two numbers however much of the city is
- * standing.
+ * The library also owns the city's night: one set of uniforms and the two glass
+ * materials, the room behind a near pane and the flat one behind a far one, so
+ * moving the clock is two numbers however much of the city is standing.
  */
 export class KitLibrary {
   readonly #parts: ReadonlyMap<string, readonly KitPart[]>
@@ -42,6 +42,7 @@ export class KitLibrary {
   readonly night = new CityNight()
 
   readonly #glass: THREE.Material
+  readonly #farGlass: THREE.Material
   readonly #atlas: THREE.DataTexture
   readonly #sign: THREE.Material
 
@@ -52,6 +53,7 @@ export class KitLibrary {
     this.#materials = toneMaterials(materials, TONES[flavourOf(theme)], this.#grime)
     this.ground = ground
     this.#glass = windowMaterial(this.night, materials.get(GLASS))
+    this.#farGlass = farWindowMaterial(this.night, materials.get(GLASS))
     this.#atlas = signAtlas()
     this.#sign = signMaterial(this.night, this.#atlas)
   }
@@ -70,6 +72,7 @@ export class KitLibrary {
 
   material(name: string): THREE.Material {
     if (name === GLASS) return this.#glass
+    if (name === FAR_GLASS) return this.#farGlass
     if (name === SIGN.material) return this.#sign
     const found = this.#materials.get(name)
     if (found) return found
@@ -83,6 +86,7 @@ export class KitLibrary {
     for (const material of this.#materials.values()) material.dispose()
     this.#grime.dispose()
     this.#glass.dispose()
+    this.#farGlass.dispose()
     this.#sign.dispose()
     this.#atlas.dispose()
     this.ground?.dispose()

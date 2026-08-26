@@ -2,7 +2,7 @@
 export { HEIGHT_TOLERANCE, PROUD } from './fit.ts'
 export { bucketOf, bucketKey, everyBucket, heightOf, type Bucket } from './bucket.ts'
 export { Catalogue, CatalogueSchema, InvalidCatalogue, TAG, type CatalogueDoc, type Design, type ModelSpec, type Suits, type Uncovered, type Unsuited } from './catalogue.ts'
-export { PrefabDressing, type BuildingSize } from './dressing.ts'
+export { PrefabDressing, type BuildingSize, type Signage } from './dressing.ts'
 export { StreetFace, axesOf, type Plate } from './face.ts'
 export { Fixtures, laidOn } from './fixtures.ts'
 export { DOOR_FINISH, OPEN_DOOR_FINISH } from './entrance.ts'

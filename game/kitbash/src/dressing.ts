@@ -3,9 +3,10 @@ import type { AnchorKind, CellKind, FurnitureProp, Item, Npc, Plot, World } from
 import * as THREE from 'three'
 import { assemble } from './assemble.ts'
 import type { PlotCharter } from './charter.ts'
-import { planBuilding, type BuildingSize } from './compose/plan.ts'
+import { planBuilding, planWalls, type BuildingSize } from './compose/plan.ts'
 import { fixtureParts } from './fixture/build.ts'
 import type { KitLibrary } from './kit/library.ts'
+import { signsFor } from './signage.ts'
 import { buildSigns } from './sign/build.ts'
 import type { LightEmitter } from './sign/light.ts'
 import { SIGN } from './sign/sign.ts'
@@ -14,9 +15,10 @@ import { buildStreetLamps } from './street/lamps.ts'
 /**
  * The city dressed in the Downtown kit. It answers for buildings, with the
  * subway entrance on a station's doorstep and the camera over a private door
- * drawn into them, for the ground they stand on and for the lamps along the
- * kerb, and hands everything else to the dressing behind it, because the kit
- * is a street kit: it has no furniture and no people in it.
+ * drawn into them, for the shell each of them is from far off, for the ground
+ * they stand on and for the lamps along the kerb, and hands everything else to
+ * the dressing behind it, because the kit is a street kit: it has no furniture
+ * and no people in it.
  */
 export class KitDressing implements Dressing {
   readonly #kit: KitLibrary
@@ -29,7 +31,7 @@ export class KitDressing implements Dressing {
 
   building(plot: Plot, size: BuildingSize, charter: PlotCharter): THREE.Object3D {
     const plan = planBuilding(plot, size, size.width / plot.rect.w, charter)
-    const building = assemble(plan.placements, this.#kit, plot.id, fixtureParts(plan.fixtures))
+    const building = assemble(plan.placements, this.#kit, plot.id, { fixtures: fixtureParts(plan.fixtures) })
 
     // every sign in the city is one material, so the lot is one more draw
     const signs = buildSigns(plan.signs, this.#kit.material(SIGN.material), plot.id)
@@ -43,6 +45,34 @@ export class KitDressing implements Dressing {
     door.rotation.y = plan.door.rotationY
     building.add(door)
     return building
+  }
+
+  /**
+   * The same building from far off: its walls, its windows and its roof, on the
+   * kit's own materials, with the panes flat.
+   *
+   * What a shell leaves out is everything only read from the pavement: the
+   * signs, the subway entrance and the camera drawn into the walls, and the
+   * furnished room behind every pane. `@gb/scene` batches one of these per plot
+   * at open and asks for the whole `building` only round the player, so the far
+   * town is one draw per kit material and a fragment of it costs the wall
+   * fetch.
+   */
+  shell(plot: Plot, size: BuildingSize, charter: PlotCharter): THREE.Object3D {
+    const plan = planWalls(plot, size, size.width / plot.rect.w, charter)
+    return assemble(plan.placements, this.#kit, plot.id, { far: true })
+  }
+
+  /**
+   * The signs this plot carries, as the one welded mesh `building` hangs on it,
+   * or nothing where it carries none.
+   *
+   * A dressing that draws the buildings some other way still wants the city's
+   * signage on them, and every sign in the city is on one material, so this is
+   * how it gets them without building a kit building to lift them off.
+   */
+  signs(plot: Plot, size: BuildingSize, charter: PlotCharter): THREE.Mesh | undefined {
+    return buildSigns(signsFor(plot, size, charter), this.#kit.material(SIGN.material), plot.id)
   }
 
   /**

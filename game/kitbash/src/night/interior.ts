@@ -77,10 +77,7 @@ export function roomBehindGlass(litShare: FloatNode): RoomShading {
   const fade = (z: FloatNode): FloatNode => mix(1, 0.42, z.sub(SETBACK).div(depth).clamp(0, 1))
 
   const lit = step(key, litShare)
-  // most bulbs run warm; a few rooms run on a cold tube or a television
-  const warm = mix(color(0xffb24a), color(0xffe4a4), dressing)
-  const cold = mix(color(0xdfe8ff), color(0xa6bcff), paint)
-  const bulb = select(fract(dressing.mul(7.31)).greaterThan(0.88), cold, warm)
+  const bulb = bulbOf(paint, dressing)
 
   // --- the shell: plaster, boards, a ceiling light and a door -------------
 
@@ -125,6 +122,17 @@ export function roomBehindGlass(litShare: FloatNode): RoomShading {
 
   // a lit room takes on its bulb's colour and reads brighter
   return { colour: colour.mul(mix(vec3(1, 1, 1), bulb, lit.mul(0.85))).mul(mix(1, 1.3, lit)), lit }
+}
+
+/**
+ * What a room burns, from the two look numbers its pane carries: most bulbs run
+ * warm, a few rooms run on a cold tube or a television. The shell reads it too,
+ * so a window is the same colour walked up to as it is from across the town.
+ */
+export function bulbOf(paint: FloatNode, dressing: FloatNode): Vec3Node {
+  const warm = mix(color(0xffb24a), color(0xffe4a4), dressing)
+  const cold = mix(color(0xdfe8ff), color(0xa6bcff), paint)
+  return select(fract(dressing.mul(7.31)).greaterThan(0.88), cold, warm)
 }
 
 /** One furniture block: the near face the ray meets, if it meets it at all. */

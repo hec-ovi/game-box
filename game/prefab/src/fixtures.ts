@@ -56,9 +56,8 @@ export class Fixtures {
 
   /**
    * Carries every vertex of a building's signage onto the face its own sign
-   * belongs on. The mesh may still carry the transform that brought it out of
-   * the kit's building, so a vertex is read in the building's frame and written
-   * back in its own.
+   * belongs on. A mesh may stand at a transform of its own, so a vertex is read
+   * in the building's frame and written back in its own.
    */
   seat(mesh: THREE.Mesh): void {
     mesh.updateMatrix()

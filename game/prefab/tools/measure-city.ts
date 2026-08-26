@@ -6,34 +6,19 @@
  *   node tools/measure-city.ts [--seed metro] [--blocks 4]
  */
 import { Forge, OfflineNarrator } from '@gb/forge'
-import { CityNight } from '@gb/kitbash'
 import { Greybox, buildCity, storeyHeight } from '@gb/scene'
-import { readFileSync } from 'node:fs'
 import * as THREE from 'three'
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
-import { Catalogue } from '../src/catalogue.ts'
 import { PrefabDressing } from '../src/dressing.ts'
-import { Library } from '../src/library.ts'
 import { designFor } from '../src/pin.ts'
-import { ROOM_PICTURES } from '../src/rooms.ts'
-import { SCREEN_PICTURES } from '../src/screens.ts'
 import { flag } from './args.ts'
+import { readPack } from './headless.ts'
 
 const args = process.argv.slice(2)
 const seed = flag(args, '--seed') ?? 'metro'
 const blocks = Number(flag(args, '--blocks') ?? 4)
 
-const pack = new URL('../pack/', import.meta.url)
-const catalogue = await Catalogue.read(new Uint8Array(readFileSync(new URL('buildings.json', pack))))
-const mesh = readFileSync(new URL('buildings.glb', pack))
-const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(mesh.buffer.slice(mesh.byteOffset, mesh.byteOffset + mesh.byteLength), '')
-
-// the strips are not read here: a layer of grey stands in for each, since only the geometry is measured
-const layers = (count: number) => new THREE.DataArrayTexture(new Uint8Array(4 * 4 * count * 4).fill(128), 4, 4, count)
-const finishes = catalogue.atlas.finishes
-const atlas = { colour: layers(finishes.length), emissive: layers(finishes.length), rooms: layers(ROOM_PICTURES.length), screens: layers(SCREEN_PICTURES.length), finishes }
-const library = Library.of({ catalogue, scenes: gltf.scenes, atlas, night: new CityNight() })
+const library = await readPack()
+const catalogue = library.catalogue
 const dressing = new PrefabDressing(library, new Greybox())
 
 const built = await new Forge(new OfflineNarrator(seed)).build({ theme: 'a neon port city', seed, blocksX: blocks, blocksY: blocks, density: 1, maxStoreys: 4 })
