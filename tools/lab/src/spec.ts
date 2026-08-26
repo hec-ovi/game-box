@@ -25,9 +25,10 @@ export interface StageSpec {
 const spec = fileText(SPEC_PATH)
 
 /** Headings of the shape `## 3. The people`, with the first paragraph under each. */
-const stages = spec === undefined ? new Map<number, StageSpec>() : read(spec)
+const stages = spec === undefined ? new Map<number, StageSpec>() : parseStages(spec)
 
-function read(document: string): Map<number, StageSpec> {
+/** The parse, on its own, so it can be exercised against a document that is not on disk yet. */
+export function parseStages(document: string): Map<number, StageSpec> {
   const found = new Map<number, StageSpec>()
   const blocks = document.split(/\n(?=#{2,3} )/)
   for (const block of blocks) {
