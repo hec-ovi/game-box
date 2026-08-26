@@ -129,3 +129,24 @@ A pack takes the matrix as it is.
 The plot mix as the source of counts, the 14% share, the station share, the
 narrator's per-place budget spread thin, and most of a world file. A city stops
 being expensive because it is big.
+
+## 9. The instance is another dimension (2026-08-26, his correction)
+
+A slot carries no size and no proportion to the city. It is a door you click,
+and behind it the instance is its own space: a small square on the street may
+open into a large building with as many rooms as the place needs. The instance
+is isolated from the city the way another part of a game is, and the loading
+between them is a real loading screen going in and coming out. Whether an
+interior is ever held to the footprint of the building it sits behind is a later
+question and may never be worth answering.
+
+Distance is not a problem either. A quest that sends a player across town is
+entertaining rather than broken: they see the city and they use the subway. The
+quest writer is told the district each slot is in and nothing finer, because
+coordinates and metres would make it careful about geography and careless about
+the story, which is the opposite of what it is for.
+
+What each stage is given is therefore the least that lets it do its own job
+well: the architect gets a style and nothing else, the story gets a count of
+slots and their districts, the instance builder gets what its place is, who is
+inside it and what is in it, and inside that it is free.
