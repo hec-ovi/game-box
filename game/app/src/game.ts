@@ -50,6 +50,7 @@ import { Talking } from './talking.ts'
 import { Travel } from './travel.ts'
 import { pick, Targeting, type Target } from './targets.ts'
 import { View } from './view.ts'
+import type { Stall } from './stall.ts'
 
 export interface GameOptions {
   dressing: Dressing
@@ -565,7 +566,7 @@ export class Game {
     // is not held for it: every room built after it plays gets it, and the one
     // they are standing in when it does gets it there and then
     if (screens) void screens.open().then((playing) => void (playing && game && game.#buildings.dressScreens()))
-    stage.start((seconds) => game!.frame(seconds))
+    stage.start((seconds, stall) => game!.frame(seconds, stall))
     return game
   }
 
@@ -579,7 +580,8 @@ export class Game {
     this.#paused = on
   }
 
-  frame(seconds: number): boolean | void {
+  frame(seconds: number, stall?: Stall): boolean | void {
+    const mark = (name: string): void => stall?.at(name)
     if (this.#paused) {
       this.#chart.update(seconds)
       return false
@@ -591,8 +593,10 @@ export class Game {
     clock.advance(seconds)
     this.#report.tick()
     this.#keepTheClock(seconds)
+    mark('clock')
     this.#sky.follow(seconds, clock, this.#buildings.outdoors, this.#city)
     this.#street.setTime(clock)
+    mark('sky')
     // what the city draws round the player: the lights go to the nearest
     // emitters, the buildings that came near are dressed and the ones that
     // went far fall back to their shells, and a room nobody is near is let go.
@@ -600,27 +604,32 @@ export class Game {
     // stays dressed and lit and the room stays built
     const near = this.#buildings.cityPosition()
     this.#city.follow(near.x, near.z, seconds)
+    mark('city')
 
     this.#body.update(seconds)
     this.#driving.update(seconds)
     // the camera last, so driving is seen from behind the car: the seat has
     // just put the eye at the windscreen and the chase view moves it back
     this.#chase.follow()
+    mark('player')
     // the street only carries on while the player is out in it
     if (this.#buildings.outdoors) {
       this.#street.update(seconds, this.#body.position)
       this.#escorts.update()
     }
+    mark('street')
     // whoever is being talked to keeps facing the player, indoors and out, and
     // before the cast runs so the head turn lands on this frame's pose
     this.#attending.update(seconds)
     this.#cast?.update(seconds)
+    mark('cast')
 
     this.#chart.update(seconds)
     this.#compass.update(seconds)
     this.#minimap.update(seconds)
     this.#target = pick(this.#body.position, this.#body.heading, this.#targeting.list(this.#body.position))
     this.#offer(this.#talking.active || !this.#target ? null : this.#target.label)
+    mark('hud')
   }
 
   /**

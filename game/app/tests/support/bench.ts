@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { reflectSky } from '../../src/night.ts'
 import type { Stage } from '../../src/stage.ts'
+import type { Stall } from '../../src/stall.ts'
 
 /**
  * The stage with the GPU taken out: a real camera, a real scene and a real
@@ -20,7 +21,7 @@ export class Bench implements Stage {
   brighter = 1
   turned = 0
   reflected = 0
-  frame: ((seconds: number) => void) | undefined
+  frame: ((seconds: number, stall?: Stall) => boolean | void) | undefined
 
   constructor(mount: HTMLElement) {
     this.canvas = document.createElement('canvas')
@@ -49,7 +50,7 @@ export class Bench implements Stage {
     this.showing = root
     this.scene.add(root)
   }
-  start(frame: (seconds: number) => void): void {
+  start(frame: (seconds: number, stall?: Stall) => boolean | void): void {
     this.frame = frame
   }
   draw(): void {}

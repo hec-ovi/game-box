@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { PMREMGenerator, WebGPURenderer } from 'three/webgpu'
 import { Grade } from './grade.ts'
+import { Stall } from './stall.ts'
 import type { Stage } from './stage.ts'
 
 const SKY = 0x9fb6c6
@@ -119,14 +120,15 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
       // where the player last stood.
       grade.render()
     },
-    start(frame: (delta: number) => boolean | void) {
+    start(frame) {
       const timer = new THREE.Timer()
+      const stall = new Stall()
       renderer.setAnimationLoop(() => {
         timer.update()
-        const shouldRender = frame(Math.min(timer.getDelta(), 0.1))
-        if (shouldRender !== false) {
-          grade.render()
-        }
+        stall.begin()
+        const drawing = frame(Math.min(timer.getDelta(), 0.1), stall)
+        if (drawing !== false) grade.render()
+        stall.end()
       })
     },
     dispose() {

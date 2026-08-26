@@ -1,4 +1,5 @@
 import type * as THREE from 'three'
+import type { Stall } from './stall.ts'
 
 /**
  * Where the game draws: the camera it looks through, the scene it hangs the
@@ -37,7 +38,13 @@ export interface Stage {
   grade(night: number): void
   /** Swap what is being rendered: the city, or the inside of a building. */
   show(root: THREE.Object3D): void
-  start(frame: (seconds: number) => void): void
+  /**
+   * Run the frame loop. The callback is handed the elapsed seconds and the
+   * frame's own stall watch to mark its segments on; returning `false` skips
+   * the draw, which is what a paused game does. The watch is closed after the
+   * draw, so a stall inside the renderer is caught with the rest.
+   */
+  start(frame: (seconds: number, stall?: Stall) => boolean | void): void
   /** Draw one frame now, whatever the browser is doing with its frame loop. */
   draw(): void
   dispose(): void

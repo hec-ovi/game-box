@@ -77,6 +77,7 @@ None at the boundary. A city that will not build and a file that will not open a
 - **The clock comes back as the save left it, and says so.** `P` and the settings tab hold the clock through `@gb/play`'s own pause, the save carries the pause and the rate apart, and both come back off the clock: a held save opens held, the settings tab reads `locked` off `clock.paused`, `P` lets it run again at `clock.rate`, and the way in announces `Time held`. Nothing here remembers a rate or a pause of its own.
 - One unit is one metre. Inside the built area the walls come from the grid the city was generated on; past it the land says how high the ground is and whether it can be stood on, so the player walks out of town onto open country rather than into the edge of the map. No physics engine, no baked collision.
 - The player is placed on the pavement a step off the first door in town that opens, looking at it. Most buildings are shut, so the first door on the street is usually one nobody can go through, and a player who opens their eyes on a blank wall has nothing to press. The step is taken back off the kerb where the pavement is deep enough and along it where it is not, so the opening frame is a street rather than a facade. Entering a building puts them inside it facing the room.
+- **A frame the player felt says where it went.** The loop is timed in segments (the clock, the sky, the city, the player, the street, the cast, the interface, the draw) and a frame over 120 ms writes one line to the console naming them worst first, at most one line every two seconds. It is two clock reads a segment and silent on a good frame, so it stays on in the running game: a stall of a second is a pipeline compiled the first time a material is drawn or a room built on the frame somebody walked at its door, and none of that is in a number a bench can take.
 - **The way in is only ever offered for a building that opens.** Seven in eight have no interior, and a prompt on one of those is a lie the player walks into.
 - Looking closer narrows the field of view and slows the mouse by the same amount, so the same hand movement covers the same distance on screen however far in you are.
 - The floor has height: the pavement stands a kerb above the road, and walking onto it steps up rather than clipping through. Crouching and standing ease between heights for the same reason.
@@ -265,6 +266,7 @@ One responsibility each. `boot/` is everything before there is a game; the rest 
 | `stage.ts` | the graphics port: what the game asks of a screen, and nothing of how |
 | `renderer.ts` | the one thing behind that port: WebGPU, camera, lights, the frame loop |
 | `grade.ts` | the chain between the scene and the screen |
+| `stall.ts` | timing the frame loop in segments, and saying where a slow one went |
 | `night.ts` | what an hour of the day is developed at, and how much of the sky it reflects |
 | `tint.ts` | the night colour: cold shadows, saturated lights |
 | `player.ts`, `walk.ts`, `stance.ts`, `zoom.ts` | the first-person body |
