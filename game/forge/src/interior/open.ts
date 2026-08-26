@@ -1,7 +1,7 @@
 import type { Rng } from '@gb/kit'
 import type { ResolvedCharter, Word } from '@gb/world'
 import { DoorBudget } from './budget.ts'
-import { drawOf, NEEDS, pullOf, type Draw } from './draw.ts'
+import { drawOf, KEYSTONES, pullOf, WANTS, type Draw, type Need } from './draw.ts'
 
 /**
  * Which of a town's buildings you can walk into.
@@ -61,7 +61,7 @@ const ROOMY = 2
 /** The fewest doors a town opens before one of them is a home: a hamlet with two spends both on what a town needs. */
 const HOME_AT = 3
 
-/** And one more home for every this many places a brief asks to open, so a wider city has one lived in as well as one on the market. */
+/** And one more home for every this many places a brief asks to open, so a wider city has one that stays somebody's as well as one on the market. */
 const PER_HOME = 8
 
 /** How many homes a city opens, whatever its size: the one the player buys, and one more per handful of places. */
@@ -112,35 +112,40 @@ export interface Town {
 /**
  * Which of a batch of buildings open, in the order they were put up.
  *
- * The city has a number of places and this batch spends what is left of it. The
- * pick is what the place has to offer, how much floor there is behind its door,
- * how near the middle of town it stands, whether it is on an avenue (a door on
- * the way to everywhere gets tried, one at the edge does not), whether the
- * town's own story is about that kind of place, and a seeded nudge so the same
- * town twice over is not the same list of shops. Whatever the ranking says, the
- * doors end up a walk apart rather than on one corner, a town gets the things
- * it needs in the order it needs them, and one of them is a home, because a
- * home is what the player buys.
+ * The city has a number of places and this batch spends what is left of it. Its
+ * keystones go first (`KEYSTONES` in `draw.ts`: a counter to buy over, a room
+ * with seats and somebody serving), then the kind of place the town's history
+ * is about, then what else a town wants, then the home the player buys, then
+ * the ranking. The ranking is what the place has to offer, how much floor there
+ * is behind its door, how near the middle of town it stands, whether it is on
+ * an avenue (a door on the way to everywhere gets tried, one at the edge does
+ * not), whether the town's own story is about that kind of place, and a seeded
+ * nudge so the same town twice over is not the same list of shops. Whatever it
+ * says, the doors end up a walk apart rather than on one corner.
  */
 export function openDoors(frontages: readonly Frontage[], rng: Rng, town: Town): ReadonlySet<string> {
   if (!frontages.length) return new Set()
   const budget = new DoorBudget({ built: town.built, open: town.open.length }, frontages.length, town.places)
   const picker = new Picker(frontages, rng, town, budget)
   const homes = homesFor(budget.town)
-  // the story's kinds of place have doors of their own, so long as the town is
-  // still left with somewhere to walk into and somewhere to buy
-  const stories = Math.min(picker.stories, Math.max(0, budget.spare - 2))
-
-  // the things a town needs, in the order it gets them, the story's and the home's doors kept back
-  for (const [, met] of NEEDS) {
-    if (!picker.room(homes + stories)) break
-    if (picker.holds(met)) continue
-    picker.take((frontage) => met(drawOf(frontage.charter)))
+  /** Doors still owed to homes: what every pass before them keeps back. */
+  const owed = (): number => Math.max(0, homes - picker.homes)
+  const answer = (needs: readonly Need[]): void => {
+    for (const [, met] of needs) {
+      if (!picker.room(owed())) break
+      if (picker.holds(met)) continue
+      picker.take((frontage) => met(drawOf(frontage.charter)))
+    }
   }
-  // a kind of place the town's history is about: the door the story means the player to try
-  for (let told = 0; told < stories && picker.room(homes); told++) {
+
+  answer(KEYSTONES)
+  // a kind of place the town's history is about: the door the story means the
+  // player to try, taken out of whatever the keystones did not spend
+  const stories = Math.min(picker.stories, Math.max(0, budget.spare - picker.open.size - owed()))
+  for (let told = 0; told < stories && picker.room(owed()); told++) {
     if (!picker.take((frontage, open) => frontage.storied && open === 0)) break
   }
+  answer(WANTS)
   while (picker.room(0) && picker.homes < homes) if (!picker.take((frontage) => frontage.charter.residential)) break
   // whatever is left goes over as many different kinds of place as the town has
   while (picker.room(0)) if (!picker.take(() => true)) break

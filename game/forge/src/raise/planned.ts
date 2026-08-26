@@ -76,7 +76,7 @@ export interface PlannedInside {
   readonly plan: InteriorPlan
   readonly posts: readonly PlannedPost[]
   readonly things: readonly PlannedThing[]
-  /** Whole credits the place is for sale for: a home with nobody in it and a deed on a counter somewhere. */
+  /** Whole credits the place is for sale for: a home whose deed lies on a counter somewhere, its residents still in it. */
   readonly forSale?: number
 }
 

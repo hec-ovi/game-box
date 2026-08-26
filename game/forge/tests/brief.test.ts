@@ -195,7 +195,8 @@ describe('a home for the player, and somewhere to board', () => {
       for (const home of forSale) {
         expect(world.charter(home.kind)!.residential).toBe(true)
         expect(home.owner).toBeUndefined()
-        expect(world.npcs().some((npc) => npc.station?.interiorId === home.id), `${world.name} sells a home with somebody in it`).toBe(false)
+        // a home on the market is lived in until the deed changes hands: no door a player walks through opens onto an empty room
+        expect(world.npcs().some((npc) => npc.station?.interiorId === home.id), `${world.name} sells an empty home`).toBe(true)
         const deed = world.items().find((item) => item.deedTo === home.id)!
         expect(deed.archetype).toBe('deed')
         expect(deed.value).toBe(home.forSale)
@@ -253,7 +254,8 @@ describe('what the writers are told', () => {
     // the key is named here, never by the narrator
     expect(disco.things.some((thing) => thing.archetype === 'key')).toBe(false)
     const sale = narrator.requests.find((request) => request.has.forSale !== undefined)!
-    expect(sale.posts).toEqual([])
+    // the people living in it are written like anybody else: the sale is a fact about the deed
+    expect(sale.posts.length).toBeGreaterThan(0)
     expect(neon.interiors().find((interior) => interior.forSale === sale.has.forSale)).toBeDefined()
     const ledger = wideNarrator.requests.find((request) => request.has.machines.some((machine) => machine.program === 'ledger'))!
     expect(ledger.charter.holding, 'the ledger stands on a counter that keeps no papers').toContain('papers')

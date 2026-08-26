@@ -67,8 +67,8 @@ describe('a kind of place the history invents', () => {
   it('weighs two different jails in one process as two different places', () => {
     const cells = drawOf(JAIL)
     const dormitory = drawOf({ ...JAIL, service: 'none', work: [], rooms: { main: { use: 'bedroom', name: 'Dormitory' }, services: [] } })
-    expect(cells.counter).toBeGreaterThan(0)
-    expect(dormitory.counter).toBe(0)
+    expect(cells.serves).toBeGreaterThan(0)
+    expect(dormitory.serves).toBe(0)
     expect(drawOf(JAIL)).toEqual(cells)
   })
 

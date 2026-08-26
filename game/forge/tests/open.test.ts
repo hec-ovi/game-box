@@ -2,7 +2,7 @@ import { Rng } from '@gb/kit'
 import { SHIPPED_CHARTERS, type ResolvedCharter, type World } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { DoorBudget, mostOpen, OPEN_PLACES, placesOnNewLand } from '../src/interior/budget.ts'
-import { drawOf, NEEDS, pullOf } from '../src/interior/draw.ts'
+import { drawOf, KEYSTONES, pullOf } from '../src/interior/draw.ts'
 import { openDoors, type Frontage } from '../src/interior/open.ts'
 import { buildTown } from './support.ts'
 
@@ -88,17 +88,37 @@ describe('a town of frontage with a few doors that open', () => {
     }
   })
 
-  it('takes the things a town needs in the order it needs them, as far as its doors go', () => {
+  it('spends its first doors on its keystones, and its third on a home', () => {
     for (const built of [...range, small, big, other]) {
-      // three doors cannot answer all five needs, so the order is what matters:
-      // a counter with somebody behind it is what a quest writer asks a town for
-      const kinds = built.world.interiors().map((interior) => drawOf(built.world.charter(interior.kind)!))
-      const [, sitting] = NEEDS[0]!
-      const [, buying] = NEEDS[1]!
-      expect(kinds.some((draw) => sitting(draw) || buying(draw)), `${built.world.name} has nowhere with a counter`).toBe(true)
-      // and once a town has three doors, one of them is a home for the player to buy
-      if (built.world.interiors().length < OPEN_PLACES) continue
-      expect(built.world.interiors().some((interior) => interior.forSale !== undefined), `${built.world.name} sells nobody a home`).toBe(true)
+      // three doors is the whole game, so which three is not left to a ranking:
+      // a counter to buy over, a room somebody is served in, and a home
+      const drawn = built.world.interiors().map((interior) => drawOf(built.world.charter(interior.kind)!))
+      const doors = `${built.world.name} (${drawn.length} doors)`
+      expect(drawn.some(KEYSTONES[0]![1]), `${doors} has nowhere to buy anything over a counter`).toBe(true)
+      if (drawn.length < OPEN_PLACES) continue
+      expect(drawn.some(KEYSTONES[1]![1]), `${doors} has nowhere to sit down and be served`).toBe(true)
+      expect(built.world.interiors().some((interior) => interior.forSale !== undefined), `${doors} sells nobody a home`).toBe(true)
+    }
+  })
+
+  it('opens no door onto an empty room', () => {
+    // a home on the market used to be emptied on its way to the deed, which was
+    // one place in twenty-four and is one door in three
+    for (const built of [...range, small, big, other]) {
+      for (const interior of built.world.interiors()) {
+        expect(built.world.npcsIn(interior.plotId).length, `${built.world.name}: its ${interior.kind} opens onto an empty room`).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  it('always opens somewhere work is handed over a counter', () => {
+    for (const built of [...range, small, big, other]) {
+      const behind = built.world.interiors().filter((interior) => {
+        if (!drawOf(built.world.charter(interior.kind)!).trades) return false
+        const counters = new Set(interior.anchors.filter((anchor) => anchor.kind === 'serve').map((anchor) => anchor.id))
+        return built.world.npcsIn(interior.plotId).some((npc) => npc.station && counters.has(npc.station.anchorId))
+      })
+      expect(behind.length, `${built.world.name} has nobody behind a counter`).toBeGreaterThan(0)
     }
   })
 

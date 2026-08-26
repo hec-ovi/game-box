@@ -10,10 +10,16 @@ const HAGGLE = 0.15
 
 /**
  * Puts homes up for sale: every home that opens but one, so a town with one
- * home sells it and a bigger town keeps one lived in and sells the rest, each
- * a place with an open door and nobody living in it, its deed on the counter
- * of somewhere that keeps papers, priced by its floor. A town with nowhere to
- * buy a deed from sells nothing.
+ * home sells it and a bigger town keeps one off the market and sells the rest, each
+ * a place with an open door and its deed on the counter of somewhere that
+ * keeps papers, priced by its floor. A town with nowhere to buy a deed from
+ * sells nothing.
+ *
+ * A home on the market keeps the people who live in it. A city opens three
+ * doors, one of them is this one, and a third of the game behind an empty room
+ * is a third of the game missing; the sale is a fact about the deed, not about
+ * whether anybody is home. Nobody is recorded as its owner until the deed is
+ * bought (`assemble.ts`).
  */
 export function putUpForSale(planned: readonly PlannedSite[], counts: { items: number }, rng: Rng): PlannedSite[] {
   const homes = planned.filter((one) => one.inside && one.charter.residential && one.charter.access === 'open')
@@ -27,7 +33,7 @@ export function putUpForSale(planned: readonly PlannedSite[], counts: { items: n
   for (const [at, home] of rng.shuffle(homes).slice(0, wanted).entries()) {
     const seller = (desks.length ? desks : sellers)[at % (desks.length || sellers.length)]!
     const price = priceOf(home, rng)
-    sold.set(home, { ...home.inside!, posts: [], forSale: price })
+    sold.set(home, { ...home.inside!, forSale: price })
     deeds.set(seller, [
       ...(deeds.get(seller) ?? []),
       { thingId: `${seller.inside!.interiorId}/deed/${at}`, archetype: 'deed', anchorId: counterOf(seller.inside!)!, index: counts.items++, value: price, deedTo: home.inside!.interiorId },

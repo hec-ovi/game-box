@@ -150,8 +150,8 @@ describe('a town written by a narrator answering many places at once', () => {
     const { world } = await town(thin)
     expect(world.check()).toEqual([])
     expect(world.npcs().some((npc) => npc.name === 'A Stranger')).toBe(false)
-    // one person per place, except the home on the market, which has nobody in it
-    expect(world.npcs().length).toBe(world.interiors().filter((interior) => interior.anchors.length > 0 && interior.forSale === undefined).length)
+    // one person per place: the rest of the answer named a post that is not there
+    expect(world.npcs().length).toBe(world.interiors().filter((interior) => interior.anchors.length > 0).length)
     for (const npc of world.npcs()) {
       const interior = world.interior(npc.station!.interiorId)!
       expect(interior.anchors.some((anchor) => anchor.id === npc.station!.anchorId), `${npc.name} stands nowhere`).toBe(true)

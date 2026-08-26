@@ -19,10 +19,15 @@ const WORKING = 0.6
 /** The room a probe interior is planned in: big enough that nothing is left out for want of floor. */
 const PROBE = { w: 11.6, h: 13.6 }
 
+/** The services you are served across rather than received at: what a counter sells over. */
+const SOLD_OVER: readonly Charter['service'][] = ['counter', 'stalls']
+
 /** What a kind of place has to offer somebody who tries its door. */
 export interface Draw {
-  /** Posts that are always filled: somebody whose job is whoever walks in. */
-  readonly counter: number
+  /** Counters somebody is always behind: posts whose job is whoever walks in. */
+  readonly serves: number
+  /** Whether that counter is one you buy across rather than one you are received at, so a job, a thing and a deed can change hands over it. */
+  readonly trades: boolean
   /** Posts somebody works at: the people who make the place a place of work. */
   readonly staff: number
   /** Places a body sits: what makes a room read as somewhere people are. */
@@ -31,8 +36,6 @@ export interface Draw {
   readonly beds: number
   /** Kinds of loose stock the place carries. */
   readonly stock: number
-  /** Whether people live here: a bed in a home is a home somebody can buy. */
-  readonly home: boolean
   /** Every place a body stands, sits or lies: none means nobody can be in it at all. */
   readonly posts: number
 }
@@ -60,13 +63,14 @@ export function drawOf(charter: Charter): Draw {
     mint: (thing) => `${thing}_${++minted}`,
     rng: new Rng(`open/${charter.word}`),
   })
+  const serves = plan.anchors.filter((anchor) => anchor.kind === 'serve').length
   const draw: Draw = {
-    counter: plan.anchors.filter((anchor) => works(anchor, charter) && occupancy(anchor.kind, charter) === 1).length,
+    serves,
+    trades: serves > 0 && SOLD_OVER.includes(charter.service),
     staff: plan.anchors.filter((anchor) => works(anchor, charter)).length,
     seats: plan.anchors.filter((anchor) => anchor.kind === 'sit' || anchor.kind === 'sit-drink').length,
     beds: plan.anchors.filter((anchor) => anchor.kind === 'sleep').length,
     stock: stockOf(charter).length,
-    home: charter.residential,
     posts: plan.anchors.length,
   }
   draws.set(key, draw)
@@ -84,26 +88,33 @@ function works(anchor: Anchor, charter: Charter): boolean {
  * whole job is whoever walks in; then anybody else who works there, then what
  * is lying about, then whether the place reads as somewhere people are. It puts
  * a shop, a bar and a surgery well above a flat, a lock-up and a chapel, which
- * is the shape a town of frontage wants.
+ * is the shape a town of frontage wants. A guard on a door is not a counter:
+ * a lock-up with a watchman scores as the lock-up it is.
  */
 export function pullOf(charter: Charter): number {
   const draw = drawOf(charter)
-  return (draw.counter ? 3 : 0) + (draw.staff ? 2 : 0) + (draw.stock >= 3 ? 1 : 0) + (draw.seats + draw.beds >= 3 ? 1 : 0)
+  return (draw.serves ? 3 : 0) + (draw.staff ? 2 : 0) + (draw.stock >= 3 ? 1 : 0) + (draw.seats + draw.beds >= 3 ? 1 : 0)
 }
 
+/** A question about what a place holds, and what to call the answer. */
+export type Need = readonly [string, (draw: Draw) => boolean]
+
 /**
- * What a town has to have somewhere, whatever else it opens, in the order it
- * gets them. Three of the five are counters with somebody behind them, which is
- * also what the quest writer asks a town for: a place to hand work out from, a
- * second one to be its far side, and a third to send the player between them;
- * the last is a home, because a home that opens is a home the player can buy.
- * So this list is both what a town needs to read as a town and the floor on how
- * many doors it opens.
+ * The doors a town opens before anything else claims one. A city opens three
+ * places and two of them are counters you buy across: one is where work is
+ * handed over, a thing is bought and a deed is sold, and one is a room with
+ * seats in it and somebody behind the bar, which is the room a town is met in.
+ * One place answers both often enough (a bar sells drink and seats you), and
+ * then the door it saves goes to the kind of place the town's history is about.
+ * The third is a home, which `homesFor` in `open.ts` keeps back.
  */
-export const NEEDS: ReadonlyArray<readonly [string, (draw: Draw) => boolean]> = [
-  ['somewhere to sit down', (draw) => draw.counter > 0 && draw.seats > 0],
-  ['somewhere to buy something', (draw) => draw.counter > 0 && draw.stock > 0],
+export const KEYSTONES: readonly Need[] = [
+  ['somewhere to buy something over a counter', (draw) => draw.trades && draw.stock > 0],
+  ['somewhere to sit down and be served', (draw) => draw.trades && draw.seats > 0],
+]
+
+/** What a town takes next when it has doors over its keystones, its story and its home. */
+export const WANTS: readonly Need[] = [
+  ['somewhere people work', (draw) => draw.staff >= 3],
   ['somewhere to sleep', (draw) => draw.beds > 0],
-  ['somewhere to work', (draw) => draw.staff > 0],
-  ['somewhere to live', (draw) => draw.home && draw.beds > 0],
 ]
