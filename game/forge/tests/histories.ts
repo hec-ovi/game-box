@@ -96,7 +96,8 @@ export class Told implements Narrator {
 
 /** Builds a town against a history somebody wrote, and says why if it will not build. */
 export async function buildTold(seed: string, history: unknown, overrides: Record<string, unknown> = {}) {
-  const built = await new Forge(new Told(seed, history)).build({ theme: 'quiet market town', seed, blocksX: 3, blocksY: 3, ...overrides })
+  // a town's first doors go to its keystones, so a history's own kind needs room beside them
+  const built = await new Forge(new Told(seed, history)).build({ theme: 'quiet market town', seed, blocksX: 3, blocksY: 3, openPlaces: 6, ...overrides })
   if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 800))
   return built.value
 }

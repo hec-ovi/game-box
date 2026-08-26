@@ -2,6 +2,7 @@
 export { World, type WorldError, type DoorSite, type MachineSite } from './world.ts'
 export { type CitySpec } from './model/city-spec.ts'
 export { questView, type QuestView } from './quest-view.ts'
+export { FLAVOURS, flavourOf, type Flavour } from './model/flavour.ts'
 export { Grid, CELL, CELL_KINDS, type CellKind, type Rect } from './grid.ts'
 export { cellRows, gridField, type GridField } from './model/grid-field.ts'
 export { METRICS, cellCentre, type Metrics } from './metrics.ts'
