@@ -81,6 +81,9 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
 
       scene.environment = reflected.texture
     },
+    carrySky(brighter, turned) {
+      grade.carrySky(brighter, turned)
+    },
     indoors(on) {
       if (!roomLight) {
         roomLight = new THREE.Group()
@@ -95,7 +98,9 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
       }
       roomLight.visible = on
       // whichever daylight is in play goes off, so a room is never lit by a sun
-      // it cannot see
+      // it cannot see. The sky reflected into every material goes with it: that
+      // is the grade's, and it takes the room's own level while the player is
+      // inside rather than holding the hour they walked in at
       if (daylight) daylight.visible = !on
       grade.indoors = on
     },

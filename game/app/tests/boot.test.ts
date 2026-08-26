@@ -83,6 +83,13 @@ describe('the panel is up before anything loads', () => {
     const blocks = document.querySelector<HTMLInputElement>('[data-boot="blocks"]')!
     expect(blocks.min).toBe(String(BLOCKS.min))
     expect(blocks.max).toBe(String(BLOCKS.max))
+    // and those are the generator's own numbers, read off its schema rather
+    // than written down twice: a panel that clamps under what @gb/forge takes
+    // is why every city made here came out a hamlet
+    const schema = ['../forge/schema/brief.json', 'game/forge/schema/brief.json'].map((where) => resolve(process.cwd(), where)).find(existsSync)!
+    const takes = JSON.parse(readFileSync(schema, 'utf8')).properties.blocksX
+    expect([DEFAULTS.blocks, BLOCKS.min, BLOCKS.max]).toEqual([takes.default, takes.minimum, takes.maximum])
+    expect(blocks.value).toBe(String(takes.default))
   })
 
   it('offers the catalogue\'s own style choices and nothing outside them, and says why', () => {
@@ -288,6 +295,25 @@ describe('the panel', () => {
     expect(removed).toEqual(['new'])
   })
 
+  it('is closed the moment it is asked to close, and only its pixels linger', () => {
+    const front = panel()
+    front.on(QUIET_HANDLERS)
+    const root = document.querySelector<HTMLElement>('#boot')!
+
+    front.hide()
+    expect(front.open).toBe(false)
+    // no clicks, no keyboard, and out of the accessible tree, all at once
+    expect(root.dataset.leaving).toBe('true')
+    expect(root.hasAttribute('inert')).toBe(true)
+    expect(screen.queryByRole('button', { name: /generate/i })).toBeNull()
+
+    front.show()
+    expect(front.open).toBe(true)
+    expect(root.hidden).toBe(false)
+    expect(root.hasAttribute('inert')).toBe(false)
+    expect(screen.getByRole('button', { name: /generate/i })).toBeTruthy()
+  })
+
   it('swaps between the cities you have and the form that makes another, and only one is on the page', async () => {
     const front = panel()
     front.on(QUIET_HANDLERS)
@@ -343,7 +369,7 @@ describe('the address bar', () => {
     expect(clampBlocks(0)).toBe(BLOCKS.min)
     expect(clampBlocks(999)).toBe(BLOCKS.max)
     expect(clampBlocks(Number.NaN)).toBe(DEFAULTS.blocks)
-    expect(tidy({ theme: '  ', seed: '', blocks: 2, model: false })).toEqual(DEFAULTS)
+    expect(tidy({ theme: '  ', seed: '', blocks: DEFAULTS.blocks, model: false })).toEqual(DEFAULTS)
     expect(tidy({ theme: 'x'.repeat(200), seed: 'a', blocks: 1, model: false }).theme).toHaveLength(60)
   })
 
@@ -584,6 +610,7 @@ describe('the front door end to end', () => {
   const options: GameOptions[] = []
   const announced: Notice[] = []
   const handed: boolean[] = []
+  const paused: boolean[] = []
   let fail = false
   let art: LoadArt = async () => ({ dressing: new Greybox() })
 
@@ -593,7 +620,13 @@ describe('the front door end to end', () => {
     started.push(bundle.world.name)
     built.push(bundle)
     options.push(given)
-    return { dispose: () => {}, handOverKeys: (away) => void handed.push(away), keep: () => {}, announce: (notice) => void announced.push(notice) }
+    return {
+      dispose: () => {},
+      handOverKeys: (away) => void handed.push(away),
+      pause: (on) => void paused.push(on),
+      keep: () => {},
+      announce: (notice) => void announced.push(notice),
+    }
   }
 
   function open(sidecar: SidecarOptions = DOWN, shelf = new MemoryShelf()): { boot: Boot; panel: Panel; shelf: MemoryShelf } {
@@ -626,6 +659,21 @@ describe('the front door end to end', () => {
     expect(panel.face).toBe('make')
     expect(screen.getByRole<HTMLButtonElement>('button', { name: /generate/i }).disabled).toBe(false)
   })
+
+  it('takes the city off the screen while the panel is over it, and puts it back on the way in', async () => {
+    const { boot, panel } = open()
+    await boot.start(new URLSearchParams('?seed=leaving&theme=quiet%20coastal%20town&blocks=1'))
+    const mount = document.querySelector<HTMLElement>('#game')!
+    expect([mount.hidden, panel.open]).toEqual([false, false])
+
+    // the keys go and the city goes with them: a menu drawn over a town that is
+    // still being walked is a game the player pays for and is not playing
+    boot.showPanel()
+    expect([mount.hidden, panel.open, handed.at(-1)]).toEqual([true, true, true])
+
+    boot.hidePanel()
+    expect([mount.hidden, panel.open, handed.at(-1)]).toEqual([false, false, false])
+  }, 60_000)
 
   it('lands on the cities the player has when the address bar names none, and enters only on a pick', async () => {
     const shelf = new MemoryShelf()
@@ -987,16 +1035,20 @@ describe('the front door end to end', () => {
     await boot.start(new URLSearchParams('?seed=exit&theme=quiet%20coastal%20town&blocks=1'))
     expect(panel.open).toBe(false)
     handed.length = 0
+    paused.length = 0
 
     options[0]!.leave!()
     expect(panel.open).toBe(true)
     expect(handed).toEqual([true])
+    // and the city it came out of is standing still behind it, not running on
+    expect(paused).toEqual([true])
     expect(screen.getAllByRole('listitem')).toHaveLength(1)
 
     // and Escape is the way back
     await userEvent.setup().keyboard('{Escape}')
     expect(panel.open).toBe(false)
     expect(handed).toEqual([true, false])
+    expect(paused).toEqual([true, false])
   }, 30_000)
 })
 

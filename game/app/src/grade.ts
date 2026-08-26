@@ -2,7 +2,7 @@ import type * as THREE from 'three'
 import { bloom } from 'three/addons/tsl/display/BloomNode.js'
 import { pass, uniform } from 'three/tsl'
 import { RenderPipeline, type WebGPURenderer } from 'three/webgpu'
-import { DAY, INDOORS, lookOf, type Look } from './night.ts'
+import { DAY, INDOORS, lookOf, reflectSky, type Look } from './night.ts'
 import { graded } from './tint.ts'
 
 /**
@@ -14,7 +14,8 @@ import { graded } from './tint.ts'
 const SAMPLES = 4
 
 /**
- * The frame between the scene and the screen: bloom, colour, then tone mapping.
+ * How the frame is developed for the hour: how much of the sky lights it, then
+ * bloom, colour and tone mapping between the scene and the screen.
  *
  * The chain is one full screen quad. The scene renders into a half float target
  * and stays in linear light the whole way, so a sign brighter than white is
@@ -28,15 +29,19 @@ const SAMPLES = 4
  */
 export class Grade {
   #renderer: WebGPURenderer
+  #scene: THREE.Scene
   #pipeline: RenderPipeline
   #bloom: ReturnType<typeof bloom>
   #cold = uniform(DAY.cold)
   #saturation = uniform(DAY.saturation)
   #night = 0
   #inside = false
+  #brighter = 1
+  #turned = 0
 
   constructor(renderer: WebGPURenderer, scene: THREE.Scene, camera: THREE.Camera) {
     this.#renderer = renderer
+    this.#scene = scene
     const drawn = pass(scene, camera, { samples: SAMPLES }).getTextureNode('output')
     this.#bloom = bloom(drawn, DAY.strength, DAY.radius, DAY.threshold)
     this.#pipeline = new RenderPipeline(renderer)
@@ -46,7 +51,7 @@ export class Grade {
     this.#apply(DAY)
   }
 
-  /** Grade for how dark it is, 0 full daylight to 1 after dark. Cheap enough for every frame: six uniforms. */
+  /** Grade for how dark it is, 0 full daylight to 1 after dark. Cheap enough for every frame: seven uniforms. */
   setNight(night: number): void {
     if (!Number.isFinite(night) || night === this.#night) return
     this.#night = night
@@ -58,6 +63,14 @@ export class Grade {
     if (inside === this.#inside) return
     this.#inside = inside
     this.#apply(inside ? INDOORS : lookOf(this.#night))
+  }
+
+  /** How the prefiltered sky stands now: brighter than when it was taken, and turned since. */
+  carrySky(brighter: number, turned: number): void {
+    if (brighter === this.#brighter && turned === this.#turned) return
+    this.#brighter = brighter
+    this.#turned = turned
+    this.#reflect()
   }
 
   /** Draw the scene through the chain. Stands in for `renderer.render`. */
@@ -76,5 +89,10 @@ export class Grade {
     this.#bloom.threshold.value = look.threshold
     this.#cold.value = look.cold
     this.#saturation.value = look.saturation
+    this.#reflect()
+  }
+
+  #reflect(): void {
+    reflectSky(this.#scene, { night: this.#night, inside: this.#inside, brighter: this.#brighter, turned: this.#turned })
   }
 }

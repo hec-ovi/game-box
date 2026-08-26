@@ -16,11 +16,17 @@ export interface Stage {
   /** Sky, sun and colour for when the landscape is not there to provide them. */
   plainDaylight(): void
   /**
-   * Light every surface with the sky itself. Without this the world is lit by
-   * three lamps and nothing else, which is most of why it reads as a cartoon:
-   * a metal or glass surface has no surroundings to reflect.
+   * Take a copy of the sky for every surface to reflect. Without this a metal
+   * or glass surface has no surroundings to give back, which is most of why the
+   * city reads as a cartoon. Filtering costs about 20 ms, so it happens now and
+   * then and `carrySky` rides the gap.
    */
   reflect(sky: THREE.Object3D): void
+  /**
+   * Where that copy stands now: how much brighter the dome has got since it was
+   * taken, and how far it has turned. Cheap enough for every frame.
+   */
+  carrySky(brighter: number, turned: number): void
   /**
    * Light a room, and stop lighting it on the way out. Outdoor light belongs to
    * the landscape and goes dark with it, so without this a building is pitch
