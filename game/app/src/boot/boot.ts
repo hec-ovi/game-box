@@ -294,20 +294,36 @@ export class Boot {
     this.#panel.show()
   }
 
+  /**
+   * Back into the game from the panel. The city goes on screen behind a loading
+   * screen that covers it whole, so the step from the front door to the street
+   * is one plain wait and never a half-drawn town.
+   *
+   * The screen comes down when the game has actually drawn, not on a timer: one
+   * frame for it to run and one for that frame to be on the glass. A timer
+   * either uncovers a frame nobody has drawn yet or sits over one that is
+   * ready.
+   */
   hidePanel(): void {
     if (!this.#game) return
     this.#panel.hide()
     this.#onScreen(true)
     this.#loader.begin(`Resuming ${this.#city?.bundle.world.name ?? 'City'}`)
-    setTimeout(() => {
-      try {
-        this.#loader.end()
-      } catch {
-        // Disposed in tests
-      }
-    }, 220)
     this.#game.pause?.(false)
     this.#game.handOverKeys(false)
+    this.#afterAFrame(() => this.#loader.end())
+  }
+
+  /** After the game has run a frame and had it drawn. */
+  #afterAFrame(then: () => void): void {
+    const drawn = (): void => {
+      try {
+        then()
+      } catch {
+        // the loader was disposed while the frames were in flight
+      }
+    }
+    requestAnimationFrame(() => requestAnimationFrame(drawn))
   }
 
   /**
