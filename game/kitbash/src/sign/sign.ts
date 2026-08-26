@@ -68,6 +68,16 @@ export const SIGN = {
    * far under the 8 cm the panel itself stands off the wall.
    */
   layer: 0.01,
+  /**
+   * How far above the fascia a lit thing may reach. Signage is street
+   * furniture: it is read from the pavement, and it is its own light. A run
+   * longer than this is a lit strip with an emitter that cannot cover it,
+   * because a sign's light is never drawn past `climb` metres either. So a
+   * blade, a tube and a board are sized and placed inside this band of wall
+   * whatever the building behind them is, and a tower carries the same
+   * shopfront as the two storey shop next door with window wall above it.
+   */
+  climb: 16,
 } as const
 
 /** The outward normal of a wall whose panels run along `right`. */

@@ -1,6 +1,6 @@
 import { Forge, OfflineNarrator } from '@gb/forge'
 import { storeyHeight } from '@gb/scene'
-import { SHIPPED_CHARTERS } from '@gb/world'
+import { PLOT_BAND, SHIPPED_CHARTERS, inPlotBand, plotShape } from '@gb/world'
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import sharp from 'sharp'
@@ -330,17 +330,21 @@ describe('the shipped pack', () => {
     expect(catalogue.covers(everyBucket())).toEqual({ ok: true })
   })
 
-  it('has a building for every plot the forge actually cuts', async () => {
+  it('has a building for every plot the forge cuts inside the band, and none for the towers over it', async () => {
     const shapes = new Set<string>()
+    const raised: number[] = []
     for (const seed of ['metro', 'kite', 'orbit']) {
-      for (const maxStoreys of [3, 4]) {
+      // the brief's own default, which raises towers, and the two heights inside the band
+      for (const maxStoreys of [undefined, 3, 4]) {
         const forge = new Forge(new OfflineNarrator(seed))
-        const built = await forge.build({ theme: 'a neon port city', seed, blocksX: 4, blocksY: 4, density: 1, maxStoreys })
+        const built = await forge.build({ theme: 'a neon port city', seed, blocksX: 8, blocksY: 8, density: 1, ...(maxStoreys ? { maxStoreys } : {}) })
         expect(built.ok).toBe(true)
         if (!built.ok) continue
         for (const plot of built.value.world.plots()) {
           const size = { width: plot.rect.w * built.value.world.cellSize, depth: plot.rect.h * built.value.world.cellSize }
-          shapes.add(bucketKey(bucketOf(plot, size)))
+          const key = bucketKey(bucketOf(plot, size))
+          if (inPlotBand(plotShape(plot))) shapes.add(key)
+          else raised.push(plot.storeys)
         }
       }
     }
@@ -348,6 +352,15 @@ describe('the shipped pack', () => {
     const missing = [...shapes].filter((key) => !catalogue.models.some((model) => bucketKey(model) === key))
     expect({ missing, seen: shapes.size }).toEqual({ missing: [], seen: shapes.size })
     expect(shapes.size).toBeGreaterThan(20)
+
+    // and a tower is a shape the pack has nothing for, so `design` answers nothing
+    // and the dressing hands it to the kit behind rather than shrinking it to fit
+    expect(raised.length).toBeGreaterThan(0)
+    expect(Math.max(...raised)).toBeGreaterThan(PLOT_BAND.storeys.max)
+    for (const storeys of new Set(raised)) {
+      const plot = plotOf({ kind: 'office', storeys })
+      expect(catalogue.design(plot, { width: 8, depth: 12 }, ['office']), `${storeys} storeys`).toBeUndefined()
+    }
   })
 
   it('claims every preset charter, and an invented word by the tags its charter carries', () => {

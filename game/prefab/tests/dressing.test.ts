@@ -1,6 +1,6 @@
 import { KitDressing, SIGN, lightsFor, placeholderKit } from '@gb/kitbash'
-import { Greybox, buildCity } from '@gb/scene'
-import { World, type Plot, type ResolvedCharter } from '@gb/world'
+import { Greybox, buildCity, storeyHeight } from '@gb/scene'
+import { PLOT_BAND, TALLEST_STOREYS, World, type Plot, type ResolvedCharter } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { PrefabDressing, type BuildingSize } from '../src/dressing.ts'
@@ -71,9 +71,21 @@ describe('dressing a plot', () => {
     expect(finishesOn(dressing.building(...handed(plotOf({ interiorId: 'interior_0001' }), size)))).toEqual(['wall:facade-a', 'door:open'])
   })
 
-  it('hands a shape it has no model for to the dressing behind', () => {
+  it('hands a shape it has no model for to the dressing behind, a tower included', () => {
     const building = dressing.building(...handed(plotOf({ storeys: 9 }), { width: 8, depth: 12, height: 29.6 }))
     expect(building.children.some((child) => child.name.endsWith(':shell'))).toBe(true)
+
+    // the pack is drawn to `PLOT_BAND.storeys.max` and a city's skyline stands over it,
+    // so every tower goes to the kit at its own height rather than being shrunk into a bucket
+    for (const storeys of [PLOT_BAND.storeys.max + 1, 24, TALLEST_STOREYS]) {
+      const size = { width: 8, depth: 12, height: storeyHeight(storeys) }
+      const plot = plotOf({ kind: 'office', storeys })
+      const tower = new PrefabDressing(libraryOf(catalogue), new KitDressing(placeholderKit('a neon city'), new Greybox()))
+      for (const drawn of [tower.building(...handed(plot, size)), tower.shell(...handed(plot, size))]) {
+        const box = new THREE.Box3().setFromObject(drawn)
+        expect(box.max.y, `${storeys} storeys`).toBeCloseTo(size.height, 1)
+      }
+    }
   })
 
   it('answers the far shell as the walls alone: no glass, no signs, the same entrance', () => {

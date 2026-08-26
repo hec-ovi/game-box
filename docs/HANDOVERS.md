@@ -38,7 +38,6 @@ is done and the check confirms it.
 | 23 | `downloaded.json` still records two removed packs | furnish | assets | |
 | 24 | No `CHANGELOG.md` | world | repo | project rule asks for one |
 | 25 | The design a plot got is not in the world file, so growing the catalogue re-skins shared cities | prefab | world + forge + bundle | the first thing to revisit when those boxes open |
-| 26 | Tall towers need forge-marked landmark sites with a raised `maxStoreys` | prefab | forge | the catalogue is 1-4 storeys because that is what forge cuts |
 | 27 | Bounce light: walls stay near-black because nothing bounces | prefab | app | the biggest remaining gap against the references |
 | 28 | An interior probe so a reflective floor reflects something | furnish | furnish | named as a next task |
 | 29 | Overhead wires derived from lamp positions | assessment | kitbash | cheap "inhabited" trick, never done |

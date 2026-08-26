@@ -41,7 +41,7 @@
       "maximum": 1
     },
     "maxStoreys": {
-      "default": 3,
+      "default": 24,
       "type": "integer",
       "minimum": 1,
       "maximum": 40

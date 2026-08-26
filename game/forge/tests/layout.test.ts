@@ -1,5 +1,5 @@
 import { Rng } from '@gb/kit'
-import { MAX_GRID_SIDE, World, type CellKind } from '@gb/world'
+import { MAX_GRID_SIDE, PLOT_BAND, TALLEST_STOREYS, World, inPlotBand, plotShape, type CellKind } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { BANDS, BLOCKS_MAX, briefContract, Forge, MOUNTAIN_CELLS, OfflineNarrator } from '../src/index.ts'
 import { avenueCount, Avenues } from '../src/layout/avenues.ts'
@@ -284,6 +284,79 @@ describe('the avenues', () => {
         expect(avenues.has(along), `${seed}: the road out at ${exit.junction.x},${exit.junction.y}`).toBe(true)
       }
     }
+  })
+
+  it('gives the city a skyline: a few towers where a town stacks, low buildings everywhere else', async () => {
+    // pooled over seeds, because a ten block town raises a dozen towers and one
+    // town's dozen says nothing about where a rule puts them
+    interface Standing {
+      readonly storeys: number
+      readonly onSpine: boolean
+      readonly fromMiddle: number
+    }
+    const town: Standing[] = []
+    for (const seed of ['skyline', 'metro', 'harbour', 'kite']) {
+      const { world } = await buildTown(seed, { theme: 'a neon port city', blocksX: 10, blocksY: 10, density: 1 })
+      const lines = streetLines(world)
+      const avenues = Avenues.from(lines.columns, lines.rows)
+      const middle = { x: world.grid.width / 2, y: world.grid.height / 2 }
+      for (const plot of world.plots()) {
+        // every footprint is inside the band, whatever the height: only storeys leave it
+        const shape = plotShape(plot)
+        expect(inPlotBand({ ...shape, storeys: PLOT_BAND.storeys.min }), `${plot.id} ${JSON.stringify(shape)}`).toBe(true)
+        town.push({
+          storeys: plot.storeys,
+          onSpine: avenues.has(plot.entrance.cell),
+          fromMiddle: Math.hypot(plot.entrance.cell.x - middle.x, plot.entrance.cell.y - middle.y),
+        })
+      }
+    }
+    const towers = town.filter((one) => one.storeys > PLOT_BAND.storeys.max)
+
+    // a skyline, not a plateau: most of the town is the street it always was
+    expect(towers.length / town.length).toBeGreaterThan(0.002)
+    expect(towers.length / town.length).toBeLessThan(0.06)
+    // and real height on the ones that are raised, with a spread rather than one number
+    expect(Math.max(...towers.map((one) => one.storeys))).toBeGreaterThan(12)
+    expect(new Set(towers.map((one) => one.storeys)).size).toBeGreaterThan(6)
+
+    // they stand where a town puts its height: on the spine, and towards the middle
+    const onSpine = (list: Standing[]) => list.filter((one) => one.onSpine).length / list.length
+    expect(onSpine(towers)).toBeGreaterThan(onSpine(town) * 2)
+    const out = (list: Standing[]) => list.reduce((sum, one) => sum + one.fromMiddle, 0) / list.length
+    expect(out(towers)).toBeLessThan(out(town) * 0.95)
+  })
+
+  it('takes the height the brief allows and changes nothing else about the town', async () => {
+    const brief = { theme: 'a neon port city', blocksX: 6, blocksY: 6, density: 1 }
+    const cut = async (maxStoreys: number) => (await buildTown('ceiling', { ...brief, maxStoreys })).world.plots()
+    const flat = await cut(PLOT_BAND.storeys.max)
+    const tall = await cut(TALLEST_STOREYS)
+
+    // a brief inside the band cannot raise a thing, and one over it reaches for it
+    expect(Math.max(...flat.map((plot) => plot.storeys))).toBe(PLOT_BAND.storeys.max)
+    expect(Math.max(...tall.map((plot) => plot.storeys))).toBeGreaterThan(12)
+
+    // and the skyline's own draws come off a stream of their own, so raising the
+    // ceiling moves nothing but the height of the plots it raised: the same
+    // buildings, of the same kinds, on the same footprints, with the same names,
+    // and the same doors open. A city asked for inside the band is the city it
+    // has always been
+    const exceptHeight = (plots: typeof flat) => plots.map(({ storeys, ...rest }) => rest)
+    expect(exceptHeight(tall)).toEqual(exceptHeight(flat))
+
+    const raised = tall.filter((plot, at) => plot.storeys !== flat[at]!.storeys)
+    expect(raised.length).toBeGreaterThan(0)
+    // and every plot the ceiling raised clears the band, so a raised plot is always a tower
+    for (const plot of raised) expect(plot.storeys, plot.id).toBeGreaterThan(PLOT_BAND.storeys.max)
+  })
+
+  it('stacks a dense town and spreads a sparse one', async () => {
+    const brief = { theme: 'a neon port city', blocksX: 10, blocksY: 10 }
+    const towers = async (density: number) =>
+      (await buildTown('density', { ...brief, density })).world.plots().filter((plot) => plot.storeys > PLOT_BAND.storeys.max).length
+
+    expect(await towers(1)).toBeGreaterThan(await towers(0.2))
   })
 
   it('builds taller on the avenue than on the street behind it', async () => {

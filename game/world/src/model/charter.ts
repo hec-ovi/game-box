@@ -1,5 +1,6 @@
 import { contract } from '@gb/kit'
 import { z } from 'zod'
+import { PLOT_BAND, TALLEST_STOREYS } from '../plot-band.ts'
 import { whole } from './numbers.ts'
 import {
   ACCESS_KINDS,
@@ -78,7 +79,9 @@ export const CharterSchema = z.object({
   /** Whether people live here. */
   residential: z.boolean(),
   size: z.object({
-    storeys: z.tuple([whole(1, 40), whole(1, 40)]).refine(([low, high]) => low <= high, 'low storeys first'),
+    storeys: z
+      .tuple([whole(PLOT_BAND.storeys.min, TALLEST_STOREYS), whole(PLOT_BAND.storeys.min, TALLEST_STOREYS)])
+      .refine(([low, high]) => low <= high, 'low storeys first'),
     sprawl: z.enum(SPRAWLS),
   }),
   street: z.object({

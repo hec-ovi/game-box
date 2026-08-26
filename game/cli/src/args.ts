@@ -1,3 +1,4 @@
+import { STOREYS_DEFAULT } from '@gb/forge'
 import { parseArgs } from 'node:util'
 
 /** What each command is handed, read off its argv. */
@@ -47,7 +48,7 @@ export function parseBuild(argv: readonly string[]): BuildArgs {
       blocks: { type: 'string', default: '3x3' },
       cells: { type: 'string' },
       density: { type: 'string', default: '0.8' },
-      storeys: { type: 'string', default: '3' },
+      storeys: { type: 'string', default: String(STOREYS_DEFAULT) },
       exits: { type: 'string', default: '1' },
       model: { type: 'boolean', default: false },
       history: { type: 'string' },

@@ -16,7 +16,7 @@ export {
   type PropContactKind,
   type PropFootprint,
 } from './props.ts'
-export { PLOT_BAND, plotShape, inPlotBand, type CellRange, type PlotShape } from './plot-band.ts'
+export { PLOT_BAND, TALLEST_STOREYS, plotShape, inPlotBand, type CellRange, type PlotShape } from './plot-band.ts'
 export { ROAD_WIDTHS, WIDEST_ROADWAY_CELLS, type RoadWidth } from './roads.ts'
 export { checkIntegrity, type IntegrityProblem } from './integrity.ts'
 export { AccessSchema, accessContract, OwnerSchema, PLAYER, type Access, type Owner } from './model/access.ts'

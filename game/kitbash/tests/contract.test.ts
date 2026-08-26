@@ -1,7 +1,7 @@
-import { CELL as CELL_CHARS, METRICS, SHIPPED_CHARTERS, type AnchorKind, type CellKind, type FurnitureProp, type Item, type Npc, type Plot } from '@gb/world'
+import { CELL as CELL_CHARS, METRICS, SHIPPED_CHARTERS, TALLEST_STOREYS, type AnchorKind, type CellKind, type FurnitureProp, type Item, type Npc, type Plot } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { GLASS, GROUND_LOOKS, GROUND_TEXTURES, KIT_MATERIALS, KitDressing, KitIncomplete, KitLibrary, KitUnknownPiece, KitUnmergeable, PAVEMENT_TONES, PIECES, PIECE_IDS, placeholderKit, RELIEF, SignageOutOfRange, loadKit, signsFor, type KitPart, type PieceId } from '../src/index.ts'
+import { GLASS, GROUND_LOOKS, GROUND_TEXTURES, KIT_MATERIALS, KitDressing, KitIncomplete, KitLibrary, KitUnknownPiece, KitUnmergeable, PAVEMENT_TONES, MOST_ACCENTS, PIECES, PIECE_IDS, placeholderKit, RELIEF, SIGN, SignageOutOfRange, loadKit, signsFor, type KitPart, type PieceId } from '../src/index.ts'
 import { CELL, charterOf, fingerprint, inventedCharter, meshesOf, plotOf, sizeOf, trianglesOf, wallBounds } from './support.ts'
 
 const kit = placeholderKit()
@@ -120,6 +120,35 @@ describe('building', () => {
       expect(() => dressing.building(plot, size, { ...charter, signage })).toThrowError(SignageOutOfRange)
     }
     expect(signsFor(plot, size, { ...charter, signage: { ...charter.signage, accents: 4 } }).length).toBeGreaterThan(0)
+  })
+
+  it('holds its signage to the wall it may climb, so a tower is a shopfront with window wall over it', () => {
+    const loud = { ...charterOf(plotOf({ kind: 'bar', rect: { x: 4, y: 4, w: 3, h: 3 }, entrance: { cell: { x: 5, y: 7 }, facing: 'south' } })), signage: { blade: 1, hanging: 1, accents: MOST_ACCENTS, nameplate: 1 } }
+    const at = (storeys: number) => {
+      const plot = plotOf({ kind: 'bar', name: 'The Ladder', storeys, rect: { x: 4, y: 4, w: 4, h: 6 }, entrance: { cell: { x: 5, y: 10 }, facing: 'south' } })
+      return signsFor(plot, sizeOf(plot, heightOf(storeys)), loud)
+    }
+    const fascia = METRICS.building.groundFloorHeight
+
+    for (const storeys of [8, 20, TALLEST_STOREYS]) {
+      const signs = at(storeys)
+      expect(signs.length, `${storeys} storeys`).toBeGreaterThan(0)
+      for (const sign of signs) {
+        // nothing is sized to the building: at 40 storeys an uncapped tube ran 124 m up the corner
+        expect(sign.height, `${sign.kind} on ${storeys} storeys`).toBeLessThanOrEqual(SIGN.climb)
+        expect(sign.origin[1] + sign.height / 2, `${sign.kind} on ${storeys} storeys`).toBeLessThanOrEqual(fascia + SIGN.climb)
+      }
+      // and the name is still on the fascia over the door, where somebody standing there reads it
+      const name = signs.find((sign) => sign.kind === 'sign')!
+      expect(name.origin[1]).toBeLessThan(fascia)
+      expect(name.height).toBeCloseTo(at(2).find((sign) => sign.kind === 'sign')!.height, 6)
+    }
+
+    // a building shorter than the climb still uses its whole wall, so the cap costs a low street nothing
+    const low = at(4)
+    expect(Math.max(...low.map((sign) => sign.origin[1] + sign.height / 2))).toBeGreaterThan(heightOf(4) - 1)
+    // and past it height stops mattering: the same signs on a 20 storey tower and a 40 storey one
+    expect(at(20)).toEqual(at(TALLEST_STOREYS))
   })
 
   it('costs one draw per material, not one per piece', () => {

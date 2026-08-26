@@ -17,7 +17,7 @@ import { openPlacesFor, placesOnNewLand } from './interior/budget.ts'
 import { Avenues } from './layout/avenues.ts'
 import { streetLines } from './layout/lines.ts'
 import { planStreets, type StreetPlan } from './layout/plan.ts'
-import { sitesInBlock, storeysFor, type PlotSite } from './layout/plots.ts'
+import { nearnessIn, sitesInBlock, storeysFor, type PlotSite } from './layout/plots.ts'
 import { layRoads } from './layout/roads.ts'
 import { spreadSites, stationsWanted } from './layout/stations.ts'
 import { paintStreets } from './layout/streets.ts'
@@ -71,8 +71,12 @@ export interface GrownQuests {
 
 const GENERATOR_VERSION = '0.1.0'
 
-/** How tall `extend` builds into a gap. */
-const EXTEND_STOREYS = 2
+/**
+ * How tall `extend` builds into a gap, and how built up it counts the gap as.
+ * A growth fills the holes in a town that is already standing, so it puts up
+ * frontage rather than dropping a tower into a back yard.
+ */
+const EXTEND = { maxStoreys: 2, density: 1 } as const
 
 /**
  * Builds a city from a brief: streets and plots by arithmetic, names and people
@@ -255,7 +259,8 @@ export class Forge {
       const charter = byWord.get(staples.get(index) ?? (built ? rolled : ''))
       if (!charter) continue
       const onAvenue = avenues.has(site.entrance)
-      chosen.push({ site, charter, onAvenue, storeys: storeysFor(charter, brief.maxStoreys, siteRng, onAvenue), rng: siteRng })
+      const spot = { onAvenue, nearness: nearnessIn(streets.size, site.entrance) }
+      chosen.push({ site, charter, onAvenue, storeys: storeysFor(charter, brief, siteRng, spot), rng: siteRng })
     }
     return chosen
   }
@@ -298,7 +303,7 @@ export class Forge {
       const word = rng.weighted(kindWeights(flavourOf(world.theme), rng.fork(`extend/mix/${i}`), charters, premise?.build))
       const charter = charters.find((one) => one.word === word)!
       const siteRng = rng.fork(`extend/${i}`)
-      chosen.push({ site, charter, onAvenue: false, storeys: storeysFor(charter, EXTEND_STOREYS, siteRng, false), rng: siteRng })
+      chosen.push({ site, charter, onAvenue: false, storeys: storeysFor(charter, EXTEND, siteRng, { onAvenue: false, nearness: 0 }), rng: siteRng })
     }
     return chosen
   }

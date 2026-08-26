@@ -1,6 +1,7 @@
 import { contract } from '@gb/kit'
 import { z } from 'zod'
 import { METRICS } from '../metrics.ts'
+import { PLOT_BAND, TALLEST_STOREYS } from '../plot-band.ts'
 import { AccessSchema, OwnerSchema } from './access.ts'
 import { AssetPackRefSchema, MAX_CATALOGUES, PlotDesignSchema } from './design.ts'
 import { AsksSchema, BriefSchema } from './asks.ts'
@@ -130,7 +131,7 @@ export const PlotSchema = z.object({
   name: z.string().min(1).max(80),
   /** Footprint in grid cells. */
   rect: RectSchema,
-  storeys: z.number().int().min(1).max(40),
+  storeys: z.number().int().min(PLOT_BAND.storeys.min).max(TALLEST_STOREYS),
   /** Where the front door is, and which way it faces. */
   entrance: z.object({ cell: Cell, facing: z.enum(FACINGS) }),
   /** Asset style key: which building kit dresses this plot. */

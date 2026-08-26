@@ -1,5 +1,5 @@
 import { contract } from '@gb/kit'
-import { AsksSchema, MAX_GRID_SIDE } from '@gb/world'
+import { AsksSchema, MAX_GRID_SIDE, PLOT_BAND, TALLEST_STOREYS } from '@gb/world'
 import { z } from 'zod'
 import { MOST_PLACES } from './interior/budget.ts'
 import { MAX_BLOCK, MIN_BLOCK, mostBlocks, widestBlock, widestGrid } from './layout/plan.ts'
@@ -11,6 +11,21 @@ import { MAX_BLOCK, MIN_BLOCK, mostBlocks, widestBlock, widestGrid } from './lay
  * check below first.
  */
 export const BLOCKS_MAX = mostBlocks(MAX_GRID_SIDE)
+
+/**
+ * The ceiling a brief gets when it names none, in storeys. It has to clear
+ * `PLOT_BAND.storeys.max` or a city has no skyline at all, and what stops it
+ * higher is not the art: the catalogue is drawn to four storeys and
+ * `@gb/kitbash` stacks a storey of wall at a time above that, as high as it is
+ * told, with its signage held to the shopfront. What stops it is what a tower
+ * costs to draw, 3,840 triangles a storey against a prefab shell's 203.
+ *
+ * At 24 a tower stands 4 + 23 x 3.2 = 77.6 m, which reads as a skyscraper over
+ * a two storey street, and the few plots the skyline rule raises leave a 20
+ * block city at 4.89M shell triangles and 999 MB against 706k and 507 MB with
+ * the ceiling at four. Anyone who wants the full 40 can ask for it.
+ */
+export const STOREYS_DEFAULT = 24
 
 /** What you ask for when you want a city. Everything else is derived from it. */
 export const BriefSchema = z
@@ -28,8 +43,8 @@ export const BriefSchema = z
     blockCells: z.number().int().min(MIN_BLOCK).max(MAX_BLOCK).optional(),
     /** How much of each block gets built on, 0 to 1. */
     density: z.number().min(0.2).max(1).default(0.8),
-    /** Tallest building allowed, in storeys. */
-    maxStoreys: z.number().int().min(1).max(40).default(3),
+    /** Tallest building allowed, in storeys. See `STOREYS_DEFAULT`. */
+    maxStoreys: z.number().int().min(PLOT_BAND.storeys.min).max(TALLEST_STOREYS).default(STOREYS_DEFAULT),
     /** How many roads leave through the mountains. Left out, the seed picks it. */
     exits: z.number().int().min(1).max(4).optional(),
     /** What the city is about, in the owner's own words. Written into the file and read by the history writer. */

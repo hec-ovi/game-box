@@ -7,7 +7,7 @@ import { board, stripOfMarks, tube } from './accents.ts'
 import { checkSignage } from './bounds.ts'
 import type { WallClaims } from './claims.ts'
 import { doorLamps } from './doorlamp.ts'
-import { fasciaOf, type Fascia } from './fascia.ts'
+import { fasciaOf, signWall, type Fascia } from './fascia.ts'
 import { againstNeon, backing, houseNeon, type Neon } from './palette.ts'
 import { alongOf, between, place, wallOf, within, type Panel } from './place.ts'
 import { SIGN, type Sign } from './sign.ts'
@@ -47,6 +47,9 @@ export function planSigns(plot: Plot, charter: PlotCharter, height: number, face
   const { signage: trade, blade: word } = charter
   const hue = houseNeon(rng)
   const fascia = fasciaOf(bands[0] ?? { base: 0, height })
+  // everything below is sized and placed against the top of the wall signage
+  // may use, never the building: a tower is a shopfront with window wall over it
+  const top = signWall(fascia, height)
   const doorAlong = alongOf(front, doorModule)
   const signs: Sign[] = []
   const hang = (face: Face, candidates: readonly Panel[]): void => {
@@ -54,21 +57,21 @@ export function planSigns(plot: Plot, charter: PlotCharter, height: number, face
     if (sign) signs.push(sign)
   }
 
-  hang(front, [nameplate(plot, front, fascia, height, doorAlong, hue, trade.nameplate, rng)])
+  hang(front, [nameplate(plot, front, fascia, top, doorAlong, hue, trade.nameplate, rng)])
   for (const lamp of doorLamps(doorAlong)) hang(front, [lamp])
 
   if (rng.chance(trade.blade)) {
-    const wall = rng.chance(0.72) ? front : rng.pick(faces.filter((face) => face.id !== front.id))
-    hang(wall, blade(word, wall, fascia, height, againstNeon(rng, hue), rng))
+    const face = rng.chance(0.72) ? front : rng.pick(faces.filter((one) => one.id !== front.id))
+    hang(face, blade(word, face, fascia, top, againstNeon(rng, hue), rng))
   }
-  if (rng.chance(trade.hanging)) hang(front, boxOverTheStreet(plot.name, word, front, fascia, height, doorAlong, hue, rng))
+  if (rng.chance(trade.hanging)) hang(front, boxOverTheStreet(plot.name, word, front, fascia, top, doorAlong, hue, rng))
 
   // the door lamps are the first accent every trade carries; the rest come as loud as the trade is
   for (let at = 1; at < trade.accents; at++) {
     const colour = againstNeon(rng, hue)
-    if (at === 1) hang(front, stripOfMarks(front, height, fascia, doorAlong, colour, rng))
-    else if (at === 2) hang(front, tube(front, height, fascia, colour, rng))
-    else hang(front, board(word, front, height, fascia, colour, rng))
+    if (at === 1) hang(front, stripOfMarks(front, top, fascia, doorAlong, colour, rng))
+    else if (at === 2) hang(front, tube(front, top, fascia, colour, rng))
+    else hang(front, board(word, front, top, fascia, colour, rng))
   }
 
   return signs

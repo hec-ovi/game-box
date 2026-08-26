@@ -2,6 +2,7 @@ import type { Rng } from '@gb/kit'
 import { METRICS, type Premise, type ResolvedCharter, type Word, type World } from '@gb/world'
 import { openDoors, type Frontage } from '../interior/open.ts'
 import { planInterior } from '../interior/plan.ts'
+import { nearnessIn } from '../layout/plots.ts'
 import type { InstanceBrief, InstanceRequest, PlaceRequest } from '../narrator.ts'
 import { premiseLines } from '../premise/render.ts'
 import type { Signs } from '../narrator/signs.ts'
@@ -143,14 +144,12 @@ const needsSign = (one: PlannedSite): boolean => one.inside === undefined && one
  * in, so the ranking breaks its ties exactly where it always did.
  */
 function frontagesOf(world: World, chosen: readonly Chosen[], demanded: ReadonlySet<Word>): Frontage[] {
-  const middle = { x: world.grid.width / 2, y: world.grid.height / 2 }
-  const furthest = Math.hypot(middle.x, middle.y) || 1
   return chosen.map((one, at) => ({
     id: String(at),
     charter: one.charter,
     spot: one.site.entrance,
     floor: one.site.rect.w * one.site.rect.h,
-    nearness: 1 - Math.hypot(one.site.entrance.x - middle.x, one.site.entrance.y - middle.y) / furthest,
+    nearness: nearnessIn(world.grid, one.site.entrance),
     onAvenue: one.onAvenue,
     storied: demanded.has(one.charter.word),
   }))

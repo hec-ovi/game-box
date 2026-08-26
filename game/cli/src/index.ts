@@ -1,3 +1,4 @@
+import { STOREYS_DEFAULT } from '@gb/forge'
 import { apply } from './apply.ts'
 import { parseApply, parseBuild, parseCheck, parseExtend, parsePack } from './args.ts'
 import { build } from './build.ts'
@@ -20,7 +21,7 @@ const USAGE = `gb - build, grow and inspect game-box cities
     --blocks <n>x<n>        city blocks across and down (default: 3x3)
     --cells <n>             cells per block side, 2m each (default: the seed picks)
     --density <0..1>        how much of each block gets built on (default: 0.8)
-    --storeys <n>           tallest building allowed (default: 3)
+    --storeys <n>           tallest building allowed, 1 to 40 (default: ${STOREYS_DEFAULT}); over 4 the city grows a skyline
     --exits <1..4>          how many roads lead out of town (default: 1)
     --model                 use the local model for names and quests, not the offline narrator
     --history <file>        build to a history you wrote (JSON: the premise and the charters it declares)

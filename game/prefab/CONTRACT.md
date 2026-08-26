@@ -1,6 +1,6 @@
 # @gb/prefab contract
 
-contractVersion: 0.10.0
+contractVersion: 0.11.0
 
 ## Purpose
 
@@ -340,6 +340,7 @@ Tags are manifest metadata and touch none of the five binaries, so changing what
 - Every picture the pack ships is stored losslessly, so adding a finish leaves every other finish pixel for pixel where it was. A palette is shared by the whole strip, and a shared palette makes one new door a change to every wall in the city.
 - Every model declares what it suits as tags, and the pick keeps the models that share a word with the charter's `suits` before it draws. Where nothing in a shape claims the charter, the whole shape answers, so coverage stays provable and a word no look has heard of is never left bare. `suits(charters)` says which words that is, so a pack can be asked before a city is built against it.
 - The catalogue covers every shape `@gb/world`'s `PLOT_BAND` cuts: frontage 3 to 6 cells by depth 5 to 8 by storeys 1 to 4, sixty-four shapes, eight looks in each, read in the door's frame through `plotShape`. A taller plot, a cell size that is not `METRICS.cellSize`, or a footprint outside that band is handed to the dressing behind, which is why `@gb/kitbash` stays load-bearing.
+- **A city's towers are the dressing behind, not a squashed prefab.** `@gb/forge` raises a few plots past the band so a city has a skyline, and there is no model in the pack for any of them: `design` answers nothing, `pin` writes nothing into the file, and `building` and `shell` both hand the plot on at its full height. A tower is visibly a kit building on a street of prefabs, which is the honest answer, and drawing one shrunk into a four storey bucket would look exactly like the city the file describes. Measured on three 8 block seeds at density 1 and the brief's own default: every plot inside the band has a model, and every plot over it has none at every height up to `TALLEST_STOREYS`.
 - Turning a model onto its plot is a swap and a sign flip, never a sine, so the same model lands on the same coordinates on every machine. Mirroring happens in the model's own frame before the turn, so the door stays put and only the facade swaps hands, and every triangle is wound back so it still faces out.
 - Three materials for every prefab building in the city, and a building is never on more than two at once: near the player its walls and its glass, far off its shell. Which picture a face wears rides on its vertices as a layer index into an array texture, so `@gb/scene` puts the whole town into one buffer per material and draws each once. An array rather than an atlas because the producer's wall pictures tile across a wall, and only a layer of its own lets the sampler wrap one without bleeding into the picture next door.
 - **The glass is the wall's own faces, and never in the pack.** Every pane is derived at load from the upright faces on the windowed layers, `PANE.stand` off the wall with the wall's uv, so the pane and the opening can never disagree, and the mesh file stays the walls alone.
@@ -376,7 +377,7 @@ The shader bill near the player is two branches on every wall fragment and, on t
 
 ### What a city costs to open
 
-Measured headless in Node on forged towns at density 1 and four storeys, dressed the way the game dresses one, this box over `@gb/kitbash`, with the shell path and with the shell hidden so every plot is dressed whole at open (`node tools/bench-city.ts --blocks 50 --mode lod|whole`):
+Measured headless in Node on forged towns at density 1 and four storeys, dressed the way the game dresses one, this box over `@gb/kitbash`, with the shell path and with the shell hidden so every plot is dressed whole at open (`node tools/bench-city.ts --blocks 50 --storeys 4 --mode lod|whole`):
 
 | blocks | plots | | open | in the dressing | shells | near buildings | draws | resident |
 |---|---|---|---|---|---|---|---|---|
@@ -390,6 +391,8 @@ Measured headless in Node on forged towns at density 1 and four storeys, dressed
 A 50 by 50 block city is 20,233 plots, every one of them on the pack. It opens in 3.3 seconds and stands as 4.1M triangles in four draws: one batch holding the whole town's shells, and the walls, the glass and the signage of the 50 buildings inside `DETAIL_RADIUS`. Of the open, 0.9 s is this box and the rest is `@gb/scene` batching, laying the ground and strewing the streets.
 
 What the shell path buys at that size is the 2.3x on the open, 1.4M fewer triangles standing, the room raymarch and the pane gone from every building but the near ones, and the emitters of 20,183 buildings never made at all. The same town dressed by the kit alone, which is what the plots the pack has no shape for fall back to, is 215.9M triangles and 27 GB (`--dressing kit`): the pack is what makes a city this size drawable.
+
+**A skyline is the kit's bill, not the pack's.** The same 20 block town at the brief's own `maxStoreys` (`node tools/bench-city.ts --blocks 20 --storeys 24`) raises 106 plots past the band, and each one is a kit building of 3,840 triangles a storey: 4.89M shell triangles and 999 MB against 706k and 507 MB with the ceiling at 4, and 6.49M and 1,193 MB with it at 40. The 3,383 plots still inside the band cost what they always did. Nine draws rather than four, because a kit building brings its own five wall materials into the far batch.
 
 **A layer is 0.35 MB resident with its mips, and a finish is one layer in each of the two facade strips.** The pack is 23 finishes (7 wall pictures twice, 2 doors, the screen plate, the glazing, 4 tubes, the balustrade), 14 rooms and 6 screens: 66 layers, 23.1 MB. On disk the six files are 5.9 MB.
 

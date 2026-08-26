@@ -57,7 +57,7 @@ take. A refusal writes nothing: no id, no ground, no record.
 | `World.premise()` | `Premise` or nothing | the history this city was built against, as it was written. Nothing means it was founded without one |
 | `World.brief()`, `World.asks()` | a string or nothing; `Asks` or nothing | what the owner asked for, in their words, as it was typed. Nothing means they gave only the theme |
 | `PROP_SPECS`, `PROP_CELL`, `footprintOf(prop)` | `Record<FurnitureProp, PropSpec>`, `0.1`, `{ width, depth }` in metres | one entry per `FURNITURE_PROPS` value: the floor it claims and the height a body meets it at |
-| `PLOT_BAND`, `plotShape(plot)`, `inPlotBand(shape)` | cell ranges; `{ frontage, depth, storeys }` in cells read in the door's frame; boolean | how a city is cut, see below |
+| `PLOT_BAND`, `TALLEST_STOREYS`, `plotShape(plot)`, `inPlotBand(shape)` | cell ranges; 40; `{ frontage, depth, storeys }` in cells read in the door's frame; boolean | how a city is cut, and the tallest a plot may stand, see below |
 | `questView(world)` | `QuestView` | the seven questions `@gb/quest` asks of a world: `hasNpc`, `hasPlot`, `hasInterior`, `hasItem`, `hasAnchor(interiorId, anchorId)`, `hasDoor(doorId)`, `hasMachine(machineId)` |
 
 ## What a city was designed against
@@ -311,14 +311,19 @@ planned against a table drawn another size.
 
 ## How a city is cut
 
-`PLOT_BAND` is the sizes a plot comes in, in grid cells: `frontage` 3 to 6
-across the wall the door is on, `depth` 5 to 8 back from it, `storeys` 1 to 4.
-`plotShape(plot)` reads a plot in its door's frame (a door on an east or west
-wall is the same shape turned a quarter) and `inPlotBand(shape)` says whether
-every side is inside the band. The generator cuts inside it and the building
-art is drawn for exactly those shapes; a plot outside it is still a sound
-world (the document allows up to 40 storeys), it is dressed from the kit
-instead of the catalogue.
+`PLOT_BAND` is the sizes the building catalogue is drawn for, in grid cells:
+`frontage` 3 to 6 across the wall the door is on, `depth` 5 to 8 back from it,
+`storeys` 1 to 4. `plotShape(plot)` reads a plot in its door's frame (a door on
+an east or west wall is the same shape turned a quarter) and
+`inPlotBand(shape)` says whether every side is inside the band.
+
+Footprint and height are held to different lines. A footprint outside the band
+is a shape nothing can draw, so the generator never cuts one. Height is not:
+the kit builds a wall a storey at a time, so a plot may stand up to
+`TALLEST_STOREYS` (40, the document's own limit, which `load` refuses one past)
+and anything over `PLOT_BAND.storeys.max` is dressed from the kit instead of
+the catalogue. That is what lets a city have a skyline out of art drawn for
+four storeys.
 
 ## The cells a city is laid in
 

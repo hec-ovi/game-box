@@ -11,6 +11,7 @@ import {
   MAX_GRID_SIDE,
   METRICS,
   PLOT_BAND,
+  TALLEST_STOREYS,
   plotShape,
   PROP_CELL,
   PROP_SPECS,
@@ -756,6 +757,22 @@ describe('the sizes everything is drawn and planned from', () => {
     expect(inPlotBand({ frontage: PLOT_BAND.frontage.max, depth: PLOT_BAND.depth.min, storeys: PLOT_BAND.storeys.max })).toBe(true)
     expect(inPlotBand({ ...south, storeys: PLOT_BAND.storeys.max + 1 })).toBe(false)
   })
+
+  it('takes a tower over the band and refuses one over the document, so a skyline is a sound city', () => {
+    const world = World.create({ name: 'Tall', theme: 'neon', seed: 'skyline', width: 24, height: 24 })
+    world.paint({ x: 0, y: 9, w: 24, h: 1 }, 'sidewalk')
+    const raise = (storeys: number, x: number) =>
+      world.addPlot({ kind: 'office', name: `Spire ${x}`, rect: { x, y: 3, w: 4, h: 6 }, entrance: { cell: { x: x + 1, y: 9 }, facing: 'south' }, storeys, style: 'plain' })
+
+    const tower = raise(TALLEST_STOREYS, 1)
+    expect(tower.ok).toBe(true)
+    if (tower.ok) expect(tower.value.storeys).toBe(TALLEST_STOREYS)
+    // over the band is a kit building rather than a catalogue one, never a refusal
+    expect(inPlotBand(plotShape({ rect: { x: 1, y: 3, w: 4, h: 6 }, entrance: { cell: { x: 2, y: 9 }, facing: 'south' }, storeys: TALLEST_STOREYS }))).toBe(false)
+    expect(world.check()).toEqual([])
+
+    expect(violationsOf(raise(TALLEST_STOREYS + 1, 8))).toEqual(['storeys'])
+  })
 })
 
 describe('one rule at both doors', () => {
@@ -784,7 +801,7 @@ describe('one rule at both doors', () => {
     expect(Object.keys(added.value.rect)).toEqual(['x', 'y', 'w', 'h'])
     expect(savesAlike(world)).toBe(true)
 
-    const tower = world.addPlot({ kind: 'house', name: 'Tower', rect: { x: 1, y: 6, w: 3, h: 3 }, entrance: { cell: { x: 1, y: 5 }, facing: 'north' }, storeys: 41, style: 'timber' })
+    const tower = world.addPlot({ kind: 'house', name: 'Tower', rect: { x: 1, y: 6, w: 3, h: 3 }, entrance: { cell: { x: 1, y: 5 }, facing: 'north' }, storeys: TALLEST_STOREYS + 1, style: 'timber' })
     expect(violationsOf(tower)).toEqual(['storeys'])
     expect(world.buildSites(3, 3)).toContainEqual({ x: 1, y: 6, w: 3, h: 3 })
   })

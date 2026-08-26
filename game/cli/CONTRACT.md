@@ -10,7 +10,7 @@ The terminal surface: generate a city, to a history of your own if you wrote one
 
 | Command | Arguments | Preconditions |
 |---|---|---|
-| `gb build` | `--theme --seed --blocks NxN --cells --density --storeys --exits --model --history --out` | `--model` needs the sidecar running on `GAME_BOX_URL`, or it falls back per call. `--history <file>` is a JSON object: `@gb/world`'s `Premise` plus `charters`, each a `CharterSchema`; it is taken as the narrator's answer to `writePremise`, so the forge gates it the way it gates a model's and the report says what was dropped |
+| `gb build` | `--theme --seed --blocks NxN --cells --density --storeys --exits --model --history --out` | `--storeys` is `@gb/forge`'s own ceiling unless you name one (24, 40 at most): over four the city raises a skyline of kit towers. `--model` needs the sidecar running on `GAME_BOX_URL`, or it falls back per call. `--history <file>` is a JSON object: `@gb/world`'s `Premise` plus `charters`, each a `CharterSchema`; it is taken as the narrator's answer to `writePremise`, so the forge gates it the way it gates a model's and the report says what was dropped |
 | `gb extend <base>` | `--count --model --out` | `base` is a bundle. The growth is drawn with the base's own seed, `--count` is how many buildings to add (default 10) and the land decides how many fit |
 | `gb pack <base> <extended>` | `--out` | two bundles, the second written by `gb extend` from the first |
 | `gb apply <base> <pack>` | `--out` | a bundle and a pack cut from it |

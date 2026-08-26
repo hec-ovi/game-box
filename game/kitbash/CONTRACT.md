@@ -1,6 +1,6 @@
 # @gb/kitbash contract
 
-contractVersion: 0.12.0
+contractVersion: 0.13.0
 
 ## Purpose
 
@@ -52,7 +52,7 @@ Builds a plot into a building made of Downtown City MegaKit pieces on a 2 m grid
 | `fixtureParts(fixtures)` | `Fixture[]` | the geometry of those fixtures in the building's frame, one buffer per kit material (`piece`, `material`, `geometry`), in the same shape as a kit part, for a dressing that builds its own buildings and wants the same entrance on them |
 | `SUBWAY`, `wellOf(cellSize)`, `CAMERA` | the entrance's numbers and the well it cuts on a cell of that size; the camera's numbers | every material named is in the shipped pack |
 | `lightsFor(plot, size, charter)`, `lights(plot, size, charter)` | `LightEmitter[]` | one per sign, in the same order and the same frame: `kind`, `position` just off the lit face, `colour` (what burns, packed `0xRRGGBB`), `intensity` in candela at full dark, and `radius`, the metres past which it is not worth drawing (where it falls to 0.1 lux, at most 16). Nothing draws them here: the scene that owns the lights does |
-| `SIGN` | the material name, how far a panel stands off the wall and hangs over the street, how much wall a hung one's bracket takes, how far a letter stands off its panel, and how hard a tube burns | |
+| `SIGN` | the material name, how far a panel stands off the wall and hangs over the street, how much wall a hung one's bracket takes, how far a letter stands off its panel, how hard a tube burns, and `climb`, how far above the fascia signage reaches | |
 | `Standing` | `position`, `rotationY`: where a fixture stands and the turn that points its own +Z out | |
 | `DOORLAMP`, `LETTER_SHARE` | the door lamp's line: its width, where it starts and how far past the door head it reaches; and the share of the fascia's height one letter may take | |
 | `MOST_ACCENTS` | 4: the door lamps, a strip, a tube and a board are all the small lit things a wall has room for | |
@@ -103,6 +103,7 @@ Every plot gets its own name over the door and a lamp either side of it, whateve
 - **The letters are drawn from code.** `src/sign/glyphs.ts` holds a stroke font on a 4 by 6 grid, A to Z, 0 to 9, a little punctuation, and eight marks that spell nothing. `src/sign/atlas.ts` rasterises each of them into one 512 by 512 single-channel sheet as a round-capped tube with a soft shoulder, 256 KB before mips. Nothing is downloaded: a world file has to carry its own signage, and a font is a licence.
 - **It is a font, not a sheet of finished signs.** A sign is a run of quads, one per letter, each pointing at its own cell. A thousand buildings with a thousand different names read the same fixed-size texture, so the atlas does not grow with the city.
 - **Every letter is sized off the fascia.** The ground floor's fascia is the kit's own metre-tall closer over the shopfront, and the tallest letter on the building is `LETTER_SHARE` of its height: 0.5 m on a 4 m ground floor. The nameplate sits in that band, and the blade, the strip, the board and the box over the street take their panel sizes from the same letter, so nothing on a wall is bigger than the wall has room for.
+- **Signage climbs `SIGN.climb` (16 m) above the fascia and no further, whatever the building is.** A blade, a tube and a board were the three things sized or placed off the building's own height, which is fine at four storeys and is a ribbon of neon up a tower: measured at 40 storeys (128.8 m) the corner tube ran 124 m as one lit quad with a point light at 66 m that reaches 16. A sign is read from the pavement and is its own light, and `lightsFor` never draws one past 16 m, so that is the wall signage may use. Measured on a bar's loudest row: at 4 storeys nothing moves (the tallest run is 8.8 m, the top sign at 13.1 m of a 13.6 m wall), and from 6 storeys up every building carries the same signs, the tallest run 15.2 m and the top of the highest sign 19.5 m. So a tower is a shopfront with lit window wall over it, which is what a tower on a street looks like.
 - **A sign claims its wall before it is drawn.** Every panel takes the patch it stands on, with 12 cm of air round it, and a later one landing on a held patch is not drawn; a hung box claims the width of its bracket. Each of the small lit things offers both ends of its wall and the first free one is taken. Measured on a town of 160 plots and 785 signs: no two of them overlap, where before the claim 96 pairs did.
 - **The door has a lamp, not a column.** Two warm lines, `DOORLAMP.width` (5 cm) wide, from 35 cm above the pavement to 15 cm past the door head, standing 22 cm outside either edge of the door, burning at 0.9 of their own colour. A lamp is bounded by the door it lights and never past white; anything taller or brighter beside a door is not this box's. It throws 10.3 cd, half what the name over it throws at the median.
 - **The name and the word come from the world.** `plot.name` goes over the door and the charter's `blade` goes down the blade, so a sign is wayfinding rather than decoration: the name tells you which place it is, the blade tells you what it is, and a place the engine has never heard of spells whatever its charter wrote. A name that will not fit is shrunk first and cut short only when shrinking would make it a smear.
@@ -203,6 +204,10 @@ A building against the shell it is drawn as from far off, on the shipped kit ove
 The kit's own walls are what a building weighs and a shell keeps them, so what it saves on the way in is the signage mesh, the fixtures, the emitters and the layout of all three. What it saves in the frame is the fragment: the far town no longer raymarches a room behind every pane, and only the buildings drawn in detail put an emitter in the city's lights.
 
 What it cannot save is those 8,671 triangles, which is the ceiling on how large a city this kit can dress. A forged 50 by 50 block town of 20,233 plots dressed by the kit alone is 215.9M triangles and 27 GB of buffers, shell path and all, against 4.1M and 1.5 GB for the same town on `@gb/prefab`'s pack (`node game/prefab/tools/bench-city.ts --blocks 50 --dressing kit`). The kit dresses the plots the pack has no shape for; the pack dresses the city.
+
+### What a tower costs
+
+A building is a storey of walls repeated, so it grows with its storeys and nothing else does: measured on a 4 by 6 cell plot, a shell is 4,359 triangles at 1 storey, 15,879 at 4 and 154,119 at 40, which is 3,840 a storey. The pack is drawn to four storeys, so every plot taller than that is one of these. That is the price of a skyline and it is why `@gb/forge` raises a few plots rather than a district: at 20 storeys one tower's shell is 77,319 triangles against a prefab shell's 203.
 
 ### What the street lamps cost
 

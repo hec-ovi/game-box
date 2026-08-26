@@ -1,6 +1,7 @@
 import { METRICS } from '@gb/world'
 import { MODULE } from '../catalog/pieces.ts'
 import type { Band } from '../compose/bands.ts'
+import { SIGN } from './sign.ts'
 
 /**
  * The band over the shopfront that carries the name, and the letter it sizes.
@@ -32,4 +33,15 @@ export function fasciaOf(ground: Band): Fascia {
   const closer = ground.height - MODULE.height
   const bottom = closer >= SHALLOWEST ? top - closer : Math.min(top, METRICS.building.doorHeight + OVER_DOOR)
   return { bottom, top, letter: (top - bottom) * LETTER_SHARE }
+}
+
+/**
+ * The wall signage is written against: the building's own height, or the
+ * fascia plus `SIGN.climb`, whichever is lower. Every panel sized or placed
+ * off the height of the wall reads this instead, so a forty storey tower hangs
+ * the same street level signage a two storey shop does rather than a hundred
+ * metre ribbon of neon up its corner.
+ */
+export function signWall(fascia: Fascia, height: number): number {
+  return Math.min(height, fascia.top + SIGN.climb)
 }

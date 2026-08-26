@@ -24,8 +24,8 @@ const CANDELA: Record<SignKind, number> = { sign: 20, strip: 20, doorlamp: 120, 
 /** How much of a letter's cell is tube. */
 const INK_COVER = 0.35
 
-/** Lux under which a light is not worth drawing, and how far one is ever worth drawing. */
-const FADE = { lux: 0.1, farthest: 16 } as const
+/** Lux under which a light is not worth drawing, and how far one is ever worth drawing, which is the wall a sign may climb. */
+const FADE = { lux: 0.1, farthest: SIGN.climb } as const
 
 /** How far off a flat panel its light sits, so it reaches the wall round it. */
 const OFF = 0.2

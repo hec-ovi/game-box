@@ -9,13 +9,14 @@
  * within `DETAIL_RADIUS` of the spawn. `whole` hides the shell, which is what
  * a dressing without one costs: every plot dressed in full at open.
  *
- *   node tools/bench-city.ts [--seed metro] [--blocks 20] [--mode lod|whole] [--dressing prefab|kit]
+ *   node tools/bench-city.ts [--seed metro] [--blocks 20] [--storeys 24] [--mode lod|whole] [--dressing prefab|kit]
  *
  * Reads: pack/ here, and assets/dist/downtown-kit.glb (GB_ASSETS_DIST overrides).
  */
 import { Forge, OfflineNarrator } from '@gb/forge'
 import { KitDressing, loadKit } from '@gb/kitbash'
 import { buildCity, type Dressing } from '@gb/scene'
+import { inPlotBand, plotShape } from '@gb/world'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type * as THREE from 'three'
@@ -28,6 +29,7 @@ const DIST = process.env['GB_ASSETS_DIST'] ?? join(resolve(import.meta.dirname, 
 const args = process.argv.slice(2)
 const seed = flag(args, '--seed') ?? 'metro'
 const blocks = Number(flag(args, '--blocks') ?? 20)
+const storeys = flag(args, '--storeys')
 const mode = flag(args, '--mode') ?? 'lod'
 const dressed = flag(args, '--dressing') ?? 'prefab'
 
@@ -88,7 +90,8 @@ const library = await readPack(kit.night)
 const behind = new KitDressing(kit)
 const dressing: Streaming = dressed === 'kit' ? behind : new PrefabDressing(library, behind)
 
-const built = await new Forge(new OfflineNarrator(seed)).build({ theme: 'a neon port city', seed, blocksX: blocks, blocksY: blocks, density: 1, maxStoreys: 4 })
+// the brief's own default unless asked otherwise, so the town measured is the town the game builds, skyline and all
+const built = await new Forge(new OfflineNarrator(seed)).build({ theme: 'a neon port city', seed, blocksX: blocks, blocksY: blocks, density: 1, ...(storeys ? { maxStoreys: Number(storeys) } : {}) })
 if (!built.ok) throw new Error(`the forge refused: ${JSON.stringify(built.error)}`)
 const world = built.value.world
 
@@ -100,7 +103,9 @@ const batches = city.root.children.filter((child) => child.name.startsWith('city
 const materials = new Set([...shells.materials, ...buildings.materials])
 const rounded = (value: number) => Math.round(value).toLocaleString('en-GB')
 
-console.log(`${blocks} by ${blocks} blocks, ${dressed} ${mode}: ${[...world.plots()].length} plots, pack ${library.catalogue.version}`)
+const plots = [...world.plots()]
+const towers = plots.filter((plot) => !inPlotBand(plotShape(plot)))
+console.log(`${blocks} by ${blocks} blocks, ${dressed} ${mode}: ${plots.length} plots, ${towers.length} over the band (tallest ${Math.max(...plots.map((plot) => plot.storeys))} storeys), pack ${library.catalogue.version}`)
 console.log(`  open ${rounded(open)} ms, of it ${rounded(shells.ms + buildings.ms)} ms in the dressing, rss ${rounded(process.memoryUsage().rss / 1e6)} MB`)
 console.log(`  shells: ${rounded(shells.calls)} built, ${rounded(shells.triangles)} triangles, ${rounded(shells.meshes)} meshes`)
 console.log(`  buildings: ${rounded(buildings.calls)} built, ${rounded(buildings.triangles)} triangles, ${rounded(buildings.meshes)} meshes`)

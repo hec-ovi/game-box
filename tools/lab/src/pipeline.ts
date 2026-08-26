@@ -11,6 +11,7 @@
 import {
   Forge,
   OfflineNarrator,
+  STOREYS_DEFAULT,
   summarise,
   type Instance,
   type InstanceRequest,
@@ -110,7 +111,7 @@ export function defaultForm(): Form {
     blocksY: 2,
     openPlaces: 3,
     density: 0.8,
-    maxStoreys: 3,
+    maxStoreys: STOREYS_DEFAULT,
     sideQuestCount: 2,
   }
 }
