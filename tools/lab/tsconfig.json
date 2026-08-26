@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "paths": {
+      "@gb/forge": ["../../game/forge/src/index.ts"],
+      "@gb/kit": ["../../game/kit/src/index.ts"],
+      "@gb/quest": ["../../game/quest/src/index.ts"],
+      "@gb/scribe": ["../../game/scribe/src/index.ts"],
+      "@gb/sidecar": ["../../game/sidecar/src/index.ts"],
+      "@gb/world": ["../../game/world/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}

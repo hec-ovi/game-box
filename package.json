@@ -7,7 +7,8 @@
   },
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p game/app",
+    "lab": "vite --config tools/lab/vite.config.mjs",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p game/app && tsc --noEmit -p tools/lab",
     "check:isolation": "node tools/check-isolation.mjs",
     "verify": "pnpm run generate && pnpm run typecheck && pnpm run check:isolation && pnpm run test && pnpm -C host test",
     "generate": "pnpm -r --if-present run generate"
