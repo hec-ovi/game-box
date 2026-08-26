@@ -1,3 +1,4 @@
+import { BLOCKS_MAX } from '@gb/forge'
 import { DENSITY_LEVELS, NEON_LEVELS, WEAR_LEVELS, type Asks } from '@gb/world'
 
 /**
@@ -27,7 +28,7 @@ export const DEFAULTS: CityBrief = { theme: 'quiet coastal town', seed: 'town', 
  * brief that asks for more grid than the world will hold comes back refused
  * with the grid it needed, which is a sentence on the panel.
  */
-export const BLOCKS = { min: 1, max: 57 } as const
+export const BLOCKS = { min: 1, max: BLOCKS_MAX } as const
 
 /**
  * The style choices, each the closed list `@gb/world` will hold. The art is one
