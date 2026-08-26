@@ -61,6 +61,7 @@ export class CityMaker {
       seed: brief.seed,
       blocksX: brief.blocks,
       blocksY: brief.blocks,
+      ...(brief.places ? { openPlaces: brief.places } : {}),
       ...(brief.brief ? { brief: brief.brief } : {}),
       ...(brief.asks ? { asks: brief.asks } : {}),
     })

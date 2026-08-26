@@ -13,7 +13,7 @@ import {
 } from '@gb/world'
 import { briefContract, type Brief } from './brief.ts'
 import type { Dropped } from './charters/resolve.ts'
-import { placesOnNewLand } from './interior/budget.ts'
+import { openPlacesFor, placesOnNewLand } from './interior/budget.ts'
 import { Avenues } from './layout/avenues.ts'
 import { streetLines } from './layout/lines.ts'
 import { planStreets, type StreetPlan } from './layout/plan.ts'
@@ -126,7 +126,7 @@ export class Forge {
     await this.#raise(world, this.#townSites(brief, streets, rng, premise, world), {
       theme: brief.theme,
       ...(premise ? { premise } : {}),
-      places: brief.openPlaces,
+      places: brief.openPlaces ?? openPlacesFor(world.grid.width * world.cellSize),
       signs: new Signs(brief.seed),
       streets: StreetNames.of(world),
       doors: rng.fork('doors'),

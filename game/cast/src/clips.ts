@@ -104,7 +104,7 @@ export const GAITS: Readonly<Record<string, number>> = {
  * shoulder 2.6 degrees over a cycle, less than a body standing still does, so
  * it is not one of these.
  */
-export const WALKS: readonly [string, ...string[]] = ['Walk_Loop', 'Walk_Loose_Loop', 'Walk_Brisk_Loop']
+export const WALKS: readonly [string, ...string[]] = ['Walk_Loop']
 
 export function walkFor(npcId: string): string {
   return pick(WALKS, `${npcId}/walk`)

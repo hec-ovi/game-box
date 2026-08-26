@@ -46,6 +46,7 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI
 | Stack and architecture decisions with their rationale | `docs/DECISIONS.md` |
 | Which art we ship and under what licence | `assets/registry/sources.json` |
 | Getting the art, building the pack, proving it fits the skeleton | `tools/` |
+| Seeing inside a build: each stage's prompt file, the schema its call is forced against, what comes back and where each field of it ends up, the line the call is issued at, what the engine decides instead, and a sandbox per stage that shows the request and the reply as they were (`pnpm lab`) | `tools/lab/` |
 
 ## Dependency edges
 

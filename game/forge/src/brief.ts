@@ -1,7 +1,7 @@
 import { contract } from '@gb/kit'
 import { AsksSchema, MAX_GRID_SIDE } from '@gb/world'
 import { z } from 'zod'
-import { MOST_PLACES, OPEN_PLACES } from './interior/budget.ts'
+import { MOST_PLACES } from './interior/budget.ts'
 import { MAX_BLOCK, MIN_BLOCK, mostBlocks, widestBlock, widestGrid } from './layout/plan.ts'
 
 /**
@@ -23,7 +23,7 @@ export const BriefSchema = z
     blocksX: z.number().int().min(1).max(BLOCKS_MAX).default(20),
     blocksY: z.number().int().min(1).max(BLOCKS_MAX).default(20),
     /** Places that open, whatever the city's size. Everything else is frontage. */
-    openPlaces: z.number().int().min(1).max(MOST_PLACES).default(OPEN_PLACES),
+    openPlaces: z.number().int().min(1).max(MOST_PLACES).optional(),
     /** Cells per block side, before streets. Left out, the seed picks it and varies it block by block. */
     blockCells: z.number().int().min(MIN_BLOCK).max(MAX_BLOCK).optional(),
     /** How much of each block gets built on, 0 to 1. */

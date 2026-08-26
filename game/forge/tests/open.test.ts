@@ -1,7 +1,7 @@
 import { Rng } from '@gb/kit'
 import { SHIPPED_CHARTERS, type ResolvedCharter, type World } from '@gb/world'
 import { describe, expect, it } from 'vitest'
-import { DoorBudget, mostOpen, OPEN_PLACES, placesOnNewLand } from '../src/interior/budget.ts'
+import { DoorBudget, mostOpen, OPEN_PLACES, openPlacesFor, placesOnNewLand } from '../src/interior/budget.ts'
 import { drawOf, KEYSTONES, pullOf } from '../src/interior/draw.ts'
 import { openDoors, type Frontage } from '../src/interior/open.ts'
 import { buildTown } from './support.ts'
@@ -43,11 +43,17 @@ const ABSOLUTE = [2, 12, 30]
 const sizes = await Promise.all(ABSOLUTE.map((blocks) => town('doors-absolute', blocks)))
 
 describe('a town of frontage with a few doors that open', () => {
-  it('opens the same handful of places in a hamlet, a town and a city', () => {
-    // the number is the city's, never a share of its plots: a ten-block town
-    // opened 24 doors and a fifty-block one 493 when it was a share
+  it('opens a handful of places, growing with how far a city is across and never with its plots', () => {
+    // never a share of the plots: a ten-block town opened 24 doors and a
+    // fifty-block one 493 when it was. It grows with the walk instead, so a
+    // city you cannot cross on foot is worth crossing
     const opened = sizes.map((built) => built.world.interiors().length)
-    expect(opened, `${opened.join(', ')} places over ${ABSOLUTE.join(', ')} blocks`).toEqual(sizes.map(() => OPEN_PLACES))
+    const wanted = sizes.map((built) => openPlacesFor(built.world.grid.width * built.world.cellSize))
+    expect(opened, `${opened.join(', ')} places over ${ABSOLUTE.join(', ')} blocks`).toEqual(wanted)
+    expect(opened[0], 'a town you can walk across wants no more than a handful').toBe(OPEN_PLACES)
+    expect(opened[2]!, 'a city opens more doors than a hamlet').toBeGreaterThan(opened[0]!)
+    const share = opened[2]! / sizes[2]!.world.plots().length
+    expect(share, 'the doors are creeping back towards a share of the plots').toBeLessThan(0.02)
     const plots = sizes.map((built) => built.world.plots().length)
     expect(plots[2]! / plots[0]!, 'the three sizes are not far enough apart to prove anything').toBeGreaterThan(50)
     // and everybody in the file is in one of them

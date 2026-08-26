@@ -34,8 +34,10 @@ describe('a town offers as much as it holds', () => {
     // them, so about the same amount of work: a share of the plots wrote 159
     // jobs into a twenty-block town and 3 into a two-block one
     expect(city.world.plots().length).toBeGreaterThan(town.world.plots().length * 5)
-    expect(city.world.interiors().length).toBe(town.world.interiors().length)
-    expect(city.quests.length).toBeLessThan(town.quests.length * 2)
+    // a city opens more doors than a town, but nothing like a share of its plots
+    expect(city.world.interiors().length).toBeGreaterThanOrEqual(town.world.interiors().length)
+    expect(city.world.interiors().length / city.world.plots().length).toBeLessThan(0.02)
+    expect(city.quests.length).toBeLessThan(town.quests.length * 5)
     // the work follows the cast, and the cast is whoever stands in those places
     const density = (built: typeof city) => built.quests.length / built.world.npcs().length
     expect(density(city)).toBeGreaterThan(density(town) * 0.6)

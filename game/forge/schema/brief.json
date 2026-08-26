@@ -25,7 +25,6 @@
       "maximum": 116
     },
     "openPlaces": {
-      "default": 3,
       "type": "integer",
       "minimum": 1,
       "maximum": 24

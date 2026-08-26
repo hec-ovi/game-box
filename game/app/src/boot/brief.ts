@@ -1,4 +1,4 @@
-import { BLOCKS_MAX } from '@gb/forge'
+import { BLOCKS_MAX, MOST_PLACES, OPEN_PLACES } from '@gb/forge'
 import { DENSITY_LEVELS, NEON_LEVELS, WEAR_LEVELS, type Asks } from '@gb/world'
 
 /**
@@ -9,6 +9,8 @@ export interface CityBrief {
   readonly theme: string
   readonly seed: string
   readonly blocks: number
+  /** How many doors in the city open. Left out, the generator chooses. */
+  readonly places?: number
   /** Write the names, people and quests with the local model rather than offline. */
   readonly model: boolean
   /** What the city is about, in the player's own words. Unbounded: it is theirs. */
@@ -43,6 +45,14 @@ export type StyleAxis = keyof typeof STYLE
 const THEME_LIMIT = 60
 const SEED_LIMIT = 120
 
+/** How many doors a city opens. The generator's own range, so the field never lies. */
+export const PLACES = { min: 1, max: MOST_PLACES, fallback: OPEN_PLACES } as const
+
+export function clampPlaces(value: number): number {
+  if (!Number.isFinite(value)) return PLACES.fallback
+  return Math.min(PLACES.max, Math.max(PLACES.min, Math.round(value)))
+}
+
 export function clampBlocks(value: number): number {
   if (!Number.isFinite(value)) return DEFAULTS.blocks
   return Math.min(BLOCKS.max, Math.max(BLOCKS.min, Math.round(value)))
@@ -56,6 +66,7 @@ export function tidy(brief: CityBrief): CityBrief {
     theme: (brief.theme.trim() || DEFAULTS.theme).slice(0, THEME_LIMIT),
     seed: (brief.seed.trim() || DEFAULTS.seed).slice(0, SEED_LIMIT),
     blocks: clampBlocks(brief.blocks),
+    ...(brief.places ? { places: clampPlaces(brief.places) } : {}),
     model: brief.model,
     ...(text ? { brief: text } : {}),
     ...(asks ? { asks } : {}),
@@ -87,7 +98,7 @@ export function sameBrief(a: CityBrief, b: CityBrief): boolean {
 }
 
 /** The four the address bar carries. Everything else in it belongs to somebody else. */
-const BRIEF_KEYS = ['theme', 'seed', 'blocks', 'model']
+const BRIEF_KEYS = ['theme', 'seed', 'blocks', 'places', 'model']
 
 /**
  * The address bar, which is how a city is shared by seed and how the same one is
@@ -99,6 +110,7 @@ export function briefFromQuery(query: URLSearchParams): CityBrief | undefined {
     theme: query.get('theme') ?? DEFAULTS.theme,
     seed: query.get('seed') ?? DEFAULTS.seed,
     blocks: Number(query.get('blocks') ?? DEFAULTS.blocks),
+    ...(query.has('places') ? { places: Number(query.get('places')) } : {}),
     model: query.has('model') && query.get('model') !== '0',
   })
 }
