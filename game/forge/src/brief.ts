@@ -19,7 +19,7 @@ export const BriefSchema = z
     theme: z.string().min(1).max(60),
     /** Same seed, same city, every time. */
     seed: z.string().min(1).max(120),
-    /** Blocks across and down. A 2x2 hamlet, a 20x20 city, as many as the grid holds. */
+    /** Blocks across and down. A 1x1 hamlet, a 20x20 city, as many as the grid holds. */
     blocksX: z.number().int().min(1).max(BLOCKS_MAX).default(20),
     blocksY: z.number().int().min(1).max(BLOCKS_MAX).default(20),
     /** Places that open, whatever the city's size. Everything else is frontage. */

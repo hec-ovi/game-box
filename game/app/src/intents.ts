@@ -27,6 +27,7 @@ export class Intents {
   #counters: Counters
   #travel: Travel
   #view: View | undefined
+  #pause: (on: boolean) => void
   #leave: () => void
   #releasePointer: () => void
 
@@ -43,6 +44,7 @@ export class Intents {
     travel: Travel
     /** What the player set about the screen. Without one, the corner view and full screen do nothing. */
     view?: View
+    pause?: (on: boolean) => void
     /** The way out of the game, which the game itself does not decide. */
     leave: () => void
     releasePointer: () => void
@@ -58,6 +60,7 @@ export class Intents {
     this.#counters = input.counters
     this.#travel = input.travel
     this.#view = input.view
+    this.#pause = input.pause ?? (() => {})
     this.#leave = input.leave
     this.#releasePointer = input.releasePointer
   }
@@ -112,6 +115,7 @@ export class Intents {
       case 'window':
         this.#chart.open = intent.window === 'map'
         if (intent.window !== null) this.#releasePointer()
+        this.#pause(intent.window !== null)
         return
       // the settings tab: the same calls P, T and K make, and the tab reads
       // what the clock says back rather than what it asked for
@@ -157,6 +161,7 @@ export class Intents {
       case 'travel':
         this.#chart.open = false
         this.#hud.show({ window: null })
+        this.#pause(false)
         this.#travel.board(intent.stationId)
         return
       // the interface asks before it reports this, so there is nothing left to

@@ -101,6 +101,20 @@ export const MOTION = `
   to { transform: none; color: var(--gb-accent); }
 }
 
+@keyframes gb-orb-pulse {
+  0% { transform: rotate(45deg) scale(0.85); opacity: 0.7; }
+  100% { transform: rotate(45deg) scale(1.15); opacity: 1; }
+}
+@keyframes gb-orb-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes gb-radar-spin-ccw {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(-360deg); }
+}
+
 /* The underline under the tab strip: one element, moved and stretched. */
 .gb-hud .gb-tab-line {
   position: absolute;

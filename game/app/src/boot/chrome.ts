@@ -39,15 +39,29 @@ export function edged(tag: 'div' | 'li' | 'span', className: string, cut: Cut): 
 }
 
 /** A button: the edge, the ground, an icon and the words. */
-export function button(input: { text: string; icon: IconName; label?: string; lit?: boolean; quiet?: boolean; onClick: () => void }): HTMLButtonElement {
+export function button(input: {
+  text: string
+  icon: IconName
+  label?: string
+  tooltip?: string
+  hint?: string
+  lit?: boolean
+  quiet?: boolean
+  onClick: () => void
+}): HTMLButtonElement {
   const made = document.createElement('button')
   made.type = 'button'
   made.className = 'gb-btn gb-c6'
   if (input.lit) made.dataset.lit = 'true'
   if (input.quiet) made.dataset.quiet = 'true'
   if (input.label) made.setAttribute('aria-label', input.label)
+  if (input.tooltip) made.dataset.tooltip = input.tooltip
+  if (input.hint) made.dataset.hint = input.hint
   const inner = document.createElement('span')
-  inner.append(icon(input.icon, 16), input.text)
+  const textSpan = document.createElement('span')
+  textSpan.className = 'gb-btn-text'
+  textSpan.textContent = input.text
+  inner.append(icon(input.icon, 16), textSpan)
   made.append(inner)
   made.addEventListener('click', input.onClick)
   return made

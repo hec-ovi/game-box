@@ -17,9 +17,8 @@ export class Transcript {
     this.node.setAttribute('aria-label', 'Conversation so far')
   }
 
-  render(turns: readonly TalkTurn[]): void {
-    // Rows past the first one that changed hands are rebuilt; the rest are
-    // written in place.
+  render(turns: readonly TalkTurn[], speaker?: string): void {
+    const speakerName = speaker ? speaker.split(' ')[0]! : 'Delia'
     let keep = 0
     while (keep < turns.length && keep < this.#rows.length && this.#rows[keep]!.who === turns[keep]!.who) keep += 1
     for (const row of this.#rows.splice(keep)) row.node.remove()
@@ -28,7 +27,7 @@ export class Transcript {
       this.#rows.push(row)
       this.node.append(row.node)
     }
-    turns.forEach((turn, at) => this.#rows[at]!.write(turn))
+    turns.forEach((turn, at) => this.#rows[at]!.write(turn, speakerName))
     this.node.scrollTop = this.node.scrollHeight
   }
 
@@ -41,19 +40,21 @@ export class Transcript {
 class TurnRow {
   readonly node = el('li', 'gb-turn gb-t3')
   readonly who: TalkTurn['who']
+  #name = el('span', 'gb-turn-name gb-t1')
   #does = el('p', 'gb-does')
   #says = el('p', 'gb-says')
 
   constructor(who: TalkTurn['who']) {
     this.who = who
     this.node.dataset.who = who
-    // A turn arrives on its own; the ones already on the transcript never move.
     rise(this.node, 0)
     this.#does.hidden = true
-    this.node.append(this.#does, this.#says)
+    this.node.append(this.#name, this.#does, this.#says)
   }
 
-  write(turn: TalkTurn): void {
+  write(turn: TalkTurn, speakerName: string): void {
+    const label = this.who === 'you' ? 'You' : speakerName
+    setText(this.#name, label)
     setText(this.#does, turn.does ?? '')
     this.#does.hidden = !turn.does
     setText(this.#says, turn.says)

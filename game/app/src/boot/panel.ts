@@ -15,6 +15,7 @@ export interface PanelHandlers {
   grow(): void
   /** A city off the shelf, by the library's key. */
   pick(key: string): void
+  exportCity?(key: string): void
   remove(key: string): void
   save(): void
   cancel(): void
@@ -30,10 +31,10 @@ export interface PanelHandlers {
 export type PanelFace = 'home' | 'make'
 
 /** What each face calls itself, and what it says under that. */
-const TITLES: Record<PanelFace, string> = { home: 'game-box', make: 'A new city' }
+const TITLES: Record<PanelFace, string> = { home: 'game-box', make: 'Game Architect Pipeline' }
 const SUBS: Record<PanelFace, string> = {
-  home: 'Pick a city to play, open one somebody sent you, or make a new one.',
-  make: 'Every field is optional. Left blank, the city decides for itself; the same answers make the same city every time.',
+  home: 'Pick a game to play, open one somebody sent you, or make a new one.',
+  make: 'Step-by-step procedural generation: Architecture → Quests & History → Compile Game.',
 }
 
 /**
@@ -56,6 +57,7 @@ export class Panel {
   #title: HTMLElement
   #sub: HTMLElement
   #new: HTMLButtonElement
+  #crownNew: HTMLButtonElement
   #homeAgain: HTMLButtonElement
   #generate: HTMLButtonElement
   #export: HTMLButtonElement
@@ -63,7 +65,8 @@ export class Panel {
   #cancel: HTMLButtonElement
   #close: HTMLButtonElement
   #status: HTMLElement
-  #face: PanelFace = 'make'
+  #shelf: readonly OnTheShelf[] = []
+  #face: PanelFace = 'home'
   #playing = false
   #shown = true
   #leaving: ReturnType<typeof setTimeout> | undefined
@@ -91,7 +94,7 @@ export class Panel {
     // one stylesheet and one sprite rather than a paragraph of svg per row
     paintIcons(root)
     this.#card = find('card')
-    this.#form = new CityForm(find)
+    this.#form = new CityForm(find, root)
     this.#library = new LibraryView(find)
     this.#sections = new Sections(find)
     this.#home = find('home')
@@ -99,6 +102,7 @@ export class Panel {
     this.#title = find('title')
     this.#sub = find('sub')
     this.#new = find('new')
+    this.#crownNew = find('crown-new')
     this.#homeAgain = find('home-again')
     this.#open = find('open')
     this.#apply = find('apply')
@@ -127,13 +131,61 @@ export class Panel {
       if (file) this.#handlers.apply(file)
     })
     this.#screens.addEventListener('change', () => this.#handlers.settings(this.settings))
-    this.#library.on({ open: (key) => this.#handlers.pick(key), remove: (key) => this.#handlers.remove(key) })
+    this.#library.on({
+      open: (key) => this.#handlers.pick(key),
+      export: (key) => this.#handlers.exportCity?.(key),
+      remove: (key) => this.#handlers.remove(key),
+    })
     this.#new.addEventListener('click', () => void (this.face = 'make'))
+    this.#crownNew.addEventListener('click', () => void (this.face = 'make'))
     this.#homeAgain.addEventListener('click', () => void (this.face = 'home'))
     this.#export.addEventListener('click', () => this.#handlers.save())
     this.#grow.addEventListener('click', () => this.#handlers.grow())
     this.#cancel.addEventListener('click', () => this.#handlers.cancel())
     this.#close.addEventListener('click', () => this.#handlers.close())
+
+    const backHome = root.querySelector<HTMLButtonElement>('[data-boot="back-home"]')
+    if (backHome) {
+      backHome.addEventListener('click', () => void (this.face = 'home'))
+    }
+
+    const createCity = root.querySelector<HTMLButtonElement>('[data-boot="create-city"]')
+    if (createCity) {
+      createCity.addEventListener('click', () => void (this.face = 'make'))
+    }
+
+    const intelText = root.querySelector<HTMLElement>('[data-boot="intel-text"]')
+    if (intelText) {
+      root.addEventListener('mouseover', (event) => {
+        const target = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-hint]')
+        if (target?.dataset.hint) {
+          intelText.textContent = target.dataset.hint
+          intelText.dataset.visible = 'true'
+        }
+      })
+      root.addEventListener('mouseout', (event) => {
+        const target = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-hint]')
+        if (target) {
+          intelText.textContent = ''
+          intelText.dataset.visible = 'false'
+        }
+      })
+      root.addEventListener('focusin', (event) => {
+        const target = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-hint]')
+        if (target?.dataset.hint) {
+          intelText.textContent = target.dataset.hint
+          intelText.dataset.visible = 'true'
+        }
+      })
+      root.addEventListener('focusout', (event) => {
+        const target = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-hint]')
+        if (target) {
+          intelText.textContent = ''
+          intelText.dataset.visible = 'false'
+        }
+      })
+    }
+
     // the way back is a key as well as a button, and the button prints it
     root.addEventListener('keydown', (event) => {
       if (event.key !== 'Escape' || !this.#playing) return
@@ -148,6 +200,10 @@ export class Panel {
 
   get brief(): CityBrief {
     return this.#form.brief
+  }
+
+  set brief(brief: CityBrief) {
+    this.#form.brief = brief
   }
 
   get face(): PanelFace {
@@ -165,10 +221,14 @@ export class Panel {
     this.#home.hidden = face !== 'home'
     this.#make.hidden = face !== 'make'
     this.#new.hidden = face !== 'home'
+    this.#crownNew.hidden = face !== 'home'
     this.#homeAgain.hidden = face !== 'make'
     this.#generate.hidden = face !== 'make'
     this.#title.textContent = TITLES[face]
     this.#sub.textContent = SUBS[face]
+    if (face === 'make') {
+      this.#form.step = 1
+    }
     this.#arrive(face === 'home' ? this.#home : this.#make)
   }
 
@@ -181,12 +241,9 @@ export class Panel {
     this.#screens.value = settings.screens
   }
 
-  set brief(brief: CityBrief) {
-    this.#form.brief = brief
-  }
-
   /** The cities on the shelf, newest first. */
   library(cities: readonly OnTheShelf[]): void {
+    this.#shelf = cities
     this.#library.render(cities)
   }
 

@@ -60,7 +60,29 @@ export const BAR = `
 .gb-hud .gb-bar-leave::after { background: var(--gb-danger); }
 .gb-hud .gb-bar[data-keys-off='true'] kbd { opacity: 0.25; }
 
-/* The close button: an icon and the key that does the same thing. */
-.gb-hud .gb-close { --gb-line: transparent; --gb-face: transparent; padding: 0 6px; color: var(--gb-dim); }
-.gb-hud .gb-close:hover { --gb-line: var(--gb-danger); color: var(--gb-danger); }
+/* The close button: styled to match permanent footer buttons */
+.gb-hud .gb-close {
+  --cut: var(--gb-cut-row);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gb-s2);
+  height: 38px;
+  padding: 0 var(--gb-s3);
+  background: var(--gb-well);
+  border: 1px solid var(--gb-edge);
+  color: var(--gb-dim);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: color var(--gb-t-press) var(--gb-in), background-color var(--gb-t-press) var(--gb-in);
+}
+.gb-hud .gb-close:hover {
+  background: var(--gb-lift);
+  --gb-line: var(--gb-danger);
+  color: var(--gb-danger);
+}
+.gb-hud .gb-close kbd {
+  --gb-line: var(--gb-edge-accent);
+  color: var(--gb-accent);
+}
 `

@@ -56,6 +56,21 @@ export class Reporting {
     this.#paid = input.paid ?? (() => {})
   }
 
+  veil(title: string): void {
+    try {
+      this.#hud.show({ loading: { title, stages: [] } })
+      setTimeout(() => {
+        try {
+          this.#hud.show({ loading: null })
+        } catch {
+          // Hud was disposed in tests/teardown
+        }
+      }, 600)
+    } catch {
+      // Hud was disposed
+    }
+  }
+
   /**
    * The quest the player chose to follow, echoed back to the interface and
    * written down: which job they are on is part of the playthrough, so a

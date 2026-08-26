@@ -7,6 +7,7 @@ import { MapTools, type MapTool } from '../map/tools.ts'
 import { Viewport, ZOOM_STEP, type Cell } from '../map/viewport.ts'
 import { kindOf, stepsOf, trackedQuest } from '../tracked.ts'
 import type { HudIntent, HudState, HudWindowName, MapMark } from '../types.ts'
+import { ICON_PX, icon } from '../ui/icon.ts'
 import type { Tab } from './tab.ts'
 
 /** How far one arrow key pans: a tenth of what is on show. */
@@ -25,6 +26,7 @@ export class MapTab implements Tab {
   #plan = new Plan()
   #tools = new MapTools((tool) => this.#run(tool))
   #legend = new Legend((at) => this.#centre(at))
+  #guide = el('section', 'gb-map-legend-guide')
   #stations: StationList
   #gestures: Gestures
   #view: Viewport | undefined
@@ -36,9 +38,18 @@ export class MapTab implements Tab {
     this.node.setAttribute('aria-label', 'Map')
     this.node.addEventListener('keydown', (event) => this.#key(event))
     this.#plan.node.append(this.#tools.node)
-    const foot = el('div', 'gb-map-foot')
-    foot.append(this.#legend.node, this.#stations.node)
-    this.node.append(this.#plan.node, foot)
+    this.#guide.append(el('h3', 'gb-t1', 'Map Symbols & Guide'), this.#guideList())
+
+    const sidebarLeft = el('aside', 'gb-map-sidebar gb-map-sidebar-left gb-scrolls')
+    sidebarLeft.append(this.#legend.node, this.#stations.node)
+
+    const mainArea = el('main', 'gb-map-main-area')
+    mainArea.append(this.#plan.node)
+
+    const sidebarRight = el('aside', 'gb-map-sidebar gb-map-sidebar-right gb-scrolls')
+    sidebarRight.append(this.#guide)
+
+    this.node.append(sidebarLeft, mainArea, sidebarRight)
     this.#gestures = new Gestures(this.#plan.node, {
       zoom: (factor, at) => {
         const view = this.#view
@@ -48,6 +59,26 @@ export class MapTab implements Tab {
       },
       pan: (dx, dy) => this.#pan(dx, dy),
     })
+  }
+
+  #guideList(): HTMLElement {
+    const list = el('ul', 'gb-legend-guide-list')
+    const items = [
+      { label: 'Main Story Objective', icon: 'quest-main' as const, color: 'var(--gb-main)' },
+      { label: 'Side Job Location', icon: 'quest-side' as const, color: 'var(--gb-accent)' },
+      { label: 'Building Instance / Door', icon: 'door' as const, color: 'var(--gb-ink)' },
+      { label: 'Transit Station', icon: 'station' as const, color: 'var(--gb-ink)' },
+      { label: 'Player Safehouse', icon: 'home' as const, color: 'var(--gb-accent-lit)' },
+    ]
+    for (const item of items) {
+      const li = el('li', 'gb-legend-guide-item')
+      const iconSpan = el('span', 'gb-legend-guide-icon')
+      iconSpan.style.color = item.color
+      iconSpan.append(icon(item.icon, ICON_PX.line))
+      li.append(iconSpan, el('span', 'gb-t2', item.label))
+      list.append(li)
+    }
+    return list
   }
 
   render(state: HudState): void {

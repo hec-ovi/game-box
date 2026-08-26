@@ -22,6 +22,9 @@ const TONE: Record<CodexPerson['disposition'], ChipTone> = {
 export function person(entry: CodexPerson): HTMLElement {
   const node = el('li', 'gb-codex-entry gb-person')
   const row = new Row({ icon: 'person', title: entry.name, line: entry.role })
+  const avatar = el('span', 'gb-person-avatar')
+  avatar.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M2 12h3M19 12h3" stroke="currentColor"/></svg>`
+  row.tile.replaceChildren(avatar)
   const standing = chip(DISPOSITION[entry.disposition], TONE[entry.disposition])
   standing.dataset.disposition = entry.disposition
   standing.setAttribute('aria-label', `Disposition: ${DISPOSITION[entry.disposition]}`)

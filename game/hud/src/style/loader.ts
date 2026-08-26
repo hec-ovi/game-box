@@ -23,6 +23,93 @@ export const LOADER = `
   flex-direction: column;
   align-items: center;
 }
+.gb-hud .gb-loader-radar {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--gb-s5);
+}
+.gb-hud .gb-radar-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.gb-hud .gb-radar-track {
+  fill: none;
+  stroke: var(--gb-well);
+  stroke-width: 2;
+}
+.gb-hud .gb-radar-track-outer {
+  stroke: var(--gb-panel);
+  stroke-width: 1.5;
+}
+.gb-hud .gb-radar-track-mid {
+  stroke: var(--gb-well);
+  stroke-width: 2.5;
+}
+.gb-hud .gb-radar-track-inner {
+  stroke: var(--gb-lift);
+  stroke-width: 2;
+}
+
+/* Outer cyan arc */
+.gb-hud .gb-radar-arc-outer-cyan {
+  fill: none;
+  stroke: var(--gb-edge-lit);
+  stroke-width: 6;
+  stroke-linecap: square;
+  stroke-dasharray: 60 270;
+  stroke-dashoffset: 0;
+  transform-origin: 60px 60px;
+  animation: gb-orb-spin 3s linear infinite;
+}
+/* Outer amber arc */
+.gb-hud .gb-radar-arc-outer-amber {
+  fill: none;
+  stroke: var(--gb-accent);
+  stroke-width: 6;
+  stroke-linecap: square;
+  stroke-dasharray: 40 290;
+  stroke-dashoffset: -160;
+  transform-origin: 60px 60px;
+  animation: gb-orb-spin 3s linear infinite;
+}
+/* Middle cyan arc */
+.gb-hud .gb-radar-arc-mid {
+  fill: none;
+  stroke: var(--gb-edge-accent);
+  stroke-width: 8;
+  stroke-linecap: square;
+  stroke-dasharray: 100 160;
+  stroke-dashoffset: -30;
+  transform-origin: 60px 60px;
+  animation: gb-radar-spin-ccw 4.5s linear infinite;
+}
+/* Inner amber thick glowing arc */
+.gb-hud .gb-radar-arc-inner {
+  fill: none;
+  stroke: var(--gb-accent-lit);
+  stroke-width: 9;
+  stroke-linecap: square;
+  stroke-dasharray: 85 105;
+  stroke-dashoffset: 0;
+  transform-origin: 60px 60px;
+  animation: gb-orb-spin 2.2s linear infinite;
+}
+
+.gb-hud .gb-radar-percent {
+  font-family: var(--gb-mono);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--gb-accent);
+  letter-spacing: 0.05em;
+  z-index: 1;
+}
+
 .gb-hud .gb-loader-card h2 {
   margin-bottom: var(--gb-s6);
   color: var(--gb-ink);

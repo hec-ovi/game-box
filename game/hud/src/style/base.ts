@@ -20,7 +20,7 @@ export const BASE = `
 .gb-hud [hidden] { display: none !important; }
 .gb-hud ul, .gb-hud ol { margin: 0; padding: 0; list-style: none; }
 .gb-hud p, .gb-hud h2, .gb-hud h3, .gb-hud h4 { margin: 0; font-weight: inherit; }
-.gb-hud button, .gb-hud input { font: inherit; color: inherit; }
+.gb-hud button, .gb-hud input { font: inherit; color: inherit; pointer-events: auto; }
 .gb-hud .gb-empty { color: var(--gb-dim); }
 
 /* Anything that scrolls does it inside itself, in the interface's own colours. */

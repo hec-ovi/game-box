@@ -62,7 +62,25 @@ export function localSaves(key: string): SaveStore {
         return undefined
       }
     },
-    write: (value) => store()?.setItem(name, JSON.stringify(value)),
-    clear: () => store()?.removeItem(name),
+    write: (save) => {
+      store()?.setItem(name, JSON.stringify(save))
+    },
+    clear: () => {
+      store()?.removeItem(name)
+    },
+  }
+}
+
+const HAS_SHELF = 'game-box.has-shelf'
+
+export function localHasShelf(): boolean {
+  return store()?.getItem(HAS_SHELF) === 'true'
+}
+
+export function keepHasShelf(has: boolean): void {
+  if (has) {
+    store()?.setItem(HAS_SHELF, 'true')
+  } else {
+    store()?.removeItem(HAS_SHELF)
   }
 }

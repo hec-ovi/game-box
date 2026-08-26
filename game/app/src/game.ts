@@ -239,6 +239,7 @@ export class Game {
       wentIn: (built, interior) => this.#companions.comeIn(interior.id, built.visitorCells, built.inward),
       cameOut: (at) => this.#companions.comeOut(at),
       away: () => [...this.#street.walkers().map((walker) => walker.id), ...this.#player.companions()],
+      veil: (title) => this.#report.veil(title),
     })
 
     this.#companions = new Companions({
@@ -463,6 +464,7 @@ export class Game {
       counters: this.#counters,
       travel: this.#travel,
       view: this.#view,
+      pause: (on) => this.pause(on),
       leave: input.leave,
       // a page with no pointer lock to give back has nothing to release
       releasePointer: () => document.exitPointerLock?.(),
@@ -575,8 +577,11 @@ export class Game {
     this.#paused = on
   }
 
-  frame(seconds: number): void {
-    if (this.#paused) return
+  frame(seconds: number): boolean | void {
+    if (this.#paused) {
+      this.#chart.update(seconds)
+      return false
+    }
     // a ride lands under the veil, so the frame that dresses a neighbourhood
     // the city has never drawn is the one nobody sees
     this.#travel.update()

@@ -15,30 +15,32 @@ export const WINDOW = `
   pointer-events: auto;
 }
 
-/* The room: the screen minus the corner, the notices band, the foot and, while
-   a conversation is up, the side. The frame is centred in it. */
+/* The room: full view edge to edge */
 .gb-hud .gb-window-room {
   position: absolute;
-  left: ${INNER_LEFT}px;
-  right: ${LAYOUT.margin}px;
-  top: ${LAYOUT.top}px;
-  bottom: ${LAYOUT.foot}px;
+  left: 0px;
+  top: 0px;
+  right: 0px;
+  bottom: 0px;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: stretch;
   pointer-events: none;
   z-index: ${LAYERS.window};
 }
-.gb-hud[data-talk='true'] .gb-window-room { right: ${SIDE_RIGHT}px; }
+.gb-hud[data-talk='true'] .gb-window-room { right: 0; }
 
 .gb-hud .gb-window {
-  width: ${LAYOUT.window.width}px;
-  height: ${LAYOUT.window.height}px;
+  width: 100vw;
+  height: 100vh;
   max-width: 100%;
   max-height: 100%;
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
   pointer-events: auto;
+  border: none;
 }
 
 /* The tab strip under the title: an icon, the word, the key. */

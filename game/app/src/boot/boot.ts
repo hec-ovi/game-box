@@ -6,7 +6,7 @@ import { loadCars, loadDressing, type ArtPack } from '../pack.ts'
 import { briefFromQuery, briefToQuery, DEFAULTS, sameBrief, type CityBrief } from './brief.ts'
 import { CityMaker, type City, type Made } from './city-maker.ts'
 import { download, exportName, packName } from './export.ts'
-import { keepSettings, localSaves, localSettings, type Settings } from './kept.ts'
+import { keepHasShelf, keepSettings, localSaves, localSettings, type Settings } from './kept.ts'
 import { briefOf, type Library, type Shelved } from './library.ts'
 import { Loader } from './loader.ts'
 import { Notices } from './notices.ts'
@@ -89,6 +89,7 @@ export class Boot {
       apply: (file) => void this.applyPack(file),
       grow: () => void this.grow(),
       pick: (key) => void this.pick(key),
+      exportCity: (key) => void this.exportCity(key),
       remove: (key) => void this.remove(key),
       save: () => this.export(),
       cancel: () => this.cancel(),
@@ -114,6 +115,7 @@ export class Boot {
     this.#asked = query
     const asked = briefFromQuery(query)
     const last = await this.#library.last()
+    keepHasShelf(Boolean(last))
     await this.#shelve()
     this.#panel.brief = asked ?? (last ? briefOf(last) : DEFAULTS)
 
@@ -128,6 +130,7 @@ export class Boot {
 
     if (asked) {
       if (last && sameBrief(asked, briefOf(last))) return this.pick(last.key)
+      this.#panel.face = 'make'
       return this.generate(asked)
     }
 
@@ -136,6 +139,7 @@ export class Boot {
   }
 
   async generate(brief: CityBrief): Promise<void> {
+    this.#panel.face = 'make'
     this.#panel.brief = brief
     await this.#run(async (signal) => {
       // the art comes before the city, because the city is pinned to it: which
@@ -160,6 +164,7 @@ export class Boot {
 
   /** Play a city file the player picked, exactly as Export wrote it. */
   async openFile(file: File): Promise<void> {
+    this.#panel.face = 'make'
     await this.#run(async (signal) => {
       await this.#step(`Opening ${file.name}`)
       return { made: await this.#maker.read(file, signal), file: (city) => this.#library.opened(city) }
@@ -170,6 +175,8 @@ export class Boot {
   async pick(key: string): Promise<void> {
     const entry = (await this.#library.entries()).find((shelved) => shelved.key === key)
     if (!entry) return
+    this.#loader.begin(`Loading ${entry.name}`)
+    this.#panel.aside(true)
     await this.#run(async (signal) => {
       await this.#step(`Opening ${entry.name}`)
       const document = await this.#library.document(key)
@@ -246,6 +253,17 @@ export class Boot {
     await this.#shelve()
   }
 
+  /** Write any city off the shelf out as a standalone file. */
+  async exportCity(key: string): Promise<void> {
+    const document_ = await this.#library.document(key)
+    if (!document_) return
+    const list = await this.#library.entries()
+    const entry = list.find((item) => item.key === key)
+    const name = entry ? exportName({ name: entry.name, seed: entry.seed }) : `${key}.gbworld.json`
+    download(document_, name)
+    this.#panel.waiting(`Saved ${name}`)
+  }
+
   /** Write the city out as the file it already is inside. */
   export(): void {
     if (!this.#city) return
@@ -277,6 +295,14 @@ export class Boot {
     if (!this.#game) return
     this.#panel.hide()
     this.#onScreen(true)
+    this.#loader.begin(`Resuming ${this.#city?.bundle.world.name ?? 'City'}`)
+    setTimeout(() => {
+      try {
+        this.#loader.end()
+      } catch {
+        // Disposed in tests
+      }
+    }, 220)
     this.#game.pause?.(false)
     this.#game.handOverKeys(false)
   }
@@ -300,21 +326,20 @@ export class Boot {
     // panel did to it on the way out is undone before either goes up
     this.#onScreen(true)
     const signal = this.#signal()
-    let making: Making
     try {
-      making = await make(signal)
+      const making = await make(signal)
+      if (signal.aborted) return this.#panel.waiting('Stopped.')
+      if (!making.made.ok) return this.#panel.waiting(making.made.message, true)
+
+      const entry = await making.file(making.made.value)
+      this.#shelved = entry
+      await this.#shelve()
+      await this.#play(making.made.value, entry, signal, making.art)
     } finally {
       this.#loader.end()
       this.#panel.aside(false)
       this.#notices.aim(this.#game)
     }
-    if (signal.aborted) return this.#panel.waiting('Stopped.')
-    if (!making.made.ok) return this.#panel.waiting(making.made.message, true)
-
-    const entry = await making.file(making.made.value)
-    this.#shelved = entry
-    await this.#shelve()
-    await this.#play(making.made.value, entry, signal, making.art)
   }
 
   #signal(): AbortSignal {

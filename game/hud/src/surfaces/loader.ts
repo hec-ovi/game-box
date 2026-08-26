@@ -19,13 +19,27 @@ export class LoaderSurface implements Surface {
   #title = el('h2', 'gb-t7')
   #list = el('ol', 'gb-stages')
   #rows = new Map<string, StageRow>()
+  #percent = el('span', 'gb-radar-percent', '100%')
   #reveal: Reveal
 
   constructor() {
     this.node.setAttribute('role', 'status')
     this.node.setAttribute('aria-live', 'polite')
     const card = el('div', 'gb-loader-card')
-    card.append(this.#title, this.#list)
+    const radar = el('div', 'gb-loader-radar')
+    radar.innerHTML = `
+      <svg class="gb-radar-svg" viewBox="0 0 120 120">
+        <circle cx="60" cy="60" r="52" class="gb-radar-track gb-radar-track-outer" />
+        <circle cx="60" cy="60" r="52" class="gb-radar-arc gb-radar-arc-outer-cyan" />
+        <circle cx="60" cy="60" r="52" class="gb-radar-arc gb-radar-arc-outer-amber" />
+        <circle cx="60" cy="60" r="42" class="gb-radar-track gb-radar-track-mid" />
+        <circle cx="60" cy="60" r="42" class="gb-radar-arc gb-radar-arc-mid" />
+        <circle cx="60" cy="60" r="30" class="gb-radar-track gb-radar-track-inner" />
+        <circle cx="60" cy="60" r="30" class="gb-radar-arc gb-radar-arc-inner" />
+      </svg>
+    `
+    radar.append(this.#percent)
+    card.append(radar, this.#title, this.#list)
     this.node.append(card)
     this.#reveal = new Reveal(this.node, { kind: 'veil', onClosed: () => this.#clear() })
   }
@@ -36,6 +50,13 @@ export class LoaderSurface implements Surface {
       setText(this.#title, loading.title)
       this.node.dataset.veil = String(loading.stages.length === 0)
       this.#stages(loading.stages)
+      if (loading.stages.length > 0) {
+        const doneCount = loading.stages.filter((s) => s.state === 'done').length
+        const pct = Math.round((doneCount / loading.stages.length) * 100)
+        this.#percent.textContent = `${pct}%`
+      } else {
+        this.#percent.textContent = '100%'
+      }
     }
     this.#reveal.set(loading !== undefined)
   }

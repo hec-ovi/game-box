@@ -119,12 +119,14 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
       // where the player last stood.
       grade.render()
     },
-    start(frame) {
+    start(frame: (delta: number) => boolean | void) {
       const timer = new THREE.Timer()
       renderer.setAnimationLoop(() => {
         timer.update()
-        frame(Math.min(timer.getDelta(), 0.1))
-        grade.render()
+        const shouldRender = frame(Math.min(timer.getDelta(), 0.1))
+        if (shouldRender !== false) {
+          grade.render()
+        }
       })
     },
     dispose() {

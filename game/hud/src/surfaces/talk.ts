@@ -7,7 +7,7 @@ import { closeButton } from '../ui/act.ts'
 import type { Surface } from './surface.ts'
 import { Transcript } from './transcript.ts'
 
-const PLACEHOLDER = 'Say something'
+const PLACEHOLDER = 'Enter custom query_'
 
 /**
  * The conversation, as a panel of fixed width down one side of the view: who
@@ -28,8 +28,8 @@ export class TalkSurface implements Surface {
   #transcript = new Transcript()
   #moves = el('ul', 'gb-moves gb-scrolls')
   #input = el('input', 'gb-say gb-field gb-cut gb-edged')
+  #send = el('button', 'gb-talk-send-btn')
   #close: HTMLButtonElement
-  #hints = el('div')
   #emit: (intent: HudIntent) => void
   #focus = new FocusReturn()
   #reveal: Reveal
@@ -44,14 +44,27 @@ export class TalkSurface implements Surface {
     this.#input.placeholder = PLACEHOLDER
     this.#input.setAttribute('aria-label', PLACEHOLDER)
 
+    this.#send.type = 'button'
+    this.#send.setAttribute('aria-label', 'Send message')
+    this.#send.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`
+    this.#send.addEventListener('click', () => {
+      const text = this.#input.value.trim()
+      if (text) {
+        this.#input.value = ''
+        this.#emit({ kind: 'say', text })
+      }
+    })
+
     this.#close = closeButton(HUD_KEYS.close, 'Close conversation (Escape)')
     this.#close.addEventListener('click', () => this.#emit({ kind: 'talk-closed' }))
     const head = el('header', 'gb-head')
     head.append(this.#speaker, this.#close)
+    const inputRow = el('div', 'gb-talk-input-row')
+    inputRow.append(this.#input, this.#send)
     const foot = el('div', 'gb-talk-foot')
-    foot.append(this.#moves, this.#input, this.#hints)
+    foot.append(inputRow)
 
-    this.node.append(head, this.#transcript.node, foot)
+    this.node.append(head, this.#transcript.node, foot, this.#moves)
     // The whole panel holds the keyboard, not just the box: the player can be
     // on a move button, and the game must still not hear a walk key.
     this.node.addEventListener('focusin', () => this.#emit({ kind: 'typing', typing: true }))
@@ -67,8 +80,17 @@ export class TalkSurface implements Surface {
     const talk = state.talk
     if (talk) {
       setText(this.#speaker, talk.speaker)
-      this.#transcript.render(talk.turns)
+      this.#transcript.render(talk.turns, talk.speaker)
       this.#menu(talk.moves, talk.pending)
+      this.#input.disabled = talk.pending
+      this.#input.placeholder = talk.pending ? 'AI thinking...' : PLACEHOLDER
+      if (talk.pending) {
+        this.#send.disabled = true
+        this.#send.innerHTML = `<span class="gb-ai-thinking-orb" data-thinking="true"></span>`
+      } else {
+        this.#send.disabled = false
+        this.#send.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`
+      }
     }
     if (talk && !this.#reveal.open) this.#start()
     if (!talk && this.#reveal.open) this.#end()
@@ -76,7 +98,7 @@ export class TalkSurface implements Surface {
 
   /** Send what is in the box. False when the box has neither focus nor a line. */
   submit(): boolean {
-    if (this.node.ownerDocument.activeElement !== this.#input) return false
+    if (this.node.ownerDocument.activeElement !== this.#input && this.node.ownerDocument.activeElement !== this.#send) return false
     const text = this.#input.value.trim()
     if (!text) return false
     this.#input.value = ''
@@ -86,7 +108,7 @@ export class TalkSurface implements Surface {
 
   /** Tab round the conversation: the box, then the moves, then the way out. */
   cycle(back: boolean): boolean {
-    return cycleFocus([this.#input, ...this.#buttons(), this.#close], back)
+    return cycleFocus([this.#input, ...this.#buttons(), this.#close, this.#send], back)
   }
 
   dispose(): void {
@@ -103,7 +125,6 @@ export class TalkSurface implements Surface {
     if (key !== this.#drawn) {
       this.#drawn = key
       this.#moves.replaceChildren(...moves.map((move, at) => this.#option(move, at)))
-      this.#hints.replaceChildren(hintList(moves.length ? [TALK_PICK_HINT, ...TALK_HINTS] : TALK_HINTS))
     }
     for (const button of this.#buttons()) {
       // A disabled button drops the keyboard on the floor, which would hand the
@@ -151,6 +172,5 @@ export class TalkSurface implements Surface {
     setText(this.#speaker, '')
     this.#transcript.clear()
     this.#moves.replaceChildren()
-    this.#hints.replaceChildren()
   }
 }

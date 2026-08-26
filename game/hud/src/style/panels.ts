@@ -67,19 +67,127 @@ export const PANELS = `
   color: var(--gb-faint);
 }
 
-/* "E  Go into The Copper Wheel", low and central, where the eye already is;
-   central in what the conversation leaves while one is up. */
-.gb-hud .gb-prompt {
-  position: absolute;
-  z-index: ${LAYERS.corner};
-  left: 50%;
-  bottom: ${LAYOUT.foot + 36}px;
+/* NPC Caller Avatar Card (shown in top-left corner replacing objectives during conversation) */
+.gb-hud .gb-objectives[data-mode='caller'] {
+  --gb-line: var(--gb-accent);
+  box-shadow: 0 0 16px var(--gb-edge-lit);
+  background: var(--gb-solid);
+  max-height: none;
+  width: 170px;
+}
+.gb-hud .gb-objectives[data-mode='caller'] .gb-caller-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gb-s2);
+  padding: var(--gb-s3);
+}
+.gb-hud .gb-caller-avatar-box {
+  width: 140px;
+  height: 140px;
+  background: var(--gb-well);
+  border: 1px solid var(--gb-edge-accent);
+  position: relative;
   display: flex;
   align-items: center;
-  gap: var(--gb-s3);
-  padding: var(--gb-s2) var(--gb-s4);
+  justify-content: center;
+}
+.gb-hud .gb-portrait-svg {
+  width: 100%;
+  height: 100%;
+}
+.gb-hud .gb-caller-name {
+  color: var(--gb-accent-lit);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-align: center;
+  margin: 4px 0 2px;
+}
+.gb-hud .gb-caller-voice-wave {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 20px;
+  width: 100%;
+}
+.gb-hud .gb-v-bar {
+  width: 3px;
+  height: 8px;
+  background: var(--gb-accent);
+  animation: gb-voice-bar 1.2s ease-in-out infinite alternate;
+}
+@keyframes gb-voice-bar {
+  0% { transform: scaleY(0.4); opacity: 0.5; }
+  50% { transform: scaleY(1.6); opacity: 1; }
+  100% { transform: scaleY(0.6); opacity: 0.7; }
+}
+
+/* "E  [Key] Go into The Copper Wheel", embedded seamlessly into the footer HUD */
+.gb-hud .gb-prompt {
+  position: absolute;
+  z-index: ${LAYERS.bar + 1};
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: ${LAYOUT.margin + 4}px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: var(--gb-s2);
+  padding: 0 var(--gb-s2);
   white-space: nowrap;
+  background: transparent;
+  pointer-events: none;
 }
 .gb-hud[data-talk='true'] .gb-prompt { left: calc((100% - ${SIDE_RIGHT}px) / 2); }
-.gb-hud .gb-prompt kbd { --gb-line: var(--gb-accent); min-width: 24px; height: 22px; color: var(--gb-accent); }
+.gb-hud .gb-prompt kbd {
+  --cut: var(--gb-cut-key);
+  --gb-line: var(--gb-accent);
+  min-width: 28px;
+  height: 28px;
+  padding: 0 var(--gb-s2);
+  color: var(--gb-accent-lit);
+  font-size: 13px;
+  font-weight: 900;
+  background: var(--gb-solid);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--gb-accent);
+  box-shadow: 0 0 10px var(--gb-edge-lit);
+  animation: gb-key-pulse 1.8s ease-in-out infinite alternate;
+}
+@keyframes gb-key-pulse {
+  0% { transform: scale(1); color: var(--gb-accent); }
+  100% { transform: scale(1.08); color: var(--gb-accent-lit); }
+}
+.gb-hud .gb-prompt-anim-icon {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gb-accent);
+  animation: gb-icon-pulse 1.8s ease-in-out infinite alternate;
+}
+.gb-hud .gb-prompt-anim-icon svg {
+  width: 100%;
+  height: 100%;
+}
+@keyframes gb-icon-pulse {
+  0% { transform: scale(1); opacity: 0.85; }
+  100% { transform: scale(1.12); opacity: 1; color: var(--gb-accent-lit); }
+}
+.gb-hud .gb-prompt .gb-prompt-text {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--gb-ink);
+  animation: gb-prompt-light 2.2s ease-in-out infinite alternate;
+}
+@keyframes gb-prompt-light {
+  0% { opacity: 0.8; color: var(--gb-ink); }
+  100% { opacity: 1; color: var(--gb-accent-lit); }
+}
 `

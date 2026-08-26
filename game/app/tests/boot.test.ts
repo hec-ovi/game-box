@@ -60,22 +60,14 @@ const DOWN: SidecarOptions = { fetch: () => Promise.reject(new Error('nothing li
 describe('the panel is up before anything loads', () => {
   beforeEach(servePage)
 
-  it('serves the whole form in the page itself, so first paint is the panel', () => {
+  it('serves the whole landing HUD in the page itself, so first paint is the main menu', () => {
     const fields = within(screen.getByRole('region', { name: 'game-box' }))
-    expect(fields.getByLabelText(/theme/i)).toBeTruthy()
-    expect(fields.getByLabelText(/what the city is about/i).tagName).toBe('TEXTAREA')
-    expect(fields.getByLabelText(/main quest/i)).toBeTruthy()
-    expect(fields.getByLabelText(/side quests/i)).toBeTruthy()
-    expect(fields.getByLabelText(/tone/i)).toBeTruthy()
-    expect(fields.getByLabelText(/seed/i)).toBeTruthy()
-    expect(fields.getByLabelText(/blocks/i)).toBeTruthy()
-    expect(fields.getByRole('button', { name: /generate/i })).toBeTruthy()
-    expect(fields.getByRole('button', { name: /export/i })).toBeTruthy()
-    expect(fields.getByRole('status').textContent).toMatch(/loading/i)
-    // and the landing screen with it, folded away behind the form until the
-    // shelf has been read: neither face waits on a second request
+    expect(fields.getByRole('button', { name: /create game/i })).toBeTruthy()
+    expect(fields.getByText(/import city/i)).toBeTruthy()
+    expect(fields.getByText(/settings/i)).toBeTruthy()
     expect(document.querySelector('[data-boot="library"]')).toBeTruthy()
-    expect(document.querySelector<HTMLElement>('[data-boot="home"]')!.hidden).toBe(true)
+    expect(document.querySelector<HTMLElement>('[data-boot="home"]')!.hidden).toBe(false)
+    expect(document.querySelector<HTMLElement>('[data-boot="make"]')!.hidden).toBe(true)
   })
 
   it('paints the same defaults the generator would use, so the fields never lie', () => {
@@ -291,6 +283,7 @@ describe('the panel', () => {
     const user = userEvent.setup()
     await user.click(within(boxes[1]!).getByRole('button', { name: /open kell point/i }))
     await user.click(within(boxes[0]!).getByRole('button', { name: /remove grey slip/i }))
+    await user.click(within(boxes[0]!).getByRole('button', { name: /confirm remove grey slip/i }))
     expect(picked).toEqual(['old'])
     expect(removed).toEqual(['new'])
   })
@@ -881,6 +874,7 @@ describe('the front door end to end', () => {
     expect(screen.getAllByRole('listitem')[0]!.dataset.key).toBe(rows[1]!.dataset.key)
 
     await user.click(within(screen.getAllByRole('listitem')[0]!).getByRole('button', { name: /^remove/i }))
+    await user.click(within(screen.getAllByRole('listitem')[0]!).getByRole('button', { name: /confirm remove/i }))
     await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(1))
     expect((await shelf.list()).map((entry) => entry.name)).toEqual([started[1]])
     expect(options[2]!.save!.read()).toBeUndefined()

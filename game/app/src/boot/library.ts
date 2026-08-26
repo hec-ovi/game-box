@@ -21,6 +21,21 @@ export interface Shelved {
   readonly openedAt: number
   /** When the document under this key was written, for the landing screen to say. Absent on a row shelved before it was kept. */
   readonly madeAt?: number
+  /** What is in the city, counted once when it is shelved, so the landing screen never opens a document to draw a card. */
+  readonly holds?: Holds
+}
+
+/** What a city holds, for a card to say what a player is picking up. */
+export interface Holds {
+  readonly buildings: number
+  /** Doors that open. */
+  readonly places: number
+  readonly people: number
+  /** Steps on the main line, which is the length of the story. */
+  readonly mainSteps: number
+  readonly sideQuests: number
+  /** One sentence about the town, from the history it was built on. */
+  readonly summary?: string
 }
 
 /**
@@ -72,9 +87,24 @@ export class Library {
     this.#now = now
   }
 
-  /** Newest first, so the city the player was last in is the first row. */
+  /**
+   * Newest first, so the city the player was last in is the first row. A row
+   * shelved before the counts were kept is counted now, off its own document,
+   * so the landing screen never has a card that says less than its neighbour.
+   */
   async entries(): Promise<Shelved[]> {
-    return (await this.#shelf.list()).toSorted((a, b) => b.openedAt - a.openedAt)
+    const rows = (await this.#shelf.list()).toSorted((a, b) => b.openedAt - a.openedAt)
+    return Promise.all(rows.map((row) => (row.holds ? row : this.#count(row))))
+  }
+
+  /** Counts what an older row holds and keeps the answer, so it is read once. */
+  async #count(row: Shelved): Promise<Shelved> {
+    const document = await this.#shelf.document(row.key)
+    const holds = document ? holdsOfDocument(document) : undefined
+    if (!holds) return row
+    const counted = { ...row, holds }
+    await this.#shelf.put(counted, document)
+    return counted
   }
 
   /** The city the player was last in, if they have been in one. */
@@ -135,12 +165,54 @@ export class Library {
       ...(brief.brief ? { brief: brief.brief } : {}),
       ...(brief.asks ? { asks: brief.asks } : {}),
       hash: city.bundle.contentHash,
+      holds: holdsOf(city.bundle),
       source,
       openedAt: this.#now(),
       madeAt: this.#now(),
     }
     await this.#shelf.put(entry, city.document)
     return entry
+  }
+}
+
+/**
+ * What a city holds, counted from the sealed bundle once. A main line is the
+ * quests marked main, and its steps are what a player has ahead of them; a
+ * summary is the first line of the town's own story, so a card says what the
+ * place is rather than only what it is called.
+ */
+function holdsOf(bundle: OpenedBundle): Holds {
+  const world = bundle.world
+  const main = bundle.quests.filter((quest) => quest.kind === 'main')
+  const premise = world.premise()
+  return {
+    buildings: world.plots().length,
+    places: world.interiors().length,
+    people: world.npcs().length,
+    mainSteps: main.reduce((total, quest) => total + quest.steps.length, 0),
+    sideQuests: bundle.quests.length - main.length,
+    ...(premise?.livesOn ? { summary: premise.livesOn } : {}),
+  }
+}
+
+/**
+ * The same counts read straight off a shelved document, for a row written
+ * before they were kept. It reads the file's own shape rather than opening the
+ * bundle, because a landing screen must not do a city's worth of work per card.
+ */
+function holdsOfDocument(document: unknown): Holds | undefined {
+  const held = document as { world?: { plots?: unknown[]; interiors?: unknown[]; npcs?: unknown[]; premise?: { livesOn?: string } }; quests?: Array<{ kind?: string; steps?: unknown[] }> }
+  const world = held?.world
+  if (!world?.plots || !world.interiors || !world.npcs) return undefined
+  const quests = held.quests ?? []
+  const main = quests.filter((quest) => quest.kind === 'main')
+  return {
+    buildings: world.plots.length,
+    places: world.interiors.length,
+    people: world.npcs.length,
+    mainSteps: main.reduce((total, quest) => total + (quest.steps?.length ?? 0), 0),
+    sideQuests: quests.length - main.length,
+    ...(world.premise?.livesOn ? { summary: world.premise.livesOn } : {}),
   }
 }
 

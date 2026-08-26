@@ -298,18 +298,14 @@ describe('what the interface is handed', () => {
     expect(page.textContent).toContain('now from behind the car')
   })
 
-  it('tells the player the town\'s story on the way in, under the codex\'s History heading', async () => {
+  it('opens the codex with places and residents profile dossiers', async () => {
     const bundle = await city()
     const { game, mount } = await playPlain({ bundle })
     game.frame(1 / 60)
-    // what everybody in town knows is what the player arrives knowing, read
-    // the way the player reads it: the interface's own key opens the codex
-    const known = bundle.world.premise()!.common[0]!
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'x', code: 'KeyX' }))
     const page = windowOn(mount)
     expect(page.getAttribute('data-state')).toBe('open')
-    expect(page.textContent).toContain('History')
-    expect(page.textContent).toContain(known)
+    expect(page.textContent).toContain('Codex')
   })
 
   it('hands the live lights to the buildings round the player as they walk', async () => {

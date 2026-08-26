@@ -25,6 +25,7 @@ export class Plan {
   readonly node = el('div', 'gb-plan')
   #svg = svg('svg', { role: 'img', 'aria-label': 'City plan' })
   #ground = svg('rect', { class: 'gb-ground' })
+  #zones = svg('g', { class: 'gb-zones' })
   #plots = svg('g', { class: 'gb-plots' })
   #names = svg('g', { class: 'gb-names' })
   #stations = svg('g', { class: 'gb-stations' })
@@ -35,7 +36,7 @@ export class Plan {
   #marksKey: string | null = null
 
   constructor() {
-    this.#svg.append(this.#ground, this.#plots, this.#names, this.#stations, this.#marks)
+    this.#svg.append(this.#ground, this.#zones, this.#plots, this.#names, this.#stations, this.#marks)
     this.node.append(this.#svg)
   }
 
@@ -52,9 +53,13 @@ export class Plan {
       this.#plotsKey = plotsKey
       this.#ground.setAttribute('width', String(map.width))
       this.#ground.setAttribute('height', String(map.height))
+      this.#drawZones(map.width, map.height)
       this.#plots.replaceChildren(...map.plots.map(block))
       this.#empty(this.#names)
-      for (const plot of map.plots) if (plot.named && plot.label) this.#name(plot)
+      for (const plot of map.plots) {
+        if (plot.named && plot.label) this.#name(plot)
+        if (plot.prominence === 'key') this.#door(plot)
+      }
     }
     const stations = map.stations ?? []
     const stationsKey = stations.map(stationKey).join('|')
@@ -71,6 +76,32 @@ export class Plan {
       for (const mark of marks) this.#mark(mark)
     }
     this.look(view)
+  }
+
+  #drawZones(width: number, height: number): void {
+    this.#zones.replaceChildren()
+    if (width <= 0 || height <= 0) return
+    const midX = width / 2
+    const midY = height / 2
+    const zoneDefs = [
+      { id: 'z1', name: 'West Commercial', x: 0, y: 0, w: midX, h: midY, line: 'main' },
+      { id: 'z2', name: 'Harbor District', x: midX, y: 0, w: midX, h: midY, line: 'side' },
+      { id: 'z3', name: 'Old Town Slums', x: 0, y: midY, w: midX, h: midY, line: 'side' },
+      { id: 'z4', name: 'Transit Center', x: midX, y: midY, w: midX, h: midY, line: 'main' },
+    ]
+    for (const z of zoneDefs) {
+      const rect = svg('rect', {
+        class: 'gb-zone-shape',
+        'data-line': z.line,
+        'data-zone': z.name,
+        x: z.x + 0.5,
+        y: z.y + 0.5,
+        width: z.w - 1,
+        height: z.h - 1,
+      })
+      rect.append(title(z.name))
+      this.#zones.append(rect)
+    }
   }
 
   /** Point the view: set what is on show and size the pixel-drawn things to it. */
@@ -115,6 +146,14 @@ export class Plan {
     node.append(svg('rect', { x: -r, y: -r, width: r * 2, height: r * 2 }), text(at.name, MARK_PX.gap, 0, 'start'), title(at.name))
     this.#stations.append(node)
     this.#fixed.push({ node, x: at.x, y: at.y, rotate: 0 })
+  }
+
+  #door(plot: MapPlot): void {
+    const node = svg('g', { class: 'gb-door-mark' })
+    const r = MARK_PX.door
+    node.append(svg('rect', { x: -r, y: -r, width: r * 2, height: r * 2 }), title(plot.label ?? 'Building Instance'))
+    this.#marks.append(node)
+    this.#fixed.push({ node, x: plot.rect.x + plot.rect.w / 2, y: plot.rect.y + plot.rect.h / 2, rotate: 0 })
   }
 
   #mark(mark: MapMark): void {

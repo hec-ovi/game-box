@@ -5,8 +5,8 @@
  * the plan is read by zooming into it.
  */
 export const MAP = `
-.gb-hud .gb-window-body[data-face='map'] { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
-.gb-hud .gb-map { position: relative; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.gb-hud .gb-window-body[data-face='map'] { display: flex; flex-direction: column; padding: 0; overflow: hidden; height: 100%; }
+.gb-hud .gb-map { position: relative; display: flex; flex-direction: row; flex: 1; min-height: 0; width: 100%; height: 100%; }
 .gb-hud .gb-map:focus-visible { box-shadow: inset 0 0 0 2px var(--gb-accent); }
 .gb-hud .gb-plan {
   position: relative;
@@ -17,6 +17,7 @@ export const MAP = `
   cursor: grab;
   touch-action: none;
   user-select: none;
+  height: 100%;
 }
 .gb-hud .gb-plan[data-dragging='true'] { cursor: grabbing; }
 /* The plan itself fills the frame; an icon inside a tool over it does not. */
@@ -44,28 +45,41 @@ export const MAP = `
   right: var(--gb-s3);
   display: flex;
   gap: var(--gb-s1);
+  z-index: 5;
 }
 .gb-hud .gb-map-tool { --gb-face: var(--gb-panel); }
 
-/* The foot of the plan: the places to head for, and beside them the stations. */
-.gb-hud .gb-map-foot {
+/* Left and Right Sidebars of the map */
+.gb-hud .gb-map-sidebar {
   flex: none;
   display: flex;
-  max-height: 150px;
-  background: var(--gb-solid);
-  box-shadow: inset 0 1px 0 var(--gb-edge);
+  flex-direction: column;
+  gap: var(--gb-s4);
+  padding: var(--gb-s4);
+  background: var(--gb-well);
+  overflow-y: auto;
 }
-.gb-hud .gb-map-foot > section {
+.gb-hud .gb-map-sidebar-left {
+  width: 320px;
+  border-right: 1px solid var(--gb-edge);
+}
+.gb-hud .gb-map-main-area {
   flex: 1;
   min-width: 0;
-  padding: var(--gb-s3) var(--gb-s4);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
-.gb-hud .gb-map-foot > section + section { box-shadow: inset 1px 0 0 var(--gb-edge); }
-.gb-hud .gb-map-foot h3 { margin-bottom: var(--gb-s2); color: var(--gb-faint); }
-.gb-hud .gb-map-foot .gb-empty, .gb-hud .gb-map-foot .gb-note { color: var(--gb-faint); }
+.gb-hud .gb-map-sidebar-right {
+  width: 260px;
+  border-left: 1px solid var(--gb-edge);
+}
+.gb-hud .gb-map-sidebar h3 { margin-bottom: var(--gb-s2); color: var(--gb-faint); font-weight: 700; }
+.gb-hud .gb-map-sidebar .gb-empty, .gb-hud .gb-map-sidebar .gb-note { color: var(--gb-faint); }
 .gb-hud .gb-station-list .gb-note { margin-top: var(--gb-s2); }
-/* The bearings wear the plan's own marks: a filled brass diamond on the story,
-   an open cyan ring on an errand. */
+
+/* The bearings wear the plan's own marks */
 .gb-hud .gb-bearings .gb-tile { color: var(--gb-accent); }
 .gb-hud .gb-bearings .gb-tile-main { color: var(--gb-main); }
 .gb-hud .gb-bearings .gb-tile-main .gb-icon { fill: currentColor; }
@@ -80,4 +94,47 @@ export const MAP = `
   transition: color var(--gb-t-press) var(--gb-in);
 }
 .gb-hud .gb-bearing:hover, .gb-hud .gb-bearing:focus-visible { color: var(--gb-accent-lit); }
+
+/* Zone boundaries and door marks */
+.gb-hud .gb-zone-shape {
+  fill: transparent;
+  stroke: var(--gb-accent);
+  stroke-width: 0.6;
+  opacity: 0.45;
+  cursor: pointer;
+  transition: opacity var(--gb-t-press) var(--gb-in);
+}
+.gb-hud .gb-zone-shape[data-line='main'] { stroke: var(--gb-main); }
+.gb-hud .gb-zone-shape:hover { opacity: 0.9; fill: var(--gb-lift); }
+
+.gb-hud .gb-door-mark rect {
+  fill: var(--gb-solid);
+  stroke: var(--gb-accent);
+  stroke-width: 1.5;
+}
+.gb-hud .gb-door-mark text {
+  fill: var(--gb-ink);
+  font-weight: 700;
+}
+
+/* Icon explanation guide on the left sidebar */
+.gb-hud .gb-map-legend-guide {
+  display: flex;
+  flex-direction: column;
+}
+.gb-hud .gb-legend-guide-list { display: flex; flex-direction: column; gap: var(--gb-s2); }
+.gb-hud .gb-legend-guide-item {
+  display: flex;
+  align-items: center;
+  gap: var(--gb-s2);
+  color: var(--gb-dim);
+}
+.gb-hud .gb-legend-guide-icon {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
 `

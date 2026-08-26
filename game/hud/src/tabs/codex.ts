@@ -1,37 +1,116 @@
 import { el } from '../dom.ts'
 import { rise } from '../motion.ts'
-import { CODEX_HEADS, NO_CODEX } from '../phrase.ts'
-import type { CodexNote, CodexPlace, HudState, HudWindowName } from '../types.ts'
+import { NO_CODEX } from '../phrase.ts'
+import type { CodexPerson, CodexPlace, HudState, HudWindowName } from '../types.ts'
+import { ICON_PX, icon } from '../ui/icon.ts'
 import { Row } from '../ui/row.ts'
 import { person } from './person.ts'
 import type { Tab } from './tab.ts'
 
+export type SelectedCodex =
+  | { kind: 'place'; item: CodexPlace }
+  | { kind: 'person'; item: CodexPerson }
+
 /**
- * What the player has found out: the places they have been into, the people
- * they have met and the history they have been told, under one heading each.
- * The game keeps the record and pushes it whole; the tab only reads it.
+ * Codex: Places and People only with interactive selection and amplified dossier.
  */
 export class CodexTab implements Tab {
   readonly name: HudWindowName = 'codex'
   readonly node = el('div', 'gb-codex')
+  #leftList = el('div', 'gb-codex-list-pane gb-scrolls')
+  #amplified = el('div', 'gb-codex-amplified gb-plate gb-cut gb-edged')
+  #selected: SelectedCodex | null = null
+  #state: HudState | null = null
   #key: string | null = null
 
+  constructor() {
+    const content = el('div', 'gb-codex-split-view')
+    content.append(this.#leftList, this.#amplified)
+    this.node.append(content)
+  }
+
   render(state: HudState): void {
+    this.#state = state
     const codex = state.codex
-    const key = JSON.stringify(codex)
-    if (key === this.#key) return
-    this.#key = key
-    const sections = [
-      group(CODEX_HEADS.places, codex.places.map(place)),
-      group(CODEX_HEADS.people, codex.people.map(person)),
-      group(CODEX_HEADS.history, (codex.history ?? []).map(note)),
-    ].filter((section) => section !== undefined)
-    this.node.replaceChildren(...(sections.length ? sections : [el('p', 'gb-empty gb-t3', NO_CODEX)]))
+    const key = JSON.stringify([codex.places, codex.people])
+    if (key !== this.#key) {
+      this.#key = key
+      if (!this.#selected) {
+        if (codex.places.length > 0) {
+          this.#selected = { kind: 'place', item: codex.places[0]! }
+        } else if (codex.people.length > 0) {
+          this.#selected = { kind: 'person', item: codex.people[0]! }
+        }
+      }
+    }
+    this.#draw()
+  }
+
+  #draw(): void {
+    if (!this.#state) return
+    const codex = this.#state.codex
+
+    const placeNodes = codex.places.map((p) => {
+      const node = el('li', 'gb-codex-entry gb-place-entry')
+      const row = new Row({ icon: 'door', title: p.name, line: p.text })
+      const isSelected = this.#selected?.kind === 'place' && this.#selected.item.name === p.name
+      node.dataset.selected = String(isSelected)
+      node.append(row.node)
+      node.addEventListener('click', () => {
+        this.#selected = { kind: 'place', item: p }
+        this.#draw()
+      })
+      return node
+    })
+
+    const peopleNodes = codex.people.map((p) => {
+      const node = person(p)
+      const isSelected = this.#selected?.kind === 'person' && this.#selected.item.name === p.name
+      node.dataset.selected = String(isSelected)
+      node.addEventListener('click', () => {
+        this.#selected = { kind: 'person', item: p }
+        this.#draw()
+      })
+      return node
+    })
+
+    const placesGroup = group('Places', placeNodes)
+    const peopleGroup = group('People', peopleNodes)
+    const groups = [placesGroup, peopleGroup].filter((g): g is HTMLElement => g !== undefined)
+
+    this.#leftList.replaceChildren(...(groups.length ? groups : [el('p', 'gb-empty gb-t3', NO_CODEX)]))
+
+    if (this.#selected?.kind === 'place') {
+      const p = this.#selected.item
+      this.#showAmplified(p.name, 'Urban District Location', p.text, 'door')
+    } else if (this.#selected?.kind === 'person') {
+      const pr = this.#selected.item
+      const factsText = pr.facts.map((f) => f.text).filter(Boolean).join('\n\n') || 'No facts unlocked yet.'
+      this.#showAmplified(pr.name, pr.role || 'Citizen Profile', factsText, 'person')
+    } else {
+      this.#showAmplified('Codex Database', 'Urban Archives', 'Select a location or resident to view detailed profile and telemetry.', 'door')
+    }
+  }
+
+  #showAmplified(name: string, subtitle: string, desc: string, iconName: 'door' | 'person'): void {
+    const avatar = el('div', `gb-codex-amplified-avatar gb-avatar-${iconName}`)
+    if (iconName === 'person') {
+      avatar.innerHTML = `<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M2 12h3M19 12h3" stroke="currentColor"/></svg>`
+    } else {
+      avatar.append(icon('door', ICON_PX.tile))
+    }
+    const title = el('h3', 'gb-t6', name)
+    const sub = el('p', 'gb-t2 gb-amplified-sub', subtitle)
+    const body = el('p', 'gb-t3 gb-amplified-desc', `Dossier: ${desc}`)
+    this.#amplified.replaceChildren(avatar, title, sub, body)
   }
 
   clear(): void {
     this.#key = null
-    this.node.replaceChildren()
+    this.#state = null
+    this.#selected = null
+    this.#leftList.replaceChildren()
+    this.#amplified.replaceChildren()
   }
 }
 
@@ -43,17 +122,5 @@ function group(title: string, rows: readonly HTMLElement[]): HTMLElement | undef
   rows.forEach((row, at) => rise(row, at))
   list.append(...rows)
   node.append(el('h3', 'gb-t5 gb-section-head', title), list)
-  return node
-}
-
-function place(entry: CodexPlace): HTMLElement {
-  const node = el('li', 'gb-codex-entry')
-  node.append(new Row({ icon: 'door', title: entry.name, line: entry.text }).node)
-  return node
-}
-
-function note(entry: CodexNote): HTMLElement {
-  const node = el('li', 'gb-codex-entry')
-  node.append(new Row({ icon: 'codex', title: entry.title }).node, el('p', 'gb-note-text gb-t3', entry.text))
   return node
 }

@@ -54,7 +54,9 @@ export class HudWindow {
 
     this.#reveal = new Reveal(this.frame, {
       kind: 'frame',
-      ...(input.onClosed ? { onClosed: input.onClosed } : {}),
+      onClosed: () => {
+        input.onClosed?.()
+      },
     })
   }
 

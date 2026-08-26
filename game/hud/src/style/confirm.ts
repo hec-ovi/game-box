@@ -9,17 +9,17 @@ import { INNER_LEFT, LAYERS, LAYOUT, SIDE_RIGHT } from './layout.ts'
 export const CONFIRM_CSS = `
 .gb-hud .gb-confirm-room {
   position: absolute;
-  left: ${INNER_LEFT}px;
-  right: ${LAYOUT.margin}px;
-  top: ${LAYOUT.top}px;
-  bottom: ${LAYOUT.foot}px;
+  left: 0px;
+  right: 0px;
+  top: 0px;
+  bottom: 0px;
   display: flex;
   align-items: center;
   justify-content: center;
   pointer-events: none;
   z-index: ${LAYERS.confirm};
 }
-.gb-hud[data-talk='true'] .gb-confirm-room { right: ${SIDE_RIGHT}px; }
+.gb-hud[data-talk='true'] .gb-confirm-room { right: 0px; }
 
 .gb-hud .gb-confirm {
   width: ${LAYOUT.confirm.width}px;

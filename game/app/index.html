@@ -18,14 +18,14 @@
       :root,
       .gb-boot {
         /* ground */
-        --gb-void: #05080a;
-        --gb-panel: #0a1114;
-        --gb-solid: #0c1519;
-        --gb-lift: #132025;
-        --gb-well: #050b0e;
+        --gb-void: #000000;
+        --gb-panel: #000000;
+        --gb-solid: #000000;
+        --gb-lift: #0c1519;
+        --gb-well: #020507;
         /* edges */
-        --gb-edge: #1d3038;
-        --gb-edge-lit: #2e555f;
+        --gb-edge: #15252c;
+        --gb-edge-lit: #25424c;
         --gb-edge-accent: rgba(47, 217, 230, 0.55);
         /* the accent */
         --gb-accent: #2fd9e6;
@@ -83,7 +83,13 @@
         padding: 0;
         height: 100%;
         overflow: hidden;
-        background: var(--gb-void);
+        background-color: #020507;
+        background-image:
+          linear-gradient(to right, rgba(47, 217, 230, 0.22) 1.5px, transparent 1.5px),
+          linear-gradient(to bottom, rgba(47, 217, 230, 0.22) 1.5px, transparent 1.5px),
+          linear-gradient(to right, rgba(47, 217, 230, 0.07) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(47, 217, 230, 0.07) 1px, transparent 1px);
+        background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px;
       }
       #game {
         width: 100vw;
@@ -129,243 +135,303 @@
         --in: 3px;
       }
       .gb-boot .gb-edged {
-        padding: 1px;
+        position: relative;
+      }
+      .gb-boot .gb-edged::before {
+        content: '';
+        position: absolute;
+        inset: 0;
         background: var(--gb-edge);
+        clip-path: inherit;
+        pointer-events: none;
       }
       .gb-boot .gb-edged > * {
-        --cut: var(--in);
-        display: block;
-        width: 100%;
-        height: 100%;
+        position: relative;
+        margin: 1px;
         background: var(--gb-ground, var(--gb-lift));
       }
 
-      .gb-t0,
-      .gb-t1,
-      .gb-t5,
-      .gb-t6,
-      .gb-t7 {
+      /* type */
+      .gb-boot .gb-t7 {
         font-family: var(--gb-display);
-        text-transform: uppercase;
-        line-height: 1.2;
-      }
-      .gb-t0 {
-        font-size: 10px;
-        font-weight: 600;
-        letter-spacing: 0.14em;
-      }
-      .gb-t1 {
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 0.12em;
-      }
-      .gb-t2 {
-        font: 400 12px/1.45 var(--gb-body);
-      }
-      .gb-t3 {
-        font: 400 13px/1.45 var(--gb-body);
-      }
-      .gb-t4 {
-        font: 600 15px/1.2 var(--gb-body);
-        letter-spacing: 0.02em;
-      }
-      .gb-t5 {
-        font-size: 17px;
-        font-weight: 600;
+        font-size: 26px;
+        line-height: 1;
+        font-weight: 700;
         letter-spacing: 0.08em;
+        text-transform: uppercase;
       }
-      .gb-t6 {
-        font-size: 22px;
-        font-weight: 600;
+      .gb-boot .gb-t6 {
+        font-family: var(--gb-display);
+        font-size: 20px;
+        line-height: 1.1;
+        font-weight: 700;
         letter-spacing: 0.06em;
+        text-transform: uppercase;
       }
-      .gb-t7 {
-        font-size: 30px;
-        font-weight: 600;
+      .gb-boot .gb-t5 {
+        font-family: var(--gb-display);
+        font-size: 15px;
+        line-height: 1.2;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .gb-boot .gb-t4 {
+        font-family: var(--gb-display);
+        font-size: 13px;
+        line-height: 1.2;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .gb-boot .gb-t3 {
+        font-family: var(--gb-body);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .gb-boot .gb-t2 {
+        font-family: var(--gb-body);
+        font-size: 11px;
+        line-height: 1.4;
+        color: var(--gb-dim);
+      }
+      .gb-boot .gb-t1 {
+        font-family: var(--gb-display);
+        font-size: 11px;
+        line-height: 1.2;
+        font-weight: 700;
         letter-spacing: 0.1em;
-      }
-      /* every number is monospaced, so a count that changes moves nothing beside it */
-      .gb-num {
-        font-family: var(--gb-mono);
-        font-variant-numeric: tabular-nums;
-        font-weight: 500;
+        text-transform: uppercase;
       }
 
-      .gb-i {
-        display: inline-flex;
-        flex: none;
-        align-items: center;
-        justify-content: center;
-        width: 1em;
-        height: 1em;
-        font-size: 20px;
+      /* icons */
+      .gb-boot .gb-i {
+        display: inline-block;
+        width: 18px;
+        height: 18px;
+        vertical-align: -3px;
       }
-      .gb-i svg {
+      .gb-boot .gb-i-14 {
+        width: 14px;
+        height: 14px;
+      }
+      .gb-boot .gb-i-16 {
+        width: 16px;
+        height: 16px;
+      }
+      .gb-boot .gb-i-20 {
+        width: 20px;
+        height: 20px;
+      }
+      .gb-boot .gb-i-24 {
+        width: 24px;
+        height: 24px;
+      }
+      .gb-boot .gb-i svg {
         display: block;
         width: 100%;
         height: 100%;
       }
-      .gb-i-16 {
-        font-size: 16px;
-      }
-      .gb-i-14 {
-        font-size: 14px;
-      }
-      .gb-i-28 {
-        font-size: 28px;
-      }
 
-      /* a key cap: every option the keyboard can reach carries one */
-      .gb-key {
-        display: inline-block;
-        flex: none;
-        min-width: 18px;
-        height: 18px;
-        padding: 0 3px;
-        background: var(--gb-lift);
-        color: var(--gb-dim);
-        font: 500 10px/18px var(--gb-mono);
-        letter-spacing: 0.04em;
-        text-align: center;
+      /* access */
+      .gb-boot .gb-sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
       }
-      .gb-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: var(--gb-s1);
-        padding: 3px 7px;
-        background: var(--gb-lift);
-        color: var(--gb-dim);
+      .gb-boot [data-icon] {
+        contain: layout paint;
       }
 
       /* ------------------------------------------------------------------
-         The panel itself
+         The panel itself: full-screen game main menu HUD
          ------------------------------------------------------------------ */
       .gb-boot {
         position: fixed;
         inset: 0;
         z-index: 40;
-        display: grid;
-        place-items: center;
-        padding: var(--gb-s4);
+        display: flex;
+        flex-direction: column;
+        width: 100vw;
+        height: 100vh;
         box-sizing: border-box;
-        background: var(--gb-scrim);
+        background-color: #020507;
+        background-image:
+          linear-gradient(to right, rgba(47, 217, 230, 0.22) 1.5px, transparent 1.5px),
+          linear-gradient(to bottom, rgba(47, 217, 230, 0.22) 1.5px, transparent 1.5px),
+          linear-gradient(to right, rgba(47, 217, 230, 0.07) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(47, 217, 230, 0.07) 1px, transparent 1px);
+        background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px;
         color: var(--gb-ink);
         font: 400 13px/1.45 var(--gb-body);
         contain: paint;
+        overflow: hidden;
       }
       .gb-boot[hidden] {
         display: none;
       }
-      /* closed the moment it is asked to close: no clicks, no keyboard, no
-         accessible tree, and only the pixels linger */
+      /* closed the moment it is asked to close */
       .gb-boot[data-leaving='true'] {
         pointer-events: none;
         opacity: 0;
         transition: opacity var(--gb-t-veil) var(--gb-out);
       }
-      /* the landing screen is the game's own ground, not a frame over the city */
-      .gb-boot[data-face='home'] {
-        background-color: var(--gb-void);
-        background-image: linear-gradient(var(--gb-edge) 1px, transparent 1px), linear-gradient(90deg, var(--gb-edge) 1px, transparent 1px);
-        background-size: 48px 48px;
-        background-position: center;
-      }
-      /* standing aside: a city being written has the loader under the panel, so
-         the card folds down to the step it is on and the way to stop it */
+      /* standing aside: total new clean view, boot panel completely hidden */
       .gb-boot[data-aside='true'] {
-        place-items: end center;
-        background: transparent;
-        pointer-events: none;
+        display: none !important;
       }
-      .gb-boot[data-aside='true'] .gb-boot-card {
-        width: auto;
-        height: auto;
-        margin-bottom: var(--gb-s5);
-        pointer-events: auto;
-      }
-      .gb-boot[data-aside='true'] .gb-boot-fold,
-      .gb-boot[data-aside='true'] .gb-boot-crown,
-      .gb-boot[data-aside='true'] .gb-boot-foot button:not([data-boot='cancel']) {
-        display: none;
-      }
-      /* a face the panel is not showing is out of the page, not scrolled past */
       .gb-boot [hidden] {
-        display: none;
+        display: none !important;
       }
 
+      /* Custom futuristic scrollbar */
+      .gb-boot ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      .gb-boot ::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.9);
+      }
+      .gb-boot ::-webkit-scrollbar-thumb {
+        background: var(--gb-edge-lit);
+        border-radius: 3px;
+      }
+      .gb-boot ::-webkit-scrollbar-thumb:hover {
+        background: var(--gb-accent);
+      }
+
+      /* Fullscreen HUD Container */
       .gb-boot-card {
         display: flex;
         flex-direction: column;
-        width: min(66rem, 100%);
-        height: min(48rem, 100%);
-        box-shadow: var(--gb-frame);
+        width: 100vw;
+        height: 100vh;
+        background: transparent;
+        overflow: hidden;
+        position: relative;
       }
-      .gb-boot .gb-boot-card > .gb-boot-card-in {
+      .gb-boot-card-in {
         display: flex;
         flex-direction: column;
-        flex: 1;
-        min-height: 0;
-        height: auto;
-        background: var(--gb-solid);
-      }
-      /* the landing is a ground with cards on it, so the frame gets out of the way */
-      .gb-boot[data-face='home'] .gb-boot-card {
-        width: min(74rem, 100%);
+        width: 100%;
+        height: 100%;
         background: transparent;
-        box-shadow: none;
-        clip-path: none;
-      }
-      .gb-boot[data-face='home'] .gb-boot-card > .gb-boot-card-in {
-        margin: 0;
-        background: transparent;
-        clip-path: none;
       }
 
-      /* the header: hatch over the raised ground, an accent-led rule under it */
+      /* ------------------------------------------------------------------
+         Top Header Bar: solid top-left, stepped-up contour on right (expected.jpg)
+         ------------------------------------------------------------------ */
       .gb-boot-crown {
         display: flex;
         align-items: center;
-        gap: var(--gb-s3);
+        justify-content: space-between;
         flex: none;
-        height: 54px;
-        padding: 0 var(--gb-s4);
-        background-color: var(--gb-lift);
-        background-image: var(--gb-hatch);
+        height: 80px;
+        padding: 0 44px;
+        background: linear-gradient(180deg, rgba(8, 14, 18, 0.98) 0%, rgba(0, 0, 0, 0.96) 100%);
+        border-top: 3px solid var(--gb-accent);
+        box-shadow: 0 0 24px rgba(47, 217, 230, 0.25), 0 8px 30px rgba(0, 0, 0, 0.95);
         color: var(--gb-ink);
         position: relative;
+        clip-path: polygon(0 0, 100% 0, 100% calc(100% - 22px), calc(100% - 240px) calc(100% - 22px), calc(100% - 268px) 100%, 0 100%);
       }
+      .gb-boot-crown::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image: var(--gb-hatch);
+        opacity: 0.35;
+        pointer-events: none;
+      }
+      /* Glowing contoured bottom neon border line matching expected.jpg */
       .gb-boot-crown::after {
         content: '';
         position: absolute;
-        inset: auto 0 0 0;
-        height: 1px;
-        background: linear-gradient(90deg, var(--gb-accent) 0 48px, var(--gb-edge) 48px);
+        inset: 0;
+        pointer-events: none;
+        background: linear-gradient(90deg, #2fd9e6 0%, #7df3fa 100%);
+        clip-path: polygon(
+          0 calc(100% - 2px),
+          calc(100% - 268px) calc(100% - 2px),
+          calc(100% - 240px) calc(100% - 24px),
+          100% calc(100% - 24px),
+          100% calc(100% - 22px),
+          calc(100% - 240px) calc(100% - 22px),
+          calc(100% - 268px) 100%,
+          0 100%
+        );
+        box-shadow: 0 0 16px var(--gb-accent);
       }
-      .gb-boot-crown .gb-i {
-        color: var(--gb-accent);
+      .gb-boot-crown-headings {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        min-width: 0;
+        z-index: 1;
+      }
+      .gb-boot[data-face='home'] .gb-boot-crown-headings {
+        align-items: flex-start;
+        text-align: left;
+      }
+      .gb-boot[data-face='make'] .gb-boot-crown-headings {
+        align-items: center;
+        text-align: center;
+        margin: 0 auto;
       }
       .gb-boot-title {
         margin: 0;
-        color: var(--gb-ink);
+        color: #ffffff;
+        font-family: var(--gb-display);
+        font-size: 26px;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        text-shadow: 0 0 16px rgba(47, 217, 230, 0.65), 0 0 32px rgba(47, 217, 230, 0.35);
       }
       .gb-boot-sub {
-        margin: 0 0 0 auto;
-        max-width: 34rem;
-        color: var(--gb-faint);
-        text-align: right;
+        margin: 0;
+        max-width: 50rem;
+        color: var(--gb-dim);
+        font-size: 12px;
+        line-height: 1.35;
       }
-      .gb-boot[data-face='home'] .gb-boot-crown {
-        height: auto;
-        padding: 0 0 var(--gb-s4);
-        background: none;
-      }
-      /* the landing screen's own title is the step above a frame's */
-      .gb-boot[data-face='home'] .gb-boot-title {
-        font-size: 30px;
-        letter-spacing: 0.1em;
-      }
-      .gb-boot[data-face='home'] .gb-boot-crown::after {
+
+      /* Big Huge Back Button on Header when in make view */
+      .gb-btn-huge-back {
         display: none;
+        align-items: center;
+        gap: 12px;
+        min-height: 52px;
+        padding: 0 24px;
+        font-size: 14px;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #ffffff;
+        background: linear-gradient(90deg, rgba(47, 217, 230, 0.35) 0%, rgba(8, 18, 24, 0.95) 100%);
+        border: 1px solid var(--gb-accent);
+        border-radius: 4px;
+        box-shadow: 0 0 20px rgba(47, 217, 230, 0.4), inset 0 0 12px rgba(47, 217, 230, 0.2);
+        cursor: pointer;
+        z-index: 5;
+        transition: all 0.15s ease;
+      }
+      .gb-btn-huge-back:hover {
+        background: linear-gradient(90deg, rgba(47, 217, 230, 0.55) 0%, rgba(14, 30, 38, 0.98) 100%);
+        box-shadow: 0 0 30px rgba(47, 217, 230, 0.7);
+        transform: translateX(-3px);
+      }
+      .gb-boot[data-face='home'] .gb-btn-huge-back {
+        display: none !important;
+      }
+      .gb-boot[data-face='make'] .gb-btn-huge-back {
+        display: inline-flex !important;
       }
 
       .gb-boot-body {
@@ -374,10 +440,1686 @@
         flex: 1;
         min-height: 0;
       }
+      /* Strict View & Fold Isolation (No Bleed-Through or Overlap) */
       .gb-boot-fold {
+        display: none;
+      }
+      .gb-boot[data-face='home'] .gb-boot-fold[data-boot='home'] {
+        display: flex !important;
+        flex: 1;
+        min-height: 0;
+      }
+      .gb-boot[data-face='make'] .gb-boot-fold[data-boot='make'] {
+        display: flex !important;
+        flex: 1;
+        min-height: 0;
+      }
+      .gb-boot[data-face='home'] [data-boot='make'] {
+        display: none !important;
+      }
+      .gb-boot[data-face='make'] [data-boot='home'] {
+        display: none !important;
+      }
+
+      /* ------------------------------------------------------------------
+         Home View: Flush Left Alignment with Header, Clean Shelf
+         ------------------------------------------------------------------ */
+      .gb-boot-home-layout {
         display: flex;
         flex: 1;
         min-height: 0;
+        width: 100%;
+        margin: 0;
+        padding: 24px 44px;
+        gap: 40px;
+        box-sizing: border-box;
+      }
+      .gb-boot-home-rail {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        gap: 14px;
+        flex: none;
+        width: 16rem;
+        padding: 0;
+        margin: 0;
+      }
+      .gb-boot-home-main {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-width: 0;
+        overflow-y: auto;
+        padding-right: 12px;
+      }
+
+      /* General HUD Buttons (Clean rectangular cyber buttons with high-tech glow) */
+      .gb-hud-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        position: relative;
+        padding: 0 16px;
+        min-height: 40px;
+        background: linear-gradient(90deg, #101c22 0%, #081014 100%);
+        border: 1px solid rgba(47, 217, 230, 0.3);
+        border-radius: 4px;
+        color: var(--gb-dim);
+        font-family: var(--gb-display);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        text-align: center;
+        cursor: pointer;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+        transition: all 0.15s cubic-bezier(0.2, 0.7, 0.2, 1);
+        user-select: none;
+        text-decoration: none;
+      }
+      .gb-hud-btn .gb-i {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        flex: none;
+      }
+      .gb-hud-btn:hover {
+        background: linear-gradient(90deg, #1a303a 0%, #101c22 100%);
+        border-color: var(--gb-accent);
+        color: #ffffff;
+        box-shadow: 0 0 22px rgba(47, 217, 230, 0.4), 0 6px 20px rgba(0, 0, 0, 0.7);
+      }
+      .gb-hud-btn[data-lit='true'] {
+        background: linear-gradient(90deg, rgba(47, 217, 230, 0.3) 0%, #0d1a20 100%);
+        border-color: var(--gb-accent);
+        color: var(--gb-accent-lit);
+        box-shadow: 0 0 20px rgba(47, 217, 230, 0.35);
+      }
+      .gb-hud-btn[data-lit='true']:hover {
+        background: linear-gradient(90deg, rgba(47, 217, 230, 0.5) 0%, #152932 100%);
+        box-shadow: 0 0 30px rgba(47, 217, 230, 0.65);
+      }
+      .gb-hud-btn:focus-visible {
+        outline: none;
+        border-color: var(--gb-accent);
+        box-shadow: 0 0 14px var(--gb-accent);
+      }
+
+      /* Home Rail Menu Tabs (Contoured right-pointing cyber tabs matching expected.jpg) */
+      .gb-boot-home-rail .gb-hud-btn {
+        min-height: 52px;
+        padding: 0 20px;
+        font-size: 13px;
+        text-align: left;
+        clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%);
+      }
+      .gb-boot-home-rail .gb-hud-btn::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 6px;
+        background: var(--gb-accent-dim);
+        clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+        transition: background-color 0.15s ease, box-shadow 0.15s ease;
+      }
+      .gb-boot-home-rail .gb-hud-btn:hover {
+        transform: translateX(4px);
+      }
+      .gb-boot-home-rail .gb-hud-btn:hover::after {
+        background: var(--gb-accent);
+        box-shadow: 0 0 14px var(--gb-accent);
+      }
+      .gb-boot-home-rail .gb-hud-btn[data-lit='true']::after {
+        background: var(--gb-accent);
+        box-shadow: 0 0 16px var(--gb-accent);
+      }
+
+      /* ------------------------------------------------------------------
+         The Cities Shelf (Center Stage - Sleek Compact Telemetry Cards)
+         ------------------------------------------------------------------ */
+      .gb-boot-shelf-block {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        max-width: 1060px;
+        width: 100%;
+      }
+      .gb-boot-shelf {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .gb-boot-shelved {
+        border: 1px solid rgba(47, 217, 230, 0.3);
+        border-radius: 4px;
+        background: rgba(4, 8, 12, 0.88);
+        backdrop-filter: blur(12px);
+        box-shadow: 0 6px 22px rgba(0, 0, 0, 0.8);
+        transition: all 0.15s ease;
+        overflow: hidden;
+        position: relative;
+      }
+      .gb-boot-shelved:hover {
+        border-color: var(--gb-accent);
+        background: rgba(8, 16, 22, 0.95);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.9), 0 0 20px rgba(47, 217, 230, 0.25);
+      }
+      .gb-boot-shelved[data-last='true'] {
+        border-color: var(--gb-accent);
+        box-shadow: 0 0 22px rgba(47, 217, 230, 0.3);
+      }
+      .gb-boot-shelved[data-last='true']::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 3px;
+        background: var(--gb-accent);
+        box-shadow: 0 0 10px var(--gb-accent);
+      }
+      .gb-boot .gb-boot-shelved-in {
+        display: grid;
+        grid-template-columns: 160px minmax(0, 1fr) auto;
+        align-items: stretch;
+      }
+      .gb-boot-shelved-plate {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: var(--gb-s2);
+        padding: 14px 16px;
+        background-color: rgba(8, 16, 22, 0.95);
+        background-image: var(--gb-hatch);
+        border-right: 1px solid rgba(47, 217, 230, 0.2);
+        color: var(--gb-accent);
+        overflow: hidden;
+      }
+      .gb-boot-shelved-theme {
+        color: var(--gb-accent-lit);
+        font-weight: 800;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 100%;
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      /* Stat Telemetry Capsule Cards (High-Contrast Dual-Color Readout) */
+      .gb-boot-shelved-holds {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 6px;
+      }
+      .gb-boot-holds-cell {
+        display: inline-flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 2px;
+        padding: 5px 10px;
+        background: rgba(2, 5, 8, 0.9);
+        border: 1px solid rgba(47, 217, 230, 0.2);
+        border-radius: 3px;
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.7);
+        min-width: 64px;
+      }
+      .gb-boot-holds-count {
+        color: #2fd9e6;
+        font-family: var(--gb-mono);
+        font-variant-numeric: tabular-nums;
+        font-weight: 800;
+        font-size: 16px;
+        line-height: 1;
+        text-shadow: 0 0 8px rgba(47, 217, 230, 0.5);
+      }
+      .gb-boot-holds-what {
+        color: #8ea8b0;
+        font-family: var(--gb-display);
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        line-height: 1.1;
+      }
+
+      .gb-boot-shelved-body {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 14px 18px;
+        min-width: 0;
+      }
+      .gb-boot-shelved-name {
+        color: #ffffff;
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .gb-boot-shelved[data-last='true'] .gb-boot-shelved-name {
+        color: var(--gb-accent-lit);
+        text-shadow: 0 0 10px rgba(47, 217, 230, 0.4);
+      }
+      .gb-boot-shelved-about {
+        color: #8ea8b0;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow: hidden;
+        font-size: 12px;
+        line-height: 1.4;
+        font-style: italic;
+      }
+      .gb-boot-shelved-readout {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        margin-top: auto;
+        color: #5c7882;
+        font-family: var(--gb-mono);
+        font-variant-numeric: tabular-nums;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .gb-boot-shelved-playing {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 3px;
+        background: rgba(34, 197, 94, 0.15);
+        border: 1px solid rgba(34, 197, 94, 0.6);
+        color: #4ade80;
+        font-weight: 700;
+      }
+      .gb-boot-shelved-last {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 3px;
+        background: rgba(47, 217, 230, 0.15);
+        border: 1px solid rgba(47, 217, 230, 0.6);
+        color: #2fd9e6;
+        font-weight: 700;
+      }
+      .gb-boot-shelved-buttons {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 14px;
+        border-left: 1px solid rgba(47, 217, 230, 0.2);
+        flex: none;
+        width: 176px;
+        box-sizing: border-box;
+      }
+      .gb-boot-shelved-buttons .gb-btn {
+        width: 100%;
+        height: 36px;
+        min-width: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-start;
+        padding: 0 14px;
+        font-family: var(--gb-display);
+        font-size: 11.5px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        text-align: left;
+        box-sizing: border-box;
+      }
+      .gb-boot-shelved-buttons .gb-btn > span {
+        display: inline-flex;
+        align-items: center;
+        width: 100%;
+        gap: 10px;
+      }
+      .gb-boot-shelved-buttons .gb-btn .gb-i {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        flex: none;
+        margin: 0;
+      }
+      .gb-boot-shelved-buttons .gb-btn .gb-btn-text {
+        flex: 1;
+        text-align: left;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .gb-boot-heading {
+        display: flex;
+        align-items: center;
+        gap: var(--gb-s2);
+        margin: 0;
+        padding-bottom: 10px;
+        color: var(--gb-accent);
+        border-bottom: 2px solid rgba(47, 217, 230, 0.35);
+        font-size: 16px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+      .gb-boot-empty {
+        margin: 0;
+        padding: 40px 28px;
+        background: rgba(6, 12, 16, 0.8);
+        border: 1px dashed var(--gb-edge-lit);
+        border-radius: 4px;
+        color: var(--gb-dim);
+        text-align: center;
+        font-size: 14px;
+      }
+
+      /* ------------------------------------------------------------------
+         Cyber Panel Dashboard Styling (100% Full Width, 2x2 Cyber Grid, No Scroll)
+         ------------------------------------------------------------------ */
+      .gb-boot-make {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        padding: 12px 36px;
+        gap: 0;
+        box-sizing: border-box;
+        overflow: hidden;
+      }
+      .gb-boot-make .gb-boot-rail {
+        display: none !important;
+      }
+
+      .gb-boot-rows {
+        flex: 1;
+        min-height: 0;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        height: 100%;
+      }
+
+      /* 2x2 Grid (4 Quadrants) for Step 1 - All Elements 100% Visible Without Scrolling */
+      .gb-boot-wizard-pane {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        height: 100%;
+        min-height: 0;
+      }
+      .gb-boot-wizard-pane.gb-pane-grid-4 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 1fr 1fr;
+        gap: 12px;
+        height: 100%;
+        min-height: 0;
+        box-sizing: border-box;
+      }
+      .gb-boot-wizard-pane.gb-pane-grid-3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 12px;
+        height: 100%;
+        min-height: 0;
+        box-sizing: border-box;
+      }
+
+      /* Grouped Cyber Panels (High-Tech Dimmed Cards with Laser Corner Bevels) */
+      .gb-cyber-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px 16px;
+        background: rgba(3, 8, 12, 0.92);
+        border: 1px solid rgba(47, 217, 230, 0.22);
+        border-radius: 4px;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.7), inset 0 0 16px rgba(47, 217, 230, 0.03);
+        position: relative;
+        box-sizing: border-box;
+        overflow: hidden;
+        min-height: 0;
+      }
+      .gb-cyber-panel::before {
+        content: '';
+        position: absolute;
+        top: -1px;
+        left: -1px;
+        width: 14px;
+        height: 14px;
+        border-top: 2px solid var(--gb-accent);
+        border-left: 2px solid var(--gb-accent);
+        pointer-events: none;
+      }
+      .gb-cyber-panel::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        right: -1px;
+        width: 14px;
+        height: 14px;
+        border-bottom: 2px solid var(--gb-accent);
+        border-right: 2px solid var(--gb-accent);
+        pointer-events: none;
+      }
+      .gb-panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid rgba(47, 217, 230, 0.15);
+      }
+      .gb-panel-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--gb-accent-lit);
+        font-family: var(--gb-display);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      /* Distinct Glowing Gold AI Accelerators */
+      .gb-hud-ai-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        background: linear-gradient(90deg, rgba(255, 179, 0, 0.25) 0%, rgba(24, 20, 10, 0.95) 100%);
+        border: 1px solid rgba(255, 193, 7, 0.8);
+        border-radius: 3px;
+        color: #ffecb3;
+        font-family: var(--gb-display);
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        cursor: pointer;
+        box-shadow: 0 0 14px rgba(255, 193, 7, 0.35);
+        transition: all 0.15s ease;
+      }
+      .gb-hud-ai-btn:hover {
+        background: linear-gradient(90deg, rgba(255, 179, 0, 0.5) 0%, rgba(36, 30, 15, 0.98) 100%);
+        box-shadow: 0 0 24px rgba(255, 193, 7, 0.7);
+        transform: translateY(-1px);
+        color: #ffffff;
+      }
+
+      /* Preset Quick-Chips */
+      .gb-preset-chips {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+      }
+      .gb-preset-lbl {
+        color: #8ea8b0;
+        font-family: var(--gb-display);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      .gb-preset-chip {
+        padding: 5px 10px;
+        background: rgba(8, 20, 28, 0.85);
+        border: 1px solid rgba(47, 217, 230, 0.25);
+        border-radius: 3px;
+        color: #a2d6e3;
+        font-family: var(--gb-display);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: all 0.12s ease;
+      }
+      .gb-preset-chip:hover {
+        background: rgba(18, 40, 52, 0.95);
+        border-color: var(--gb-accent);
+        color: #ffffff;
+        box-shadow: 0 0 10px rgba(47, 217, 230, 0.35);
+      }
+
+      /* Visual Asset Template Selector */
+      .gb-template-select-group {
+        width: 100%;
+      }
+      .gb-btn-template {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 6px 12px;
+        min-height: 38px;
+        background: linear-gradient(90deg, rgba(8, 20, 28, 0.9) 0%, rgba(4, 10, 14, 0.95) 100%);
+        border: 1px solid rgba(47, 217, 230, 0.35);
+        border-radius: 4px;
+        color: #d1f4f8;
+        font-family: var(--gb-sans);
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        box-sizing: border-box;
+      }
+      .gb-btn-template:hover {
+        background: linear-gradient(90deg, rgba(16, 36, 48, 0.95) 0%, rgba(8, 20, 28, 0.98) 100%);
+        border-color: var(--gb-accent);
+        box-shadow: 0 0 16px rgba(47, 217, 230, 0.3);
+      }
+      .gb-btn-template .gb-i {
+        width: 16px;
+        height: 16px;
+        flex: none;
+      }
+      .gb-template-title {
+        flex: 1;
+        text-align: left;
+        color: #2fd9e6;
+        font-family: var(--gb-mono);
+        font-size: 11.5px;
+        font-weight: 700;
+      }
+      .gb-template-badge {
+        padding: 2px 8px;
+        background: rgba(47, 217, 230, 0.15);
+        border: 1px solid rgba(47, 217, 230, 0.4);
+        border-radius: 3px;
+        color: var(--gb-accent-lit);
+        font-family: var(--gb-display);
+        font-size: 9.5px;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+      }
+
+      /* Cyber Input Fields with Floating Labels */
+      .gb-cyber-field {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+      .gb-cyber-field.gb-field-flex {
+        flex: 1;
+        min-height: 0;
+      }
+      .gb-cyber-field.gb-floating {
+        margin-top: 8px;
+      }
+      .gb-cyber-field.gb-floating input[type='text'],
+      .gb-cyber-field.gb-floating textarea {
+        background: rgba(2, 5, 8, 0.95);
+        border: 1px solid rgba(47, 217, 230, 0.35);
+        border-radius: 4px;
+        padding: 16px 12px 6px 12px;
+        color: #ffffff;
+        font-size: 13.5px;
+        line-height: 1.4;
+        outline: none;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+      .gb-cyber-field.gb-floating input[type='text']:focus,
+      .gb-cyber-field.gb-floating textarea:focus {
+        border-color: var(--gb-accent);
+        box-shadow: 0 0 14px rgba(47, 217, 230, 0.4);
+      }
+      .gb-cyber-field.gb-floating label {
+        position: absolute;
+        top: 11px;
+        left: 12px;
+        color: #7ba2ad;
+        font-family: var(--gb-display);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        pointer-events: none;
+        transition: all 0.18s cubic-bezier(0.2, 0.7, 0.2, 1);
+        background: transparent;
+        padding: 0 4px;
+      }
+      .gb-cyber-field.gb-floating input[type='text']:focus ~ label,
+      .gb-cyber-field.gb-floating input[type='text']:not(:placeholder-shown) ~ label,
+      .gb-cyber-field.gb-floating textarea:focus ~ label,
+      .gb-cyber-field.gb-floating textarea:not(:placeholder-shown) ~ label {
+        top: -8px;
+        left: 10px;
+        font-size: 9.5px;
+        color: var(--gb-accent-lit);
+        background: #040a0e;
+        border-radius: 2px;
+      }
+      .gb-cyber-field.gb-field-flex.gb-floating textarea {
+        height: 105px;
+        min-height: 85px;
+        max-height: 140px;
+        resize: none;
+      }
+      .gb-field-desc {
+        margin: 4px 0 0 0;
+        font-size: 11.5px;
+        line-height: 1.4;
+        color: #8ec3cf;
+        font-family: var(--gb-sans);
+      }
+
+      /* Step 2 Architecture Summary Banner (Row 1) */
+      .gb-story-arch-banner {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 8px 14px;
+        background: linear-gradient(90deg, rgba(4, 12, 18, 0.95) 0%, rgba(2, 6, 10, 0.98) 100%);
+        border: 1px solid rgba(47, 217, 230, 0.3);
+        border-radius: 4px;
+        flex: none;
+      }
+      .gb-story-arch-grid {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr 1fr 1fr;
+        gap: 12px;
+        align-items: center;
+      }
+      .gb-arch-summary-item {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .gb-arch-sum-lbl {
+        font-family: var(--gb-display);
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        color: var(--gb-accent);
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .gb-arch-sum-val {
+        font-family: var(--gb-sans);
+        font-size: 11.5px;
+        font-weight: 700;
+        color: #ffffff;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .gb-arch-sum-sub {
+        font-family: var(--gb-mono);
+        font-size: 10px;
+        color: #8ea8b0;
+      }
+
+      /* Step 2 Story Panels (Row 2) */
+      .gb-story-columns {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 12px;
+        flex: 1;
+        min-height: 0;
+      }
+      .gb-btn-ai-enhance {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 30px;
+        padding: 0 10px;
+        font-family: var(--gb-display);
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        background: linear-gradient(90deg, rgba(255, 179, 0, 0.2) 0%, rgba(20, 16, 8, 0.95) 100%);
+        border: 1px solid rgba(255, 193, 7, 0.45);
+        color: #ffca28;
+        border-radius: 3px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        margin-top: auto;
+      }
+      .gb-btn-ai-enhance:hover {
+        background: linear-gradient(90deg, rgba(255, 179, 0, 0.35) 0%, rgba(32, 24, 10, 0.98) 100%);
+        border-color: #ffd54f;
+        color: #ffffff;
+        box-shadow: 0 0 14px rgba(255, 193, 7, 0.4);
+      }
+
+      /* Step 3 2-Column Review Grid (Row 1) & Bottom Actions (Row 2) */
+      .gb-compile-review-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        flex: 1;
+        min-height: 0;
+      }
+      .gb-review-col {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        height: 100%;
+        min-height: 0;
+      }
+      .gb-review-col .gb-cyber-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-height: 0;
+        overflow-y: auto;
+      }
+      .gb-review-items-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .gb-review-item-card {
+        padding: 8px 12px;
+        background: rgba(2, 6, 10, 0.85);
+        border: 1px solid rgba(47, 217, 230, 0.2);
+        border-radius: 4px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .gb-compile-desc-box {
+        padding: 12px 18px;
+        background: rgba(4, 10, 16, 0.95);
+        border: 1px solid rgba(47, 217, 230, 0.35);
+        border-radius: 4px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .gb-compile-desc {
+        margin: 0;
+        color: #d1f4f8;
+        font-family: var(--gb-sans);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .gb-compile-desc .gb-accent-hl {
+        color: var(--gb-accent-lit);
+        font-weight: 800;
+        font-family: var(--gb-mono);
+      }
+      .gb-compile-actions-strip {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        margin-top: 4px;
+      }
+      .gb-compile-actions-strip .gb-btn-compile-game {
+        min-height: 44px;
+        padding: 0 28px;
+        font-size: 13px;
+        font-weight: 800;
+        background: linear-gradient(90deg, #2fd9e6 0%, #00e676 100%);
+        color: #020507;
+        border-color: #7df3fa;
+        box-shadow: 0 0 24px rgba(47, 217, 230, 0.6);
+      }
+
+      .gb-pane-foot-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 0 2px 0;
+        border-top: 1px solid rgba(47, 217, 230, 0.2);
+        margin-top: auto;
+      }
+
+      /* Live World Telemetry & Statistics HUD (Total Buildings, Cars, Doors, Districts) */
+      .gb-live-telemetry {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 6px;
+        padding: 10px 12px;
+        background: rgba(2, 6, 10, 0.95);
+        border: 1px solid rgba(47, 217, 230, 0.3);
+        border-radius: 4px;
+        box-shadow: inset 0 0 16px rgba(47, 217, 230, 0.08);
+      }
+      .gb-telem-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 4px;
+        padding: 4px 2px;
+        border-right: 1px solid rgba(47, 217, 230, 0.15);
+      }
+      .gb-telem-item:last-child {
+        border-right: none;
+      }
+      .gb-telem-num {
+        font-family: var(--gb-mono);
+        font-size: 22px;
+        font-weight: 900;
+        line-height: 1;
+        color: #2fd9e6;
+        text-shadow: 0 0 12px rgba(47, 217, 230, 0.6);
+      }
+      .gb-telem-lbl {
+        font-family: var(--gb-display);
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        color: #8ea8b0;
+        text-transform: uppercase;
+      }
+
+      /* Global High-Tech Floating Tooltip */
+      .gb-cyber-tooltip {
+        position: fixed;
+        z-index: 10000;
+        pointer-events: none;
+        background: rgba(3, 9, 14, 0.96);
+        border: 1px solid var(--gb-accent);
+        border-radius: 4px;
+        padding: 8px 12px;
+        color: #d1f3f7;
+        font-family: var(--gb-display);
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.35;
+        box-shadow: 0 0 18px rgba(47, 217, 230, 0.45), 0 8px 24px rgba(0, 0, 0, 0.95);
+        max-width: 280px;
+        opacity: 0;
+        transform: translateY(4px);
+        transition: opacity 0.12s ease, transform 0.12s ease;
+      }
+      .gb-cyber-tooltip[data-visible='true'] {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      /* Confirmation Modal Dialog for Compile Game */
+      .gb-compile-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .gb-compile-modal[hidden] {
+        display: none !important;
+      }
+      .gb-compile-modal-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(1, 3, 5, 0.85);
+        backdrop-filter: blur(4px);
+      }
+      .gb-compile-modal-dialog {
+        position: relative;
+        z-index: 1;
+        width: 540px;
+        max-width: 90vw;
+        background: linear-gradient(180deg, rgba(8, 16, 22, 0.98) 0%, rgba(3, 8, 12, 0.98) 100%);
+        border: 2px solid var(--gb-accent);
+        border-radius: 6px;
+        box-shadow: 0 0 32px rgba(47, 217, 230, 0.5), 0 16px 48px rgba(0, 0, 0, 0.95);
+        padding: 24px 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .gb-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 12px;
+        border-bottom: 1px solid rgba(47, 217, 230, 0.3);
+      }
+      .gb-modal-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--gb-accent-lit);
+        font-family: var(--gb-display);
+        font-size: 14px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+      .gb-modal-close {
+        background: transparent;
+        border: none;
+        color: var(--gb-dim);
+        font-size: 16px;
+        cursor: pointer;
+        transition: color 0.15s ease;
+      }
+      .gb-modal-close:hover {
+        color: #ffffff;
+      }
+      .gb-modal-intro {
+        margin: 0;
+        color: #9eb8c0;
+        font-size: 12px;
+        line-height: 1.4;
+      }
+      .gb-modal-specs-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .gb-modal-spec-card {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 10px 12px;
+        background: rgba(2, 6, 10, 0.85);
+        border: 1px solid rgba(47, 217, 230, 0.2);
+        border-radius: 4px;
+      }
+      .gb-modal-spec-card.gb-modal-card-wide {
+        grid-column: span 2;
+      }
+      .gb-spec-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--gb-accent);
+        font-family: var(--gb-display);
+        font-size: 9.5px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      .gb-spec-val {
+        font-family: var(--gb-display);
+        font-size: 12px;
+        font-weight: 800;
+        color: #ffffff;
+      }
+      .gb-spec-sub {
+        color: #6e97a3;
+        font-size: 10.5px;
+      }
+      .gb-modal-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        padding-top: 12px;
+        border-top: 1px solid rgba(47, 217, 230, 0.2);
+      }
+      .gb-btn-compile-confirm {
+        background: linear-gradient(90deg, #2fd9e6 0%, #00e676 100%) !important;
+        border-color: #7df3fa !important;
+        color: #020507 !important;
+        font-weight: 800 !important;
+        box-shadow: 0 0 24px rgba(47, 217, 230, 0.6) !important;
+      }
+      .gb-btn-danger {
+        background: linear-gradient(90deg, #ff1744 0%, #d50000 100%) !important;
+        border-color: #ff5252 !important;
+        color: #fff !important;
+        font-weight: 800 !important;
+        box-shadow: 0 0 16px rgba(255, 23, 68, 0.5) !important;
+      }
+      .gb-boot-remove-warn {
+        color: #ff5252 !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        font-size: 11px !important;
+      }
+
+      /* Dials & Sliders Layout with Arrow Stepper Buttons */
+      .gb-cyber-dial-card {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 8px 12px;
+        background: rgba(2, 6, 10, 0.85);
+        border: 1px solid rgba(47, 217, 230, 0.2);
+        border-radius: 4px;
+        box-sizing: border-box;
+      }
+      .gb-dial-control {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .gb-dial-control .gb-cyber-lbl {
+        width: 160px;
+        min-width: 160px;
+        max-width: 160px;
+        flex: none;
+        margin: 0;
+        font-size: 11.5px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        color: #8ea8b0;
+        text-transform: uppercase;
+      }
+      .gb-num-stepper-group {
+        display: inline-flex;
+        align-items: stretch;
+        height: 32px;
+        width: 106px;
+        min-width: 106px;
+        max-width: 106px;
+        flex: none;
+        background: rgba(8, 18, 24, 0.95);
+        border: 1px solid rgba(47, 217, 230, 0.35);
+        border-radius: 4px;
+        overflow: hidden;
+        box-sizing: border-box;
+      }
+      .gb-num-stepper-group input[type='number'] {
+        width: 50px;
+        height: 100%;
+        flex: 1;
+        min-width: 0;
+        padding: 0 4px;
+        margin: 0;
+        background: transparent !important;
+        border: none !important;
+        border-left: 1px solid rgba(47, 217, 230, 0.15) !important;
+        border-right: 1px solid rgba(47, 217, 230, 0.15) !important;
+        border-radius: 0 !important;
+        color: #2fd9e6;
+        font-family: var(--gb-mono);
+        font-size: 13.5px;
+        font-weight: 800;
+        text-align: center;
+        outline: none;
+        box-sizing: border-box;
+        -moz-appearance: textfield;
+      }
+      .gb-num-stepper-group input[type='number']::-webkit-inner-spin-button,
+      .gb-num-stepper-group input[type='number']::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      .gb-num-step-btn {
+        width: 28px;
+        min-width: 28px;
+        max-width: 28px;
+        height: 100%;
+        flex: none;
+        padding: 0;
+        margin: 0;
+        background: rgba(47, 217, 230, 0.12);
+        border: none;
+        border-radius: 0;
+        color: #8ec3cf;
+        font-family: var(--gb-sans);
+        font-size: 11px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.12s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        user-select: none;
+        box-sizing: border-box;
+      }
+      .gb-num-step-btn:hover {
+        background: rgba(47, 217, 230, 0.35);
+        color: #ffffff;
+      }
+      .gb-num-step-btn .gb-i {
+        width: 14px;
+        height: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+      }
+      .gb-cyber-range {
+        flex: 1;
+        min-width: 0;
+        accent-color: #2fd9e6;
+        cursor: pointer;
+        height: 6px;
+      }
+      .gb-seed-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .gb-seed-group input {
+        flex: 1;
+      }
+      .gb-btn-roll {
+        min-height: 30px !important;
+        padding: 0 12px !important;
+        font-size: 10px !important;
+        white-space: nowrap;
+      }
+
+      /* Visual Aesthetics Segmented Buttons (formsample.jpg) */
+      .gb-aesthetics-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .gb-aes-item {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+      .gb-seg-pills {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 4px;
+        background: rgba(2, 6, 10, 0.9);
+        padding: 3px;
+        border: 1px solid rgba(47, 217, 230, 0.2);
+        border-radius: 4px;
+      }
+      .gb-seg-pill {
+        padding: 5px 4px;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 3px;
+        color: #6d8e99;
+        font-family: var(--gb-display);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.12s ease;
+      }
+      .gb-seg-pill:hover {
+        color: #ffffff;
+        background: rgba(47, 217, 230, 0.1);
+      }
+      .gb-seg-pill[aria-checked='true'] {
+        background: linear-gradient(90deg, rgba(47, 217, 230, 0.35) 0%, rgba(10, 30, 38, 0.95) 100%);
+        border-color: var(--gb-accent);
+        color: var(--gb-accent-lit);
+        box-shadow: 0 0 10px rgba(47, 217, 230, 0.3);
+      }
+
+      /* Zonal District Allocation Chips */
+      .gb-zones-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .gb-zone-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        background: rgba(8, 18, 24, 0.9);
+        border: 1px solid rgba(47, 217, 230, 0.25);
+        border-radius: 3px;
+        color: #c0ebf2;
+        font-size: 10px;
+        font-weight: 600;
+        cursor: default;
+      }
+
+      /* Atmosphere & Premise Bottom Left Action */
+      .gb-premise-foot {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        margin-top: auto;
+        padding-top: 4px;
+      }
+      .gb-btn-ai-prompt {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        height: 32px;
+        padding: 0 12px;
+        font-family: var(--gb-display);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        background: linear-gradient(90deg, rgba(255, 179, 0, 0.2) 0%, rgba(20, 16, 8, 0.95) 100%);
+        border: 1px solid rgba(255, 193, 7, 0.45);
+        color: #ffca28;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .gb-btn-ai-prompt:hover {
+        background: linear-gradient(90deg, rgba(255, 179, 0, 0.35) 0%, rgba(32, 24, 10, 0.98) 100%);
+        border-color: #ffd54f;
+        color: #ffffff;
+        box-shadow: 0 0 16px rgba(255, 193, 7, 0.4);
+      }
+
+      /* Architecture Dedicated Actions Sub-Panel & Square Tiles */
+      .gb-arch-actions-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: auto;
+        padding-top: 8px;
+        border-top: 1px solid rgba(47, 217, 230, 0.2);
+      }
+      .gb-panel-subhead {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .gb-actions-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+      }
+      .gb-action-tile {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        height: 60px;
+        padding: 6px 4px;
+        background: linear-gradient(180deg, #0d1a22 0%, #060d12 100%);
+        border: 1px solid rgba(47, 217, 230, 0.35);
+        border-radius: 4px;
+        color: #d1f4f8;
+        font-family: var(--gb-display);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        box-sizing: border-box;
+      }
+      .gb-action-tile:hover:not(:disabled) {
+        background: linear-gradient(180deg, #162c38 0%, #0a161f 100%);
+        border-color: var(--gb-accent);
+        color: #ffffff;
+        box-shadow: 0 0 14px rgba(47, 217, 230, 0.4);
+        transform: translateY(-1px);
+      }
+      .gb-action-tile:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+        border-color: rgba(47, 217, 230, 0.15);
+        background: rgba(4, 8, 12, 0.6);
+        color: #5c7882;
+        box-shadow: none;
+        transform: none;
+      }
+      .gb-action-tile[data-lit='true']:not(:disabled) {
+        border-color: var(--gb-accent);
+        background: linear-gradient(180deg, rgba(47, 217, 230, 0.25) 0%, rgba(8, 20, 28, 0.95) 100%);
+        color: var(--gb-accent-lit);
+        box-shadow: 0 0 14px rgba(47, 217, 230, 0.35);
+      }
+      .gb-action-tile .gb-i {
+        width: 18px;
+        height: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+      }
+      .gb-action-title {
+        line-height: 1.15;
+        font-size: 9.5px;
+      }
+
+      /* Step Pane Action Rows */
+      .gb-boot-pane-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-top: auto;
+        padding-top: 4px;
+      }
+      .gb-arch-result-acts {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      /* Step 3 Compilation Summary Cards (dashboard1.webp) */
+      .gb-boot-compile-summary {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+      .gb-summary-card {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 16px;
+        background: rgba(4, 10, 15, 0.88);
+        border: 1px solid rgba(47, 217, 230, 0.25);
+        border-radius: 4px;
+      }
+      .gb-summary-card.gb-card-arch {
+        border-color: rgba(0, 230, 118, 0.4);
+      }
+      .gb-summary-card.gb-card-story {
+        border-color: rgba(255, 214, 0, 0.4);
+      }
+      .gb-summary-card.gb-card-inst {
+        border-color: rgba(47, 217, 230, 0.4);
+      }
+      .gb-summary-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-family: var(--gb-display);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      .gb-card-arch .gb-summary-header { color: #00e676; }
+      .gb-card-story .gb-summary-header { color: #ffd600; }
+      .gb-card-inst .gb-summary-header { color: #2fd9e6; }
+      .gb-summary-meta {
+        margin: 0;
+        color: var(--gb-dim);
+        font-size: 11px;
+        line-height: 1.4;
+      }
+      .gb-boot-compile-action-group {
+        display: flex;
+        justify-content: center;
+        padding: 10px 0;
+      }
+      .gb-btn-compile-game {
+        min-height: 56px;
+        padding: 0 48px;
+        font-size: 16px !important;
+        font-weight: 800 !important;
+        letter-spacing: 0.16em !important;
+        background: linear-gradient(90deg, #2fd9e6 0%, #15737d 100%) !important;
+        border: 2px solid #7df3fa !important;
+        color: #020507 !important;
+        box-shadow: 0 0 32px rgba(47, 217, 230, 0.7), 0 8px 32px rgba(0, 0, 0, 0.9) !important;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.2, 0.7, 0.2, 1);
+      }
+      .gb-btn-compile-game:hover {
+        background: linear-gradient(90deg, #7df3fa 0%, #2fd9e6 100%) !important;
+        box-shadow: 0 0 48px rgba(47, 217, 230, 0.95), 0 12px 40px rgba(0, 0, 0, 0.95) !important;
+        transform: scale(1.02);
+      }
+
+      /* ------------------------------------------------------------------
+         Bottom Footer Bar & Seamless Interconnected Chevrons (arrowreview.jpg)
+         ------------------------------------------------------------------ */
+      .gb-boot-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex: none;
+        height: 68px;
+        padding: 6px 44px 0 44px;
+        background: linear-gradient(0deg, rgba(8, 14, 18, 0.98) 0%, rgba(0, 0, 0, 0.95) 100%);
+        box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.9), 0 0 24px rgba(47, 217, 230, 0.25);
+        position: relative;
+        clip-path: polygon(0 0, calc(100% - 268px) 0, calc(100% - 240px) 22px, 100% 22px, 100% 100%, 0 100%);
+      }
+      .gb-boot-foot::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image: var(--gb-hatch);
+        opacity: 0.35;
+        pointer-events: none;
+      }
+      /* Glowing contoured top neon border line matching expected.jpg */
+      .gb-boot-foot::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: linear-gradient(90deg, #2fd9e6 0%, #7df3fa 100%);
+        clip-path: polygon(
+          0 0,
+          calc(100% - 268px) 0,
+          calc(100% - 240px) 22px,
+          100% 22px,
+          100% 24px,
+          calc(100% - 240px) 24px,
+          calc(100% - 268px) 2px,
+          0 2px
+        );
+        box-shadow: 0 0 16px var(--gb-accent);
+      }
+      .gb-boot-foot button.gb-sr-only,
+      .gb-boot-foot label {
+        display: none !important;
+      }
+
+      /* Seamless Interlocking Cyber Chevron Ribbon (arrowreview.jpg) */
+      .gb-boot-stepper {
+        display: flex;
+        align-items: stretch;
+        height: 48px;
+        margin-top: 4px;
+        gap: 0;
+        z-index: 2;
+        flex: 1;
+        max-width: 980px;
+      }
+      .gb-boot[data-face='home'] .gb-boot-stepper {
+        display: none !important;
+      }
+      .gb-boot[data-face='make'] .gb-boot-stepper {
+        display: flex !important;
+      }
+      .gb-step-chevron {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        height: 100%;
+        flex: 1;
+        padding: 0 28px 0 16px;
+        border: none;
+        font-family: var(--gb-display);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: all 0.18s ease;
+        position: relative;
+      }
+      .gb-step-chevron .gb-chevron-wings {
+        display: flex;
+        align-items: center;
+        width: 24px;
+        height: 24px;
+        flex: none;
+        transition: transform 0.2s ease;
+      }
+      .gb-step-chevron:hover .gb-chevron-wings {
+        transform: translateX(4px);
+      }
+      .gb-step-chevron .gb-chevron-trail {
+        opacity: 0.7;
+        font-size: 11px;
+        letter-spacing: -0.06em;
+      }
+      .gb-step-chevron .gb-chevron-num {
+        font-family: var(--gb-mono);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      /* Step 1: Green Chevron Ribbon Block */
+      .gb-step-chevron.gb-step-arch {
+        clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 50%, calc(100% - 22px) 100%, 0 100%);
+        background: linear-gradient(90deg, rgba(0, 230, 118, 0.28) 0%, rgba(4, 20, 12, 0.95) 100%);
+        color: #80eec0;
+        z-index: 3;
+      }
+      .gb-step-chevron.gb-step-arch .gb-chevron-wings path {
+        stroke: #00e676;
+      }
+      .gb-step-chevron.gb-step-arch:hover {
+        background: linear-gradient(90deg, rgba(0, 230, 118, 0.45) 0%, rgba(4, 32, 18, 0.98) 100%);
+        color: #ffffff;
+      }
+      .gb-step-chevron.gb-step-arch[aria-current='true'] {
+        background: linear-gradient(90deg, rgba(0, 230, 118, 0.6) 0%, rgba(0, 48, 24, 0.98) 100%);
+        color: #00ff88;
+        text-shadow: 0 0 12px #00e676;
+      }
+
+      /* Step 2: Yellow / Amber Chevron Ribbon Block */
+      .gb-step-chevron.gb-step-story {
+        clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 50%, calc(100% - 22px) 100%, 0 100%, 22px 50%);
+        margin-left: -18px;
+        padding-left: 32px;
+        background: linear-gradient(90deg, rgba(255, 214, 0, 0.22) 0%, rgba(20, 18, 4, 0.95) 100%);
+        color: #fae078;
+        z-index: 2;
+      }
+      .gb-step-chevron.gb-step-story .gb-chevron-wings path {
+        stroke: #ffd600;
+      }
+      .gb-step-chevron.gb-step-story:hover {
+        background: linear-gradient(90deg, rgba(255, 214, 0, 0.4) 0%, rgba(36, 30, 6, 0.98) 100%);
+        color: #ffffff;
+      }
+      .gb-step-chevron.gb-step-story[aria-current='true'] {
+        background: linear-gradient(90deg, rgba(255, 214, 0, 0.55) 0%, rgba(55, 45, 0, 0.98) 100%);
+        color: #ffff00;
+        text-shadow: 0 0 12px #ffd600;
+      }
+
+      /* Step 3: Red / Crimson Chevron Ribbon Block (Arrow cut on right edge matching arrowreview.jpg) */
+      .gb-step-chevron.gb-step-compile {
+        clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 50%, calc(100% - 22px) 100%, 0 100%, 22px 50%);
+        margin-left: -18px;
+        padding-left: 32px;
+        background: linear-gradient(90deg, rgba(255, 23, 68, 0.22) 0%, rgba(20, 4, 8, 0.95) 100%);
+        color: #ff8597;
+        z-index: 1;
+      }
+      .gb-step-chevron.gb-step-compile .gb-chevron-wings path {
+        stroke: #ff1744;
+      }
+      .gb-step-chevron.gb-step-compile:hover {
+        background: linear-gradient(90deg, rgba(255, 23, 68, 0.4) 0%, rgba(36, 8, 14, 0.98) 100%);
+        color: #ffffff;
+      }
+      .gb-step-chevron.gb-step-compile[aria-current='true'] {
+        background: linear-gradient(90deg, rgba(255, 23, 68, 0.55) 0%, rgba(60, 8, 18, 0.98) 100%);
+        color: #ff5252;
+        text-shadow: 0 0 12px #ff1744;
+      }
+
+      /* Inactive Step Chevrons (Dimmed and non-clickable) */
+      .gb-step-chevron[aria-current='false'] {
+        opacity: 0.22 !important;
+        filter: grayscale(0.85) brightness(0.6) !important;
+        pointer-events: none !important;
+        cursor: default !important;
+      }
+      .gb-step-chevron[aria-current='true'] {
+        opacity: 1 !important;
+        filter: none !important;
+        pointer-events: auto !important;
+      }
+
+      .gb-boot-status {
+        margin: 0 0 0 auto;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 18px;
+        color: var(--gb-dim);
+        font-family: var(--gb-display);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        text-align: right;
+        z-index: 1;
+      }
+      .gb-boot-status {
+        margin: 0 0 0 auto;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 18px;
+        color: var(--gb-dim);
+        font-family: var(--gb-display);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        text-align: right;
+        z-index: 1;
+      }
+      .gb-boot-status[data-working='true'] {
+        color: var(--gb-accent-lit);
+      }
+      .gb-boot-status[data-trouble='true'] {
+        color: var(--gb-danger);
+      }
+
+      /* ------------------------------------------------------------------
+         Sub-Options Blocks: File Open, Screens Settings, Add to City
+         ------------------------------------------------------------------ */
+      .gb-boot-home-options {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        margin-top: 14px;
+      }
+      .gb-boot-block {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 18px 20px;
+        background: rgba(8, 15, 19, 0.7);
+        border: 1px solid rgba(47, 217, 230, 0.2);
+        border-radius: 4px;
+      }
+      .gb-boot-block .gb-boot-row {
+        background: rgba(4, 9, 12, 0.9);
+        border: 1px solid var(--gb-edge);
+        border-radius: 4px;
+        min-height: 48px;
       }
 
       /* ------------------------------------------------------------------
@@ -385,35 +2127,25 @@
          ------------------------------------------------------------------ */
       .gb-boot-row {
         display: grid;
-        grid-template-columns: 36px 1fr minmax(0, 22rem);
+        grid-template-columns: 36px 1fr minmax(0, 18rem);
         align-items: center;
         gap: var(--gb-s3);
-        min-height: 58px;
+        min-height: 52px;
         padding: var(--gb-s2) var(--gb-s3);
         border-bottom: 1px solid var(--gb-edge);
+        border-radius: 4px;
         position: relative;
         transition:
           transform var(--gb-t-press) var(--gb-in),
-          background-color var(--gb-t-press) var(--gb-in);
-      }
-      /* the accent tab down the left edge: the one thing being written to */
-      .gb-boot-row::before {
-        content: '';
-        position: absolute;
-        inset: 0 auto 0 0;
-        width: 2px;
-        background: transparent;
-        transition: background-color var(--gb-t-state) var(--gb-in);
+          background-color var(--gb-t-press) var(--gb-in),
+          border-color var(--gb-t-press) var(--gb-in);
       }
       .gb-boot-row:hover {
         background-color: var(--gb-lift);
-        transform: translateX(2px);
       }
       .gb-boot-row:focus-within {
         background-color: var(--gb-well);
-      }
-      .gb-boot-row:focus-within::before {
-        background: var(--gb-accent);
+        border-color: var(--gb-edge-accent);
       }
       .gb-boot-row[data-tall='true'] {
         grid-template-columns: 36px 1fr;
@@ -423,9 +2155,15 @@
         grid-column: 2;
       }
       .gb-boot-tile {
-        width: 36px;
-        height: 36px;
-        --gb-ground: var(--gb-lift);
+        width: 34px;
+        height: 34px;
+        border-radius: 4px;
+        background: var(--gb-lift);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--gb-edge);
+        transition: all var(--gb-t-state) var(--gb-in);
       }
       .gb-boot .gb-boot-tile > span {
         display: flex;
@@ -435,7 +2173,8 @@
         transition: color var(--gb-t-state) var(--gb-in);
       }
       .gb-boot-row:focus-within .gb-boot-tile {
-        background: var(--gb-edge-accent);
+        border-color: var(--gb-accent);
+        background: rgba(47, 217, 230, 0.1);
       }
       .gb-boot-row:focus-within .gb-boot-tile > span {
         color: var(--gb-accent);
@@ -443,6 +2182,7 @@
       .gb-boot-label {
         color: var(--gb-ink);
         min-width: 0;
+        font-weight: 500;
       }
       .gb-boot-control {
         display: flex;
@@ -452,21 +2192,25 @@
       }
       .gb-boot-note {
         margin: 0;
-        padding: var(--gb-s2) var(--gb-s3) var(--gb-s4) calc(36px + 2 * var(--gb-s3));
-        color: var(--gb-faint);
-        border-bottom: 1px solid var(--gb-edge);
+        padding: 4px var(--gb-s3) var(--gb-s3) 48px;
+        color: var(--gb-dim);
+        font-size: 12px;
+        line-height: 1.4;
       }
 
-      /* fields: the sunken ground, an accent edge while they are being written to */
+      /* fields: sunken ground with glowing neon focus */
       .gb-boot-field {
         flex: 1;
         min-width: 0;
-        --gb-ground: var(--gb-well);
-        transition: background-color var(--gb-t-state) var(--gb-in);
+        background: var(--gb-well);
+        border: 1px solid var(--gb-edge);
+        border-radius: 4px;
+        transition: all var(--gb-t-state) var(--gb-in);
       }
       .gb-boot-field:has(:focus-visible),
       .gb-boot-field:has(:focus) {
-        background: var(--gb-edge-accent);
+        border-color: var(--gb-accent);
+        box-shadow: 0 0 10px rgba(47, 217, 230, 0.2);
       }
       .gb-boot input[type='text'],
       .gb-boot input[type='url'],
@@ -475,20 +2219,20 @@
       .gb-boot textarea,
       .gb-boot select {
         box-sizing: border-box;
-        padding: var(--gb-s2) var(--gb-s3);
-        background: var(--gb-ground, var(--gb-well));
+        padding: 8px 12px;
+        background: transparent;
         color: var(--gb-ink);
         border: 0;
-        border-radius: 0;
         font: 400 13px/1.45 var(--gb-body);
         min-width: 0;
+        width: 100%;
         outline: none;
       }
       .gb-boot ::placeholder {
         color: var(--gb-faint);
       }
       .gb-boot textarea {
-        min-height: 5.5em;
+        min-height: 5em;
         resize: vertical;
       }
       .gb-boot input[type='number'],
@@ -498,7 +2242,6 @@
       }
       .gb-boot select {
         appearance: none;
-        text-align: center;
         font-family: var(--gb-display);
         font-size: 11px;
         font-weight: 600;
@@ -511,7 +2254,6 @@
         background: var(--gb-solid);
         color: var(--gb-ink);
         font-family: var(--gb-body);
-        letter-spacing: 0;
       }
       .gb-boot input[type='file'] {
         color: var(--gb-dim);
@@ -519,21 +2261,26 @@
         width: 100%;
       }
       .gb-boot input[type='file']::file-selector-button {
-        margin-right: var(--gb-s3);
-        padding: var(--gb-s1) var(--gb-s3);
+        margin-right: var(--gb-s2);
+        padding: 4px 10px;
         background: var(--gb-lift);
-        color: var(--gb-ink);
-        border: 1px solid var(--gb-edge);
-        border-radius: 0;
+        color: var(--gb-accent);
+        border: 1px solid var(--gb-edge-lit);
+        border-radius: 3px;
         font-family: var(--gb-display);
         font-size: 11px;
         font-weight: 600;
-        letter-spacing: 0.12em;
+        letter-spacing: 0.1em;
         text-transform: uppercase;
         cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .gb-boot input[type='file']::file-selector-button:hover {
+        background: var(--gb-edge-lit);
+        color: var(--gb-ink);
       }
 
-      /* the two-state toggle: the knob slides, the label changes at once */
+      /* the two-state toggle */
       .gb-boot-toggle {
         display: flex;
         align-items: center;
@@ -548,403 +2295,363 @@
       .gb-boot-switch {
         display: block;
         position: relative;
-        width: 46px;
+        width: 44px;
         height: 22px;
-        --gb-ground: var(--gb-well);
+        background: var(--gb-well);
+        border: 1px solid var(--gb-edge);
+        border-radius: 11px;
+        transition: all var(--gb-t-state) var(--gb-in);
       }
       .gb-boot .gb-boot-switch > span::after {
         content: '';
         position: absolute;
-        top: 3px;
-        left: 3px;
+        top: 2px;
+        left: 2px;
         width: 16px;
         height: 16px;
+        border-radius: 50%;
         background: var(--gb-off);
         transition: transform var(--gb-t-state) var(--gb-in), background-color var(--gb-t-state) var(--gb-in);
       }
       .gb-boot-toggle input:checked + .gb-boot-switch {
-        background: var(--gb-edge-accent);
+        background: rgba(47, 217, 230, 0.15);
+        border-color: var(--gb-accent);
       }
       .gb-boot .gb-boot-toggle input:checked + .gb-boot-switch > span::after {
         background: var(--gb-accent);
+        box-shadow: 0 0 8px var(--gb-accent);
         transform: translateX(22px);
       }
       .gb-boot-toggle input:focus-visible + .gb-boot-switch {
-        background: var(--gb-accent);
+        box-shadow: 0 0 10px var(--gb-accent);
       }
       .gb-boot-state {
         color: var(--gb-dim);
         min-width: 3.5em;
+        font-size: 12px;
       }
 
       /* ------------------------------------------------------------------
-         Buttons
+         Buttons: modern cyber-terminal styling with glowing lit state
          ------------------------------------------------------------------ */
-      .gb-btn {
-        padding: 1px;
+      .gb-sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
         border: 0;
-        background: var(--gb-edge);
+      }
+
+      .gb-i-20, .gb-i-20 svg {
+        width: 20px;
+        height: 20px;
+      }
+      .gb-i-22, .gb-i-22 svg {
+        width: 22px;
+        height: 22px;
+      }
+      .gb-i-24, .gb-i-24 svg {
+        width: 24px;
+        height: 24px;
+      }
+
+      .gb-btn {
+        padding: 0;
+        border: 1px solid var(--gb-edge-lit);
+        border-radius: 4px;
+        background: var(--gb-lift);
+        color: var(--gb-ink);
         font: inherit;
         cursor: pointer;
         transition:
           transform var(--gb-t-press) var(--gb-in),
-          background-color var(--gb-t-press) var(--gb-in);
+          background-color var(--gb-t-press) var(--gb-in),
+          box-shadow var(--gb-t-press) var(--gb-in),
+          border-color var(--gb-t-press) var(--gb-in);
       }
       .gb-boot .gb-btn > span {
-        --cut: var(--in);
         display: flex;
         align-items: center;
         justify-content: center;
         gap: var(--gb-s2);
-        min-height: 28px;
-        padding: 0 var(--gb-s3);
-        background: var(--gb-lift);
-        color: var(--gb-ink);
+        min-height: 36px;
+        padding: 0 16px;
+        color: inherit;
         font-family: var(--gb-display);
-        font-size: 11px;
-        font-weight: 600;
+        font-size: 12px;
+        font-weight: 700;
         letter-spacing: 0.12em;
         text-transform: uppercase;
-        transition:
-          background-color var(--gb-t-press) var(--gb-in),
-          color var(--gb-t-press) var(--gb-in);
       }
       .gb-btn:hover:not(:disabled) {
         background: var(--gb-edge-lit);
+        border-color: var(--gb-accent);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
       }
       .gb-btn:focus-visible {
-        background: var(--gb-accent);
+        border-color: var(--gb-accent);
+        box-shadow: 0 0 14px var(--gb-accent-glow);
         outline: none;
       }
       .gb-btn:active:not(:disabled) {
         transform: translateY(1px);
       }
-      /* lit: the one thing to do here */
+      /* lit: primary glowing action */
       .gb-btn[data-lit='true'] {
-        background: var(--gb-accent);
+        background: linear-gradient(135deg, #2fd9e6 0%, #15a2b0 100%);
+        border: 1px solid rgba(125, 243, 250, 0.8);
+        color: #04161a;
+        box-shadow: 0 0 16px rgba(47, 217, 230, 0.4);
       }
       .gb-btn[data-lit='true'] > span {
-        background: var(--gb-accent);
-        color: var(--gb-accent-ink);
+        color: #04161a;
+        font-weight: 700;
       }
-      .gb-btn[data-lit='true']:hover:not(:disabled) > span {
-        background: var(--gb-accent-lit);
+      .gb-btn[data-lit='true']:hover:not(:disabled) {
+        background: linear-gradient(135deg, #7df3fa 0%, #2fd9e6 100%);
+        box-shadow: 0 0 24px rgba(47, 217, 230, 0.7);
+        transform: translateY(-1px);
+      }
+      .gb-btn[data-quiet='true'] {
+        background: transparent;
+        border-color: transparent;
       }
       .gb-btn[data-quiet='true'] > span {
         color: var(--gb-dim);
       }
       .gb-btn[data-quiet='true']:hover:not(:disabled) {
-        background: var(--gb-danger);
+        background: rgba(255, 77, 94, 0.15);
+        border-color: var(--gb-danger);
       }
       .gb-btn[data-quiet='true']:hover:not(:disabled) > span {
         color: var(--gb-danger);
       }
       .gb-btn:disabled {
         cursor: default;
+        opacity: 0.45;
         background: var(--gb-off);
+        border-color: transparent;
+        box-shadow: none;
+        transform: none;
       }
       .gb-btn:disabled > span {
-        background: var(--gb-lift);
         color: var(--gb-off-ink);
       }
-      .gb-btn[data-lit='true']:disabled > span {
+      .gb-btn[data-lit='true']:disabled {
         background: var(--gb-lift);
+        box-shadow: none;
+      }
+      .gb-btn[data-lit='true']:disabled > span {
+        color: var(--gb-off-ink);
       }
       .gb-btn[hidden] {
-        display: none;
+        display: none !important;
       }
       .gb-btn .gb-key {
         margin-left: var(--gb-s1);
+        border-radius: 2px;
       }
 
-      /* a chevron step beside a value */
-      .gb-boot-step {
-        flex: none;
-        width: 26px;
+      /* Big Icon Buttons in Header and Footer */
+      .gb-icon-btn {
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        width: 46px;
+        height: 46px;
+        min-width: 46px;
+        min-height: 46px;
+        padding: 0 !important;
+        margin: 0 !important;
+        border-radius: 6px;
+        background: linear-gradient(135deg, rgba(20, 36, 44, 0.92) 0%, rgba(8, 16, 20, 0.98) 100%);
+        border: 1px solid rgba(47, 217, 230, 0.35);
+        color: var(--gb-accent-lit);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        cursor: pointer;
+        transition: all 0.15s cubic-bezier(0.2, 0.7, 0.2, 1);
       }
-      .gb-boot .gb-boot-step > span {
-        padding: 0;
-        min-height: 26px;
+      .gb-icon-btn:hover:not(:disabled) {
+        background: linear-gradient(135deg, rgba(32, 58, 70, 0.95) 0%, rgba(16, 30, 38, 0.98) 100%);
+        border-color: var(--gb-accent);
+        color: #ffffff;
+        transform: translateY(-2px);
+        box-shadow: 0 0 18px rgba(47, 217, 230, 0.45), 0 6px 16px rgba(0, 0, 0, 0.7);
+      }
+      .gb-icon-btn:active:not(:disabled) {
+        transform: translateY(1px);
+      }
+      .gb-icon-btn[data-lit='true'] {
+        background: linear-gradient(135deg, #2fd9e6 0%, #15a2b0 100%);
+        border-color: #7df3fa;
+        color: #04161a;
+        box-shadow: 0 0 20px rgba(47, 217, 230, 0.5);
+      }
+      .gb-icon-btn[data-lit='true']:hover:not(:disabled) {
+        background: linear-gradient(135deg, #7df3fa 0%, #2fd9e6 100%);
+        box-shadow: 0 0 28px rgba(47, 217, 230, 0.75);
+      }
+      .gb-icon-btn:disabled {
+        opacity: 0.35;
+        cursor: default;
+        background: rgba(14, 25, 31, 0.6);
+        border-color: rgba(47, 217, 230, 0.1);
+        color: var(--gb-off-ink);
+        box-shadow: none;
+        transform: none;
+      }
+      .gb-icon-btn .gb-i {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* Floating Cyber Tooltips */
+      [data-tooltip] {
+        position: relative;
+      }
+      [data-tooltip]::before {
+        content: attr(data-tooltip);
+        position: absolute;
+        bottom: calc(100% + 10px);
+        left: 50%;
+        transform: translateX(-50%) translateY(4px);
+        padding: 6px 12px;
+        background: rgba(3, 7, 10, 0.98);
+        border: 1px solid var(--gb-accent);
+        border-radius: 4px;
+        color: #ffffff;
+        font-family: var(--gb-display);
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.15s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.15s cubic-bezier(0.2, 0.7, 0.2, 1);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.9), 0 0 14px rgba(47, 217, 230, 0.4);
+        z-index: 100;
+      }
+      .gb-boot-crown [data-tooltip]::before {
+        bottom: auto;
+        top: calc(100% + 12px);
+        transform: translateX(-50%) translateY(-4px);
+      }
+      [data-tooltip]:hover::before,
+      [data-tooltip]:focus-visible::before {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+
+      /* Clean Non-Jitter Rollover Hint under Left Buttons (No Box, Text Only) */
+      .gb-boot-rail-hint {
+        margin: 20px 0 0 0;
+        padding: 0 4px;
+        color: #9cb8c2;
+        font-family: var(--gb-body);
+        font-size: 12px;
+        line-height: 1.5;
+        min-height: 5em;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+        font-style: italic;
+        pointer-events: none;
+      }
+      .gb-boot-rail-hint[data-visible='true'] {
+        opacity: 1;
       }
 
       /* ------------------------------------------------------------------
-         The creation form: sections down one side, rows in the panel
+         The creation form: sections down left rail, scrollable rows
          ------------------------------------------------------------------ */
+      .gb-boot-make {
+        display: flex;
+        flex: 1;
+        min-height: 0;
+        width: 100%;
+        max-width: 1380px;
+        margin: 0 auto;
+        padding: 32px 48px;
+        gap: 48px;
+        box-sizing: border-box;
+      }
       .gb-boot-rail {
         display: flex;
         flex-direction: column;
+        justify-content: center;
+        gap: 16px;
         flex: none;
-        width: 13rem;
-        padding: var(--gb-s3) 0;
-        border-right: 1px solid var(--gb-edge);
-        background: var(--gb-panel);
+        width: 17rem;
+        padding: 0;
+        background: transparent;
+        border-right: none;
       }
       .gb-boot-rail-item {
         display: flex;
         align-items: center;
-        gap: var(--gb-s3);
+        gap: 14px;
         position: relative;
-        padding: 0 var(--gb-s3);
-        min-height: 44px;
-        border: 0;
-        background: transparent;
+        padding: 0 22px;
+        min-height: 52px;
+        border: 1px solid rgba(47, 217, 230, 0.3);
+        background: linear-gradient(90deg, #101c22 0%, #081014 100%);
         color: var(--gb-dim);
-        font: inherit;
+        font-family: var(--gb-display);
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
         text-align: left;
         cursor: pointer;
-        transition:
-          transform var(--gb-t-press) var(--gb-in),
-          background-color var(--gb-t-press) var(--gb-in),
-          color var(--gb-t-press) var(--gb-in);
+        clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+        transition: all 0.15s cubic-bezier(0.2, 0.7, 0.2, 1);
       }
-      .gb-boot-rail-item::before {
+      .gb-boot-rail-item::after {
         content: '';
         position: absolute;
-        inset: 0 auto 0 0;
-        width: 2px;
-        background: transparent;
-        transition: background-color var(--gb-t-state) var(--gb-in);
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 6px;
+        background: var(--gb-edge);
+        transition: background-color 0.15s ease;
       }
       .gb-boot-rail-item:hover {
-        background: var(--gb-lift);
-        color: var(--gb-ink);
-        transform: translateX(2px);
+        background: linear-gradient(90deg, #1a303a 0%, #101c22 100%);
+        color: #fff;
+        border-color: var(--gb-accent);
+        transform: translateX(4px);
+      }
+      .gb-boot-rail-item:hover::after {
+        background: var(--gb-accent);
       }
       .gb-boot-rail-item[aria-current='true'] {
-        background: var(--gb-well);
-        color: var(--gb-accent);
+        background: linear-gradient(90deg, rgba(47, 217, 230, 0.3) 0%, #0d1a20 100%);
+        border-color: var(--gb-accent);
+        color: var(--gb-accent-lit);
+        box-shadow: 0 0 18px rgba(47, 217, 230, 0.3);
       }
-      .gb-boot-rail-item[aria-current='true']::before {
+      .gb-boot-rail-item[aria-current='true']::after {
         background: var(--gb-accent);
+        box-shadow: 0 0 12px var(--gb-accent);
       }
       .gb-boot-rail-item:focus-visible {
         outline: none;
         color: var(--gb-accent-lit);
       }
-      .gb-boot-rail-item:focus-visible::before {
-        background: var(--gb-accent-lit);
-      }
-      /* the sections go quiet while a city is being written */
       .gb-boot-rail[data-quiet='true'] {
         opacity: 0.5;
         transition: opacity var(--gb-t-state) var(--gb-in);
       }
-
-      .gb-boot-rows {
-        flex: 1;
-        min-width: 0;
-        overflow-y: auto;
-        scrollbar-width: thin;
-        scrollbar-color: var(--gb-edge-lit) transparent;
-      }
-      .gb-boot-section > h3 {
-        display: flex;
-        align-items: center;
-        gap: var(--gb-s2);
-        margin: 0;
-        padding: var(--gb-s3) var(--gb-s3) var(--gb-s2) var(--gb-s3);
-        color: var(--gb-accent);
-        background: var(--gb-panel);
-        border-bottom: 1px solid var(--gb-edge);
-      }
-
       /* ------------------------------------------------------------------
-         The landing screen: one wide card per city
-         ------------------------------------------------------------------ */
-      .gb-boot-shelf {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-        display: flex;
-        flex-direction: column;
-        gap: var(--gb-s3);
-      }
-      .gb-boot-shelved {
-        --gb-ground: var(--gb-solid);
-        background: var(--gb-edge);
-        box-shadow: var(--gb-frame);
-        transition:
-          transform var(--gb-t-press) var(--gb-in),
-          background-color var(--gb-t-press) var(--gb-in);
-      }
-      .gb-boot-shelved:hover {
-        background: var(--gb-edge-lit);
-        transform: translateX(2px);
-      }
-      .gb-boot-shelved[data-last='true'] {
-        background: var(--gb-edge-accent);
-      }
-      .gb-boot .gb-boot-shelved-in {
-        display: grid;
-        grid-template-columns: 160px minmax(0, 1fr) auto;
-        align-items: stretch;
-        gap: 0;
-      }
-      /* the band: what the save carries, in place of the imagery a picker shows */
-      .gb-boot-shelved-plate {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: var(--gb-s2);
-        padding: var(--gb-s3);
-        background-color: var(--gb-lift);
-        background-image: var(--gb-hatch);
-        border-right: 1px solid var(--gb-edge);
-        color: var(--gb-accent);
-        overflow: hidden;
-      }
-      .gb-boot-shelved-theme {
-        color: var(--gb-dim);
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        max-width: 100%;
-      }
-      .gb-boot-shelved-body {
-        display: flex;
-        flex-direction: column;
-        gap: var(--gb-s2);
-        padding: var(--gb-s3) var(--gb-s4);
-        min-width: 0;
-      }
-      .gb-boot-shelved-name {
-        color: var(--gb-ink);
-      }
-      .gb-boot-shelved[data-last='true'] .gb-boot-shelved-name {
-        color: var(--gb-accent);
-      }
-      .gb-boot-shelved-about {
-        color: var(--gb-dim);
-        display: -webkit-box;
-        -webkit-box-orient: vertical;
-        -webkit-line-clamp: 2;
-        overflow: hidden;
-      }
-      .gb-boot-shelved-readout {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: var(--gb-s2);
-        margin-top: auto;
-        color: var(--gb-faint);
-        font-family: var(--gb-mono);
-        font-variant-numeric: tabular-nums;
-        font-size: 10px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-      .gb-boot-shelved-playing {
-        color: var(--gb-good);
-      }
-      .gb-boot-shelved-last {
-        color: var(--gb-accent);
-      }
-      .gb-boot-shelved-buttons {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        gap: var(--gb-s2);
-        padding: var(--gb-s3);
-        border-left: 1px solid var(--gb-edge);
-      }
-      .gb-boot-shelved-buttons .gb-btn {
-        min-width: 8.5rem;
-      }
-
-      .gb-boot-heading {
-        display: flex;
-        align-items: center;
-        gap: var(--gb-s2);
-        margin: 0;
-        padding-bottom: var(--gb-s2);
-        color: var(--gb-accent);
-        border-bottom: 1px solid var(--gb-edge);
-      }
-      .gb-boot-home {
-        flex-direction: column;
-        gap: var(--gb-s4);
-        overflow-y: auto;
-        padding-right: var(--gb-s2);
-        scrollbar-width: thin;
-        scrollbar-color: var(--gb-edge-lit) transparent;
-      }
-      .gb-boot-block {
-        display: flex;
-        flex-direction: column;
-        gap: var(--gb-s3);
-      }
-      .gb-boot-block .gb-boot-row {
-        background: var(--gb-panel);
-        border: 0;
-        min-height: 44px;
-      }
-      .gb-boot-empty {
-        margin: 0;
-        padding: var(--gb-s4);
-        background: var(--gb-well);
-        color: var(--gb-dim);
-      }
-
-      /* ------------------------------------------------------------------
-         The foot: what the panel offers, and what it is doing
-         ------------------------------------------------------------------ */
-      .gb-boot-foot {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: var(--gb-s2);
-        flex: none;
-        padding: var(--gb-s3) var(--gb-s4);
-        border-top: 1px solid var(--gb-edge);
-        background: var(--gb-panel);
-      }
-      .gb-boot[data-face='home'] .gb-boot-foot {
-        margin-top: var(--gb-s4);
-        background: var(--gb-panel);
-        border: 1px solid var(--gb-edge);
-      }
-      .gb-boot-status {
-        margin: 0 0 0 auto;
-        display: flex;
-        align-items: center;
-        gap: var(--gb-s2);
-        min-height: 18px;
-        color: var(--gb-dim);
-        font-family: var(--gb-display);
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        text-align: right;
-      }
-      /* a mark, not a spinner: nothing here loops */
-      .gb-boot-status::before {
-        content: '';
-        flex: none;
-        width: 7px;
-        height: 7px;
-        background: transparent;
-        transform: rotate(45deg);
-        transition: background-color var(--gb-t-state) var(--gb-in);
-      }
-      .gb-boot-status[data-working='true'] {
-        color: var(--gb-ink);
-      }
-      .gb-boot-status[data-working='true']::before {
-        background: var(--gb-accent);
-      }
-      .gb-boot-status[data-trouble='true'] {
-        color: var(--gb-danger);
-      }
-      .gb-boot-status[data-trouble='true']::before {
-        background: var(--gb-danger);
-      }
-
-      /* ------------------------------------------------------------------
-         Motion. Transform and opacity only: this panel is drawn over a scene
-         that redraws every frame, so nothing here may lay out or repaint per
-         frame. Nothing loops, and nothing waits on a click.
+         Motion
          ------------------------------------------------------------------ */
       @keyframes gb-veil {
         from {
@@ -980,7 +2687,6 @@
         animation: gb-slide var(--gb-t-value) var(--gb-in) both;
         will-change: transform, opacity;
       }
-      /* a list arrives one row after another, capped so a long shelf is not a queue */
       .gb-boot-shelved.gb-in,
       .gb-boot-row.gb-in {
         animation: gb-lift var(--gb-t-value) var(--gb-in) both;
@@ -1010,197 +2716,577 @@
   <body>
     <div id="game"></div>
 
-    <section class="gb-boot" id="boot" data-face="make" aria-label="game-box">
+    <section class="gb-boot" id="boot" data-face="home" aria-label="game-box">
       <div class="gb-boot-card gb-c14 gb-edged" data-boot="card">
         <div class="gb-boot-card-in">
+          <!-- Top HUD Header Banner (Solid top-left, chamfered bottom-right) -->
           <header class="gb-boot-crown">
-            <span class="gb-i" data-icon="city"></span>
-            <h1 class="gb-boot-title gb-t6" data-boot="title">game-box</h1>
-            <p class="gb-boot-sub gb-t2" data-boot="sub">Every field is optional. Left blank, the city decides for itself; the same answers make the same city every time.</p>
+            <button type="button" class="gb-hud-btn gb-btn-huge-back" data-boot="back-home" aria-label="Back Home">
+              <span class="gb-i gb-i-24" data-icon="back"></span>
+              <span>BACK HOME</span>
+            </button>
+            <div class="gb-boot-crown-headings">
+              <h1 class="gb-boot-title gb-t7" data-boot="title">game-box</h1>
+              <p class="gb-boot-sub gb-t2" data-boot="sub">Pick a city to play, open one somebody sent you, or make a new one.</p>
+            </div>
           </header>
 
           <form class="gb-boot-body" data-boot="form" novalidate>
-            <!-- the cities the player already has: the front door -->
-            <section class="gb-boot-fold gb-boot-home" data-boot="home" aria-label="Your cities" hidden>
-              <div class="gb-boot-block">
-                <h2 class="gb-boot-heading gb-t5"><span class="gb-i gb-i-16" data-icon="city"></span>Your cities</h2>
-                <p class="gb-boot-empty gb-cut gb-c10 gb-t3" data-boot="library-empty">Nothing on the shelf yet. Every city you make or open is kept here, with its playthrough.</p>
-                <ul class="gb-boot-shelf" data-boot="library"></ul>
-                <div class="gb-boot-row gb-c6 gb-cut">
-                  <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="door"></span></span>
-                  <label class="gb-boot-label gb-t4" for="boot-open">Open a city somebody sent you</label>
-                  <span class="gb-boot-control">
-                    <span class="gb-boot-field gb-c6 gb-edged"><input id="boot-open" data-boot="open" type="file" accept=".json,.gbworld.json,application/json" /></span>
-                  </span>
-                </div>
-              </div>
+            <button type="button" class="gb-sr-only" data-boot="export" aria-label="Export" disabled>Export</button>
+            <button type="submit" class="gb-sr-only" data-boot="generate" aria-label="Generate">Generate</button>
+            <label class="gb-sr-only" for="boot-open">Open a city somebody sent you</label>
+            <input id="boot-open" data-boot="open" type="file" accept=".json,.gbworld.json,application/json" class="gb-sr-only" />
+            <label class="gb-sr-only" for="boot-screens">Video on the screens</label>
+            <input id="boot-screens" data-boot="screens" type="url" autocomplete="off" spellcheck="false" placeholder="https://... a video of your own" class="gb-sr-only" />
+            <label class="gb-sr-only" for="boot-apply">Open a pack onto the city on the shelf</label>
+            <input id="boot-apply" data-boot="apply" type="file" accept=".json,.gbpack.json,application/json" class="gb-sr-only" />
 
-              <div class="gb-boot-block">
-                <h2 class="gb-boot-heading gb-t5"><span class="gb-i gb-i-16" data-icon="settings"></span>Your settings</h2>
-                <div class="gb-boot-row gb-c6 gb-cut">
-                  <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="screen"></span></span>
-                  <label class="gb-boot-label gb-t4" for="boot-screens">Video on the screens</label>
-                  <span class="gb-boot-control">
-                    <span class="gb-boot-field gb-c6 gb-edged"><input id="boot-screens" data-boot="screens" type="url" autocomplete="off" spellcheck="false" placeholder="https://... a video of your own" /></span>
-                  </span>
-                </div>
-                <p class="gb-boot-note gb-t2">
-                  Left blank, every television plays the schedule its town writes for itself. A source that will not play leaves that schedule running. It is kept in this browser and never written into a city, so a file you send somebody carries nothing of it.
-                </p>
-              </div>
+            <!-- HOME VIEW: Fullscreen 2-Column HUD Layout (Left Fixed Rail + Right Shelf) -->
+            <section class="gb-boot-fold gb-boot-home" data-boot="home" aria-label="Your cities">
+              <div class="gb-boot-home-layout">
+                <!-- Left Menu Column: Create Game, Import City, Settings + Non-Jitter Rollover Hint Text -->
+                <nav class="gb-boot-home-rail">
+                  <button type="button" class="gb-hud-btn" data-boot="crown-new" data-lit="true" aria-label="Create Game" data-hint="Launch the complete game creation pipeline: design city architecture, generate history and quests, and populate live NPC instances.">
+                    <span class="gb-i gb-i-20" data-icon="city"></span>
+                    <span>Create Game</span>
+                  </button>
+                  <label class="gb-hud-btn" for="boot-open" aria-label="Import City" data-hint="Import a saved city file (.json / .gbworld) from your computer into the local game archive.">
+                    <span class="gb-i gb-i-20" data-icon="door"></span>
+                    <span>Import City</span>
+                  </label>
+                  <label class="gb-hud-btn" for="boot-screens" aria-label="Settings" data-hint="Configure broadcast video feeds and custom game environment settings.">
+                    <span class="gb-i gb-i-20" data-icon="settings"></span>
+                    <span>Settings</span>
+                  </label>
 
-              <div class="gb-boot-block">
-                <h2 class="gb-boot-heading gb-t5"><span class="gb-i gb-i-16" data-icon="plus"></span>Add to a city</h2>
-                <div class="gb-boot-row gb-c6 gb-cut">
-                  <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="item"></span></span>
-                  <label class="gb-boot-label gb-t4" for="boot-apply">Open a pack onto the city on the shelf</label>
-                  <span class="gb-boot-control">
-                    <span class="gb-boot-field gb-c6 gb-edged"><input id="boot-apply" data-boot="apply" type="file" accept=".json,.gbpack.json,application/json" /></span>
-                  </span>
+                  <p class="gb-boot-rail-hint" data-boot="intel-text" aria-live="polite"></p>
+                </nav>
+
+                <!-- Right / Center Main Cities Shelf -->
+                <div class="gb-boot-home-main">
+                  <div class="gb-boot-shelf-block">
+                    <h2 class="gb-boot-heading gb-t5"><span class="gb-i gb-i-16" data-icon="city"></span>Your games</h2>
+                    <p class="gb-boot-empty gb-cut gb-c10 gb-t3" data-boot="library-empty">Nothing on the shelf yet. Every game you make or open is kept here, with its playthrough.</p>
+                    <ul class="gb-boot-shelf" data-boot="library"></ul>
+                  </div>
                 </div>
-                <p class="gb-boot-note gb-t2">
-                  A pack is what somebody built onto this city later. It applies to this one city and no other, and it comes back with what it added. Grow writes the next block of buildings and hands you the pack for it.
-                </p>
               </div>
             </section>
 
-            <!-- the city being made: sections down one side, rows in the panel -->
-            <div class="gb-boot-fold" data-boot="make">
-              <nav class="gb-boot-rail" data-boot="rail" aria-label="Sections">
-                <button type="button" class="gb-boot-rail-item" data-boot="section" data-section="city" aria-current="true">
-                  <span class="gb-i gb-i-16" data-icon="city"></span><span class="gb-t1">The city</span>
-                </button>
-                <button type="button" class="gb-boot-rail-item" data-boot="section" data-section="story" aria-current="false">
-                  <span class="gb-i gb-i-16" data-icon="quest-main"></span><span class="gb-t1">The story</span>
-                </button>
-                <button type="button" class="gb-boot-rail-item" data-boot="section" data-section="look" aria-current="false">
-                  <span class="gb-i gb-i-16" data-icon="settings"></span><span class="gb-t1">The look</span>
-                </button>
-                <button type="button" class="gb-boot-rail-item" data-boot="section" data-section="build" aria-current="false">
-                  <span class="gb-i gb-i-16" data-icon="seed"></span><span class="gb-t1">The build</span>
-                </button>
+            <!-- MAKE VIEW: Dedicated 3-Step Multi-Stage Pipeline Wizard (100% Full Width 3-Column Grid) -->
+            <div class="gb-boot-fold gb-boot-make" data-boot="make" data-wizard-step="1" hidden>
+              <!-- Hidden accessibility hooks for automated test queries -->
+              <nav class="gb-sr-only" data-boot="rail">
+                <button type="button" data-boot="wizard-tab" data-step="1" aria-current="true">1. Architecture</button>
+                <button type="button" data-boot="wizard-tab" data-step="2" aria-current="false">2. Quests & Lore</button>
+                <button type="button" data-boot="wizard-tab" data-step="3" aria-current="false">3. Compile Game</button>
+                <button type="button" class="gb-hud-btn gb-btn-ai-all" data-boot="ai-all" aria-label="AI Fast Track">⚡ AI Fast Track</button>
+                <button type="button" class="gb-hud-btn" data-boot="home-again" aria-label="Your cities">Your cities</button>
               </nav>
 
+              <!-- Main Pipeline Step Panes -->
               <div class="gb-boot-rows" data-boot="rows">
-                <section class="gb-boot-section" data-section="city">
-                  <h3 class="gb-t1"><span class="gb-i gb-i-14" data-icon="city"></span>The city</h3>
-                  <div class="gb-boot-row gb-c6">
-                    <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="city"></span></span>
-                    <label class="gb-boot-label gb-t4" for="boot-theme">Theme</label>
-                    <span class="gb-boot-control">
-                      <span class="gb-boot-field gb-c6 gb-edged"><input id="boot-theme" data-boot="theme" type="text" maxlength="60" autocomplete="off" spellcheck="false" value="quiet coastal town" /></span>
-                    </span>
+                <!-- STEP 1: CITY ARCHITECTURE & ZONES (100% Full Width 2x2 Cyber Grid: 4 Visible Panels, No Scroll) -->
+                <section class="gb-boot-wizard-pane gb-pane-grid-4" data-pane="1" data-section="city">
+                  <!-- Panel 1: Top-Left - Urban Theme & Premise -->
+                  <div class="gb-cyber-panel gb-flex-col">
+                    <div class="gb-panel-head">
+                      <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="city"></span>ATMOSPHERE & PREMISE</span>
+                    </div>
+                    <div class="gb-cyber-field gb-floating">
+                      <input id="boot-theme" data-boot="theme" type="text" maxlength="60" autocomplete="off" spellcheck="false" placeholder=" " value="quiet coastal town" />
+                      <label for="boot-theme">Urban Theme</label>
+                    </div>
+                    <p class="gb-field-desc">Short evocative title for the setting (e.g. Quiet Coastal Town, Neon Megacity, Rust Foundry).</p>
+                    <div class="gb-cyber-field gb-field-flex gb-floating">
+                      <textarea id="boot-brief" data-boot="brief" spellcheck="false" placeholder=" "></textarea>
+                      <label for="boot-brief">What the city is about (Atmospheric Backstory)</label>
+                    </div>
+                    <p class="gb-field-desc">In your own words, as long as you like. The procedural history, architecture, and character lore are written from this.</p>
+
+                    <!-- Bottom-Left AI Prompt Writer Button -->
+                    <div class="gb-premise-foot">
+                      <button type="button" class="gb-btn-ai-prompt" data-boot="ai-brief" data-hint="Uses AI to generate a creative urban theme title and evocative narrative backstory brief.">
+                        <span class="gb-i gb-i-16" data-icon="sparkle"></span>
+                        <span>✨ AI Prompt Writer</span>
+                      </button>
+                    </div>
                   </div>
-                  <div class="gb-boot-row gb-c6" data-tall="true">
-                    <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="codex"></span></span>
-                    <label class="gb-boot-label gb-t4" for="boot-brief">What the city is about</label>
-                    <span class="gb-boot-control">
-                      <span class="gb-boot-field gb-c6 gb-edged"><textarea id="boot-brief" data-boot="brief" rows="3" spellcheck="false" placeholder="In your own words, as long as you like. Its history is written from this."></textarea></span>
-                    </span>
+
+                  <!-- Panel 2: Top-Right - Visual Aesthetics (Asset Template & Segmented Switches) -->
+                  <div class="gb-cyber-panel">
+                    <div class="gb-panel-head">
+                      <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="settings"></span>VISUAL AESTHETICS</span>
+                    </div>
+                    <div class="gb-aesthetics-grid">
+                      <div class="gb-aes-item" data-hint="Select the visual asset texture pack and material templates for buildings, facades, and interior decors.">
+                        <label class="gb-cyber-lbl">Visual Asset Template</label>
+                        <div class="gb-template-select-group">
+                          <button type="button" class="gb-btn-template" data-boot="select-template" data-hint="Select visual texture packs, facade shaders, and interior decor sets (opens asset template manager).">
+                            <span class="gb-i gb-i-16" data-icon="item"></span>
+                            <span class="gb-template-title">Cyber-Metropolis v2.0 (Default Assets)</span>
+                            <span class="gb-template-badge">CHANGE TEMPLATE</span>
+                          </button>
+                        </div>
+                      </div>
+                      <div class="gb-aes-item" data-hint="Controls nighttime neon sign glow density and holographic advertisements throughout the streets.">
+                        <label for="boot-neon" class="gb-cyber-lbl">Neon Illumination</label>
+                        <span class="gb-sr-only" data-boot="step-neon"><select id="boot-neon" data-boot="neon"></select></span>
+                        <div class="gb-seg-pills" data-sync-select="boot-neon">
+                          <button type="button" class="gb-seg-pill" data-val="" aria-checked="true" data-hint="Default balanced neon distribution.">ANY</button>
+                          <button type="button" class="gb-seg-pill" data-val="dark" data-hint="Minimalist low-light streets with dimmed or unpowered signage.">DARK</button>
+                          <button type="button" class="gb-seg-pill" data-val="some" data-hint="Moderate storefront neon and occasional advertising signs.">SOME</button>
+                          <button type="button" class="gb-seg-pill" data-val="lit" data-hint="Vibrant cyberpunk city illuminated by glaring neon lights and video walls.">LIT</button>
+                        </div>
+                      </div>
+                      <div class="gb-aes-item" data-hint="Adjusts building clustering density per block and spacing of open plazas.">
+                        <label for="boot-density" class="gb-cyber-lbl">Urban Density</label>
+                        <span class="gb-sr-only" data-boot="step-density"><select id="boot-density" data-boot="density"></select></span>
+                        <div class="gb-seg-pills" data-sync-select="boot-density">
+                          <button type="button" class="gb-seg-pill" data-val="" aria-checked="true" data-hint="Standard procedural block density.">ANY</button>
+                          <button type="button" class="gb-seg-pill" data-val="sparse" data-hint="Open roads with wide sidewalks, courtyards, and detached structures.">SPARSE</button>
+                          <button type="button" class="gb-seg-pill" data-val="mixed" data-hint="Varied skyline with a blend of dense urban corners and open avenues.">MIXED</button>
+                          <button type="button" class="gb-seg-pill" data-val="dense" data-hint="Tightly packed high-density building plots with narrow alleyways.">DENSE</button>
+                        </div>
+                      </div>
+                      <div class="gb-aes-item" data-hint="Sets the physical weathering, grime, rust, and surface wear on building facades.">
+                        <label for="boot-wear" class="gb-cyber-lbl">Facade Weathering & Wear</label>
+                        <span class="gb-sr-only" data-boot="step-wear"><select id="boot-wear" data-boot="wear"></select></span>
+                        <div class="gb-seg-pills" data-sync-select="boot-wear">
+                          <button type="button" class="gb-seg-pill" data-val="" aria-checked="true" data-hint="Default mixed architectural condition.">ANY</button>
+                          <button type="button" class="gb-seg-pill" data-val="kept" data-hint="Clean, polished corporate glass and well-maintained modern materials.">KEPT</button>
+                          <button type="button" class="gb-seg-pill" data-val="lived-in" data-hint="Authentic lived-in city streets with realistic weathering and signage.">LIVED-IN</button>
+                          <button type="button" class="gb-seg-pill" data-val="run-down" data-hint="Gritty, peeling paint, grime-stained concrete, and weathered rust.">RUN-DOWN</button>
+                        </div>
+                      </div>
+                    </div>
+                    <p class="gb-boot-note gb-t2" style="margin-top: auto; font-size: 10px; line-height: 1.35; color: #5c7882;">
+                      The look is one catalogue of buildings, facades and clothes, so those three are the whole of the style. A period or a look outside it (medieval, pastel, brutalist) cannot be drawn and is not offered.
+                    </p>
+                  </div>
+
+                  <!-- Panel 3: Bottom-Left - Grid Dimensions & Seed -->
+                  <div class="gb-cyber-panel">
+                    <div class="gb-panel-head">
+                      <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="map"></span>GRID DIMENSIONS & SEED</span>
+                    </div>
+                    <div class="gb-cyber-dial-card" data-hint="Total street blocks across and down the procedural city grid (4 to 116). Larger grids produce larger explorable worlds.">
+                      <div class="gb-dial-control">
+                        <label class="gb-cyber-lbl" for="boot-blocks">Blocks Across & Down</label>
+                        <div class="gb-num-stepper-group">
+                          <button type="button" class="gb-num-step-btn" data-step-field="blocks" data-step-dir="-1" aria-label="Decrease" data-hint="Decrease block count by 1">
+                            <span class="gb-i gb-i-14" data-icon="chevron-left"></span>
+                          </button>
+                          <input id="boot-blocks" data-boot="blocks" type="number" min="1" max="116" step="1" value="20" data-hint="Type or use slider to set block count (4 to 116)." />
+                          <button type="button" class="gb-num-step-btn" data-step-field="blocks" data-step-dir="1" aria-label="Increase" data-hint="Increase block count by 1">
+                            <span class="gb-i gb-i-14" data-icon="chevron-right"></span>
+                          </button>
+                        </div>
+                        <input type="range" class="gb-cyber-range" min="4" max="116" value="20" data-sync="blocks" data-hint="Drag slider to adjust procedural grid size (4 to 116)." />
+                      </div>
+                    </div>
+                    <div class="gb-cyber-dial-card" data-hint="Number of interactive building instances with explorable interiors and rooms (2 to 24).">
+                      <div class="gb-dial-control">
+                        <label class="gb-cyber-lbl" for="boot-places">Building Instances</label>
+                        <div class="gb-num-stepper-group">
+                          <button type="button" class="gb-num-step-btn" data-step-field="places" data-step-dir="-1" aria-label="Decrease" data-hint="Decrease building instances count by 1">
+                            <span class="gb-i gb-i-14" data-icon="chevron-left"></span>
+                          </button>
+                          <input id="boot-places" data-boot="places" type="number" min="1" max="24" step="1" placeholder="3" data-hint="Type or use slider to set building instances (2 to 24)." />
+                          <button type="button" class="gb-num-step-btn" data-step-field="places" data-step-dir="1" aria-label="Increase" data-hint="Increase building instances count by 1">
+                            <span class="gb-i gb-i-14" data-icon="chevron-right"></span>
+                          </button>
+                        </div>
+                        <input type="range" class="gb-cyber-range" min="2" max="24" value="3" data-sync="places" data-hint="Drag slider to adjust number of interactive building instances (2 to 24)." />
+                      </div>
+                    </div>
+                    <div class="gb-cyber-field gb-floating">
+                      <div class="gb-seed-group">
+                        <input id="boot-seed" data-boot="seed" type="text" maxlength="120" autocomplete="off" spellcheck="false" placeholder=" " value="town" />
+                        <label for="boot-seed">Generator Seed</label>
+                        <button type="button" class="gb-hud-btn gb-btn-roll" data-boot="roll" data-hint="Roll a completely fresh deterministic seed string.">
+                          <span class="gb-i gb-i-16" data-icon="seed"></span>
+                          <span>Fresh seed</span>
+                        </button>
+                      </div>
+                    </div>
+                    <p class="gb-field-desc">Deterministic random seed string that controls mathematical road placement and building footprints.</p>
+                  </div>
+
+                  <!-- Panel 4: Bottom-Right - Districts, World Telemetry & Dedicated Actions -->
+                  <div class="gb-cyber-panel">
+                    <div class="gb-panel-head">
+                      <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="seed"></span>DISTRICTS & WORLD TELEMETRY</span>
+                    </div>
+
+                    <!-- Live Entity Estimations & Statistics HUD -->
+                    <div class="gb-live-telemetry">
+                      <div class="gb-telem-item" data-hint="Estimated total procedural buildings generated based on grid size and urban density">
+                        <span class="gb-telem-num" data-stat="buildings">160</span>
+                        <span class="gb-telem-lbl">EST. BUILDINGS</span>
+                      </div>
+                      <div class="gb-telem-item" data-hint="Total explorable building instances with openable doors and furnished interiors">
+                        <span class="gb-telem-num" data-stat="doors">3</span>
+                        <span class="gb-telem-lbl">INSTANCES</span>
+                      </div>
+                      <div class="gb-telem-item" data-hint="Total citizen NPCs living in district instances">
+                        <span class="gb-telem-num" data-stat="npcs">12</span>
+                        <span class="gb-telem-lbl">TOTAL NPCS</span>
+                      </div>
+                      <div class="gb-telem-item" data-hint="Total urban district sectors (Downtown Hub, West Bay, Harbor, Neon Strip)">
+                        <span class="gb-telem-num" data-stat="zones">4</span>
+                        <span class="gb-telem-lbl">ZONES</span>
+                      </div>
+                      <div class="gb-telem-item" data-hint="Estimated total automated road traffic vehicles spawned on street network">
+                        <span class="gb-telem-num" data-stat="cars">28</span>
+                        <span class="gb-telem-lbl">TRAFFIC CARS</span>
+                      </div>
+                      <div class="gb-telem-item" data-hint="Estimated total campaign and side quest steps">
+                        <span class="gb-telem-num" data-stat="steps">18</span>
+                        <span class="gb-telem-lbl">QUEST STEPS</span>
+                      </div>
+                    </div>
+
+                    <div class="gb-zones-pills">
+                      <span class="gb-zone-chip" data-hint="Commercial downtown district with high-density storefronts and neon signs."><span class="gb-i gb-i-14" data-icon="city"></span>Downtown Hub (35%)</span>
+                      <span class="gb-zone-chip" data-hint="Residential and apartment sector with alleyways and courtyards."><span class="gb-i gb-i-14" data-icon="home"></span>West Bay (25%)</span>
+                      <span class="gb-zone-chip" data-hint="Waterfront logistics, cargo docks, and warehouse berths."><span class="gb-i gb-i-14" data-icon="map"></span>Harbor (20%)</span>
+                      <span class="gb-zone-chip" data-hint="Commercial nightlife and glowing neon advertising corridor."><span class="gb-i gb-i-14" data-icon="screen"></span>Neon Strip (20%)</span>
+                    </div>
+
+                    <!-- Dedicated ACTIONS Sub-Panel (Save, Generate, Preview, Next) -->
+                    <div class="gb-arch-actions-panel">
+                      <div class="gb-panel-subhead">
+                        <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="check"></span>ACTIONS</span>
+                      </div>
+                      <div class="gb-actions-grid">
+                        <!-- 1. SAVE: Enabled if any change happened or if never clicked -->
+                        <button type="button" class="gb-action-tile" data-boot="save-city" data-hint="Save current architecture parameters and blueprint configuration snapshot.">
+                          <span class="gb-i gb-i-18" data-icon="check"></span>
+                          <span class="gb-action-title">Save Blueprint</span>
+                        </button>
+
+                        <!-- 2. GENERATE: Generates city. Disabled once generated unless values change -->
+                        <button type="button" class="gb-action-tile" data-boot="gen-city" aria-label="Synthesize City Layout" data-hint="Generate and compile the procedural 3D street grid and architectural layouts.">
+                          <span class="gb-i gb-i-18" data-icon="seed"></span>
+                          <span class="gb-action-title">Generate City</span>
+                        </button>
+
+                        <!-- 3. PREVIEW / VIEW BLUEPRINT: Available only once a generation exists -->
+                        <button type="button" class="gb-action-tile" data-boot="view-city" disabled data-hint="View and preview the generated 3D district layout, blueprints, and building placement.">
+                          <span class="gb-i gb-i-18" data-icon="screen"></span>
+                          <span class="gb-action-title">View Blueprint</span>
+                        </button>
+
+                        <!-- 4. NEXT: Proceed to Quest & Lore / History -->
+                        <button type="button" class="gb-action-tile" data-step-nav="2" data-lit="true" data-hint="Proceed to Step 2: Quests, Side Jobs, and Narrative Lore Codex.">
+                          <span class="gb-i gb-i-18" data-icon="chevron-right"></span>
+                          <span class="gb-action-title">Next: Quests & Lore</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </section>
 
-                <section class="gb-boot-section" data-section="story">
-                  <h3 class="gb-t1"><span class="gb-i gb-i-14" data-icon="quest-main"></span>The story</h3>
-                  <div class="gb-boot-row gb-c6">
-                    <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="quest-main"></span></span>
-                    <label class="gb-boot-label gb-t4" for="boot-main">The main quest</label>
-                    <span class="gb-boot-control">
-                      <span class="gb-boot-field gb-c6 gb-edged"><input id="boot-main" data-boot="main" type="text" autocomplete="off" spellcheck="false" placeholder="What the main line should be about" /></span>
-                    </span>
+                <!-- STEP 2: QUESTS & HISTORY (Full Width Architecture Summary Banner on Row 1, 3 Panels on Row 2) -->
+                <section class="gb-boot-wizard-pane" data-pane="2" data-section="story" hidden>
+                  <!-- Row 1: Architecture Summary HUD Banner -->
+                  <div class="gb-story-arch-banner" data-hint="Summary of active architecture parameters, procedural geometry, and visual aesthetics from Step 1.">
+                    <div class="gb-story-arch-grid">
+                      <div class="gb-arch-summary-item">
+                        <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="city"></span>THEME & ATMOSPHERE</span>
+                        <span class="gb-arch-sum-val" data-summary="theme">Quiet Coastal Town</span>
+                        <span class="gb-arch-sum-sub" data-summary="brief">Procedural city backstory active</span>
+                      </div>
+                      <div class="gb-arch-summary-item">
+                        <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="map"></span>GRID & INSTANCES</span>
+                        <span class="gb-arch-sum-val" data-summary="grid">20x20 Grid · Seed: town</span>
+                        <span class="gb-arch-sum-sub" data-summary="places">3 Building Instances</span>
+                      </div>
+                      <div class="gb-arch-summary-item">
+                        <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="settings"></span>VISUAL SHADERS</span>
+                        <span class="gb-arch-sum-val" data-summary="aesthetics">Neon: Any · Density: Mixed</span>
+                        <span class="gb-arch-sum-sub" data-summary="wear">Wear: Kept · Cyber Kit v2.0</span>
+                      </div>
+                      <div class="gb-arch-summary-item">
+                        <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="seed"></span>WORLD TELEMETRY</span>
+                        <span class="gb-arch-sum-val" data-summary="telemetry">~160 Buildings · 4 Zones</span>
+                        <span class="gb-arch-sum-sub" data-summary="cars">28 Traffic Cars</span>
+                      </div>
+                    </div>
                   </div>
-                  <div class="gb-boot-row gb-c6">
-                    <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="quest-side"></span></span>
-                    <label class="gb-boot-label gb-t4" for="boot-side">Side quests</label>
-                    <span class="gb-boot-control">
-                      <span class="gb-boot-field gb-c6 gb-edged"><input id="boot-side" data-boot="side" type="text" autocomplete="off" spellcheck="false" placeholder="What kind of errands the town hands out" /></span>
-                    </span>
+
+                  <!-- Row 2: 3 Clean Narrative Panels (Without clickable templates, with individual AI enhance buttons) -->
+                  <div class="gb-story-columns">
+                    <!-- Column 1: Main Campaign Storyline -->
+                    <div class="gb-cyber-panel gb-flex-grow">
+                      <div class="gb-panel-head">
+                        <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="quest-main"></span>CAMPAIGN STORYLINE</span>
+                      </div>
+                      <div class="gb-cyber-field gb-field-flex gb-floating">
+                        <textarea id="boot-main" data-boot="main" autocomplete="off" spellcheck="false" placeholder=" "></textarea>
+                        <label for="boot-main">The Main Questline Objective</label>
+                      </div>
+                      <p class="gb-field-desc">Central storyline arc, corporate heists, or anomalies driving player progression.</p>
+                      <button type="button" class="gb-btn-ai-enhance" data-boot="ai-story-main" data-hint="Uses AI to generate dynamic campaign storylines, corporate conspiracies, or investigative heists.">
+                        <span class="gb-i gb-i-16" data-icon="sparkle"></span>
+                        <span>✨ AI Storyteller</span>
+                      </button>
+                    </div>
+
+                    <!-- Column 2: Side Quests & Errands -->
+                    <div class="gb-cyber-panel gb-flex-grow">
+                      <div class="gb-panel-head">
+                        <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="quest-side"></span>SIDE JOBS & ERRANDS</span>
+                      </div>
+                      <div class="gb-cyber-field gb-field-flex gb-floating">
+                        <textarea id="boot-side" data-boot="side" autocomplete="off" spellcheck="false" placeholder=" "></textarea>
+                        <label for="boot-side">Side Quests & Town Errands</label>
+                      </div>
+                      <p class="gb-field-desc">Secondary tasks, bounties, deliveries, and favor missions handed out by local residents.</p>
+                      <button type="button" class="gb-btn-ai-enhance" data-boot="ai-story-side" data-hint="Uses AI to generate local resident favor missions, contraband errands, and investigation jobs.">
+                        <span class="gb-i gb-i-16" data-icon="sparkle"></span>
+                        <span>✨ Enhance with AI</span>
+                      </button>
+                    </div>
+
+                    <!-- Column 3: Dialogue Tone & Citizen Codex -->
+                    <div class="gb-cyber-panel gb-flex-grow">
+                      <div class="gb-panel-head">
+                        <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="person"></span>CITIZEN PERSONALITIES & TONE</span>
+                      </div>
+                      <div class="gb-cyber-field gb-floating">
+                        <input id="boot-tone" data-boot="tone" type="text" autocomplete="off" spellcheck="false" placeholder=" " />
+                        <label for="boot-tone">Dialogue Tone & Personality</label>
+                      </div>
+                      <p class="gb-field-desc">Guides conversational style and vocabulary for citizen dialogue (e.g. Grim, warm, cynical, sharp-tongued).</p>
+                      <button type="button" class="gb-btn-ai-enhance" data-boot="ai-story-tone" data-hint="Uses AI to generate distinct citizen speech mannerisms, vocabulary codices, and dialogue tones.">
+                        <span class="gb-i gb-i-16" data-icon="sparkle"></span>
+                        <span>✨ Enhance with AI</span>
+                      </button>
+                    </div>
                   </div>
-                  <div class="gb-boot-row gb-c6">
-                    <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="person"></span></span>
-                    <label class="gb-boot-label gb-t4" for="boot-tone">Tone</label>
-                    <span class="gb-boot-control">
-                      <span class="gb-boot-field gb-c6 gb-edged"><input id="boot-tone" data-boot="tone" type="text" autocomplete="off" spellcheck="false" placeholder="Grim, warm, sly, weary" /></span>
-                    </span>
+
+                  <!-- External Dedicated Navigation Bar for Step 2 -->
+                  <div class="gb-pane-foot-actions">
+                    <button type="button" class="gb-hud-btn" data-step-nav="1" data-hint="Return to Step 1: City Architecture.">
+                      <span class="gb-i gb-i-16" data-icon="chevron-left"></span>
+                      <span>Back to Architecture</span>
+                    </button>
+                    <button type="button" class="gb-hud-btn" data-step-nav="3" data-lit="true" data-hint="Proceed to Step 3: Review & World Compilation.">
+                      <span>Next: Review & Compile</span>
+                      <span class="gb-i gb-i-16" data-icon="chevron-right"></span>
+                    </button>
                   </div>
                 </section>
 
-                <section class="gb-boot-section" data-section="look">
-                  <h3 class="gb-t1"><span class="gb-i gb-i-14" data-icon="settings"></span>The look</h3>
-                  <div class="gb-boot-row gb-c6">
-                    <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="screen"></span></span>
-                    <label class="gb-boot-label gb-t4" for="boot-neon">Neon</label>
-                    <span class="gb-boot-control" data-boot="step-neon">
-                      <span class="gb-boot-field gb-c6 gb-edged"><select id="boot-neon" data-boot="neon"></select></span>
-                    </span>
-                  </div>
-                  <div class="gb-boot-row gb-c6">
-                    <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="home"></span></span>
-                    <label class="gb-boot-label gb-t4" for="boot-density">Density</label>
-                    <span class="gb-boot-control" data-boot="step-density">
-                      <span class="gb-boot-field gb-c6 gb-edged"><select id="boot-density" data-boot="density"></select></span>
-                    </span>
-                  </div>
-                  <div class="gb-boot-row gb-c6">
-                    <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="item"></span></span>
-                    <label class="gb-boot-label gb-t4" for="boot-wear">Wear</label>
-                    <span class="gb-boot-control" data-boot="step-wear">
-                      <span class="gb-boot-field gb-c6 gb-edged"><select id="boot-wear" data-boot="wear"></select></span>
-                    </span>
-                  </div>
-                  <p class="gb-boot-note gb-t2">
-                    The look is one catalogue of buildings, facades and clothes, so those three are the whole of the style. A period or a look outside it (medieval, pastel, brutalist) cannot be drawn and is not offered.
-                  </p>
-                </section>
+                <!-- STEP 3: COMPILE GAME (2 Columns Review on Row 1, Full Description & Compile Button on Row 2) -->
+                <section class="gb-boot-wizard-pane" data-pane="3" data-section="build" hidden>
+                  <!-- Row 1: 2-Column Final Review (Architecture vs. Narrator & Synthesis) -->
+                  <div class="gb-compile-review-grid">
+                    <!-- Column 1: Architecture Specification -->
+                    <div class="gb-review-col">
+                      <div class="gb-cyber-panel">
+                        <div class="gb-panel-head">
+                          <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="city"></span>ARCHITECTURE & GEOMETRY SPECIFICATION</span>
+                        </div>
+                        <div class="gb-review-items-list">
+                          <div class="gb-review-item-card">
+                            <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="city"></span>URBAN THEME & ATMOSPHERE</span>
+                            <span class="gb-arch-sum-val" data-review-theme>Quiet Coastal Town</span>
+                            <span class="gb-arch-sum-sub" data-review-brief>Procedural city backstory configured</span>
+                          </div>
+                          <div class="gb-review-item-card">
+                            <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="map"></span>GRID LAYOUT & SEED</span>
+                            <span class="gb-arch-sum-val" data-review-grid>20x20 Grid · Seed: town</span>
+                            <span class="gb-arch-sum-sub" data-review-instances-sub>3 Explorable Furnished Building Instances</span>
+                          </div>
+                          <div class="gb-review-item-card">
+                            <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="settings"></span>VISUAL AESTHETICS & SHADERS</span>
+                            <span class="gb-arch-sum-val" data-review-style>Neon: Any · Density: Mixed · Wear: Kept</span>
+                            <span class="gb-arch-sum-sub">Asset Kit: Cyber-Metropolis v2.0</span>
+                          </div>
+                          <div class="gb-review-item-card">
+                            <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="seed"></span>DISTRICT ALLOCATION</span>
+                            <span class="gb-arch-sum-val" data-review-telemetry>~160 Estimated Buildings · 28 Traffic Cars</span>
+                            <span class="gb-arch-sum-sub">4 Zones: Downtown (35%), West Bay (25%), Harbor (20%), Neon Strip (20%)</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
 
-                <section class="gb-boot-section" data-section="build">
-                  <h3 class="gb-t1"><span class="gb-i gb-i-14" data-icon="seed"></span>The build</h3>
-                  <div class="gb-boot-row gb-c6">
-                    <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="map"></span></span>
-                    <label class="gb-boot-label gb-t4" for="boot-blocks">Blocks across and down</label>
-                    <span class="gb-boot-control">
-                      <span class="gb-boot-field gb-c6 gb-edged"><input id="boot-blocks" data-boot="blocks" type="number" min="1" max="116" step="1" value="20" /></span>
-                    </span>
+                    <!-- Column 2: Narrator & Lore Codex -->
+                    <div class="gb-review-col">
+                      <div class="gb-cyber-panel">
+                        <div class="gb-panel-head">
+                          <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="quest-main"></span>NARRATIVE & CODEX SPECIFICATION</span>
+                        </div>
+                        <div class="gb-review-items-list">
+                          <div class="gb-review-item-card">
+                            <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="quest-main"></span>CAMPAIGN STORYLINE ARC</span>
+                            <span class="gb-arch-sum-val" data-review-main>Procedural Main Campaign</span>
+                          </div>
+                          <div class="gb-review-item-card">
+                            <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="quest-side"></span>DYNAMIC SIDE ERRANDS</span>
+                            <span class="gb-arch-sum-val" data-review-side>Dynamic Side Missions & Bounties</span>
+                          </div>
+                          <div class="gb-review-item-card">
+                            <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="person"></span>CITIZEN PERSONALITIES & TOTAL NPCS</span>
+                            <span class="gb-arch-sum-val" data-review-tone>Tone: Grim, tense, heavy</span>
+                            <span class="gb-arch-sum-sub" data-review-npcs-count>Estimated ~12 Citizen NPCs assigned to building instances</span>
+                          </div>
+                        </div>
+
+                        <!-- Hidden inputs for local model binding -->
+                        <input id="boot-model" data-boot="model" type="checkbox" style="display: none;" />
+                        <span data-boot="model-state" style="display: none;">Off</span>
+                      </div>
+                    </div>
                   </div>
-                  <div class="gb-boot-row gb-c6">
-                    <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="door"></span></span>
-                    <label class="gb-boot-label gb-t4" for="boot-places">Doors that open</label>
-                    <span class="gb-boot-control">
-                      <span class="gb-boot-field gb-c6 gb-edged"><input id="boot-places" data-boot="places" type="number" min="1" max="24" step="1" placeholder="3" /></span>
-                    </span>
-                  </div>
-                  <div class="gb-boot-row gb-c6">
-                    <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="seed"></span></span>
-                    <label class="gb-boot-label gb-t4" for="boot-seed">Seed</label>
-                    <span class="gb-boot-control">
-                      <span class="gb-boot-field gb-boot-seed gb-c6 gb-edged"><input id="boot-seed" data-boot="seed" type="text" maxlength="120" autocomplete="off" spellcheck="false" value="town" /></span>
-                      <button type="button" class="gb-btn gb-c6" data-boot="roll"><span><span class="gb-i gb-i-16" data-icon="seed"></span>Fresh seed</span></button>
-                    </span>
-                  </div>
-                  <div class="gb-boot-row gb-c6">
-                    <span class="gb-boot-tile gb-c4 gb-edged"><span class="gb-i" data-icon="screen"></span></span>
-                    <label class="gb-boot-label gb-t4" for="boot-model">Write the history, the names, the people and the jobs with the local model</label>
-                    <span class="gb-boot-control">
-                      <label class="gb-boot-toggle">
-                        <input id="boot-model" data-boot="model" type="checkbox" />
-                        <span class="gb-boot-switch gb-c4 gb-edged"><span></span></span>
-                        <span class="gb-boot-state gb-t1" data-boot="model-state">Off</span>
-                      </label>
-                    </span>
+
+                  <!-- Row 2: Fixed Descriptive Explanation & Compile Action Button -->
+                  <div class="gb-compile-desc-box">
+                    <p class="gb-compile-desc" data-boot="compile-desc">
+                      Ready to generate <span class="gb-accent-hl" data-desc-instances>3 building instances</span> with <span class="gb-accent-hl" data-desc-npcs>12 total NPCs</span> belonging to the district instances in <span class="gb-accent-hl" data-desc-theme>Quiet Coastal Town</span>. Are you sure you want to compile and assemble the game?
+                    </p>
+                    <div class="gb-compile-actions-strip">
+                      <button type="button" class="gb-hud-btn" data-step-nav="2" data-hint="Return to Step 2: Quests & Lore.">
+                        <span class="gb-i gb-i-16" data-icon="chevron-left"></span>
+                        <span>Back to Quests & Lore</span>
+                      </button>
+                      <button type="button" class="gb-hud-btn gb-btn-compile-game" data-boot="compile-trigger" data-lit="true" aria-label="Compile and Launch" data-hint="Confirm specifications and compile the full 3D game world.">
+                        <span class="gb-i gb-i-24" data-icon="check"></span>
+                        <span>🚀 COMPILE AND ASSEMBLE GAME</span>
+                      </button>
+                    </div>
                   </div>
                 </section>
               </div>
             </div>
 
+            <!-- Confirmation Modal Dialog for World Compilation -->
+            <div class="gb-compile-modal" data-boot="compile-modal" hidden>
+              <div class="gb-compile-modal-backdrop" data-modal-dismiss></div>
+              <div class="gb-compile-modal-dialog">
+                <div class="gb-modal-header">
+                  <span class="gb-modal-title"><span class="gb-i gb-i-20" data-icon="settings"></span>CONFIRM WORLD COMPILATION</span>
+                  <button type="button" class="gb-modal-close" data-modal-dismiss aria-label="Close modal">✕</button>
+                </div>
+                <div class="gb-modal-body">
+                  <p class="gb-modal-intro">Ready to assemble and launch the procedural world with the following active parameters:</p>
+                  
+                  <div class="gb-modal-specs-grid">
+                    <div class="gb-modal-spec-card">
+                      <span class="gb-spec-label"><span class="gb-i gb-i-14" data-icon="city"></span>ARCHITECTURE & THEME</span>
+                      <span class="gb-spec-val" data-modal-theme>Quiet Coastal Town</span>
+                      <span class="gb-spec-sub" data-modal-grid>20x20 Grid · 4 District Zones</span>
+                    </div>
+                    <div class="gb-modal-spec-card">
+                      <span class="gb-spec-label"><span class="gb-i gb-i-14" data-icon="screen"></span>POPULATION & DENSITY</span>
+                      <span class="gb-spec-val" data-modal-entities>~160 Buildings · 28 Vehicles</span>
+                      <span class="gb-spec-sub" data-modal-style>Neon: Any · Density: Mixed · Wear: Kept</span>
+                    </div>
+                    <div class="gb-modal-spec-card gb-modal-card-wide">
+                      <span class="gb-spec-label"><span class="gb-i gb-i-14" data-icon="quest-main"></span>CAMPAIGN & NARRATIVE CODEX</span>
+                      <span class="gb-spec-val" data-modal-quest>Procedural Main Questline</span>
+                      <span class="gb-spec-sub" data-modal-tone>Tone: Grim, tense, heavy</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="gb-modal-footer">
+                  <button type="button" class="gb-hud-btn" data-modal-dismiss>← Return to Edit</button>
+                  <button type="button" class="gb-hud-btn gb-btn-compile-confirm" data-boot="compile-proceed" data-lit="true">
+                    <span class="gb-i gb-i-20" data-icon="check"></span>
+                    <span>🚀 Confirm & Assemble Game</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Blueprint Preview Modal Dialog -->
+            <div class="gb-compile-modal" data-boot="blueprint-modal" hidden>
+              <div class="gb-compile-modal-backdrop" data-modal-dismiss></div>
+              <div class="gb-compile-modal-dialog">
+                <div class="gb-modal-header">
+                  <span class="gb-modal-title"><span class="gb-i gb-i-20" data-icon="city"></span>ARCHITECTURE BLUEPRINT PREVIEW</span>
+                  <button type="button" class="gb-modal-close" data-modal-dismiss aria-label="Close blueprint preview">✕</button>
+                </div>
+                <div class="gb-modal-body">
+                  <p class="gb-modal-intro">Generated architectural specifications and procedural city footprint:</p>
+                  
+                  <div class="gb-modal-specs-grid">
+                    <div class="gb-modal-spec-card">
+                      <span class="gb-spec-label"><span class="gb-i gb-i-14" data-icon="city"></span>THEME & GRID</span>
+                      <span class="gb-spec-val" data-bp-theme>Quiet Coastal Town</span>
+                      <span class="gb-spec-sub" data-bp-grid>20x20 Grid · Seed: town</span>
+                    </div>
+                    <div class="gb-modal-spec-card">
+                      <span class="gb-spec-label"><span class="gb-i gb-i-14" data-icon="seed"></span>DISTRICTS & FOOTPRINTS</span>
+                      <span class="gb-spec-val" data-bp-entities>~160 Buildings · 3 Explorable Instances</span>
+                      <span class="gb-spec-sub" data-bp-zones>4 District Zones (Downtown, West Bay, Harbor, Neon)</span>
+                    </div>
+                    <div class="gb-modal-spec-card gb-modal-card-wide">
+                      <span class="gb-spec-label"><span class="gb-i gb-i-14" data-icon="screen"></span>AESTHETIC SPECIFICATION</span>
+                      <span class="gb-spec-val" data-bp-style>Neon: Any · Density: Mixed · Wear: Kept</span>
+                      <span class="gb-spec-sub" data-bp-brief>Atmosphere: In your own words...</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="gb-modal-footer">
+                  <button type="button" class="gb-hud-btn" data-modal-dismiss>← Close Blueprint</button>
+                  <button type="button" class="gb-hud-btn gb-btn-compile-confirm" data-step-nav="2" data-modal-dismiss data-lit="true">
+                    <span class="gb-i gb-i-16" data-icon="chevron-right"></span>
+                    <span>Proceed to Quests & Lore →</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Global High-Tech Floating Tooltip Component -->
+            <div class="gb-cyber-tooltip" data-boot="intel-tooltip" aria-hidden="true"></div>
+
+            <!-- Bottom HUD Footer: Seamless Interlocking Chevrons (arrowreview.jpg) -->
             <div class="gb-boot-foot">
-              <button type="button" class="gb-btn gb-c6" data-boot="new" hidden><span><span class="gb-i gb-i-16" data-icon="plus"></span>New city</span></button>
-              <button type="button" class="gb-btn gb-c6" data-boot="home-again" hidden><span><span class="gb-i gb-i-16" data-icon="city"></span>Your cities</span></button>
-              <button type="submit" class="gb-btn gb-c6" data-boot="generate" data-lit="true" disabled><span><span class="gb-i gb-i-16" data-icon="check"></span>Generate</span></button>
-              <button type="button" class="gb-btn gb-c6" data-boot="export" disabled><span><span class="gb-i gb-i-16" data-icon="door"></span>Export</span></button>
-              <button type="button" class="gb-btn gb-c6" data-boot="grow" disabled><span><span class="gb-i gb-i-16" data-icon="plus"></span>Grow and pack</span></button>
-              <button type="button" class="gb-btn gb-c6" data-boot="cancel" hidden><span><span class="gb-i gb-i-16" data-icon="close"></span>Cancel</span></button>
-              <button type="button" class="gb-btn gb-c6" data-boot="close" hidden><span><span class="gb-i gb-i-16" data-icon="leave"></span>Back to the city <kbd class="gb-key gb-cut gb-c4">Esc</kbd></span></button>
-              <p class="gb-boot-status" data-boot="status" role="status" data-working="true">Loading the game</p>
+              <button type="button" class="gb-sr-only" data-boot="new" aria-label="New city" hidden>New city</button>
+              <button type="button" class="gb-sr-only" data-boot="grow" aria-label="Grow and pack" disabled>Grow and pack</button>
+              <button type="button" class="gb-sr-only" data-boot="cancel" aria-label="Cancel" hidden>Cancel</button>
+              <button type="button" class="gb-sr-only" data-boot="close" aria-label="Back to the city" hidden>Back to the city <kbd class="gb-key gb-cut gb-c4">Esc</kbd></button>
+
+              <!-- Seamless Interconnected Pipeline Stepper Ribbon (arrowreview.jpg) -->
+              <div class="gb-boot-stepper" data-boot="stepper">
+                <button type="button" class="gb-step-chevron gb-step-arch" data-step-target="1" aria-current="true" data-hint="Step 1: Architect urban layout, building density, district sectors, and visual aesthetics.">
+                  <svg class="gb-chevron-wings" viewBox="0 0 32 32" aria-hidden="true">
+                    <path d="M4 6 L14 16 L4 26" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M16 6 L26 16 L16 26" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  <span class="gb-chevron-trail">»»</span>
+                  <span class="gb-chevron-num">01</span>
+                  <span class="gb-chevron-label">ARCHITECTURE</span>
+                  <span class="gb-chevron-trail">»»</span>
+                </button>
+                <button type="button" class="gb-step-chevron gb-step-story" data-step-target="2" aria-current="false" data-hint="Step 2: Define campaign storyline, dynamic side jobs, citizen dialogue tone, and codices.">
+                  <svg class="gb-chevron-wings" viewBox="0 0 32 32" aria-hidden="true">
+                    <path d="M4 6 L14 16 L4 26" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M16 6 L26 16 L16 26" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  <span class="gb-chevron-trail">»»</span>
+                  <span class="gb-chevron-num">02</span>
+                  <span class="gb-chevron-label">QUESTS & HISTORY</span>
+                  <span class="gb-chevron-trail">»»</span>
+                </button>
+                <button type="button" class="gb-step-chevron gb-step-compile" data-step-target="3" aria-current="false" data-hint="Step 3: Review specifications, configure AI synthesis engine, and compile the game.">
+                  <svg class="gb-chevron-wings" viewBox="0 0 32 32" aria-hidden="true">
+                    <path d="M4 6 L14 16 L4 26" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M16 6 L26 16 L16 26" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  <span class="gb-chevron-trail">»»</span>
+                  <span class="gb-chevron-num">03</span>
+                  <span class="gb-chevron-label">COMPILE INSTANCES</span>
+                  <span class="gb-chevron-trail">»»</span>
+                </button>
+              </div>
+
+              <p class="gb-boot-status" data-boot="status" role="status"></p>
             </div>
           </form>
         </div>
