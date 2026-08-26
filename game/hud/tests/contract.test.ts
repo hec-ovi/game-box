@@ -1218,6 +1218,83 @@ describe('the map tab', () => {
   })
 })
 
+describe('the parts of the city on the map', () => {
+  /**
+   * A district is a set of blocks, not a box, so what has to read on screen is
+   * one shape with one border round it however it interlocks with its
+   * neighbours: an L, a Z or a T is the point of it.
+   */
+  const BENT = {
+    id: 'district_1',
+    name: 'Kiln Bay',
+    // an L: two blocks across the bottom and one standing on the left
+    rects: [
+      { x: 0, y: 2, w: 2, h: 2 },
+      { x: 2, y: 2, w: 2, h: 2 },
+      { x: 0, y: 0, w: 2, h: 2 },
+    ],
+  }
+  const SQUARE = { id: 'district_2', name: 'Lowgate', rects: [{ x: 4, y: 0, w: 4, h: 4 }] }
+
+  function plan(): { screen: HTMLElement; intents: HudIntent[] } {
+    const { hud, screen, intents } = mount()
+    hud.show({
+      map: {
+        width: 8,
+        height: 4,
+        plots: [],
+        districts: [BENT, SQUARE],
+        marks: [{ x: 1, y: 1, label: 'You', kind: 'you', facing: 0 }],
+      },
+      window: 'map',
+    })
+    return { screen, intents }
+  }
+
+  it('draws each part as one shape with one border, whatever shape it is', () => {
+    const { screen } = plan()
+    const shapes = [...screen.querySelectorAll('.gb-plan .gb-district')]
+    expect(shapes.map((node) => node.getAttribute('data-district'))).toEqual(['district_1', 'district_2'])
+
+    // the L is one border round the outside, with no line through the middle
+    // where its own blocks meet: 6 sides, so 6 lines
+    const bent = shapes[0]!.querySelector('.gb-district-edge')!.getAttribute('d')!
+    expect(bent.match(/M /g)).toHaveLength(6)
+    // and the plain square is 4
+    expect(shapes[1]!.querySelector('.gb-district-edge')!.getAttribute('d')!.match(/M /g)).toHaveLength(4)
+
+    // each one says its name on hover and writes it across itself
+    expect(shapes[0]!.querySelector('title')?.textContent).toBe('Kiln Bay')
+    expect([...screen.querySelectorAll('.gb-plan .gb-district-name text')].map((node) => node.textContent)).toEqual(['Kiln Bay', 'Lowgate'])
+  })
+
+  it('reports the one that was clicked, so the game can point the player at it', () => {
+    const { screen, intents } = plan()
+    ;(screen.querySelector('.gb-plan .gb-district[data-district="district_2"]') as SVGElement).dispatchEvent(
+      new MouseEvent('click', { bubbles: true }),
+    )
+    expect(intents).toContainEqual({ kind: 'district', districtId: 'district_2' })
+  })
+
+  it('takes the borders off once the plan is zoomed into a street', () => {
+    const { screen } = plan()
+    const svg = screen.querySelector('.gb-plan svg') as SVGElement
+    expect(svg.getAttribute('data-districts')).toBe('true')
+
+    // three notches in and the plan is showing streets, where a border across
+    // one is in the way rather than a help
+    const zoomIn = getByRole(screen, 'button', { name: 'Zoom in (+)' })
+    for (let notch = 0; notch < 4; notch++) zoomIn.click()
+    expect(svg.getAttribute('data-districts')).toBe('false')
+  })
+
+  it('draws none at all for a city that was never cut into any', () => {
+    const { hud, screen } = mount()
+    hud.show({ map: { width: 8, height: 4, plots: [] }, window: 'map' })
+    expect(screen.querySelectorAll('.gb-plan .gb-district')).toHaveLength(0)
+  })
+})
+
 describe('the stations on the map', () => {
   const CITY: MapView = {
     width: 40,

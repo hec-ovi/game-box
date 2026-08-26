@@ -34,6 +34,9 @@ export class MapTab implements Tab {
 
   constructor(emit: (intent: HudIntent) => void) {
     this.#stations = new StationList((stationId) => emit({ kind: 'travel', stationId }))
+    // a part of the city clicked is the player asking to be pointed at it; where
+    // it is and how to walk there is the game's, not the plan's
+    this.#plan.onDistrict = (districtId) => emit({ kind: 'district', districtId })
     this.node.tabIndex = 0
     this.node.setAttribute('aria-label', 'Map')
     this.node.addEventListener('keydown', (event) => this.#key(event))

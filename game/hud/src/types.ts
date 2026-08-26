@@ -166,6 +166,27 @@ export interface MapMark {
   readonly line?: QuestKind
 }
 
+/**
+ * A named part of the city, as a shape rather than a box: the blocks it holds,
+ * in grid cells. Their union is the district, so a district can be an L, a Z or
+ * anything else the city was cut into, and every plot in the city belongs to
+ * exactly one of them.
+ */
+export interface MapDistrict {
+  readonly id: string
+  readonly name: string
+  /** The rectangles it covers, in cells. Touching rectangles read as one region. */
+  readonly rects: readonly MapRect[]
+}
+
+/** A rectangle in grid cells. */
+export interface MapRect {
+  readonly x: number
+  readonly y: number
+  readonly w: number
+  readonly h: number
+}
+
 /** Where fast travel boards: a station on the plan, in cells. */
 export interface MapStation {
   readonly id: string
@@ -179,6 +200,8 @@ export interface MapView {
   readonly width: number
   readonly height: number
   readonly plots: readonly MapPlot[]
+  /** The parts of the city, by name. Every plot is inside one; a city not cut into any lists none. */
+  readonly districts?: readonly MapDistrict[]
   readonly marks?: readonly MapMark[]
   readonly stations?: readonly MapStation[]
   /** The station the player is standing at, which is when the others can be ridden to. */
@@ -411,6 +434,8 @@ export type HudIntent =
   | { readonly kind: 'decide'; readonly questId: string; readonly stepId: string; readonly optionId: string }
   | { readonly kind: 'lock-time'; readonly locked: boolean }
   | { readonly kind: 'skip-time' }
+  /** A part of the city was clicked on the plan: the player is asking to be pointed at it. */
+  | { readonly kind: 'district'; readonly districtId: string }
   | { readonly kind: 'weather'; readonly weather: string }
   | { readonly kind: 'minimap'; readonly shown: boolean }
   | { readonly kind: 'fullscreen'; readonly on: boolean }

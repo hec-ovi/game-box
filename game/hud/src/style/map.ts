@@ -96,6 +96,50 @@ export const MAP = `
 }
 .gb-hud .gb-bearing:hover, .gb-hud .gb-bearing:focus-visible { color: var(--gb-accent-lit); }
 
+/* The parts of the city. They are the reading you take standing back from it,
+   so they fade out as the plan is zoomed into a street. */
+.gb-hud .gb-districts, .gb-hud .gb-district-names {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--gb-t-state) var(--gb-in);
+}
+.gb-hud .gb-plan svg[data-districts='true'] .gb-districts { opacity: 1; pointer-events: auto; }
+.gb-hud .gb-plan svg[data-districts='true'] .gb-district-names { opacity: 1; }
+
+.gb-hud .gb-district-fill {
+  fill: var(--gb-plot);
+  opacity: 0.5;
+}
+.gb-hud .gb-district-edge {
+  fill: none;
+  stroke: var(--gb-accent);
+  stroke-width: 1.5;
+  opacity: 0.55;
+  vector-effect: non-scaling-stroke;
+}
+.gb-hud .gb-district { cursor: pointer; }
+/* Under the pointer: that one lights and the rest step back, so which shape it
+   is reads even where two of them interlock. */
+.gb-hud .gb-plan svg[data-over] .gb-district-fill { opacity: 0.25; }
+.gb-hud .gb-plan svg[data-over] .gb-district-edge { opacity: 0.28; }
+.gb-hud .gb-plan svg[data-over] .gb-district-name { opacity: 0.35; }
+.gb-hud .gb-district:hover .gb-district-fill { fill: var(--gb-accent-glow); opacity: 0.75; }
+.gb-hud .gb-district:hover .gb-district-edge { stroke: var(--gb-accent-lit); opacity: 1; }
+.gb-hud .gb-plan svg[data-over] .gb-district-name[data-district] { transition: opacity var(--gb-t-press) var(--gb-in); }
+
+.gb-hud .gb-district-name text {
+  fill: var(--gb-accent-lit);
+  font-family: var(--gb-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  paint-order: stroke fill;
+  stroke: var(--gb-void);
+  stroke-width: 3;
+  pointer-events: none;
+}
+
 /* Icon explanation guide on the left sidebar */
 .gb-hud .gb-map-legend-guide {
   display: flex;
