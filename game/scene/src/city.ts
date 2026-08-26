@@ -52,11 +52,12 @@ export interface CityBuild {
   readonly lights: CityLights
   /**
    * Where the player is, in metres on the ground, every frame. The lights go
-   * to the nearest emitters; when the cell changes, the buildings that came
-   * near are drawn in detail, the ones that went far fall back to their
-   * shells, and far rooms are let go of.
+   * to the nearest emitters, fading over `seconds` if the frame's elapsed time
+   * is given and arriving at once if it is not; when the cell changes, the
+   * buildings that came near are drawn in detail, the ones that went far fall
+   * back to their shells, and far rooms are let go of.
    */
-  follow(x: number, z: number): void
+  follow(x: number, z: number, seconds?: number): void
   /** That interior, built on first entry and kept while the player is near. Nothing for an id the world lacks. */
   interior(interiorId: string): InteriorBuild | undefined
   /** The interiors standing built right now, by id. */
@@ -184,8 +185,8 @@ export function buildCity(world: World, dressing: Dressing, options: CityOptions
     markings,
     clutter,
     lights,
-    follow: (x, z) => {
-      lights.follow(x, z)
+    follow: (x, z, seconds) => {
+      lights.follow(x, z, seconds)
       const now = cellOf(x, z, cell)
       if (sameCell(standing, now)) return
       standing = now

@@ -22,6 +22,16 @@ export const TOKENS = `
   --gb-well: #050b0e;
   --gb-scrim: rgba(4, 8, 10, 0.74);
 
+  /* The conversation, which stands over the street rather than covering it. A
+     blur would read better and is not allowed here: it makes the compositor
+     read the frame back every frame, over a scene that is already drawing. So
+     the density does the work instead, and it is a gradient rather than one
+     value: sheerest at the inner edge where the city should show through,
+     deepest under the column of text. */
+  --gb-sheer: linear-gradient(to right, rgba(5, 11, 14, 0.34), rgba(5, 11, 14, 0.8));
+  --gb-sheer-lift: rgba(21, 35, 41, 0.62);
+  --gb-sheer-well: rgba(4, 9, 12, 0.55);
+
   /* Edges: at rest, under the pointer, and on the thing that is chosen. */
   --gb-edge: #1d3038;
   --gb-edge-lit: #2e555f;

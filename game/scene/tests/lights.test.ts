@@ -102,6 +102,36 @@ describe('the light the buildings throw', () => {
     expect(there.some((light) => atSpawn.some((was) => was.x === light.x && was.z === light.z))).toBe(false)
   })
 
+  it('fades a light in and out over the frames rather than switching it on', async () => {
+    const world = await bigTown()
+    const city = buildCity(world, new Signed(), { night: 1 })
+    const candela = (light: THREE.PointLight) => (light.userData['emitter'] as { intensity: number }).intensity
+    const lit = () => lightsIn(city).filter((one) => one.visible)
+    const far = { x: world.grid.width * world.cellSize * 0.8, z: world.grid.height * world.cellSize * 0.8 }
+
+    // opened, they are already at full: a city's first frame is not a fade
+    for (const light of lit()) expect(light.intensity).toBeCloseTo(candela(light), 9)
+
+    const wasLit = new Set(lit().map((light) => light.userData['emitter']))
+
+    // one frame of a walk to the far corner, and nothing has teleported: every
+    // light burning is still one the player was standing among
+    city.follow(far.x, far.z, 1 / 60)
+    const going = lit()
+    expect(going.length).toBeGreaterThan(0)
+    for (const light of going) expect(wasLit.has(light.userData['emitter'])).toBe(true)
+
+    // a second and a half of frames later they have arrived, at the far corner,
+    // at full, and none of the spawn's is left burning
+    for (let frame = 0; frame < 90; frame++) city.follow(far.x, far.z, 1 / 60)
+    const there = lit()
+    expect(there).toHaveLength(LIVE_LIGHTS)
+    for (const light of there) {
+      expect(wasLit.has(light.userData['emitter'])).toBe(false)
+      expect(light.intensity).toBeCloseTo(candela(light), 9)
+    }
+  })
+
   it('burns with the night: full after dark, off at noon', () => {
     const { world } = onePlot()
     const city = buildCity(world, new Greybox(), { night: 0.5 })

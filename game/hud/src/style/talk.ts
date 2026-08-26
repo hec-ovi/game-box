@@ -6,6 +6,11 @@ import { LAYERS, LAYOUT } from './layout.ts'
  * over the transcript; the moves and the box sit under it, where the player
  * answers. The transcript takes whatever height is left and scrolls; the panel
  * never changes size for what arrives.
+ *
+ * It is sheer, and the street carries on behind it. A blur would read better
+ * and is not allowed over a running scene, so the density does the work: a
+ * gradient across the panel, sheerest at the inner edge where the city should
+ * show through and deepest under the column of text.
  */
 export const TALK = `
 .gb-hud .gb-talk {
@@ -17,9 +22,8 @@ export const TALK = `
   width: ${LAYOUT.side + 30}px;
   display: flex;
   flex-direction: column;
-  background: var(--gb-glass);
+  background: var(--gb-sheer);
   border-left: 1px solid var(--gb-edge-accent);
-  box-shadow: -4px 0 24px var(--gb-shadow);
   pointer-events: auto;
 }
 
@@ -67,7 +71,7 @@ export const TALK = `
   align-self: flex-start;
   max-width: 90%;
   padding: var(--gb-s2) var(--gb-s3);
-  background: var(--gb-well);
+  background: var(--gb-sheer-well);
   border-left: 3px solid var(--gb-good);
   color: var(--gb-ink);
   font-size: 13.5px;
@@ -77,7 +81,7 @@ export const TALK = `
   align-self: flex-end;
   max-width: 90%;
   padding: var(--gb-s2) var(--gb-s3);
-  background: var(--gb-lift);
+  background: var(--gb-sheer-lift);
   border-right: 3px solid var(--gb-accent);
   color: var(--gb-ink);
   text-align: right;

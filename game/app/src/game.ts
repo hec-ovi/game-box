@@ -597,7 +597,7 @@ export class Game {
     // Indoors that point is the door they came in by, so the street outside
     // stays dressed and lit and the room stays built
     const near = this.#buildings.cityPosition()
-    this.#city.follow(near.x, near.z)
+    this.#city.follow(near.x, near.z, seconds)
 
     this.#body.update(seconds)
     this.#driving.update(seconds)
