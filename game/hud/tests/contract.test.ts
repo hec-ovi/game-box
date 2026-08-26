@@ -980,7 +980,9 @@ describe('the codex tab', () => {
     const panel = getByRole(screen, 'dialog', { name: 'Codex' })
     const heads = [...panel.querySelectorAll('.gb-codex-group h3')].map((node) => node.textContent)
     expect(heads).toEqual(['Places', 'People'])
-    within(panel).getByText('A bar on Lantern Row.')
+    // the list carries the line, and so does the panel beside it for whichever
+    // one is open, so it is read inside the list rather than across the face
+    within(panel.querySelector('.gb-codex-list-pane') as HTMLElement).getByText('A bar on Lantern Row.')
 
     const mara = within(panel).getByText('Mara Quill').closest('.gb-person') as HTMLElement
     within(mara).getByText('Keeps the bar at The Copper Wheel.')
@@ -1006,6 +1008,35 @@ describe('the codex tab', () => {
     const { hud, screen } = mount()
     hud.show({ window: 'codex' })
     within(getByRole(screen, 'dialog', { name: 'Codex' })).getByText(/Nothing recorded yet/)
+  })
+
+  it('shows a person their own face when the game has drawn one', async () => {
+    const user = userEvent.setup()
+    const { hud, screen } = mount()
+    hud.show({
+      codex: {
+        places: [],
+        people: [
+          { id: 'n1', name: 'Mara Quill', role: 'Keeps the bar', disposition: 'warm', facts: [], portrait: 'data:image/png;base64,mara' },
+          { id: 'n2', name: 'Wren Ashby', role: 'Runs the dock', disposition: 'neutral', facts: [] },
+        ],
+      },
+    })
+    await user.keyboard('x')
+    const panel = getByRole(screen, 'dialog', { name: 'Codex' })
+
+    // the name is in the list and again on the panel beside it, so the click
+    // goes to the list
+    const list = panel.querySelector('.gb-codex-list-pane') as HTMLElement
+    await user.click(within(list).getByText('Mara Quill'))
+    const face = panel.querySelector('.gb-codex-face') as HTMLImageElement
+    expect(face.src).toBe('data:image/png;base64,mara')
+    expect(face.alt).toBe('Mara Quill')
+
+    // somebody the game has not drawn keeps the tile's own icon
+    await user.click(within(list).getByText('Wren Ashby'))
+    expect(panel.querySelector('.gb-codex-face')).toBeNull()
+    expect(panel.querySelector('.gb-codex-amplified-avatar .gb-icon')).not.toBeNull()
   })
 })
 

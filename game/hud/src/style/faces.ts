@@ -156,8 +156,8 @@ export const FACES = `
   border-left: 1px solid var(--gb-edge);
 }
 .gb-hud .gb-codex-amplified-avatar {
-  width: 56px;
-  height: 56px;
+  width: 96px;
+  height: 96px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -165,6 +165,8 @@ export const FACES = `
   border: 1px solid var(--gb-edge-accent);
   margin-bottom: var(--gb-s2);
 }
+/* Their own face, where the game has drawn one. */
+.gb-hud .gb-codex-face { width: 100%; height: 100%; object-fit: cover; display: block; }
 .gb-hud .gb-avatar-person { color: var(--gb-good); border-color: var(--gb-good); }
 .gb-hud .gb-avatar-door { color: var(--gb-accent); border-color: var(--gb-accent); }
 .gb-hud .gb-amplified-sub { color: var(--gb-dim); font-weight: 700; }

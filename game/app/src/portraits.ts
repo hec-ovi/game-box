@@ -23,6 +23,8 @@ const LENS = 22
 export interface FaceSource {
   /** This person's face as an image source, or nothing where one cannot be drawn. */
   of(npc: Npc): Promise<string | undefined>
+  /** One already drawn, without drawing anything. */
+  drawn(npcId: string): string | undefined
 }
 
 /**
@@ -58,6 +60,15 @@ export class Portraits implements FaceSource {
     const fill = new THREE.DirectionalLight(0xbfd8ea, 1.1)
     fill.position.set(-0.8, -0.4, 1.4)
     this.#scene.add(key, fill, new THREE.AmbientLight(0xffffff, 0.35))
+  }
+
+  /**
+   * A face already drawn, without drawing one. The codex asks this way: it
+   * lists people the player has talked to, so their face was drawn when they
+   * spoke, and a panel of names must not start a render each time it opens.
+   */
+  drawn(npcId: string): string | undefined {
+    return this.#drawn.get(npcId)
   }
 
   /** This person's face, drawn if it has not been drawn yet. Nothing at all where it cannot be drawn. */

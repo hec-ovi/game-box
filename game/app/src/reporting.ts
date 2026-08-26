@@ -2,7 +2,7 @@ import type { Carried, Hud, OwnedPlace, SettingsView } from '@gb/hud'
 import type { PlayerState } from '@gb/play'
 import type { Change, Objective, QuestKind, QuestLog, Reward } from '@gb/quest'
 import type { World } from '@gb/world'
-import { codexOf } from './codex.ts'
+import { codexOf, type FaceBook } from './codex.ts'
 import type { Conditions } from './conditions.ts'
 import { marked, offered, type Marked, type Whereabouts } from './places.ts'
 import type { View } from './view.ts'
@@ -27,6 +27,7 @@ export class Reporting {
   #out: Whereabouts
   #changed: () => void
   #paid: (reward: Reward) => void
+  #faces: FaceBook
   #tracked: string | null | undefined
   #pushedAt = Number.NaN
   #timed = false
@@ -44,6 +45,8 @@ export class Reporting {
     changed?: () => void
     /** A job paid out: what the city and the street have to be told about it. */
     paid?: (reward: Reward) => void
+    /** Faces already drawn, so the codex shows the people it lists. */
+    faces?: FaceBook
   }) {
     this.#world = input.world
     this.#log = input.log
@@ -54,6 +57,7 @@ export class Reporting {
     this.#out = input.out ?? (() => undefined)
     this.#changed = input.changed ?? (() => {})
     this.#paid = input.paid ?? (() => {})
+    this.#faces = input.faces ?? (() => undefined)
   }
 
   veil(title: string): void {
@@ -180,7 +184,7 @@ export class Reporting {
       money: this.#player.money,
       carrying,
       quests,
-      codex: codexOf(this.#world, this.#player),
+      codex: codexOf(this.#world, this.#player, this.#faces),
       homes: this.#homes(),
       settings: this.#settings(),
     })

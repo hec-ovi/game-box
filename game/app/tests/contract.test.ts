@@ -1828,6 +1828,7 @@ describe('a conversation you can click through', () => {
         asked.push(npc.id)
         return `data:image/png;base64,${npc.id}`
       },
+      drawn: () => undefined,
     })
     await talking.start(npcId)
     // the face is drawn from the person, not from their name, and it is asked
@@ -1840,7 +1841,7 @@ describe('a conversation you can click through', () => {
   })
 
   it('says who is talking without a picture of them when no face can be drawn', async () => {
-    const { npcId, talking, pushed } = chatting(undefined, { of: async () => undefined })
+    const { npcId, talking, pushed } = chatting(undefined, { of: async () => undefined, drawn: () => undefined })
     await talking.start(npcId)
 
     expect(pushed.find((patch) => patch.talk?.speaker !== undefined)!.talk!.speaker).toBe('Iris Vane')

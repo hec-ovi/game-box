@@ -279,6 +279,8 @@ export interface CodexPerson {
   readonly role?: string
   readonly disposition: Disposition
   readonly facts: readonly CodexFact[]
+  /** Their own face, as an image source. Without one the codex draws a silhouette. */
+  readonly portrait?: string
 }
 
 /** Something the player has been told of the city. */

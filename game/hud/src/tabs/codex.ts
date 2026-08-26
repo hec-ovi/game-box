@@ -86,23 +86,35 @@ export class CodexTab implements Tab {
     } else if (this.#selected?.kind === 'person') {
       const pr = this.#selected.item
       const known = pr.facts.map((fact) => fact.text).filter(Boolean).join('\n\n')
-      this.#showAmplified(pr.name, pr.role || 'Somebody you have met', known || 'You know nothing about them yet.', 'person')
+      this.#showAmplified(pr.name, pr.role || 'Somebody you have met', known || 'You know nothing about them yet.', 'person', pr.portrait)
     } else {
       this.#showAmplified('Nothing picked', '', 'Pick a place or a person from the list.', 'door')
     }
   }
 
-  #showAmplified(name: string, subtitle: string, desc: string, iconName: 'door' | 'person'): void {
-    const avatar = el('div', `gb-codex-amplified-avatar gb-avatar-${iconName}`)
-    if (iconName === 'person') {
-      avatar.innerHTML = `<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M2 12h3M19 12h3" stroke="currentColor"/></svg>`
+  /**
+   * The one that is open, in full. A person is shown their own face where the
+   * game has drawn one; without it, and for a place, the tile's own icon
+   * stands in.
+   */
+  #showAmplified(name: string, subtitle: string, desc: string, mark: 'door' | 'person', portrait?: string): void {
+    const avatar = el('div', `gb-codex-amplified-avatar gb-avatar-${mark}`)
+    if (portrait) {
+      const face = document.createElement('img')
+      face.className = 'gb-codex-face'
+      face.src = portrait
+      face.alt = name
+      face.decoding = 'async'
+      avatar.append(face)
     } else {
-      avatar.append(icon('door', ICON_PX.tile))
+      avatar.append(icon(mark, ICON_PX.tile))
     }
-    const title = el('h3', 'gb-t6', name)
-    const sub = el('p', 'gb-t2 gb-amplified-sub', subtitle)
-    const body = el('p', 'gb-t3 gb-amplified-desc', `Dossier: ${desc}`)
-    this.#amplified.replaceChildren(avatar, title, sub, body)
+    this.#amplified.replaceChildren(
+      avatar,
+      el('h3', 'gb-t6', name),
+      el('p', 'gb-t2 gb-amplified-sub', subtitle),
+      el('p', 'gb-t3 gb-amplified-desc', desc),
+    )
   }
 
   clear(): void {

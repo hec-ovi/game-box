@@ -124,6 +124,7 @@ export class Game {
   #intents: Intents
   #interaction: Interaction
   #cast: Cast | undefined
+  #portraits: Portraits | undefined
   #screens: Screens | undefined
   #riderCast: SceneCast | undefined
   #session: Session | undefined
@@ -192,6 +193,10 @@ export class Game {
     // and the screen: the corner view and full screen, which the tab reads off
     // what the game pushes back rather than off the button that was pressed
     this.#view = new View(() => this.#report.refresh())
+    // their own face, drawn from the body the city draws them with. It is made
+    // here rather than beside the conversation because the codex reads the
+    // faces already drawn, and the codex is pushed by the reporting below
+    this.#portraits = input.cast ? new Portraits({ cast: input.cast, stage: this.#stage }) : undefined
     this.#report = new Reporting({
       world: this.#world,
       log: this.#log,
@@ -204,6 +209,7 @@ export class Game {
       // a job that paid out a house or a car: the city is told whose the place
       // is and the street is told where the car stands
       paid: (reward) => this.#rewards.paid(reward),
+      faces: (npcId) => this.#portraits?.drawn(npcId),
       changed: () => {
         this.keep()
         this.#compass.dirty()
@@ -393,7 +399,7 @@ export class Game {
       // their own face on the panel, drawn from the body the city draws them
       // with. Without an art pack there is no body to draw, and the panel says
       // who is talking without a picture of them
-      ...(input.cast ? { portraits: new Portraits({ cast: input.cast, stage: this.#stage }) } : {}),
+      ...(this.#portraits ? { portraits: this.#portraits } : {}),
       report: this.#report,
     })
 
