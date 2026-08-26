@@ -5,6 +5,7 @@
  */
 import { SEATED } from './seated.mjs'
 import { STANDING } from './standing.mjs'
+import { WALKING } from './walking.mjs'
 import { WORKING } from './working.mjs'
 
-export const AUTHORED = [...STANDING, ...WORKING, ...SEATED]
+export const AUTHORED = [...STANDING, ...WORKING, ...SEATED, ...WALKING]

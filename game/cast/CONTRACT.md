@@ -1,6 +1,6 @@
 # @gb/cast contract
 
-contractVersion: 0.11.0
+contractVersion: 0.12.0
 
 ## Purpose
 
@@ -34,7 +34,7 @@ The city is cyberpunk at night, so the clothes are near-black woven garments wit
 | `clips()` / `characters()` / `has(clip)` | names | what the loaded pack can actually do |
 | `Cast.doingAt(anchorKind, npcId?)` | a clip name | every anchor kind maps to clips that exist; with an id, which one is drawn off the id, so the same person always does the same thing |
 | `CLIPS_FOR_ANCHOR` | one or more clip names per anchor kind | what a stance may look like |
-| `CLIPS` | named clips: `idle`, `walk`, `run`, `talk`, `talkSeated`, `carry`, `pickUp`, `give`, `drive`, `standUp`, `sitDown` | the clips the game asks for outside the anchor table |
+| `CLIPS` | named clips: `idle`, `walk`, `run`, `talk`, `talkSeated`, `pickUp`, `give`, `drive`, `standUp`, `sitDown` | the clips the game asks for outside the anchor table |
 | `GAITS` | clip name to metres per second | every clip that moves a body along, at the ground speed it was authored for |
 | `WALKS` / `walkFor(npcId)` | clip names | the walks a pedestrian may be given, and the one this person gets |
 | `GESTURES` | clip names | the clips that may be layered over another one |
@@ -63,7 +63,7 @@ Everything after loading is forgiving: an unknown clip or gesture name is ignore
 
 Built by `node tools/build-anims.mjs && node tools/build-pack.mjs && node tools/build-wardrobe.mjs`, served from `assets/dist/`:
 
-- `anims.glb`: every clip, on one skeleton, no meshes. 1.31 MB over the wire, 47 clips.
+- `anims.glb`: every clip, on one skeleton, no meshes. 1.28 MB over the wire, 47 clips.
 - `wardrobe.json`: `{ characters: [{ id, body, file, roles, themes, styles, brows, beard? }] }`.
 - `characters/<id>.glb`: one finished person, body, clothes, every hairstyle and both pairs of eyebrows already merged. Twelve files, 1.11 to 1.21 MB each, 14.01 MB together.
 
@@ -173,8 +173,8 @@ Forty-seven clips, all on the canonical skeleton, all CC0. `tools/build-anims.mj
 | `Sitting_Exit` | sat to standing, the root staying put | Quaternius UAL1 |
 | `Sleep_Loop` | on their back on the mattress, breathing | blended here: `LayToIdle` held on its first frame, `Idle_Loop`'s breathing over it |
 | `Walk_Loop` | walking | Quaternius UAL1 |
-| `Walk_Formal_Loop` | walking, arms held closer | Quaternius UAL1 |
-| `Walk_Carry_Loop` | walking with something in both hands | Quaternius UAL2 |
+| `Walk_Loose_Loop` | the same walk carried loose: chest open, arms swinging clear of the ribs, elbows long | posed here, from `Walk_Loop` |
+| `Walk_Brisk_Loop` | the same walk in a hurry: leaning into it, elbows bent, hands driving in front of the hips | posed here, from `Walk_Loop` |
 | `Jog_Fwd_Loop` | running | Quaternius UAL1 |
 | `Sprint_Loop` | running flat out | Quaternius UAL1 |
 | `Push_Loop` | pushing a trolley, both hands on its handle | Quaternius UAL1 |
@@ -182,7 +182,7 @@ Forty-seven clips, all on the canonical skeleton, all CC0. `tools/build-anims.mj
 | `PickUp_Table` | taking something off a surface | Quaternius UAL1 |
 | `Interact` | handing something over | Quaternius UAL1 |
 
-The two Quaternius Universal Animation Libraries are 84 clips between them (43 each, `A_TPose` counted once) and the only CC0 source on this skeleton. Twenty-two of them ship as they are, seven more are only the raw material of the twenty-five made here, and the other fifty-five stay out:
+The two Quaternius Universal Animation Libraries are 84 clips between them (43 each, `A_TPose` counted once) and the only CC0 source on this skeleton. Twenty of them ship as they are, seven more are only the raw material of the twenty-seven made here, and the other fifty-seven stay out:
 
 | Left out | Why |
 |---|---|
@@ -194,11 +194,13 @@ The two Quaternius Universal Animation Libraries are 84 clips between them (43 e
 | `Farm_PlantSeed` | kneels and reaches half a metre ahead at 0.4 m, the same job `Kneel_Fix_Loop` does |
 | `Idle_Lantern_Loop` | holds a lantern by its ring at shoulder height; the city is lit by neon and nothing draws a lantern |
 | `Idle_Shield_Loop`, `Idle_Shield_Break` | combat idles |
+| `Walk_Formal_Loop` | `Walk_Loop`'s legs frame for frame (the same 1.33 s cycle, the same 0.65 m stride, the feet forwardmost on the same frame) with the arms pinned: 2.6 degrees of shoulder over a cycle against 32.8, less than a body standing still, and a hand that travels 0.16 m against 0.72. It is the same walk with the swing taken out, so it reads as one body with something wrong with it rather than as a second person |
+| `Walk_Carry_Loop` | a two-handed carry, the hands cupped 0.19 m in front of the chest 0.44 m apart, the shoulders moving 0.7 degrees. A carry with nothing in the hands is the broken wrist `HANDHELD` exists to prevent, so it comes back when there is a thing to carry: a row in `HANDHELD` and a builder in `src/props/` |
 | `A_TPose` | the rest pose, not a clip |
 
-The twenty-five made here come out of clips those packs do have, in three ways (`tools/anims/clips/`, built in the order written, so a clip may build on any clip above it):
+The twenty-seven made here come out of clips those packs do have, in three ways (`tools/anims/clips/`, built in the order written, so a clip may build on any clip above it):
 
-- **A pose** holds some bones at an angle for the whole of a clip (`tools/anims/derive.mjs`). The source clip's own breathing and weight shift come through untouched, so a posed body is still moving. The relaxed idles are the ready stance with the feet brought level under the hips and the knees straightened, the arms hung by the thighs; a wall lean is a standing idle tipped 8 degrees back off both ankles; the stool is the chair clip lifted by the difference in pads with the shins swung back under the seat. A pose may also carry `upright`, the one offset that changes frame by frame: a bone is turned, at every keyframe, by the least that keeps one of its own axes within some degrees of vertical, which is what keeps a glass from lying on its side in the lap while the arm the source authored still swings.
+- **A pose** holds some bones at an angle for the whole of a clip (`tools/anims/derive.mjs`). The source clip's own breathing and weight shift come through untouched, so a posed body is still moving. The relaxed idles are the ready stance with the feet brought level under the hips and the knees straightened, the arms hung by the thighs; a wall lean is a standing idle tipped 8 degrees back off both ankles; the stool is the chair clip lifted by the difference in pads with the shins swung back under the seat; the two other walks are the one walk cycle carried a different way, which leaves its legs and its swing exactly where they were. A pose may also carry `upright`, the one offset that changes frame by frame: a bone is turned, at every keyframe, by the least that keeps one of its own axes within some degrees of vertical, which is what keeps a glass from lying on its side in the lap while the arm the source authored still swings.
 - **A blend** lays one clip's movement over another clip's stance (`tools/anims/blend.mjs`), which is the sum the gesture layer does at runtime, done once at build time: `result = stance * (reference^-1 * movement)`. Measured from the movement's own first frame it adds the movement alone, so a seated body drinks; measured from a plain standing idle it also carries the pose, so a seated body gets a phone to its ear. `hold` freezes the stance at one moment, which is how a clip that only passes through lying on the floor becomes a clip that stays there. A blend can be confined to one arm, which is how a meal keeps the other hand on the table. Without `hold` the stance loops a whole number of times under the movement, so the body under a drinking arm goes on breathing.
 - **A trim** cuts a section out of a one-shot and eases its last third of a second back to its first frame, so it runs as a loop (`tools/anims/trim.mjs`): the three seconds `Fixing_Kneeling` spends kneeling, and the dance at two thirds of the speed.
 
@@ -229,11 +231,21 @@ A shelf's first clip is the plainest reading of that stance, because it is what 
 
 ### Moving along
 
-`GAITS` is every clip that carries a body forward, with the ground speed it was authored for: how fast the planted foot slides back under the body, measured on the clip's keyframes. `Walk_Loop` and `Walk_Formal_Loop` 0.98 m/s, `Walk_Carry_Loop` 0.65, `Push_Loop` 0.30, `Jog_Fwd_Loop` 5.9, `Sprint_Loop` 8.9 (the packs' runs are authored fast, with a short contact and a long flight). `member.pace(v)` scales the playing gait to `v` over its authored speed, held between 0.7 and 1.65: slower drops a body into slow motion, faster into a flicker, so past either end the feet skate by the remainder.
+`GAITS` is every clip that carries a body forward, with the ground speed it was authored for: how fast the planted foot slides back under the body, measured on the clip's keyframes. The three walks 0.98 m/s (they are one cycle, so they share its legs and its speed), `Push_Loop` 0.30, `Jog_Fwd_Loop` 5.9, `Sprint_Loop` 8.9 (the packs' runs are authored fast, with a short contact and a long flight). `member.pace(v)` scales the playing gait to `v` over its authored speed, held between 0.7 and 1.65: slower drops a body into slow motion, faster into a flicker, so past either end the feet skate by the remainder.
 
 The ceiling is where the street's briskest walker lands. Pedestrians move between 1.19 and 1.61 m/s (the player's 1.4 walk with 15 percent of spread), and the walk clips are 1.5 steps a second with a 0.65 m step at 0.98 m/s, so 1.61 is 1.64 times the clip: 2.5 steps a second, a hurried short step at the top of a brisk walk, the feet still planted (measured on the ball bones' contact velocity against the root). Retuning the walks' speed number would only move the skating, because the number is the clip's real ground speed. `tests/contract.test.ts` paces a walk at 1.61 and reads the clip running at that ratio.
 
-`WALKS` is the two walks a pedestrian may be given and `walkFor(npcId)` draws one off the id, so a street is not in step. `CLIPS.walk` is still a walk for a caller with nobody in mind.
+`WALKS` is the three walks a pedestrian may be given and `walkFor(npcId)` draws one off the id, so a street is not one person over and over. `CLIPS.walk` is still a walk for a caller with nobody in mind.
+
+The packs hold one walk cycle between them, so the three are that cycle carried three ways, and the difference is where a body is held over its own legs. Measured over a cycle on the shipped bodies (`tests/walks.test.ts`):
+
+| | shoulder swings | hand travels | hands carried | elbow opens | head ahead of the hips |
+|---|---|---|---|---|---|
+| `Walk_Loop` | 32.8 degrees | 0.82 to 0.85 m | 0.94 m up, 0.05 m ahead, 0.58 m apart | 139 to 148 degrees | 0.144 m |
+| `Walk_Loose_Loop` | 31.3 | 0.84 to 0.87 | 0.94 m up, level with the hips, 0.73 m apart | 150 to 162 | 0.117 m |
+| `Walk_Brisk_Loop` | 32.2 | 0.71 to 0.74 | 1.06 m up, 0.19 m ahead, 0.61 m apart | 98 to 104 | 0.212 m |
+
+Every walk on the shelf swings its arms, and the test holds them to 20 degrees of shoulder and half a metre of hand over a cycle: an arm that hangs still through a walk reads as a body with something wrong with it rather than as somebody else, whatever else is different about it. The same test measures the three apart in the hands, the elbows and the lean, so a fourth walk that is one of these again is caught rather than shipped.
 
 ### What may be layered over a stance
 
@@ -386,4 +398,4 @@ Hair is listed per body in the `hair` block of `game/cast/wardrobe.json`: `style
 
 ## How to modify this blackbox safely
 
-New clips go in `CLIPS`, `CLIPS_FOR_ANCHOR`, `GAITS`, `WALKS` or `GESTURES` and then in the pack: `node tools/build-anims.mjs` builds from `clipsUsed()`, so naming a clip there is what ships it, and a name no source pack has fails the build. A clip no pack has is written in `tools/anims/clips/` (standing, working, seated) as a pose (per-bone angles on a clip already in the library; `tools/anims/derive.mjs` says what the angles mean), a blend (one clip's movement laid over another's stance; `tools/anims/blend.mjs`) or a trim (a section of a one-shot closed into a loop; `tools/anims/trim.mjs`). The list is built in the order written, so any clip may build on any clip above it, and a step on the way that nothing names is not shipped. Every clip drives all 65 bones, and it has to: the character files' own rest poses sit a few millimetres off the animation mannequin's, so a clip that leaves a bone undriven leaves it wherever that file put it, which is 5 cm at a toe. A clip only belongs in `GESTURES` if it stays near its own starting pose. A clip posed around a thing gets a row in `HANDHELD` and, if it is a new thing, a builder in `src/props/`. A new body needs a `BODY_KIND` in `@gb/world` first, then a body file in `game/cast/wardrobe.json` and at least one outfit cut for it. A new build is a set of ratios and which roles draw it in `src/build.ts` and `src/physique.ts`, and it stays a scaling of the one rig, so it costs no file and no download. Rebuild the pack, run the gate, then `pnpm --filter @gb/cast test`.
+New clips go in `CLIPS`, `CLIPS_FOR_ANCHOR`, `GAITS`, `WALKS` or `GESTURES` and then in the pack: `node tools/build-anims.mjs` builds from `clipsUsed()`, so naming a clip there is what ships it, and a name no source pack has fails the build. A clip no pack has is written in `tools/anims/clips/` (standing, working, seated, walking) as a pose (per-bone angles on a clip already in the library; `tools/anims/derive.mjs` says what the angles mean), a blend (one clip's movement laid over another's stance; `tools/anims/blend.mjs`) or a trim (a section of a one-shot closed into a loop; `tools/anims/trim.mjs`). The list is built in the order written, so any clip may build on any clip above it, and a step on the way that nothing names is not shipped. Every clip drives all 65 bones, and it has to: the character files' own rest poses sit a few millimetres off the animation mannequin's, so a clip that leaves a bone undriven leaves it wherever that file put it, which is 5 cm at a toe. A clip only belongs in `GESTURES` if it stays near its own starting pose. A clip posed around a thing gets a row in `HANDHELD` and, if it is a new thing, a builder in `src/props/`. A new body needs a `BODY_KIND` in `@gb/world` first, then a body file in `game/cast/wardrobe.json` and at least one outfit cut for it. A new build is a set of ratios and which roles draw it in `src/build.ts` and `src/physique.ts`, and it stays a scaling of the one rig, so it costs no file and no download. Rebuild the pack, run the gate, then `pnpm --filter @gb/cast test`.

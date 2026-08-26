@@ -68,7 +68,6 @@ export const CLIPS = {
   run: 'Jog_Fwd_Loop',
   talk: 'Idle_Talking_Loop',
   talkSeated: 'Sitting_Talking_Loop',
-  carry: 'Walk_Carry_Loop',
   pickUp: 'PickUp_Table',
   give: 'Interact',
   drive: 'Driving_Loop',
@@ -86,18 +85,26 @@ export const CLIPS = {
  */
 export const GAITS: Readonly<Record<string, number>> = {
   Walk_Loop: 0.98,
-  Walk_Formal_Loop: 0.98,
-  Walk_Carry_Loop: 0.65,
+  Walk_Loose_Loop: 0.98,
+  Walk_Brisk_Loop: 0.98,
   Jog_Fwd_Loop: 5.9,
   Sprint_Loop: 8.9,
   Push_Loop: 0.3,
 }
 
 /**
- * The walks a pedestrian may be given, so a street does not walk in step.
- * `walkFor` draws one off the person's id.
+ * The walks a pedestrian may be given, so a street is not one person over and
+ * over. `walkFor` draws one off the person's id.
+ *
+ * All three are the same cycle carried a different way: an ordinary walk, one
+ * loose-limbed with the chest open, one leaning into it with the elbows bent.
+ * Each swings its arms, because an arm that hangs still through a walk reads
+ * as a body with something wrong with it rather than as somebody else. That is
+ * measured in `tests/walks.test.ts`: the packs' own `Walk_Formal_Loop` moves a
+ * shoulder 2.6 degrees over a cycle, less than a body standing still does, so
+ * it is not one of these.
  */
-export const WALKS: readonly [string, ...string[]] = ['Walk_Loop', 'Walk_Formal_Loop']
+export const WALKS: readonly [string, ...string[]] = ['Walk_Loop', 'Walk_Loose_Loop', 'Walk_Brisk_Loop']
 
 export function walkFor(npcId: string): string {
   return pick(WALKS, `${npcId}/walk`)

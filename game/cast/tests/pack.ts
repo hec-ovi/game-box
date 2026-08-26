@@ -1,6 +1,9 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { BodyKind, Npc } from '@gb/world'
+import type * as THREE from 'three'
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { Cast, parseWardrobe, type Wardrobe } from '../src/index.ts'
 
 const DIST = join(import.meta.dirname, '..', '..', '..', 'assets', 'dist')
@@ -32,6 +35,15 @@ export async function loadCast(): Promise<Cast> {
     wardrobe,
     characters: Object.fromEntries(wardrobe.characters.map((entry) => [entry.id, read(join(DIST, entry.file))])),
   })
+}
+
+/** How long each shipped clip runs, read off the pack: what a whole cycle is. */
+export async function clipLengths(): Promise<Map<string, number>> {
+  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder)
+  const clips = await new Promise<THREE.AnimationClip[]>((resolve, reject) => {
+    loader.parse(animsBytes(), '', (gltf) => resolve(gltf.animations), reject)
+  })
+  return new Map(clips.map((clip) => [clip.name, clip.duration]))
 }
 
 export function person(overrides: Partial<Npc> = {}): Npc {
