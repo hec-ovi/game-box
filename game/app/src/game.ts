@@ -42,7 +42,9 @@ import { Screens } from './screens.ts'
 import { Session, type SaveStore } from './session.ts'
 import { atAnOpenDoor, atTheKerb } from './spawn.ts'
 import { Sky } from './sky.ts'
+import { Inspecting } from './inspecting.ts'
 import { Portraits } from './portraits.ts'
+import { Turntable } from './turntable.ts'
 import type { MakeStage, Stage } from './stage.ts'
 import { Stashing } from './stashing.ts'
 import { tellStory } from './story.ts'
@@ -479,6 +481,14 @@ export class Game {
       travel: this.#travel,
       view: this.#view,
       pause: (on) => this.pause(on),
+      // a thing opened in the inventory is drawn from every side and pushed
+      // back, and a part of the city clicked on the plan says how far it is
+      inspecting: new Inspecting({
+        world: this.#world,
+        hud: this.#hud,
+        turntable: new Turntable({ dressing: input.dressing, stage: this.#stage }),
+      }),
+      guide,
       leave: input.leave,
       // a page with no pointer lock to give back has nothing to release
       releasePointer: () => document.exitPointerLock?.(),

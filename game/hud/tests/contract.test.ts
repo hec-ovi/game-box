@@ -918,12 +918,52 @@ describe('the inventory tab', () => {
     const panel = getByRole(screen, 'dialog', { name: 'Inventory' })
     within(panel).getByText('128')
     expect(screen.querySelectorAll('.gb-coin')).toHaveLength(1)
-    const names = [...panel.querySelectorAll('.gb-carried .gb-row-title')].map((node) => node.textContent)
+    const names = [...panel.querySelectorAll('.gb-inv-slot .gb-slot-label')].map((node) => node.textContent)
     expect(names).toEqual(['Brass ledger', 'Green bottle'])
     within(panel).getByText('Quest')
-    // What a thing is worth sits on its row; a thing with no value says nothing.
-    expect(within(panel).getByText('3 credits').closest('li')?.textContent).toContain('Green bottle')
-    expect(panel.querySelectorAll('.gb-carried .gb-value')).toHaveLength(1)
+    // What a thing is worth sits on its own tile; a thing a job wants says that instead.
+    expect(within(panel).getByText('3 credits').closest('.gb-inv-slot')?.textContent).toContain('Green bottle')
+    expect(panel.querySelectorAll('.gb-inv-slot .gb-value')).toHaveLength(1)
+  })
+
+  it('asks the game to draw a thing that is opened, and turns the views it gets back', async () => {
+    const user = userEvent.setup()
+    const { hud, screen, intents } = mount()
+    hud.show({
+      window: 'inventory',
+      carrying: [
+        { id: 'i1', name: 'Green bottle', value: 3, text: 'Cloudy glass with the label gone.' },
+        { id: 'i2', name: 'Brass ledger', quest: true },
+      ],
+    })
+    const panel = getByRole(screen, 'dialog', { name: 'Inventory' })
+
+    // the first thing is open, so that is the one the game is asked to draw
+    expect(intents).toContainEqual({ kind: 'inspect', itemId: 'i2' })
+    // and until the views land the box holds the thing's own icon, not a blank
+    expect(panel.querySelector('.gb-inv-3d-blank')).not.toBeNull()
+
+    await user.click(within(panel).getByText('Green bottle'))
+    expect(intents).toContainEqual({ kind: 'inspect', itemId: 'i1' })
+    within(panel).getByText('Cloudy glass with the label gone.')
+
+    hud.show({ inspecting: { itemId: 'i1', frames: ['data:a', 'data:b', 'data:c'] } })
+    const face = panel.querySelector('.gb-inv-3d-face') as HTMLImageElement
+    expect(face.src).toBe('data:a')
+
+    // dragging across it walks the views, which is what turning it is, and it
+    // comes round rather than stopping at the last one
+    const box = panel.querySelector('.gb-inv-3d-box') as HTMLElement
+    Object.defineProperty(box, 'clientWidth', { value: 120, configurable: true })
+    box.setPointerCapture = () => {}
+    const showing = (): string => (panel.querySelector('.gb-inv-3d-face') as HTMLImageElement).src
+    box.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 0 }))
+    const walked: string[] = []
+    for (let step = 1; step <= 3; step++) {
+      box.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: step * 40 }))
+      walked.push(showing())
+    }
+    expect(walked).toEqual(['data:b', 'data:c', 'data:a'])
   })
 
   it('lists the places the player owns and what they left in each', () => {

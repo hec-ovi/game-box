@@ -663,7 +663,9 @@ describe('the counter', () => {
     expect(town.player.money).toBe(100 - 20 + shopping.reward.money)
     // and the counter goes back out without the thing sold on it
     expect(town.last('counter')?.offers.map((offer) => offer.id)).toEqual(['item_0002', 'item_0003'])
-    expect(town.last('carrying')).toEqual([{ id: 'item_0001', name: 'Works card', quest: false, value: 20 }])
+    expect(town.last('carrying')).toEqual([
+      { id: 'item_0001', name: 'Works card', quest: false, value: 20, text: 'A works card.' },
+    ])
   })
 
   it('goes with the conversation it was opened from', async () => {

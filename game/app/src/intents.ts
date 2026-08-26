@@ -9,6 +9,7 @@ import type { Reporting } from './reporting.ts'
 import type { Talking } from './talking.ts'
 import type { Travel } from './travel.ts'
 import type { View } from './view.ts'
+import type { Inspect } from './inspecting.ts'
 
 /**
  * What the player did in the interface, carried to whoever owns it. `@gb/hud`
@@ -28,6 +29,8 @@ export class Intents {
   #travel: Travel
   #view: View | undefined
   #pause: (on: boolean) => void
+  #inspecting: Inspect | undefined
+  #guide: { walkTo(districtId: string): string | undefined } | undefined
   #leave: () => void
   #releasePointer: () => void
 
@@ -45,6 +48,10 @@ export class Intents {
     /** What the player set about the screen. Without one, the corner view and full screen do nothing. */
     view?: View
     pause?: (on: boolean) => void
+    /** Drawing a thing the player opened in the inventory. Without one the panel keeps its icon. */
+    inspecting?: Inspect
+    /** How far a part of the city is on foot. Without one, clicking it says nothing. */
+    guide?: { walkTo(districtId: string): string | undefined }
     /** The way out of the game, which the game itself does not decide. */
     leave: () => void
     releasePointer: () => void
@@ -61,6 +68,8 @@ export class Intents {
     this.#travel = input.travel
     this.#view = input.view
     this.#pause = input.pause ?? (() => {})
+    this.#inspecting = input.inspecting
+    this.#guide = input.guide
     this.#leave = input.leave
     this.#releasePointer = input.releasePointer
   }
@@ -117,6 +126,17 @@ export class Intents {
         if (intent.window !== null) this.#releasePointer()
         this.#pause(intent.window !== null)
         return
+      // a thing opened in the inventory: the game draws every side of it and
+      // pushes the views back, so the panel can be turned
+      case 'inspect':
+        void this.#inspecting?.show(intent.itemId)
+        return
+      // a part of the city clicked on the plan: point the player at it
+      case 'district': {
+        const said = this.#guide?.walkTo(intent.districtId)
+        if (said) this.#hud.announce({ kind: 'note', text: said })
+        return
+      }
       // the settings tab: the same calls P, T and K make, and the tab reads
       // what the clock says back rather than what it asked for
       case 'lock-time':

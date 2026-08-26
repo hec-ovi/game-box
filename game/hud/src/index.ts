@@ -24,6 +24,8 @@ export type {
   HudWindowName,
   LoadStage,
   LoaderView,
+  Inspecting,
+  MapDistrict,
   MapMark,
   MapPlot,
   MapProminence,

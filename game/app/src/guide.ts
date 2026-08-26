@@ -20,6 +20,23 @@ const ARRIVED = 6
  * `from` is where the player stands on the city, which indoors is the doorstep
  * of the building they are in rather than their metres across its floor.
  */
+/** How far out to look for somewhere to stand, when the middle of a district is a building. */
+const NEAR_RINGS = 12
+
+/** The middle of a set of blocks, in cells. */
+function middleOf(blocks: readonly { x: number; y: number; w: number; h: number }[]): { x: number; y: number } {
+  let x = 0
+  let y = 0
+  let weight = 0
+  for (const block of blocks) {
+    const area = block.w * block.h
+    x += (block.x + block.w / 2) * area
+    y += (block.y + block.h / 2) * area
+    weight += area
+  }
+  return weight ? { x: Math.round(x / weight), y: Math.round(y / weight) } : { x: 0, y: 0 }
+}
+
 export class Guide {
   #world: World
   #nav: CityNav
@@ -57,6 +74,40 @@ export class Guide {
   }
 
   /** One line for the player: where they are headed and which way to set off. */
+  /**
+   * How far it is to walk to a part of the city, in words, and nothing when the
+   * player cannot get there on foot. The middle of the district is aimed at,
+   * which is a place rather than a door, so the nearest walkable cell to it is
+   * what the route actually ends on.
+   */
+  walkTo(districtId: string): string | undefined {
+    const district = this.#world.districts().find((one) => one.id === districtId)
+    if (!district) return undefined
+    const cell = this.#nearestWalkable(middleOf(district.blocks))
+    if (!cell) return undefined
+    const size = this.#world.cellSize
+    const from = this.#from()
+    const route = this.#nav.path({ x: Math.floor(from.x / size), y: Math.floor(from.z / size) }, cell)
+    if (!route) return `${district.name} is over there, with no way to walk to it`
+    const metres = length(this.#nav.waypoints(route))
+    return `${district.name}, ${Math.round(metres / 10) * 10} m on foot`
+  }
+
+  /** The middle of a district is often a rooftop, so the walk aims at the nearest cell somebody can stand on. */
+  #nearestWalkable(at: { x: number; y: number }): { x: number; y: number } | undefined {
+    if (this.#nav.walkable(at)) return at
+    for (let ring = 1; ring <= NEAR_RINGS; ring++) {
+      for (let dx = -ring; dx <= ring; dx++) {
+        for (const dy of [-ring, ring]) {
+          for (const cell of [{ x: at.x + dx, y: at.y + dy }, { x: at.x + dy, y: at.y + dx }]) {
+            if (this.#nav.walkable(cell)) return cell
+          }
+        }
+      }
+    }
+    return undefined
+  }
+
   say(): string {
     const goal = this.#goals()[0]
     // a step with nowhere on it is a step the player is still following, so say

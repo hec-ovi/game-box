@@ -199,6 +199,7 @@ export class Reporting {
       name: item?.name ?? itemId,
       quest: this.#log.isQuestItem(itemId),
       ...(item?.value !== undefined ? { value: item.value } : {}),
+      ...(item?.description ? { text: item.description } : {}),
     }
   }
 

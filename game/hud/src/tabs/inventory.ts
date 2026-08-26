@@ -1,10 +1,10 @@
-import { carriedList } from '../carried.ts'
 import { el } from '../dom.ts'
-import { CREDITS, NO_ITEMS } from '../phrase.ts'
-import type { HudState, HudWindowName } from '../types.ts'
+import { CREDITS, NO_ITEMS, priceText } from '../phrase.ts'
+import type { Carried, HudIntent, HudState, HudWindowName, Inspecting } from '../types.ts'
 import { Count } from '../ui/count.ts'
 import { ICON_PX, icon } from '../ui/icon.ts'
 import { homesSection } from './home.ts'
+import { Turntable } from './turntable.ts'
 import type { Tab } from './tab.ts'
 
 /**
@@ -12,130 +12,116 @@ import type { Tab } from './tab.ts'
  * the places that are theirs. Money is a thing the player carries, so it is
  * read here and in no corner, and it counts to what it becomes rather than
  * jumping there.
+ *
+ * The thing that is open is shown beside the grid, turnable: the game draws it
+ * from the same model the city puts on a shelf and hands the views over, so
+ * what the player picked up and what they are looking at are one object.
  */
 export class InventoryTab implements Tab {
   readonly name: HudWindowName = 'inventory'
   readonly node = el('div', 'gb-inventory')
+  #emit: (intent: HudIntent) => void
   #coin = new Count()
   #showcase = el('div', 'gb-inv-showcase gb-plate gb-cut gb-edged')
-  #mesh = el('div', 'gb-inv-3d-mesh')
-  #showcaseName = el('h3', 'gb-t6 gb-inv-name', 'Item Showcase')
-  #showcaseValue = el('p', 'gb-t2 gb-inv-value', 'Select an item to inspect')
-  #showcaseDesc = el('p', 'gb-t3 gb-inv-desc', 'Physical artifact or tool stored in inventory.')
-  #showcaseQuest = el('div', 'gb-inv-quest-badge gb-t1', '')
+  #turntable = new Turntable()
+  #name = el('h3', 'gb-t6 gb-inv-name')
+  #line = el('p', 'gb-t2 gb-inv-value')
+  #what = el('p', 'gb-t3 gb-inv-desc')
+  #questTag = el('div', 'gb-inv-quest-badge gb-t1', '')
+  #grid = el('div', 'gb-inv-slots-grid')
   #body = el('div', 'gb-inv-grid-pane gb-scrolls')
   #key: string | null = null
-  #rotX = 20
-  #rotY = 0
-  #dragging = false
-  #lastPointerX = 0
-  #lastPointerY = 0
+  #openId: string | undefined
 
-  constructor() {
-    const box3d = el('div', 'gb-inv-3d-box')
-    box3d.append(this.#mesh)
-    box3d.addEventListener('pointerdown', (e) => {
-      this.#dragging = true
-      this.#lastPointerX = e.clientX
-      this.#lastPointerY = e.clientY
-      box3d.setPointerCapture(e.pointerId)
-    })
-    box3d.addEventListener('pointermove', (e) => {
-      if (!this.#dragging) return
-      const dx = e.clientX - this.#lastPointerX
-      const dy = e.clientY - this.#lastPointerY
-      this.#rotY += dx * 0.8
-      this.#rotX -= dy * 0.8
-      this.#lastPointerX = e.clientX
-      this.#lastPointerY = e.clientY
-      this.#mesh.style.transform = `rotateY(${this.#rotY}deg) rotateX(${this.#rotX}deg)`
-    })
-    box3d.addEventListener('pointerup', () => {
-      this.#dragging = false
-    })
-
-    this.#showcase.append(this.#showcaseName, box3d, this.#showcaseValue, this.#showcaseDesc, this.#showcaseQuest)
+  constructor(emit: (intent: HudIntent) => void) {
+    this.#emit = emit
+    this.#showcase.append(this.#name, this.#turntable.node, this.#line, this.#what, this.#questTag)
 
     const purse = el('p', 'gb-coin gb-cut gb-edged')
     purse.setAttribute('aria-label', 'Credits')
     this.#coin.node.classList.add('gb-t7')
     purse.append(icon('credit', ICON_PX.tile), this.#coin.node, el('span', 'gb-unit', CREDITS))
 
-    const rightPane = el('div', 'gb-inv-right-pane')
-    rightPane.append(purse, this.#body)
-
-    this.node.append(this.#showcase, rightPane)
+    const right = el('div', 'gb-inv-right-pane')
+    right.append(purse, this.#body)
+    this.node.append(this.#showcase, right)
   }
 
   render(state: HudState): void {
+    this.#turntable.set(state.inspecting)
     const key = JSON.stringify([state.money, state.carrying, state.homes])
     if (key === this.#key) return
     this.#key = key
     this.#coin.set(state.money)
 
-    const items = state.carrying ?? []
-    if (items.length > 0) {
-      this.#selectItem(items[0]!)
-    } else {
-      this.#showcaseName.textContent = 'Empty Inventory'
-      this.#showcaseValue.textContent = '0 items in pockets'
-      this.#showcaseDesc.textContent = 'Explore the city districts to collect items, tools, and quest relics.'
-      this.#showcaseQuest.hidden = true
-    }
+    // quest items first: what a job is waiting on is what the player came here
+    // to check, and the order is stable within each half
+    const items = [...(state.carrying ?? [])].sort((one, other) => Number(Boolean(other.quest)) - Number(Boolean(one.quest)))
+    this.#grid.replaceChildren(...items.map((item) => this.#slot(item)))
+    this.#body.replaceChildren(
+      items.length ? this.#grid : el('p', 'gb-empty gb-t3', NO_ITEMS),
+      homesSection(state.homes),
+    )
 
-    const grid = el('div', 'gb-inv-slots-grid')
-    const totalSlots = 16
-    for (let slotIndex = 0; slotIndex < totalSlots; slotIndex++) {
-      const item = items[slotIndex]
-      const slot = el('div', 'gb-inv-slot gb-cut')
-      if (item) {
-        slot.dataset.filled = 'true'
-        slot.append(icon('item', ICON_PX.tile), el('span', 'gb-slot-label gb-t0 gb-clip', item.name))
-        if (item.quest) {
-          const star = el('span', 'gb-slot-quest-star', '★')
-          slot.append(star)
-        }
-        slot.addEventListener('click', () => this.#selectItem(item))
-      } else {
-        slot.classList.add('gb-slot-empty')
-        const num = String(slotIndex + 1).padStart(2, '0')
-        slot.append(el('span', 'gb-slot-empty-num gb-t0', `[${num}]`))
-      }
-      grid.append(slot)
-    }
-
-    const carried = carriedList(state.carrying, 'gb-carried', NO_ITEMS)
-    carried.addEventListener('click', (e) => {
-      const row = (e.target as HTMLElement).closest('.gb-row')
-      if (!row) return
-      const title = row.querySelector('.gb-row-title')?.textContent
-      const matched = items.find((i) => i.name === title)
-      if (matched) this.#selectItem(matched)
-    })
-
-    this.#body.replaceChildren(grid, carried, homesSection(state.homes))
-  }
-
-  #selectItem(item: { name: string; quest?: boolean; value?: number; text?: string }): void {
-    this.#showcaseName.textContent = item.name
-    this.#showcaseValue.textContent = item.quest ? 'Quest Essential Item' : `Value: ${item.value ?? 0} credits`
-    this.#showcaseDesc.textContent = item.text ?? (item.quest ? 'Required for active district quest line.' : 'General utility item in your inventory.')
-    if (item.quest) {
-      this.#showcaseQuest.textContent = '★ Assigned to Active Quest Line'
-      this.#showcaseQuest.hidden = false
-    } else {
-      this.#showcaseQuest.textContent = ''
-      this.#showcaseQuest.hidden = true
-    }
+    // whatever was open stays open while it is still in hand; otherwise the
+    // first thing is, so the panel beside the grid is never blank with a full
+    // grid next to it
+    const open = items.find((item) => item.id === this.#openId) ?? items[0]
+    if (open) this.#open(open)
+    else this.#empty()
   }
 
   clear(): void {
     this.#key = null
+    this.#openId = undefined
     this.#coin.reset()
+    this.#turntable.clear()
     this.#body.replaceChildren()
   }
 
   dispose(): void {
     this.#coin.dispose()
+    this.#turntable.dispose()
+  }
+
+  /** One thing in the grid: its picture, its name, and a mark when a job wants it. */
+  #slot(item: Carried): HTMLElement {
+    const slot = el('button', 'gb-inv-slot gb-cut')
+    slot.type = 'button'
+    slot.dataset.filled = 'true'
+    if (item.id === this.#openId) slot.dataset.open = 'true'
+    slot.append(icon('item', ICON_PX.tile), el('span', 'gb-slot-label gb-t0 gb-clip', item.name))
+    if (item.quest) slot.append(el('span', 'gb-slot-quest gb-t0', 'Quest'))
+    else if (item.value !== undefined) slot.append(el('span', 'gb-value gb-t0', priceText(item.value)))
+    slot.addEventListener('click', () => this.#open(item))
+    return slot
+  }
+
+  #open(item: Carried): void {
+    const fresh = item.id !== this.#openId
+    this.#openId = item.id
+    this.#name.textContent = item.name
+    this.#line.textContent = item.quest ? 'A job wants this' : item.value === undefined ? '' : `Worth ${priceText(item.value)}`
+    this.#what.textContent = item.text ?? ''
+    this.#what.hidden = !item.text
+    this.#questTag.hidden = !item.quest
+    this.#questTag.textContent = item.quest ? 'Held for a job' : ''
+    for (const slot of this.#grid.querySelectorAll<HTMLElement>('.gb-inv-slot')) delete slot.dataset.open
+    for (const slot of this.#grid.querySelectorAll<HTMLElement>('.gb-inv-slot')) {
+      if (slot.querySelector('.gb-slot-label')?.textContent === item.name) slot.dataset.open = 'true'
+    }
+    // the game draws it and pushes the views back; asking twice for the same
+    // thing would redraw what is already on screen
+    if (fresh) this.#emit({ kind: 'inspect', itemId: item.id })
+  }
+
+  #empty(): void {
+    this.#openId = undefined
+    this.#name.textContent = 'Nothing in hand'
+    this.#line.textContent = ''
+    this.#what.textContent = 'What you pick up is kept here.'
+    this.#what.hidden = false
+    this.#questTag.hidden = true
+    this.#turntable.clear()
   }
 }

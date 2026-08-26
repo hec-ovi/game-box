@@ -42,21 +42,25 @@ export const FACES = `
   align-items: center;
   justify-content: center;
   background: var(--gb-solid);
-  cursor: grab;
-  perspective: 600px;
 }
-.gb-hud .gb-inv-3d-mesh {
-  width: 60px;
-  height: 60px;
-  border: 2px solid var(--gb-accent);
-  box-shadow: 0 0 16px var(--gb-edge-lit);
-  transform: rotateY(0deg) rotateX(20deg);
-  animation: gb-inv-spin 10s linear infinite;
+/* The thing that is open, as the game drew it from all the way round. */
+.gb-hud .gb-inv-3d-face {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
-@keyframes gb-inv-spin {
-  0% { transform: rotateY(0deg) rotateX(20deg); }
-  100% { transform: rotateY(360deg) rotateX(20deg); }
+.gb-hud .gb-inv-slot .gb-value, .gb-hud .gb-inv-slot .gb-slot-quest { color: var(--gb-faint); }
+.gb-hud .gb-inv-slot .gb-slot-quest { color: var(--gb-main); }
+.gb-hud .gb-inv-slot[data-open='true'] { box-shadow: inset 0 0 0 2px var(--gb-accent); }
+.gb-hud .gb-inv-3d-blank {
+  color: var(--gb-faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+.gb-hud .gb-inv-3d-box[data-turnable='true'] { cursor: ew-resize; touch-action: none; }
+.gb-hud .gb-inv-3d-box:focus-visible { box-shadow: inset 0 0 0 2px var(--gb-accent); }
 .gb-hud .gb-inv-right-pane {
   flex: 1;
   min-width: 0;

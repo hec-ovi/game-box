@@ -1,4 +1,4 @@
-import type { Hud, MapMark, MapPlot, MapStation } from '@gb/hud'
+import type { Hud, MapDistrict, MapMark, MapPlot, MapStation } from '@gb/hud'
 import type { World } from '@gb/world'
 import { interiorPlot, planOf, type Marked } from './places.ts'
 import { bearing, type Vec2 } from './walk.ts'
@@ -35,6 +35,7 @@ export class Chart {
   #boarding: () => string | undefined
   #homes: () => readonly string[]
   #plan: MapPlot[]
+  #districts: readonly MapDistrict[]
   #landmarks: readonly string[]
   #named: MapPlot[] | undefined
   #naming = ''
@@ -65,6 +66,9 @@ export class Chart {
     this.#boarding = input.boarding ?? (() => undefined)
     this.#homes = input.homes ?? (() => [])
     this.#plan = planOf(this.#world)
+    // the parts of the city, read once: a cut is the world file's and never
+    // changes while it is being played
+    this.#districts = this.#world.districts().map((district) => ({ id: district.id, name: district.name, rects: district.blocks }))
     this.#landmarks = this.#plan.filter((plot) => plot.prominence === 'landmark').map((plot) => plot.id)
   }
 
@@ -100,6 +104,7 @@ export class Chart {
         width: this.#world.grid.width,
         height: this.#world.grid.height,
         plots: this.#plots(goals),
+        ...(this.#districts.length ? { districts: this.#districts } : {}),
         marks: [
           this.#here(),
           ...goals.map((goal) => this.#pin(goal, 'goal')),
