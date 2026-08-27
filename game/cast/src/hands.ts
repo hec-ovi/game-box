@@ -33,6 +33,13 @@ export class Hands {
     const parent = held.bone === 'body' ? this.#body : this.#bones.get(held.bone)
     if (!parent) return
     this.#holding = this.#props.make(held)
+    // a glass in a hand drops a shadow like everything else in the room
+    this.#holding.traverse((child) => {
+      const mesh = child as THREE.Mesh
+      if (!mesh.isMesh) return
+      mesh.castShadow = true
+      mesh.receiveShadow = true
+    })
     parent.add(this.#holding)
   }
 

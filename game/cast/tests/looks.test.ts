@@ -335,6 +335,28 @@ describe('what a person is made of', () => {
    * with one hard highlight. Cloth is a dielectric, and its roughness comes off
    * this outfit's own weave sheet.
    */
+  /**
+   * A room is lit by its own fixtures now, two of which cast, so the furniture
+   * drops shadows across the floor. The renderer only draws what says it casts,
+   * and nothing in this box said so: the person behind the counter stood in a
+   * shadowed room without a shadow, which reads as pasted on rather than
+   * standing there.
+   */
+  it('drops a shadow and takes one, on the body and on everything worn', () => {
+    for (const entry of wardrobe.characters) {
+      const member = cast.spawn(person({ id: `npc_shade_${entry.id}`, appearance: { base: entry.body, variant: 0 } }))
+      let meshes = 0
+      member.object.traverse((child) => {
+        const mesh = child as THREE.Mesh
+        if (!mesh.isMesh) return
+        meshes++
+        expect(mesh.castShadow, `${entry.id}: ${mesh.name} casts no shadow`).toBe(true)
+        expect(mesh.receiveShadow, `${entry.id}: ${mesh.name} takes no shadow`).toBe(true)
+      })
+      expect(meshes, `${entry.id} has nothing drawable on it`).toBeGreaterThan(1)
+    }
+  })
+
   it('gives every garment a woven finish rather than a coated one', () => {
     for (const entry of wardrobe.characters) {
       const member = cast.spawn(person({ id: `npc_finish_${entry.id}`, appearance: { base: entry.body, variant: 1 } }))

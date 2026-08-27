@@ -95,6 +95,8 @@ export class Cast {
     const build = buildFor(npc)
     shape(body, build)
     this.#hair.dress(body, entry, chooseLook(entry, npc.id))
+    // after they are dressed, so the hair and the coat cast with the body
+    casts(body)
 
     const object = new THREE.Group()
     object.name = npc.id
@@ -140,5 +142,25 @@ async function parse(loader: GLTFLoader, buffer: ArrayBuffer, what: string) {
     } catch (cause) {
       fail(cause)
     }
+  })
+}
+
+/**
+ * A person drops a shadow and takes one.
+ *
+ * The renderer only draws what says it casts, so without this the furniture in
+ * a room shadows the floor and the person standing behind the counter does not,
+ * which reads as somebody pasted onto the picture rather than standing in it.
+ *
+ * It is set on the body and on everything worn, because hair and a coat are
+ * separate meshes and a head with no shadow over a body with one is worse than
+ * neither.
+ */
+function casts(body: THREE.Object3D): void {
+  body.traverse((child) => {
+    const mesh = child as THREE.Mesh
+    if (!mesh.isMesh) return
+    mesh.castShadow = true
+    mesh.receiveShadow = true
   })
 }
