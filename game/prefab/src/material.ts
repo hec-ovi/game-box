@@ -92,10 +92,15 @@ export function prefabMaterial(atlas: PrefabAtlas, night: CityNight): THREE.Mate
   const surface = atlas.relief ? new WallRelief(atlas.relief).read(at, layer) : undefined
   const wallRoughness = surface?.roughness ?? float(SURFACE.roughness)
 
+  // the wall's own glow and the screens on it are off in daylight; a room
+  // behind glass is not, because a shop has its lights on at noon and the pane
+  // over it reflects the sky at every hour
+  const outside = mix(burning, panel.light.mul(float(SCREEN.glow)), panel.share).mul(night.level)
+
   const material = new MeshStandardNodeMaterial()
   material.name = MATERIAL_NAME
   material.colorNode = mix(mix(wall.rgb, room.light.mul(float(ROOM.albedo)), room.share), panel.light.mul(float(SCREEN.albedo)), panel.share)
-  material.emissiveNode = mix(mix(burning, room.light.mul(float(ROOM.glow)), room.share), panel.light.mul(float(SCREEN.glow)), panel.share).mul(night.level)
+  material.emissiveNode = mix(outside, room.light.mul(mix(float(ROOM.day), float(ROOM.glow), night.level)), room.share)
   material.roughnessNode = mix(mix(wallRoughness, float(ROOM.roughness), room.share), float(SCREEN.roughness), panel.share)
   material.metalnessNode = float(SURFACE.metalness)
   if (surface) material.normalNode = surface.normal

@@ -38,14 +38,38 @@ import type { SurfaceFrame } from './surface.ts'
 const STREET_LEVEL = 4.6
 
 /**
- * How hard a lit room burns after dark, what it lends the surface it is seen
- * through, and how rough what is behind the glass is: plaster, shelves and
- * fittings, or a curtain, seen through the pane in front of them.
+ * How hard a lit room burns after dark and how hard in daylight, what it lends
+ * the surface it is seen through, and how rough what is behind the glass is:
+ * plaster, shelves and fittings, or a curtain, seen through the pane in front
+ * of them.
+ *
+ * A room keeps a light of its own at noon because a shop does: the pane in
+ * front of it reflects the sky whatever the hour, and a room carrying nothing
+ * but its own albedo comes to 0.0004 against the pane's 0.0073.
  */
-export const ROOM = { glow: 2.2, albedo: 0.5, roughness: 0.85 } as const
+export const ROOM = { glow: 2.2, day: 1, albedo: 0.5, roughness: 0.85 } as const
 
-/** A window with its lights off is not black: something is always on standby behind it. */
-const UNLIT = 0.07
+/** After dark, a window with its lights off is not black: something is always on standby behind it. */
+export const UNLIT = 0.07
+
+/**
+ * The share of windows of this kind with their lights on, at this reading of
+ * the city's lit share. The shader asks it per window as `step(hash * keys,
+ * lit)`; this is the same answer over a wall, for a tool or a test.
+ */
+export function litShare(lit: number, keys: number): number {
+  return Math.min(1, Math.max(0, lit / keys))
+}
+
+/**
+ * How much of its picture a window shows: the whole of it in daylight, and
+ * after dark only if somebody has the lights on. The shader runs the same line
+ * on the window's own hash; this is the twin a tool or a test can ask.
+ */
+export function shownAt(level: number, lit: boolean): number {
+  const dark = lit ? 1 : UNLIT
+  return 1 + (dark - 1) * level
+}
 
 /** What is behind the glass here: the light in the window, and how much of the fragment is opening. */
 export interface Glazing {
@@ -89,12 +113,17 @@ export class InteriorWindows {
           light.assign(flatPanel(strip, bay, layerFrom(layout.panels, shop, seed), flip))
         })
 
+        // who has switched their lights on is a question about the dark. In
+        // daylight every room shows its picture whole, because a room held at
+        // `UNLIT` under a pane that reflects the sky is a mirror with nothing
+        // behind it
         const lit = step(hash(seed).mul(bay.keys), night.lit)
+        const shown = mix(float(1), mix(float(UNLIT), float(1), lit), night.level)
         out.assign(
           vec4(
             light
               .mul(tints.element(floor(hash(seed.add(SALT.tint)).mul(ROOM_TINTS.length)).toInt()))
-              .mul(mix(float(UNLIT), float(1), lit)),
+              .mul(shown),
             bay.share,
           ),
         )

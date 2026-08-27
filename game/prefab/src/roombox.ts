@@ -25,10 +25,10 @@ import type { SurfaceFrame } from './surface.ts'
  */
 
 /** How dark the room is where it meets the glass against how bright at the back of it. */
-const NEAR_DARK = 0.25
+export const NEAR_DARK = 0.25
 
 /** How dark the floor, the ceiling and the side walls are against the back wall. They are out of the light. */
-const SIDE_DARK = 0.45
+export const SIDE_DARK = 0.45
 
 /**
  * What the ray met, and the light coming off it.

@@ -37,7 +37,22 @@ export const PANE = {
 } as const
 
 /** What a pane catches of the lit street after dark, when the sky it would reflect is black. */
-const STREET: readonly [number, number, number] = [0.1, 0.15, 0.21]
+export const STREET: readonly [number, number, number] = [0.1, 0.15, 0.21]
+
+/**
+ * What the pane does at this facing, in plain numbers: `reflected` is the share
+ * of the opening it gives back to the street and `through` the share of the
+ * room it lets past, which is its alpha and its transmittance.
+ *
+ * The shader runs the same two lines on `positionViewDirection.dot(normalView)`;
+ * this is the twin a tool or a test can ask without a GPU, the way `boxedAt` is
+ * the twin of the window hash.
+ */
+export function paneAt(facing: number): { reflected: number; through: number } {
+  const cos = Math.min(1, Math.max(0, facing))
+  const reflected = PANE.reflectance + (1 - PANE.reflectance) * (1 - cos) ** 5
+  return { reflected, through: 1 - reflected }
+}
 
 export function glassMaterial(finishes: readonly string[], night: CityNight): THREE.Material {
   const bays = new Bays(finishes)
