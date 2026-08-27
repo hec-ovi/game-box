@@ -25,6 +25,7 @@ import { COLOUR_SIZE, EMISSIVE_SIZE, Layers } from './layers.ts'
 import { loadLooks, type Look } from './look.ts'
 import { modelOf, PACK, serialise, VERSION } from './manifest.ts'
 import { Producer } from './producer.ts'
+import { buildRelief } from './relief.ts'
 import { buildRooms } from './rooms.ts'
 import { buildScreens } from './screens.ts'
 import { drawTextures } from './textures.ts'
@@ -54,6 +55,7 @@ try {
     swatches.set(look.id, built.file)
   }
   const atlas = await buildAtlas(looks, swatches, layers)
+  const relief = await buildRelief(layers.names)
   const rooms = await buildRooms()
   const screens = await buildScreens()
   console.log(
@@ -80,6 +82,12 @@ try {
       emissive: { size: EMISSIVE_SIZE, layers: layers.count, sha256: createHash('sha256').update(atlas.emissive).digest('hex') },
       rooms: { size: ROOM_SIZE, layers: rooms.layers, sha256: createHash('sha256').update(rooms.strip).digest('hex') },
       screens: { size: SCREEN_SIZE, layers: screens.layers, sha256: createHash('sha256').update(screens.strip).digest('hex') },
+      relief: {
+        size: COLOUR_SIZE,
+        layers: relief.layers,
+        sha256: createHash('sha256').update(relief.strip).digest('hex'),
+        roughness: relief.roughness.map((value) => Number(value.toFixed(4))),
+      },
       finishes: [...layers.names],
     },
     models,
@@ -91,6 +99,7 @@ try {
   await writeFile(join(out, 'buildings-emissive.png'), atlas.emissive)
   await writeFile(join(out, 'buildings-rooms.png'), rooms.strip)
   await writeFile(join(out, 'buildings-screens.png'), screens.strip)
+  await writeFile(join(out, 'buildings-relief.png'), relief.strip)
   await writeFile(join(out, 'buildings.json'), serialise(manifest))
 
   const triangles = models.reduce((sum, model) => sum + model.triangles, 0)
@@ -99,7 +108,7 @@ try {
     [
       `${models.length} models, ${triangles} triangles (${Math.round(triangles / models.length)} each), ${trimmed} parts trimmed above the plot`,
       `mesh ${(mesh.length / 1024).toFixed(0)} kB, colour ${(atlas.colour.length / 1024).toFixed(0)} kB, glow ${(atlas.emissive.length / 1024).toFixed(0)} kB, ` +
-        `rooms ${(rooms.strip.length / 1024).toFixed(0)} kB, screens ${(screens.strip.length / 1024).toFixed(0)} kB`,
+        `rooms ${(rooms.strip.length / 1024).toFixed(0)} kB, screens ${(screens.strip.length / 1024).toFixed(0)} kB, relief ${(relief.strip.length / 1024).toFixed(0)} kB`,
       `built in ${seconds.toFixed(0)}s`,
       `sha256 ${manifest.sha256}`,
     ].join('\n'),

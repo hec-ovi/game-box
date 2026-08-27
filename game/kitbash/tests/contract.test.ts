@@ -271,7 +271,7 @@ describe('ground', () => {
       const look = GROUND_LOOKS[kind]
       const material = dressed.ground(kind) as THREE.MeshStandardMaterial
 
-      for (const [slot, id] of [['map', look.map], ['normalMap', look.normal]] as const) {
+      for (const [slot, id] of [['map', look.map], ['normalMap', look.normal], ['roughnessMap', look.wear], ['aoMap', look.wear]] as const) {
         const texture = material[slot]
         if (!id) {
           expect(texture, `${kind} ${slot}`).toBeNull()
@@ -283,6 +283,21 @@ describe('ground', () => {
         expect(texture!.repeat.x, `${kind} ${slot}`).toBeCloseTo(1 / GROUND_TEXTURES[id].tile, 6)
         expect(texture!.repeat.y, `${kind} ${slot}`).toBeCloseTo(1 / GROUND_TEXTURES[id].tile, 6)
       }
+    }
+  })
+
+  it('gives every textured surface its wear, on one image in both slots, and no metal anywhere', () => {
+    for (const kind of kinds) {
+      const look = GROUND_LOOKS[kind]
+      const material = dressed.ground(kind) as THREE.MeshStandardMaterial
+
+      expect(material.metalness, kind).toBe(0)
+      if (!look.wear) continue
+      // occlusion off red and roughness off green: one image, one sampler
+      expect(material.roughnessMap, kind).toBeInstanceOf(THREE.Texture)
+      expect(material.aoMap, kind).toBe(material.roughnessMap)
+      // the map carries the material's own roughness, so the look only scales it
+      expect(material.roughness, kind).toBe(1)
     }
   })
 
@@ -341,8 +356,11 @@ const FAKE_SCALE = 2
 function fakeKit(): THREE.Object3D {
   const root = new THREE.Group()
   for (const surface of Object.values(GROUND_TEXTURES)) {
-    const material = new THREE.MeshStandardMaterial({ map: new THREE.Texture() })
-    if (surface.relief) material.normalMap = new THREE.Texture()
+    const material = new THREE.MeshStandardMaterial({
+      map: new THREE.Texture(),
+      normalMap: new THREE.Texture(),
+      roughnessMap: new THREE.Texture(),
+    })
     const node = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material)
     node.name = surface.node
     root.add(node)

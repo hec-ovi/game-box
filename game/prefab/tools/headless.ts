@@ -24,6 +24,11 @@ export async function readPack(night: CityNight = new CityNight()): Promise<Libr
     emissive: grey(finishes.length),
     rooms: grey(ROOM_PICTURES.length),
     screens: grey(SCREEN_PICTURES.length),
+    // the pixels are a stand-in like the rest, but the per-finish roughness is
+    // the pack's own, because that is a number rather than a picture
+    ...(catalogue.atlas.relief
+      ? { relief: grey(finishes.length), roughness: catalogue.atlas.relief.roughness }
+      : {}),
     finishes,
   }
   return Library.of({ catalogue, scenes: await scenesOf(new URL('buildings.glb', PACK)), atlas, night })

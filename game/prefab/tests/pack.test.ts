@@ -29,6 +29,7 @@ const mesh = new Uint8Array(readFileSync(new URL('buildings.glb', pack)))
 const strip = new Uint8Array(readFileSync(new URL('buildings-rooms.png', pack)))
 const screens = new Uint8Array(readFileSync(new URL('buildings-screens.png', pack)))
 const colour = new Uint8Array(readFileSync(new URL('buildings-colour.png', pack)))
+const relief = new Uint8Array(readFileSync(new URL('buildings-relief.png', pack)))
 const catalogue = Catalogue.parse(manifest)
 const looks = loadLooks(new URL('../looks/', import.meta.url).pathname)
 const pictures = [...new Set(looks.map((look) => look.facade))]
@@ -111,6 +112,63 @@ describe('the shipped pack', () => {
     expect(createHash('sha256').update(screens).digest('hex')).toBe(catalogue.atlas.screens.sha256)
     expect(catalogue.atlas.screens.layers).toBe(SCREEN_PICTURES.length)
     expect(catalogue.atlas.screens.size).toBe(SCREEN_SIZE)
+  })
+
+  it('carries a relief layer for every finish, laid out on the colour strip, so one layer index reads both', async () => {
+    const shaped = catalogue.atlas.relief!
+    expect(shaped, 'the pack has no relief strip').toBeDefined()
+    expect(createHash('sha256').update(relief).digest('hex')).toBe(shaped.sha256)
+    expect(shaped.layers).toBe(catalogue.atlas.colour.layers)
+    expect(shaped.size).toBe(catalogue.atlas.colour.size)
+    expect(shaped.roughness).toHaveLength(catalogue.atlas.finishes.length)
+
+    const size = shaped.size
+    // opaque on purpose: a strip is decoded through a premultiplied canvas, so
+    // anything in alpha costs the other three channels a level coming back out
+    const { data, info } = await sharp(Buffer.from(relief)).raw().toBuffer({ resolveWithObject: true })
+    expect(info.channels, 'the relief strip carries no alpha').toBe(3)
+    const layerOf = (finish: string) => {
+      const index = catalogue.atlas.finishes.indexOf(finish)
+      expect(index, finish).toBeGreaterThanOrEqual(0)
+      return { index, pixels: data.subarray(index * size * size * 3, (index + 1) * size * size * 3) }
+    }
+
+    for (const [at, finish] of catalogue.atlas.finishes.entries()) {
+      let rough = 0
+      let longest = 0
+      for (let pixel = at * size * size * 3; pixel < (at + 1) * size * size * 3; pixel += 3) {
+        const x = (data[pixel]! / 255) * 2 - 1
+        const y = (data[pixel + 1]! / 255) * 2 - 1
+        longest = Math.max(longest, x * x + y * y)
+        rough += data[pixel + 2]!
+      }
+      // the runtime takes the third axis as the root of what is left, so a pair
+      // longer than a unit would have no normal to reconstruct
+      expect(longest, finish).toBeLessThanOrEqual(1)
+      // what the shell is drawn at has to be what the near wall averages to
+      expect(shaped.roughness[at]!, finish).toBeCloseTo(rough / (size * size) / 255, 3)
+    }
+
+    // a base is the same picture as its wall, so it is the same relief
+    for (const picture of pictures) {
+      expect(Buffer.compare(layerOf(baseFinish(picture)).pixels, layerOf(wallFinish(picture)).pixels), picture).toBe(0)
+    }
+  })
+
+  it('gives every finish the roughness of what it is made of, where the whole city used to be one number', () => {
+    const roughness = catalogue.atlas.relief!.roughness
+    const of = (finish: string) => roughness[catalogue.atlas.finishes.indexOf(finish)]!
+
+    // architectural glazing against board-marked precast concrete: the two ends
+    // of what a building in this city is made of
+    expect(of('glass')).toBeLessThan(0.15)
+    expect(of(wallFinish('facade-c'))).toBeGreaterThan(0.8)
+    // and the pictures are not one material with three photographs on it
+    expect(new Set(pictures.map((picture) => of(wallFinish(picture)))).size).toBeGreaterThan(2)
+    for (const value of roughness) {
+      expect(value).toBeGreaterThan(0)
+      expect(value).toBeLessThanOrEqual(1)
+    }
   })
 
   it('names what every layer paints, and which of them have windows in them', () => {

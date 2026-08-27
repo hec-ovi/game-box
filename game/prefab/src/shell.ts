@@ -26,6 +26,13 @@ import { stretchOf } from './wall.ts'
  * keeps its lit windows without a raymarch or a room fetch; a screen is the
  * mean colour of the picture the plot carries, which is what a lit board is
  * from across the town. No glass stands in front of it and no sign hangs on it.
+ *
+ * It keeps the roughness and drops the relief, which is the split that costs
+ * nothing: how glossy a material is decides the shape of the highlight a sign
+ * or a lamp lays down its whole face, and it comes off a `uniformArray` of one
+ * float per finish. A normal map is texel detail, gone in the mips by the time
+ * a building is far enough to be a shell, and it would be a second fetch on
+ * every plot in town.
  */
 
 /** What a lit window is worth, flat, against the room the detail draws behind it. */
@@ -41,6 +48,12 @@ export function shellMaterial(atlas: PrefabAtlas, night: CityNight, tints: reado
   const wall = texture(atlas.colour, at).depth(layer)
   const burning = texture(atlas.emissive, at).depth(layer).rgb.mul(float(GLOW))
 
+  // one float a finish, so a far glazed tile is still glass and a far precast
+  // wall is still concrete, at no fetch
+  const rough = uniformArray<'float'>(
+    atlas.finishes.map((_, at) => atlas.roughness?.[at] ?? SURFACE.roughness),
+    'float',
+  )
   const bays = new Bays(atlas.finishes)
   const roomTints = uniformArray<'vec3'>(ROOM_TINTS.map(([r, g, b]) => new THREE.Vector3(r, g, b)), 'vec3')
   const screenTints = uniformArray<'vec3'>(tints.map((tint) => new THREE.Color(tint.colour).multiplyScalar(tint.brightness)), 'vec3')
@@ -76,7 +89,7 @@ export function shellMaterial(atlas: PrefabAtlas, night: CityNight, tints: reado
   material.name = SHELL_MATERIAL_NAME
   material.colorNode = mix(wall.rgb, seen.rgb.mul(albedo), seen.a)
   material.emissiveNode = mix(burning, seen.rgb.mul(strength), seen.a).mul(night.level)
-  material.roughnessNode = float(SURFACE.roughness)
+  material.roughnessNode = rough.element(layer)
   material.metalnessNode = float(SURFACE.metalness)
   return material
 }

@@ -1,10 +1,10 @@
 # @gb/prefab contract
 
-contractVersion: 0.11.0
+contractVersion: 0.12.0
 
 ## Purpose
 
-Dresses a plot with the whole building its world file names, out of one committed pack, and picks one when the file names none: the footprint it was given, the height its storeys ask for, its entrance on the wall the door faces, lit if you can walk in, and a front that reads as the kind of place its charter says it is. Its windows are cut out of the wall in the shader and look into photographed rooms that light up after dark, through a pane of glass that reflects the sky and the street; the flats carry balconies over the pavement; the commercial fronts carry lit screens over the street, clear of the door; and it says where the light each building throws comes from. It also says where the model really put its entrance and the band over it, and seats the signage the kit wrote for the plot on those, so a door lamp lights the door that is drawn and a nameplate lies on the board it is written on. Near the player a building is its walls and its glass, one material each; far off it is its shell on a third, so a town of any size is three draws.
+Dresses a plot with the whole building its world file names, out of one committed pack, and picks one when the file names none: the footprint it was given, the height its storeys ask for, its entrance on the wall the door faces, lit if you can walk in, and a front that reads as the kind of place its charter says it is. Its windows are cut out of the wall in the shader and look into photographed rooms that light up after dark, through a pane of glass that reflects the sky and the street; the flats carry balconies over the pavement; the commercial fronts carry lit screens over the street, clear of the door; and it says where the light each building throws comes from. It also says where the model really put its entrance and the band over it, and seats the signage the kit wrote for the plot on those, so a door lamp lights the door that is drawn and a nameplate lies on the board it is written on. Every wall is three maps and not one, so glazed tile, precast concrete and weathering steel are three materials rather than one with three photographs on it: what a face is painted, how it is shaped and how rough it is. Near the player a building is its walls and its glass, one material each; far off it is its shell on a third, so a town of any size is three draws.
 
 ## Inputs
 
@@ -17,8 +17,8 @@ Dresses a plot with the whole building its world file names, out of one committe
 | `PrefabDressing.face(plot, size, charter)` | the same | |
 | `StreetFace.of(geometry, wall, plane, finishes)` | a geometry `orient` has turned, the plot's `Facing`, metres from the origin out to the wall (the model's own half depth), the pack's finishes | for anyone reading a face of their own |
 | `Fixtures.on(face, signs)` | a `StreetFace` and the `@gb/kitbash` `Sign[]` that box wrote for the plot | the signs in the order `signsFor` lists them, which is the order `lightsFor` answers in |
-| `loadPrefab(night)` | a `@gb/kitbash` `CityNight` | the pack’s six files are served beside the box; in a bundler they are followed from `src/load.ts` |
-| `Library.of({ catalogue, scenes, atlas, night })` | a `Catalogue`, the pack's parsed scenes, a `PrefabAtlas`, a `CityNight` | for tests and for anyone loading the pack themselves |
+| `loadPrefab(night)` | a `@gb/kitbash` `CityNight` | the pack’s seven files are served beside the box; in a bundler they are followed from `src/load.ts` |
+| `Library.of({ catalogue, scenes, atlas, night })` | a `Catalogue`, the pack's parsed scenes, a `PrefabAtlas`, a `CityNight` | for tests and for anyone loading the pack themselves. The atlas's `relief` and `roughness` may be left out, and then every wall is drawn at `SURFACE` |
 | `new InteriorWindows(rooms, night, finishes)` | the room strip as a `DataArrayTexture`, a `CityNight`, the pack's list of finishes | the finishes in the order the two facade strips stack them |
 | `new WallScreens(screens, finishes)` | the screen strip as a `DataArrayTexture`, the same list of finishes | |
 | `glassMaterial(finishes, night)` | the finishes, a `CityNight` | |
@@ -79,11 +79,12 @@ Dresses a plot with the whole building its world file names, out of one committe
 | `BALCONY` | `finish`, `reach`, `above` | the balustrade's layer, metres a balcony may hang over the pavement, and the clear height under the lowest one |
 | `ROOM_TINTS` | eight colours | what a lit room burns in, near and far |
 | `PROUD`, `HEIGHT_TOLERANCE`, `GLOW`, `LAYER_ATTRIBUTE`, `MATERIAL_NAME`, `GLASS_MATERIAL_NAME`, `SHELL_MATERIAL_NAME` | metres, a multiplier and four names | how far trim may reach past the plot, how exact a wall has to be, how hard a lit face burns, the attribute the pack is written with and the three names its batches carry |
+| `SURFACE`, `WallRelief` | `{ roughness, metalness }`, and the reader that unpacks one relief layer | what a wall is drawn at with no relief strip behind it, and how the strip's three channels come back as a normal and a roughness off one fetch |
 
 ## Errors (closed set)
 
 - `invalid-catalogue`: the manifest failed its schema. Thrown as `InvalidCatalogue`, carrying `violations`.
-- `pack-changed`: one of the pack's five binary files does not hash to what the manifest says. Thrown as `PackChanged` from `loadPrefab`, carrying `file`, `expected` and `found`. The pack is committed bytes; a pack edited under the game refuses to load rather than quietly drawing a different city than the seed says.
+- `pack-changed`: one of the pack's six binary files does not hash to what the manifest says. Thrown as `PackChanged` from `loadPrefab`, carrying `file`, `expected` and `found`. The pack is committed bytes; a pack edited under the game refuses to load rather than quietly drawing a different city than the seed says.
 - `library-incomplete`: the mesh file is missing a model the manifest names. Thrown as `LibraryIncomplete`, carrying `missing`.
 
 A plot the catalogue has no shape for is not an error: `building` hands it to the dressing behind.
@@ -99,13 +100,14 @@ A plot the catalogue has no shape for is not an error: `building` hands it to th
 
 ## The pack
 
-Six committed files, and they are the whole art supply.
+Seven committed files, and they are the whole art supply.
 
 - `pack/buildings.glb`, 2.9 MB: 512 models, one mesh each, 212 triangles on average, balconies included, all on one material, welded, quantized and meshopt-packed. The glass is not in it: the runtime derives every pane from the walls.
 - `pack/buildings-colour.png` and `pack/buildings-emissive.png`, 1.2 MB and 20 kB: twenty-three 256 px layers stacked into a strip each, the surface a face is painted and the part of it that glows.
 - `pack/buildings-rooms.png`, 896 kB: fourteen 256 px rooms in the same shape, the pictures every window in the city looks into.
 - `pack/buildings-screens.png`, 574 kB: six 256 px pictures in the same shape, what the lit panels on the walls carry.
-- `pack/buildings.json`, 159 kB: the manifest. Pack id, version, the producer commit, the sha256 of all five binaries, what each atlas layer paints, and one entry per model: its shape, the tags it suits, its triangle count and where its door is. Its own sha256, taken over these bytes, is the pack's identity, and it covers the other five through the hashes it lists.
+- `pack/buildings-relief.png`, 1.3 MB: the colour strip's twenty-three layers again, carrying normal x and y and roughness instead of colour. Derived offline from the same committed pictures, so a joint in the picture is a joint in the relief.
+- `pack/buildings.json`, 159 kB: the manifest. Pack id, version, the producer commit, the sha256 of all six binaries, the mean roughness of every relief layer, what each atlas layer paints, and one entry per model: its shape, the tags it suits, its triangle count and where its door is. Its own sha256, taken over these bytes, is the pack's identity, and it covers the other six through the hashes it lists.
 
 A strip's rows already sit in the order an array texture wants them, so the runtime decodes one image and hands the bytes straight to the GPU with no copying in between.
 
@@ -176,6 +178,39 @@ The glazed tile is the only regular grid in the set, and it went to the two look
 Each one tiles. A wall runs several pictures across and several up, so a seam would repeat over the whole building; the pack test measures the join against what one step inside the picture costs and refuses anything worse.
 
 They are handed to the producer through `add-texture`, which is the verb that names the file, pairs the glow map and records the grid the picture holds. That grid is what fixes the uv scale the shader reads a bay off, so the two have to agree; both take it from the same `WindowKind`.
+
+## What a wall is made of
+
+A picture is what a surface is painted. What it is made of is three more numbers a texel, and they ride on one more layer of the same strip: normal x, normal y, roughness.
+
+- **They are derived from the picture, offline, by `tools/textures/relief.mjs`,** and committed beside it as `finishes/<picture>-relief.png`. A photographed surface holds its own relief twice over, because light collects on what stands proud and dirt collects in what is hollow. Subtract the wavelengths longer than the family's cut, which are stain rather than shape, and what is left is a height field: differentiate it for the normal, and push the material's own roughness about with it and with how deep the hollow is.
+- **The roughness is authored per material, not read off the picture.** A row in `tools/textures/relief/surfaces.mjs` says what board-marked precast concrete, weathering steel, composite rainscreen and glazed ceramic tile actually measure at, and the picture only moves it about inside that range: darker is dirtier and so rougher, and a hollow was never polished. What ships is the absolute number, so the shader is a fetch and not a formula.
+- **One image, one fetch, and no alpha.** Two channels carry the normal and the third comes back as the root of what is left, because a height field never faces away from its own surface; the last channel is roughness. A second image would have been a second fetch and 8 MB more. Nothing rides in alpha: the runtime decodes a strip through a 2D canvas, whose backing store is premultiplied, so an alpha of 0.4 costs the other three channels a level on the way back out, which is 0.45 degrees of noise on a normal whose median tilt is a fifth of a degree.
+- **There is no occlusion map, and that is a measurement rather than an omission.** `tools/textures/relief.mjs` derives one, and `@gb/kitbash` ships it on the ground, where a glTF material carries it in a channel of its own. Here it would have to ride in the strip's alpha, at the cost above, to darken only the ambient term, on a facade whose ambient after dark is a near black sky; and the hollow it would darken is the dirt the height field was read from in the first place, which the colour map already paints. What shades a joint under a street lamp is the normal, which is what ships.
+- **Nothing in the pack is metal.** There is no reflection probe on a street, and the only environment a wall has is the sky the app hangs on the scene, so a metal facade is a black panel at night. The anodised aluminium of a shopfront surround is the one surface that would want it, and it is not a layer in this pack.
+- **A finish with nothing to read gets a number instead of a picture.** The entrances are the measured case: they are photographs of a lit lobby, so their brightness says where the light is and not where the metal is, and a roughness read off `door.png` comes back with the push bar smoother than the glass. So they ship flat, and the picture keeps doing the one thing a photograph of a door is good at.
+- **The shell keeps the roughness and drops the shape.** A far building reads one float off a `uniformArray` (the layer's own mean roughness, recorded in the manifest) rather than a second texture, so a far glazed tile is still glass and a far concrete wall is still concrete at no fetch. A normal map is texel detail and it is gone in the mips by the time a building is drawn as a shell.
+
+Measured on the shipped strip, at the 256 px a layer is stored at over the 12 by 6.42 m one wall picture covers, which is 46.9 by 25.1 mm a texel:
+
+| picture | material | relief, peak to peak | tilt: median / p90 / p99 | roughness, min to max | mean |
+|---|---|---|---|---|---|
+| `facade-a-3` | composite rainscreen | 3.0 mm | 0.21 / 0.64 / 2.18 deg | 0.50 to 0.80 | 0.62 |
+| `facade-b`, `facade-b-3` | weathering steel | 0.8 mm | 0.15 / 0.32 / 0.56 deg | 0.62 to 0.94 | 0.78 |
+| `facade-c` | board-marked precast | 4.0 mm | 0.53 / 1.93 / 3.72 deg | 0.77 to 0.96 | 0.86 |
+| `facade-c-2` | board-marked precast | 4.0 mm | 0.74 / 2.14 / 3.47 deg | 0.74 to 0.96 | 0.86 |
+| `facade-d`, `facade-d-2` | glazed ceramic tile | 2.0 mm | 0.20 / 0.56 / 1.71 deg | 0.18 to 0.86 | 0.40 |
+
+The median tilt is small and it is meant to be: a facade panel is flat, and what carries the surface is the tail, which is the panel joints and the board courses. For scale, the Downtown kit's own authored concrete and marble normals measure 0.32 degrees median with 33.9 and 67.6 at p99, so these sit in the band the game already ships. The glazed tile is the clearest gain and it is in the roughness rather than the normal: the tile faces come out at 0.18 and the grout between them at 0.86, where the whole city used to be 0.68.
+
+The finishes that carry no picture are numbers: the glazing band at 0.08, a neon tube's diffuser at 0.35, the balustrade at 0.50, the screen plate's edges at 0.45 and both entrances at 0.30.
+
+### The scale a wall picture is read at
+
+A wall picture is laid over four bays of 3 m and two floors of 3.21 m, so one repeat is 12 m across by 6.42 m up and one texel of a 256 px layer is 46.9 by 25.1 mm. That is the number a derived map has to be aimed at, and it is why `--metres` takes two figures: a slope is metres of height over metres of surface, and a picture derived as though it were square comes out with twice the relief in one axis as in the other.
+
+It is also a mismatch worth naming. The pictures were generated to a prompt that says the frame covers three metres of real cladding, and they are laid over twelve, so every feature on a facade reads about four times too wide and a little over twice too tall, and a panel drawn square comes out landscape. The relief follows the colour rather than correcting it, because the bay grid, the room raymarch and the glass are all read off that same uv: moving it moves the windows. Fixing it is either a producer run at a grid of 3 m, or a regeneration at the size the wall actually is.
+
 
 ## Windows: the glass, and the rooms behind it
 
@@ -326,7 +361,7 @@ Then the whole pack is read back the way the game reads it and measured again, b
 
 Run it with `node tools/build-buildings.ts`. It needs `glb-buildings` beside the checkout, or `GLB_BUILDINGS` pointing at it. `node tools/measure-city.ts` then says what a forged town costs on the result.
 
-Tags are manifest metadata and touch none of the five binaries, so changing what a look suits is `node tools/retag-buildings.ts`: it rewrites every model's `tags` from the looks, keeps everything else as read, and refuses a `looks/` folder whose looks are not exactly the ones the pack was baked from. Both tools write the manifest through `tools/manifest.ts`, which holds the pack name and `VERSION`.
+Tags are manifest metadata and touch none of the six binaries, so changing what a look suits is `node tools/retag-buildings.ts`: it rewrites every model's `tags` from the looks, keeps everything else as read, and refuses a `looks/` folder whose looks are not exactly the ones the pack was baked from. Both tools write the manifest through `tools/manifest.ts`, which holds the pack name and `VERSION`.
 
 ## Invariants
 
@@ -336,12 +371,16 @@ Tags are manifest metadata and touch none of the five binaries, so changing what
 - The pick chooses from members sorted by id, so what order the manifest happens to list them in can never reach a street.
 - **A pinned plot is drawn from its pin, and growing the catalogue moves nothing.** `plot.design` is read, never re-derived: no pick, no `Rng`, no look at the plot's shape. A city pinned against one version of the pack draws the same 123 buildings against a pack with a whole new look in it, where picking again moves 53 of them. A plot with no pin is picked for exactly as before, so every city exported before the pin renders as it always did.
 - **A pin that cannot be honoured falls back; it never picks again.** Another pack's name, a model this copy no longer holds, or a shape the catalogue does not cover all hand the plot to the dressing behind. A kit building on a prefab street reads as a fallback, and a substituted prefab reads as the city the file describes, which is the failure worth being loud about.
-- **What a pack is called is a fact about its bytes.** `catalogue.identity` is the pack name, its version and the sha256 of the manifest as read, so a reader comparing packs is comparing what it actually loaded. The manifest names the hash of all five binaries, so that one string covers the whole pack.
+- **What a pack is called is a fact about its bytes.** `catalogue.identity` is the pack name, its version and the sha256 of the manifest as read, so a reader comparing packs is comparing what it actually loaded. The manifest names the hash of all six binaries, so that one string covers the whole pack.
 - Every picture the pack ships is stored losslessly, so adding a finish leaves every other finish pixel for pixel where it was. A palette is shared by the whole strip, and a shared palette makes one new door a change to every wall in the city.
 - Every model declares what it suits as tags, and the pick keeps the models that share a word with the charter's `suits` before it draws. Where nothing in a shape claims the charter, the whole shape answers, so coverage stays provable and a word no look has heard of is never left bare. `suits(charters)` says which words that is, so a pack can be asked before a city is built against it.
 - The catalogue covers every shape `@gb/world`'s `PLOT_BAND` cuts: frontage 3 to 6 cells by depth 5 to 8 by storeys 1 to 4, sixty-four shapes, eight looks in each, read in the door's frame through `plotShape`. A taller plot, a cell size that is not `METRICS.cellSize`, or a footprint outside that band is handed to the dressing behind, which is why `@gb/kitbash` stays load-bearing.
 - **A city's towers are the dressing behind, not a squashed prefab.** `@gb/forge` raises a few plots past the band so a city has a skyline, and there is no model in the pack for any of them: `design` answers nothing, `pin` writes nothing into the file, and `building` and `shell` both hand the plot on at its full height. A tower is visibly a kit building on a street of prefabs, which is the honest answer, and drawing one shrunk into a four storey bucket would look exactly like the city the file describes. Measured on three 8 block seeds at density 1 and the brief's own default: every plot inside the band has a model, and every plot over it has none at every height up to `TALLEST_STOREYS`.
 - Turning a model onto its plot is a swap and a sign flip, never a sine, so the same model lands on the same coordinates on every machine. Mirroring happens in the model's own frame before the turn, so the door stays put and only the facade swaps hands, and every triangle is wound back so it still faces out.
+- **A wall is three maps, and the third lines up with the first.** The relief strip has the same size, the same layer count and the same layer order as the colour strip, and is read at the same uv, so one layer index reads both and a joint in the picture is a joint in the relief. A base is the same picture as its wall, so it is the same relief bytes. Measured over the shipped strip in `tests/pack.test.ts`.
+- **Nothing in the pack is metal**, near or far. There is no probe on a street and the only environment is the sky, so metalness is zero on every layer and what separates a glazed tile from a concrete panel is roughness.
+- **Every relief texel unpacks to a real normal.** The two stored axes are never longer than a unit together, so the third comes back as a square root rather than as a clamp. Measured over the shipped strip.
+- **What the shell is drawn at is what the near wall averages to.** Every layer's recorded roughness is the mean of that layer's own roughness channel, so walking up to a building does not change how glossy it is. Measured over the shipped strip.
 - Three materials for every prefab building in the city, and a building is never on more than two at once: near the player its walls and its glass, far off its shell. Which picture a face wears rides on its vertices as a layer index into an array texture, so `@gb/scene` puts the whole town into one buffer per material and draws each once. An array rather than an atlas because the producer's wall pictures tile across a wall, and only a layer of its own lets the sampler wrap one without bleeding into the picture next door.
 - **The glass is the wall's own faces, and never in the pack.** Every pane is derived at load from the upright faces on the windowed layers, `PANE.stand` off the wall with the wall's uv, so the pane and the opening can never disagree, and the mesh file stays the walls alone.
 - **The shell lights the same windows.** Near and far read one hash of one bay index, so a window that is lit on the skyline is lit when you walk up to it, in the same colour.
@@ -359,7 +398,7 @@ Tags are manifest metadata and touch none of the five binaries, so changing what
 - **A door lamp is bounded by the door that is drawn.** Both lamps straddle the drawn entrance at `DOORLAMP.beside` outside its frame and reach from `DOORLAMP.foot` to its head plus `DOORLAMP.overhead`, whatever the plot's own arithmetic put there. Measured over a generated town in `tests/fixtures.test.ts`, alongside the light each one throws.
 - A shell stands in the same box as the building it stands in for, wearing the same pictures on the same faces, so the town keeps its shape as you walk up to it. Measured over a forged town in `tests/shell.test.ts`.
 - Nothing a building only needs near the player is done for a shell: the street face is read the first time something is seated on it, and the whole town is opened without reading one.
-- The pack is checked on the way in: all five binary files have to hash to what the manifest says and the mesh has to hold every model it names, or nothing loads. It is committed art, and the one thing standing between an edited pack and a city that quietly draws something else.
+- The pack is checked on the way in: all six binary files have to hash to what the manifest says and the mesh has to hold every model it names, or nothing loads. It is committed art, and the one thing standing between an edited pack and a city that quietly draws something else.
 - Objects only. No renderer, no camera, no frame loop, which is why the whole box is tested in Node with no canvas.
 
 ## What it costs
@@ -394,7 +433,9 @@ What the shell path buys at that size is the 2.3x on the open, 1.4M fewer triang
 
 **A skyline is the kit's bill, not the pack's.** The same 20 block town at the brief's own `maxStoreys` (`node tools/bench-city.ts --blocks 20 --storeys 24`) raises 106 plots past the band, and each one is a kit building of 3,840 triangles a storey: 4.89M shell triangles and 999 MB against 706k and 507 MB with the ceiling at 4, and 6.49M and 1,193 MB with it at 40. The 3,383 plots still inside the band cost what they always did. Nine draws rather than four, because a kit building brings its own five wall materials into the far batch.
 
-**A layer is 0.35 MB resident with its mips, and a finish is one layer in each of the two facade strips.** The pack is 23 finishes (7 wall pictures twice, 2 doors, the screen plate, the glazing, 4 tubes, the balustrade), 14 rooms and 6 screens: 66 layers, 23.1 MB. On disk the six files are 5.9 MB.
+**A layer is 0.35 MB resident with its mips, and a finish is one layer in each of the three facade strips.** The pack is 23 finishes (7 wall pictures twice, 2 doors, the screen plate, the glazing, 4 tubes, the balustrade), 14 rooms and 6 screens: 89 layers, 31.1 MB. On disk the seven files are 7.2 MB.
+
+The relief is 23 of those layers, 8.1 MB resident and 1.3 MB on disk. It costs one texture fetch on a wall fragment near the player and nothing at all on a shell, which reads its roughness off a uniform. It adds no draw, no material, no triangle and no vertex attribute: the layer index the strip is read with is the one every model in the pack already carries.
 
 ## Standing it up
 
@@ -443,4 +484,14 @@ What an entrance looks like is `finishes/door.png` and, over it, `DOOR` and `ENT
 
 A new finish goes at the **end** of `Layers.of` in `tools/layers.ts`. The layer index rides on the vertices of every model in the pack, so a finish inserted anywhere else renumbers the whole mesh; appended, the mesh comes out of a rebuild byte for byte identical and only the two strips and the manifest change. The wall layers and their bases are first and come from the looks, so giving a look a picture no other look wears renumbers everything after it, which is a rebuild and a version bump rather than a hazard. How every picture is written is `PNG` in `tools/paint.ts`, and it is lossless on purpose: turn palette quantisation back on and one new finish moves the pixels of every other one.
 
-The pack's six files are committed art: never hand-edit them, because the manifest's hash is what the loader checks. Rebuild with `node tools/build-buildings.ts`, which is byte for byte reproducible on one machine, or retag with `node tools/retag-buildings.ts` when only the tags moved, and bump `VERSION` in `tools/manifest.ts` whenever the bytes change. Run `pnpm --filter @gb/prefab test`.
+What a wall is made of is two places and they do not overlap. What a material measures at, and how deep it is, is a row in `tools/textures/relief/surfaces.mjs` outside this box; which row a picture is derived on, and the size and scale it is derived at, is the command that writes it:
+
+```bash
+node tools/textures/relief.mjs game/prefab/finishes/<picture>.png game/prefab/finishes \
+  --surface <material> --metres 12x6.42 --size 256 --packed
+node game/prefab/tools/relief-buildings.ts
+```
+
+`--metres` is not a label: a slope is metres of height over metres of surface, and a wall picture is laid over 12 m across by 6.42 m up, so a tile derived as though it were square comes out with twice the relief in one axis. The second command restacks the strip and rewrites the manifest with no producer run, exactly the way `retag-buildings.ts` does, because how a wall is shaped rides on no vertex. How rough a finish with no picture is (the glazing, the tubes, the balustrade, the two entrances, the screen plate) is `FLAT` in `tools/relief.ts`, and how the strip is read is `src/relief.ts` alone, which needs no rebuild.
+
+The pack's seven files are committed art: never hand-edit them, because the manifest's hash is what the loader checks. Rebuild with `node tools/build-buildings.ts`, which is byte for byte reproducible on one machine, retag with `node tools/retag-buildings.ts` when only the tags moved, restack the relief with `node tools/relief-buildings.ts` when only the surfaces moved, and bump `VERSION` in `tools/manifest.ts` whenever the bytes change. Run `pnpm --filter @gb/prefab test`.

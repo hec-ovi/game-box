@@ -30,7 +30,7 @@ export class PackChanged extends Error {
 export const PACK_MANIFEST = new URL('../pack/buildings.json', import.meta.url)
 
 /**
- * The pack's six files, as URLs the bundler can see. They are written out one
+ * The pack's seven files, as URLs the bundler can see. They are written out one
  * by one rather than built from a name, because a bundler only follows a
  * literal.
  */
@@ -41,6 +41,7 @@ const PACK = {
   emissive: new URL('../pack/buildings-emissive.png', import.meta.url),
   rooms: new URL('../pack/buildings-rooms.png', import.meta.url),
   screens: new URL('../pack/buildings-screens.png', import.meta.url),
+  relief: new URL('../pack/buildings-relief.png', import.meta.url),
 } as const
 
 /**
@@ -51,21 +52,25 @@ const PACK = {
  * different city than the one the seed says.
  */
 export async function loadPrefab(night: CityNight): Promise<Library> {
-  const [manifest, mesh, colour, emissive, rooms, screens] = await Promise.all([
-    bytes(PACK.manifest),
+  // the manifest first: it says whether the pack carries a relief strip at all,
+  // and an older one that does not still loads
+  const catalogue = await Catalogue.read(await bytes(PACK.manifest))
+  const shaped = catalogue.atlas.relief
+  const [mesh, colour, emissive, rooms, screens, relief] = await Promise.all([
     bytes(PACK.mesh),
     bytes(PACK.colour),
     bytes(PACK.emissive),
     bytes(PACK.rooms),
     bytes(PACK.screens),
+    shaped ? bytes(PACK.relief) : undefined,
   ])
 
-  const catalogue = await Catalogue.read(manifest)
   await check('mesh', mesh, catalogue.sha256)
   await check('colour atlas', colour, catalogue.atlas.colour.sha256)
   await check('glow atlas', emissive, catalogue.atlas.emissive.sha256)
   await check('room atlas', rooms, catalogue.atlas.rooms.sha256)
   await check('screen atlas', screens, catalogue.atlas.screens.sha256)
+  if (relief && shaped) await check('relief atlas', relief, shaped.sha256)
 
   const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(mesh, '')
   const atlas: PrefabAtlas = {
@@ -77,6 +82,14 @@ export async function loadPrefab(night: CityNight): Promise<Library> {
     // a screen is read at a clamped uv too: the picture is cropped onto the
     // panel, so wrapping one would fold its far side back over its own edge
     screens: await arrayTexture(screens, catalogue.atlas.screens, THREE.ClampToEdgeWrapping),
+    // the relief follows the colour: same uv, same wrap, and never sRGB, since
+    // a normal and a roughness are numbers rather than something anybody looks at
+    ...(relief && shaped
+      ? {
+          relief: await arrayTexture(relief, shaped, THREE.RepeatWrapping, THREE.NoColorSpace),
+          roughness: shaped.roughness,
+        }
+      : {}),
     finishes: catalogue.atlas.finishes,
   }
   return Library.of({ catalogue, scenes: gltf.scenes, atlas, night })
@@ -98,7 +111,12 @@ async function check(file: string, data: ArrayBuffer, expected: string): Promise
  * is one image to decode and its rows already sit in the order an array texture
  * wants them, so this is a decode and a read with no copying in between.
  */
-async function arrayTexture(png: ArrayBuffer, strip: { size: number; layers: number }, wrap: THREE.Wrapping): Promise<THREE.DataArrayTexture> {
+async function arrayTexture(
+  png: ArrayBuffer,
+  strip: { size: number; layers: number },
+  wrap: THREE.Wrapping,
+  colorSpace: THREE.ColorSpace = THREE.SRGBColorSpace,
+): Promise<THREE.DataArrayTexture> {
   const { size, layers } = strip
   const bitmap = await createImageBitmap(new Blob([png], { type: 'image/png' }))
   const canvas = new OffscreenCanvas(size, size * layers)
@@ -109,7 +127,7 @@ async function arrayTexture(png: ArrayBuffer, strip: { size: number; layers: num
 
   const pixels = context.getImageData(0, 0, size, size * layers).data
   const texture = new THREE.DataArrayTexture(new Uint8Array(pixels.buffer), size, size, layers)
-  texture.colorSpace = THREE.SRGBColorSpace
+  texture.colorSpace = colorSpace
   texture.wrapS = wrap
   texture.wrapT = wrap
   texture.minFilter = THREE.LinearMipmapLinearFilter

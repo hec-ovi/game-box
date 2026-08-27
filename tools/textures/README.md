@@ -90,6 +90,78 @@ tile on an 8 m wall with a 2.1 m door drawn on it.
 The example measured 1.13 / 1.09 seam and 6.0% lighting spread, from 1.13 / 1.39
 and 7.6%.
 
+## Deriving the maps a tile does not carry
+
+```bash
+node tools/textures/relief.mjs <tile.png> <outdir> --surface <name> \
+     [--metres 2] [--metres 12x6.42] [--size 512] [--packed]
+```
+
+A colour image on a plane at one roughness is what reads as a photograph stuck
+to a wall. This reads the tile back and writes the rest of the material out of
+it.
+
+1. **Luminance in linear light.** sRGB bytes are a display encoding, and
+   differentiating them puts more slope on a dark surface than a light one for
+   the same real step in the material.
+2. **High pass at a real wavelength.** Everything longer than the family's `cut`
+   is subtracted: a soot wash a metre across is painted on, a board mark ten
+   centimetres across is pressed in. The blur wraps, and takes its own radius on
+   each axis, so a tile laid wider than it is tall is cut at the same
+   wavelength both ways.
+3. **Gradient into a tangent space normal.** Sobel, wrapping, at the output
+   size, so the slope is metres of height over the metres one texel really
+   covers. The sign convention is the one the Downtown kit's own normal maps are
+   authored in, measured: its concrete normal correlates 0.68 with the negative
+   column derivative of its own albedo in red and 0.74 with the positive row
+   derivative in green.
+4. **Roughness the material was authored at, moved about by the picture.**
+   Darker than the tile's own mean is dirtier and so rougher; a hollow was never
+   polished. Both signals are taken in units of their own spread, so a flat
+   photograph and a contrasty one use the same share of the family's range.
+5. **Occlusion from the hollows** of the same height field, down to the family's
+   own floor.
+
+`--metres` is not a label. A slope is metres of height over metres of surface,
+so a tile laid on a twelve metre wall and the same tile laid on a two metre one
+are two different maps, and a tile laid wider than it is tall needs both figures
+(`12x6.42`).
+
+What each material is made of is one row in `relief/surfaces.mjs`: how deep it
+is peak to peak in millimetres, where albedo stops being geometry, the roughness
+it runs between and how much of that swing is grime rather than cavity. That is
+the file to edit, and the run prints what it measured off what it wrote:
+
+```
+wall-concrete-corpo on formed-concrete: 512px over 2x2 m (3.91x3.91 mm a texel)
+  normal   tilt 3.23 deg median, 7.24 at p90, 14.35 at p99, 2.50 mm peak to peak
+  rough    0.68 to 0.92, mean 0.80
+  occlude  0.55 at the deepest, mean 0.93
+```
+
+Two shapes come out, and which one to ask for depends on how the consumer
+carries them:
+
+- **glTF** (`@gb/kitbash`'s ground, `@gb/furnish`'s interior): `<name>-normal.png`
+  and `<name>-orm.png`, occlusion in red and roughness in green, which is the
+  one image a glTF material hangs on both `occlusionTexture` and
+  `metallicRoughnessTexture`.
+- **A stacked array texture** (`--packed`, `@gb/prefab`'s pack):
+  `<name>-relief.png`, opaque, normal x and y with roughness in blue. Nothing
+  rides in alpha, because a strip is decoded through a 2D canvas whose backing
+  store is premultiplied: an alpha of 0.4 costs the other three channels a level
+  on the way back out, which is 0.45 degrees of noise on a normal whose median
+  tilt is a fifth of a degree.
+
+### What it is not
+
+It is a height field read off a photograph, with a stated cut-off and a stated
+depth, and it says so. It is not a scan. Where the picture's brightness is
+lighting rather than material the derivation is wrong and the answer is to ship
+a number instead: `game/prefab/finishes/door.png` is a lit lobby behind glass,
+so a roughness read off it comes back with the push bar smoother than the glass,
+and that finish ships flat.
+
 ## Standards
 
 - PNG, not JPEG. The generated JPEG is a source; its chroma error would come
@@ -118,10 +190,6 @@ the wall meets the ground, and the door reads at the right height.
 
 ## Not done yet
 
-- **Normal and roughness.** The tile is colour only. Both can be derived from
-  the flattened albedo (Sobel on luminance for normal, local contrast for
-  roughness), which is a fake that holds up under moving light, but neither is
-  built here.
 - **Breaking the repeat.** One tile at 4 x 4 still shows its motifs. The cheap
   fix costs no images: hash the tile cell in `MetreTiling` and offset or rotate
   per cell. Separate tiles cut independently do not join each other, so if

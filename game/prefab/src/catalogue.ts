@@ -44,6 +44,16 @@ const StripSchema = z.object({
   sha256: z.string().regex(/^[0-9a-f]{64}$/),
 })
 
+/**
+ * The relief strip, which carries one number per layer as well as its pixels:
+ * the mean roughness of that finish. A shell reads no texture behind its wall,
+ * so that float is how a far glazed tile stays glass and a far concrete wall
+ * stays concrete.
+ */
+const ReliefSchema = StripSchema.extend({
+  roughness: z.array(z.number().min(0).max(1)).min(1),
+})
+
 export const CatalogueSchema = z.object({
   pack: z.string().min(1),
   version: z.string().min(1),
@@ -57,6 +67,12 @@ export const CatalogueSchema = z.object({
     rooms: StripSchema,
     /** The pictures every screen in the city carries. */
     screens: StripSchema,
+    /**
+     * How every finish is shaped, how rough it is and where its hollows are.
+     * Optional, because a pack baked before it existed still loads and draws
+     * every wall at one roughness, which is what it always did.
+     */
+    relief: ReliefSchema.optional(),
     /** What each layer of the two facade strips paints, in order. The runtime reads which of them have windows off this. */
     finishes: z.array(z.string().min(1)).min(1),
   }),

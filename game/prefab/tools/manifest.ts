@@ -2,9 +2,9 @@ import type { Bucket } from '../src/bucket.ts'
 import type { CatalogueDoc, ModelSpec } from '../src/catalogue.ts'
 import type { Look } from './look.ts'
 
-/** What the pack is called, and the version its bytes are at. Bump `VERSION` whenever any of the six files changes. */
+/** What the pack is called, and the version its bytes are at. Bump `VERSION` whenever any of the seven files changes. */
 export const PACK = 'gb-buildings'
-export const VERSION = '1.8.0'
+export const VERSION = '1.9.0'
 
 /** One model's manifest entry: the look it came from, replayed at this shape. */
 export function modelOf(look: Look, bucket: Bucket, id: string, triangles: number): ModelSpec {

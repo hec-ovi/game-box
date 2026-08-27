@@ -7,6 +7,8 @@ import { GROUND_LOOKS, GROUND_TEXTURES, PAVEMENT_TONES, type GroundLook, type Gr
 export interface GroundMaps {
   readonly map: THREE.Texture | undefined
   readonly normal: THREE.Texture | undefined
+  /** Occlusion in red, roughness in green: one image, one sampler, two slots. */
+  readonly wear: THREE.Texture | undefined
 }
 
 /**
@@ -43,6 +45,7 @@ export class GroundLibrary {
     for (const surface of this.#maps.values()) {
       surface.map?.dispose()
       surface.normal?.dispose()
+      surface.wear?.dispose()
     }
   }
 
@@ -51,13 +54,21 @@ export class GroundLibrary {
     const colour = new THREE.Color(look.colour)
     if (look.toned) colour.multiplyScalar(this.#pavement)
 
+    // one image in two slots: three reads occlusion off red and roughness off
+    // green, so a surface pays for one sampler and gets both
+    const wear = (look.wear && this.#maps.get(look.wear)?.wear) ?? null
     const material = new THREE.MeshStandardMaterial({
       name: look.name,
       color: colour,
       roughness: look.roughness,
+      // nothing the city stands on is metal: asphalt, concrete flags and earth
+      // are all dielectric, and a metal ground with only the sky to reflect is
+      // a hole in the street
       metalness: 0,
       map: (look.map && this.#maps.get(look.map)?.map) ?? null,
       normalMap: (look.normal && this.#maps.get(look.normal)?.normal) ?? null,
+      roughnessMap: wear,
+      aoMap: wear,
     })
     if (look.normalScale !== undefined) material.normalScale.setScalar(look.normalScale)
     return material
@@ -66,7 +77,11 @@ export class GroundLibrary {
 
 /** A surface set to repeat every `metres`, given ground UVs measured in metres. */
 function tiled(surface: GroundMaps, metres: number): GroundMaps {
-  return { map: repeating(surface.map, metres), normal: repeating(surface.normal, metres) }
+  return {
+    map: repeating(surface.map, metres),
+    normal: repeating(surface.normal, metres),
+    wear: repeating(surface.wear, metres),
+  }
 }
 
 /**

@@ -16,10 +16,10 @@ export function loadGround(roots: readonly THREE.Object3D[], flavour: Flavour): 
   const maps = new Map<GroundTextureId, GroundMaps>()
 
   for (const id of GROUND_TEXTURE_IDS) {
-    const surface = GROUND_TEXTURES[id]
-    const found = mapsOf(roots, surface.node)
-    if (!found?.map) return undefined
-    if (surface.relief && !found.normal) return undefined
+    const found = mapsOf(roots, GROUND_TEXTURES[id].node)
+    // all four maps or none: a street with colour and no relief is worse than
+    // the greybox, because it reads as a photograph laid on a plane
+    if (!found?.map || !found.normal || !found.wear) return undefined
     maps.set(id, found)
   }
   return new GroundLibrary(maps, flavour)
@@ -36,7 +36,11 @@ function mapsOf(roots: readonly THREE.Object3D[], node: string): GroundMaps | un
       if (found || !(child instanceof THREE.Mesh)) return
       const material = Array.isArray(child.material) ? child.material[0]! : child.material
       if (material instanceof THREE.MeshStandardMaterial) {
-        found = { map: material.map ?? undefined, normal: material.normalMap ?? undefined }
+        found = {
+          map: material.map ?? undefined,
+          normal: material.normalMap ?? undefined,
+          wear: material.roughnessMap ?? material.aoMap ?? undefined,
+        }
       }
     })
     if (found) return found

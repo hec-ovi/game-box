@@ -6,10 +6,15 @@ import { SCREEN, WallScreens } from './display.ts'
 import { InteriorWindows, ROOM } from './interior.ts'
 import { layerIndex } from './layer.ts'
 import { GLOW, MATERIAL_NAME } from './pack.ts'
+import { WallRelief } from './relief.ts'
 import { stretchOf } from './wall.ts'
 
-/** Roughness and metalness of a prefab wall: coated, dark, not a mirror. */
-export const SURFACE = { roughness: 0.68, metalness: 0.05 } as const
+/**
+ * What a wall is when the pack carries no relief for it: one coated dark
+ * surface, which is what the whole city was before the strip existed and is
+ * still what a headless caller with no pictures gets.
+ */
+export const SURFACE = { roughness: 0.68, metalness: 0 } as const
 
 export interface PrefabAtlas {
   /** One layer per finish: the colour a face is painted. */
@@ -20,6 +25,16 @@ export interface PrefabAtlas {
   readonly rooms: THREE.DataArrayTexture
   /** The pictures the screens on the walls carry, one per layer. */
   readonly screens: THREE.DataArrayTexture
+  /**
+   * The same layers again, holding normal x and y and roughness. Absent where
+   * the pack carries none, and then every wall is `SURFACE`.
+   */
+  readonly relief?: THREE.DataArrayTexture
+  /**
+   * Each relief layer's mean roughness, in strip order. What a far building is
+   * drawn at, since a shell reads no texture behind its wall.
+   */
+  readonly roughness?: readonly number[]
   /** What each layer of the two facade textures paints, in order. */
   readonly finishes: readonly string[]
 }
@@ -50,6 +65,12 @@ export interface PrefabAtlas {
  * Nothing glows in daylight. The rooms, the screens and the neon are the night
  * level times what is behind the glass, so at noon a facade is a dark wall with
  * dim rooms in it and after dark it is the light in the street.
+ *
+ * A wall is also shaped, and that is one more fetch of the same uv: `relief`
+ * gives every finish its own normal and its own roughness, so glazed tile,
+ * precast concrete and weathering steel stop being one surface with three
+ * photographs on it. Nothing in the pack is metal: there is no probe on a
+ * street, and a metal wall with only the sky to reflect is a hole in the town.
  */
 export function prefabMaterial(atlas: PrefabAtlas, night: CityNight): THREE.Material {
   const layer = layerIndex()
@@ -60,11 +81,15 @@ export function prefabMaterial(atlas: PrefabAtlas, night: CityNight): THREE.Mate
   const room = new InteriorWindows(atlas.rooms, night, atlas.finishes).glazing()
   const panel = new WallScreens(atlas.screens, atlas.finishes).panel()
 
+  const surface = atlas.relief ? new WallRelief(atlas.relief).read(at, layer) : undefined
+  const wallRoughness = surface?.roughness ?? float(SURFACE.roughness)
+
   const material = new MeshStandardNodeMaterial()
   material.name = MATERIAL_NAME
   material.colorNode = mix(mix(wall.rgb, room.light.mul(float(ROOM.albedo)), room.share), panel.light.mul(float(SCREEN.albedo)), panel.share)
   material.emissiveNode = mix(mix(burning, room.light.mul(float(ROOM.glow)), room.share), panel.light.mul(float(SCREEN.glow)), panel.share).mul(night.level)
-  material.roughnessNode = mix(mix(float(SURFACE.roughness), float(ROOM.roughness), room.share), float(SCREEN.roughness), panel.share)
+  material.roughnessNode = mix(mix(wallRoughness, float(ROOM.roughness), room.share), float(SCREEN.roughness), panel.share)
   material.metalnessNode = float(SURFACE.metalness)
+  if (surface) material.normalNode = surface.normal
   return material
 }
