@@ -4,15 +4,17 @@ import type { HudIntent, HudState, HudWindowName, SettingsView } from '../types.
 import { act } from '../ui/act.ts'
 import { ICON_PX, icon, type IconName } from '../ui/icon.ts'
 import { Row } from '../ui/row.ts'
+import { AiSettings } from './ai.ts'
 import type { Tab } from './tab.ts'
 
 /**
  * What the player may set: the clock (held at the hour shown, or skipped
  * ahead), the sky, what the interface keeps on screen, whether the game fills
- * the screen, and the way out. Every button is an intent the game acts on; the
- * tab draws what the game pushes back and decides nothing. The clock and the
- * sky wait for a running city; the view does not, so those two rows answer
- * from the first push.
+ * the screen, which AI runs which job, and the way out. Every button is an
+ * intent the game acts on; the tab draws what the game pushes back and decides
+ * nothing. The clock and the sky wait for a running city; the view does not,
+ * so those two rows answer from the first push, and the AI groups are drawn
+ * only where the game pushed them.
  */
 export class SettingsTab implements Tab {
   readonly name: HudWindowName = 'settings'
@@ -32,11 +34,13 @@ export class SettingsTab implements Tab {
   #sky = el('section', 'gb-setting')
   #view = el('section', 'gb-setting')
   #none = el('p', 'gb-empty gb-t3', NO_SETTINGS)
+  #ai: AiSettings
   #key: string | null = null
   #viewKey: string | null = null
 
   constructor(emit: (intent: HudIntent) => void) {
     this.#emit = emit
+    this.#ai = new AiSettings(emit)
     this.#clock.setAttribute('aria-label', 'Hour')
     this.#lock.addEventListener('click', () => {
       this.#emit({ kind: 'lock-time', locked: pressed(this.#lock) !== true })
@@ -62,18 +66,20 @@ export class SettingsTab implements Tab {
     exit.addEventListener('click', () => this.#emit({ kind: 'exit' }))
     const out = el('section', 'gb-setting')
     out.append(exit)
-    this.node.append(this.#time, this.#sky, this.#none, this.#view, out)
+    this.node.append(this.#time, this.#sky, this.#none, this.#view, this.#ai.node, out)
   }
 
   render(state: HudState): void {
     this.#city(state.settings)
     this.#look(state.settings)
+    this.#ai.render(state.settings?.ai)
   }
 
   clear(): void {
     this.#key = null
     this.#viewKey = null
     this.#weathers.replaceChildren()
+    this.#ai.clear()
   }
 
   /** The clock and the sky, which only mean something once a city is running. */

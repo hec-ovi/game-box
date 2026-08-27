@@ -4,6 +4,13 @@ export { HUD_KEYS } from './controls.ts'
 export { HudError, type HudErrorCode } from './errors.ts'
 export { HUD_CSS } from './style/index.ts'
 export type {
+  AiFamily,
+  AiHealth,
+  AiJob,
+  AiJobId,
+  AiProvider,
+  AiTest,
+  AiView,
   Carried,
   CodexFact,
   CodexNote,

@@ -1,4 +1,14 @@
-import type { Disposition, FailReason, Notice, NoticeMood, NoticeTone, QuestStatus, Reward } from './types.ts'
+import type {
+  AiHealth,
+  AiProvider,
+  Disposition,
+  FailReason,
+  Notice,
+  NoticeMood,
+  NoticeTone,
+  QuestStatus,
+  Reward,
+} from './types.ts'
 
 export interface Phrased {
   readonly text: string
@@ -223,6 +233,52 @@ export const SETTINGS = {
   windowed: 'Leave full screen',
   exit: 'Exit game',
 } as const
+
+/** The settings tab's other face: which AI runs which job, and the providers behind it. */
+export const AI = {
+  providers: 'Providers',
+  jobs: 'Which AI does what',
+  model: 'Model',
+  url: 'Base URL',
+  host: 'Host and port',
+  key: 'Key',
+  typeKey: 'Paste a key',
+  store: 'Store key',
+  stored: 'A key is stored for this one.',
+  noKey: 'No key stored for this one yet.',
+  check: 'Check',
+  test: 'Test',
+  pickModel: 'Pick a model',
+  pickProvider: 'Pick a provider',
+  unassigned: 'Nothing assigned yet, so the game answers this one its own way.',
+  noneReady: 'No provider is ready yet. Set one up under Providers.',
+  noProviders: 'The game has offered no provider yet.',
+  noJobs: 'The game has offered no job yet.',
+} as const
+
+/** How a provider answered the last time it was asked, in a word. */
+export const AI_HEALTH: Record<AiHealth, string> = {
+  unknown: 'Not checked',
+  checking: 'Checking',
+  ok: 'Answering',
+  failed: 'No answer',
+}
+
+/**
+ * What a provider is still waiting on beyond a key, in one plain line. A key
+ * of its own is said on the key field, and one that is ready waits on nothing.
+ */
+export function aiMissing(provider: AiProvider): string | null {
+  if (provider.configured || provider.needsKey) return null
+  return provider.family === 'local'
+    ? 'Point this at a running server before it can answer.'
+    : 'Set the model and the address before this one can answer.'
+}
+
+/** "Answered in 240 ms", over what came back. */
+export function answeredIn(ms: number): string {
+  return `Answered in ${ms} ms`
+}
 
 /** The minimap's own words: what it is called, and the letter that says north is up. */
 export const MINIMAP = { label: 'Minimap', north: 'N' } as const

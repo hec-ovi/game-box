@@ -1,3 +1,4 @@
+import { AI_CSS } from './ai.ts'
 import { BAR } from './bar.ts'
 import { BASE } from './base.ts'
 import { COMPASS } from './compass.ts'
@@ -49,6 +50,7 @@ export const HUD_CSS = [
   CONFIRM_CSS,
   QUESTS,
   FACES,
+  AI_CSS,
   MAP,
   TALK,
   SCREEN,

@@ -8,6 +8,9 @@ import {
   HUD_KEYS,
   Hud,
   HudError,
+  type AiJob,
+  type AiProvider,
+  type AiView,
   type ControlHint,
   type HudIntent,
   type LoaderView,
@@ -1147,6 +1150,181 @@ describe('the settings tab', () => {
     getByRole(panel, 'button', { name: 'Exit game' })
     expect(queryByText(panel, 'Lock time')).toBeNull()
     within(panel).getByText(/once the city is running/)
+  })
+})
+
+describe('which AI runs which job', () => {
+  const CLOCK = { hour: 7, minute: 0, locked: false, weather: 'clear', weathers: ['clear'] }
+
+  const OPENROUTER: AiProvider = {
+    id: 'openrouter',
+    family: 'external',
+    label: 'OpenRouter',
+    model: 'z-ai/glm-4.6',
+    models: ['z-ai/glm-4.6', 'qwen/qwen3-max'],
+    detail: 'https://openrouter.ai/api/v1',
+    configured: false,
+    needsKey: true,
+    health: 'unknown',
+  }
+  const LOCAL: AiProvider = {
+    id: 'local',
+    family: 'local',
+    label: 'Local server',
+    model: 'qwen3-30b',
+    detail: '127.0.0.1:8080',
+    configured: true,
+    needsKey: false,
+    health: 'ok',
+    tested: { ms: 240, reply: 'Ready when you are.' },
+  }
+  const JOBS: readonly AiJob[] = [
+    { id: 'history', label: 'City history and charters' },
+    { id: 'city', label: 'Naming the city' },
+    { id: 'places', label: 'Places and the people in them' },
+    { id: 'quests', label: 'Quests' },
+    { id: 'dialogs', label: 'Talking in game', providerId: 'local' },
+  ]
+
+  function ai(patch: Partial<AiView> = {}): AiView {
+    return { providers: [OPENROUTER, LOCAL], jobs: JOBS, ...patch }
+  }
+
+  /** The block one provider owns: its row and the fields under it. */
+  function provider(panel: HTMLElement, label: string): HTMLElement {
+    const group = panel.querySelector('.gb-ai-providers') as HTMLElement
+    return getByText(group, label).closest('.gb-ai-provider') as HTMLElement
+  }
+
+  /** One job's row, by the name the game gave the job. */
+  function job(panel: HTMLElement, label: string): HTMLElement {
+    const group = panel.querySelector('.gb-ai-jobs') as HTMLElement
+    return getByText(group, label).closest('.gb-ai-job') as HTMLElement
+  }
+
+  async function open(hud: Hud, screen: HTMLElement, view: AiView): Promise<HTMLElement> {
+    hud.show({ settings: { ...CLOCK, ai: view }, window: 'settings' })
+    return getByRole(screen, 'dialog', { name: 'Settings' })
+  }
+
+  it('reports the model, the address, a check and a real call, one intent each', async () => {
+    const user = userEvent.setup()
+    const { hud, screen, intents } = mount()
+    const panel = await open(hud, screen, ai())
+
+    // A provider the game offers a list for is picked from it; one it does not
+    // is typed, and both go out as the same intent.
+    const net = provider(panel, 'OpenRouter')
+    within(net).getByText('Not checked')
+    await user.selectOptions(within(net).getByLabelText('Model'), 'qwen/qwen3-max')
+    expect(intents).toContainEqual({ kind: 'ai-model', providerId: 'openrouter', model: 'qwen/qwen3-max' })
+
+    const box = provider(panel, 'Local server')
+    within(box).getByText('Answering')
+    await user.clear(within(box).getByLabelText('Model'))
+    await user.type(within(box).getByLabelText('Model'), 'qwen3-8b{Enter}')
+    expect(intents).toContainEqual({ kind: 'ai-model', providerId: 'local', model: 'qwen3-8b' })
+
+    await user.clear(within(box).getByLabelText('Host and port'))
+    await user.type(within(box).getByLabelText('Host and port'), '127.0.0.1:9090{Enter}')
+    expect(intents).toContainEqual({ kind: 'ai-detail', providerId: 'local', detail: '127.0.0.1:9090' })
+
+    await user.click(within(net).getByRole('button', { name: 'Check' }))
+    expect(intents).toContainEqual({ kind: 'ai-health', providerId: 'openrouter' })
+    await user.click(within(box).getByRole('button', { name: 'Test' }))
+    expect(intents).toContainEqual({ kind: 'ai-test', providerId: 'local' })
+
+    // Walking away from a line already reported does not report it again.
+    expect(intents.filter((one) => one.kind === 'ai-detail')).toHaveLength(1)
+  })
+
+  it('says what a provider is waiting on, and what one real call came back with', async () => {
+    const { hud, screen } = mount()
+    const panel = await open(hud, screen, ai())
+
+    const net = provider(panel, 'OpenRouter')
+    within(net).getByText('No key stored for this one yet.')
+    const box = provider(panel, 'Local server')
+    within(box).getByText('Answered in 240 ms')
+    within(box).getByText('Ready when you are.')
+
+    // A call that did not land says why, and the row says so with it.
+    hud.show({
+      settings: {
+        ...CLOCK,
+        ai: ai({ providers: [OPENROUTER, { ...LOCAL, health: 'failed', tested: { error: 'Nothing listening on 8080' } }] }),
+      },
+    })
+    within(box).getByText('Nothing listening on 8080')
+    within(box).getByText('No answer')
+  })
+
+  it('takes a key, keeps none of it, and reads it back as stored once the game says so', async () => {
+    const user = userEvent.setup()
+    const { hud, screen, intents } = mount()
+    const panel = await open(hud, screen, ai())
+    const net = provider(panel, 'OpenRouter')
+
+    const secret = 'sk-or-v1-notreal'
+    const field = within(net).getByLabelText('Key') as HTMLInputElement
+    await user.type(field, secret)
+    await user.click(within(net).getByRole('button', { name: 'Store key' }))
+    expect(intents).toContainEqual({ kind: 'ai-key', providerId: 'openrouter', secret })
+    expect(intents.filter((one) => one.kind === 'ai-key')).toHaveLength(1)
+
+    // The field is write only: it clears itself and the secret is nowhere on screen.
+    expect(field.value).toBe('')
+    expect(panel.innerHTML).not.toContain(secret)
+
+    // And the row reads that a key is stored once the game pushes it back, not before.
+    within(net).getByText('No key stored for this one yet.')
+    hud.show({ settings: { ...CLOCK, ai: ai({ providers: [{ ...OPENROUTER, needsKey: false, configured: true }, LOCAL] }) } })
+    within(net).getByText('A key is stored for this one.')
+    expect(field.value).toBe('')
+    expect(panel.innerHTML).not.toContain(secret)
+  })
+
+  it('points a job at a provider that is ready, and says plainly when nothing is', async () => {
+    const user = userEvent.setup()
+    const { hud, screen, intents } = mount()
+    const panel = await open(hud, screen, ai())
+
+    const jobs = [...panel.querySelectorAll('.gb-ai-job')] as HTMLElement[]
+    expect(jobs).toHaveLength(5)
+    within(job(panel, 'Talking in game')).getByText('Local server · qwen3-30b')
+    const unset = job(panel, 'Quests')
+    within(unset).getByText('Nothing assigned yet, so the game answers this one its own way.')
+
+    // Only a provider the game says is configured can be picked.
+    const pick = within(unset).getByLabelText('Quests') as HTMLSelectElement
+    expect([...pick.options].filter((one) => !one.disabled).map((one) => one.value)).toEqual(['local'])
+    await user.selectOptions(pick, 'local')
+    expect(intents).toContainEqual({ kind: 'ai-job', jobId: 'quests', providerId: 'local' })
+
+    // A list stepped through by its letters keeps them: a model whose name has
+    // an m in it must not walk the player into the map.
+    pick.focus()
+    await user.keyboard('m')
+    expect(intents).not.toContainEqual({ kind: 'window', window: 'map' })
+  })
+
+  it('draws none of it while the game has not offered any', async () => {
+    const user = userEvent.setup()
+    const { hud, screen } = mount()
+    hud.show({ settings: CLOCK })
+    await user.keyboard('o')
+    const panel = getByRole(screen, 'dialog', { name: 'Settings' })
+    getByRole(panel, 'button', { name: 'Exit game' })
+    expect(queryByText(panel, 'Providers')).toBeNull()
+    expect(queryByText(panel, 'Which AI does what')).toBeNull()
+    expect(panel.querySelector('.gb-ai-provider')).toBeNull()
+
+    // Offered, then no longer offered: it goes the way the corner view goes.
+    hud.show({ settings: { ...CLOCK, ai: ai() } })
+    getByText(panel, 'Providers')
+    hud.show({ settings: CLOCK })
+    expect(queryByText(panel, 'Providers')).toBeNull()
+    expect(panel.querySelector('.gb-ai-provider')).toBeNull()
   })
 })
 

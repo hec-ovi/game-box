@@ -308,7 +308,55 @@ export interface CodexView {
   readonly history?: readonly CodexNote[]
 }
 
-/** The clock and the sky as the player may set them. */
+/** Where a job's answers come from: a service out on the net, or a server on this machine. */
+export type AiFamily = 'external' | 'local'
+
+/** How a provider answered the last time it was asked. */
+export type AiHealth = 'unknown' | 'checking' | 'ok' | 'failed'
+
+/** What one real call came back with: the reply and how long it took, or why nothing came. */
+export type AiTest = { readonly ms: number; readonly reply: string } | { readonly error: string }
+
+/** One model service the game can put a job on, as the game has it set up. */
+export interface AiProvider {
+  readonly id: string
+  readonly family: AiFamily
+  /** What it is called: "OpenRouter", "Local server". */
+  readonly label: string
+  /** The model it will answer with. */
+  readonly model: string
+  /** What it offers, when the game could ask it for a list. */
+  readonly models?: readonly string[]
+  /** Where it is: the base URL, or the host and port. */
+  readonly detail: string
+  readonly configured: boolean
+  /** An external one with no key stored yet. */
+  readonly needsKey: boolean
+  readonly health: AiHealth
+  /** One plain line: why it failed, or what it is waiting on. */
+  readonly note?: string
+  readonly tested?: AiTest
+}
+
+/** The five things a model is asked to write. */
+export type AiJobId = 'history' | 'city' | 'places' | 'quests' | 'dialogs'
+
+/** One job, and the provider it is pointed at. */
+export interface AiJob {
+  readonly id: AiJobId
+  /** What the job is, in words: "City history and charters", "Talking in game". */
+  readonly label: string
+  /** Unset means nothing is assigned and the game falls back on its own. */
+  readonly providerId?: string
+}
+
+/** Which AI runs which job, and the providers behind them. */
+export interface AiView {
+  readonly providers: readonly AiProvider[]
+  readonly jobs: readonly AiJob[]
+}
+
+/** The clock and the sky as the player may set them, and which AI runs which job. */
 export interface SettingsView {
   readonly hour: number
   readonly minute: number
@@ -321,6 +369,8 @@ export interface SettingsView {
   readonly minimap?: boolean
   /** Whether the game is full screen. Left out reads as windowed. */
   readonly fullscreen?: boolean
+  /** Which AI runs which job. Left out draws none of it. */
+  readonly ai?: AiView
 }
 
 /**
@@ -447,6 +497,18 @@ export type HudIntent =
   /** They turned it: where it stands now, in radians, not how far it moved. */
   | { readonly kind: 'turn'; readonly yaw: number; readonly pitch: number }
   | { readonly kind: 'weather'; readonly weather: string }
+  /** A provider's model was changed. */
+  | { readonly kind: 'ai-model'; readonly providerId: string; readonly model: string }
+  /** Its base URL, or its host and port, was changed. */
+  | { readonly kind: 'ai-detail'; readonly providerId: string; readonly detail: string }
+  /** A key was typed for an external provider. The hud reports it and keeps nothing. */
+  | { readonly kind: 'ai-key'; readonly providerId: string; readonly secret: string }
+  /** Check whether this provider answers. */
+  | { readonly kind: 'ai-health'; readonly providerId: string }
+  /** Make one real call through this provider. */
+  | { readonly kind: 'ai-test'; readonly providerId: string }
+  /** A job was pointed at a provider. */
+  | { readonly kind: 'ai-job'; readonly jobId: AiJobId; readonly providerId: string }
   | { readonly kind: 'minimap'; readonly shown: boolean }
   | { readonly kind: 'fullscreen'; readonly on: boolean }
   | { readonly kind: 'exit' }

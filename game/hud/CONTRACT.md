@@ -1,10 +1,10 @@
 # @gb/hud contract
 
-contractVersion: 0.13.0
+contractVersion: 0.14.0
 
 ## Purpose
 
-Everything the player reads over the 3D scene, and what they open on top of it: what they are meant to be doing, which way it is, what the streets round them look like from above, what is in reach, the conversation they are in, what they are carrying and what it is worth, the places that are theirs, the counter they buy at, the machine they sit at, where things are and where a train goes, what they have found out, what they can set, what just happened, how a city is coming along while it is written, and how to get out of whatever they are in, which is asked before it is done.
+Everything the player reads over the 3D scene, and what they open on top of it: what they are meant to be doing, which way it is, what the streets round them look like from above, what is in reach, the conversation they are in, what they are carrying and what it is worth, the places that are theirs, the counter they buy at, the machine they sit at, where things are and where a train goes, what they have found out, what they can set, which AI writes what, what just happened, how a city is coming along while it is written, and how to get out of whatever they are in, which is asked before it is done.
 
 ## Shape
 
@@ -13,7 +13,7 @@ The game pushes state, the hud draws it. There is one store behind the whole int
 ```ts
 import { Hud } from '@gb/hud'
 
-const hud = new Hud(document.body, { onIntent: (intent) => { /* say, choose, talk-closed, typing, window, track, abandon, decide, lock-time, skip-time, weather, minimap, fullscreen, exit, stay, buy, counter-closed, unlock, score, screen-closed, travel */ } })
+const hud = new Hud(document.body, { onIntent: (intent) => { /* say, choose, talk-closed, typing, window, track, abandon, decide, lock-time, skip-time, weather, minimap, fullscreen, ai-model, ai-detail, ai-key, ai-health, ai-test, ai-job, exit, stay, buy, counter-closed, unlock, score, screen-closed, travel */ } })
 hud.show({ objectives: log.objectives(), money: player.money(), prompt: { key: 'E', text: target.label } })
 hud.show({ carrying: [{ id, name, value: 40 }], homes: [{ id, name, text, placed: [{ id, name, value }] }] })
 hud.show({ counter: { seller: npc.name, offers: [{ id: item.id, name: item.name, price: item.value }] } })
@@ -21,6 +21,7 @@ hud.show({ screen: { machineId, title: 'Front desk terminal', locked: true, prog
 hud.show({ screen: { machineId, title: 'Laptop', locked: false, program: { kind: 'snake', best: player.best(machineId) } } })
 hud.show({ quests: log.journal(), trackedQuestId: 'q1' })
 hud.show({ map: { width, height, plots, marks, stations, boarding }, settings: { hour, minute, locked, weather, weathers, minimap, fullscreen } })
+hud.show({ settings: { ...clock, ai: { providers: [{ id: 'openrouter', family: 'external', label, model, models, detail, configured, needsKey, health: 'ok' }], jobs } } })
 hud.show({ minimap: { x, y, facing: body.yaw, radius: 40, plots, marks, doors: [{ id, name, x, y }] } })
 hud.show({ compass: { facing: body.yaw, goal: { label, bearing, distance, line: 'main' } } })
 hud.show({ codex: { places, people: [{ id, name, role, disposition, facts: [{ id, text }, { id }] }], history } })
@@ -53,6 +54,7 @@ hud.announce({ kind: 'quest-complete', title: quest.title, reward: { money: 40 }
 | `patch.inspecting` | [Inspecting](src/types.ts) | which thing is open in the inventory, by `itemId`; `null` closes it. What is drawn is the game's: it takes `hud.itemCanvas` and renders into it, and the box holds the thing's own icon until it does |
 | `patch.codex` | [CodexView](src/types.ts) | what the player has found out, replaced whole: `places` (`id`, `name`, a `text` line), `people` (`id`, `name`, `role`, `portrait` where the game has drawn their face, `disposition` one of `hostile`, `cool`, `neutral`, `warm`, `friendly`, and every `facts` entry there is to learn, with `text` only on the ones learned; a fact's `id` is the game's handle, the index of the fact in the person's background as a string, and is never drawn), and `history` notes (`id`, `title`, `text`) |
 | `patch.settings` | [SettingsView](src/types.ts) | the clock (`hour`, `minute`, `locked`), the sky (`weather`, and every `weathers` the game can show), and the view: `minimap` (left out reads as on) and `fullscreen` (left out reads as windowed); pushed again whenever any of it moves |
+| `patch.settings.ai` | [AiView](src/types.ts) | which AI runs which job: `providers`, each `{ id, family: 'external' \| 'local', label, model, models?, detail, configured, needsKey, health: 'unknown' \| 'checking' \| 'ok' \| 'failed', note?, tested? }`, where `models` is what it offers when the game could ask it for a list, `detail` is the base URL or the host and port, `needsKey` is an external one with no key stored yet, `note` is one plain line on why it failed or what it is waiting on, and `tested` is the last real call, `{ ms, reply }` or `{ error }`; and `jobs`, the five the game writes with, each `{ id: 'history' \| 'city' \| 'places' \| 'quests' \| 'dialogs', label, providerId? }`, where no `providerId` means nothing is assigned. Left out draws none of it |
 | `patch.controls` | [ControlHint](src/types.ts)`[]` | the game's own keys for the controls tab: `{ keys, text, group? }`, replaces the whole list |
 | `patch.window` | `'quests' \| 'map' \| 'inventory' \| 'codex' \| 'settings' \| 'controls' \| null` | opens that face of the window, or shuts it |
 | `patch.loading` | [LoaderView](src/types.ts) | what is being waited for: `title` (the town's name, or where a train is going) under the word Loading, and `veil` for a moment rather than a wait. `null` takes it away |
@@ -62,7 +64,7 @@ hud.announce({ kind: 'quest-complete', title: quest.title, reward: { money: 40 }
 
 | Param | Type | Postconditions |
 |---|---|---|
-| `handlers.onIntent` | [HudIntent](src/types.ts) | `say` with the trimmed line, `choose` with the `key` of the move clicked, `talk-closed`, `typing` on every change of it, `window` with the face it moved to, `track` with the quest the player chose to follow, `abandon` with the quest they gave up, `decide` with the option they took, `lock-time` with whether the clock is to be held, `skip-time`, `weather` with the one picked, `minimap` with whether the corner view is to be drawn, `fullscreen` with whether the game is to fill the screen, `exit` and `stay`, the two answers to the question the interface asks before it hands the player back to the launcher, `buy` with the `itemId` of the offer clicked, `counter-closed`, `unlock` with the `machineId` and the `password` typed, `score` with the `machineId`, the `game` and the `score` when a game ends, `screen-closed` with the `machineId`, `travel` with the `stationId` picked |
+| `handlers.onIntent` | [HudIntent](src/types.ts) | `say` with the trimmed line, `choose` with the `key` of the move clicked, `talk-closed`, `typing` on every change of it, `window` with the face it moved to, `track` with the quest the player chose to follow, `abandon` with the quest they gave up, `decide` with the option they took, `lock-time` with whether the clock is to be held, `skip-time`, `weather` with the one picked, `minimap` with whether the corner view is to be drawn, `fullscreen` with whether the game is to fill the screen, `ai-model` and `ai-detail` with the `providerId` and what was typed or picked, `ai-key` with the `providerId` and the `secret` typed, `ai-health` and `ai-test` with the `providerId` to check or to call for real, `ai-job` with the `jobId` and the `providerId` it was pointed at, `exit` and `stay`, the two answers to the question the interface asks before it hands the player back to the launcher, `buy` with the `itemId` of the offer clicked, `counter-closed`, `unlock` with the `machineId` and the `password` typed, `score` with the `machineId`, the `game` and the `score` when a game ends, `screen-closed` with the `machineId`, `travel` with the `stationId` picked |
 | `hud.typing` | boolean | true while the conversation or a screen holds the keyboard, which is when the game must let its keys go |
 | `hud.destroy()` | void | the interface leaves the page, the key listener goes, every timer is cleared |
 | `HUD_KEYS` | `{ quests, map, inventory, codex, settings, controls, leave, close, send, pick }` | the keys the interface claims, so the game can bind around them |
@@ -206,6 +208,16 @@ Giving a quest up sits beside Track and asks twice. The first click turns the bu
 
 Every setting is an intent the game acts on, and the tab draws what the game pushes back: `lock-time` carries whether the clock is to be held, `skip-time` asks for the next time of day, `weather` names the one picked, `minimap` whether the corner view is drawn, `fullscreen` whether the game fills the screen. The button reads locked once `settings.locked` says so, not before, and the same for the other four. The clock and the sky wait for a running city; the view does not, so the minimap and full screen answer from the first push and read their defaults until the game says otherwise (the minimap on, the game in a window). Full screen is the browser's to do: the hud owns the button, the key and the intent, the game makes the call and pushes `settings.fullscreen` back.
 
+## Which AI runs which job
+
+The settings tab's other face, drawn only where `settings.ai` was pushed, in two groups.
+
+The providers, one row each: what it is called over the model it answers with, how it stands as a chip (Not checked, Checking, Answering, No answer), and Check and Test beside it, which go out as `ai-health` and `ai-test`. Test waits on a provider the game says is `configured`, and both wait while it is `checking`. Under the row are the fields it needs: the model, as a list where `models` came with it and a line to type where it did not, the base URL or the host and port, and, on an external one, the key. Each field reports on Enter and on walking away from it, once per line typed. One that is not set up says what it is waiting on in a line of its own, and the last real call is drawn under it: how long it took over what came back, or why nothing came.
+
+The key is write only. It goes out as `ai-key` and the field clears itself on the same tick; the hud holds no copy, draws none back and puts none in any push. Whether a key is stored is the game's to say: the row reads it from `needsKey` on the next push, the way the clock reads `locked`.
+
+The jobs, one row each, in the order the game pushed them: what the job is, the provider it is pointed at as its supporting line, and a list of the providers the game says are `configured`. Picking one reports `ai-job`. A job pointed at nothing says so; with no provider ready yet, the list says that instead of standing empty, and a group the game pushed nothing into says that too.
+
 ## Asking before it is thrown away
 
 One panel asks "you sure", in place, on its own layer in front of the window: what it is about, the question in a line, and Yes and No with their keys on them. Enter is yes, Escape is no, clicking past it is no, Tab stays on the two answers, and every other key stops there rather than moving a player who is deciding. Yes takes the focus ring, because the keyboard and the ring never give two different answers. It reports the answer and changes nothing itself.
@@ -283,7 +295,7 @@ One listener, on the window in the capture phase, so it runs before anything the
 - While a screen is up every key but `Escape` is the screen's: the password line, the reader's arrows, a game's arrows, Space and Enter. Held keys repeat there and nowhere else.
 - While the map has focus, `+` and `-` zoom, `0` fits the city, `Y` centres on the player and the arrows pan. They are printed on the map's tools and listed under Map in the controls tab.
 - While the player is writing, and while a question is up, every other key stops at the hud and the game hears nothing.
-- A key the interface does not use passes straight through, and so does every key while another text field on the page has focus.
+- A key the interface does not use passes straight through, and so does every key while a text field or a list on the page has focus, wherever it is: a field being typed into and a list being stepped through by its letters keep their own keys.
 
 ## Errors (closed set)
 
@@ -312,6 +324,7 @@ Thrown as `HudError` with a `code`:
 - A money change of zero announces nothing, so a quest that pays in goods does not flash an empty line.
 - The counter sells nothing itself: `buy` names the offer and the game pays, takes and pushes the counter again. A price the player cannot meet is read, not hidden.
 - The hud never holds a password: what is typed goes out as `unlock` and the game says whether the screen opens.
+- Nor a key: a provider's key goes out as `ai-key` and the field clears on the same tick. It is never drawn back, never kept in this box and never in a push, so what the interface holds of a provider is what could be read over the player's shoulder.
 - A game reports its score once, when it ends, and draws the best it is pushed; a push of `best` never restarts a game.
 - A screen is one grid of characters whatever runs on it, so the frame is the same size for a ledger, a lock and a game.
 - A ride is the game's: `travel` names the station and the hud draws the veil it is pushed.
@@ -345,4 +358,4 @@ Thrown as `HudError` with a `code`:
 
 A new kind of answer in the conversation is a case on `HudIntent` and a branch in the hud's `#dispatch`; anything the player picks goes out as an intent and comes back as a patch, because this box never decides what a move does. A new panel is a new surface in `src/surfaces/` plus its field on `HudPatch` and `HudState`, and its region and layer in `src/style/layout.ts`; nothing else changes, because every surface is handed the whole state. A framed panel in the room (the window, the counter) is built on `HudWindow` and gets the chrome, the transition and the focus manners free. A new thing worth asking "you sure" about is a value on `ConfirmAsk`, its wording in `phrase.ts` and its pair of intents in the hud's `ANSWERS`; the panel, the keys and the focus manners come with it. The map is six pieces under `src/map/`: the viewport (what is on show, in cells), the plan (the SVG), the minimap's own plan in `near.ts`, the gestures (wheel and drag), the tools over it and the two lists under it; a new thing on the plan is a node in the plan, drawn in pixels if it must stay readable at every zoom. The shapes both plans draw live in `src/map/marks.ts` and are painted by `src/style/marks.ts`, so a mark cannot come out one way on the plan and another in the corner. A new program on the screen is a `ScreenApp` in `src/screen/` (rows of text, a status line, a key) plus its kind on `ScreenProgram` and a branch where the surface builds one; the grid, the padding and the overlay helpers are in `src/screen/size.ts`. A new face of the window is an entry in `src/windows.ts` plus a `Tab` in `src/tabs/`, and it gets its chrome, its frame, its transition and its focus manners free. A new announcement is a kind on `Notice`, its wording, size and mood in `src/phrase.ts` and its name in the kind set. A new key is a `KeyAction` in `src/keys.ts` and a case in the hud, with its label in `src/controls.ts` so it appears on screen wherever it applies.
 
-Wording lives in `phrase.ts` and `controls.ts`. The parts every surface is built from live in `src/ui/`: the icon set, the row, the button, the chip, the bar and the counting number; use them rather than laying out a row of your own. The look lives in `src/style/`, one file per concern, joined into one stylesheet at load in the order of the cascade: the tokens, then the type, the shapes, the row and the motion every surface shares, then one file per surface. Every rule is written under `.gb-hud`, so a surface rule and a shared rule carry the same weight and the later one wins. A new colour is a token or it is a bug; a new duration is a field on `MS` in `src/motion.ts`. Run `pnpm --filter @gb/hud test` in the same change.
+Wording lives in `phrase.ts` and `controls.ts`. The parts every surface is built from live in `src/ui/`: the icon set, the row, the button, the chip, the field, the picker, the bar and the counting number; use them rather than laying out a row of your own. The look lives in `src/style/`, one file per concern, joined into one stylesheet at load in the order of the cascade: the tokens, then the type, the shapes, the row and the motion every surface shares, then one file per surface. Every rule is written under `.gb-hud`, so a surface rule and a shared rule carry the same weight and the later one wins. A new colour is a token or it is a bug; a new duration is a field on `MS` in `src/motion.ts`. Run `pnpm --filter @gb/hud test` in the same change.

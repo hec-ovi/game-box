@@ -89,7 +89,7 @@ export class Keys {
       if (event.key === 'Tab') return event.shiftKey ? 'shift-tab' : 'tab'
       return undefined
     }
-    // Somewhere else on the page is taking words: none of these keys are ours.
+    // Something on the page is taking the keys itself: none of them are ours.
     if (editing(event.target)) return undefined
     if (event.key === 'Escape') return 'close'
     if (event.key === 'Tab') return event.shiftKey ? 'shift-tab' : 'tab'
@@ -99,7 +99,13 @@ export class Keys {
   }
 }
 
+/** A box being typed into, or a list being stepped through, has the keyboard of its own. */
 function editing(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
-  return target.isContentEditable || target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement
+  return (
+    target.isContentEditable ||
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement
+  )
 }

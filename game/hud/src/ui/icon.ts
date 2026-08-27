@@ -42,6 +42,7 @@ export type IconName =
   | 'fullscreen'
   | 'lock'
   | 'screen'
+  | 'cloud'
   | 'counter'
   | 'warn'
 
@@ -88,6 +89,7 @@ const PATHS: Record<IconName, readonly string[]> = {
   fullscreen: ['M4 10 L4 4 L10 4', 'M14 4 L20 4 L20 10', 'M20 14 L20 20 L14 20', 'M10 20 L4 20 L4 14'],
   lock: ['M6 11 L18 11 L18 20 L6 20 Z', 'M9 11 L9 8 A3 3 0 0 1 15 8 L15 11'],
   screen: ['M3 5 L21 5 L21 17 L3 17 Z', 'M9 21 L15 21', 'M6 9 L8 11 L6 13', 'M11 13 L15 13'],
+  cloud: ['M6.5 18 A4.5 4.5 0 0 1 6.9 9 A6 6 0 0 1 18 10.5 A4 4 0 0 1 17.5 18 Z'],
   counter: ['M12 4 L12 20', 'M6 20 L18 20', 'M4 8 L20 8', 'M4 8 L2 13 L6 13 Z', 'M20 8 L18 13 L22 13 Z'],
   warn: ['M12 3 L22 20 L2 20 Z', 'M12 9 L12 14', 'M12 17 L12 17.5'],
 }
