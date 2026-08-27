@@ -235,7 +235,7 @@ describe('a rate-limited engine', () => {
   after(() => upstream.answerWith(SPEAKING_AND_ACTING))
 
   it('is answered as busy, with the wait the engine asked for passed through', async () => {
-    upstream.refuseWith(429, { 'retry-after': '7' })
+    upstream.refuseWith(429, undefined, { 'retry-after': '7' })
 
     const answer = await busyAnswer({ ...REQUEST, stream: true })
 

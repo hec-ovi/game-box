@@ -30,6 +30,17 @@
     "model": {
       "type": "string"
     },
+    "job": {
+      "type": "string",
+      "enum": [
+        "history",
+        "city",
+        "places",
+        "quests",
+        "dialogs"
+      ],
+      "description": "Which work this request is: history (the city history and its charters), city (names, signs, districts), places (interiors, people, things), quests, dialogs (talking to people in game)."
+    },
     "temperature": {
       "type": "number",
       "minimum": 0,

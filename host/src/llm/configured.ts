@@ -1,18 +1,12 @@
 /** Which upstream this process is pointed at, read from the environment. */
+import { OPENROUTER_ATTRIBUTION, OPENROUTER_BASE, OPENROUTER_MODEL } from '../providers/openrouter.ts'
+import { completionsUrl } from '../providers/urls.ts'
 import { err, ok, type Result } from '../result.ts'
 import { upstreamFailed, type LlmError } from './errors.ts'
 import type { Upstream } from './upstream.ts'
 
 /** The word that selects the hosted router, as opposed to a URL of your own. */
 const OPENROUTER = 'openrouter'
-const OPENROUTER_BASE = 'https://openrouter.ai/api/v1'
-const OPENROUTER_MODEL = 'stealth/ox-alpha'
-
-/** Attribution only: it names the project on OpenRouter's listings and costs nothing. */
-const ATTRIBUTION = {
-  'HTTP-Referer': 'https://github.com/hec-ovi/game-box',
-  'X-OpenRouter-Title': 'game-box',
-}
 
 export type Environment = Readonly<Record<string, string | undefined>>
 
@@ -23,6 +17,9 @@ export type Environment = Readonly<Record<string, string | undefined>>
  * `openrouter` for the hosted router, or the URL of an OpenAI-compatible
  * server of your own. A URL is always called unauthenticated, so a key sitting
  * in the environment can never be sent to a server it does not belong to.
+ *
+ * This is where a request with no job goes. A request that names one goes
+ * wherever the provider registry sends it: see `src/providers`.
  */
 export function configuredUpstream(env: Environment): Result<Upstream | undefined, LlmError> {
   const choice = (env.GAME_BOX_LLM_UPSTREAM ?? '').trim()
@@ -44,26 +41,9 @@ function openrouter(env: Environment): Result<Upstream | undefined, LlmError> {
   if (completions === undefined) return err(upstreamFailed('GAME_BOX_OPENROUTER_BASE is not a URL'))
   return ok({
     completions,
-    headers: { authorization: `Bearer ${key}`, ...ATTRIBUTION },
+    headers: { authorization: `Bearer ${key}`, ...OPENROUTER_ATTRIBUTION },
     model: OPENROUTER_MODEL,
     forcing: 'tool-choice',
     secret: key,
   })
-}
-
-/**
- * The OpenAI convention puts the version segment in the base, and
- * `https://openrouter.ai/api/v1` follows it. A local server is usually written
- * without one. Accept both rather than making people know which to leave off.
- */
-function completionsUrl(base: string): string | undefined {
-  let url: URL
-  try {
-    url = new URL(base)
-  } catch {
-    return undefined
-  }
-  const path = url.pathname.replace(/\/+$/, '')
-  url.pathname = path.endsWith('/v1') ? `${path}/chat/completions` : `${path}/v1/chat/completions`
-  return url.toString()
 }

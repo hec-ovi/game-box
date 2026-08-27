@@ -66,6 +66,7 @@ function llmRequestFrom(request: ChatRequest): GenerateRequest {
   return {
     messages: request.messages,
     ...(request.model === undefined ? {} : { model: request.model }),
+    ...(request.job === undefined ? {} : { job: request.job }),
     ...samplingOf(request),
     ...(request.tools === undefined ? {} : { tools: request.tools }),
     ...(request.tool_choice === undefined ? {} : { tool_choice: request.tool_choice }),

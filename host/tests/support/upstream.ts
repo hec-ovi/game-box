@@ -15,8 +15,8 @@ export interface RunningUpstream {
   readonly seen: SeenRequest[]
   /** Change what it answers with, for a test that needs the engine to break. */
   answerWith(payloads: readonly string[]): void
-  /** Turn every request away with a status, for a test that needs the engine to refuse. */
-  refuseWith(status: number, headers?: Readonly<Record<string, string>>): void
+  /** Turn every request away with a status and, where a test needs one, a body. */
+  refuseWith(status: number, body?: string, headers?: Readonly<Record<string, string>>): void
   /** Answer the next request with its payloads and then never end the reply, like an engine that keeps decoding. */
   hold(): HeldReply
   close(): Promise<void>
@@ -32,11 +32,27 @@ interface Answer {
   readonly status: number
   readonly headers: Readonly<Record<string, string>>
   readonly payloads: readonly string[]
+  /** Written instead of the payloads when the answer is a refusal. */
+  readonly body?: string
   /** Called with the reply instead of ending it. */
   readonly hold?: (response: ServerResponse) => void
 }
 
-/** Answers `POST /v1/chat/completions` with one SSE event per payload. */
+/** What a provider lists on `GET /v1/models`, one entry named and one not. */
+export const STUB_MODELS = { object: 'list', data: [{ id: 'stub-small' }, { id: 'stub-large', name: 'Stub Large' }] }
+
+/** What it answers a non-streamed completion with, the shape the test probe reads. */
+export const STUB_REPLY = {
+  id: 'stub-1',
+  model: 'stub-small',
+  choices: [{ index: 0, message: { role: 'assistant', content: 'Hello from the stub.' }, finish_reason: 'stop' }],
+}
+
+/**
+ * Answers `POST /v1/chat/completions` with one SSE event per payload, the same
+ * request with `stream: false` as one JSON document, and `GET /v1/models` with
+ * a list. A refusal set with `refuseWith` refuses all three alike.
+ */
 export async function startUpstream(payloads: readonly string[]): Promise<RunningUpstream> {
   const seen: SeenRequest[] = []
   let answer: Answer = { status: 200, headers: { 'content-type': 'text/event-stream' }, payloads }
@@ -44,11 +60,17 @@ export async function startUpstream(payloads: readonly string[]): Promise<Runnin
     const chunks: Buffer[] = []
     request.on('data', (chunk: Buffer) => chunks.push(chunk))
     request.on('end', () => {
-      seen.push({
-        url: request.url ?? '',
-        headers: request.headers,
-        body: JSON.parse(Buffer.concat(chunks).toString('utf8')) as Record<string, unknown>,
-      })
+      const raw = Buffer.concat(chunks).toString('utf8')
+      const body = raw === '' ? {} : (JSON.parse(raw) as Record<string, unknown>)
+      seen.push({ url: request.url ?? '', headers: request.headers, body })
+
+      if (answer.status !== 200) {
+        response.writeHead(answer.status, answer.headers)
+        return response.end(answer.body ?? '')
+      }
+      if (request.method === 'GET') return document(response, STUB_MODELS)
+      if (body.stream === false) return document(response, STUB_REPLY)
+
       response.writeHead(answer.status, answer.headers)
       for (const payload of answer.payloads) response.write(`data: ${payload}\n\n`)
       const { hold, ...ending } = answer
@@ -64,8 +86,8 @@ export async function startUpstream(payloads: readonly string[]): Promise<Runnin
     answerWith: (next) => {
       answer = { status: 200, headers: { 'content-type': 'text/event-stream' }, payloads: next }
     },
-    refuseWith: (status, headers = {}) => {
-      answer = { status, headers, payloads: [] }
+    refuseWith: (status, body, headers = {}) => {
+      answer = { status, headers, payloads: [], ...(body === undefined ? {} : { body }) }
     },
     hold: () => {
       const arrival = deferred()
@@ -81,6 +103,11 @@ export async function startUpstream(payloads: readonly string[]): Promise<Runnin
     },
     close: () => stop(server),
   }
+}
+
+function document(response: ServerResponse, body: unknown): void {
+  response.writeHead(200, { 'content-type': 'application/json' })
+  response.end(JSON.stringify(body))
 }
 
 function open(server: Server): Promise<number> {

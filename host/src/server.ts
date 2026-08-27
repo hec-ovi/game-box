@@ -7,6 +7,7 @@ import type { Duplex } from 'node:stream'
 import { chat } from './api/chat.ts'
 import { errorBody } from './api/errors.ts'
 import { health } from './api/health.ts'
+import { configuration, PROVIDERS_PATH, probe, providerRoute, save, type ApiResult } from './api/providers.ts'
 import { RealtimeSession } from './api/realtime.ts'
 import { readBody } from './http/body.ts'
 import { corsHeaders, type Headers } from './http/cors.ts'
@@ -17,6 +18,7 @@ import { accept } from './ws/handshake.ts'
 export const CHAT_PATH = '/v1/chat/completions'
 export const REALTIME_PATH = '/v1/realtime'
 export const HEALTH_PATH = '/health'
+export { PROVIDERS_PATH } from './api/providers.ts'
 
 export function createServer(): Server {
   const server = createHttpServer((request, response) => {
@@ -57,6 +59,22 @@ async function route(request: IncomingMessage, response: ServerResponse): Promis
     if (request.method !== 'POST') return refuse(response, 405, 'method not allowed', cors)
     return completions(request, response, cors)
   }
+  if (path === PROVIDERS_PATH) {
+    if (request.method === 'GET') return answer(response, configuration(process.env), cors)
+    if (request.method !== 'PUT') return refuse(response, 405, 'method not allowed', cors)
+    const body = await readBody(request)
+    if (!body.ok) return refuse(response, 413, 'request body is too large', cors)
+    return answer(response, save(process.env, body.value), cors)
+  }
+  const asked = providerRoute(path)
+  if (asked !== undefined) {
+    const wanted = asked.probe === 'test' ? 'POST' : 'GET'
+    if (request.method !== wanted) return refuse(response, 405, `method not allowed: this endpoint is ${wanted}`, cors)
+    // A settings screen that closes mid-probe takes the probe with it.
+    const gone = new AbortController()
+    response.once('close', () => gone.abort())
+    return answer(response, await probe(process.env, asked, gone.signal), cors)
+  }
   if (path === REALTIME_PATH) {
     return refuse(response, 400, 'this endpoint is a websocket: send an upgrade request', cors)
   }
@@ -81,6 +99,10 @@ async function completions(request: IncomingMessage, response: ServerResponse, c
   }
   await send(response, '[DONE]')
   response.end()
+}
+
+function answer(response: ServerResponse, result: ApiResult, cors: Headers): void {
+  json(response, result.status, result.body, cors)
 }
 
 function upgrade(request: IncomingMessage, socket: Duplex, head: Buffer): void {

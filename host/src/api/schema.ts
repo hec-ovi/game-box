@@ -8,6 +8,7 @@ import {
   ToolChoiceSchema,
   ToolSchema,
 } from '../llm/schema.ts'
+import { JobSchema } from '../providers/schema.ts'
 import { AudioEnvelopeSchema } from '../stt/schema.ts'
 
 const ARGUMENTS_DESCRIPTION = 'JSON text, as the OpenAI shape requires'
@@ -18,6 +19,7 @@ export const ChatRequestSchema = z
   .strictObject({
     model: z.string().optional(),
     messages: z.array(MessageSchema).min(1),
+    job: JobSchema.optional(),
     stream: z.boolean().optional(),
     ...samplingFields,
     tools: z.array(ToolSchema).min(1).max(16).meta({ description: TOOLS_DESCRIPTION }).optional(),

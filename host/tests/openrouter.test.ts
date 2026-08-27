@@ -72,7 +72,7 @@ describe('the hosted upstream', () => {
     assert.equal(sent?.url, '/api/v1/chat/completions')
     assert.equal(sent?.headers.authorization, `Bearer ${KEY}`)
     assert.equal(sent?.headers['x-openrouter-title'], 'game-box')
-    assert.equal(sent?.body.model, 'stealth/ox-alpha')
+    assert.equal(sent?.body.model, 'google/gemma-4-31b-it:free')
   })
 
   it('refuses to route to it with no key rather than answering from the stand-in', async () => {

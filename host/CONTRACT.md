@@ -1,6 +1,6 @@
 # host contract
 
-contractVersion: 0.6.0
+contractVersion: 0.7.0
 
 ## Purpose
 
@@ -33,6 +33,8 @@ Node 22 or newer, one dependency (zod), no build step. The port comes from `GAME
 | `OPENROUTER_API_KEY` | read only when the line above says `openrouter` |
 | `GAME_BOX_OPENROUTER_BASE` | where OpenRouter lives, default `https://openrouter.ai/api/v1`. For an OpenRouter-compatible gateway |
 | `GAME_BOX_MODELS_DIR` | model cache directory, default the platform cache directory plus `game-box/models` |
+| `GAME_BOX_SECRETS_FILE` | where the keys live, default `.env.local` beside `host/` |
+| `GAME_BOX_CONFIG_FILE` | where the providers and the routing live, default `.game-box.json` beside `host/` |
 
 `.env.example` at the repository root names these with empty values. `dev`
 loads `.env` from there through Node's `--env-file`, and a variable already
@@ -44,8 +46,8 @@ neither `http://127.0.0.1:8080` nor `https://openrouter.ai/api/v1` has to be
 written with a segment left off.
 
 The model a request gets when it names none belongs to the upstream, not to the
-request path: `default` for a server of your own, `stealth/ox-alpha` through
-OpenRouter.
+request path: `default` for a server of your own, and for OpenRouter the model
+named in `src/providers/openrouter.ts`.
 
 ## Inputs
 
@@ -53,6 +55,7 @@ OpenRouter.
 |---|---|---|
 | `POST /v1/chat/completions` body | [schema/api/chat-request.json](schema/api/chat-request.json) | JSON body; `messages` non-empty; `stream` optional; `tools` and `tool_choice` optional, for callers that want a typed call back instead of prose; `temperature` and `seed` optional, and both reach the engine unchanged |
 | `/v1/realtime` client events (WebSocket text frames) | [schema/api/realtime-client-event.json](schema/api/realtime-client-event.json) | audio only as the base64 PCM envelope, never binary frames |
+| `PUT /v1/providers` body | [schema/api/providers-save.json](schema/api/providers-save.json) | JSON body; `providers` and `routes` are each optional and each replace the whole thing; a provider's `secret` left out keeps the stored key and an empty one clears it; every route names a provider in the same body |
 
 ## Outputs
 
@@ -63,6 +66,69 @@ OpenRouter.
 | realtime server events | [schema/api/realtime-server-event.json](schema/api/realtime-server-event.json) | `transcription.partial` per accepted append; `transcription.completed` on commit; `error` never closes the socket |
 | error body (HTTP 4xx/5xx) | [schema/api/error.json](schema/api/error.json) | every non-2xx response carries this body; a 429 also carries a `Retry-After` header in whole seconds |
 | `GET /health` | inline: `{status:"ok", service:"game-box", contractVersion}` | always 200 when the process is up |
+| `GET /v1/providers`, and the answer to `PUT` | [schema/api/providers-config.json](schema/api/providers-config.json) | every provider, whether each is ready for a job, whether each key is set, and the routing. Never a key, masked or otherwise |
+| `GET /v1/providers/{id}/health` | [schema/api/provider-health.json](schema/api/provider-health.json) | the verdict, whether the key is set, the status it answered with, and the milliseconds |
+| `POST /v1/providers/{id}/test` | [schema/api/provider-test.json](schema/api/provider-test.json) | `ok` carries what the model wrote, the model that answered and the milliseconds; any other verdict carries why |
+| `GET /v1/providers/{id}/models` | [schema/api/provider-models.json](schema/api/provider-models.json) | what it lists on `/v1/models`, each with the name it gave where it gave one |
+
+## Providers, and which job goes where
+
+Two families of engine:
+
+- **external**: a hosted OpenAI-compatible service reached with a key. Base URL,
+  model, and the name the key is stored under. OpenRouter is the one that ships;
+  a second one (OpenAI, a gateway of your own) is another entry, not new code.
+- **local**: an OpenAI-compatible server of your own (llama.cpp, ollama, vLLM).
+  Host, port, model, no auth. It is never sent a credential, whatever else the
+  environment holds. Inside a container `127.0.0.1` is the container, so name
+  the machine (`host.docker.internal`) or the sibling service instead.
+
+Five jobs can each be pointed at a provider: `history` (the city's history and
+its charters, and the creation form writing a field for you), `city` (names,
+signs, districts), `places` (interiors, people, things), `quests`, and
+`dialogs` (talking to people in game).
+
+A chat request names its own in `job`. A request that names none, or names one
+nothing is assigned to, goes where `GAME_BOX_LLM_UPSTREAM` points, which is
+where every request went before jobs existed. `job` is this service's field and
+is never forwarded to an engine.
+
+### The two files
+
+| File | Holds | Mode | Override |
+|---|---|---|---|
+| `.env.local` beside `host/` | the keys, in environment format | 0600 | `GAME_BOX_SECRETS_FILE` |
+| `.game-box.json` beside `host/` | the providers, their addresses and models, and the routing | the default | `GAME_BOX_CONFIG_FILE` |
+
+Both are git-ignored and both are written by this service, through a neighbour
+file renamed over the real one so a reader never sees half a key. Neither has
+to exist: with no configuration file the registry holds one provider of each
+family and no routing at all.
+
+A variable already exported wins over the secrets file, as `.env` does, so a
+machine that sets `OPENROUTER_API_KEY` itself is never overruled by something a
+settings screen saved.
+
+A key goes in through `PUT /v1/providers` and comes back out of nothing. `GET`
+says whether each one is set, never what it is, and the response schema has no
+field a key could sit in.
+
+### Asking a provider
+
+Three probes, each answering 200 with a verdict, because saying which state a
+provider is in is what they are for:
+
+- `ok`: it answered.
+- `unreachable`: nothing answered.
+- `refused`: it answered no, which is a wrong key or a model the account may not use.
+- `busy`: rate-limited, not now.
+- `misconfigured`: it was never asked, because its settings are incomplete.
+
+`health` is one `GET /v1/models` and no generation, so it costs nothing to ask
+often. `models` is that same listing read as a list of choices. `test` is one
+real generation, uncapped like every other, answering with what the model
+wrote, the model that answered and the milliseconds: it is what proves a
+provider before a job is trusted to it.
 
 ## Getting the same answer twice
 
@@ -78,11 +144,13 @@ The service invents neither value. A request that pins nothing gets whatever the
 engine's defaults produce, which is a different answer each time.
 
 Repeating is then the engine's job, and this service cannot promise it on the
-engine's behalf. Measured through `tools/repeatable.ts` on 2026-08-23,
-`stealth/ox-alpha` through OpenRouter answered three differently to the same
-pinned request, run one at a time, so the hosted path does not repeat itself
-today. OpenRouter says as much: it forwards `seed` to providers that support it
-and "determinism is not guaranteed for some models".
+engine's behalf. Measured on 2026-08-27 with `tools/repeatable.ts`'s question
+and its pins (temperature 0, seed 20260823), sent one at a time:
+`google/gemma-4-31b-it:free` through OpenRouter answered byte for byte the same
+three times of three. That is one model on one provider on one day, not a
+promise the hosted path makes: OpenRouter forwards `seed` to providers that
+support it and says "determinism is not guaranteed for some models", and which
+provider serves a free model can change under you.
 
 A self-hosted llama-server has its own reasons to wander. Prompt-cache reuse and
 continuous batching both change the batch shape a token is computed in, and
@@ -218,43 +286,42 @@ its behalf. A page in a browser can read the header: it is CORS-exposed.
 
 ## What OpenRouter answers
 
-Measured on 2026-08-25 with `tools/forced-call.ts`, the owner's key, and the
-request shape the game sends (`tools` plus a `tool_choice` naming the
-function), streamed and not, against `stealth/ox-alpha` and the other free
-tool-calling models the account lists.
+Measured on 2026-08-27 with the owner's key and the request shape the game
+sends (`tools` plus a `tool_choice`, named and `required`), streamed and not,
+against every tool-calling model the account lists.
 
+- A forced call comes back as a call. `google/gemma-4-31b-it:free` answered
+  `finish_reason: "tool_calls"` with a whole `name_city` call to all four
+  shapes: named non-streamed (2,110 ms), `required` non-streamed (2,787 ms),
+  `required` streamed (2,300 ms, the call arriving as an `id` plus `name`
+  delta, then an `arguments` delta, then the finish chunk), and named streamed
+  through this service's own parser (2,120 ms, `salvaged` false, so the model
+  called rather than writing prose that had to be rebuilt). It is what the
+  hosted upstream asks for when a request names no model.
+- `z-ai/glm-5.2:free` and `poolside/laguna-s-2.1:free` answered a named choice
+  with a whole call too, the second with prose beside it, which this service
+  keeps both halves of. `google/gemma-4-26b-a4b-it:free` answered `required`
+  with a call whose `knownFor` ran 500 tokens of one repeated word.
 - A capped free model answers HTTP 429 with a JSON body (`"code": 429`,
   `limit_source: upstream_provider_shared_pool`, "temporarily rate-limited
-  upstream, please retry shortly") and no `Retry-After` header, to both stream
-  shapes and both tool choices alike. The wait a caller sees is therefore this
-  service's backoff. Over one afternoon every free model on the account
-  (`stealth/ox-alpha`, `google/gemma-4-26b-a4b-it:free`, `z-ai/glm-5.2:free`)
-  spent long stretches in that state.
+  upstream, please retry shortly"). Most send no `Retry-After` header, so the
+  wait a caller sees is this service's backoff; `z-ai/glm-5.2:free` puts
+  `retry_after_seconds` in the body's metadata instead of the header. Every
+  free model on the account spends long stretches in that state, several
+  minutes at a time, and `openrouter/free` routes around it by picking
+  whichever free model is answering.
+- The rate limit also arrives inside a 200: `{"error":{"code":429}}` with no
+  `choices` as the whole body, or as the first streamed payload. Both are
+  answered as 429 `model-busy`.
 - `openai/gpt-4o-mini` and `openai/gpt-4.1-mini` answer HTTP 404, "No endpoints
   available matching your guardrail restrictions and data policy". That is the
   account's privacy setting (openrouter.ai/settings/privacy), which leaves it
-  11 models, 6 of them with tools and all free (`GET /models/user`). A paid,
+  10 models, 5 of them with tools and all free (`GET /models/user`). A paid,
   known tool-calling model cannot be measured from this account until that
   setting changes.
-- The request shape is right. `google/gemma-4-26b-a4b-it:free` answered a
-  named `tool_choice` with `finish_reason: "tool_calls"` and a whole
-  `name_city` call, non-streamed (`{"name":"Paris"}`, twice) and streamed
-  through this service (the call arrives as an `id` plus `name` delta, then an
-  `arguments` delta, then the finish chunk), and `required` the same way.
-  OpenRouter prefixes a stream with `: OPENROUTER PROCESSING` comment lines
-  and a non-streamed body with up to about 1 KB of whitespace while the
-  provider thinks; both are skipped.
-- `stealth/ox-alpha` given a named `tool_choice` answered HTTP 200 with the
-  body `{"error":{"message":"Provider returned error","code":429}}` after 41 s
-  of keep-alive whitespace, and no `choices` at all. That is the "content null,
-  no tool_calls" reading: a rate limit inside a 200, which this service answers
-  as 429 `model-busy` when it arrives as the first streamed payload.
-  Streamed, the same request came back HTTP 200 `text/event-stream` with one
-  payload, `{"model":"unknown","provider":"Stealth","choices":[],"error":{"code":429,"message":"Provider returned error","metadata":{"error_type":"rate_limit_exceeded"}}}`,
-  which this service answers as 429 `model-busy` too. Nothing about the model's
-  tool calling was measurable through that: every answer it gave a forced call
-  today was a rate limit, plain prompts and `tool_choice: "auto"` got through
-  in the same minutes.
+- OpenRouter prefixes a stream with `: OPENROUTER PROCESSING` comment lines and
+  a non-streamed body with up to about 1 KB of whitespace while the provider
+  thinks; both are skipped.
 
 ## Events
 
@@ -262,12 +329,13 @@ SSE stream for chat; WebSocket events for realtime, as listed in Outputs.
 
 ## Errors (closed set)
 
-- HTTP 400 `invalid_request_error`: body not JSON, failed schema validation, or a WebSocket endpoint asked for over plain HTTP.
-- HTTP 404 `invalid_request_error`: no such endpoint.
+- HTTP 400 `invalid_request_error`: body not JSON, failed schema validation, a WebSocket endpoint asked for over plain HTTP, or a provider configuration that contradicts itself (two providers with one id, a route to a provider that is not in the same body).
+- HTTP 404 `invalid_request_error`: no such endpoint, or no such provider.
 - HTTP 405 `invalid_request_error`: wrong method for that endpoint.
 - HTTP 413 `invalid_request_error`: request body over 8 MiB.
 - HTTP 429 `rate_limit_error`, code `model-busy`: the upstream is rate-limited. `Retry-After` carries the seconds to wait, as described above.
-- HTTP 502 `server_error`: the LLM upstream engine failed before streaming started, or it is misconfigured (`GAME_BOX_LLM_UPSTREAM is not a URL`, `OPENROUTER_API_KEY is not set`).
+- HTTP 500 `server_error`: a configuration file cannot be read or written. The path is named; nothing inside it is quoted back. A configuration file that will not parse is not a dead end: a `PUT` carrying both `providers` and `routes` keeps nothing from it and is written straight over it.
+- HTTP 502 `server_error`: the LLM upstream engine failed before streaming started, or it is misconfigured (`GAME_BOX_LLM_UPSTREAM is not a URL`, `OPENROUTER_API_KEY is not set`, a provider a job was pointed at with no key).
 - `finish_reason: "error"` (HTTP 200): the engine broke after the reply started. The answer carries whatever arrived first; it never claims to have stopped normally.
 - WS `error` event `invalid_request_error`: malformed frame, unknown event type, or invalid audio envelope; session state is unchanged.
 
@@ -282,7 +350,8 @@ None. This service knows about text, audio, tools and models; it does not know w
 - No output-length cap is ever accepted or forwarded; responses end when generation ends.
 - Sampler settings are the caller's to make. None is defaulted, none is dropped: what a request pins reaches the engine, and what it leaves out is left out.
 - A rate limit is answered as 429 with a wait, never as a failure, and never retried inside this service.
-- A credential is read from the environment, sent only to the upstream it belongs to, and scrubbed out of every error this service returns. A URL you configure yourself is always called unauthenticated.
+- A credential is read from the environment or the secrets file, sent only to the provider it belongs to, and scrubbed out of every error and every verdict this service returns. It is never returned by any endpoint, masked or otherwise, and a provider that echoes it back part-masked (`sk-not-a************-key`, measured from OpenAI) has that scrubbed too: any run of six of its characters goes. A local provider, and a URL you configure yourself, are always called unauthenticated.
+- A configuration file this service cannot read is reported by the configuration endpoint and never stops generation: a job with no readable assignment falls back to the environment.
 - Tool definitions are forwarded to the engine unchanged, except where a call is forced through a grammar: there the tool's parameters are the grammar and nothing else of it is sent. A call the request insists on is asked for in the shape the upstream honours, and comes back in the OpenAI shape with its arguments as JSON text; when it was rebuilt from prose the reply says so. A caller that offers a tool gets either a complete call or an error, never a half-built one.
 - A grammar is handed only what it enforces exactly; the reply is checked against the parameters as written.
 - A caller that closes its connection ends the engine's work on its request.
@@ -301,8 +370,9 @@ Four layers behind the endpoints, each with its own schemas and its own seam for
 | `src/stt` | [audio-chunk](schema/stt/audio-chunk.json) per `push` | [transcript-event](schema/stt/transcript-event.json): `partial` per push, one `final` per `finish` | stand-in that reports heard duration |
 | `src/tts` | [speak-request](schema/tts/speak-request.json), then any text slice | [audio-event](schema/tts/audio-event.json): 80 ms `frame`s while the sentence is still being written, one `end` | stand-in that emits silence timed from the text |
 | `src/models` | [model-entry](schema/models/model-entry.json) | [resolved-model](schema/models/resolved-model.json) | streaming sha256 over the cache directory; nothing is returned unverified |
+| `src/providers` | [configuration](schema/providers/configuration.json) | the upstream a job goes to, or a verdict about one provider | two files beside `host/`: the keys 0600, everything else JSON |
 
-The layers hand back a `Result` rather than throwing: `{ok: true, value}` or `{ok: false, error}` with a `code` from that layer's closed set (`invalid-request`, `upstream`, `busy`, `invalid-chunk`, `unknown-voice`, `invalid-entry`, `missing`, `integrity`, `unreadable`).
+The layers hand back a `Result` rather than throwing: `{ok: true, value}` or `{ok: false, error}` with a `code` from that layer's closed set (`invalid-request`, `upstream`, `busy`, `invalid-chunk`, `unknown-voice`, `invalid-entry`, `missing`, `integrity`, `unreadable`, `invalid-config`, `no-such-provider`, `unwritable`).
 
 ## How to modify this blackbox safely
 

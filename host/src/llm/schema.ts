@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { contract } from '../contract.ts'
+import { JobSchema } from '../providers/schema.ts'
 import { samplingFields } from './sampling.ts'
 
 export const MessageSchema = z.strictObject({
@@ -33,6 +34,7 @@ export const GenerateRequestSchema = z
   .strictObject({
     messages: z.array(MessageSchema).min(1),
     model: z.string().optional(),
+    job: JobSchema.optional(),
     ...samplingFields,
     tools: z.array(ToolSchema).min(1).max(16).meta({ description: TOOLS_DESCRIPTION }).optional(),
     tool_choice: ToolChoiceSchema.meta({ description: CHOICE_DESCRIPTION }).optional(),

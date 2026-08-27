@@ -21,6 +21,12 @@ node_modules/
 *.onnx
 *.safetensors
 .env
+
+# what the sidecar's settings screen writes: the keys, and everything that is
+# not a key. Both belong to this machine, neither is shared
+.env.local
+.game-box.json
+
 tsconfig.tsbuildinfo
 assets/src/
 

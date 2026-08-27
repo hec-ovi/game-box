@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "providers": {
+      "maxItems": 16,
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]{0,31}$"
+              },
+              "kind": {
+                "type": "string",
+                "const": "external"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "base": {
+                "type": "string",
+                "format": "uri"
+              },
+              "model": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "secretName": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9_]{0,63}$",
+                "description": "Which environment-format name in the secrets file holds this key."
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "label",
+              "base",
+              "model",
+              "secretName"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]{0,31}$"
+              },
+              "kind": {
+                "type": "string",
+                "const": "local"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "host": {
+                "type": "string",
+                "maxLength": 255,
+                "pattern": "^(\\[[0-9a-fA-F:]+\\]|[A-Za-z0-9._-]+)$",
+                "description": "A hostname or address, with no scheme and no port: the port is its own field."
+              },
+              "port": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 65535
+              },
+              "model": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "label",
+              "host",
+              "port",
+              "model"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "routes": {
+      "type": "object",
+      "properties": {
+        "history": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,31}$"
+        },
+        "city": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,31}$"
+        },
+        "places": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,31}$"
+        },
+        "quests": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,31}$"
+        },
+        "dialogs": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,31}$"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "providers",
+    "routes"
+  ],
+  "additionalProperties": false,
+  "$id": "game-box.dev/providers/configuration",
+  "title": "the stored provider configuration file (no secrets)"
+}

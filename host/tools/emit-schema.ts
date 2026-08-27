@@ -14,6 +14,14 @@ import { generateRequestContract, tokenEventContract } from '../src/llm/schema.t
 import { audioChunkContract, transcriptEventContract } from '../src/stt/schema.ts'
 import { audioEventContract, speakRequestContract } from '../src/tts/schema.ts'
 import { modelEntryContract, resolvedModelContract } from '../src/models/schema.ts'
+import {
+  configurationContract,
+  configurationViewContract,
+  providerHealthContract,
+  providerModelsContract,
+  providerTestContract,
+  saveContract,
+} from '../src/providers/schema.ts'
 
 /** Every published schema, by the layer it belongs to. */
 export const published: Record<string, ReadonlyArray<Contract<unknown>>> = {
@@ -24,11 +32,17 @@ export const published: Record<string, ReadonlyArray<Contract<unknown>>> = {
     errorContract,
     realtimeClientEventContract,
     realtimeServerEventContract,
+    configurationViewContract,
+    saveContract,
+    providerHealthContract,
+    providerTestContract,
+    providerModelsContract,
   ] as ReadonlyArray<Contract<unknown>>,
   llm: [generateRequestContract, tokenEventContract] as ReadonlyArray<Contract<unknown>>,
   stt: [audioChunkContract, transcriptEventContract] as ReadonlyArray<Contract<unknown>>,
   tts: [speakRequestContract, audioEventContract] as ReadonlyArray<Contract<unknown>>,
   models: [modelEntryContract, resolvedModelContract] as ReadonlyArray<Contract<unknown>>,
+  providers: [configurationContract] as ReadonlyArray<Contract<unknown>>,
 }
 
 export const schemaDir = join(import.meta.dirname, '..', 'schema')

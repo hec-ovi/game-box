@@ -1,7 +1,7 @@
 /** Text generation: a chat-message list in, a stream of token events out. */
 import { err, ok, type Result } from '../result.ts'
-import { configuredUpstream } from './configured.ts'
 import { invalidRequest, type LlmError } from './errors.ts'
+import { upstreamFor } from './routing.ts'
 import { generateRequestContract, tokenEventContract, type TokenEvent } from './schema.ts'
 import { generate as standin } from './standin.ts'
 import { generate as proxy } from './upstream.ts'
@@ -9,14 +9,15 @@ import { generate as proxy } from './upstream.ts'
 /**
  * The whole boundary. Validates the request, then streams events that each
  * validate against the token-event contract, always ending in exactly one
- * `done`. Engine selection is internal and comes from the environment: see
- * `configured.ts`. `gone` aborts the engine's work, for a caller that left.
+ * `done`. Engine selection is internal: a request that names a job goes to the
+ * provider assigned to it, and everything else goes where the environment
+ * points. `gone` aborts the engine's work, for a caller that left.
  */
 export async function generate(request: unknown, gone?: AbortSignal): Promise<Result<AsyncIterable<TokenEvent>, LlmError>> {
   const parsed = generateRequestContract.parse(request)
   if (!parsed.ok) return err(invalidRequest(parsed.error))
 
-  const upstream = configuredUpstream(process.env)
+  const upstream = upstreamFor(parsed.value, process.env)
   if (!upstream.ok) return upstream
   if (upstream.value === undefined) return ok(checked(fromArray(standin(parsed.value))))
 

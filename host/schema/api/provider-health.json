@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,31}$"
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "ok",
+        "unreachable",
+        "refused",
+        "busy",
+        "misconfigured"
+      ],
+      "description": "ok: it answered. unreachable: nothing answered. refused: it answered no. busy: rate-limited, not now. misconfigured: it was never asked, the settings are incomplete."
+    },
+    "secretSet": {
+      "type": "boolean",
+      "description": "Whether a key is stored or exported for this provider. The key itself never leaves the host."
+    },
+    "status": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 599
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The HTTP status it answered with, null when nothing did."
+    },
+    "ms": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "detail": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "id",
+    "verdict",
+    "status",
+    "ms"
+  ],
+  "additionalProperties": false,
+  "$id": "game-box.dev/api/provider-health",
+  "title": "GET /v1/providers/{id}/health response"
+}
