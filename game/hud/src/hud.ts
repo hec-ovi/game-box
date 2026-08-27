@@ -18,7 +18,7 @@ import { ScreenSurface } from './surfaces/screen.ts'
 import { ScrimSurface } from './surfaces/scrim.ts'
 import type { Surface } from './surfaces/surface.ts'
 import { TalkSurface } from './surfaces/talk.ts'
-import type { ConfirmAsk, HudHandlers, HudIntent, HudPatch, Notice, NoticeKind } from './types.ts'
+import type { ConfirmAsk, HudHandlers, HudIntent, HudPatch, MapSurface, Notice, NoticeKind } from './types.ts'
 
 const KINDS = new Set<NoticeKind>([
   'quest-started',
@@ -60,6 +60,11 @@ export class Hud {
   /** Where the game draws a thing the player has opened in the inventory. */
   get itemCanvas(): HTMLCanvasElement {
     return this.#panel.itemCanvas
+  }
+
+  /** The glass the map face holds for the game to draw the city on. */
+  get mapSurface(): MapSurface {
+    return this.#panel.mapSurface
   }
 
   /** True while focus is somewhere in the conversation. */

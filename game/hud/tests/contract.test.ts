@@ -8,12 +8,15 @@ import {
   HUD_KEYS,
   Hud,
   HudError,
+  districtShape,
   type AiJob,
   type AiProvider,
   type AiView,
   type ControlHint,
   type HudIntent,
   type LoaderView,
+  type MapDrawn,
+  type MapSurface,
   type MapView,
   type QuestEntry,
   type MinimapView,
@@ -1376,135 +1379,8 @@ describe('the bar', () => {
   })
 })
 
-describe('the map tab', () => {
-  const MAP: MapView = {
-    width: 40,
-    height: 30,
-    plots: [
-      { id: 'p1', rect: { x: 4, y: 4, w: 8, h: 6 }, label: 'The Copper Wheel', named: true, prominence: 'landmark' },
-      { id: 'p2', rect: { x: 20, y: 4, w: 8, h: 6 }, label: 'A warehouse' },
-      { id: 'p3', rect: { x: 4, y: 16, w: 8, h: 6 }, prominence: 'notable' },
-    ],
-    marks: [
-      { x: 6, y: 20, label: 'You', kind: 'you', facing: Math.PI / 2 },
-      { x: 8, y: 7, label: 'The Copper Wheel', kind: 'goal', line: 'main' },
-      { x: 30, y: 7, label: 'The docks', kind: 'goal', line: 'side' },
-    ],
-  }
-
-  function viewBox(panel: HTMLElement): number[] {
-    return (panel.querySelector('.gb-plan svg')?.getAttribute('viewBox') ?? '').split(' ').map(Number)
-  }
-
-  it('draws the city with three fills, the player facing their way, the names it was told to write, and the story marked apart from an errand', () => {
-    const { hud, screen } = mount()
-    hud.show({ window: 'map', map: MAP })
-
-    const panel = getByRole(screen, 'dialog', { name: 'Map' })
-    const fills = [...panel.querySelectorAll('.gb-plan svg .gb-block')].map((node) => node.getAttribute('data-prominence'))
-    expect(fills).toEqual(['landmark', 'background', 'notable'])
-
-    const you = panel.querySelector('.gb-plan .gb-mark-you') as SVGElement
-    expect(you.getAttribute('transform')).toMatch(/^translate\(6 20\) rotate\(90\) scale\(/)
-
-    // Only the plot marked named is written on the plan; the other keeps its name for hovering.
-    const names = [...panel.querySelectorAll('.gb-plan .gb-name text')].map((node) => node.textContent)
-    expect(names).toEqual(['The Copper Wheel'])
-    expect(panel.querySelector('.gb-plan .gb-block:nth-child(2) title')?.textContent).toBe('A warehouse')
-
-    const goals = [...panel.querySelectorAll('.gb-plan .gb-mark-goal')]
-    expect(goals.map((node) => node.getAttribute('data-line'))).toEqual(['main', 'side'])
-    // a job already taken wears the ring as well as the square
-    for (const goal of goals) expect(goal.querySelector('.gb-mark-ring')).not.toBeNull()
-    expect(goals.map((node) => node.querySelector('text')?.textContent)).toEqual(['The Copper Wheel', 'The docks'])
-
-    // The bearings under the plan say the same, the story first with its tag.
-    const bearings = panel.querySelector('.gb-bearings') as HTMLElement
-    const rows = [...bearings.querySelectorAll('li')]
-    expect(rows.map((row) => row.getAttribute('data-line'))).toEqual(['main', 'side'])
-    within(rows[0] as HTMLElement).getByText('Main')
-  })
-
-  it('fills the frame at first, then zooms and pans inside it by wheel, drag, button and key, and finds a bearing on a click', async () => {
-    const user = userEvent.setup()
-    const { hud, screen } = mount()
-    hud.show({ window: 'map', map: MAP })
-    const panel = getByRole(screen, 'dialog', { name: 'Map' })
-    const plan = panel.querySelector('.gb-plan') as HTMLElement
-
-    // Fit: the whole city framed to the plan's aspect, so nothing is cropped.
-    const [x0, y0, w0, h0] = viewBox(panel) as [number, number, number, number]
-    expect(x0).toBeLessThanOrEqual(0)
-    expect(y0).toBeLessThanOrEqual(0)
-    expect(x0 + w0).toBeGreaterThanOrEqual(40)
-    expect(y0 + h0).toBeGreaterThanOrEqual(30)
-
-    // The wheel zooms in about the pointer; the corner under it stays put.
-    fireEvent.wheel(plan, { deltaY: -100, clientX: 0, clientY: 0 })
-    const [x1, , w1] = viewBox(panel) as [number, number, number, number]
-    expect(w1).toBeCloseTo(w0 / 1.5, 5)
-    expect(x1).toBeCloseTo(x0, 5)
-
-    // A drag to the left pans the view to the right, in the plan's own cells.
-    await user.pointer([
-      { keys: '[MouseLeft>]', target: plan, coords: { clientX: 200, clientY: 100 } },
-      { coords: { clientX: 100, clientY: 100 } },
-      { keys: '[/MouseLeft]' },
-    ])
-    const [x2] = viewBox(panel) as [number, number, number, number]
-    expect(x2).toBeGreaterThan(x1)
-
-    // The buttons carry their keys and do the same as the keys.
-    await user.click(within(panel).getByRole('button', { name: 'Zoom in (+)' }))
-    expect((viewBox(panel)[2] as number)).toBeCloseTo(w1 / 1.5, 5)
-    await user.click(within(panel).getByRole('button', { name: 'Fit (0)' }))
-    expect(viewBox(panel)).toEqual([x0, y0, w0, h0])
-    ;(panel.querySelector('.gb-map') as HTMLElement).focus()
-    await user.keyboard('+')
-    expect((viewBox(panel)[2] as number)).toBeCloseTo(w0 / 1.5, 5)
-    await user.keyboard('{ArrowRight}')
-    expect((viewBox(panel)[0] as number)).toBeGreaterThan(x0)
-    await user.keyboard('0')
-    expect(viewBox(panel)).toEqual([x0, y0, w0, h0])
-
-    // Zoomed well in and centred on the player, the player is mid-frame; a bearing clicked swings it onto the goal.
-    await user.keyboard('++++')
-    await user.click(within(panel).getByRole('button', { name: 'You (Y)' }))
-    let [x, y, w, h] = viewBox(panel) as [number, number, number, number]
-    expect(x + w / 2).toBeCloseTo(6, 5)
-    expect(y + h / 2).toBeCloseTo(20, 5)
-    await user.click(within(panel).getByRole('button', { name: 'The docks' }))
-    ;[x, y, w, h] = viewBox(panel) as [number, number, number, number]
-    expect(x + w / 2).toBeCloseTo(30, 5)
-    expect(y + h / 2).toBeCloseTo(7, 5)
-
-    // The view survives the next push of the survey: the player moved, the zoom did not.
-    hud.show({ map: { ...MAP, marks: [{ x: 7, y: 20, label: 'You', kind: 'you', facing: 0 }] } })
-    expect(viewBox(panel)[2]).toBeCloseTo(w, 5)
-    expect(panel.querySelectorAll('.gb-plan .gb-mark-goal')).toHaveLength(0)
-  })
-
-  it('points at the tracked steps while there is no survey', () => {
-    const { hud, screen } = mount()
-    hud.show({
-      window: 'map',
-      objectives: [objective({ text: 'Carry the crate', markerLabel: 'The docks', hint: 'Past the bridge' })],
-    })
-
-    const panel = getByRole(screen, 'dialog', { name: 'Map' })
-    within(panel).getByText('The docks')
-    within(panel).getByText('Past the bridge')
-    expect((panel.querySelector('.gb-plan') as HTMLElement).hidden).toBe(true)
-  })
-})
-
-describe('the parts of the city on the map', () => {
-  /**
-   * A district is a set of blocks, not a box, so what has to read on screen is
-   * one shape with one border round it however it interlocks with its
-   * neighbours: an L, a Z or a T is the point of it.
-   */
-  const BENT = {
+describe('the map, which is the city drawn as its architecture', () => {
+  const KILN = {
     id: 'district_1',
     name: 'Kiln Bay',
     // an L: two blocks across the bottom and one standing on the left
@@ -1514,64 +1390,311 @@ describe('the parts of the city on the map', () => {
       { x: 0, y: 0, w: 2, h: 2 },
     ],
   }
-  const SQUARE = { id: 'district_2', name: 'Lowgate', rects: [{ x: 4, y: 0, w: 4, h: 4 }] }
 
-  function plan(): { screen: HTMLElement; intents: HudIntent[] } {
-    const { hud, screen, intents } = mount()
-    hud.show({
-      map: {
-        width: 8,
-        height: 4,
-        plots: [],
-        districts: [BENT, SQUARE],
-        marks: [{ x: 1, y: 1, label: 'You', kind: 'you', facing: 0 }],
-      },
-      window: 'map',
-    })
-    return { screen, intents }
+  const CITY: MapView = {
+    width: 40,
+    height: 30,
+    plots: [
+      { id: 'p1', rect: { x: 4, y: 4, w: 8, h: 6 }, label: 'The Copper Wheel', named: true, prominence: 'landmark' },
+      { id: 'p2', rect: { x: 20, y: 4, w: 8, h: 6 }, label: 'A warehouse' },
+    ],
+    districts: [KILN],
+    marks: [
+      { id: 'you', x: 6, y: 20, label: 'You', kind: 'you', facing: Math.PI / 2 },
+      { id: 'goal:q1:s2', x: 8, y: 7, label: 'The Copper Wheel', kind: 'goal', line: 'main' },
+      { id: 'goal:q2:s1', x: 30, y: 7, label: 'The docks', kind: 'goal', line: 'side' },
+    ],
+    stations: [{ id: 'p9', name: 'Northgate', x: 30, y: 25 }],
   }
 
-  it('draws each part as one shape with one border, whatever shape it is', () => {
-    const { screen } = plan()
-    const shapes = [...screen.querySelectorAll('.gb-plan .gb-district')]
-    expect(shapes.map((node) => node.getAttribute('data-district'))).toEqual(['district_1', 'district_2'])
+  /** The map open, with the game drawing on the glass the way it does in the browser. */
+  function opened(view: MapView = CITY): {
+    hud: Hud
+    screen: HTMLElement
+    intents: HudIntent[]
+    panel: HTMLElement
+    surface: MapSurface
+  } {
+    const { hud, screen, intents } = mount()
+    hud.show({ window: 'map', map: view, quests: QUESTS })
+    const panel = getByRole(screen, 'dialog', { name: 'Map' })
+    const surface = hud.mapSurface
+    surface.drawing = true
+    return { hud, screen, intents, panel, surface }
+  }
 
-    // the L is one border round the outside, with no line through the middle
-    // where its own blocks meet: 6 sides, so 6 lines
-    const bent = shapes[0]!.querySelector('.gb-district-edge')!.getAttribute('d')!
-    expect(bent.match(/M /g)).toHaveLength(6)
-    // and the plain square is 4
-    expect(shapes[1]!.querySelector('.gb-district-edge')!.getAttribute('d')!.match(/M /g)).toHaveLength(4)
+  /** Where the game says everything landed on the glass: one under the other, in the order given. */
+  function spread(ids: readonly string[], zoom = 1): MapDrawn {
+    return { zoom, spots: ids.map((id, at) => ({ id, x: 200, y: 60 + at * 120, ahead: true })) }
+  }
 
-    // each one says its name on hover and writes it across itself
-    expect(shapes[0]!.querySelector('title')?.textContent).toBe('Kiln Bay')
-    expect([...screen.querySelectorAll('.gb-plan .gb-district-name text')].map((node) => node.textContent)).toEqual(['Kiln Bay', 'Lowgate'])
-  })
+  function boxes(panel: HTMLElement): HTMLElement[] {
+    return [...panel.querySelectorAll<HTMLElement>('.gb-callout-box')].filter((box) => box.dataset.shown === 'true')
+  }
 
-  it('reports the one that was clicked, so the game can point the player at it', () => {
-    const { screen, intents } = plan()
-    ;(screen.querySelector('.gb-plan .gb-district[data-district="district_2"]') as SVGElement).dispatchEvent(
-      new MouseEvent('click', { bubbles: true }),
-    )
-    expect(intents).toContainEqual({ kind: 'district', districtId: 'district_2' })
-  })
+  function at(box: HTMLElement): { x: number; y: number } {
+    const [x, y] = /translate3d\((-?\d+)px, (-?\d+)px/.exec(box.style.transform)!.slice(1).map(Number) as [number, number]
+    return { x, y }
+  }
 
-  it('takes the borders off once the plan is zoomed into a street', () => {
-    const { screen } = plan()
-    const svg = screen.querySelector('.gb-plan svg') as SVGElement
-    expect(svg.getAttribute('data-districts')).toBe('true')
-
-    // three notches in and the plan is showing streets, where a border across
-    // one is in the way rather than a help
-    const zoomIn = getByRole(screen, 'button', { name: 'Zoom in (+)' })
-    for (let notch = 0; notch < 4; notch++) zoomIn.click()
-    expect(svg.getAttribute('data-districts')).toBe('false')
-  })
-
-  it('draws none at all for a city that was never cut into any', () => {
+  it('hands the game a glass to draw the city on, and stands without one until it does', () => {
     const { hud, screen } = mount()
-    hud.show({ map: { width: 8, height: 4, plots: [] }, window: 'map' })
-    expect(screen.querySelectorAll('.gb-plan .gb-district')).toHaveLength(0)
+    hud.show({ window: 'map', map: CITY, quests: QUESTS })
+    const panel = getByRole(screen, 'dialog', { name: 'Map' })
+
+    // nothing is drawing, so there is no black rectangle: the two columns of
+    // reading are the whole face
+    const glass = panel.querySelector('.gb-map-glass') as HTMLElement
+    expect(glass.hidden).toBe(true)
+    expect(queryByRole(panel, 'button', { name: 'Zoom in (+)' })).toBeNull()
+    within(panel).getByText('Main quest')
+    within(panel).getByText('Pick a label on the city to read what is known about it.')
+
+    // the game takes the canvas and says it is drawing there
+    const surface = hud.mapSurface
+    expect(surface.canvas.tagName).toBe('CANVAS')
+    surface.drawing = true
+    expect(glass.hidden).toBe(false)
+    expect(glass.contains(surface.canvas)).toBe(true)
+    getByRole(panel, 'button', { name: 'Zoom in (+)' })
+  })
+
+  it('writes a callout on everything worth naming, each on a line off the thing itself', () => {
+    const { panel, surface } = opened()
+    // in among the streets, where every kind of label is worth its room
+    surface.place(spread(['you', 'goal:q1:s2', 'goal:q2:s1', 'p9', 'district_1', 'p1'], 2))
+
+    const named = boxes(panel).map((box) => box.textContent)
+    expect(named).toEqual(['You', 'The Copper Wheel', 'The docks', 'Northgate', 'Kiln Bay'])
+
+    // the story is brass and an errand is not, the same two lines everywhere else
+    const drawn = [...panel.querySelectorAll<HTMLElement>('.gb-callout-box')]
+    expect(drawn.find((box) => box.textContent === 'The docks')!.dataset.line).toBe('side')
+    expect(drawn.find((box) => box.dataset.kind === 'station')!.textContent).toBe('Northgate')
+
+    // standing back, the city says where the player is, where their work is and
+    // what the parts of town are called, and leaves the rest to a closer look
+    surface.place(spread(['you', 'goal:q1:s2', 'goal:q2:s1', 'p9', 'district_1', 'p1']))
+    expect(boxes(panel).map((box) => box.textContent)).toEqual(['You', 'The Copper Wheel', 'The docks', 'Kiln Bay'])
+
+    // a leader is a line off the thing, a kink, then the run into the box
+    const leader = panel.querySelector('.gb-callout-leader')!.getAttribute('d')!
+    expect(leader.match(/L /g)).toHaveLength(2)
+    expect(leader.startsWith('M 200 60')).toBe(true)
+  })
+
+  it('never stacks two callouts, and drops what has nowhere to go', () => {
+    const { panel, surface } = opened()
+    // three things on one spot: the labels have to find their own room
+    surface.place({
+      zoom: 1,
+      spots: [
+        { id: 'goal:q1:s2', x: 300, y: 200, ahead: true },
+        { id: 'goal:q2:s1', x: 300, y: 200, ahead: true },
+        { id: 'you', x: 300, y: 200, ahead: true },
+      ],
+    })
+
+    const put = boxes(panel).map(at)
+    expect(put).toHaveLength(3)
+    for (const [index, one] of put.entries()) {
+      for (const other of put.slice(index + 1)) expect(Math.abs(one.y - other.y)).toBeGreaterThanOrEqual(24)
+    }
+
+    // and a thing behind the camera carries no callout at all
+    surface.place({ zoom: 1, spots: [{ id: 'you', x: 300, y: 200, ahead: false }] })
+    expect(boxes(panel)).toHaveLength(0)
+  })
+
+  it('takes the parts of town off once the view is down among the streets', () => {
+    const { panel, surface } = opened()
+    surface.place(spread(['district_1', 'p9'], 2))
+    expect(boxes(panel).map((box) => box.textContent)).toEqual(['Northgate', 'Kiln Bay'])
+
+    // four times in and the view is showing streets, where a name across a
+    // whole part of town is in the way rather than a help
+    surface.place(spread(['district_1', 'p9'], 4))
+    expect(boxes(panel).map((box) => box.textContent)).toEqual(['Northgate'])
+  })
+
+  it('asks for the thing that was picked, from a callout and from a row alike', async () => {
+    const user = userEvent.setup()
+    const { panel, intents, surface } = opened()
+    surface.place(spread(['goal:q1:s2', 'p9']))
+
+    await user.click(within(panel).getAllByRole('button', { name: 'The Copper Wheel' })[0]!)
+    expect(intents).toContainEqual({ kind: 'read', targetId: 'goal:q1:s2' })
+
+    const stations = within(panel).getByText('Stations').closest('.gb-map-section') as HTMLElement
+    await user.click(within(stations).getByRole('button', { name: 'Northgate' }))
+    expect(intents).toContainEqual({ kind: 'read', targetId: 'p9' })
+
+    // and a quest in the list beside the city asks for wherever it is sending them
+    await user.click(within(panel).getByRole('button', { name: 'Salt and Lamp Oil' }))
+    expect(intents).toContainEqual({ kind: 'read', targetId: 'q2' })
+  })
+
+  it('reads what the game says about whatever was picked, and each kind reads differently', () => {
+    const { hud, panel } = opened()
+    hud.show({
+      reading: {
+        id: 'goal:q1:s2',
+        kind: 'goal',
+        line: 'main',
+        name: 'The Copper Wheel',
+        text: 'Carry the crate to the docks',
+        facts: [
+          { label: 'Step', value: '2 of 5' },
+          { label: 'Part of town', value: 'Kiln Bay' },
+          { label: 'On foot', value: '240 m' },
+        ],
+      },
+    })
+    const reading = panel.querySelector('.gb-map-reading') as HTMLElement
+    within(reading).getByText('The story')
+    within(reading).getByText('The Copper Wheel')
+    within(reading).getByText('Carry the crate to the docks')
+    within(reading).getByText('2 of 5')
+    within(reading).getByText('240 m')
+
+    // a station is not a quest step and does not read as one
+    hud.show({ reading: { id: 'p9', kind: 'station', name: 'Northgate', text: 'The train boards here.' } })
+    within(reading).getByText('Where the train boards')
+    expect(queryByText(reading, '2 of 5')).toBeNull()
+
+    // and a place of their own says so
+    hud.show({ reading: { id: 'home:i1', kind: 'home', name: 'The loft' } })
+    within(reading).getByText('A place of your own')
+
+    // nothing picked, and the column says how to pick something
+    hud.show({ reading: null })
+    within(reading).getByText('Pick a label on the city to read what is known about it.')
+  })
+
+  it('lists the main line with its steps, the side jobs and the stations, each folding away', async () => {
+    const user = userEvent.setup()
+    const { hud, panel } = opened()
+    hud.show({
+      quests: [
+        {
+          questId: 'q1',
+          questTitle: 'The Copper Wheel',
+          kind: 'main',
+          steps: [
+            { stepId: 's1', text: 'Talk to Mara', state: 'done' },
+            { stepId: 's2', text: 'Carry the crate to the docks', state: 'open' },
+            { stepId: 's3', text: 'Come back for the money', state: 'upcoming' },
+          ],
+        },
+        { questId: 'q2', questTitle: 'Salt and Lamp Oil', kind: 'side', status: 'complete', steps: [{ stepId: 's1', text: 'Buy lamp oil', state: 'done' }] },
+      ],
+    })
+    const work = panel.querySelector('.gb-map-work') as HTMLElement
+
+    // the story, how far it has got, and which of how many the player is on
+    const main = within(work).getByText('Main quest').closest('.gb-map-section') as HTMLElement
+    // how far the story has got, on its heading and on its own row
+    expect(within(main).getAllByText('1/3')).toHaveLength(2)
+    within(main).getByText('Step 2 of 3')
+    const steps = [...main.querySelectorAll('.gb-map-steps li')]
+    expect(steps.map((step) => step.className)).toEqual(['gb-step-done', 'gb-step-open', 'gb-step-upcoming'])
+    // done is ticked, the one they are on is pointed at, and what the quest has
+    // not reached is a question mark rather than a step waiting to be done
+    expect(steps[0]!.querySelector('.gb-step-mark svg')).not.toBeNull()
+    expect(steps[2]!.querySelector('.gb-step-mark')!.getAttribute('aria-label')).toBe('Not reached yet')
+
+    // the side jobs, with what has finished marked as finished
+    const side = within(work).getByText('Side jobs').closest('.gb-map-section') as HTMLElement
+    within(side).getByText('Salt and Lamp Oil')
+    within(side).getByText('Done')
+
+    // and each heading folds away and comes back, which is the interface's own
+    const head = within(work).getByText('Side jobs').closest('button') as HTMLButtonElement
+    expect(head.getAttribute('aria-expanded')).toBe('true')
+    await user.click(head)
+    expect(head.getAttribute('aria-expanded')).toBe('false')
+    expect(side.querySelector('.gb-map-section-body')!.hasAttribute('hidden')).toBe(true)
+    await user.click(head)
+    expect(head.getAttribute('aria-expanded')).toBe('true')
+  })
+
+  it('says what is in each list when nothing is in it, and that the town has work waiting', () => {
+    const { hud, panel } = opened()
+    hud.show({ quests: [] })
+    const work = panel.querySelector('.gb-map-work') as HTMLElement
+
+    // a player who has taken nothing reads why, in the words the corner panel uses
+    within(work).getByText('No main line yet. Find someone to talk to.')
+    within(work).getByText('No side jobs yet. Find someone to talk to.')
+
+    // and the town is not empty: the survey says who is holding work nobody has taken
+    hud.show({
+      map: {
+        ...CITY,
+        marks: [
+          { id: 'you', x: 6, y: 20, label: 'You', kind: 'you', facing: 0 },
+          { id: 'offer:a', x: 8, y: 7, label: 'Wren Ashby', kind: 'offer', line: 'side' },
+          { id: 'offer:b', x: 9, y: 9, label: 'Mara Kell', kind: 'offer', line: 'main' },
+        ],
+      },
+    })
+    within(work).getByText('2 people in town are holding work you have not taken.')
+
+    // a town with no stations says so rather than hiding the heading
+    hud.show({ map: { ...CITY, stations: [] } })
+    within(work).getByText('This town has no stations.')
+  })
+
+  it('asks the game to move the camera, from the tools over the glass and from their keys', async () => {
+    const user = userEvent.setup()
+    const { panel, intents } = opened()
+
+    await user.click(within(panel).getByRole('button', { name: 'Zoom in (+)' }))
+    expect(intents).toContainEqual({ kind: 'map-move', move: 'in' })
+    await user.click(within(panel).getByRole('button', { name: 'Fit (0)' }))
+    expect(intents).toContainEqual({ kind: 'map-move', move: 'fit' })
+    await user.click(within(panel).getByRole('button', { name: 'You (Y)' }))
+    expect(intents).toContainEqual({ kind: 'map-move', move: 'you' })
+    ;(panel.querySelector('.gb-map') as HTMLElement).focus()
+    await user.keyboard('-')
+    expect(intents).toContainEqual({ kind: 'map-move', move: 'out' })
+    await user.keyboard('{ArrowRight}')
+    expect(intents).toContainEqual({ kind: 'map-move', move: 'right' })
+  })
+})
+
+describe('the parts of the city, derived once', () => {
+  it('answers one border round a set of blocks, whatever shape they make, and where its name goes', () => {
+    // an L: two blocks along the top, one under the left of them
+    const shape = districtShape({
+      id: 'district_1',
+      name: 'Kiln Bay',
+      rects: [
+        { x: 0, y: 0, w: 2, h: 2 },
+        { x: 2, y: 0, w: 2, h: 2 },
+        { x: 0, y: 2, w: 2, h: 2 },
+      ],
+    })
+
+    // six lines round the outside, and none through the middle where two
+    // blocks meet
+    expect(shape.border).toHaveLength(6)
+    expect(shape.border).toContainEqual({ x1: 0, y1: 0, x2: 4, y2: 0 })
+    expect(shape.border).toContainEqual({ x1: 0, y1: 0, x2: 0, y2: 4 })
+    expect(shape.border.some((edge) => edge.x1 === 2 && edge.x2 === 2 && edge.y1 === 0)).toBe(false)
+    // the region comes back as few rectangles as cover it, none overlapping,
+    // and the name goes inside the shape
+    expect(shape.rects.reduce((sum, rect) => sum + rect.w * rect.h, 0)).toBe(12)
+    expect(shape.rects.length).toBeLessThan(3)
+    expect(shape.heart).toEqual({ x: 1, y: 1 })
+
+    // carried out by a cell, two blocks with a gap between them are one region
+    const apart = { id: 'd3', name: 'Two', rects: [{ x: 0, y: 0, w: 2, h: 2 }, { x: 4, y: 0, w: 2, h: 2 }] }
+    expect(districtShape(apart).border).toHaveLength(8)
+    expect(districtShape(apart, 1).border).toHaveLength(4)
+
+    // a plain square is four sides
+    expect(districtShape({ id: 'd2', name: 'Lowgate', rects: [{ x: 4, y: 0, w: 4, h: 4 }] }).border).toHaveLength(4)
   })
 })
 
@@ -1586,20 +1709,16 @@ describe('the stations on the map', () => {
     ],
   }
 
-  it('marks and lists every station, and offers a ride only from one the player stands at', async () => {
+  it('lists every station, and offers a ride only from one the player stands at', async () => {
     const user = userEvent.setup()
     const { hud, screen, intents } = mount()
     hud.show({ window: 'map', map: CITY })
     const panel = getByRole(screen, 'dialog', { name: 'Map' })
 
-    const marks = [...panel.querySelectorAll('.gb-plan .gb-station')]
-    expect(marks.map((node) => node.querySelector('text')?.textContent)).toEqual(['Northgate', 'Dock Street'])
-    expect(marks[0]?.getAttribute('transform')).toMatch(/^translate\(30 25\) scale\(/)
-    const list = within(panel).getByText('Stations').closest('.gb-station-list') as HTMLElement
+    const list = within(panel).getByText('Stations').closest('.gb-map-section') as HTMLElement
     within(list).getByText('Northgate')
     within(list).getByText('Dock Street')
     within(list).getByText('Walk up to a station entrance to ride.')
-    expect(within(list).queryAllByRole('button')).toHaveLength(0)
 
     // At a station, the others can be ridden to; this one says it is here.
     hud.show({ map: { ...CITY, boarding: 'p10' } })
@@ -1616,9 +1735,9 @@ describe('the stations on the map', () => {
     hud.show({ loading: null })
     expect(veil.getAttribute('aria-hidden')).toBe('true')
 
-    // A city with no stations lists none.
+    // A town with no stations says so rather than leaving an empty heading.
     hud.show({ window: 'map', map: { ...CITY, stations: [] } })
-    expect((panel.querySelector('.gb-station-list') as HTMLElement).hidden).toBe(true)
+    within(list).getByText('This town has no stations.')
   })
 })
 
@@ -1857,8 +1976,8 @@ const NEAR: MinimapView = {
     { id: 'p2', rect: { x: 26, y: 18, w: 5, h: 5 } },
   ],
   marks: [
-    { x: 24, y: 12, label: 'The Copper Wheel', kind: 'goal', line: 'main' },
-    { x: 400, y: 15, label: 'The docks', kind: 'goal', line: 'side' },
+    { id: 'goal:q1:s1', x: 24, y: 12, label: 'The Copper Wheel', kind: 'goal', line: 'main' },
+    { id: 'goal:q2:s1', x: 400, y: 15, label: 'The docks', kind: 'goal', line: 'side' },
   ],
   doors: [{ id: 'd1', name: 'The Copper Wheel', x: 19, y: 14 }],
 }
@@ -1928,12 +2047,12 @@ describe('the two lines of work', () => {
     height: 30,
     plots: [{ id: 'p1', rect: { x: 4, y: 4, w: 8, h: 6 } }],
     marks: [
-      { x: 8, y: 7, label: 'The Copper Wheel', kind: 'goal', line: 'main' },
-      { x: 30, y: 7, label: 'The docks', kind: 'goal', line: 'side' },
+      { id: 'goal:q1:s1', x: 8, y: 7, label: 'The Copper Wheel', kind: 'goal', line: 'main' },
+      { id: 'goal:q2:s1', x: 30, y: 7, label: 'The docks', kind: 'goal', line: 'side' },
     ],
   }
 
-  it('wears one mark for the story and another for an errand, on the plan, the minimap and the strip', () => {
+  it('wears one mark for the story and another for an errand, on the map, the corner and the strip', () => {
     const { hud, screen } = mount()
     hud.show({
       window: 'map',
@@ -1947,23 +2066,26 @@ describe('the two lines of work', () => {
       getComputedStyle(node).getPropertyValue('fill'),
       getComputedStyle(node).getPropertyValue('stroke'),
     ]
-    for (const root of ['.gb-plan', '.gb-near']) {
-      const main = screen.querySelector(`${root} .gb-mark-goal[data-line='main'] .gb-mark-core`) as Element
-      const side = screen.querySelector(`${root} .gb-mark-goal[data-line='side'] .gb-mark-core`) as Element
-      const glow = screen.querySelector(`${root} .gb-mark-goal[data-line='main'] .gb-mark-halo`) as Element
-      expect(main.tagName).toBe('rect')
-      expect(side.tagName).toBe('rect')
-      expect(glow).not.toBeNull()
-      expect(paint(main)).not.toEqual(paint(side))
-      for (const value of [...paint(main), ...paint(side)]) expect(value).not.toBe('')
-    }
+    const main = screen.querySelector(`.gb-near .gb-mark-goal[data-line='main'] .gb-mark-core`) as Element
+    const side = screen.querySelector(`.gb-near .gb-mark-goal[data-line='side'] .gb-mark-core`) as Element
+    const glow = screen.querySelector(`.gb-near .gb-mark-goal[data-line='main'] .gb-mark-halo`) as Element
+    expect(main.tagName).toBe('rect')
+    expect(side.tagName).toBe('rect')
+    expect(glow).not.toBeNull()
+    expect(paint(main)).not.toEqual(paint(side))
+    for (const value of [...paint(main), ...paint(side)]) expect(value).not.toBe('')
 
-    // The bearings under the plan wear the same two marks.
-    const rows = [...screen.querySelectorAll('.gb-bearings li')]
-    expect(rows.map((row) => row.getAttribute('data-line'))).toEqual(['main', 'side'])
+    // On the city the two lines are the two callouts, marked apart the same way.
+    const lines = [...screen.querySelectorAll('.gb-callout-box')].map((box) => box.getAttribute('data-line'))
+    expect(lines).toEqual(['main', 'side'])
+    const leaders = [...screen.querySelectorAll('.gb-callout-line')].map((node) =>
+      getComputedStyle(node.querySelector('.gb-callout-leader')!).getPropertyValue('stroke'),
+    )
+    expect(leaders[0]).not.toBe(leaders[1])
+    for (const stroke of leaders) expect(stroke).not.toBe('')
 
     // And so does the compass, in its own medium: the same square in the same
-    // colour, drawn at strip size, so a place on the plan and the same place
+    // colour, drawn at strip size, so a place on the map and the same place
     // on the strip are recognisably one place.
     const strip = screen.querySelector('.gb-compass-mark') as HTMLElement
     const asMain = strip.querySelector('.gb-mark-core') as Element

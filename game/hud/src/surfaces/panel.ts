@@ -6,7 +6,7 @@ import { MapTab } from '../tabs/map.ts'
 import { QuestsTab } from '../tabs/quests.ts'
 import { SettingsTab } from '../tabs/settings.ts'
 import type { Tab } from '../tabs/tab.ts'
-import type { HudIntent, HudState, HudWindowName } from '../types.ts'
+import type { HudIntent, HudState, HudWindowName, MapSurface } from '../types.ts'
 import { tabAt, tabFor } from '../windows.ts'
 import type { Surface } from './surface.ts'
 import { TabStrip } from './tabstrip.ts'
@@ -27,6 +27,7 @@ export class PanelSurface implements Surface {
   #title = el('h2')
   #tabs: readonly Tab[]
   #inventory: InventoryTab
+  #map: MapTab
   #face: HudWindowName | null = null
 
   constructor(emit: (intent: HudIntent) => void) {
@@ -39,9 +40,11 @@ export class PanelSurface implements Surface {
       // not on screen. It waits for the leave so the last frame still reads.
       onClosed: () => this.#clear(),
     })
-    // held by name as well as in the list, because the game draws into its canvas
+    // held by name as well as in the list, because the game draws into the
+    // canvas each of these two holds
     this.#inventory = new InventoryTab(emit)
-    this.#tabs = [new QuestsTab(emit), new MapTab(emit), this.#inventory, new CodexTab(), new SettingsTab(emit), new ControlsTab()]
+    this.#map = new MapTab(emit)
+    this.#tabs = [new QuestsTab(emit), this.#map, this.#inventory, new CodexTab(), new SettingsTab(emit), new ControlsTab()]
     this.#window.body.setAttribute('role', 'tabpanel')
     this.#window.body.append(...this.#tabs.map((tab) => tab.node))
   }
@@ -92,6 +95,11 @@ export class PanelSurface implements Surface {
   /** Where the game draws the thing the player has open in the inventory. */
   get itemCanvas(): HTMLCanvasElement {
     return this.#inventory.itemCanvas
+  }
+
+  /** The glass the game draws the city on, in the map face. */
+  get mapSurface(): MapSurface {
+    return this.#map.glass
   }
 
   #clear(): void {

@@ -160,6 +160,9 @@ export interface MapPlot {
   readonly prominence?: MapProminence
 }
 
+/** What a mark stands for. */
+export type MapMarkKind = 'you' | 'goal' | 'offer' | 'home'
+
 /**
  * Something worth pointing at: where the player is, where a job they are on is
  * sending them, where there is work waiting to be taken, and a place of their
@@ -167,10 +170,12 @@ export interface MapPlot {
  * goal wears a ring round it as well, because it is work already on the board.
  */
 export interface MapMark {
+  /** The game's handle on it, so a callout clicked can be read back. */
+  readonly id: string
   readonly x: number
   readonly y: number
   readonly label: string
-  readonly kind: 'you' | 'goal' | 'offer' | 'home'
+  readonly kind: MapMarkKind
   /** Radians clockwise from north. Only the player mark is drawn facing. */
   readonly facing?: number
   /** On a goal or an offer: the story or an errand, so the two burn in different colours. Left out reads as `side`. */
@@ -188,14 +193,6 @@ export interface MapDistrict {
   readonly name: string
   /** The rectangles it covers, in cells. Touching rectangles read as one region. */
   readonly rects: readonly MapRect[]
-}
-
-/** A rectangle in grid cells. */
-export interface MapRect {
-  readonly x: number
-  readonly y: number
-  readonly w: number
-  readonly h: number
 }
 
 /** Where fast travel boards: a station on the plan, in cells. */
@@ -218,6 +215,88 @@ export interface MapView {
   /** The station the player is standing at, which is when the others can be ridden to. */
   readonly boarding?: string
 }
+
+/** One straight run of a district's border, in grid cells: the two ends of the line. */
+export interface MapEdge {
+  readonly x1: number
+  readonly y1: number
+  readonly x2: number
+  readonly y2: number
+}
+
+/**
+ * A district as a shape: the blocks it holds, the line round them, and where
+ * its name goes. Both plans of the city derive it from here, so an L, a Z or a
+ * T is one region with one border wherever it is drawn.
+ */
+export interface MapShape {
+  /** The blocks it covers, as they were given. */
+  readonly rects: readonly MapRect[]
+  /** Every cell edge facing a cell the district does not hold, the runs along one line joined. */
+  readonly border: readonly MapEdge[]
+  /** The middle of its largest block, which is inside the shape whatever shape it is. */
+  readonly heart: { readonly x: number; readonly y: number }
+}
+
+/** What kind of thing the map is reading, which is what its panel says about it. */
+export type MapReadingKind = MapMarkKind | 'station' | 'district' | 'place'
+
+/** One thing known about whatever the map is reading. */
+export interface MapFact {
+  readonly label: string
+  readonly value: string
+}
+
+/**
+ * What the map has been asked to read, answered by the game: a quest step, a
+ * place, a station, a part of town or the player's own home. The interface
+ * draws it and works nothing out about it.
+ */
+export interface MapReading {
+  /** The same handle the callout was clicked with. */
+  readonly id: string
+  readonly kind: MapReadingKind
+  readonly name: string
+  /** The story or an errand, where it belongs to one. */
+  readonly line?: QuestKind
+  /** What it is, in a sentence or two. */
+  readonly text?: string
+  /** How far on foot, which part of town, the step it is: one row each. */
+  readonly facts?: readonly MapFact[]
+}
+
+/** Where one thing landed on the glass, in CSS pixels from its top left corner. */
+export interface MapSpot {
+  readonly id: string
+  readonly x: number
+  readonly y: number
+  /** False while it is behind the camera, which is when it carries no callout at all. */
+  readonly ahead: boolean
+}
+
+/** The frame the game just drew: how far in the camera stands, and where everything on it landed. */
+export interface MapDrawn {
+  /** 1 is the whole city framed; it climbs as the camera comes in, the way a plan's zoom does. */
+  readonly zoom: number
+  readonly spots: readonly MapSpot[]
+}
+
+/**
+ * The glass the game draws the city on. The interface owns the canvas, the
+ * callouts written over it and the panels either side; the game owns the
+ * renderer, the camera and what is under the pointer.
+ */
+export interface MapSurface {
+  /** Where the game draws. It is handed over once, so the renderer is made once. */
+  readonly canvas: HTMLCanvasElement
+  /** The game is drawing here. The glass is on the page only while it is. */
+  drawing: boolean
+  /** Where everything landed on the frame just drawn, so the callouts follow it. */
+  place(drawn: MapDrawn): void
+}
+
+/** How the player asked the camera to move, from the tools over the glass or their keys. */
+export type MapMove = 'in' | 'out' | 'fit' | 'you' | 'left' | 'right' | 'up' | 'down'
 
 /** A doorway the player has walked through, so a place they know stays findable. */
 export interface MinimapDoor {
@@ -490,8 +569,10 @@ export type HudIntent =
   | { readonly kind: 'decide'; readonly questId: string; readonly stepId: string; readonly optionId: string }
   | { readonly kind: 'lock-time'; readonly locked: boolean }
   | { readonly kind: 'skip-time' }
-  /** A part of the city was clicked on the plan: the player is asking to be pointed at it. */
-  | { readonly kind: 'district'; readonly districtId: string }
+  /** A callout or a row on the map was clicked: the player is asking to be shown that thing and told about it. */
+  | { readonly kind: 'read'; readonly targetId: string | null }
+  /** The camera over the city was asked to move, by a tool or its key. */
+  | { readonly kind: 'map-move'; readonly move: MapMove }
   /** The player opened a thing in the inventory: the game draws it into the canvas the interface holds. */
   | { readonly kind: 'inspect'; readonly itemId: string }
   /** They turned it: where it stands now, in radians, not how far it moved. */
@@ -544,6 +625,8 @@ export interface HudPatch {
   readonly quests?: readonly QuestEntry[]
   readonly trackedQuestId?: string | null
   readonly map?: MapView | null
+  /** What the map was asked to read, answered. `null` empties the panel. */
+  readonly reading?: MapReading | null
   readonly minimap?: MinimapView | null
   readonly compass?: CompassView | null
   readonly codex?: CodexView
@@ -574,6 +657,7 @@ export interface HudState {
   readonly quests: readonly QuestEntry[]
   readonly trackedQuestId: string | undefined
   readonly map: MapView | undefined
+  readonly reading: MapReading | undefined
   readonly minimap: MinimapView | undefined
   readonly compass: CompassView | undefined
   readonly codex: CodexView

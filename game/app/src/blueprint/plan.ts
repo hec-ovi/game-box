@@ -1,6 +1,6 @@
 import { districtShape, type MapEdge } from '@gb/hud'
 import { storeyHeight } from '@gb/scene'
-import type { CellKind, Rect, World } from '@gb/world'
+import { METRICS, type CellKind, type Rect, type World } from '@gb/world'
 import { patchesOf } from './cells.ts'
 
 /** A rectangle of ground, in metres: its near corner and how far it runs. */
@@ -68,6 +68,18 @@ const NAME_LIFT = 30
 const MARK_LIFT = 26
 
 /**
+ * How far a part of town is carried out past its blocks, in cells: half the
+ * widest road that can run between two of them, so its blocks meet in the
+ * middle of their own streets and it comes out as one region rather than as a
+ * heap of outlined blocks. Two parts of town either side of a narrower street
+ * meet in it and overlap by a cell or two, which is a seam nobody can see at
+ * the distance a whole city is read from.
+ */
+const HALF_STREET = Math.max(
+  ...(['street', 'avenue'] as const).map((kind) => Math.ceil((METRICS.road[kind].roadwayCells + METRICS.road[kind].pavementCells * 2) / 2)),
+)
+
+/**
  * A laid out city as a blueprint: the streets, the buildings at the heights
  * they will stand at, the named parts of town as the shapes they are, and the
  * stations. Nothing else is in a plan, so nothing else is here.
@@ -122,7 +134,7 @@ function zonesOf(world: World, cell: number): Zone[] {
   return world.districts().map((district) => {
     // the shape a part of town is comes from `@gb/hud`, so the plan in the
     // window and the drawing on the glass are one derivation
-    const shape = districtShape({ id: district.id, name: district.name, rects: district.blocks })
+    const shape = districtShape({ id: district.id, name: district.name, rects: district.blocks }, HALF_STREET)
     return {
       id: district.id,
       name: district.name,

@@ -3,7 +3,7 @@ import { MAP_KEYS, MAP_TOOLS } from '../phrase.ts'
 import { act } from '../ui/act.ts'
 import type { IconName } from '../ui/icon.ts'
 
-/** What the four tools do. Each is also a key while the map has focus. */
+/** What the four tools do to the camera over the city. Each is also a key while the map has focus. */
 export type MapTool = 'in' | 'out' | 'fit' | 'you'
 
 /** The key each tool answers to, as `KeyboardEvent.key` reads it. `=` is the unshifted `+`. */
@@ -12,7 +12,7 @@ const KEYED: Record<string, MapTool> = { '+': 'in', '=': 'in', '-': 'out', '0': 
 /** The picture on each tool. */
 const PICTURE: Record<MapTool, IconName> = { in: 'plus', out: 'minus', fit: 'fit', you: 'you' }
 
-/** The four buttons over the plan, each with its key printed on it. */
+/** The four buttons over the city, each with its key printed on it. */
 export class MapTools {
   readonly node = el('div', 'gb-map-tools')
 

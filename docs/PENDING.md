@@ -38,27 +38,18 @@ the current state, not a log.
 
 ## Look
 
-4. **A district's outline is derived twice.** `@gb/hud`'s map and the launcher's
-   blueprint each turn a district's blocks into an outline: the cells it covers,
-   the cell edges facing a cell it does not, the runs along one line joined, and
-   the name at the middle of its largest block. The hud's `districtShape` is
-   private and answers an `SVGGElement`, so a 3D view cannot take it;
-   `game/app/src/boot/blueprint/zones.ts` carries the same derivation in grid
-   coordinates answering line segments. Publishing the geometry from `@gb/hud`
-   would leave one. It is also what the in-game map would need to become the
-   blueprint. (`docs/HANDOVERS.md` row 316.)
-5. **The plot shape band is written down twice.** `FRONTS` / `DEPTHS` live in
+4. **The plot shape band is written down twice.** `FRONTS` / `DEPTHS` live in
    `game/prefab/src/bucket.ts`, but how wide a plot is cut is a fact about the
    generator, not about the art. Until it moves, a generator that cuts outside
    the band is a coverage coincidence rather than a named bug.
-6. **Two fifths of the street face is the producer's plain finish.** On the
+5. **Two fifths of the street face is the producer's plain finish.** On the
    three looks that show the most wall, 42 to 44 percent of what a player sees
    is one flat base finish, identical across all four families. Giving each
    look's base the same picture as its facade is four layers and beats any
    remaining variant choice. Box: `prefab`.
-7. **Minigames, and a score that survives.** Two games on a machine screen
+6. **Minigames, and a score that survives.** Two games on a machine screen
    exist; nothing else does.
 
 ## His own list, still open
 
-8. **Voice.** He has it solved in another project and wants it here.
+7. **Voice.** He has it solved in another project and wants it here.

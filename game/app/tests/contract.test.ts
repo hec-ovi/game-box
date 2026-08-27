@@ -994,7 +994,9 @@ describe('the map the player opens', () => {
     // the glass is on a counter inside, and a room has its own metres, so this
     // has to go thing to room to building or there is nothing to draw
     expect(bar.positionOf('item_0001')).toBeUndefined()
-    expect(marked(bar, [fetchIt], () => 'side')).toEqual([{ label: 'The Bright Anchor', x: 11, z: 13, plotId, line: 'side' }])
+    expect(marked(bar, [fetchIt], () => 'side')).toEqual([
+      { id: 'goal:quest_0001:step_0001', questId: 'quest_0001', label: 'The Bright Anchor', x: 11, z: 13, plotId, line: 'side' },
+    ])
 
     // and any of an interchangeable pool answers, so three of five is one pin
     const orTheOther: Objective = { ...fetchIt, itemId: 'item_0404', alternates: ['item_0001'] }
@@ -2158,13 +2160,25 @@ describe('where a pin goes for somebody who is out', () => {
 
   it('points at the door they are walking to, at the ground they stand on, or at their post', () => {
     // heading somewhere: the pin is that building's door, so the route walks to it
-    expect(marked(world, [talkTo], () => 'side', () => ({ plotId }))).toEqual([{ label: 'Wren Ashby', x: 11, z: 13, plotId, line: 'side' }])
+    expect(marked(world, [talkTo], () => 'side', () => ({ plotId }))).toEqual([
+      { id: 'goal:quest_0001:step_0001', questId: 'quest_0001', label: 'Wren Ashby', x: 11, z: 13, plotId, line: 'side' },
+    ])
     // out with nowhere in particular to go: where they are
-    expect(marked(world, [talkTo], () => 'side', () => ({ x: 30, z: 40 }))).toEqual([{ label: 'Wren Ashby', x: 30, z: 40, line: 'side' }])
+    expect(marked(world, [talkTo], () => 'side', () => ({ x: 30, z: 40 }))).toEqual([
+      { id: 'goal:quest_0001:step_0001', questId: 'quest_0001', label: 'Wren Ashby', x: 30, z: 40, line: 'side' },
+    ])
     // at their post: the door of the place they keep, so the plan writes that
     // building's name on itself and a route can walk to it
     expect(marked(world, [talkTo], () => 'side')).toEqual([
-      { label: 'Wren Ashby', x: world.positionOf('npc_0001')!.x, z: world.positionOf('npc_0001')!.z, plotId, line: 'side' },
+      {
+        id: 'goal:quest_0001:step_0001',
+        questId: 'quest_0001',
+        label: 'Wren Ashby',
+        x: world.positionOf('npc_0001')!.x,
+        z: world.positionOf('npc_0001')!.z,
+        plotId,
+        line: 'side',
+      },
     ])
   })
 })
@@ -2195,7 +2209,7 @@ describe('where there is work to pick up', () => {
     // a player who holds nothing has no pins at all, so the only thing that can
     // say where to start is who is still holding work
     expect(marked(world, log.objectives(), () => 'main')).toEqual([])
-    expect(offered(world, log)).toEqual([{ label: 'Wren Ashby', x: 11, z: 13, plotId, line: 'main' }])
+    expect(offered(world, log)).toEqual([{ id: 'offer:npc_0001', label: 'Wren Ashby', x: 11, z: 13, plotId, line: 'main' }])
 
     // taken, and it is a job on the board rather than one to pick up
     expect(log.start('quest_0001').ok).toBe(true)
@@ -2710,7 +2724,7 @@ describe('the corner view and the screen', () => {
 
   it('pushes the streets round the player, windowed, and takes it away indoors', () => {
     const { world, near } = spread()
-    const view = corner(world, { goals: [{ label: 'The job', x: 120, z: 120, line: 'main' }], entered: [] })
+    const view = corner(world, { goals: [{ id: 'goal:q1:s1', label: 'The job', x: 120, z: 120, line: 'main' }], entered: [] })
 
     view.minimap.update(1)
     const drawn = view.last()!
@@ -2723,7 +2737,7 @@ describe('the corner view and the screen', () => {
     expect(drawn.plots.map((plot) => plot.id)).toEqual([near])
     expect(drawn.radius).toBeGreaterThan(0)
     // and where they are headed, wearing the same mark the plan pins
-    expect(drawn.marks).toEqual([{ x: 60, y: 60, label: 'The job', kind: 'goal', line: 'main' }])
+    expect(drawn.marks).toEqual([{ id: 'goal:q1:s1', x: 60, y: 60, label: 'The job', kind: 'goal', line: 'main' }])
 
     // a room has its own metres, so the streets outside are taken off
     view.goInside()
@@ -2800,7 +2814,7 @@ describe('the two lines of work on the plan and in the corner', () => {
   it('pins the work waiting to be taken, and names the place it waits in', () => {
     const world = town()
     const [bar] = world.plots()
-    const offers: Marked[] = [{ label: 'Wren Ashby', x: 0, z: 0, plotId: bar!.id, line: 'main' }]
+    const offers: Marked[] = [{ id: 'offer:npc_0001', label: 'Wren Ashby', x: 0, z: 0, plotId: bar!.id, line: 'main' }]
 
     const plan = screenful()
     new Chart({ world, hud: plan.hud, you: () => ({ position: { x: 5, z: 21 }, heading: 0 }), goals: () => [], offers: () => offers, entered: () => [] }).draw()
@@ -2809,7 +2823,7 @@ describe('the two lines of work on the plan and in the corner', () => {
     // a player holding no job still has somewhere to go: the work is pinned as
     // an offer, which wears the line's square without the ring a taken job has
     const waiting = map.marks!.filter((mark) => mark.kind === 'offer')
-    expect(waiting).toEqual([{ x: 0, y: 0, label: 'Wren Ashby', kind: 'offer', line: 'main' }])
+    expect(waiting).toEqual([{ id: 'offer:npc_0001', x: 0, y: 0, label: 'Wren Ashby', kind: 'offer', line: 'main' }])
     expect(map.plots!.filter((plot) => plot.named).map((plot) => plot.label)).toContain('The Copper Wheel')
   })
 

@@ -24,12 +24,34 @@ const LAYER = { roadway: 0.02, water: 0.03, pavement: 0.06, open: 0.1, pad: 0.16
 /** How much of a part of town is left showing while another one is being read. */
 const STEPPED_BACK = 0.22
 
+/**
+ * How wide the line round a part of town is painted, in metres. It is a band on
+ * the ground rather than a hairline, because a one pixel line over a city of
+ * roofs is not a line anybody can see: this is the paint a site plan puts round
+ * a zone, and it holds its weight at every distance.
+ */
+const ZONE_LINE = 5
+
+/**
+ * How strongly each part of town washes its own ground, in turn, as multiples
+ * of the accent's own glow.
+ *
+ * A part of town is read off the ground it covers: its blocks and the streets
+ * between them, carried out to the middle of the street round it, washed as one
+ * area. Neighbours take different weights of the one colour, because at the
+ * distance the whole city is framed at a boundary is a couple of pixels and an
+ * area is half the map.
+ */
+const ZONE_WASH = [0.7, 1.8, 1.15, 2.4, 0.95, 2.1]
+
 /** What one part of town is painted with, so it can be lit on its own. */
 interface Parts {
   walls: THREE.MeshBasicMaterial
   roofs: THREE.LineBasicMaterial
   fill?: THREE.MeshBasicMaterial
-  border?: THREE.LineBasicMaterial
+  border?: THREE.MeshBasicMaterial
+  /** How strongly this one is washed, so lighting it and stepping it back both start from its own weight. */
+  wash?: number
 }
 
 /**
@@ -59,7 +81,7 @@ export class City {
       this.#lines(edgesOf(plan.ground), LAYER.frame, '--gb-edge'),
     )
     const standing = byZone(plan.buildings)
-    for (const zone of plan.zones) this.root.add(this.#zone(zone, standing.get(zone.id) ?? []))
+    for (const [index, zone] of plan.zones.entries()) this.root.add(this.#zone(zone, index, standing.get(zone.id) ?? []))
     // a building the city never cut into a part of town still stands here
     const loose = standing.get('')
     if (loose) this.root.add(this.#standing('', loose))
@@ -68,12 +90,12 @@ export class City {
 
   /** One part of town read on its own: it holds its colour and the rest step back, the way the map does it. */
   light(zoneId: string | undefined): void {
-    const glow = this.#palette['--gb-accent-glow']
     for (const [id, parts] of this.#parts) {
       const lit = zoneId === undefined || id === zoneId
-      if (parts.fill) parts.fill.opacity = glow.alpha * (lit ? 1 : STEPPED_BACK)
+      if (parts.fill) parts.fill.opacity = (parts.wash ?? 0) * (lit ? 1 : STEPPED_BACK)
+      const tone = this.#palette[id === zoneId ? '--gb-accent-lit' : '--gb-accent'].colour
       if (parts.border) {
-        parts.border.color.setHex(this.#palette[id === zoneId ? '--gb-accent-lit' : '--gb-accent'].colour)
+        parts.border.color.setHex(tone)
         parts.border.opacity = lit ? 1 : STEPPED_BACK
       }
       for (const material of [parts.walls, parts.roofs]) {
@@ -92,27 +114,28 @@ export class City {
   }
 
   /** A part of town: its blocks filled, the line round them, its buildings, and a stem holding its name over the roofs. */
-  #zone(zone: Zone, standing: readonly Massing[]): THREE.Object3D {
+  #zone(zone: Zone, index: number, buildings: readonly Massing[]): THREE.Object3D {
     const group = new THREE.Group()
     group.name = `zone:${zone.id}`
 
     const glow = this.#palette['--gb-accent-glow']
+    const wash = Math.min(1, glow.alpha * ZONE_WASH[index % ZONE_WASH.length]!)
     const pads = quads(zone.pads, LAYER.pad)
-    const fill = new THREE.MeshBasicMaterial({ color: glow.colour, transparent: true, opacity: glow.alpha, depthWrite: false })
+    const fill = new THREE.MeshBasicMaterial({ color: glow.colour, transparent: true, opacity: wash, depthWrite: false })
     const filled = new THREE.Mesh(pads, fill)
     filled.renderOrder = 1
 
-    const outline = strokes(zone.border, LAYER.border)
-    const border = new THREE.LineBasicMaterial({ color: this.#palette['--gb-accent'].colour, transparent: true })
-    const bordered = new THREE.LineSegments(outline, border)
+    const outline = bands(zone.border, LAYER.border, ZONE_LINE)
+    const border = new THREE.MeshBasicMaterial({ color: this.#palette['--gb-accent'].colour, transparent: true, depthWrite: false })
+    const bordered = new THREE.Mesh(outline, border)
     bordered.renderOrder = 2
 
     const stem = buffer(new Float32Array([zone.heart.x, 0, zone.heart.z, zone.heart.x, zone.top, zone.heart.z]))
     const stemmed = new THREE.LineSegments(stem, this.#line('--gb-accent-dim'))
 
     this.#spent.push(fill, border)
-    group.add(this.#kept(filled, pads), this.#kept(bordered, outline), this.#kept(stemmed, stem), this.#standing(zone.id, standing))
-    Object.assign(this.#parts.get(zone.id)!, { fill, border })
+    group.add(this.#kept(filled, pads), this.#kept(bordered, outline), this.#kept(stemmed, stem), this.#standing(zone.id, buildings))
+    Object.assign(this.#parts.get(zone.id)!, { fill, border, wash })
     return group
   }
 
@@ -220,6 +243,38 @@ function quads(patches: readonly Patch[], y: number): THREE.BufferGeometry {
   return buffer(points)
 }
 
+/**
+ * Lines on the ground painted as bands of a width in metres, as one buffer: two
+ * triangles apiece, each run run out by half its width at both ends so the
+ * corners of a shape close up.
+ */
+function bands(lines: readonly Line[], y: number, width: number): THREE.BufferGeometry {
+  const points = new Float32Array(lines.length * 18)
+  const half = width / 2
+  let at = 0
+  for (const line of lines) {
+    const run = Math.hypot(line.x2 - line.x1, line.z2 - line.z1) || 1
+    const [ax, az] = [((line.x2 - line.x1) / run) * half, ((line.z2 - line.z1) / run) * half]
+    const [nx, nz] = [-az, ax]
+    const [x1, z1] = [line.x1 - ax, line.z1 - az]
+    const [x2, z2] = [line.x2 + ax, line.z2 + az]
+    // wound the way `quads` winds, so the band faces up and is not culled away
+    points.set(
+      [
+        x1 + nx, y, z1 + nz,
+        x2 - nx, y, z2 - nz,
+        x1 - nx, y, z1 - nz,
+        x1 + nx, y, z1 + nz,
+        x2 + nx, y, z2 + nz,
+        x2 - nx, y, z2 - nz,
+      ],
+      at,
+    )
+    at += 18
+  }
+  return buffer(points)
+}
+
 /** Lines on the ground as one buffer. */
 function strokes(lines: readonly Line[], y: number): THREE.BufferGeometry {
   const points = new Float32Array(lines.length * 6)
@@ -269,3 +324,4 @@ function faceShades(palette: CityPalette): Float32Array {
 function tone({ colour }: Tone): [number, number, number] {
   return new THREE.Color(colour).toArray() as [number, number, number]
 }
+

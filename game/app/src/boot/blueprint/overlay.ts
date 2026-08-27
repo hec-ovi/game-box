@@ -1,5 +1,5 @@
 import { icon } from '../chrome.ts'
-import type { Plan } from './plan.ts'
+import type { Plan } from '../../blueprint/plan.ts'
 
 /** Something with a name written over it in the view: where it stands, in metres. */
 export interface Anchor {

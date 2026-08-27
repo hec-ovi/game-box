@@ -370,7 +370,7 @@ function inTown(options: { quest?: boolean; money?: number } = {}) {
     chase: new Chase({ camera: new THREE.PerspectiveCamera(), driving, hud }),
     locks,
     machines,
-    chart: {} as import('../src/chart.ts').Chart,
+    openMap: () => {},
     guide: { say: () => undefined } as unknown as import('../src/guide.ts').Guide,
     conditions: new Conditions(player.clock),
     report,

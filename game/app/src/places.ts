@@ -17,6 +17,8 @@ export function planOf(world: World): MapPlot[] {
 
 /** Somewhere a quest points at, found on the city. */
 export interface Marked {
+  /** The map's handle on it, so a callout clicked names this and nothing else. */
+  readonly id: string
   /** What to write beside the pin. */
   readonly label: string
   /** In metres. */
@@ -26,6 +28,8 @@ export interface Marked {
   readonly plotId?: string
   /** The story or an errand, so the plan and the compass draw the two apart. */
   readonly line: QuestKind
+  /** The quest sending the player here, on a goal, so picking the quest picks this. */
+  readonly questId?: string
 }
 
 /** Where somebody is right now when they are not at their post: the door they are walking to, or the ground they stand on. */
@@ -50,7 +54,13 @@ export function marked(world: World, objectives: readonly Objective[], lineOf: (
     const where = `${place.x}/${place.z}`
     if (seen.has(where)) continue
     seen.add(where)
-    found.push({ ...place, label: objective.markerLabel ?? place.label, line: lineOf(objective.questId) })
+    found.push({
+      ...place,
+      id: `goal:${objective.questId}:${objective.stepId}`,
+      label: objective.markerLabel ?? place.label,
+      line: lineOf(objective.questId),
+      questId: objective.questId,
+    })
   }
   return found
 }
@@ -79,12 +89,12 @@ export function offered(world: World, log: OnOffer, out: Whereabouts = () => und
     const where = `${place.x}/${place.z}`
     if (seen.has(where)) continue
     seen.add(where)
-    found.push({ ...place, line: work.kind })
+    found.push({ ...place, id: `offer:${npc.id}`, line: work.kind })
   }
   return found
 }
 
-type Spot = Omit<Marked, 'line'>
+type Spot = Omit<Marked, 'line' | 'id' | 'questId'>
 
 /**
  * A place beats a person and a person beats a thing: a delivery names both the

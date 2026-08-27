@@ -13,12 +13,18 @@ const TURN = 0.006
 const NOTCH = 0.18
 /** How near the ground the camera may swing, and how far over the town it may lean back. */
 const PITCH = { low: 0.12, high: 1.53 }
+
+/** The flattest the ground is treated as being when a drag is measured across it, so a grazing view does not fly. */
+const GRAZING = 0.3
 /** The nearest a rooftop may be looked at, in metres. */
 const NEAREST = 30
 /** How much further out than the framed town the wheel may pull back. */
 const FURTHEST = 2.2
 /** How far past the edge of town the middle of the view may be pushed, as a share of the town. */
 const ROAM = 0.6
+
+/** How near the camera comes when it is put onto one thing, as a share of the framed town. */
+const ONTO = 0.28
 
 /**
  * The camera you look at a city with: it always points at somewhere on the
@@ -61,22 +67,27 @@ export class Orbit {
   }
 
   /** The wheel pulls the camera in towards what it is looking at and pushes it back out. */
-  zoom(notches: number): void {
+  pull(notches: number): void {
     this.#distance = clamp(this.#distance * Math.exp(notches * NOTCH), NEAREST, this.#framed * FURTHEST)
   }
 
   /**
    * Dragging with the other button slides what the camera is looking at across
-   * the ground, a pixel of drag to a pixel of city, and never so far that the
-   * town is off the screen.
+   * the ground, and never so far that the town is off the screen.
+   *
+   * The ground follows the pointer: whatever is under it stays under it, so the
+   * camera goes the other way. Across the screen that is a pixel of drag to a
+   * pixel of city; down the screen the ground is seen at an angle, so a pixel
+   * covers more of it the flatter the camera is looking.
    */
   pan(dx: number, dy: number, viewHeight: number, fov: number): void {
     const perPixel = (2 * this.#distance * Math.tan((fov * Math.PI) / 360)) / Math.max(viewHeight, 1)
+    const alongGround = perPixel / Math.max(Math.sin(this.#pitch), GRAZING)
     const sin = Math.sin(this.#yaw)
     const cos = Math.cos(this.#yaw)
     // right is across the screen, forward is into it along the ground
-    const x = this.#target.x - dx * perPixel * cos + dy * perPixel * sin
-    const z = this.#target.z + dx * perPixel * sin + dy * perPixel * cos
+    const x = this.#target.x - dx * perPixel * cos - dy * alongGround * sin
+    const z = this.#target.z + dx * perPixel * sin - dy * alongGround * cos
     const roamX = this.#ground.w * ROAM
     const roamZ = this.#ground.d * ROAM
     this.#target = {
@@ -84,6 +95,21 @@ export class Orbit {
       y: 0,
       z: clamp(z, this.#ground.z - roamZ, this.#ground.z + this.#ground.d + roamZ),
     }
+  }
+
+  /**
+   * Put the camera onto one thing: it looks at that spot on the ground and
+   * comes in to read it. The way round it is standing is kept, because a view
+   * that spins as well as travels leaves the player working out where they are.
+   */
+  look(at: { readonly x: number; readonly z: number }): void {
+    this.#target = { x: at.x, y: 0, z: at.z }
+    this.#distance = clamp(Math.min(this.#distance, this.#framed * ONTO), NEAREST, this.#framed * FURTHEST)
+  }
+
+  /** How far in the view is: 1 is the whole town framed, and it climbs as the camera comes in. */
+  get zoom(): number {
+    return this.#framed / Math.max(this.#distance, 1)
   }
 
   /** Where the camera stands. */

@@ -7,11 +7,11 @@ import userEvent from '@testing-library/user-event'
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { patchesOf } from '../src/blueprint/cells.ts'
+import { Orbit } from '../src/blueprint/orbit.ts'
+import { planOf } from '../src/blueprint/plan.ts'
 import { Boot, type Show, type Start } from '../src/boot/boot.ts'
 import { DEFAULTS } from '../src/boot/brief.ts'
-import { patchesOf } from '../src/boot/blueprint/cells.ts'
-import { planOf } from '../src/boot/blueprint/plan.ts'
-import { shapeOf } from '../src/boot/blueprint/zones.ts'
 import { Library, MemoryShelf } from '../src/boot/library.ts'
 import { Panel } from '../src/boot/panel.ts'
 import type { SidecarOptions } from '@gb/sidecar'
@@ -217,25 +217,68 @@ describe('what the blueprint draws', () => {
     expect(merged.reduce((sum, rect) => sum + rect.w * rect.h, 0)).toBe(cells)
   }, 30_000)
 
-  it('draws a part of town as the shape it is, not as the blocks it is made of', () => {
-    // an L: two blocks along the top, one under the left of them
-    const shape = shapeOf({
-      id: 'district_0001',
-      name: 'Ladderford',
-      blocks: [
-        { x: 0, y: 0, w: 2, h: 2 },
-        { x: 2, y: 0, w: 2, h: 2 },
-        { x: 0, y: 2, w: 2, h: 2 },
-      ],
-    })
+  it('carries a part of town out to the middle of its own streets, so its blocks are one region', async () => {
+    const { boot } = front()
+    await boot.layOut({ ...DEFAULTS, seed: 'zoning', blocks: 4 })
+    const plan = planOf(boot.laid!)
+    const zone = plan.zones[0]
+    if (!zone) return
 
-    // six lines round the outside, and none through the middle where two
-    // blocks meet
-    expect(shape.border).toHaveLength(6)
-    expect(shape.border).toContainEqual({ x1: 0, y1: 0, x2: 4, y2: 0 })
-    expect(shape.border).toContainEqual({ x1: 0, y1: 0, x2: 0, y2: 4 })
-    expect(shape.border.some((edge) => edge.x1 === 2 && edge.x2 === 2 && edge.y1 === 0)).toBe(false)
-    // and its name goes inside it
-    expect(shape.heart).toEqual({ x: 1, y: 1 })
+    // the blocks of one part of town have a street between every pair of them,
+    // so a shape derived off the blocks alone is a heap of outlined blocks
+    const blocks = boot.laid!.plots().filter((plot) => plot.district === zone.id).length
+    expect(blocks).toBeGreaterThan(0)
+    const covered = zone.pads.reduce((sum, pad) => sum + pad.w * pad.d, 0)
+    const bare = boot
+      .laid!.districts()
+      .find((district) => district.id === zone.id)!
+      .blocks.reduce((sum, block) => sum + block.w * block.h, 0)
+    expect(covered).toBeGreaterThan(bare * boot.laid!.cellSize ** 2)
+  }, 30_000)
+})
+
+describe('the camera you look at a city with', () => {
+  const GROUND = { x: 0, z: 0, w: 400, d: 400 }
+
+  function framed(): Orbit {
+    const orbit = new Orbit()
+    orbit.frame(GROUND, 46, 1.5, { x: 0.9, y: 0.9 })
+    return orbit
+  }
+
+  it('moves the ground the way the pointer moves, on both axes', () => {
+    // dragging right carries the city right, which is the camera going left:
+    // whatever was under the pointer stays under it
+    const across = framed()
+    const middle = across.target
+    across.pan(100, 0, 800, 46)
+    // looking from the south east, screen right is west and north of the middle
+    expect(across.target.x).toBeLessThan(middle.x)
+    expect(across.target.z).toBeGreaterThan(middle.z)
+
+    // and dragging down carries it down, which is the camera going further in
+    const down = framed()
+    down.pan(0, 100, 800, 46)
+    expect(down.target.x).toBeLessThan(middle.x)
+    expect(down.target.z).toBeLessThan(middle.z)
+
+    // the opposite drag is the opposite move, so nothing is one way only
+    const back = framed()
+    back.pan(-100, -100, 800, 46)
+    expect(back.target.x).toBeGreaterThan(middle.x)
+    expect(back.target.z).toBeGreaterThan(middle.z)
+  })
+
+  it('frames the whole town, comes in on one spot, and says how far in it is', () => {
+    const orbit = framed()
+    expect(orbit.zoom).toBeCloseTo(1, 5)
+
+    orbit.look({ x: 120, z: 90 })
+    expect([orbit.target.x, orbit.target.z]).toEqual([120, 90])
+    expect(orbit.zoom).toBeGreaterThan(1)
+
+    orbit.frame(GROUND, 46, 1.5, { x: 0.9, y: 0.9 })
+    expect([orbit.target.x, orbit.target.z]).toEqual([200, 200])
+    expect(orbit.zoom).toBeCloseTo(1, 5)
   })
 })

@@ -1,56 +1,43 @@
-import { svg } from '../dom.ts'
-import type { MapDistrict, MapRect } from '../types.ts'
+import type { MapDistrict, MapEdge, MapRect, MapShape } from '../types.ts'
 
 /**
- * The parts of a city, drawn as the shapes they are.
+ * The shape a part of the city actually is.
  *
- * A district is a set of blocks, not a box, so its outline is every edge of
- * those blocks with nothing of the same district behind it. That is what makes
- * an L, a Z or a T read as one region with one border instead of a heap of
- * rectangles with lines through the middle of it.
+ * A district is a set of blocks, not a box, and the blocks of one district do
+ * not touch: there is a street between every pair of them. So the shape is
+ * worked out on the grid, with each block carried out by `grow` cells first,
+ * which is half the street around it. Its blocks then meet in the middle of
+ * their own streets and the district comes out as one region rather than as a
+ * heap of outlined blocks, and two districts either side of one street stop
+ * against each other.
  *
- * The blocks a city is cut into are not all the same size, so the edges of two
- * that touch do not line up end to end and cannot simply be cancelled against
- * each other. The shape is worked out on the grid instead: which cells the
- * district covers, then every cell edge that faces a cell it does not. The runs
- * along one line are joined back up, so the border of a district is a few dozen
- * lines rather than a few thousand.
- *
- * The fill and the outline are one path each, so a district of forty blocks is
- * two nodes and not eighty.
+ * What comes back is that region as few rectangles as cover it, the line round
+ * it (every cell edge facing a cell it does not hold, the runs along one line
+ * joined) and where its name goes. An L, a Z or a T is one shape with one
+ * border, whichever surface draws it.
  */
-export function districtShape(district: MapDistrict): SVGGElement {
-  const node = svg('g', { class: 'gb-district', 'data-district': district.id })
-  node.append(
-    svg('path', { class: 'gb-district-fill', d: fillOf(district.rects) }),
-    svg('path', { class: 'gb-district-edge', d: outlineOf(district.rects) }),
-  )
-  return node
+export function districtShape(district: MapDistrict, grow = 0): MapShape {
+  const covered = cellsOf(district.rects, grow)
+  return { rects: patchesOf(covered), border: borderOf(covered), heart: heartOf(district.rects) }
 }
 
 /** Where a district's name is written: the middle of its largest block, which is inside the shape whatever shape it is. */
-export function heartOf(district: MapDistrict): { x: number; y: number } {
+function heartOf(rects: readonly MapRect[]): { x: number; y: number } {
   let widest: MapRect | undefined
-  for (const rect of district.rects) if (!widest || rect.w * rect.h > widest.w * widest.h) widest = rect
+  for (const rect of rects) if (!widest || rect.w * rect.h > widest.w * widest.h) widest = rect
   if (!widest) return { x: 0, y: 0 }
   return { x: widest.x + widest.w / 2, y: widest.y + widest.h / 2 }
 }
 
-/** Every block as its own subpath. Where they overlap makes no difference to a fill. */
-function fillOf(rects: readonly MapRect[]): string {
-  return rects.map((rect) => `M ${rect.x} ${rect.y} h ${rect.w} v ${rect.h} h ${-rect.w} Z`).join(' ')
-}
-
-/** A run of cell edges along one line, as the grid coordinates of its two ends. */
+/** A run of cell edges along one line: which line, and where along it the run starts and ends. */
 interface Run {
   readonly along: number
   from: number
   to: number
 }
 
-function outlineOf(rects: readonly MapRect[]): string {
-  const covered = cellsOf(rects)
-  if (covered.size === 0) return ''
+function borderOf(covered: Set<string>): MapEdge[] {
+  if (covered.size === 0) return []
   const has = (x: number, y: number): boolean => covered.has(`${x},${y}`)
 
   // every cell edge with a cell on one side and nothing on the other
@@ -66,14 +53,14 @@ function outlineOf(rects: readonly MapRect[]): string {
     if (!has(x + 1, y)) right.push({ along: x + 1, from: y, to: y + 1 })
   }
 
-  const lines: string[] = []
+  const border: MapEdge[] = []
   for (const runs of [top, bottom]) {
-    for (const run of joined(runs)) lines.push(`M ${run.from} ${run.along} H ${run.to}`)
+    for (const run of joined(runs)) border.push({ x1: run.from, y1: run.along, x2: run.to, y2: run.along })
   }
   for (const runs of [left, right]) {
-    for (const run of joined(runs)) lines.push(`M ${run.along} ${run.from} V ${run.to}`)
+    for (const run of joined(runs)) border.push({ x1: run.along, y1: run.from, x2: run.along, y2: run.to })
   }
-  return lines.join(' ')
+  return border
 }
 
 /** Runs on the same line that touch end to end, joined into one. */
@@ -88,17 +75,47 @@ function joined(runs: Run[]): Run[] {
   return merged
 }
 
-/** Which cells the blocks cover, keyed by their grid coordinates. */
-function cellsOf(rects: readonly MapRect[]): Set<string> {
+/** Which cells the blocks cover once each is carried out by `grow`, keyed by their grid coordinates. */
+function cellsOf(rects: readonly MapRect[], grow: number): Set<string> {
   const covered = new Set<string>()
   for (const rect of rects) {
-    const fromX = Math.floor(rect.x)
-    const fromY = Math.floor(rect.y)
-    const toX = Math.ceil(rect.x + rect.w)
-    const toY = Math.ceil(rect.y + rect.h)
+    const fromX = Math.floor(rect.x) - grow
+    const fromY = Math.floor(rect.y) - grow
+    const toX = Math.ceil(rect.x + rect.w) + grow
+    const toY = Math.ceil(rect.y + rect.h) + grow
     for (let y = fromY; y < toY; y++) {
       for (let x = fromX; x < toX; x++) covered.add(`${x},${y}`)
     }
   }
   return covered
+}
+
+/**
+ * The region as few rectangles as cover it, and none of them overlapping.
+ * Overlapping rectangles are the same region to look at and twice the paint
+ * where they cross, which on anything drawn with an alpha is a seam.
+ */
+function patchesOf(covered: Set<string>): MapRect[] {
+  if (covered.size === 0) return []
+  const cells = [...covered].map((key) => key.split(',').map(Number) as [number, number])
+  const taken = new Set<string>()
+  const has = (x: number, y: number): boolean => covered.has(`${x},${y}`) && !taken.has(`${x},${y}`)
+  const rects: MapRect[] = []
+  for (const [x, y] of cells.sort((one, other) => one[1] - other[1] || one[0] - other[0])) {
+    if (!has(x, y)) continue
+    let right = x
+    while (has(right + 1, y)) right++
+    let bottom = y
+    while (rowFree(has, x, right, bottom + 1)) bottom++
+    for (let row = y; row <= bottom; row++) {
+      for (let at = x; at <= right; at++) taken.add(`${at},${row}`)
+    }
+    rects.push({ x, y, w: right - x + 1, h: bottom - y + 1 })
+  }
+  return rects
+}
+
+function rowFree(has: (x: number, y: number) => boolean, from: number, to: number, y: number): boolean {
+  for (let x = from; x <= to; x++) if (!has(x, y)) return false
+  return true
 }

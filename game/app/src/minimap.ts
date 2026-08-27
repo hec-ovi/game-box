@@ -108,6 +108,7 @@ export class Minimap {
   #around(x: number, y: number): Omit<MinimapView, 'facing'> {
     const size = this.#world.cellSize
     const marks: MapMark[] = this.#goals().map((goal) => ({
+      id: goal.id,
       x: goal.x / size,
       y: goal.z / size,
       label: goal.label,

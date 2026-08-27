@@ -1,10 +1,10 @@
 import * as THREE from 'three'
 import type { World } from '@gb/world'
-import { City } from './massing.ts'
-import { Orbit } from './orbit.ts'
+import { City, CITY_TONES } from '../../blueprint/massing.ts'
+import { Orbit } from '../../blueprint/orbit.ts'
+import { paletteOf } from '../../blueprint/palette.ts'
+import { planOf } from '../../blueprint/plan.ts'
 import { Overlay } from './overlay.ts'
-import { paletteOf } from './palette.ts'
-import { planOf } from './plan.ts'
 
 /** How wide the lens is. Narrow enough that a skyline stands up rather than splaying out. */
 const FOV = 46
@@ -33,7 +33,7 @@ export interface Showing {
  */
 export function open(input: { world: World; mount: HTMLElement; leave: () => void }): Showing {
   const plan = planOf(input.world)
-  const palette = paletteOf(input.mount)
+  const palette = paletteOf(input.mount, CITY_TONES)
   const overlay = new Overlay({
     plan,
     handlers: {
@@ -127,7 +127,7 @@ export function open(input: { world: World; mount: HTMLElement; leave: () => voi
     'wheel',
     (event) => {
       event.preventDefault()
-      orbit.zoom(Math.sign(event.deltaY))
+      orbit.pull(Math.sign(event.deltaY))
       draw()
     },
     { passive: false },

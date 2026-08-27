@@ -3,6 +3,7 @@ import type {
   AiProvider,
   Disposition,
   FailReason,
+  MapReadingKind,
   Notice,
   NoticeMood,
   NoticeTone,
@@ -176,6 +177,42 @@ export const COUNTER = {
   short: 'Not enough credits',
   none: 'Nothing for sale today.',
 } as const
+
+/** The two columns beside the plan: what one thing is, and everything there is to read. */
+export const MAP_PANELS = {
+  reading: 'What you picked',
+  nothing: 'Pick a label on the city to read what is known about it.',
+  main: 'Main quest',
+  side: 'Side jobs',
+  noMain: 'No main line yet. Find someone to talk to.',
+  noSide: 'No side jobs yet. Find someone to talk to.',
+  noStations: 'This town has no stations.',
+  unreached: 'Not reached yet',
+} as const
+
+/** What a thing picked off the city is, in a word over its name. */
+export const MAP_KINDS: Record<MapReadingKind, string> = {
+  you: 'Where you are',
+  goal: 'An errand',
+  offer: 'Work waiting',
+  home: 'A place of your own',
+  station: 'Where the train boards',
+  district: 'A part of town',
+  place: 'A place in town',
+}
+
+/** The story says so, wherever the two lines of work are told apart. */
+export const MAP_MAIN_KIND = 'The story'
+
+/** How many people are holding work nobody has taken, so an empty list says the town is not empty. */
+export function workWaiting(people: number): string {
+  return people === 1 ? '1 person in town is holding work you have not taken.' : `${people} people in town are holding work you have not taken.`
+}
+
+/** "Step 2 of 5". */
+export function stepCount(at: number, of: number): string {
+  return `Step ${at} of ${of}`
+}
 
 /** The map's second list: where fast travel boards, and how to use it. */
 export const STATIONS = {

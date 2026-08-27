@@ -4,6 +4,22 @@ What the project does now. Each entry is the present state, not a diff.
 
 ## 2026-08-27
 
+**The map is the city drawn as its architecture.** The map face of the window
+is the blueprint the front door shows before a city is written, standing in the
+game: every building a box at its real footprint and storey height, the streets
+the ground between them, the parts of town as the shapes their blocks make.
+Over it are callouts, a line off each thing worth naming with its name in a
+small box, which never stack and thin out to the player, their work and the
+parts of town while the whole city is in the view. Picking one, by its callout
+or by its row, puts the camera on it and says what is known about it down the
+left: which part of town, how far on foot, which step of the story. Down the
+right the main line with its steps, the side jobs and the stations, each under
+a heading that folds. The interface holds the glass and the labels; the game
+draws the city, moves the camera and answers what a thing is. A part of town is
+derived once, in `@gb/hud`'s `districtShape`, and both surfaces read it. With
+the map up the city behind it stops drawing: 0.4 ms of main thread a frame
+against 6.6 ms with the city running, on an 8 block town.
+
 **The AI is chosen per job, from either settings screen.** Two families of
 engine: a hosted service reached with a key (OpenRouter), and an
 OpenAI-compatible server of your own (llama.cpp, ollama, vLLM). Each carries its

@@ -24,6 +24,8 @@ export type IconName =
   | 'minus'
   | 'fit'
   | 'you'
+  | 'chevron-down'
+  | 'unknown'
   | 'pin'
   | 'diamond'
   | 'ring'
@@ -68,6 +70,8 @@ const PATHS: Record<IconName, readonly string[]> = {
   minus: ['M5 12 L19 12'],
   fit: ['M4 9 L4 4 L9 4', 'M15 4 L20 4 L20 9', 'M20 15 L20 20 L15 20', 'M9 20 L4 20 L4 15'],
   you: ['M12 3 L19 20 L12 16 L5 20 Z'],
+  'chevron-down': ['M5 9 L12 16 L19 9'],
+  unknown: ['M8.5 9 A3.5 3.5 0 1 1 12 12.5 L12 15', 'M12 18 L12 18.5'],
   pin: ['M12 21 C12 21 19 14.5 19 10 A7 7 0 1 0 5 10 C5 14.5 12 21 12 21 Z', 'M12 7 A3 3 0 1 0 12 13 A3 3 0 1 0 12 7'],
   diamond: ['M12 3 L21 12 L12 21 L3 12 Z'],
   ring: ['M12 4 A8 8 0 1 0 12 20 A8 8 0 1 0 12 4'],

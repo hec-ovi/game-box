@@ -3,6 +3,7 @@ export { Hud } from './hud.ts'
 export { HUD_KEYS } from './controls.ts'
 export { HudError, type HudErrorCode } from './errors.ts'
 export { HUD_CSS } from './style/index.ts'
+export { districtShape } from './map/districts.ts'
 export type {
   AiFamily,
   AiHealth,
@@ -32,11 +33,21 @@ export type {
   LoaderView,
   Inspecting,
   MapDistrict,
+  MapDrawn,
+  MapEdge,
+  MapFact,
   MapMark,
+  MapMarkKind,
+  MapMove,
   MapPlot,
   MapProminence,
+  MapReading,
+  MapReadingKind,
   MapRect,
+  MapShape,
+  MapSpot,
   MapStation,
+  MapSurface,
   MapView,
   MinimapDoor,
   MinimapView,

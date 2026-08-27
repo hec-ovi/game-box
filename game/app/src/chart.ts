@@ -1,4 +1,4 @@
-import type { Hud, MapDistrict, MapMark, MapPlot, MapStation } from '@gb/hud'
+import type { Hud, MapDistrict, MapMark, MapPlot, MapStation, MapView } from '@gb/hud'
 import type { World } from '@gb/world'
 import { interiorPlot, planOf, type Marked } from './places.ts'
 import { bearing, type Vec2 } from './walk.ts'
@@ -15,6 +15,14 @@ export interface Pose {
  * move and cheap enough to cost nothing.
  */
 const EVERY = 0.25
+
+/** The player's own mark, which is the one thing on the map that is always the same thing. */
+export const YOU = 'you'
+
+/** Whoever is drawing the city on the glass, handed the survey the interface is pushed. */
+export interface Drawing {
+  survey(view: MapView): void
+}
 
 /**
  * The city from above, for the map face of the window. The plan is the grid the
@@ -34,6 +42,7 @@ export class Chart {
   #stations: readonly MapStation[]
   #boarding: () => string | undefined
   #homes: () => readonly string[]
+  #drawing: Drawing | undefined
   #plan: MapPlot[]
   #districts: readonly MapDistrict[]
   #landmarks: readonly string[]
@@ -55,6 +64,8 @@ export class Chart {
     boarding?: () => string | undefined
     /** The interiors the player holds the deed to, so a place of their own is on their map. */
     homes?: () => readonly string[]
+    /** Whoever draws the city on the glass, so the drawing and the interface read one survey. */
+    drawing?: Drawing
   }) {
     this.#world = input.world
     this.#hud = input.hud
@@ -65,6 +76,7 @@ export class Chart {
     this.#stations = input.stations ?? []
     this.#boarding = input.boarding ?? (() => undefined)
     this.#homes = input.homes ?? (() => [])
+    this.#drawing = input.drawing
     this.#plan = planOf(this.#world)
     // the parts of the city, read once: a cut is the world file's and never
     // changes while it is being played
@@ -87,36 +99,34 @@ export class Chart {
     this.draw()
   }
 
-  /** Put the plan up and draw it now: what walking up to a subway entrance opens. */
-  show(): void {
-    this.open = true
-    this.#hud.show({ window: 'map' })
-    this.draw()
-  }
-
-  /** Measure the city and push it, whatever the map face is doing. */
+  /**
+   * Measure the city and push it, whatever the map face is doing. The survey
+   * goes two ways off one measurement: to the interface, which writes the names
+   * and the lists, and to whoever is drawing the city, which stands a pin on
+   * each of them.
+   */
   draw(): void {
     const goals = this.#goals()
     const offers = this.#offers()
     const boarding = this.#boarding()
-    this.#hud.show({
-      map: {
-        width: this.#world.grid.width,
-        height: this.#world.grid.height,
-        plots: this.#plots(goals),
-        ...(this.#districts.length ? { districts: this.#districts } : {}),
-        marks: [
-          this.#here(),
-          ...goals.map((goal) => this.#pin(goal, 'goal')),
-          // work waiting where the player has not taken it, so somebody
-          // holding nothing can read where to start
-          ...offers.map((offer) => this.#pin(offer, 'offer')),
-          ...this.#ownHomes(),
-        ],
-        stations: this.#stations,
-        ...(boarding ? { boarding } : {}),
-      },
-    })
+    const view: MapView = {
+      width: this.#world.grid.width,
+      height: this.#world.grid.height,
+      plots: this.#plots(goals),
+      ...(this.#districts.length ? { districts: this.#districts } : {}),
+      marks: [
+        this.#here(),
+        ...goals.map((goal) => this.#pin(goal, 'goal')),
+        // work waiting where the player has not taken it, so somebody
+        // holding nothing can read where to start
+        ...offers.map((offer) => this.#pin(offer, 'offer')),
+        ...this.#ownHomes(),
+      ],
+      stations: this.#stations,
+      ...(boarding ? { boarding } : {}),
+    }
+    this.#hud.show({ map: view })
+    this.#drawing?.survey(view)
   }
 
   /** The player, as an arrow. The map is north up, so a heading is its bearing. */
@@ -124,6 +134,7 @@ export class Chart {
     const pose = this.#you()
     const size = this.#world.cellSize
     return {
+      id: YOU,
       x: pose.position.x / size,
       y: pose.position.z / size,
       label: 'You',
@@ -134,7 +145,7 @@ export class Chart {
 
   #pin(goal: Marked, kind: 'goal' | 'offer'): MapMark {
     const size = this.#world.cellSize
-    return { x: goal.x / size, y: goal.z / size, label: goal.label, kind, line: goal.line }
+    return { id: goal.id, x: goal.x / size, y: goal.z / size, label: goal.label, kind, line: goal.line }
   }
 
   /** Every place the player owns, on the plot it is inside. A deed to a room the city has lost marks nothing. */
@@ -145,6 +156,7 @@ export class Chart {
       const plot = plotId ? this.#world.plot(plotId) : undefined
       if (!plot) continue
       marks.push({
+        id: `home:${interiorId}`,
         x: plot.rect.x + plot.rect.w / 2,
         y: plot.rect.y + plot.rect.h / 2,
         label: plot.name,

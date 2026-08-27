@@ -10,6 +10,12 @@ const POINTS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-wes
 /** Closer than this and there is nothing left to walk. */
 const ARRIVED = 6
 
+/** How far out to look for somewhere to stand, when the spot aimed at is a building. */
+const NEAR_RINGS = 12
+
+/** A cell on the grid. */
+type Point2 = { readonly x: number; readonly y: number }
+
 /**
  * The way to whatever the tracked quest is pointing at: how far the walk is and
  * which way the street runs from where the player is standing. The route comes
@@ -20,23 +26,6 @@ const ARRIVED = 6
  * `from` is where the player stands on the city, which indoors is the doorstep
  * of the building they are in rather than their metres across its floor.
  */
-/** How far out to look for somewhere to stand, when the middle of a district is a building. */
-const NEAR_RINGS = 12
-
-/** The middle of a set of blocks, in cells. */
-function middleOf(blocks: readonly { x: number; y: number; w: number; h: number }[]): { x: number; y: number } {
-  let x = 0
-  let y = 0
-  let weight = 0
-  for (const block of blocks) {
-    const area = block.w * block.h
-    x += (block.x + block.w / 2) * area
-    y += (block.y + block.h / 2) * area
-    weight += area
-  }
-  return weight ? { x: Math.round(x / weight), y: Math.round(y / weight) } : { x: 0, y: 0 }
-}
-
 export class Guide {
   #world: World
   #nav: CityNav
@@ -73,28 +62,29 @@ export class Guide {
     return { label: goal.label, bearing: bearingOf(from, corner), distance: length(route), line: goal.line }
   }
 
-  /** One line for the player: where they are headed and which way to set off. */
   /**
-   * How far it is to walk to a part of the city, in words, and nothing when the
-   * player cannot get there on foot. The middle of the district is aimed at,
-   * which is a place rather than a door, so the nearest walkable cell to it is
-   * what the route actually ends on.
+   * How far the walk is to somewhere on the city, in metres, and nothing where
+   * there is no walk to it. A building is walked to at its door; anywhere else
+   * is walked to at the nearest cell somebody can stand on, because the middle
+   * of a part of town is as often a rooftop as a street.
    */
-  walkTo(districtId: string): string | undefined {
-    const district = this.#world.districts().find((one) => one.id === districtId)
-    if (!district) return undefined
-    const cell = this.#nearestWalkable(middleOf(district.blocks))
-    if (!cell) return undefined
+  metresTo(to: { readonly x: number; readonly z: number; readonly plotId?: string }): number | undefined {
     const size = this.#world.cellSize
     const from = this.#from()
-    const route = this.#nav.path({ x: Math.floor(from.x / size), y: Math.floor(from.z / size) }, cell)
-    if (!route) return `${district.name} is over there, with no way to walk to it`
-    const metres = length(this.#nav.waypoints(route))
-    return `${district.name}, ${Math.round(metres / 10) * 10} m on foot`
+    const start = { x: Math.floor(from.x / size), y: Math.floor(from.z / size) }
+    const path = to.plotId
+      ? this.#nav.pathToDoor(this.#world, start, to.plotId)
+      : this.#walk(start, { x: Math.floor(to.x / size), y: Math.floor(to.z / size) })
+    return path ? length(this.#nav.waypoints(path)) : undefined
+  }
+
+  #walk(start: Point2, to: Point2): ReturnType<CityNav['path']> {
+    const cell = this.#nearestWalkable(to)
+    return cell ? this.#nav.path(start, cell) : undefined
   }
 
   /** The middle of a district is often a rooftop, so the walk aims at the nearest cell somebody can stand on. */
-  #nearestWalkable(at: { x: number; y: number }): { x: number; y: number } | undefined {
+  #nearestWalkable(at: Point2): Point2 | undefined {
     if (this.#nav.walkable(at)) return at
     for (let ring = 1; ring <= NEAR_RINGS; ring++) {
       for (let dx = -ring; dx <= ring; dx++) {

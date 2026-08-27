@@ -5,10 +5,9 @@ import type { QuestLog } from '@gb/quest'
 import type { World } from '@gb/world'
 import type { Buildings } from './buildings.ts'
 import type { Chase } from './chase.ts'
-import type { Chart } from './chart.ts'
-import { typingSomewhere } from './focus.ts'
 import type { Companions } from './companions.ts'
 import type { Conditions } from './conditions.ts'
+import { typingSomewhere } from './focus.ts'
 import type { Guide } from './guide.ts'
 import type { Locks } from './locks.ts'
 import type { Machines } from './machines.ts'
@@ -39,7 +38,7 @@ export class Interaction {
   #chase: Chase
   #locks: Locks
   #machines: Machines
-  #chart: Chart
+  #openMap: () => void
   #guide: Guide
   #conditions: Conditions
   #report: Reporting
@@ -62,7 +61,8 @@ export class Interaction {
     chase: Chase
     locks: Locks
     machines: Machines
-    chart: Chart
+    /** Putting the map up, which is what a subway entrance does. */
+    openMap: () => void
     guide: Guide
     conditions: Conditions
     report: Reporting
@@ -82,7 +82,7 @@ export class Interaction {
     this.#chase = input.chase
     this.#locks = input.locks
     this.#machines = input.machines
-    this.#chart = input.chart
+    this.#openMap = input.openMap
     this.#guide = input.guide
     this.#conditions = input.conditions
     this.#report = input.report
@@ -179,7 +179,7 @@ export class Interaction {
       // a subway entrance is not somewhere to go: it puts the plan up with the
       // stations on it, and the ride is the one the player picks there
       case 'station':
-        this.#chart.show()
+        this.#openMap()
         break
     }
   }

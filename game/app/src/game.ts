@@ -16,6 +16,7 @@ import { Attending, type Post } from './attending.ts'
 import { Buildings } from './buildings.ts'
 import { Chase } from './chase.ts'
 import { Chart } from './chart.ts'
+import { CityMap } from './citymap.ts'
 import { Companions } from './companions.ts'
 import { Compass } from './compass.ts'
 import { Conditions } from './conditions.ts'
@@ -25,6 +26,8 @@ import { Escorts } from './escorts.ts'
 import { Garage } from './garage.ts'
 import { Gestures } from './gestures.ts'
 import { Guide } from './guide.ts'
+import { interiorPlot } from './places.ts'
+import { Readings } from './reading.ts'
 import { Intents } from './intents.ts'
 import { Interaction } from './interaction.ts'
 import { Locks } from './locks.ts'
@@ -119,6 +122,7 @@ export class Game {
   #report: Reporting
   #playthrough: Playthrough
   #chart: Chart
+  #citymap: CityMap
   #travel: Travel
   #compass: Compass
   #minimap: Minimap
@@ -431,6 +435,14 @@ export class Game {
       body: this.#body,
       companions: this.#companions,
     })
+    // the map is the architecture, drawn on the glass the interface holds: the
+    // survey below is measured once and goes to both, so the names over the
+    // city and the lists beside it are one reading of the town
+    this.#citymap = new CityMap({
+      world: this.#world,
+      surface: this.#hud.mapSurface,
+      onRead: (targetId) => this.#intents.handle({ kind: 'read', targetId }),
+    })
     this.#chart = new Chart({
       world: this.#world,
       hud: this.#hud,
@@ -444,8 +456,21 @@ export class Game {
       boarding: () => (this.#buildings.outdoors ? this.#travel.boarding(this.#body.position) : undefined),
       // and the places they own, so a player who has bought a home can find it
       homes: () => this.#player.owned(),
+      drawing: this.#citymap,
     })
     const guide = new Guide({ world: this.#world, nav, from: () => this.#buildings.cityPosition(), goals: followed, steps })
+    // what the panel beside the city says about whatever was picked off it
+    const readings = new Readings({
+      world: this.#world,
+      goals: () => this.#report.goals(),
+      offers: () => this.#report.offers(),
+      homes: () => this.#player.owned(),
+      you: () => this.#buildings.cityPosition(),
+      steps: () => this.#log.objectives(),
+      journal: () => this.#log.journal(),
+      metres: (to) => guide.metresTo(to),
+      plotOf: (interiorId) => interiorPlot(this.#world, interiorId),
+    })
     this.#compass = new Compass({
       hud: this.#hud,
       guide,
@@ -493,9 +518,11 @@ export class Game {
       ...(input.ai ? { ai: input.ai } : {}),
       pause: (on) => this.pause(on),
       // a thing opened in the inventory is drawn from every side and pushed
-      // back, and a part of the city clicked on the plan says how far it is
+      // back, and a thing picked off the map is shown and read out beside it
       inspecting: this.#inspecting,
-      guide,
+      citymap: this.#citymap,
+      readings,
+      you: () => this.#buildings.cityPosition(),
       leave: input.leave,
       // a page with no pointer lock to give back has nothing to release
       releasePointer: () => document.exitPointerLock?.(),
@@ -516,7 +543,8 @@ export class Game {
       chase: this.#chase,
       locks: this.#locks,
       machines: this.#machines,
-      chart: this.#chart,
+      // a subway entrance puts the map up, the same way its key does
+      openMap: () => this.#intents.openMap(),
       guide,
       conditions,
       report: this.#report,
@@ -754,6 +782,7 @@ export class Game {
     this.#aiOff?.()
     this.#screens?.close()
     this.#interaction.dispose()
+    this.#citymap.dispose()
     this.#view.dispose()
     this.#body.dispose()
     this.#hud.destroy()

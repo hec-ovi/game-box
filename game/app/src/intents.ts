@@ -2,15 +2,17 @@ import type { Hud, HudIntent } from '@gb/hud'
 import type { QuestLog } from '@gb/quest'
 import type { Ai } from './ai.ts'
 import type { Chart } from './chart.ts'
+import type { CityMap } from './citymap.ts'
 import type { Conditions } from './conditions.ts'
 import type { Counters } from './counters.ts'
+import type { Inspect } from './inspecting.ts'
 import type { Machines } from './machines.ts'
 import type { Player } from './player.ts'
+import type { Readings } from './reading.ts'
 import type { Reporting } from './reporting.ts'
 import type { Talking } from './talking.ts'
 import type { Travel } from './travel.ts'
 import type { View } from './view.ts'
-import type { Inspect } from './inspecting.ts'
 
 /**
  * What the player did in the interface, carried to whoever owns it. `@gb/hud`
@@ -32,7 +34,9 @@ export class Intents {
   #ai: Ai | undefined
   #pause: (on: boolean) => void
   #inspecting: Inspect | undefined
-  #guide: { walkTo(districtId: string): string | undefined } | undefined
+  #citymap: CityMap | undefined
+  #readings: Readings | undefined
+  #you: (() => { x: number; z: number }) | undefined
   #leave: () => void
   #releasePointer: () => void
 
@@ -54,8 +58,12 @@ export class Intents {
     pause?: (on: boolean) => void
     /** Drawing a thing the player opened in the inventory. Without one the panel keeps its icon. */
     inspecting?: Inspect
-    /** How far a part of the city is on foot. Without one, clicking it says nothing. */
-    guide?: { walkTo(districtId: string): string | undefined }
+    /** The city drawn on the map's glass. Without one, the map has no camera to move. */
+    citymap?: CityMap
+    /** What is known about a thing picked off the map. Without one, picking one says nothing. */
+    readings?: Readings
+    /** Where the player stands on the city, which is what centring on them means. */
+    you?: () => { x: number; z: number }
     /** The way out of the game, which the game itself does not decide. */
     leave: () => void
     releasePointer: () => void
@@ -74,7 +82,9 @@ export class Intents {
     this.#ai = input.ai
     this.#pause = input.pause ?? (() => {})
     this.#inspecting = input.inspecting
-    this.#guide = input.guide
+    this.#citymap = input.citymap
+    this.#readings = input.readings
+    this.#you = input.you
     this.#leave = input.leave
     this.#releasePointer = input.releasePointer
   }
@@ -88,6 +98,16 @@ export class Intents {
   handOver(away: boolean): void {
     this.#body.setTyping(away)
     if (away) this.#hud.show({ window: null })
+  }
+
+  /**
+   * Open the map from the game rather than from the interface: walking up to a
+   * subway entrance is the same as pressing its key, so it goes the same way and
+   * the city behind it stands still for it too.
+   */
+  openMap(): void {
+    this.#hud.show({ window: 'map' })
+    this.handle({ kind: 'window', window: 'map' })
   }
 
   handle(intent: HudIntent): void {
@@ -132,6 +152,10 @@ export class Intents {
       // window the player has to click needs the pointer back
       case 'window':
         this.#chart.open = intent.window === 'map'
+        // the survey before the drawing, so the city goes up with its names on
+        // it rather than getting them a frame later
+        if (intent.window === 'map') this.#chart.draw()
+        if (this.#citymap) this.#citymap.open = intent.window === 'map'
         if (intent.window !== null) this.#releasePointer()
         this.#pause(intent.window !== null)
         // nothing is being drawn into the inventory's canvas once it is off screen
@@ -145,12 +169,18 @@ export class Intents {
       case 'turn':
         this.#inspecting?.turn(intent.yaw, intent.pitch)
         return
-      // a part of the city clicked on the plan: point the player at it
-      case 'district': {
-        const said = this.#guide?.walkTo(intent.districtId)
-        if (said) this.#hud.announce({ kind: 'note', text: said })
+      // something picked off the map, by its callout or by its row: the camera
+      // goes onto it and the panel beside it says what is known about it
+      case 'read': {
+        const read = intent.targetId === null ? undefined : this.#readings?.of(intent.targetId)
+        this.#citymap?.look(read?.at, read?.districtId)
+        this.#hud.show({ reading: read?.reading ?? null })
         return
       }
+      // the camera over the city, moved by a tool or its key
+      case 'map-move':
+        this.#citymap?.move(intent.move, this.#you?.())
+        return
       // the settings tab: the same calls P, T and K make, and the tab reads
       // what the clock says back rather than what it asked for
       case 'lock-time':
@@ -194,6 +224,7 @@ export class Intents {
       // the player and whoever is with them down at the other station
       case 'travel':
         this.#chart.open = false
+        if (this.#citymap) this.#citymap.open = false
         this.#hud.show({ window: null })
         this.#pause(false)
         this.#travel.board(intent.stationId)
