@@ -8,6 +8,27 @@ You give it a theme and a seed. It writes the town's history, lays out streets a
 
 The loop is quests, not combat: talk to somebody, cross town, go into a building, find a person or a thing, take it, carry it, leave it somewhere, deliver it, get paid. Quests branch, and a branch you did not take stays in the journal so the choice reads as one.
 
+## Turn WebGPU on first
+
+The game runs on WebGPU where the machine has it and falls back to WebGL2 where
+it does not. The fallback works, but it is not what the city is built to look
+like: walls lose their material, daylight goes flat, and frame times stop
+meaning anything.
+
+On Linux, Chromium browsers (Chrome, Brave, Edge) still keep WebGPU behind a
+flag for most driver setups, so check before you judge how it looks.
+
+1. Open `brave://flags` (or `chrome://flags`).
+2. Search `webgpu` and set **Unsafe WebGPU Support** to Enabled.
+3. Search `vulkan` and set **Vulkan** to Enabled.
+4. Restart the browser.
+5. Open `brave://gpu` (or `chrome://gpu`) and check WebGPU reads as hardware
+   accelerated rather than disabled.
+
+Flags set on that page persist, so this is once per machine, not once per
+launch. If the console says `No available adapters` and
+`WebGPU is not available, running under WebGL2 backend`, the flags did not take.
+
 ## What you need
 
 - **Node 22 or newer, and pnpm.** That is the whole requirement to play.
