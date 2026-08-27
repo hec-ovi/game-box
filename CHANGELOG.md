@@ -4,6 +4,59 @@ What the project does now. Each entry is the present state, not a diff.
 
 ## 2026-08-27
 
+**A locally installed agent writes the whole city.** A command-line agent runs
+the model its own provider names and never the one the request carries, because
+a model name in a request is a word out of an HTTP service's catalogue: the game
+asks a server of its own for `default`, and handing that to an agent on this
+machine exits 1 with nothing on stderr. Measured on an 8 by 8 city written
+through `agy` on `gemini-3.7-flash-low`: 562 buildings, 90 people, 52 quests and
+no call at all falling back to the offline author, in 468 seconds. The same
+build before this was 21 refusals in 24 calls.
+
+**A quest can pay out any car the pack draws.** The ten models the traffic
+carries are the ten a reward, a save and a deed can name, each with a word the
+player reads for it, and a seated body clears the lowest roof in the pack.
+
+**The streets carry ten cars.** Three models the owner downloaded drive alongside
+the seven the pack shipped with: a gran turismo, a concept car and a police
+patrol, a little over a quarter of the traffic between them. Each was fitted to a
+street car's budget (`node tools/fit-model.mjs <file> --keep-parts --bake`), which
+reads its texture sheets onto its vertices so the pack stays one material and four
+draws a car with no images in it, and staged under `assets/src/` with its licence,
+its page and the command that fitted it recorded in `assets/registry/sources.json`.
+A downloaded car's wheels are found by shape rather than by name, four round
+islands standing on the road, so a car welded into one piece still rolls and
+steers. An average car is 5,135 triangles and 4 draws, and forty of them are
+205,395 triangles and 160 draws.
+
+**The work in town is on the interface.** A job is knowable once the player
+could walk up and take it: its giver can be found and its conditions are met.
+Every one of those goes to the interface with the job's name, whose door it is
+behind and the building to look in, and both lists on the plan carry them under the
+jobs already in hand, counted in the heading. On a 4 by 4 city built offline
+that is 11 jobs on the first frame, 1 on the main line and 10 errands, where the
+journal has no pages at all.
+
+**You can find where the story starts.** With nothing on the board the corner
+panel names the giver of the main line and where to find them, the compass and
+`G` walk to that door, and it is the one piece of work waiting written on the
+whole city rather than only from close up.
+
+**A conversation starts with the player.** Walking up puts the menu and the
+transcript on the panel and says nothing, so the first model call is the
+player's own first turn. What the walk-up handed over is announced instead: the
+word, the key or the door a step credited on the way in paid out, and the codex
+page that seeing somebody earned. Somebody the crowd has walked off their post
+is talked to as somebody out walking.
+
+**You can see into a shopfront at any hour.** Who has their lights on is a
+question about the dark, so a window shows its picture whole in daylight and
+only a dark one goes dark after dark, and a room keeps a light of its own at
+noon because a shop does. Standing 3 m off a shopfront on the shipped pack, the
+pane over the glass is 26 to 39 percent of the pixel at noon and 23 to 37
+percent at nine in the evening, so the glass reads the same at both. `node
+game/prefab/tools/measure-glass.ts` prints the split.
+
 **A city has a downtown.** How tall a plot builds is read off how near the
 middle of the grid its door stands, pushed out along the avenues: past the band
 the catalogue is drawn for, the kit stacks a storey of wall at a time. On a 20
