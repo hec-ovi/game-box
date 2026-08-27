@@ -28,7 +28,17 @@ export function assemble(world: World, planned: readonly PlannedSite[], written:
     if (!one.inside) continue
 
     const { interiorId, size, plan, forSale } = one.inside
-    world.addInterior({ id: interiorId, plotId, kind: one.charter.word, finish: one.charter.finish, size, ...plan, ...(forSale !== undefined ? { forSale } : {}) })
+    world.addInterior({
+      id: interiorId,
+      plotId,
+      kind: one.charter.word,
+      // what the writer said this place is; a narrator that wrote none leaves the field off
+      ...(instance?.character ? { description: instance.character } : {}),
+      finish: one.charter.finish,
+      size,
+      ...plan,
+      ...(forSale !== undefined ? { forSale } : {}),
+    })
     fill(world, one, plotId, instance, names)
   }
   return added

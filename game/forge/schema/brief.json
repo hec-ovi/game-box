@@ -27,7 +27,7 @@
     "openPlaces": {
       "type": "integer",
       "minimum": 1,
-      "maximum": 24
+      "maximum": 200
     },
     "blockCells": {
       "type": "integer",

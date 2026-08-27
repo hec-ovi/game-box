@@ -1,6 +1,6 @@
 # @gb/world contract
 
-contractVersion: 0.16.0
+contractVersion: 0.17.0
 
 ## Purpose
 
@@ -157,6 +157,13 @@ that brought none, and an interior a `World` hands out (`interior(id)`,
 `interiors()`) always carries one, read off the charter when the file left it
 out. A loaded file is left as written: a city exported before interiors
 carried a finish saves back byte for byte.
+
+**What a place is.** `Interior.description` is what the place is in a sentence
+or two, as whoever wrote the city wrote it: who runs it, what it lives off,
+what has been going on there. Free text, 2000 characters, which holds a
+paragraph several times over, and model output riding in the file like a
+person's life, so it is only ever printed. Absent when nobody wrote one, and a
+file written before it opens and saves back unchanged.
 
 ## Locks, keys, cards and deeds
 

@@ -51,7 +51,7 @@ export const INSTANCES: Stage = {
         ],
         returns: [
           { field: 'name', marks: ['file', 'screen'], note: 'the sign over the door and the interior\'s name. Refused and rewritten by the offline composer if its head word is already over another door.' },
-          { field: 'character', marks: ['prompt', 'dropped'], note: 'what the place is. Kept in a map inside the Scribe and shown to the quest writer for this city only. `@gb/world` has no field for it, `assemble.ts` never reads it, so it is never written to the file and no player ever reads it. The one-place-at-a-time path sets it to the empty string.' },
+          { field: 'character', marks: ['prompt', 'file', 'screen'], note: 'what the place is. Written to `@gb/world`\'s `Interior.description` by `assemble.ts`, so it is in the file and under the place\'s name in the codex; the Scribe also keeps it in a map and shows it to the quest writer for this city. The one-place-at-a-time path writes none, and the interior carries no field at all.' },
           { field: 'people[].postId', marks: ['shape'], note: 'the caller\'s own anchor id, handed out and handed back, so a person is zipped onto a post by id and never by position.' },
           { field: 'people[].given, people[].family', marks: ['file', 'screen'], note: 'joined into `npc.name`. The family name can only start with the four letters this place was dealt, because the schema will not decode anything else.' },
           { field: 'people[].personality, knowledge, life, background', marks: ['file'], note: 'stage 3. Straight into the world file and read by @gb/talk at play time.' },

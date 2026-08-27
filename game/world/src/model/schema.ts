@@ -103,6 +103,8 @@ export const InteriorSchema = z.object({
   plotId: id('plot'),
   /** The plot's word. */
   kind: WordSchema,
+  /** What this place is, in a sentence or two, as its writer wrote it. Absent when nobody wrote any. */
+  description: z.string().min(1).max(2000).optional(),
   /** The language its rooms are dressed in. Absent is read back as its charter's. */
   finish: z.enum(FINISHES).optional(),
   /** Whose home it is: one of the city's people, or the player. Absent is nobody's. */

@@ -28,8 +28,8 @@ import {
   type WorldError,
 } from '../src/index.ts'
 
-/** A two-street hamlet with one bar, its interior, its bartender and a bottle. */
-function hamlet() {
+/** A two-street hamlet with one bar, its interior, its bartender and a bottle. `description` is what a writer wrote about the bar, when one did. */
+function hamlet(description?: string) {
   const world = World.create({ name: 'Dry Gulch', theme: 'western', seed: 'test-1', width: 16, height: 16 })
   world.paint({ x: 0, y: 6, w: 16, h: 2 }, 'street')
   world.paint({ x: 0, y: 5, w: 16, h: 1 }, 'sidewalk')
@@ -49,6 +49,7 @@ function hamlet() {
     id: world.mintId('interior'),
     plotId: plot.value.id,
     kind: 'bar',
+    ...(description ? { description } : {}),
     size: { w: 8, h: 8 },
     rooms: [{ id: world.mintId('room'), kind: 'main', name: 'Saloon', rect: { x: 0, y: 0, w: 8, h: 8 } }],
     doors: [],
@@ -724,6 +725,30 @@ describe('what a thing is worth', () => {
     expect(violationsOf(World.load(doc))).toContain('items.0.value')
     doc.items[0].value = -1
     expect(violationsOf(World.load(doc))).toContain('items.0.value')
+  })
+})
+
+describe('what a place is', () => {
+  const written = 'A bar the harbour crews drink in before the early tide. Nobody has settled a tab here since spring.'
+
+  it('keeps what the writer wrote about a place, and hands it back after a save and a load', () => {
+    const { world } = hamlet(written)
+    expect(world.interiors()[0]!.description).toBe(written)
+
+    const reloaded = World.load(docOf(world))
+    expect(reloaded.ok).toBe(true)
+    if (!reloaded.ok) return
+    expect(reloaded.value.interiors()[0]!.description).toBe(written)
+  })
+
+  it('leaves a place nobody wrote about without the field, and refuses an empty one', () => {
+    const { world } = hamlet()
+    const doc = docOf(world)
+    expect('description' in doc.interiors[0]).toBe(false)
+    expect(world.interiors()[0]!.description).toBeUndefined()
+
+    doc.interiors[0].description = ''
+    expect(violationsOf(World.load(doc))).toContain('interiors.0.description')
   })
 })
 

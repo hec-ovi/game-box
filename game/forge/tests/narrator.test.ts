@@ -170,6 +170,24 @@ describe('a town written by a narrator answering many places at once', () => {
     expect(singular.peak, 'the narrator was asked one question at a time').toBeGreaterThan(single.world.npcs().length / 2)
   })
 
+  it('writes what a narrator says a place is onto its interior, and leaves the field off a place it says nothing about', async () => {
+    // the offline narrator writes no character at all, so the first place stands
+    // for every place nobody wrote about and the rest carry what was written
+    const said = (at: number) => `The ${at}th place, with the radio left on and a tab nobody has settled since spring.`
+    const fanned = new Fanned('character', 3)
+    const inner = fanned.writeInstances.bind(fanned)
+    fanned.writeInstances = async (requests) => (await inner(requests)).map((one, at) => (at === 0 ? one : { ...one, character: said(at) }))
+
+    const { world } = await town(fanned)
+    const interiors = world.interiors()
+    expect(interiors.length).toBeGreaterThan(1)
+    expect(interiors[0]!.description).toBeUndefined()
+    expect('description' in interiors[0]!).toBe(false)
+    for (const [at, interior] of interiors.entries()) {
+      if (at > 0) expect(interior.description, `place ${at} lost what it is`).toBe(said(at))
+    }
+  })
+
   it('writes every person a life and a staged background, in the first person where talk says it out loud', async () => {
     const { world } = await town(new OfflineNarrator('fanned'))
     const premise = world.premise()!

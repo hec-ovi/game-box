@@ -95,7 +95,8 @@ export class CodexTab implements Tab {
   /**
    * The one that is open, in full. A person is shown their own face where the
    * game has drawn one; without it, and for a place, the tile's own icon
-   * stands in.
+   * stands in. A line the game did not send is not drawn at all, so a place
+   * nobody wrote about leaves no empty band under its name.
    */
   #showAmplified(name: string, subtitle: string, desc: string, mark: 'door' | 'person', portrait?: string): void {
     const avatar = el('div', `gb-codex-amplified-avatar gb-avatar-${mark}`)
@@ -112,8 +113,8 @@ export class CodexTab implements Tab {
     this.#amplified.replaceChildren(
       avatar,
       el('h3', 'gb-t6', name),
-      el('p', 'gb-t2 gb-amplified-sub', subtitle),
-      el('p', 'gb-t3 gb-amplified-desc', desc),
+      ...(subtitle ? [el('p', 'gb-t2 gb-amplified-sub', subtitle)] : []),
+      ...(desc ? [el('p', 'gb-t3 gb-amplified-desc', desc)] : []),
     )
   }
 

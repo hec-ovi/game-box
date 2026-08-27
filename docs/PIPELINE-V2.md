@@ -382,8 +382,9 @@ brief produces a thin answer: this model mirrors what it is given.
 | `things[].name` | string | 2 to 60 | yes | what it is called |
 | `things[].description` | string | 4 to 300 | yes | what it is |
 
-`character` lands on `@gb/world`'s interior as a field, so it survives the
-process, is hashed with the file, and is what a later story reads back.
+`character` lands on `@gb/world`'s interior as `Interior.description`, so it
+survives the process, is hashed with the file, and is what a later story reads
+back.
 
 ### Tool 3b: `write_person`, one call per post
 
@@ -634,7 +635,7 @@ under the new order. Steps 6 to 8 are the only ones that can break the game.
 
 **1. One `@gb/world` bump, one migration.** `districts` on the city spec,
 `district` on `PlotSchema`, `slots[]` on the document, a reserved `slot` charter
-word, `title` and `side` on `NpcSchema`, `character` on the interior, `world.id`
+word, `title` and `side` on `NpcSchema`, `description` on the interior, `world.id`
 minted from the seed. All optional but the id, `schemaVersion` stays 1, every
 existing city still loads. Doing this in six bumps is six rounds of caller churn.
 

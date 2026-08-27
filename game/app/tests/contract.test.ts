@@ -596,9 +596,10 @@ function screenful() {
  * A bar with a counter along the north wall: two people behind it and a panel of
  * stained glass lying beside the nearest of them, 0.45 m to that person's own
  * right. They keep the anchor at x=9.65 facing south, so their right is west
- * and the glass lands at x=9.20.
+ * and the glass lands at x=9.20. `description` is what the city was written to
+ * say about the bar, when it was written about at all.
  */
-function anchorage(): { world: World; plotId: string; doorstep: Vec2 } {
+function anchorage(description?: string): { world: World; plotId: string; doorstep: Vec2 } {
   const world = World.create({ name: 'Anchorage', theme: 'plain', seed: 'reach', width: 24, height: 14 })
   const plot = world.addPlot({
     kind: 'bar',
@@ -614,6 +615,7 @@ function anchorage(): { world: World; plotId: string; doorstep: Vec2 } {
     id: 'interior_0001',
     plotId: plot.value.id,
     kind: 'bar',
+    ...(description ? { description } : {}),
     size: { w: 14, h: 8 },
     rooms: [{ id: 'room_0001', kind: 'main', name: 'The bar', rect: { x: 0, y: 0, w: 14, h: 8 } }],
     doors: [{ id: 'door_0001', from: 'outside', to: 'room_0001', pos: { x: 7, y: 8 }, rot: 0, locked: false }],
@@ -1136,9 +1138,9 @@ describe('the hour and the weather', () => {
 })
 
 describe('what the interface is pushed', () => {
-  function pushing() {
+  function pushing(description?: string) {
     const { pushed, hud } = screenful()
-    const { world } = anchorage()
+    const { world } = anchorage(description)
     const player = PlayerState.create(world.id, 7)
     const log = QuestLog.create([], player)
     const report = new Reporting({ world, log, player, hud, conditions: new Conditions(player.clock) })
@@ -1170,6 +1172,14 @@ describe('what the interface is pushed', () => {
         { id: '1', title: 'Heard', text: 'the harbour master keeps two ledgers' },
       ],
     })
+  })
+
+  it('gives the codex what the city was written to say about a place, in its own words', () => {
+    const written = 'A bar the harbour crews drink in before the early tide. Nobody has settled a tab here since spring.'
+    const { pushed, player, report } = pushing(written)
+    player.discover({ place: 'interior_0001' })
+    report.refresh()
+    expect(pushed.at(-1)!.codex!.places).toEqual([{ id: 'interior_0001', name: 'The Bright Anchor', text: written }])
   })
 
   it('pushes the journal and the clock again once a game minute, and not every frame', () => {

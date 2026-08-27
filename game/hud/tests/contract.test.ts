@@ -1048,6 +1048,36 @@ describe('the codex tab', () => {
     expect(queryByText(panel, 'Places')).toBeNull()
   })
 
+  it('shows what a place is whole beside its name, and leaves nothing standing in for a place nobody wrote about', async () => {
+    const user = userEvent.setup()
+    const { hud, screen } = mount()
+    const written = 'A bar the harbour crews drink in before the early tide. Nobody has settled a tab here since spring.'
+    hud.show({
+      codex: {
+        places: [
+          { id: 'i1', name: 'The Copper Wheel', text: written },
+          { id: 'i2', name: 'Ashby & Sons' },
+        ],
+        people: [],
+      },
+    })
+
+    await user.keyboard('x')
+    const panel = getByRole(screen, 'dialog', { name: 'Codex' })
+    const list = panel.querySelector('.gb-codex-list-pane') as HTMLElement
+    const open = panel.querySelector('.gb-codex-amplified') as HTMLElement
+    // the line is in the list, and the whole of it in the panel beside it
+    within(list).getByText(written)
+    within(open).getByText(written)
+
+    // a place the city says nothing about: its name, and no empty band under it
+    await user.click(within(list).getByText('Ashby & Sons'))
+    within(open).getByText('Ashby & Sons')
+    expect(open.querySelector('.gb-amplified-desc')).toBeNull()
+    const row = within(list).getByText('Ashby & Sons').closest('.gb-row') as HTMLElement
+    expect((row.querySelector('.gb-row-line') as HTMLElement).hidden).toBe(true)
+  })
+
   it('says what it is for before anything is in it', () => {
     const { hud, screen } = mount()
     hud.show({ window: 'codex' })

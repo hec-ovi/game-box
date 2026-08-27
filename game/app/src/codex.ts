@@ -21,7 +21,8 @@ export function codexOf(world: World, player: PlayerState, faces: FaceBook = () 
       const plot = interior ? world.plot(interior.plotId) : undefined
       if (!interior || !plot) return []
       const label = world.charter(interior.kind)?.label ?? interior.kind
-      return [{ id: interiorId, name: plot.name, text: `A ${label}.` }]
+      // what the city was written to say about this place; a place nobody wrote about says what kind it is
+      return [{ id: interiorId, name: plot.name, text: interior.description ?? `A ${label}.` }]
     }),
     people: found.people.flatMap(({ npcId, unlocked }) => {
       const npc = world.npc(npcId)
