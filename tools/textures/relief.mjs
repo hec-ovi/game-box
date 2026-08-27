@@ -38,7 +38,13 @@ if (!source || !outDir || !surface) {
 const metres = metresOf(flag('metres') ?? '2')
 const tile = await readTile(source)
 const size = Number(flag('size') ?? tile.size)
-const relief = new Relief(tile, metres, surface, size)
+// `--relief` overrides how deep the material is taken to be, in millimetres
+// peak to peak. A material's own row is the depth of a close sample of it; a
+// picture of a whole street face made of that material carries the reveal
+// round a window and the band at a floor line as well, which are centimetres.
+// Same material, deeper picture, so the depth moves and the roughness does not.
+const deeper = flag('relief')
+const relief = new Relief(tile, metres, surface, size, deeper === undefined ? undefined : Number(deeper))
 const name = basename(source).replace(/\.[^.]+$/, '').replace(/-tile$/, '')
 
 mkdirSync(outDir, { recursive: true })

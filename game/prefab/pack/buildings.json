@@ -1,6 +1,6 @@
 {
   "pack": "gb-buildings",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "sha256": "3ebb8bcde86baf1283e850152a26777e8022789066678824898382242931ef27",
   "producer": "glb-buildings@6e05c32",
   "atlas": {
@@ -27,7 +27,7 @@
     "relief": {
       "size": 256,
       "layers": 23,
-      "sha256": "6e2be7cf84d824cd9ddec487f7dde29fc5ad39eb96761daa8f78e2209da74cd9",
+      "sha256": "6a23fedd016d80ee91159d49a47e2495f5a7c7269917e55bd3dc549c097a4002",
       "roughness": [
         0.7795,
         0.8566,

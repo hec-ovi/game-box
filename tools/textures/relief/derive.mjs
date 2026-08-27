@@ -20,10 +20,17 @@ export class Relief {
    * @param {{ across: number, up: number }} metres of real surface one repeat of the tile covers
    * @param {string} surface a name in SURFACES
    * @param {number} size pixels a side of the maps to write
+   * @param {number} [deeper] millimetres peak to peak, overriding the family's
+   *   own depth. A material's row is the depth of a close sample of it; a
+   *   picture of a whole street face made of that material carries the reveal
+   *   round a window and the band at a floor line too, which are centimetres.
+   *   The material is the same, so only the depth moves and the roughness does
+   *   not.
    */
-  constructor(tile, metres, surface, size) {
-    const family = SURFACES[surface]
-    if (!family) throw new Error(`relief: no surface called "${surface}"`)
+  constructor(tile, metres, surface, size, deeper) {
+    const row = SURFACES[surface]
+    if (!row) throw new Error(`relief: no surface called "${surface}"`)
+    const family = deeper === undefined ? row : { ...row, relief: deeper }
     this.surface = surface
     this.family = family
     this.metres = metres
