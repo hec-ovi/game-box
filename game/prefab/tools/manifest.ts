@@ -4,7 +4,7 @@ import type { Look } from './look.ts'
 
 /** What the pack is called, and the version its bytes are at. Bump `VERSION` whenever any of the seven files changes. */
 export const PACK = 'gb-buildings'
-export const VERSION = '1.11.0'
+export const VERSION = '1.12.0'
 
 /** One model's manifest entry: the look it came from, replayed at this shape. */
 export function modelOf(look: Look, bucket: Bucket, id: string, triangles: number): ModelSpec {
