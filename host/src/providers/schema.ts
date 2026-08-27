@@ -41,7 +41,25 @@ const LocalSchema = z.strictObject({
   model: ModelSchema,
 })
 
-export const ProviderSchema = z.discriminatedUnion('kind', [ExternalSchema, LocalSchema])
+/**
+ * A command-line agent installed on this machine, run once per request. It has
+ * no address and no key: which binary to run is the machine's business
+ * (`GAME_BOX_AGY_BIN`, `agy` on PATH by default), and only the model and how
+ * long a run may take belong in a configuration file that travels.
+ */
+const AgentSchema = z.strictObject({
+  id: IdSchema,
+  kind: z.literal('agent'),
+  label: LabelSchema,
+  model: ModelSchema,
+  timeoutSeconds: z
+    .int()
+    .min(1)
+    .max(3600)
+    .meta({ description: 'How long one run may take before the command is killed.' }),
+})
+
+export const ProviderSchema = z.discriminatedUnion('kind', [ExternalSchema, LocalSchema, AgentSchema])
 
 /** A job with no entry here goes wherever `GAME_BOX_LLM_UPSTREAM` points. */
 export const RoutesSchema = z.strictObject({
@@ -68,6 +86,7 @@ const ProviderViewSchema = z.discriminatedUnion('kind', [
     configured: z.boolean().meta({ description: CONFIGURED_DESCRIPTION }),
   }),
   LocalSchema.extend({ configured: z.boolean().meta({ description: CONFIGURED_DESCRIPTION }) }),
+  AgentSchema.extend({ configured: z.boolean().meta({ description: CONFIGURED_DESCRIPTION }) }),
 ])
 
 export const ConfigurationViewSchema = z
@@ -89,6 +108,7 @@ const SaveProviderSchema = z.discriminatedUnion('kind', [
       .optional(),
   }),
   LocalSchema,
+  AgentSchema,
 ])
 
 export const SaveSchema = z
@@ -159,6 +179,9 @@ export const providerModelsContract = contract('provider-models', ProviderModels
 
 export type Job = z.infer<typeof JobSchema>
 export type Provider = z.infer<typeof ProviderSchema>
+export type AgentProvider = z.infer<typeof AgentSchema>
+/** Everything reached over HTTP, as opposed to run as a command. */
+export type ServerProvider = Exclude<Provider, AgentProvider>
 export type Routes = z.infer<typeof RoutesSchema>
 export type Configuration = z.infer<typeof ConfigurationSchema>
 export type ConfigurationView = z.infer<typeof ConfigurationViewSchema>

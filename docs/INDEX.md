@@ -35,11 +35,11 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the offline AI
 | You want to change | Open |
 |---|---|
 | HTTP/WS endpoints, SSE shapes, OpenAI compatibility, tool calls, error bodies | `host/src/api/` |
-| Text generation, engine selection, llama.cpp/upstream wiring, forcing a tool call in the shape the engine honours and in a schema its grammar can end, stopping the engine when the caller leaves, pinning an answer so the same request comes back the same | `host/src/llm/` |
+| Text generation, engine selection, llama.cpp/upstream wiring, running a command-line agent as the engine (its scratch directory, its scrubbed environment, killing it when the caller leaves), forcing a tool call in the shape the engine honours and in a schema its grammar can end, stopping the engine when the caller leaves, pinning an answer so the same request comes back the same | `host/src/llm/` |
 | Speech recognition, audio envelopes, partial transcripts | `host/src/stt/` |
 | Speech synthesis, voices, streaming audio frames | `host/src/tts/` |
 | Model cache, integrity check, downloads | `host/src/models/` |
-| Which engines exist (a hosted service with a key, or a server of your own), where their keys are kept and how they are saved, whether one is reachable and what it can run, and which of the five jobs goes to which of them | `host/src/providers/` |
+| Which engines exist (a hosted service with a key, a server of your own, or a command-line agent on this machine), where their keys are kept and how they are saved, whether one is reachable and what it can run, and which of the five jobs goes to which of them | `host/src/providers/` |
 
 ## Elsewhere
 

@@ -1,13 +1,17 @@
 /**
  * Asking a provider something and reading the answer as one of four states, so
  * a screen can tell "nothing answered" from "it answered no" from "not now"
- * from "you have not finished setting it up".
+ * from "you have not finished setting it up". A server is asked over HTTP and
+ * a command is asked by running it; both answer the same three shapes.
  */
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { scrub } from '../secret.ts'
-import type { FailedVerdict, Provider, ProviderHealth, ProviderModels, ProviderTest } from './schema.ts'
-import { reach, type Reached } from './upstream.ts'
+import { health as agentHealth, models as agentModels, test as agentTest } from './agent-probe.ts'
+import { since } from './elapsed.ts'
+import { reach, type Reached } from './engine.ts'
+import type { Environment } from './paths.ts'
+import type { FailedVerdict, Provider, ProviderHealth, ProviderModels, ProviderTest, ServerProvider } from './schema.ts'
 
 /** A reachability check must not hang a settings screen; a real generation may take as long as it takes. */
 const PATIENCE_MS = 15_000
@@ -27,7 +31,8 @@ type Answer =
     }
 
 /** Is it reachable, is its key present, does it answer. No generation. */
-export async function health(provider: Provider, secret: string | undefined, gone?: AbortSignal): Promise<ProviderHealth> {
+export async function health(provider: Provider, secret: string | undefined, env: Environment, gone?: AbortSignal): Promise<ProviderHealth> {
+  if (provider.kind === 'agent') return agentHealth(provider, env, gone)
   // Only an external has a key to be set; a local server is asked for none.
   const key = provider.kind === 'external' ? { secretSet: secret !== undefined } : {}
   const answer = await listing(provider, secret, gone)
@@ -36,7 +41,8 @@ export async function health(provider: Provider, secret: string | undefined, gon
 }
 
 /** What the provider says it can run, as it lists it on `/v1/models`. */
-export async function models(provider: Provider, secret: string | undefined, gone?: AbortSignal): Promise<ProviderModels> {
+export async function models(provider: Provider, secret: string | undefined, env: Environment, gone?: AbortSignal): Promise<ProviderModels> {
+  if (provider.kind === 'agent') return agentModels(provider, env, gone)
   const answer = await listing(provider, secret, gone)
   if (!answer.heard) return { id: provider.id, verdict: answer.verdict, ms: answer.ms, detail: answer.detail }
 
@@ -50,7 +56,8 @@ export async function models(provider: Provider, secret: string | undefined, gon
 }
 
 /** One real generation, round trip: what it wrote, which model wrote it, how long it took. */
-export async function test(provider: Provider, secret: string | undefined, gone?: AbortSignal): Promise<ProviderTest> {
+export async function test(provider: Provider, secret: string | undefined, env: Environment, gone?: AbortSignal): Promise<ProviderTest> {
+  if (provider.kind === 'agent') return agentTest(provider, env, gone)
   const reached = reach(provider, secret)
   // No output-length cap, here as anywhere: the reply ends when the model ends it.
   const body = JSON.stringify({ model: provider.model, messages: [{ role: 'user', content: PROMPT }], stream: false })
@@ -71,7 +78,7 @@ export async function test(provider: Provider, secret: string | undefined, gone?
 }
 
 /** The one cheap question, which both the status light and the model picker ask. */
-async function listing(provider: Provider, secret: string | undefined, gone?: AbortSignal): Promise<Answer> {
+async function listing(provider: ServerProvider, secret: string | undefined, gone?: AbortSignal): Promise<Answer> {
   const reached = reach(provider, secret)
   if (!reached.ok) return unset(reached.error)
   return ask(reached.value, reached.value.models, { method: 'GET' }, gone, PATIENCE_MS)
@@ -148,8 +155,4 @@ function errorIn(document: unknown): UpstreamError | undefined {
 function messageIn(error: UpstreamError | undefined): string | undefined {
   const said = [error?.message, error?.metadata?.raw].filter((part): part is string => typeof part === 'string' && part !== '')
   return said.length === 0 ? undefined : [...new Set(said)].join(': ')
-}
-
-function since(started: number): number {
-  return Math.max(0, Date.now() - started)
 }

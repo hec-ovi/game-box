@@ -12,6 +12,7 @@ import { payloadsOf, prepend, type Payload } from './sse.ts'
 
 /** Where an OpenAI-compatible server is, what it wants, and what it answers as. */
 export interface Upstream {
+  readonly transport: 'http'
   /** The full chat-completions URL, not a base to join onto. */
   readonly completions: string
   /** Sent on every request. */

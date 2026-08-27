@@ -1,6 +1,6 @@
 # host contract
 
-contractVersion: 0.7.0
+contractVersion: 0.8.0
 
 ## Purpose
 
@@ -32,6 +32,7 @@ Node 22 or newer, one dependency (zod), no build step. The port comes from `GAME
 | `GAME_BOX_LLM_UPSTREAM` | where generation goes. Unset for the deterministic stand-in, the word `openrouter` for the hosted router, or the base URL of an OpenAI-compatible engine of your own (llama-server and friends) |
 | `OPENROUTER_API_KEY` | read only when the line above says `openrouter` |
 | `GAME_BOX_OPENROUTER_BASE` | where OpenRouter lives, default `https://openrouter.ai/api/v1`. For an OpenRouter-compatible gateway |
+| `GAME_BOX_AGY_BIN` | the agy binary, default the name `agy` found on PATH. A path belongs to a machine, so it lives here and not in the configuration file |
 | `GAME_BOX_MODELS_DIR` | model cache directory, default the platform cache directory plus `game-box/models` |
 | `GAME_BOX_SECRETS_FILE` | where the keys live, default `.env.local` beside `host/` |
 | `GAME_BOX_CONFIG_FILE` | where the providers and the routing live, default `.game-box.json` beside `host/` |
@@ -73,7 +74,7 @@ named in `src/providers/openrouter.ts`.
 
 ## Providers, and which job goes where
 
-Two families of engine:
+Three families of engine:
 
 - **external**: a hosted OpenAI-compatible service reached with a key. Base URL,
   model, and the name the key is stored under. OpenRouter is the one that ships;
@@ -82,6 +83,13 @@ Two families of engine:
   Host, port, model, no auth. It is never sent a credential, whatever else the
   environment holds. Inside a container `127.0.0.1` is the container, so name
   the machine (`host.docker.internal`) or the sibling service instead.
+- **agent**: a command-line agent installed on this machine, run once per
+  request. Model and how long a run may take; no address and no key. Which
+  binary to run belongs to the machine (`GAME_BOX_AGY_BIN`, the name `agy` on
+  PATH by default), so a configuration file stays portable. One entry ships,
+  `agy`, and it is the whole family: it takes a JSON Schema and holds its
+  answer to it, which is what every generated thing in this game is. A second
+  command-line tool is not an entry here, it is a different family.
 
 Five jobs can each be pointed at a provider: `history` (the city's history and
 its charters, and the creation form writing a field for you), `city` (names,
@@ -130,6 +138,73 @@ real generation, uncapped like every other, answering with what the model
 wrote, the model that answered and the milliseconds: it is what proves a
 provider before a job is trusted to it.
 
+A command is asked the same three questions by running it: `health` is one
+`agy --version` (measured 67 ms), `models` is `agy models` read as its
+tab-separated listing, in the order it gives them (measured 2,865 ms, 14
+models), and `test` is one real run. A command answers no HTTP status, so
+`status` is `null` on its health; `secretSet` is absent, because there is no
+key. `misconfigured` never happens to a command: there is nothing to leave
+unset, so a binary that is not there reads as `unreachable` and one that runs
+and fails reads as `refused`.
+
+## Running a command as the engine
+
+The `agent` family runs the command instead of calling a server. One run per
+request, one turn.
+
+- **The turn goes in on stdin**, as one NDJSON line, with the whole message
+  list flattened into it (one message on its own is its own text; several are
+  labelled with the role that wrote them). Not on the command line: Linux
+  refuses a single argument over 128 KiB (measured on 2026-08-27, 127 KiB
+  spawns and 128 KiB is `E2BIG`) and prompts here run to tens of kilobytes. A
+  41,685-byte prompt over stdin answered in 6.0 s wall clock.
+- **A forced call is the schema.** The tool's parameters are written to a file
+  in the scratch directory and handed over as `--json-schema`, which the
+  command holds its own answer to. It is the same schema the local grammar is
+  handed: patterns it cannot enforce exactly taken out and said in words on the
+  field instead (see "What the grammar is handed"), so nothing a rule demands
+  is lost whichever engine reads it. The reply is checked against the tool's
+  parameters as written, as on every other path.
+- **The enforced answer is read from `structured_output`, not from the text.**
+  The text carries two extra fields (`toolAction`, `toolSummary`) that the
+  command adds to the tool it enforces a schema through, and a schema written
+  `additionalProperties: false` refuses them.
+- **The salvage path stays, as the backstop.** A run can still end in prose:
+  its own turn timed out mid-answer, or it answered without the tool. The JSON
+  in that prose is read out of it the way it is on every other engine. Asked
+  through a schema, a call is the answer by design, so it counts nothing in
+  `salvaged`.
+- **It runs sandboxed and away from everything.** Spawned directly with an
+  argument array and no shell, so nothing inside a prompt can be read as a
+  command. The working directory is a fresh directory under the platform's
+  temporary directory, removed when the run ends, never the repository. Its
+  environment is `PATH` and `HOME` and nothing else, so no credential of this
+  service's can reach it. `--sandbox` and `--disable-slash-commands` are always
+  on, and permissions are left at review, so a tool call it tries is not
+  auto-approved.
+- **A caller that leaves kills it.** The command leads its own process group
+  and the whole group gets SIGKILL, so the helper processes it starts (measured:
+  one) end with it rather than outliving the request. The same kill is the
+  timeout's, and a process shutting down kills whatever it still has running.
+- **Streaming is one chunk.** The command does emit text deltas, but a run's
+  failures are only known once it has ended, so the reply is held and answered
+  whole: one token chunk, then the closing chunk, then `[DONE]`. Held that way
+  a failed run is one error rather than half a reply.
+
+### What a run costs
+
+The agent carries its own system prompt on every call, so every request pays
+it. Measured on 2026-08-27 with `gemini-3.7-flash-low`: a prompt asking for the
+word "pong" spent 13,817 to 15,398 input tokens for a one-token answer, and the
+41 KB prompt above spent 25,656. Round trips through this service, on this
+machine: 5.6 s for the `test` probe, 7.5 s for a streamed two-word reply, and
+10.8 s and 17.6 s for a forced call naming a city and cutting it into four
+districts with ids, signs and a line each.
+
+A run gets `timeoutSeconds` from its provider entry (default 300). The
+command's own print timeout is set to the same, so a run left behind by a dying
+process still ends itself, and the kill fires two seconds later as the backstop.
+
 ## Getting the same answer twice
 
 Send `temperature: 0` and a `seed`. Temperature 0 asks the engine to take its
@@ -142,6 +217,12 @@ rather than quietly left unpinned.
 
 The service invents neither value. A request that pins nothing gets whatever the
 engine's defaults produce, which is a different answer each time.
+
+A command-line agent takes neither setting, so on that path `temperature` and
+`seed` reach nothing and an answer does not repeat. Measured on 2026-08-27:
+the same forced request at temperature 0 with seed 20260827, sent twice through
+agy, named the city Oakhaven-on-Silt and then Brinegate. A job that has to come
+back the same belongs on an engine that takes the pins.
 
 Repeating is then the engine's job, and this service cannot promise it on the
 engine's behalf. Measured on 2026-08-27 with `tools/repeatable.ts`'s question
@@ -189,6 +270,8 @@ and a system line asking for the quest as JSON:
 So a server of your own is sent the tool's parameters as `response_format`
 and nothing of the tools themselves, and the JSON it writes is read back as
 the call. OpenRouter is sent the choice itself, which it honours (see below).
+A command-line agent is handed the same parameters as its `--json-schema`, see
+"Running a command as the engine".
 
 ### Why the tools stay out of that request
 
@@ -277,6 +360,9 @@ token prompt was idle within a second of the client aborting). A reply that
 runs away therefore costs the engine a slot only for as long as its caller
 waits, never to the end of the context.
 
+A command is killed the same moment, along with the whole process group it
+leads, so nothing it started keeps running for a reply nobody will read.
+
 ## A busy model
 
 A rate limit is not a failure. The upstream saying 429, either as the HTTP
@@ -344,7 +430,7 @@ SSE stream for chat; WebSocket events for realtime, as listed in Outputs.
 - HTTP 413 `invalid_request_error`: request body over 8 MiB.
 - HTTP 429 `rate_limit_error`, code `model-busy`: the upstream is rate-limited. `Retry-After` carries the seconds to wait, as described above.
 - HTTP 500 `server_error`: a configuration file cannot be read or written. The path is named; nothing inside it is quoted back. A configuration file that will not parse is not a dead end: a `PUT` carrying both `providers` and `routes` keeps nothing from it and is written straight over it.
-- HTTP 502 `server_error`: the LLM upstream engine failed before streaming started, or it is misconfigured (`GAME_BOX_LLM_UPSTREAM is not a URL`, `OPENROUTER_API_KEY is not set`, a provider a job was pointed at with no key).
+- HTTP 502 `server_error`: the LLM upstream engine failed before streaming started, or it is misconfigured (`GAME_BOX_LLM_UPSTREAM is not a URL`, `OPENROUTER_API_KEY is not set`, a provider a job was pointed at with no key). A command that produced nothing answers here too, and says which of the five it was, because they send whoever reads them after different things: the binary `is not installed on this machine`, it `exited with status <n>` and what it wrote on stderr, it `did not answer within <n> s`, it `answered with something that is not its result JSON`, or it `could not answer:` followed by the reason it gave.
 - `finish_reason: "error"` (HTTP 200): the engine broke after the reply started. The answer carries whatever arrived first; it never claims to have stopped normally.
 - WS `error` event `invalid_request_error`: malformed frame, unknown event type, or invalid audio envelope; session state is unchanged.
 
@@ -357,13 +443,14 @@ None. This service knows about text, audio, tools and models; it does not know w
 - The server binds 127.0.0.1 only; never a public interface.
 - Every request body is validated against this layer's schemas before any other layer is called (fail closed).
 - No output-length cap is ever accepted or forwarded; responses end when generation ends.
-- Sampler settings are the caller's to make. None is defaulted, none is dropped: what a request pins reaches the engine, and what it leaves out is left out.
+- Sampler settings are the caller's to make. None is defaulted, none is dropped: what a request pins reaches an engine that takes it, and what it leaves out is left out. A command-line agent takes neither a temperature nor a seed, so on that path a pin reaches nothing and the answer does not repeat.
 - A rate limit is answered as 429 with a wait, never as a failure, and never retried inside this service.
-- A credential is read from the environment or the secrets file, sent only to the provider it belongs to, and scrubbed out of every error and every verdict this service returns. It is never returned by any endpoint, masked or otherwise, and a provider that echoes it back part-masked (`sk-not-a************-key`, measured from OpenAI) has that scrubbed too: any run of six of its characters goes. A local provider, and a URL you configure yourself, are always called unauthenticated.
+- A credential is read from the environment or the secrets file, sent only to the provider it belongs to, and scrubbed out of every error and every verdict this service returns. It is never returned by any endpoint, masked or otherwise, and a provider that echoes it back part-masked (`sk-not-a************-key`, measured from OpenAI) has that scrubbed too: any run of six of its characters goes. A local provider, and a URL you configure yourself, are always called unauthenticated. A command is given `PATH` and `HOME` and nothing else, so no credential of this service's can reach it whatever the process environment holds.
 - A configuration file this service cannot read is reported by the configuration endpoint and never stops generation: a job with no readable assignment falls back to the environment.
-- Tool definitions are forwarded to the engine unchanged, except where a call is forced through a grammar: there the tool's parameters are the grammar and nothing else of it is sent. A call the request insists on is asked for in the shape the upstream honours, and comes back in the OpenAI shape with its arguments as JSON text; when it was rebuilt from prose the reply says so. A caller that offers a tool gets either a complete call or an error, never a half-built one.
+- Tool definitions are forwarded to the engine unchanged, except where a call is forced through a schema (a grammar on a server, `--json-schema` on a command): there the tool's parameters are the schema and nothing else of it is sent. A call the request insists on is asked for in the shape the upstream honours, and comes back in the OpenAI shape with its arguments as JSON text; when it was rebuilt from prose the reply says so. A caller that offers a tool gets either a complete call or an error, never a half-built one.
 - A grammar is handed only what it enforces exactly; the reply is checked against the parameters as written.
 - A caller that closes its connection ends the engine's work on its request.
+- A command is spawned directly with an argument array, never through a shell, and never in the repository: it runs in a throwaway directory that is removed when the run ends. It is killed by process group, so nothing it started outlives it.
 - Speaking and acting are not exclusive: a reply that carries both text and a call keeps both, because a character who says something while doing it must not lose either half.
 - A WS `error` event leaves the recognition session exactly as it was.
 - Audio only ever crosses a boundary as a schema-validated base64 envelope, never as bare bytes.
@@ -375,11 +462,11 @@ Four layers behind the endpoints, each with its own schemas and its own seam for
 
 | Layer | Takes | Gives | Engine today |
 |---|---|---|---|
-| `src/llm` | [generate-request](schema/llm/generate-request.json) | stream of [token-event](schema/llm/token-event.json), always exactly one `done`; a `tool-call` rebuilt from prose carries `salvaged: true` | proxy to whatever `GAME_BOX_LLM_UPSTREAM` selects, asking for a forced call in the shape that upstream honours, or a stand-in that replies `You said: <last user message>` and answers a forced tool choice with an empty call |
+| `src/llm` | [generate-request](schema/llm/generate-request.json) | stream of [token-event](schema/llm/token-event.json), always exactly one `done`; a `tool-call` rebuilt from prose carries `salvaged: true` | a proxy to a server (`src/llm/upstream.ts`), a command run once per request (`src/llm/command/`), or a stand-in that replies `You said: <last user message>` and answers a forced tool choice with an empty call. A forced call is asked for in the shape that engine honours |
 | `src/stt` | [audio-chunk](schema/stt/audio-chunk.json) per `push` | [transcript-event](schema/stt/transcript-event.json): `partial` per push, one `final` per `finish` | stand-in that reports heard duration |
 | `src/tts` | [speak-request](schema/tts/speak-request.json), then any text slice | [audio-event](schema/tts/audio-event.json): 80 ms `frame`s while the sentence is still being written, one `end` | stand-in that emits silence timed from the text |
 | `src/models` | [model-entry](schema/models/model-entry.json) | [resolved-model](schema/models/resolved-model.json) | streaming sha256 over the cache directory; nothing is returned unverified |
-| `src/providers` | [configuration](schema/providers/configuration.json) | the upstream a job goes to, or a verdict about one provider | two files beside `host/`: the keys 0600, everything else JSON |
+| `src/providers` | [configuration](schema/providers/configuration.json) | the engine a job goes to, or a verdict about one provider | two files beside `host/`: the keys 0600, everything else JSON |
 
 The layers hand back a `Result` rather than throwing: `{ok: true, value}` or `{ok: false, error}` with a `code` from that layer's closed set (`invalid-request`, `upstream`, `busy`, `invalid-chunk`, `unknown-voice`, `invalid-entry`, `missing`, `integrity`, `unreadable`, `invalid-config`, `no-such-provider`, `unwritable`).
 

@@ -96,6 +96,43 @@
               "model"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]{0,31}$"
+              },
+              "kind": {
+                "type": "string",
+                "const": "agent"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "model": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "timeoutSeconds": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 3600,
+                "description": "How long one run may take before the command is killed."
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "label",
+              "model",
+              "timeoutSeconds"
+            ],
+            "additionalProperties": false
           }
         ]
       }

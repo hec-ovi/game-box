@@ -4,7 +4,7 @@ import { JOBS, type Provider, type Routes, type SaveProvider } from './schema.ts
 
 /** The provider as it is stored: the key it arrived with belongs in the other file. */
 export function withoutSecret(provider: SaveProvider): Provider {
-  if (provider.kind === 'local') return provider
+  if (provider.kind !== 'external') return provider
   const { secret, ...rest } = provider
   return rest
 }

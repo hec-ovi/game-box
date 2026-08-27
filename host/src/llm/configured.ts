@@ -30,7 +30,7 @@ export function configuredUpstream(env: Environment): Result<Upstream | undefine
   if (completions === undefined) return err(upstreamFailed('GAME_BOX_LLM_UPSTREAM is not a URL'))
   // llama-server reads a named tool choice as `auto` and cannot end a
   // `required` reply the model resists, so a call is forced through its grammar.
-  return ok({ completions, model: 'default', forcing: 'json-schema' })
+  return ok({ transport: 'http', completions, model: 'default', forcing: 'json-schema' })
 }
 
 function openrouter(env: Environment): Result<Upstream | undefined, LlmError> {
@@ -40,6 +40,7 @@ function openrouter(env: Environment): Result<Upstream | undefined, LlmError> {
   const completions = completionsUrl((env.GAME_BOX_OPENROUTER_BASE ?? '').trim() || OPENROUTER_BASE)
   if (completions === undefined) return err(upstreamFailed('GAME_BOX_OPENROUTER_BASE is not a URL'))
   return ok({
+    transport: 'http',
     completions,
     headers: { authorization: `Bearer ${key}`, ...OPENROUTER_ATTRIBUTION },
     model: OPENROUTER_MODEL,

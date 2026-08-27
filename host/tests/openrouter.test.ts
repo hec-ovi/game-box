@@ -159,6 +159,7 @@ describe('a credential', () => {
   it('is scrubbed out of every message the upstream produces', async () => {
     const result = await generate(
       {
+        transport: 'http',
         completions: `${host.base}/nope/v1/chat/completions`,
         headers: { authorization: 'Bearer 404' },
         model: 'whatever',

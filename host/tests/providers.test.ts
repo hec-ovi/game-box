@@ -105,7 +105,7 @@ async function configure(providers: readonly unknown[], routes: Routes): Promise
 }
 
 describe('GET /v1/providers', () => {
-  it('answers one of each family before anything is saved, with neither key nor route', async () => {
+  it('answers one of each of the three families before anything is saved, with neither key nor route', async () => {
     const response = await read()
     assert.equal(response.status, 200)
 
@@ -116,6 +116,7 @@ describe('GET /v1/providers', () => {
       [
         ['openrouter', 'external'],
         ['local', 'local'],
+        ['agy', 'agent'],
       ],
     )
     const openrouter = body.providers[0]

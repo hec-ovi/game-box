@@ -4,8 +4,9 @@
  * else, and a key only ever leaves here inside a request to the provider it
  * belongs to.
  */
-import type { Upstream } from '../llm/upstream.ts'
+import type { Engine } from '../llm/engine.ts'
 import { err, ok, type Result } from '../result.ts'
+import { engineOf } from './engine.ts'
 import { invalidConfig, noSuchProvider, type ProvidersError } from './errors.ts'
 import { configPath, secretsPath, type Environment } from './paths.ts'
 import { health as probeHealth, models as probeModels, test as probeTest } from './probe.ts'
@@ -22,15 +23,16 @@ import {
 } from './schema.ts'
 import { SecretStore } from './secrets.ts'
 import { ConfigStore } from './store.ts'
-import { reach } from './upstream.ts'
 
 export class Providers {
   readonly #config: ConfigStore
   readonly #secrets: SecretStore
+  readonly #env: Environment
 
   constructor(env: Environment) {
     this.#config = new ConfigStore(configPath(env))
     this.#secrets = new SecretStore(secretsPath(env), env)
+    this.#env = env
   }
 
   /** Everything a settings screen needs, and no key: only whether each one is set. */
@@ -69,15 +71,15 @@ export class Providers {
   }
 
   health(id: string, gone?: AbortSignal): Promise<Result<ProviderHealth, ProvidersError>> {
-    return this.#probe(id, (provider, secret) => probeHealth(provider, secret, gone))
+    return this.#probe(id, (provider, secret) => probeHealth(provider, secret, this.#env, gone))
   }
 
   test(id: string, gone?: AbortSignal): Promise<Result<ProviderTest, ProvidersError>> {
-    return this.#probe(id, (provider, secret) => probeTest(provider, secret, gone))
+    return this.#probe(id, (provider, secret) => probeTest(provider, secret, this.#env, gone))
   }
 
   models(id: string, gone?: AbortSignal): Promise<Result<ProviderModels, ProvidersError>> {
-    return this.#probe(id, (provider, secret) => probeModels(provider, secret, gone))
+    return this.#probe(id, (provider, secret) => probeModels(provider, secret, this.#env, gone))
   }
 
   /**
@@ -86,14 +88,13 @@ export class Providers {
    * service cannot read never stops generation: it answers `undefined` too,
    * and the configuration endpoint is where it is reported.
    */
-  upstreamForJob(job: Job): Result<Upstream | undefined, string> {
+  engineForJob(job: Job): Result<Engine | undefined, string> {
     const stored = this.#config.read()
     if (!stored.ok) return ok(undefined)
     const id = stored.value.routes[job]
     const provider = id === undefined ? undefined : stored.value.providers.find((entry) => entry.id === id)
     if (provider === undefined) return ok(undefined)
-    const reached = reach(provider, this.#secretFor(provider))
-    return reached.ok ? ok(reached.value.upstream) : err(reached.error)
+    return engineOf(provider, this.#secretFor(provider), this.#env)
   }
 
   async #probe<T>(id: string, run: (provider: Provider, secret: string | undefined) => Promise<T>): Promise<Result<T, ProvidersError>> {
@@ -117,7 +118,7 @@ export class Providers {
     return {
       providers: configuration.providers.map((provider) => {
         const secret = this.#secretFor(provider)
-        const configured = reach(provider, secret).ok
+        const configured = engineOf(provider, secret, this.#env).ok
         return provider.kind === 'external' ? { ...provider, secretSet: secret !== undefined, configured } : { ...provider, configured }
       }),
       routes: configuration.routes,
@@ -136,6 +137,7 @@ export {
   providerModelsContract,
   providerTestContract,
   saveContract,
+  type AgentProvider,
   type Configuration,
   type ConfigurationView,
   type Job,
@@ -143,5 +145,6 @@ export {
   type ProviderHealth,
   type ProviderModels,
   type ProviderTest,
+  type ServerProvider,
   type Verdict,
 } from './schema.ts'
