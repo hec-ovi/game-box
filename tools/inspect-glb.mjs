@@ -5,15 +5,14 @@
  *
  * Measures against the budget in tools/model/measure.mjs, which is what the
  * pack that ships costs, rather than against how the model looks in a viewer.
- * It also prints the licence out of the file's own metadata, because a model we
- * may not redistribute is one that cannot be in the pack at any price.
+ * It also prints the licence out of the file's own metadata, as information.
  *
  * `node tools/fit-model.mjs` is the same measurement with the fitting.
  */
 import { readdirSync, statSync } from 'node:fs'
 import { extname, join, resolve } from 'node:path'
 import { against, BUDGET, measureFile, reader } from './model/measure.mjs'
-import { licenceOf, mayShip } from './licences.mjs'
+import { licenceOf } from './licences.mjs'
 
 const targets = process.argv.slice(2)
 if (targets.length === 0) {
@@ -55,15 +54,12 @@ for (const one of rows) {
 console.log('')
 for (const one of rows) {
   const name = one.file.split('/').pop()
-  const shippable = mayShip(one.licence.id)
   const said = against(one)
-  if (!shippable.ok) console.log(`${name}: cannot ship it, ${shippable.why}`)
-  else if (said.length > 0) console.log(`${name}: ${said.join('; ')}`)
-  else console.log(`${name}: fits`)
+  console.log(`${name}: ${said.length > 0 ? said.join('; ') : 'fits'}`)
 }
 
-const usable = rows.filter((one) => mayShip(one.licence.id).ok && against(one).length === 0)
-console.log(`\n${rows.length} models, ${usable.length} shippable and within budget.`)
+const usable = rows.filter((one) => against(one).length === 0)
+console.log(`\n${rows.length} models, ${usable.length} within budget.`)
 console.log(`A street holds tens of cars at once, so the number that matters is the per-car one, not the total.`)
 console.log(`Budget: ${BUDGET.triangles.toLocaleString()} triangles, ${BUDGET.draws} draws, ${BUDGET.texture} px.`)
 

@@ -13,10 +13,7 @@
  * `--keep-parts` leaves the node graph alone for a model that still has to be
  * rigged, wheels onto pivots and a nose pointed down +Z.
  *
- * It refuses to write a model whose licence forbids redistributing the file:
- * a world file hands assets to other players, so an unshippable model is a
- * model that cannot be in the pack however cheap it is. It still measures it,
- * so the cost is known either way.
+ * It prints what the file says about its own licence and writes it either way.
  *
  * `node tools/inspect-glb.mjs` is the same measurement without the fitting.
  */
@@ -24,7 +21,7 @@ import { mkdirSync, readdirSync, statSync } from 'node:fs'
 import { basename, extname, join, resolve } from 'node:path'
 import { Fit } from './model/fit.mjs'
 import { against, BUDGET, line, measure, reader } from './model/measure.mjs'
-import { licenceOf, mayShip } from './licences.mjs'
+import { licenceOf } from './licences.mjs'
 
 const args = process.argv.slice(2)
 const flag = (name, fallback) => {
@@ -66,17 +63,16 @@ for (const file of targets.flatMap(filesIn)) {
     continue
   }
 
+  // What the file says about itself, printed and nothing more. The owner
+  // decides what goes in his own repository; this tool fits models to a budget.
   const licence = licenceOf(document)
-  const shippable = mayShip(licence.id)
   console.log(`  licence  ${licence.id}${licence.author ? `, ${licence.author}` : ''}`)
-  if (!shippable.ok) console.log(`           will not write it: ${shippable.why}`)
-  else if (shippable.credit) console.log(`           needs a credit line and a note that we modified it`)
 
   const fit = await new Fit(document, how).run()
   console.log(`  ${line('before', { ...fit.before, bytes: statSync(file).size })}`)
   for (const step of fit.steps) console.log(`    ${step.name.padEnd(10)} ${step.said}`)
 
-  if (shippable.ok && !dry) {
+  if (!dry) {
     const out = join(outDir, `${basename(file, extname(file))}.glb`)
     await io.write(out, document)
     console.log(`  ${line('after', { ...measure(document), bytes: statSync(out).size })} -> ${out}`)
@@ -86,7 +82,7 @@ for (const file of targets.flatMap(filesIn)) {
 
   const over = against(fit.after, { triangles: how.triangles, draws: BUDGET.draws, texture: how.texture })
   console.log(`  ${over.length ? `still over: ${over.join('; ')}` : 'fits the budget'}`)
-  verdicts.push({ name, verdict: !shippable.ok ? 'cannot ship' : over.length ? 'over budget' : 'fits' })
+  verdicts.push({ name, verdict: over.length ? 'over budget' : 'fits' })
 }
 
 console.log('')

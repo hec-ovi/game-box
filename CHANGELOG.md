@@ -18,9 +18,8 @@ night look is lit against: 0.091 on a neon town's pavement, 0.066 on a park,
 against a street car's budget (12,000 triangles, 4 draws, 1024 px) and the
 licence out of its own metadata. `node tools/fit-model.mjs <file> --out <dir>`
 drops what nobody sees from outside, welds and simplifies to the budget, resizes
-the textures and merges the materials, printing every step. Neither will pass a
-model whose licence forbids redistributing the file, because a world file hands
-assets to other players.
+the textures and merges the materials, printing every step. Both print the
+licence the file carries and fit the model either way.
 
 **The map is the city drawn as its architecture.** The map face of the window
 is the blueprint the front door shows before a city is written, standing in the
