@@ -26,3 +26,6 @@ assets/src/
 
 # a pnpm store a container left behind when it installed over the mount
 .pnpm-store/
+
+# cities built locally to look at, not shipped
+/cities/
