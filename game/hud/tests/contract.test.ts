@@ -189,10 +189,8 @@ describe('the looked-at prompt', () => {
     hud.show({ prompt: { key: 'E', text: 'Go into The Copper Wheel' } })
     getByText(screen, 'E')
     getByText(screen, 'Go into The Copper Wheel')
-    expect(screen.querySelector('.gb-hud')?.getAttribute('data-reach')).toBe('true')
 
     hud.show({ prompt: null })
-    expect(screen.querySelector('.gb-hud')?.getAttribute('data-reach')).toBe('false')
     await waitFor(() => expect(queryByText(screen, 'Go into The Copper Wheel')).toBeNull())
   })
 })

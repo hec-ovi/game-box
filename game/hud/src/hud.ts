@@ -97,7 +97,7 @@ export class Hud {
     installStyle(doc)
     // the conversation's moves stand at the foot of the screen rather than in
     // the panel, so they are mounted beside it and not inside it
-    this.#root.append(el('div', 'gb-crosshair'), ...this.#surfaces.map((surface) => surface.node), this.#talk.aside)
+    this.#root.append(...this.#surfaces.map((surface) => surface.node), this.#talk.aside)
     mount.append(this.#root)
     this.#keys = new Keys(
       doc.defaultView ?? doc,
@@ -262,7 +262,6 @@ export class Hud {
       state.window !== null || state.counter !== undefined || state.screen !== undefined || state.confirm !== undefined,
     )
     this.#root.dataset.talk = String(state.talk !== undefined)
-    this.#root.dataset.reach = String(state.prompt !== undefined)
     for (const surface of this.#surfaces) surface.render(state)
     this.#syncTyping()
   }
