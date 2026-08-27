@@ -1117,16 +1117,17 @@ describe('the front door end to end', () => {
     expect(screen.getByRole<HTMLButtonElement>('button', { name: /export/i }).disabled).toBe(false)
   }, 30_000)
 
-  it('covers the wait with the loader while the model writes, stage by stage, and takes it down for the game', async () => {
-    // the first call the scribe makes is the history: what the loader shows at
-    // that moment is what the player sees for the whole first stage
+  it('covers the wait with the loader, naming the town as soon as the model does, and takes it down for the game', async () => {
+    // what a player waiting can actually use is the name of the town being
+    // written, and nothing else: the stages the build runs through are the
+    // machine's own vocabulary and none of it is something they can act on
     const seen: string[] = []
     let stood = false
     const sidecar: SidecarOptions = {
       fetch: () => {
         const loader = document.querySelector('.gb-loader')
         if (loader) {
-          seen.push(...[...loader.querySelectorAll('.gb-stage')].map((stage) => `${stage.getAttribute('aria-label')}:${stage.getAttribute('data-state')}`))
+          seen.push(`${loader.querySelector('.gb-loader-word')?.textContent}/${loader.querySelector('h2')?.textContent}`)
           stood = document.querySelector<HTMLElement>('#boot')!.dataset.aside === 'true'
         }
         return Promise.reject(new Error('nothing listening'))
@@ -1135,12 +1136,10 @@ describe('the front door end to end', () => {
     const { boot } = open(sidecar)
     await boot.start(new URLSearchParams('?seed=loader&theme=quiet%20coastal%20town&blocks=1&model=1'))
 
-    expect(seen.slice(0, 4)).toEqual([
-      'Writing the history:running',
-      'Laying out the city:waiting',
-      'Writing the places:waiting',
-      'Writing the quests:waiting',
-    ])
+    expect(seen.length).toBeGreaterThan(0)
+    // one word, and what is being waited for under it. No stage list.
+    for (const shown of seen) expect(shown).toMatch(/^Loading\//)
+    expect(document.querySelectorAll('.gb-stage')).toHaveLength(0)
     // the panel stood aside for it, and offered the way to stop
     expect(stood).toBe(true)
     // the game has its own interface, so the loader is gone before it goes up

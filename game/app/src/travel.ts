@@ -69,7 +69,7 @@ export class Travel {
     if (!station || station.id === this.boarding(this.#body.position)) return
     this.#landing = station
     this.#veiled = true
-    this.#hud.show({ loading: { title: `To ${station.name}`, stages: [] } })
+    this.#hud.show({ loading: { title: `To ${station.name}`, veil: true } })
   }
 
   /**

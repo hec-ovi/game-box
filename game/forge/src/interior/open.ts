@@ -138,6 +138,13 @@ export function openDoors(frontages: readonly Frontage[], rng: Rng, town: Town):
     }
   }
 
+  // Where the trains board goes first and is not ranked against shops. A subway
+  // entrance has almost nothing to offer a ranking scored on floor and trade,
+  // so it lost every time: a city put one on the map and left it shut, which
+  // is a painted door where the fast travel is. There is at most one every five
+  // hundred metres, so this can never eat a town's budget.
+  while (picker.room(owed())) if (!picker.take((frontage) => frontage.charter.transit !== undefined)) break
+
   answer(KEYSTONES)
   // a kind of place the town's history is about: the door the story means the
   // player to try, taken out of whatever the keystones did not spend

@@ -24,9 +24,17 @@ const PLACEHOLDER = 'Enter custom query_'
  */
 export class TalkSurface implements Surface {
   readonly node = el('section', 'gb-talk gb-plate gb-cut gb-edged')
+  /**
+   * The moves, which stand at the foot of the screen and not in the panel.
+   *
+   * They cannot live inside it: the panel slides in on a transform, and a
+   * transformed element is the containing block for anything fixed inside it,
+   * so a list pinned to the bottom left of the screen ended up pinned to the
+   * bottom left of the conversation. The hud mounts this beside the panel.
+   */
+  readonly aside = el('ul', 'gb-moves gb-scrolls')
   #speaker = el('h3', 'gb-head-name gb-t6')
   #transcript = new Transcript()
-  #moves = el('ul', 'gb-moves gb-scrolls')
   #input = el('input', 'gb-say gb-field gb-cut gb-edged')
   #send = el('button', 'gb-talk-send-btn')
   #close: HTMLButtonElement
@@ -39,7 +47,7 @@ export class TalkSurface implements Surface {
     this.#emit = emit
     this.node.setAttribute('role', 'group')
     this.node.setAttribute('aria-label', 'Conversation')
-    this.#moves.setAttribute('aria-label', 'What you can do')
+    this.aside.setAttribute('aria-label', 'What you can do')
     this.#input.type = 'text'
     this.#input.placeholder = PLACEHOLDER
     this.#input.setAttribute('aria-label', PLACEHOLDER)
@@ -64,14 +72,17 @@ export class TalkSurface implements Surface {
     const foot = el('div', 'gb-talk-foot')
     foot.append(inputRow)
 
-    this.node.append(head, this.#transcript.node, foot, this.#moves)
-    // The whole panel holds the keyboard, not just the box: the player can be
-    // on a move button, and the game must still not hear a walk key.
-    this.node.addEventListener('focusin', () => this.#emit({ kind: 'typing', typing: true }))
-    this.node.addEventListener('focusout', (event) => {
-      const to = (event as FocusEvent).relatedTarget
-      if (!(to instanceof Node) || !this.node.contains(to)) this.#emit({ kind: 'typing', typing: false })
-    })
+    this.node.append(head, this.#transcript.node, foot)
+    // The whole conversation holds the keyboard, not just the box: the player
+    // can be on a move button, and the game must still not hear a walk key.
+    // The moves stand outside the panel, so both are asked.
+    for (const part of [this.node, this.aside]) {
+      part.addEventListener('focusin', () => this.#emit({ kind: 'typing', typing: true }))
+      part.addEventListener('focusout', (event) => {
+        const to = (event as FocusEvent).relatedTarget
+        if (!this.#holds(to)) this.#emit({ kind: 'typing', typing: false })
+      })
+    }
 
     this.#reveal = new Reveal(this.node, { kind: 'side', onClosed: () => this.#clear() })
   }
@@ -80,7 +91,7 @@ export class TalkSurface implements Surface {
     const talk = state.talk
     if (talk) {
       setText(this.#speaker, talk.speaker)
-      this.#transcript.render(talk.turns, talk.speaker)
+      this.#transcript.render(talk.turns)
       this.#menu(talk.moves, talk.pending)
       this.#input.disabled = talk.pending
       this.#input.placeholder = talk.pending ? 'AI thinking...' : PLACEHOLDER
@@ -94,6 +105,11 @@ export class TalkSurface implements Surface {
     }
     if (talk && !this.#reveal.open) this.#start()
     if (!talk && this.#reveal.open) this.#end()
+  }
+
+  /** Whether the conversation still has the keyboard: the panel and the moves both count. */
+  #holds(to: EventTarget | null): boolean {
+    return to instanceof Node && (this.node.contains(to) || this.aside.contains(to))
   }
 
   /** Send what is in the box. False when the box has neither focus nor a line. */
@@ -124,7 +140,7 @@ export class TalkSurface implements Surface {
     const key = JSON.stringify(moves)
     if (key !== this.#drawn) {
       this.#drawn = key
-      this.#moves.replaceChildren(...moves.map((move, at) => this.#option(move, at)))
+      this.aside.replaceChildren(...moves.map((move, at) => this.#option(move, at)))
     }
     for (const button of this.#buttons()) {
       // A disabled button drops the keyboard on the floor, which would hand the
@@ -150,7 +166,7 @@ export class TalkSurface implements Surface {
   }
 
   #buttons(): HTMLButtonElement[] {
-    return [...this.#moves.querySelectorAll<HTMLButtonElement>('button.gb-move')]
+    return [...this.aside.querySelectorAll<HTMLButtonElement>('button.gb-move')]
   }
 
   #start(): void {
@@ -171,6 +187,6 @@ export class TalkSurface implements Surface {
     this.#drawn = undefined
     setText(this.#speaker, '')
     this.#transcript.clear()
-    this.#moves.replaceChildren()
+    this.aside.replaceChildren()
   }
 }

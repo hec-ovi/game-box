@@ -330,19 +330,12 @@ export interface SettingsView {
 export type ConfirmAsk = 'exit'
 
 /** One named stage of a build: waiting its turn, under way, or finished. */
-export interface LoadStage {
-  readonly id: string
-  readonly label: string
-  readonly state: 'waiting' | 'running' | 'done'
-  /** How far the running stage has got, where the stage can count. */
-  readonly done?: number
-  readonly total?: number
-}
-
-/** A city being generated: what it is called and how far each stage has got. */
+/** Something being waited for: the word, and what it is called under it. */
 export interface LoaderView {
+  /** What is being waited for: the city's name, or where a train is going. */
   readonly title: string
-  readonly stages: readonly LoadStage[]
+  /** A moment rather than a wait, so it is drawn as a veil. */
+  readonly veil?: boolean
 }
 
 /**

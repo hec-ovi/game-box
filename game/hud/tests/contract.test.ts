@@ -1403,7 +1403,7 @@ describe('the stations on the map', () => {
     expect(intents).toContainEqual({ kind: 'travel', stationId: 'p9' })
 
     // The ride: a veil with the title alone, gone when the game has moved the player.
-    hud.show({ window: null, loading: { title: 'Riding to Northgate', stages: [] } })
+    hud.show({ window: null, loading: { title: 'Riding to Northgate', veil: true } })
     const veil = getByRole(screen, 'status', { name: '' })
     getByText(veil, 'Riding to Northgate')
     expect(veil.dataset.veil).toBe('true')
@@ -1850,31 +1850,21 @@ describe('the controls tab', () => {
 })
 
 describe('the loader', () => {
-  it('names each stage of a build and how far it has got, and goes when the city is ready', () => {
+  it('says one word and what is being waited for, and goes when the city is ready', () => {
     const { hud, screen } = mount()
-    const build = (places: number, state: LoaderView['stages'][number]['state']): LoaderView => ({
-      title: 'Writing Gullhaven',
-      stages: [
-        { id: 'history', label: 'Writing the history', state: 'done' },
-        { id: 'city', label: 'Laying out the city', state: 'done' },
-        { id: 'places', label: 'Writing the places', state, done: places, total: 8 },
-        { id: 'quests', label: 'Writing the quests', state: 'waiting' },
-      ],
-    })
-    hud.show({ loading: build(3, 'running') })
+    hud.show({ loading: { title: 'Gullhaven' } })
 
     const loader = getByRole(screen, 'status', { name: '' })
-    getByText(loader, 'Writing Gullhaven')
-    const places = getByRole(loader, 'progressbar', { name: 'Writing the places' })
-    expect(places.getAttribute('aria-valuenow')).toBe('38')
-    within(places).getByText('3/8')
-    expect((places.querySelector('.gb-fill') as HTMLElement).style.transform).toBe('scaleX(0.375)')
-    expect(getByRole(loader, 'progressbar', { name: 'Writing the quests' }).getAttribute('aria-valuenow')).toBe('0')
+    getByText(loader, 'Loading')
+    getByText(loader, 'Gullhaven')
+    // no stage list: what a build runs through is the machine's own vocabulary
+    expect(loader.querySelectorAll('[role="progressbar"]')).toHaveLength(0)
+    expect(loader.dataset.veil).toBe('false')
 
-    // The next push fills the bar already there rather than drawing a new one.
-    hud.show({ loading: build(8, 'done') })
-    expect(getByRole(loader, 'progressbar', { name: 'Writing the places' })).toBe(places)
-    expect(places.getAttribute('aria-valuenow')).toBe('100')
+    // a ride is a moment rather than a wait, and says so
+    hud.show({ loading: { title: 'To Northgate', veil: true } })
+    expect(loader.dataset.veil).toBe('true')
+    getByText(loader, 'To Northgate')
 
     hud.show({ loading: null })
     expect(loader.hidden || loader.getAttribute('aria-hidden') === 'true').toBe(true)
@@ -1976,7 +1966,7 @@ describe('announcements', () => {
 describe('the layers', () => {
   it('gives every surface its own layer, front to back, with nothing shared', () => {
     const { hud, screen } = mount()
-    hud.show({ talk: { speaker: 'Mara Quill' }, window: 'quests', loading: { title: 'Writing', stages: [] }, compass: { facing: 0 } })
+    hud.show({ talk: { speaker: 'Mara Quill' }, window: 'quests', loading: { title: 'Writing' }, compass: { facing: 0 } })
     const z = (selector: string): number => Number(getComputedStyle(screen.querySelector(selector) as HTMLElement).zIndex)
     const order = [
       '.gb-objectives',

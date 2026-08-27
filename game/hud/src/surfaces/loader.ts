@@ -1,24 +1,20 @@
 import { el, setText } from '../dom.ts'
 import { Reveal } from '../reveal.ts'
-import type { HudState, LoadStage } from '../types.ts'
-import { ICON_PX, icon } from '../ui/icon.ts'
-import { Meter } from '../ui/meter.ts'
+import type { HudState } from '../types.ts'
 import type { Surface } from './surface.ts'
 
 /**
- * The view covered while the game is busy. A city being written: what it is
- * called and each stage of the build with how far it has got, so minutes of
- * model work read as progress rather than one line that does not move. With
- * no stages it is a veil, the title alone: a ride between stations.
+ * The view covered while the game is busy: the word, and the name of what is
+ * being waited for under it. Nothing else.
  *
- * Rows keep their node from push to push, so a bar fills rather than blinks,
- * and it fills by scaling, so a build reporting progress costs no layout.
+ * It used to list every stage of a build with how far each had got. What that
+ * actually showed a player was four lines of the machine's own vocabulary
+ * (writing the history, laying out the city) while they waited, and none of it
+ * told them anything they could act on.
  */
 export class LoaderSurface implements Surface {
   readonly node = el('section', 'gb-loader')
   #title = el('h2', 'gb-t7')
-  #list = el('ol', 'gb-stages')
-  #rows = new Map<string, StageRow>()
   #reveal: Reveal
 
   constructor() {
@@ -37,7 +33,7 @@ export class LoaderSurface implements Surface {
         <circle cx="60" cy="60" r="30" class="gb-radar-arc gb-radar-arc-inner" />
       </svg>
     `
-    card.append(radar, this.#title, this.#list)
+    card.append(radar, el('p', 'gb-loader-word gb-t2', 'Loading'), this.#title)
     this.node.append(card)
     this.#reveal = new Reveal(this.node, { kind: 'veil', onClosed: () => this.#clear() })
   }
@@ -46,8 +42,7 @@ export class LoaderSurface implements Surface {
     const loading = state.loading
     if (loading) {
       setText(this.#title, loading.title)
-      this.node.dataset.veil = String(loading.stages.length === 0)
-      this.#stages(loading.stages)
+      this.node.dataset.veil = String(loading.veil === true)
     }
     this.#reveal.set(loading !== undefined)
   }
@@ -56,52 +51,7 @@ export class LoaderSurface implements Surface {
     this.#reveal.dispose()
   }
 
-  /** Rows keep their node from push to push, so a bar fills rather than blinks. */
-  #stages(stages: readonly LoadStage[]): void {
-    const ids = stages.map((stage) => stage.id)
-    if (ids.join('|') !== [...this.#rows.keys()].join('|')) {
-      this.#rows = new Map(stages.map((stage) => [stage.id, new StageRow()]))
-      this.#list.replaceChildren(...[...this.#rows.values()].map((row) => row.node))
-    }
-    for (const stage of stages) this.#rows.get(stage.id)!.write(stage)
-  }
-
   #clear(): void {
     setText(this.#title, '')
-    this.#rows.clear()
-    this.#list.replaceChildren()
-  }
-}
-
-class StageRow {
-  readonly node = el('li', 'gb-stage')
-  #mark = el('span', 'gb-stage-mark')
-  #label = el('span', 'gb-what gb-t1')
-  #count = el('span', 'gb-num gb-t0')
-  #meter = new Meter(true)
-  #state: LoadStage['state'] | undefined
-
-  constructor() {
-    const line = el('div', 'gb-stage-line')
-    line.append(this.#mark, this.#label, this.#count)
-    this.node.append(line, this.#meter.node)
-  }
-
-  write(stage: LoadStage): void {
-    this.node.dataset.state = stage.state
-    if (stage.state !== this.#state) {
-      this.#state = stage.state
-      this.#mark.replaceChildren(...(stage.state === 'done' ? [icon('check', ICON_PX.line)] : []))
-    }
-    setText(this.#label, stage.label)
-    const counted = stage.total !== undefined && stage.total > 0
-    setText(this.#count, counted ? `${stage.done ?? 0}/${stage.total}` : '')
-    const share = stage.state === 'done' ? 1 : counted ? Math.min(1, (stage.done ?? 0) / stage.total!) : 0
-    this.#meter.set(share)
-    this.node.setAttribute('role', 'progressbar')
-    this.node.setAttribute('aria-label', stage.label)
-    this.node.setAttribute('aria-valuemin', '0')
-    this.node.setAttribute('aria-valuemax', '100')
-    this.node.setAttribute('aria-valuenow', String(Math.round(share * 100)))
   }
 }

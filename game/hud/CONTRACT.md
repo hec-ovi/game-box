@@ -55,7 +55,7 @@ hud.announce({ kind: 'quest-complete', title: quest.title, reward: { money: 40 }
 | `patch.settings` | [SettingsView](src/types.ts) | the clock (`hour`, `minute`, `locked`), the sky (`weather`, and every `weathers` the game can show), and the view: `minimap` (left out reads as on) and `fullscreen` (left out reads as windowed); pushed again whenever any of it moves |
 | `patch.controls` | [ControlHint](src/types.ts)`[]` | the game's own keys for the controls tab: `{ keys, text, group? }`, replaces the whole list |
 | `patch.window` | `'quests' \| 'map' \| 'inventory' \| 'codex' \| 'settings' \| 'controls' \| null` | opens that face of the window, or shuts it |
-| `patch.loading` | [LoaderView](src/types.ts) | a build under way: its `title` and its `stages`, each `{ id, label, state, done?, total? }` with `state` one of `waiting`, `running`, `done`; with no stages it is a veil with the title alone, for a ride between stations; `null` when the city is ready or the player has landed |
+| `patch.loading` | [LoaderView](src/types.ts) | what is being waited for: `title` (the town's name, or where a train is going) under the word Loading, and `veil` for a moment rather than a wait. `null` takes it away |
 | `hud.announce(notice)` | [Notice](src/types.ts) | one of the nine kinds; `ms` overrides how long it stays |
 
 ## Outputs

@@ -22,7 +22,6 @@ export type {
   HudIntent,
   HudPatch,
   HudWindowName,
-  LoadStage,
   LoaderView,
   Inspecting,
   MapDistrict,

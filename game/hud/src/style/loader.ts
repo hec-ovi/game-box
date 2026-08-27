@@ -102,6 +102,13 @@ export const LOADER = `
 }
 
 
+/* The word, over the name of what is being waited for. */
+.gb-hud .gb-loader-word {
+  color: var(--gb-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  margin-bottom: var(--gb-s2);
+}
 .gb-hud .gb-loader-card h2 {
   margin-bottom: var(--gb-s6);
   color: var(--gb-ink);

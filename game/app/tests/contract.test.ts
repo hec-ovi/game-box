@@ -2510,7 +2510,7 @@ describe('fast travel', () => {
     // the veil is the loader with a title and no stages, and it is up before
     // anything moves: the frame that dresses a neighbourhood nobody has been in
     // is the one it covers
-    expect(pushed.at(-1)!.loading).toEqual({ title: 'To Cobb Brothers', stages: [] })
+    expect(pushed.at(-1)!.loading).toEqual({ title: 'To Cobb Brothers', veil: true })
     expect(stood).toEqual([])
 
     travel.update()
@@ -2521,7 +2521,7 @@ describe('fast travel', () => {
     // and whoever was walking with them got on the same train
     expect(regrouped).toEqual([{ x: stood[0]!.x, z: stood[0]!.z }])
     // still veiled: the city catches up on this frame
-    expect(pushed.at(-1)!.loading).toEqual({ title: 'To Cobb Brothers', stages: [] })
+    expect(pushed.at(-1)!.loading).toEqual({ title: 'To Cobb Brothers', veil: true })
 
     travel.update()
     expect(pushed.at(-1)!.loading).toBeNull()

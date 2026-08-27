@@ -62,7 +62,7 @@ export class Reporting {
 
   veil(title: string): void {
     try {
-      this.#hud.show({ loading: { title, stages: [] } })
+      this.#hud.show({ loading: { title, veil: true } })
       setTimeout(() => {
         try {
           this.#hud.show({ loading: null })

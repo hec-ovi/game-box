@@ -95,7 +95,9 @@ export class Hud {
 
     const doc = mount.ownerDocument
     installStyle(doc)
-    this.#root.append(el('div', 'gb-crosshair'), ...this.#surfaces.map((surface) => surface.node))
+    // the conversation's moves stand at the foot of the screen rather than in
+    // the panel, so they are mounted beside it and not inside it
+    this.#root.append(el('div', 'gb-crosshair'), ...this.#surfaces.map((surface) => surface.node), this.#talk.aside)
     mount.append(this.#root)
     this.#keys = new Keys(
       doc.defaultView ?? doc,
