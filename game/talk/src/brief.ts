@@ -16,12 +16,14 @@ const LINES = keyed(PROMPTS.brief)
 const LIFE = keyed(PROMPTS.life)
 
 /**
- * Everything the model is told, in one fixed labelled template. The engine
- * fills the slots that change by the turn (the room, the hour, the company,
- * what the player carries, what they sell and hold, standing, what they
- * remember, the moves on offer);
- * the generator filled the slots that make this person this person, once, in
- * the world file; and how to speak is fixed text with worked examples.
+ * Everything the model is told, in one labelled template laid out in three
+ * zones, most stable first: how to speak with its worked examples, fixed text
+ * for everybody; then who this person is, off the world file and steady for as
+ * long as the player is talking to them; then where they are this minute, what
+ * the player carries, how they stand and what is between them, which the
+ * engine fills again every turn. A prompt cache is reused up to the first token
+ * that differs, so the volatile lines go last, and the line under them says
+ * again the one rule that matters, where it is read last.
  */
 export class Brief {
   #situation: Situation
@@ -48,8 +50,8 @@ export class Brief {
     return this.#situation.world.name
   }
 
-  /** The character the voice track speaks as, this turn. `turn` counts the turns so far. */
-  voice(moves: readonly Move[], offered: readonly Offered[], turn: number): string {
+  /** The character the voice track speaks as, this turn. */
+  voice(moves: readonly Move[], offered: readonly Offered[]): string {
     const npc = this.#npc()
     return fill(PROMPTS.npc, {
       name: npc.name,
@@ -76,7 +78,7 @@ export class Brief {
       disposition: this.#memory.disposition(),
       memories: this.#memory.held(),
       situation: this.#wants.block(moves),
-      examples: this.#examples.shown(turn),
+      examples: this.#examples.shown(),
     })
   }
 

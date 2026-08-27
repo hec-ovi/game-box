@@ -761,12 +761,41 @@ describe('Conversation', () => {
     expect(brief).toContain('- Your story: Born on the quay')
     expect(brief).toContain('- Why you are here right now: covering the day shift while Rook is away')
     expect(brief).toContain('- The tide takes the low road twice a day.')
-    // the fixed part: the rule the reported replies broke, and worked examples that vary by the turn
+    // the fixed part: the rule the reported replies broke, and the worked examples
     expect(brief).toContain('The first clause answers what they actually said.')
     expect(brief).toMatch(/They said: ".+"\nRight: ".+"\nWrong: ".+"/)
-    await collect(conversation.say('and?'))
-    expect(model.voice[1]!.system).not.toBe(brief)
+    // the three zones, most stable first: how to speak, then this person, then this minute
+    expect(brief.indexOf('How to speak:')).toBeLessThan(brief.indexOf('They said: "'))
+    expect(brief.indexOf('They said: "')).toBeLessThan(brief.indexOf('Who you are:'))
+    expect(brief.indexOf('Who you are:')).toBeLessThan(brief.indexOf('Where you are, this minute:'))
+    // and the last line is the one rule again, where it is read last
+    expect(brief.trimEnd().endsWith('Now answer what they actually said, as Mara Cole, in your own words.')).toBe(true)
     expect(brief).not.toMatch(/[a-z]+_\d{4}/)
+  })
+
+  it('holds the prompt still up to the per-turn zone, so the model reads the same prefix twice', async () => {
+    const { conversation, model, player, ledger } = setup({ text: 'Aye.' })
+    const zone = 'Where you are, this minute:'
+    player.clock.setTime(9, 0)
+    await collect(conversation.say('morning'))
+
+    // a later turn, in a different minute: the hour moved, the sky turned, the player picked something up
+    player.clock.setTime(19, 30)
+    player.clock.setWeather('rain')
+    player.take(ledger.id)
+    await collect(conversation.say('and?'))
+
+    const [first, second] = [model.voice[0]!.system, model.voice[1]!.system]
+    const prefix = first.slice(0, first.indexOf(zone))
+    expect(second.slice(0, second.indexOf(zone))).toBe(prefix)
+    // the prefix is the whole of both fixed zones, and it is the bulk of the prompt
+    expect(prefix).toContain('The first clause answers what they actually said.')
+    expect(prefix).toMatch(/They said: ".+"\nRight: ".+"\nWrong: ".+"/)
+    expect(prefix).toContain('You are Mara Cole, the bartender at The Anchor, in Cold Harbour.')
+    expect(prefix.length).toBeGreaterThan(first.length / 2)
+    // and the tail did move, so the two prompts are not the same prompt
+    expect(second).not.toBe(first)
+    expect(second).toContain('The hour: late evening')
   })
 
   it('tells them what people say about a place like this, as talk rather than as fact', async () => {

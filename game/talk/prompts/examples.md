@@ -1,7 +1,8 @@
 # Worked examples for the how-to-speak block, in threes: what was said, a reply
-# of the right shape, and one of the wrong shape with why in brackets. A few
-# are drawn per turn, so no two turns show the same ones, and none carries a
-# name, a place, a price or a sky that could be reused as an answer.
+# of the right shape, and one of the wrong shape with why in brackets. A couple
+# are drawn per person, so two people in the same town are shown different
+# ones, and none carries a name, a place, a price or a sky that could be reused
+# as an answer.
 ask-1: how are you?
 good-1: Well enough. Busier than I'd like, but well enough.
 bad-1: The pot has been boiling since first light and nobody has swept this floor. What do you want? (a report on the room, and no answer)

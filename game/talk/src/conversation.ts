@@ -54,7 +54,6 @@ export class Conversation {
   #decider: Decider
   #script: Script
   #performer: Performer
-  #turns = 0
   #open = true
   #signal: AbortSignal | undefined
 
@@ -159,7 +158,7 @@ export class Conversation {
 
     const taken = await this.#speaker.take({
       npcName: this.#brief.npcName,
-      system: this.#brief.voice(moves, offered, this.#turns++),
+      system: this.#brief.voice(moves, offered),
       exchange: this.#brief.exchange(this.#transcript.turns),
       facts: offered.length,
       signal: this.#signal,
