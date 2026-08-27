@@ -1,0 +1,64 @@
+# Changelog
+
+What the project does now. Each entry is the present state, not a diff.
+
+## 2026-08-27
+
+**The AI is chosen per job, from either settings screen.** Two families of
+engine: a hosted service reached with a key (OpenRouter), and an
+OpenAI-compatible server of your own (llama.cpp, ollama, vLLM). Each carries its
+model and address, answers a health check, and runs one real generation on
+demand. Five jobs are pointed at them independently: the city's history and its
+charters, the names and signs, the places and the people in them, the quests,
+and talking to people in game. The launcher's settings screen and the in-game
+settings tab show the same state, because both read it from the host.
+
+**Keys live outside the repository.** The host writes them to `.env.local`, mode
+0600, git-ignored, through a renamed neighbour so a crash cannot truncate it. A
+key goes in from the settings screen and comes back out of nothing: the reply
+says whether one is stored, never what it is, and the response schema has no
+field one could sit in. An exported variable still wins over the file.
+
+**Every model call says what it is for.** The scribe and the conversation engine
+tag each request with its job, so the router has something to route. A request
+that names no job goes where everything went before jobs existed.
+
+**A brief can be asked what it would give, without building it.** `Forge.plan()`
+returns the architecture alone: the grid, the roads, the named districts, every
+plot at its height, and the stations, with no interiors, people, items or
+quests. A 20 by 20 city plans in about 100 ms against 440 ms for the full build.
+
+**The architecture can be looked at before anything is written into it.** The
+creation form's Preview blueprint opens an orbit camera over the massing, with
+the zones drawn as the shapes they are and named over the roofs. No people, no
+cars, no weather. About 340 ms from the press to the first frame on a 20 by 20
+city, with the renderer loaded only when the button is pressed.
+
+**The creation form keeps a draft.** What was typed survives closing the panel.
+Step one carries five actions: Generate with AI, Save draft, Generate the city,
+Preview blueprint, and on to the writing.
+
+**A place carries what it is.** The model is asked what each building is, and
+the answer now reaches the world file and the codex instead of dying with the
+process.
+
+**People repeat what the town says about a place like the one they are in.**
+Each kind of place carries rumours, and the person you are talking to is told
+them as talk rather than as fact.
+
+**The character brief is laid out in three zones**, most stable first: what is
+fixed for everybody, then what is fixed for that person, then what changes this
+turn. 75 percent of the prompt now holds still between turns of one
+conversation, against about 10 percent before, so a local engine reuses its
+cached prefix instead of processing the whole prompt again.
+
+**A rule the engine's grammar cannot enforce is said to it in words.** When a
+pattern is taken out of the grammar, or a length is ignored because a pattern
+sits beside it, the constraint is written into that field's description. The
+reply is still checked against the schema as written, so this changes where the
+engine is told, never what it is held to.
+
+**The hosted path calls tools.** Measured through OpenRouter on
+`google/gemma-4-31b-it:free`: a named tool choice, streamed, came back as a
+whole call in about 2.1 s, not rebuilt from prose. What limits it is capacity,
+not correctness: the free pool answers 429 for long stretches.

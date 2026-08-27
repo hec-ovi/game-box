@@ -7,11 +7,21 @@ One example ships here, validated end to end:
 `example/wall-concrete-dark.png`, 896 x 896, 2 m across, a dark grimy concrete
 street wall.
 
+This page is the route for a **tiling surface**: a wall, a floor, a road. For
+the images a theme pack needs (the panels behind a window, the faces of a room,
+the artwork on a building's screens) see `docs/textures/PROMPTS.md`, which is
+written to be pasted into any generator.
+
 ## Getting an image
 
-The Grok CLI (`grok`) exposes an `image_gen` tool inside the agent. There is no
-image endpoint to call directly and no API key on this machine; the CLI signs in
-with a session, so generation goes through the agent.
+Any image generator will do, and none of the prompts depend on a seed or a
+negative prompt field, because the consumer tools do not expose those. Generate
+at the largest size offered and downsample: shrinking four to eight times is
+also the cheapest way to lose the small incoherences a generated image carries.
+
+The Grok CLI (`grok`) is one route, and the one the example here was made with.
+It exposes an `image_gen` tool inside the agent, with no image endpoint to call
+directly, so generation goes through the agent.
 
 ```bash
 grok --prompt-file <instruction> --model grok-4.6 --effort low --permission-mode bypassPermissions
