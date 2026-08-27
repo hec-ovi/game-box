@@ -2,7 +2,7 @@ import type * as THREE from 'three'
 import { Fn, If, clamp, float, floor, fract, int, max, mix, smoothstep, step, texture, uv, vec2, vec4 } from 'three/tsl'
 import type { Node } from 'three/webgpu'
 import { layerIndex } from './layer.ts'
-import { DISPLAY_FINISH, SCREEN_PICTURES, SCREEN_SIZE } from './screens.ts'
+import { DISPLAY_FINISH, SCREEN_SIZE } from './screens.ts'
 import { surfaceFrame } from './surface.ts'
 
 /**
@@ -68,7 +68,7 @@ export class WallScreens {
 
   constructor(screens: THREE.DataArrayTexture, finishes: readonly string[]) {
     const wearing = finishes.indexOf(DISPLAY_FINISH)
-    const count = SCREEN_PICTURES.length
+    const count = screens.image.depth
 
     this.#panel = Fn(() => {
       const frame = surfaceFrame()
@@ -120,9 +120,9 @@ export class WallScreens {
   }
 }
 
-/** Which picture a plot's panels carry: the same fold of its uv shift the shader takes. */
-export function pictureFor(rooms: number): number {
-  return rooms % SCREEN_PICTURES.length
+/** Which picture a plot's panels carry, out of a strip of `held`: the same fold of its uv shift the shader takes. */
+export function pictureFor(rooms: number, held: number): number {
+  return rooms % held
 }
 
 /** The share of one lamp pitch that is lamp rather than the dark between them. */

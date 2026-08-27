@@ -68,7 +68,7 @@ export class BuildingLights {
       const area = door.size[0] * door.size[1] * LOBBY.glass
       found.push(emitter('entrance', door, out, LOBBY.colour, area * LOBBY.candela))
     }
-    const tint = this.#tints[pictureFor(rooms)]
+    const tint = this.#tints[pictureFor(rooms, this.#tints.length)]
     if (tint) {
       for (const panel of panelsOf(geometry, this.#display)) {
         const [wide, tall] = [...panel.size].sort((a, b) => b - a)

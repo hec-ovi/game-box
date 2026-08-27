@@ -79,6 +79,7 @@ export async function loadPrefab(night: CityNight): Promise<Library> {
     // a room is read at a clamped uv, so wrapping one would fetch the far side
     // of the picture along the edge a ray leaves the box at
     rooms: await arrayTexture(rooms, catalogue.atlas.rooms, THREE.ClampToEdgeWrapping),
+    glazing: catalogue.atlas.rooms,
     // a screen is read at a clamped uv too: the picture is cropped onto the
     // panel, so wrapping one would fold its far side back over its own edge
     screens: await arrayTexture(screens, catalogue.atlas.screens, THREE.ClampToEdgeWrapping),

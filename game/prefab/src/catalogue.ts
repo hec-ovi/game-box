@@ -54,6 +54,36 @@ const ReliefSchema = StripSchema.extend({
   roughness: z.array(z.number().min(0).max(1)).min(1),
 })
 
+const layer = z.number().int().nonnegative()
+const BankSchema = z.object({ first: layer, count: z.number().int().positive() })
+const BanksSchema = z.object({ upper: BankSchema, street: BankSchema })
+
+/**
+ * The strip every window in the city reads, and how the theme pack that built
+ * it laid the layers out: which run is back walls, which is flat panels, and
+ * where the four faces a marched room shares sit. The runtime reads its layout
+ * off this rather than assuming one, so a pack with its own pictures needs no
+ * code.
+ */
+const GlazingSchema = StripSchema.extend({
+  rooms: BanksSchema,
+  panels: BanksSchema,
+  faces: z.object({ floor: layer, ceiling: layer, side: layer, sideAlt: layer }),
+}).superRefine((strip, ctx) => {
+  const over = (at: number) => at >= strip.layers
+  for (const [field, banks] of [
+    ['rooms', strip.rooms],
+    ['panels', strip.panels],
+  ] as const) {
+    for (const [bank, run] of Object.entries(banks)) {
+      if (over(run.first + run.count - 1)) ctx.addIssue({ code: 'custom', path: [field, bank], message: `runs past the ${strip.layers} layers the strip has` })
+    }
+  }
+  for (const [face, at] of Object.entries(strip.faces)) {
+    if (over(at)) ctx.addIssue({ code: 'custom', path: ['faces', face], message: `layer ${at} is past the ${strip.layers} the strip has` })
+  }
+})
+
 export const CatalogueSchema = z.object({
   pack: z.string().min(1),
   version: z.string().min(1),
@@ -63,8 +93,8 @@ export const CatalogueSchema = z.object({
   atlas: z.object({
     colour: StripSchema,
     emissive: StripSchema,
-    /** The rooms every window in the city looks into. */
-    rooms: StripSchema,
+    /** Everything a window in the city can show: back walls, flat panels and the faces a room shares. */
+    rooms: GlazingSchema,
     /** The pictures every screen in the city carries. */
     screens: StripSchema,
     /**

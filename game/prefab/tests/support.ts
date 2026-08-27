@@ -19,6 +19,29 @@ export const FINISHES: readonly string[] = ['wall:facade-a', DOOR_FINISH, 'glass
 /** The screen plate the fixture shop carries beside its door, in metres. */
 export const PLATE = { wide: 1.2, tall: 2.4, deep: 0.1, x: -2.5, y: 1.4 } as const
 
+/**
+ * The smallest glazing strip a city can be drawn from: one back wall and one
+ * flat panel, both banks reading the same layer, and the four shared faces.
+ */
+export const GLAZING = {
+  rooms: { upper: { first: 0, count: 1 }, street: { first: 0, count: 1 } },
+  panels: { upper: { first: 1, count: 1 }, street: { first: 1, count: 1 } },
+  faces: { floor: 2, ceiling: 3, side: 4, sideAlt: 5 },
+} as const
+export const GLAZING_LAYERS = 6
+
+/** What the fixture pack's strips say they hold. */
+export function atlasDocOf(over: Partial<CatalogueDoc['atlas']> = {}): CatalogueDoc['atlas'] {
+  return {
+    colour: { size: 4, layers: FINISHES.length, sha256: 'b'.repeat(64) },
+    emissive: { size: 4, layers: FINISHES.length, sha256: 'c'.repeat(64) },
+    rooms: { size: 4, layers: GLAZING_LAYERS, sha256: 'd'.repeat(64), ...GLAZING },
+    screens: { size: 4, layers: 2, sha256: 'e'.repeat(64) },
+    finishes: [...FINISHES],
+    ...over,
+  }
+}
+
 /** A catalogue with two looks on one shape, so a pick has something to choose between. */
 export function catalogueOf(over: Partial<CatalogueDoc> = {}): Catalogue {
   return Catalogue.parse({
@@ -26,13 +49,7 @@ export function catalogueOf(over: Partial<CatalogueDoc> = {}): Catalogue {
     version: '1.0.0',
     sha256: 'a'.repeat(64),
     producer: 'test',
-    atlas: {
-      colour: { size: 4, layers: FINISHES.length, sha256: 'b'.repeat(64) },
-      emissive: { size: 4, layers: FINISHES.length, sha256: 'c'.repeat(64) },
-      rooms: { size: 4, layers: 2, sha256: 'd'.repeat(64) },
-      screens: { size: 4, layers: 2, sha256: 'e'.repeat(64) },
-      finishes: [...FINISHES],
-    },
+    atlas: atlasDocOf(),
     models: [
       { id: 'shop-8x12x2', look: 'shop', front: 8, depth: 12, storeys: 2, tags: ['shop', 'cafe'], triangles: 12, door: { along: 0 } },
       { id: 'home-8x12x2', look: 'home', front: 8, depth: 12, storeys: 2, tags: ['house'], triangles: 12, door: { along: 0 } },
@@ -63,9 +80,15 @@ export function libraryOf(catalogue: Catalogue): Library {
 }
 
 export function atlasOf(): PrefabAtlas {
-  const layers = FINISHES.length
-  const pixels = () => new THREE.DataArrayTexture(new Uint8Array(4 * 4 * layers * 4).fill(128), 4, 4, layers)
-  return { colour: pixels(), emissive: pixels(), rooms: pixels(), screens: pixels(), finishes: [...FINISHES] }
+  const pixels = (layers: number) => new THREE.DataArrayTexture(new Uint8Array(4 * 4 * layers * 4).fill(128), 4, 4, layers)
+  return {
+    colour: pixels(FINISHES.length),
+    emissive: pixels(FINISHES.length),
+    rooms: pixels(GLAZING_LAYERS),
+    glazing: GLAZING,
+    screens: pixels(2),
+    finishes: [...FINISHES],
+  }
 }
 
 /** The preset charter the plot's word names, which is what `@gb/scene` resolves and hands the dressing beside the plot. */

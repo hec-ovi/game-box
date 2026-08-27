@@ -1,0 +1,39 @@
+{
+  "theme": "gb",
+  "version": "1.0.0",
+  "windows": [
+    { "file": "curtain-drawn.png", "where": ["upper"] },
+    { "file": "curtain-open.png", "where": ["upper"] },
+    { "file": "blind-angled.png", "where": ["upper"] },
+    { "file": "blind-slats.png", "where": ["upper", "street"] },
+    { "file": "frosted-glass.png", "where": ["upper", "street"] },
+    { "file": "blank-panel.png", "where": ["upper", "street"] },
+    { "file": "concrete-infill.png", "where": ["upper", "street"] },
+    { "file": "dark-empty.png", "where": ["upper", "street"] },
+    { "file": "paper-covered.png", "where": ["street"] },
+    { "file": "shutter-steel.png", "where": ["street"] }
+  ],
+  "rooms": [
+    { "file": "office-desks.png", "where": ["upper"] },
+    { "file": "office-partition.png", "where": ["upper"] },
+    { "file": "server-racks.png", "where": ["upper"] },
+    { "file": "flat-living.png", "where": ["upper"] },
+    { "file": "flat-kitchen.png", "where": ["upper"] },
+    { "file": "flat-bedroom.png", "where": ["upper"] },
+    { "file": "corridor.png", "where": ["upper"] },
+    { "file": "store-room.png", "where": ["upper"] },
+    { "file": "bar-bottles.png", "where": ["street"] },
+    { "file": "noodle-counter.png", "where": ["street"] },
+    { "file": "shop-racks.png", "where": ["street"] },
+    { "file": "clinic-cabinets.png", "where": ["street"] },
+    { "file": "workshop-tools.png", "where": ["street"] },
+    { "file": "lobby-desk.png", "where": ["street"] }
+  ],
+  "faces": {
+    "floor": "floor.png",
+    "ceiling": "ceiling.png",
+    "side": "wall-side.png",
+    "sideAlt": "wall-side-alt.png"
+  },
+  "ads": ["portrait.png", "bottle.png", "figure.png", "bowl.png", "bloom.png", "skyline.png"]
+}

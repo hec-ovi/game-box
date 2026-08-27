@@ -35,8 +35,13 @@ export function surfaceFrame(): SurfaceFrame {
 
   const det = duvx.x.mul(duvy.y).sub(duvx.y.mul(duvy.x))
   const safe = select(det.greaterThanEqual(0), max(det, 1e-12), min(det, -1e-12))
-  const along = dpx.mul(duvy.y).sub(dpy.mul(duvx.y)).div(safe)
-  const down = dpy.mul(duvx.x).sub(dpx.mul(duvy.x)).div(safe)
+  const along = dpx.mul(duvy.y).sub(dpy.mul(duvx.y)).div(safe).toVar()
+  const down = dpy.mul(duvx.x).sub(dpx.mul(duvy.x)).div(safe).toVar()
 
-  return { along, down, wide: along.length(), tall: down.length(), spread: fwidth(uv()) }
+  // written into variables here rather than left as an expression, because a
+  // node is generated where it is first read and every reader of this is a
+  // branch: a derivative taken inside flow that only some fragments of a quad
+  // enter is not defined, and two neighbouring windows of different kinds are
+  // exactly that case
+  return { along, down, wide: along.length().toVar(), tall: down.length().toVar(), spread: fwidth(uv()).toVar() }
 }

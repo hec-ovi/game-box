@@ -10,7 +10,8 @@ import type { ScreenTint } from './lights.ts'
 import { SURFACE, type PrefabAtlas } from './material.ts'
 import { GLOW, SHELL_MATERIAL_NAME } from './pack.ts'
 import { ROOM_TINTS } from './rooms.ts'
-import { DISPLAY_FINISH, SCREEN_PICTURES } from './screens.ts'
+import { BAY, SALT } from './pick.ts'
+import { DISPLAY_FINISH } from './screens.ts'
 import { surfaceFrame } from './surface.ts'
 import { stretchOf } from './wall.ts'
 
@@ -58,6 +59,7 @@ export function shellMaterial(atlas: PrefabAtlas, night: CityNight, tints: reado
   const roomTints = uniformArray<'vec3'>(ROOM_TINTS.map(([r, g, b]) => new THREE.Vector3(r, g, b)), 'vec3')
   const screenTints = uniformArray<'vec3'>(tints.map((tint) => new THREE.Color(tint.colour).multiplyScalar(tint.brightness)), 'vec3')
   const display = atlas.finishes.indexOf(DISPLAY_FINISH)
+  const held = atlas.screens.image.depth
 
   // what glows here and how much of the fragment it covers: a flat lit window
   // in its room's tint, or a screen in its picture's mean colour
@@ -66,15 +68,15 @@ export function shellMaterial(atlas: PrefabAtlas, night: CityNight, tints: reado
     const out = vec4(0, 0, 0, 0).toVar()
     If(bays.windowed(layer), () => {
       const bay = bays.layout(layer, frame)
-      const seed = bay.id.x.mul(1973).add(bay.id.y.mul(9277)).add(1)
+      const seed = bay.id.x.mul(BAY.across).add(bay.id.y.mul(BAY.down)).add(BAY.first)
       const on = step(hash(seed).mul(bay.keys), night.lit)
-      const tint = roomTints.element(floor(hash(seed.add(3121)).mul(ROOM_TINTS.length)).toInt())
+      const tint = roomTints.element(floor(hash(seed.add(SALT.tint)).mul(ROOM_TINTS.length)).toInt())
       out.assign(vec4(tint.mul(mix(float(UNLIT), float(LIT_WINDOW), on)), bay.share))
     })
     if (display >= 0) {
       If(layer.equal(int(display)), () => {
         const shift = floor(uv().x)
-        const picture = shift.sub(floor(shift.div(SCREEN_PICTURES.length)).mul(SCREEN_PICTURES.length)).toInt()
+        const picture = shift.sub(floor(shift.div(held)).mul(held)).toInt()
         out.assign(vec4(screenTints.element(picture), 1))
       })
     }

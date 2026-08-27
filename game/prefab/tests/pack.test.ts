@@ -12,8 +12,9 @@ import { sha256 } from '../src/digest.ts'
 import { DOOR_FINISH, OPEN_DOOR_FINISH } from '../src/entrance.ts'
 import { PROUD } from '../src/fit.ts'
 import { windowsOn } from '../src/windows.ts'
-import { ROOM_BANKS, ROOM_PICTURES, ROOM_SIZE } from '../src/rooms.ts'
-import { DISPLAY_FINISH, SCREEN_PICTURES, SCREEN_SIZE } from '../src/screens.ts'
+import { ROOM_SIZE } from '../src/rooms.ts'
+import { DISPLAY_FINISH, SCREEN_SIZE } from '../src/screens.ts'
+import { planStrip, readTheme } from '../src/theme.ts'
 import { DOOR, doorTile } from '../tools/doors.ts'
 import { io } from '../tools/intake.ts'
 import { baseFinish, stretchOf, wallFinish } from '../src/wall.ts'
@@ -31,6 +32,7 @@ const screens = new Uint8Array(readFileSync(new URL('buildings-screens.png', pac
 const colour = new Uint8Array(readFileSync(new URL('buildings-colour.png', pack)))
 const relief = new Uint8Array(readFileSync(new URL('buildings-relief.png', pack)))
 const catalogue = Catalogue.parse(manifest)
+const theme = readTheme(JSON.parse(readFileSync(new URL('../themes/gb/theme.json', import.meta.url), 'utf8')))
 const looks = loadLooks(new URL('../looks/', import.meta.url).pathname)
 const pictures = [...new Set(looks.map((look) => look.facade))]
 
@@ -101,16 +103,18 @@ describe('the shipped pack', () => {
     expect(createHash('sha256').update(mesh).digest('hex')).toBe(catalogue.sha256)
   })
 
-  it('carries the rooms its manifest describes, one layer per committed picture', () => {
+  it('carries the glazing strip its manifest describes, laid out the way the shipped theme plans it', () => {
+    const planned = planStrip(theme)
     expect(createHash('sha256').update(strip).digest('hex')).toBe(catalogue.atlas.rooms.sha256)
-    expect(catalogue.atlas.rooms.layers).toBe(ROOM_PICTURES.length)
+    expect(catalogue.atlas.rooms.layers).toBe(planned.layers.length)
     expect(catalogue.atlas.rooms.size).toBe(ROOM_SIZE)
-    for (const bank of Object.values(ROOM_BANKS)) expect(bank.first + bank.count).toBeLessThanOrEqual(ROOM_PICTURES.length)
+    const { rooms, panels, faces } = catalogue.atlas.rooms
+    expect({ rooms, panels, faces }).toEqual(planned.strip)
   })
 
-  it('carries the screens its manifest describes, one layer per composition', () => {
+  it('carries the screens its manifest describes, one layer per ad the theme declares', () => {
     expect(createHash('sha256').update(screens).digest('hex')).toBe(catalogue.atlas.screens.sha256)
-    expect(catalogue.atlas.screens.layers).toBe(SCREEN_PICTURES.length)
+    expect(catalogue.atlas.screens.layers).toBe(theme.ads.length)
     expect(catalogue.atlas.screens.size).toBe(SCREEN_SIZE)
   })
 

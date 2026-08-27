@@ -8,6 +8,7 @@
   },
   "scripts": {
     "test": "vitest run",
+    "generate": "node tools/emit-schema.ts",
     "build:pack": "node tools/build-buildings.ts"
   },
   "dependencies": {

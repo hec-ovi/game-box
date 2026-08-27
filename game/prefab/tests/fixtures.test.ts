@@ -13,8 +13,6 @@ import type { StreetFace } from '../src/face.ts'
 import { laidOn } from '../src/fixtures.ts'
 import { Library } from '../src/library.ts'
 import { designFor } from '../src/pin.ts'
-import { ROOM_PICTURES } from '../src/rooms.ts'
-import { SCREEN_PICTURES } from '../src/screens.ts'
 import { middleOf, seatedSigns, signPoints, type SeatedSign } from '../tools/signage.ts'
 
 /**
@@ -34,7 +32,7 @@ const mesh = readFileSync(new URL('buildings.glb', pack))
 const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(mesh.buffer.slice(mesh.byteOffset, mesh.byteOffset + mesh.byteLength), '')
 const grey = (count: number) => new THREE.DataArrayTexture(new Uint8Array(4 * 4 * count * 4).fill(128), 4, 4, count)
 const finishes = catalogue.atlas.finishes
-const atlas = { colour: grey(finishes.length), emissive: grey(finishes.length), rooms: grey(ROOM_PICTURES.length), screens: grey(SCREEN_PICTURES.length), finishes }
+const atlas = { colour: grey(finishes.length), emissive: grey(finishes.length), rooms: grey(catalogue.atlas.rooms.layers), glazing: catalogue.atlas.rooms, screens: grey(catalogue.atlas.screens.layers), finishes }
 const library = Library.of({ catalogue, scenes: gltf.scenes, atlas, night: new CityNight() })
 const kit = new KitDressing(placeholderKit('a neon port city'), new Greybox())
 const dressing = new PrefabDressing(library, kit)

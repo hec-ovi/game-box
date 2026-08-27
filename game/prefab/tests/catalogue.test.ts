@@ -2,7 +2,7 @@ import { METRICS, PLOT_BAND } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { everyBucket } from '../src/bucket.ts'
 import { InvalidCatalogue } from '../src/catalogue.ts'
-import { catalogueOf, plotOf } from './support.ts'
+import { GLAZING, GLAZING_LAYERS, atlasDocOf, catalogueOf, plotOf } from './support.ts'
 
 describe('the catalogue', () => {
   it('expects exactly the shapes the city is cut in, in metres', () => {
@@ -17,6 +17,11 @@ describe('the catalogue', () => {
   it('refuses anything that is not a manifest', () => {
     expect(() => catalogueOf({ models: [] })).toThrow(InvalidCatalogue)
     expect(() => catalogueOf({ sha256: 'not a hash' })).toThrow(InvalidCatalogue)
+    // a glazing strip that points at a layer it has not got would read whatever
+    // the driver leaves there, so it never loads
+    const rooms = { size: 4, layers: GLAZING_LAYERS, sha256: 'd'.repeat(64), ...GLAZING }
+    expect(() => catalogueOf({ atlas: atlasDocOf({ rooms: { ...rooms, faces: { ...GLAZING.faces, sideAlt: GLAZING_LAYERS } } }) })).toThrow(InvalidCatalogue)
+    expect(() => catalogueOf({ atlas: atlasDocOf({ rooms: { ...rooms, panels: { ...GLAZING.panels, street: { first: 4, count: 9 } } } }) })).toThrow(InvalidCatalogue)
   })
 
   it('gives a plot a model of its own shape', () => {

@@ -2,7 +2,7 @@
  * Builds the committed building pack: every authored look, replayed at every
  * footprint the city cuts, through the owner's `glb-buildings` CLI.
  *
- *   node tools/build-buildings.ts [--jobs 8] [--out pack]
+ *   node tools/build-buildings.ts [--jobs 8] [--out pack] [--theme themes/gb]
  *
  * Nothing in the game runs this. It is the offline half of the design: a model
  * writes the looks by hand, once, and this turns them into the bytes that ship.
@@ -26,8 +26,8 @@ import { loadLooks, type Look } from './look.ts'
 import { modelOf, PACK, serialise, VERSION } from './manifest.ts'
 import { Producer } from './producer.ts'
 import { buildRelief } from './relief.ts'
-import { buildRooms } from './rooms.ts'
 import { buildScreens } from './screens.ts'
+import { buildGlazing, ThemePack } from './theme.ts'
 import { drawTextures } from './textures.ts'
 import { verbsFor } from './stack.ts'
 import { verifyPack } from './verify.ts'
@@ -36,6 +36,7 @@ import { writePack } from './write.ts'
 const args = process.argv.slice(2)
 const jobs = Math.max(1, Number(flag(args, '--jobs') ?? 8))
 const out = resolve(import.meta.dirname, '..', flag(args, '--out') ?? 'pack')
+const themed = flag(args, '--theme')
 const looksFolder = resolve(import.meta.dirname, '../looks')
 
 const homes = join(tmpdir(), `gb-prefab-${process.pid}`)
@@ -56,11 +57,12 @@ try {
   }
   const atlas = await buildAtlas(looks, swatches, layers)
   const relief = await buildRelief(layers.names)
-  const rooms = await buildRooms()
-  const screens = await buildScreens()
+  const theme = await ThemePack.at(themed ? resolve(themed) : undefined)
+  const rooms = await buildGlazing(theme, ROOM_SIZE)
+  const screens = await buildScreens(theme)
   console.log(
     `atlas: ${atlas.layers} layers, ${(atlas.colour.length / 1024) | 0} kB colour, ${(atlas.emissive.length / 1024) | 0} kB glow, ` +
-      `${rooms.layers} rooms, ${(rooms.strip.length / 1024) | 0} kB, ${screens.layers} screens, ${(screens.strip.length / 1024) | 0} kB`,
+      `theme ${theme.doc.theme} ${theme.doc.version}: ${rooms.layers} glazing layers, ${(rooms.strip.length / 1024) | 0} kB, ${screens.layers} screens, ${(screens.strip.length / 1024) | 0} kB`,
   )
 
   const started = Date.now()
@@ -80,7 +82,7 @@ try {
     atlas: {
       colour: { size: COLOUR_SIZE, layers: layers.count, sha256: createHash('sha256').update(atlas.colour).digest('hex') },
       emissive: { size: EMISSIVE_SIZE, layers: layers.count, sha256: createHash('sha256').update(atlas.emissive).digest('hex') },
-      rooms: { size: ROOM_SIZE, layers: rooms.layers, sha256: createHash('sha256').update(rooms.strip).digest('hex') },
+      rooms: { size: ROOM_SIZE, layers: rooms.layers, sha256: createHash('sha256').update(rooms.strip).digest('hex'), ...theme.plan.strip },
       screens: { size: SCREEN_SIZE, layers: screens.layers, sha256: createHash('sha256').update(screens.strip).digest('hex') },
       relief: {
         size: COLOUR_SIZE,

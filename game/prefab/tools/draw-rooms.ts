@@ -4,8 +4,9 @@
  *   node tools/draw-rooms.ts <folder of raw images>
  *
  * Nothing in the game runs this, and nothing in the build does either: the
- * pictures in `rooms/` are committed art and the build only stacks them. This
- * is here so they can be redrawn from the prompts beside them.
+ * pictures in a theme pack's `rooms/` are committed art and the build only
+ * stacks them. This is here so they can be redrawn from the prompts in
+ * `docs/textures/PROMPTS.md`.
  *
  * One thing has to happen on the way in. Asked for a room seen through a
  * window, the model often paints the wall round the window as well, so the room
@@ -18,19 +19,21 @@ import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import sharp from 'sharp'
-import { ROOM_PICTURES, ROOM_SIZE } from '../src/rooms.ts'
+import { ROOM_SIZE } from '../src/rooms.ts'
 import { PNG } from './paint.ts'
+import { SHIPPED, stemOf, ThemePack } from './theme.ts'
 
 /** A row or column this dark and this flat is border, not room. */
 const BORDER = { bright: 0.16, spread: 0.055, most: 0.3 }
 
 const from = resolve(process.argv[2] ?? '.')
-const to = resolve(import.meta.dirname, '../rooms')
+const to = join(SHIPPED, 'rooms')
+const named = (await ThemePack.at()).doc.rooms.map((room) => stemOf(room.file))
 
 // whatever is in the folder, not all of them: a new room arrives on its own and
-// the eleven already committed are not redrawn to take it
-const waiting = ROOM_PICTURES.filter((name) => existsSync(join(from, `${name}.jpg`)))
-if (waiting.length === 0) throw new Error(`no room pictures in ${from}; expected one of ${ROOM_PICTURES.join(', ')} as .jpg`)
+// the ones already committed are not redrawn to take it
+const waiting = named.filter((name) => existsSync(join(from, `${name}.jpg`)))
+if (waiting.length === 0) throw new Error(`no room pictures in ${from}; expected one of ${named.join(', ')} as .jpg`)
 
 for (const name of waiting) {
   const raw = await readFile(join(from, `${name}.jpg`))

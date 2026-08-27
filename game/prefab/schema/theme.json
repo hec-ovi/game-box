@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "theme": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,23}$"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "windows": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,47}\\.png$"
+          },
+          "where": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "upper",
+                "street"
+              ]
+            }
+          }
+        },
+        "required": [
+          "file",
+          "where"
+        ]
+      }
+    },
+    "rooms": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,47}\\.png$"
+          },
+          "where": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "upper",
+                "street"
+              ]
+            }
+          }
+        },
+        "required": [
+          "file",
+          "where"
+        ]
+      }
+    },
+    "faces": {
+      "type": "object",
+      "properties": {
+        "floor": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,47}\\.png$"
+        },
+        "ceiling": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,47}\\.png$"
+        },
+        "side": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,47}\\.png$"
+        },
+        "sideAlt": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,47}\\.png$"
+        }
+      },
+      "required": [
+        "floor",
+        "ceiling",
+        "side",
+        "sideAlt"
+      ]
+    },
+    "ads": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9-]{0,47}\\.png$"
+      }
+    }
+  },
+  "required": [
+    "theme",
+    "version",
+    "windows",
+    "rooms",
+    "faces",
+    "ads"
+  ]
+}

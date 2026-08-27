@@ -1,6 +1,6 @@
 {
   "pack": "gb-buildings",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "sha256": "3ebb8bcde86baf1283e850152a26777e8022789066678824898382242931ef27",
   "producer": "glb-buildings@6e05c32",
   "atlas": {
@@ -16,8 +16,34 @@
     },
     "rooms": {
       "size": 256,
-      "layers": 14,
-      "sha256": "3983516760dcab0494ddf04d30d49c0d1e70d9465797a8df5ed16773a0fce4cc"
+      "layers": 28,
+      "sha256": "ee8c21616cd782fb59e5d4c482b2e8cf5a2d2fb48786111f5178d4e2e48eed72",
+      "rooms": {
+        "upper": {
+          "first": 0,
+          "count": 8
+        },
+        "street": {
+          "first": 8,
+          "count": 6
+        }
+      },
+      "panels": {
+        "upper": {
+          "first": 14,
+          "count": 8
+        },
+        "street": {
+          "first": 17,
+          "count": 7
+        }
+      },
+      "faces": {
+        "floor": 24,
+        "ceiling": 25,
+        "side": 26,
+        "sideAlt": 27
+      }
     },
     "screens": {
       "size": 256,

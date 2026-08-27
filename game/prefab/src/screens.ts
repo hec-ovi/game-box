@@ -6,6 +6,10 @@
  * whole, close, and often two at a time. What makes one read as a screen rather
  * than a poster is not the picture but the pixel grid over it, and that is
  * arithmetic in `src/display.ts` rather than anything stored here.
+ *
+ * Which pictures the strip holds is the theme pack's to say, in its `ads` list.
+ * Nothing here names one: the runtime folds a plot's own uv shift onto however
+ * many layers the strip it was handed carries.
  */
 
 /**
@@ -15,12 +19,6 @@
  * throwing away detail no lamp can show.
  */
 export const SCREEN_SIZE = 256
-
-/**
- * The screens in the order they sit in the strip. Which one a panel carries is
- * the plot's own uv shift folded onto this count, in `pictureFor`.
- */
-export const SCREEN_PICTURES: readonly string[] = ['portrait', 'bottle', 'figure', 'bowl', 'bloom', 'skyline']
 
 /** The finish a lit screen wears. A face on this layer is a panel, not a wall; the plate's edges wear its own dark colour. */
 export const DISPLAY_FINISH = 'display'

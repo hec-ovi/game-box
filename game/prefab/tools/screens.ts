@@ -1,19 +1,20 @@
 import { Rng } from '@gb/kit'
-import { readFile } from 'node:fs/promises'
-import { join, resolve } from 'node:path'
 import sharp from 'sharp'
-import { SCREEN_PICTURES, SCREEN_SIZE } from '../src/screens.ts'
-import { decode, encode, Picture, PNG, type Rgb, type Tile } from './paint.ts'
+import { SCREEN_SIZE } from '../src/screens.ts'
+import { decode, encode, Picture, type Rgb, type Tile } from './paint.ts'
+import { stacked, stemOf, type Strip, type ThemePack } from './theme.ts'
 
 /**
  * What the screens on the walls show, and the plate they are.
  *
- * Most of them are committed pictures in `screens/`, ours, from our own
+ * Which ones a city carries is the theme pack's `ads` list. Most of them are
+ * committed pictures in the pack's own `ads/` folder, ours, from our own
  * prompts, so they travel inside a world file with no third party licence near
- * it. One is still drawn here, because a poster is a poster because of its
- * structure rather than its subject: a saturated ground, one bright mass where
- * the eye lands, and a hard graphic against it. At this size, behind a lamp
- * grid, in the corner of a street, that is what an advertisement is.
+ * it. One a pack names but does not carry is drawn here instead, because a
+ * poster is a poster because of its structure rather than its subject: a
+ * saturated ground, one bright mass where the eye lands, and a hard graphic
+ * against it. At this size, behind a lamp grid, in the corner of a street, that
+ * is what an advertisement is.
  *
  * Every screen goes through the same exposure whichever way it arrived, so a
  * row of ads where one is twice as bright as the next cannot happen.
@@ -57,8 +58,9 @@ const CONTRAST = 1.7
  * hard edge against it, which is the whole grammar.
  */
 /**
- * The screens drawn here rather than committed. A name that is not in this list
- * is a picture in `screens/`, read straight off disk.
+ * The compositions, by the name a pack declares them under. One of these is
+ * used when the pack carries no image of that name; a name with no composition
+ * either gets the plain one below.
  *
  * The grammar is a ground, the mass the eye lands on, and one hard edge against
  * it. It is what a poster is when nobody has photographed one.
@@ -81,30 +83,35 @@ const POSTERS: Record<string, (poster: Poster) => void> = {
   },
 }
 
-/** What the strip carries: the pictures, stacked in the order the runtime picks them by. */
-export interface Screens {
-  readonly strip: Buffer
-  readonly layers: number
+/** Every screen a pack declares, read or drawn, stacked into one strip. */
+export async function buildScreens(pack: ThemePack): Promise<Strip> {
+  const tiles: Buffer[] = []
+  for (const file of pack.doc.ads) {
+    const image = await pack.image('ads', file)
+    tiles.push(image ? await photograph(image) : drawn(stemOf(file)))
+  }
+  return { strip: await stacked(tiles, SCREEN_SIZE), layers: tiles.length }
 }
 
-/** Every screen picture, read or drawn, and stacked into one strip. */
-export async function buildScreens(folder = resolve(import.meta.dirname, '../screens')): Promise<Screens> {
-  const tiles: Buffer[] = []
-  for (const name of SCREEN_PICTURES) {
-    const compose = POSTERS[name]
-    if (compose) {
-      const poster = new Poster(SCREEN_SIZE, name)
-      compose(poster)
-      tiles.push(poster.pixels())
-    } else {
-      tiles.push(await photograph(join(folder, `${name}.png`)))
-    }
+/**
+ * A screen a pack names but does not carry.
+ *
+ * A name with a composition of its own gets it. Anything else gets the plain
+ * one: a ground, one mass and one band, placed and coloured off the name, so
+ * two undrawn screens on one street are not the same rectangle.
+ */
+function drawn(name: string): Buffer {
+  const poster = new Poster(SCREEN_SIZE, name)
+  const compose = POSTERS[name]
+  if (compose) compose(poster)
+  else {
+    const rng = new Rng(`screen/plain/${name}`)
+    const inks = [INK.amber, INK.cyan, INK.ice, INK.white] as const
+    poster.ground(rng.pick(inks), INK.black)
+    poster.mass(rng.range(0.35, 0.65), rng.range(0.35, 0.6), rng.range(0.14, 0.26), rng.range(0.16, 0.3), INK.white, rng.range(1.6, 3.2))
+    poster.band(0, rng.range(0.78, 0.9), 1, 1, INK.black)
   }
-
-  const strip = await sharp(Buffer.concat(tiles), { raw: { width: SCREEN_SIZE, height: SCREEN_SIZE * tiles.length, channels: 4 } })
-    .png(PNG)
-    .toBuffer()
-  return { strip, layers: tiles.length }
+  return poster.pixels()
 }
 
 /**
@@ -116,8 +123,8 @@ export async function buildScreens(folder = resolve(import.meta.dirname, '../scr
  * arriving as one rectangle of light and would only crush a picture that has
  * depth in it already.
  */
-async function photograph(file: string): Promise<Buffer> {
-  const pixels = await sharp(await readFile(file)).resize(SCREEN_SIZE, SCREEN_SIZE, { fit: 'fill', kernel: 'lanczos3' }).removeAlpha().raw().toBuffer()
+async function photograph(image: Buffer): Promise<Buffer> {
+  const pixels = await sharp(image).resize(SCREEN_SIZE, SCREEN_SIZE, { fit: 'fill', kernel: 'lanczos3' }).removeAlpha().raw().toBuffer()
   const light = new Float32Array(SCREEN_SIZE * SCREEN_SIZE * 3)
   for (let at = 0; at < light.length; at++) light[at] = decode(pixels[at]!)
   return exposed(light, SCREEN_SIZE, 1)

@@ -4,6 +4,7 @@ import { float, mix, texture, uniformArray, uv, vec2 } from 'three/tsl'
 import { MeshStandardNodeMaterial } from 'three/webgpu'
 import { SCREEN, WallScreens } from './display.ts'
 import { InteriorWindows, ROOM } from './interior.ts'
+import type { GlazingStrip } from './rooms.ts'
 import { layerIndex } from './layer.ts'
 import { GLOW, MATERIAL_NAME } from './pack.ts'
 import { WallRelief } from './relief.ts'
@@ -21,8 +22,10 @@ export interface PrefabAtlas {
   readonly colour: THREE.DataArrayTexture
   /** The same layers, holding only what glows. */
   readonly emissive: THREE.DataArrayTexture
-  /** The rooms a window looks into, one per layer. */
+  /** Everything a window can show, one picture per layer: back walls, flat panels, and the faces a marched room shares. */
   readonly rooms: THREE.DataArrayTexture
+  /** How that strip is laid out, as the pack manifest records it. */
+  readonly glazing: GlazingStrip
   /** The pictures the screens on the walls carry, one per layer. */
   readonly screens: THREE.DataArrayTexture
   /**
@@ -52,9 +55,10 @@ export interface PrefabAtlas {
  * scale on the wall above the street and on the walls a band is composed on.
  *
  * The windows are not in the picture. `InteriorWindows` cuts them out of the
- * wall arithmetically and draws the room behind each one, so a facade has depth
- * through it from the pavement instead of a lit rectangle; the glass over the
- * opening is `glassMaterial`, on the pane `Panes` stands in front of this wall.
+ * wall arithmetically and draws what is behind each one, a flat panel on most
+ * of them and a marched room on the rest, so a facade has depth through it from
+ * the pavement instead of a lit rectangle; the glass over the opening is
+ * `glassMaterial`, on the pane `Panes` stands in front of this wall.
  * `WallScreens` does the same for the panels: the picture and the lamp grid
  * over it are arithmetic over one fetch.
  *
@@ -62,9 +66,9 @@ export interface PrefabAtlas {
  * fragment pays for one of them and a wall fragment pays for neither beyond the
  * comparison that says so.
  *
- * Nothing glows in daylight. The rooms, the screens and the neon are the night
- * level times what is behind the glass, so at noon a facade is a dark wall with
- * dim rooms in it and after dark it is the light in the street.
+ * Nothing glows in daylight. The windows, the screens and the neon are the
+ * night level times what is behind the glass, so at noon a facade is a dark
+ * wall with dim rooms in it and after dark it is the light in the street.
  *
  * A wall is also shaped, and that is one more fetch of the same uv: `relief`
  * gives every finish its own normal and its own roughness, so glazed tile,
@@ -78,7 +82,7 @@ export function prefabMaterial(atlas: PrefabAtlas, night: CityNight): THREE.Mate
   const at = uv().mul(vec2(1, stretch.element(layer)))
   const wall = texture(atlas.colour, at).depth(layer)
   const burning = texture(atlas.emissive, at).depth(layer).rgb.mul(float(GLOW))
-  const room = new InteriorWindows(atlas.rooms, night, atlas.finishes).glazing()
+  const room = new InteriorWindows(atlas.rooms, atlas.glazing, night, atlas.finishes).glazing()
   const panel = new WallScreens(atlas.screens, atlas.finishes).panel()
 
   const surface = atlas.relief ? new WallRelief(atlas.relief).read(at, layer) : undefined

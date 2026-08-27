@@ -11,8 +11,6 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
 import { Catalogue } from '../src/catalogue.ts'
 import { Library } from '../src/library.ts'
-import { ROOM_PICTURES } from '../src/rooms.ts'
-import { SCREEN_PICTURES } from '../src/screens.ts'
 
 const PACK = new URL('../pack/', import.meta.url)
 
@@ -22,8 +20,9 @@ export async function readPack(night: CityNight = new CityNight()): Promise<Libr
   const atlas = {
     colour: grey(finishes.length),
     emissive: grey(finishes.length),
-    rooms: grey(ROOM_PICTURES.length),
-    screens: grey(SCREEN_PICTURES.length),
+    rooms: grey(catalogue.atlas.rooms.layers),
+    glazing: catalogue.atlas.rooms,
+    screens: grey(catalogue.atlas.screens.layers),
     // the pixels are a stand-in like the rest, but the per-finish roughness is
     // the pack's own, because that is a number rather than a picture
     ...(catalogue.atlas.relief

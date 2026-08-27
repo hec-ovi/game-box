@@ -1,39 +1,52 @@
 /**
- * The rooms a window looks into: fourteen pictures, committed as art, stacked
- * into one array texture beside the pack's two others.
+ * The strip behind the glass: every picture a window in the city can show,
+ * stacked into one array texture beside the pack's others.
  *
- * A room is seen small, through glass, at an angle, after dark, and never twice
- * side by side, so a dozen is enough for a city. Two banks, because a bay on
- * the third floor and a shop window on the pavement are not the same room: the
- * upper bank is what people live and work in, the street bank is what they walk
- * into.
+ * Three kinds of layer share it, because they are all read by one sampler in
+ * one branch of the wall shader. Back walls, one per kind of room, are the only
+ * place detail belongs. Four shared faces, the floor, the ceiling and two side
+ * walls, are what a marched room box reads on its other four sides. Flat
+ * panels, a drawn curtain or a lowered shutter, are surfaces rather than
+ * spaces, and they carry most of the windows in a street.
+ *
+ * Nothing here names a picture. The theme pack does that, and the build writes
+ * the runs it landed on into the pack manifest, so the runtime reads its layout
+ * off the art it was handed.
  */
 
-/** Pixels a side, per room. A shop window is two metres of it at arm's length, so this is the floor. */
+/** Pixels a side, per layer. A shop window is two metres of it at arm's length, so this is the floor. */
 export const ROOM_SIZE = 256
 
-/** The order the rooms sit in the array texture. A bank is a run of it. */
-export const ROOM_PICTURES: readonly string[] = [
-  'office-desks',
-  'office-partition',
-  'server-racks',
-  'flat-living',
-  'flat-kitchen',
-  'flat-bedroom',
-  'corridor',
-  'store-room',
-  'bar-bottles',
-  'noodle-counter',
-  'shop-racks',
-  'clinic-cabinets',
-  'workshop-tools',
-  'lobby-desk',
-]
-
-/** Which run of the strip a kind of window draws from: the first layer and how many. */
+/** A run of the strip: the first layer and how many. Two runs may overlap, which is how one picture serves both banks. */
 export interface Bank {
   readonly first: number
   readonly count: number
+}
+
+/** The two kinds of window, and the two runs anything picked per window is picked from. */
+export interface Banks {
+  /** Above the street: what people live and work in. */
+  readonly upper: Bank
+  /** On the pavement: what they walk into. */
+  readonly street: Bank
+}
+
+/** Where the four faces every marched room shares sit in the strip. */
+export interface Faces {
+  readonly floor: number
+  readonly ceiling: number
+  /** Two side walls, so the opposite walls of one room are not the same picture. */
+  readonly side: number
+  readonly sideAlt: number
+}
+
+/** How the strip is laid out, as the pack manifest records it. */
+export interface GlazingStrip {
+  /** The back walls a marched room looks at. */
+  readonly rooms: Banks
+  /** The flat panels a window that marches nothing shows. */
+  readonly panels: Banks
+  readonly faces: Faces
 }
 
 /**
@@ -52,10 +65,3 @@ export const ROOM_TINTS: ReadonlyArray<readonly [number, number, number]> = [
   [0.72, 1.0, 0.9],
   [1.0, 0.7, 0.87],
 ]
-
-export const ROOM_BANKS = {
-  /** Above the street: offices, a server room, flats, a corridor, a store room. */
-  upper: { first: 0, count: 8 },
-  /** On the pavement: a bar, a noodle counter, a shop, a clinic, a workshop, a lobby. */
-  street: { first: 8, count: 6 },
-} as const satisfies Record<string, Bank>
