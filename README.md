@@ -125,7 +125,17 @@ Then add `&model` to the URL, or `--model` to `gb build`, and the names, the his
 
 Everything generated comes back as a **tool call whose parameters are the JSON Schema of the contract that will validate it**, so the thing that defines the shape and the thing that checks it are the same object. Nothing a model writes is trusted: a quest is refused unless every path ends, every person and thing it names exists, and every item is in the player's hands before they are asked for it. A malformed answer is dropped and the offline author fills in, so a bad reply costs some flavour rather than the city.
 
-One thing to know before relying on a model for a shared world. A request pins its answer with `temperature: 0` and a `seed`, and both reach the endpoint, but repeating is the endpoint's own property rather than a promise this project can make. Measured on 2026-08-27 through OpenRouter on `google/gemma-4-31b-it:free`, one request at a time: the same pinned question came back identical byte for byte, 3 of 3. A local llama-server holds a seed only while nothing else shares the engine, because a batch it is computed in changes the answer. Run `host/tools/repeatable.ts` against whichever engine you configured, as you actually start it.
+One thing to know before relying on a model for a shared world. A request pins its answer with `temperature: 0` and a `seed`, and both reach the endpoint, but repeating is the endpoint's own property rather than a promise this project can make. Measured on 2026-08-27 through OpenRouter on `google/gemma-4-31b-it:free`, one request at a time: the same pinned question came back identical byte for byte, 3 of 3. A local llama-server holds a seed only while nothing else shares the engine, because a batch it is computed in changes the answer. A command-line agent takes neither: `agy` accepts no temperature and no seed, so
+a request's pins reach nothing on that path. Measured on 2026-08-27, the same
+pinned request named the city Oakhaven-on-Silt, then Brinegate. Run
+`host/tools/repeatable.ts` against whichever engine you configured, as you
+actually start it.
+
+Line 7 above says a city travels: send the file and somebody walks the same
+city. That is the file, not the recipe. The JSON carries the whole town, so it
+is identical wherever it is opened. Rebuilding it from the same theme and seed
+is only identical when the engine that wrote it repeats itself, and the offline
+author is the only writer here that always does.
 
 ## Layout
 

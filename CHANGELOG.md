@@ -13,6 +13,17 @@ charters, the names and signs, the places and the people in them, the quests,
 and talking to people in game. The launcher's settings screen and the in-game
 settings tab show the same state, because both read it from the host.
 
+**A locally installed agent can write the city.** A third family of engine
+beside the hosted service and the server of your own: `agy`, run as a command.
+It takes a JSON Schema and constrains its answer to it, which is what every
+generated thing in this game already is, so the contract is enforced at the
+engine rather than checked after it. Measured: a forced call with
+pattern-constrained ids came back as a call in 10.8 to 17.6 seconds, none
+rebuilt from prose. It carries its own system prompt on every call, about 14,000
+input tokens before yours, and it accepts neither temperature nor seed, so a
+city written through it is not reproducible from its seed. The prompt goes in on
+stdin because a command line is full at 128 KiB.
+
 **Keys live outside the repository.** The host writes them to `.env.local`, mode
 0600, git-ignored, through a renamed neighbour so a crash cannot truncate it. A
 key goes in from the settings screen and comes back out of nothing: the reply
