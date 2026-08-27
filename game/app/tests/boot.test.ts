@@ -73,7 +73,12 @@ describe('the panel is up before anything loads', () => {
   })
 
   it('paints the same defaults the generator would use, so the fields never lie', () => {
-    expect(panel().brief).toEqual(DEFAULTS)
+    // the seed is rolled per form on purpose, so it is the one field that is
+    // not the default: three cities on one shelf were called the same thing
+    // when it was not
+    const painted = panel().brief
+    expect({ ...painted, seed: DEFAULTS.seed }).toEqual(DEFAULTS)
+    expect(painted.seed).not.toBe(DEFAULTS.seed)
     const blocks = document.querySelector<HTMLInputElement>('[data-boot="blocks"]')!
     expect(blocks.min).toBe(String(BLOCKS.min))
     expect(blocks.max).toBe(String(BLOCKS.max))
@@ -500,7 +505,7 @@ describe('step one: the actions beside the summary', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'Generate the city' }))
 
     await waitFor(() => expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Preview blueprint' }).disabled).toBe(false))
-    expect(asked).toEqual([DEFAULTS])
+    expect(asked.map((one) => ({ ...one, seed: DEFAULTS.seed }))).toEqual([DEFAULTS])
     expect(noteFor(screen.getByRole('button', { name: 'Generate the city' }))).toMatch(/laid out from the seed/)
   }, 20_000)
 
@@ -557,7 +562,7 @@ describe('what the form says it is about to build', () => {
     expect(dialog.textContent).not.toMatch(/\d+ buildings|\d+ npcs|\d+ (traffic )?(cars|vehicles)|district zones/i)
 
     await user.click(within(dialog).getByRole('button', { name: /^build it$/i }))
-    expect(asked).toEqual([{ theme: DEFAULTS.theme, seed: DEFAULTS.seed, blocks: 8, places: 5, storeys: 12, model: false }])
+    expect(asked.map((one) => ({ ...one, seed: DEFAULTS.seed }))).toEqual([{ theme: DEFAULTS.theme, seed: DEFAULTS.seed, blocks: 8, places: 5, storeys: 12, model: false }])
   })
 })
 
@@ -758,6 +763,16 @@ describe('exporting a city', () => {
     expect(JSON.parse(await written[0]!.text())).toEqual(city)
     // the link was a means to an end and is not left lying on the page
     expect(document.querySelector('a[download]')).toBeNull()
+  })
+})
+
+describe('a fresh form', () => {
+  it('rolls a different seed each time the panel is served', () => {
+    const one = panel().brief.seed
+    servePage()
+    const two = panel().brief.seed
+    expect(one).not.toBe(two)
+    expect([one, two]).not.toContain('town')
   })
 })
 

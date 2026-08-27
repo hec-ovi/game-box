@@ -4,6 +4,9 @@ import { clampBlocks, clampPlaces, clampStoreys, freshSeed, STYLE, tidy, type Ci
 /** Every text box on the form, by the name the markup gives it. */
 const TEXT = ['theme', 'brief', 'main', 'side', 'tone', 'seed'] as const
 
+/** The seed `index.html` ships, which means the field is untouched rather than chosen. */
+const MARKUP_SEED = 'town'
+
 type TextName = (typeof TEXT)[number]
 type Texts = Record<TextName, HTMLInputElement | HTMLTextAreaElement>
 type Styles = Record<StyleAxis, HTMLSelectElement>
@@ -53,6 +56,11 @@ export class Fields {
     })
     this.#bindPills()
     this.#bindNumbers()
+    // Nobody wants the same city twice by accident. The markup ships a seed so
+    // the field is never empty, and a form opened on it has been typed in by
+    // nobody, so it rolls. A brief set afterwards (a draft, a city, the address
+    // bar) overwrites this, which is what should happen: those seeds were meant.
+    if (this.#text.seed.value === MARKUP_SEED) this.#text.seed.value = freshSeed()
     root.addEventListener('input', () => this.#changed())
     root.addEventListener('change', () => this.#changed())
   }
