@@ -44,6 +44,7 @@ const SIGN_PARAMETERS = {
     id: { type: 'string', pattern: '^npc_\\d{4,}$' },
     sign: { type: 'string', minLength: 1, maxLength: 60, pattern: '^(?:[^{}]|\\{(?:family|noun)\\})+$' },
     blade: { type: 'string', pattern: '^[A-Z0-9 ]{2,8}$' },
+    note: { type: 'string', minLength: 4, maxLength: 20, pattern: '^[A-Z ]+$' },
   },
   required: ['id', 'sign', 'blade'],
 }
@@ -190,10 +191,39 @@ describe('a forced call on a server of your own', () => {
     const schema = (sent?.response_format as { json_schema: { schema: typeof SIGN_PARAMETERS } }).json_schema.schema
 
     assert.equal(schema.properties.id.pattern, '^npc_[0-9]{4,}$')
-    assert.deepEqual(schema.properties.sign, { type: 'string', minLength: 1, maxLength: 60 })
+    assert.equal(schema.properties.sign.pattern, undefined)
+    assert.equal(schema.properties.sign.minLength, 1)
+    assert.equal(schema.properties.sign.maxLength, 60)
     assert.equal(schema.properties.blade.pattern, SIGN_PARAMETERS.properties.blade.pattern)
     assert.ok(chatResponseContract.is(body), `response off-contract: ${JSON.stringify(body)}`)
     assert.equal(body.choices[0]?.message.tool_calls?.[0]?.function.name, 'sign_place')
+  })
+
+  // A rule taken out of the grammar and never said is a rule the engine cannot
+  // keep: it fails the check on the first attempt and only hears why on the
+  // second. So whatever the grammar will not hold it to is said in words on
+  // the field it applies to.
+  it('says in the field description whatever the grammar was not handed', async () => {
+    upstream.answerWith(jsonAnswer('{"id":"npc_0001","sign":"{family} CUSTOMS","blade":"CUSTOMS"}'))
+
+    await post(SIGN_FORCED)
+    const sent = upstream.seen.at(-1)?.body
+    const schema = (sent?.response_format as { json_schema: { schema: typeof SIGN_PARAMETERS } }).json_schema.schema
+
+    // the pattern the grammar cannot end is quoted on the field it bounded
+    const sign = schema.properties.sign as { description?: string }
+    assert.match(sign.description ?? '', /Must match the regular expression \^\(\?:\[\^\{\}\]/)
+
+    // a pattern that stays costs the bounds, because the grammar ignores them
+    // beside one, so those are said instead
+    const note = schema.properties.note as { description?: string }
+    assert.match(note.description ?? '', /Must be 4 to 20 characters long\./)
+
+    // and a field the grammar holds to everything it was given says nothing extra
+    const id = schema.properties.id as { description?: string }
+    assert.equal(id.description, undefined)
+    const blade = schema.properties.blade as { description?: string }
+    assert.equal(blade.description, undefined)
   })
 
   it('still checks the reply against the pattern the grammar was not handed', async () => {

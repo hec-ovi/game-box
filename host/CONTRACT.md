@@ -235,6 +235,15 @@ a quote or a backslash, groups, alternation and quantifiers; `\d` is written
 as `[0-9]`. Any other pattern is left out, and the string is bounded by its
 `minLength` and `maxLength`, which the grammar does enforce.
 
+Whatever the grammar will not hold the engine to is said to it instead, in
+words, on the `description` of the field it applies to: a pattern that was left
+out is quoted there as it was written, and the `minLength` and `maxLength` of a
+field whose pattern stayed are said there too, because the grammar ignores
+bounds beside a pattern. A rule taken out of the grammar and never said is a
+rule the engine cannot keep: it breaks the check on the first attempt and only
+hears why on the second. The reply is still checked against the parameters as
+written, so this moves where the engine is told and never what it is held to.
+
 Measured after, on 2026-08-25 through this service with `tools/replay.ts`,
 on the requests a live build had sent (the charter whose attempt had run past
 300 s, and a quest), each copy on its own seed, four at once: 16 of 16 charter
