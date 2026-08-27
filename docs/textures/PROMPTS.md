@@ -240,9 +240,83 @@ land on, so the same artwork does not read as the same ad twice.
 
 ---
 
+---
+
+# 5. Surfaces that tile
+
+`assets/gen/` &middot; square, 1024 px or larger
+
+**These are different from everything above and need two extra steps.** A room
+card is seen once, in one window. A surface repeats across a whole wall or a
+whole road, so its pattern has to continue off all four edges, and it needs a
+normal and a roughness map derived from it or it reads as a photograph stuck to
+a board. That is what made the city look flat.
+
+After generating each one:
+
+```bash
+node tools/textures/tile.mjs <image.png> assets/gen --metres 2
+node tools/textures/relief.mjs assets/gen/<name>-tile.png assets/gen \
+     --surface <family> --metres 2 --size 512
+```
+
+The first tames the highlight blooms, flattens the lighting across the frame and
+cuts a seamless wrap along the path where the edges already agree, then prints a
+seam score: 1.0 means the join is as ordinary as any other pair of columns
+inside the tile. The second derives the normal, the roughness and the occlusion.
+Both print what they measured, so you can see whether it worked rather than
+guessing.
+
+**Say the real size in the prompt.** A slope is metres of height over metres of
+surface, so the tool needs to know how much wall one repeat covers, and the
+prompt has to describe that same area. Two metres square is the default and
+suits a wall; a road wants four.
+
+| File | Family | Metres | Subject |
+|---|---|---|---|
+| `wall-brick-dark.png` | `precast` | 2 | Dark red brick laid in stretcher bond, the mortar recessed and pale grey, a few bricks darker than their neighbours, soot gathered along the mortar lines. |
+| `wall-precast-panel.png` | `precast` | 2 | Board-marked precast concrete, the grain of the timber shuttering pressed into the face in horizontal runs, form-tie dimples in a regular grid, rust weeping from two of them. |
+| `wall-cladding-seam.png` | `cladding` | 2 | Flat composite rainscreen panels with a 20 mm shadow gap between them, two vertical joints and one horizontal, the panel faces almost featureless, dirt collected in the joints. |
+| `wall-steel-corrugated.png` | `steel` | 2 | Corrugated weathering steel sheet, the ribs running vertically, an even oxide grain over the whole face, rust running downward from the fixings. |
+| `wall-tile-glazed.png` | `tile` | 2 | Small square glazed ceramic tiles in a regular grid, the glaze reflective and even, the grout between them dull and darker, three tiles chipped at a corner. |
+| `wall-plaster-painted.png` | `formed-concrete` | 2 | Painted rendered plaster, the paint chalky and fading, two hairline cracks running at an angle, a patch where an older coat shows through. |
+| `ground-asphalt-worn.png` | `asphalt` | 4 | Worn road asphalt seen from directly above, the chippings even across the frame, a patched trench crossing it, tyre polish darkening two bands. |
+| `ground-paving-flags.png` | `paving` | 4 | Concrete paving flags from directly above in a regular grid, the joints between them holding dirt, two flags cracked, the surface scuffed evenly. |
+| `ground-earth-bare.png` | `earth` | 4 | Bare compacted earth from directly above, small stones and clods spread evenly, no plants, no tracks, dry and mid brown. |
+
+**Shared opening for this section**, before the subject:
+
+> A flat photographic material scan, photographed straight on with the camera
+> perpendicular to the surface so it fills the whole frame edge to edge and
+> nothing else is visible.
+
+**Shared ending for this section**, after the subject, replacing the identity
+block used everywhere else:
+
+> The frame covers [N] metres by [N] metres of real surface, and every mark is
+> spread at the same density across every part of the frame, with no single
+> crack, stain or patch distinctive enough to be recognised twice. Lit by
+> completely flat even diffuse light from straight ahead, with no cast shadows,
+> no specular highlights, no vignette, no brighter side, and sharp focus from
+> corner to corner. A seamless tiling texture whose pattern continues off all
+> four edges.
+
+Two things in that ending are doing the real work. **"No single mark distinctive
+enough to be recognised twice"** is what stops a wall reading as the same
+photograph repeated: one memorable crack tiled forty times is what the eye
+catches. **"Flat even diffuse light, no vignette, no brighter side"** matters
+because a tone difference between opposite edges survives the seam cut and shows
+up as a checkerboard once it repeats. The tool flattens what it can, but it
+cannot invent what a shadow hid.
+
 ## When you have them
 
-Save each over the drawn one in `game/prefab/themes/gb/`, under the filename in
-the tables above, then run `node game/prefab/tools/theme-buildings.ts`. Anything
-you have not replaced yet keeps its drawing, so you can do this ten images at a
-time and look at the result after each batch.
+Sections 1 to 4 go into `game/prefab/themes/gb/` under the filename in the
+tables, then `node game/prefab/tools/theme-buildings.ts`. Anything not replaced
+yet keeps its drawing, so you can do ten at a time and look after each batch.
+Any of jpg, webp or png is fine: they are converted and centre-cropped to square
+on the way in.
+
+Section 5 goes into `assets/gen/` through the two commands in that section, not
+into the theme folder. Those are surfaces the whole city is built out of rather
+than pictures behind a window.
