@@ -55,14 +55,6 @@ export const CAR_SURFACES = {
 
 export type CarSurface = (typeof CAR_SURFACES)[keyof typeof CAR_SURFACES]
 
-/**
- * Brightwork is stored at a fifth of its brightness and lifted by the shader,
- * because the pack's own rims are near-black and a wheel is not. The converter
- * divides by it and `CarPaint` multiplies by it, so what a model was painted is
- * what it renders.
- */
-export const METAL_LIFT = 5
-
 /** The Quaternius material names, by what they are made of. Anything else is paint. */
 const SURFACE_OF: Readonly<Record<string, CarSurface>> = {
   Windows: CAR_SURFACES.glass,

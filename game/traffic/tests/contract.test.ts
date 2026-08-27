@@ -1,7 +1,7 @@
 import { METRICS, ROAD_KINDS, World } from '@gb/world'
 import { Object3D } from 'three'
 import { describe, expect, it } from 'vitest'
-import { CAR_MODELS, Traffic, type CarBodies, type CarBody, type CarSpawn, type CarView } from '../src/index.ts'
+import { Traffic, type CarBodies, type CarBody, type CarSpawn, type CarView } from '../src/index.ts'
 import { addRoad, lattice } from './city.ts'
 
 const CAR_LENGTH = METRICS.vehicle.carLength
@@ -167,32 +167,6 @@ describe('Traffic', () => {
     const town = { x: 40, z: 10 }
     for (let frame = 0; frame < 15 / step; frame++) traffic.update(step, town)
     expect(traffic.cars().some((other) => other.id === car!.id)).toBe(false)
-  })
-
-  it('drives every model it carries, and gives the same driver the same car for a seed', () => {
-    // the focus walks the city so cars are retired behind it and new ones
-    // appear ahead: a static camera meets the first twenty cars and no others
-    const picks = (seed: string): string[] => {
-      const traffic = open(lattice({ across: 6, down: 6, span: 20 }), {
-        seed,
-        maxCars: 20,
-        spawnRadius: 70,
-        despawnRadius: 90,
-        minSpawnDistance: 20,
-      })
-      const chosen = new Map<string, string>()
-      for (let frame = 0; frame < 7200; frame++) {
-        const turn = (frame / 7200) * Math.PI * 2
-        traffic.update(1 / 60, { x: 60 + Math.cos(turn) * 40, z: 60 + Math.sin(turn) * 40 })
-        for (const car of traffic.cars()) chosen.set(car.id, car.model)
-      }
-      return [...chosen.values()]
-    }
-
-    const drivers = picks('mix')
-    expect(new Set(drivers), 'every model in the pack is on the road').toEqual(new Set(CAR_MODELS))
-    expect(picks('mix')).toEqual(drivers)
-    expect(picks('another')).not.toEqual(drivers)
   })
 
   it('gives the same traffic for the same seed, and different traffic for another', () => {

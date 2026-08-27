@@ -106,16 +106,12 @@ describe.skipIf(!built)('the shipped cars', () => {
       const car = pack.acquire({ id: `car_${model}`, model })
       const size = boundsOf(car as Object3D).getSize(new Vector3())
 
-      // every car is scaled as large as it fits the footprint the simulation
-      // keeps clear, 4.5 m by 1.8 m, so whichever of the two runs out first binds
-      expect(size.x, `${model} width`).toBeLessThanOrEqual(CAR_FOOTPRINT.width + 0.01)
-      expect(size.z, `${model} length`).toBeLessThanOrEqual(CAR_FOOTPRINT.length + 0.01)
-      expect(
-        Math.max(size.x / CAR_FOOTPRINT.width, size.z / CAR_FOOTPRINT.length),
-        `${model} fills its slot`,
-      ).toBeCloseTo(1, 2)
+      // the pack's cars are stylish rather than exact, so each is scaled to fit
+      // the footprint the simulation keeps clear: 1.8 m across, never over 4.5 long
+      expect(size.x, `${model} width`).toBeCloseTo(CAR_FOOTPRINT.width, 2)
+      expect(size.z, `${model} length`).toBeLessThanOrEqual(CAR_FOOTPRINT.length)
       expect(size.z, `${model} length`).toBeGreaterThan(3.5)
-      expect(size.y, `${model} height`).toBeGreaterThan(0.9)
+      expect(size.y, `${model} height`).toBeGreaterThan(1)
       expect(boundsOf(car as Object3D).min.y, `${model} tyres`).toBeCloseTo(0, 2)
       pack.release(car, { id: `car_${model}`, model })
     }
@@ -131,13 +127,11 @@ describe.skipIf(!built)('the shipped cars', () => {
       expect(still.tail.z, `${model} tail lamps`).toBeLessThan(0)
       expect(still.head.z - still.tail.z, `${model} lamps at opposite ends`).toBeGreaterThan(2)
 
-      // heading is rotation.y, so a car heading east has its lamps to the east.
-      // Their middle is only as centred as the model is: a fitted car's lamps
-      // are a few centimetres off its centreline, which is a tenth of its width.
+      // heading is rotation.y, so a car heading east has its lamps to the east
       car.rotation.y = Math.PI / 2
       const east = lampsOf(car).head
       expect(east.x, `${model} facing east`).toBeGreaterThan(1)
-      expect(Math.abs(east.z), `${model} facing east`).toBeLessThan(0.2)
+      expect(east.z, `${model} facing east`).toBeCloseTo(0, 1)
 
       car.rotation.y = 0
       pack.release(car, { id: 'car_nose', model })
@@ -195,37 +189,32 @@ describe.skipIf(!built)('the shipped cars', () => {
     expect(pack.paint.lamps).toBe(0)
   })
 
-  it('rolls the wheels of every model it carries, and steers the front pair', () => {
-    for (const model of CAR_MODELS) {
-      const car = pack.acquire({ id: 'car_roll', model }) as Object3D
-      const wheels = [CAR_PARTS.rear, CAR_PARTS.frontLeft, CAR_PARTS.frontRight].map(
-        (part) => car.getObjectByName(partName(model, part))!,
-      )
-      const radius = boundsOf(wheels[1]!).getSize(new Vector3()).y / 2
-      expect(radius, `${model} wheel radius`).toBeGreaterThan(0.2)
+  it('rolls its wheels by how far the car moved, and steers the front pair', () => {
+    const model: CarModel = 'NormalCar1'
+    const car = pack.acquire({ id: 'car_roll', model }) as Object3D
+    const wheels = [CAR_PARTS.rear, CAR_PARTS.frontLeft, CAR_PARTS.frontRight].map(
+      (part) => car.getObjectByName(partName(model, part))!,
+    )
+    const radius = boundsOf(wheels[1]!).getSize(new Vector3()).y / 2
 
-      // a car put on the road has not driven there
-      car.position.z = 40
-      pack.update()
-      for (const wheel of wheels) expect(wheel.rotation.x, `${model} placed`).toBeCloseTo(0, 6)
+    // a car put on the road has not driven there
+    car.position.z = 40
+    pack.update()
+    for (const wheel of wheels) expect(wheel.rotation.x).toBeCloseTo(0, 6)
 
-      // two metres of road is two metres of tyre, kept inside one turn
-      car.position.z += 2
-      pack.update()
-      for (const wheel of wheels) expect(wheel.rotation.x, `${model} rolled`).toBeCloseTo((2 / radius) % (Math.PI * 2), 3)
+    // two metres of road is two metres of tyre, kept inside one turn
+    car.position.z += 2
+    pack.update()
+    for (const wheel of wheels) expect(wheel.rotation.x).toBeCloseTo((2 / radius) % (Math.PI * 2), 3)
 
-      // a metre forward while turning east: the front wheels point into the turn
-      car.position.z += 1
-      car.rotation.y = 0.3
-      pack.update()
-      expect(wheels[1]!.rotation.y, `${model} steers`).toBeGreaterThan(0)
-      expect(wheels[2]!.rotation.y, `${model} steers together`).toBe(wheels[1]!.rotation.y)
-      expect(wheels[0]!.rotation.y, `${model} rear axle does not steer`).toBeCloseTo(0, 6)
-
-      car.position.set(0, 0, 0)
-      car.rotation.y = 0
-      pack.release(car, { id: 'car_roll', model })
-    }
+    // a metre forward while turning east: the front wheels point into the turn
+    car.position.z += 1
+    car.rotation.y = 0.3
+    pack.update()
+    expect(wheels[1]!.rotation.y).toBeGreaterThan(0)
+    expect(wheels[2]!.rotation.y).toBe(wheels[1]!.rotation.y)
+    expect(wheels[0]!.rotation.y, 'the rear axle does not steer').toBeCloseTo(0, 6)
+    pack.release(car, { id: 'car_roll', model })
   })
 
   it('drives a city with the real cars in it', async () => {

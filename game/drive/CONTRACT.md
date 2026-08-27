@@ -89,7 +89,7 @@ Nothing else. The traffic, the car art, the crowd, the player and the walls all 
 - **A car with something solid inside it can always back out.** Every pose reads as blocked then, and the rule above would hold it there for good, so while it is buried any move that does not bury it deeper is taken. That gets it out and cannot be used to drive further in.
 - No physics engine and no baked collision. What is solid is asked fresh every frame, which is what lets a pedestrian stepping into the road stop the car and lets them clear it again the same frame.
 - **Companions ride.** Everybody following the player takes a seat when the player gets in, up to the three there are, and is taken out of the crowd while they are in the car so nobody is walking the pavement and sitting in the back at once. Anybody left over keeps following on foot. They sit in the car's own frame, so they turn with it and arrive with it, and they play the cast's driving clip. Getting out releases their bodies and hands them back to the crowd from where they stood up, walking with the player again.
-- **Every head is under every roof.** The cast's driving pose stands 1.44 m from its root to the crown and the lowest roof in the car pack is the Concept's 0.99 m, so a seated body goes 0.46 m below the road. The feet that go under the floor are behind the underbody panel, where no daylight reaches, and a head through a roof would be the only one of the two anybody could see.
+- **Every head is under every roof.** The cast's driving pose stands 1.44 m from its root to the crown and the lowest roof in the car pack is 1.15 m, so a seated body goes 0.3 m below the road. The feet that go under the floor are behind the underbody panel, where no daylight reaches, and a head through a roof would be the only one of the two anybody could see.
 - **The traffic can see the car.** `inTheRoad()` is three patches half a car's width across, down the length of the car, which is the shape `@gb/traffic`'s obstacle port reads and narrow enough that a car in one lane does not read as blocking the other. It reports whether the player is driving or has parked and walked off, so an abandoned car is something the AI brakes for rather than drives through.
 - **The car is solid to the player on foot only when nobody is in it**, or the player would collide with the car they are sitting in.
 - The car the player walked away from is given back to the pool past 200 m, which is a little outside where `@gb/traffic` retires its own. Holding a scene object for a car nobody can see costs four draws for nothing, and the streets are full of others.
@@ -116,7 +116,7 @@ Nothing else. The traffic, the car art, the crowd, the player and the walls all 
 
 ## The view, in numbers
 
-Driving is seen from behind the car. `CHASE_VIEW` is how it sits, and what each number is for; the car is 4.5 m by 1.8 m and the models in the pack stand 0.99 to 1.45 m tall, which is what these are measured against.
+Driving is seen from behind the car. `CHASE_VIEW` is how it sits, and what each number is for; the car is 4.5 m by 1.8 m and the models in the pack stand 1.15 to 1.31 m tall, which is what these are measured against.
 
 | | | |
 |---|---|---|

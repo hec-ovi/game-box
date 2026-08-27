@@ -88,42 +88,6 @@
       "attribution": null,
       "redistributable": true,
       "take": "The producer @gb/prefab bakes its building pack with, offline. Its drawn-from-code tiles only: the image packs it can also carry have no licence record and never reach the pack."
-    },
-    {
-      "id": "sketchfab-carbon-e7",
-      "name": "CARBON MOTORS E7 POLICE (Cities Skylines)",
-      "author": "TSB3DMODELS",
-      "page": "https://sketchfab.com/3d-models/carbon-motors-e7-police-cities-skylines-692c68c4f6374a3c8f114c11497fe1c2",
-      "file": "carbon_motors_e7_police_cities_skylines.glb",
-      "license": "CC-BY-4.0",
-      "attribution": "TSB3DMODELS (Sketchfab), modified",
-      "redistributable": true,
-      "byHand": "Sketchfab asks for a login, so the file is saved by hand into assets/src/carbon-motors-e7/ and fitted with `node tools/fit-model.mjs <file> --out assets/src/carbon-motors-e7 --keep-parts --bake`.",
-      "take": "The Patrol in the traffic: a police car, 1,660 triangles, its livery baked onto its vertices."
-    },
-    {
-      "id": "sketchfab-audi-e-tron-gt",
-      "name": "2018 Audi e-tron GT Concept",
-      "author": "Ddiaz Design",
-      "page": "https://sketchfab.com/3d-models/2018-audi-e-tron-gt-concept-e35726151c9e4a169c005d54509715fa",
-      "file": "2018_audi_e-tron_gt_concept.glb",
-      "license": "CC-BY-NC-SA-4.0",
-      "attribution": "Ddiaz Design (Sketchfab), modified",
-      "redistributable": false,
-      "byHand": "Sketchfab asks for a login, so the file is saved by hand into assets/src/audi-e-tron-gt/ and fitted with `node tools/fit-model.mjs <file> --out assets/src/audi-e-tron-gt --keep-parts --bake --spare cab`.",
-      "take": "The GranTurismo in the traffic. Its own metadata says CC-BY-NC-SA-4.0, which D12 does not admit; it is on the streets because the owner put it there."
-    },
-    {
-      "id": "sketchfab-concept-car-037",
-      "name": "FREE Concept Car 037 - public domain (CC0)",
-      "author": "Unity Fan youtube channel",
-      "page": "https://sketchfab.com/3d-models/free-concept-car-037-public-domain-cc0-646a3a31b0224379b6e767abc34d58dd",
-      "file": "free_concept_car_037_-_public_domain_cc0.glb",
-      "license": "SKETCHFAB Standard",
-      "attribution": "Unity Fan youtube channel (Sketchfab), modified",
-      "redistributable": false,
-      "byHand": "Sketchfab asks for a login, so the file is saved by hand into assets/src/concept-car-037/ and fitted with `node tools/fit-model.mjs <file> --out assets/src/concept-car-037 --keep-parts --bake`.",
-      "take": "The Concept in the traffic. Its page is titled public domain (CC0) and its file says SKETCHFAB Standard; it is on the streets because the owner put it there."
     }
   ]
 }

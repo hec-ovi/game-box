@@ -2,7 +2,7 @@ import { attribute, float, select, uniform } from 'three/tsl'
 import { MeshPhysicalNodeMaterial } from 'three/webgpu'
 import type { Node } from 'three/webgpu'
 import { headlampLevel } from './night.ts'
-import { CAR_SURFACES, METAL_LIFT, type CarSurface } from './pack-layout.ts'
+import { CAR_SURFACES, type CarSurface } from './pack-layout.ts'
 
 /**
  * How a car is shaded. One material for the whole pack: the base colour and
@@ -30,6 +30,9 @@ const LOOK: Readonly<Record<CarSurface, Look>> = {
   [CAR_SURFACES.trim]: { roughness: 0.85, metalness: 0, clearcoat: 0, clearcoatRoughness: 0, glow: 0 },
   [CAR_SURFACES.metal]: { roughness: 0.25, metalness: 1, clearcoat: 0.3, clearcoatRoughness: 0.2, glow: 0 },
 }
+
+/** Rims and brightwork are near-black in the pack; a wheel is not. */
+const METAL_LIFT = 5
 
 export class CarPaint {
   readonly material: MeshPhysicalNodeMaterial

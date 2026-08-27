@@ -3,17 +3,15 @@
  *
  *   node tools/fit-model.mjs <file-or-folder> [more...] --out <dir>
  *        [--triangles 12000] [--texture 1024]
- *        [--flat] [--bake] [--keep-parts] [--keep-hidden] [--spare <word>] [--dry]
+ *        [--flat] [--keep-parts] [--keep-hidden] [--spare <word>] [--dry]
  *
  * It drops what nobody sees from outside (interiors, engine bays, brake discs),
  * welds and simplifies the geometry to the triangle budget, resizes the
  * textures and merges the materials, then writes the result beside its report.
  * `--flat` gives up the texture sheets so the materials can merge all the way
  * down to a palette, which is how the pack's own cars are painted.
- * `--bake` reads the sheets onto the vertices first, so a model painted with
- * one atlas keeps its livery once the images are gone.
- * `--keep-parts` leaves the node graph and the material names alone for a model
- * that still has to be rigged, wheels onto pivots and a nose pointed down +Z.
+ * `--keep-parts` leaves the node graph alone for a model that still has to be
+ * rigged, wheels onto pivots and a nose pointed down +Z.
  *
  * It prints what the file says about its own licence and writes it either way.
  *
@@ -36,7 +34,7 @@ const outDir = flag('out')
 const dry = flags.has('--dry')
 
 if (targets.length === 0 || (!outDir && !dry)) {
-  console.error('usage: node tools/fit-model.mjs <file-or-folder> [more...] --out <dir> [--flat] [--bake] [--keep-parts] [--triangles n] [--texture n]')
+  console.error('usage: node tools/fit-model.mjs <file-or-folder> [more...] --out <dir> [--flat] [--keep-parts] [--triangles n] [--texture n]')
   process.exit(1)
 }
 
@@ -47,7 +45,6 @@ const how = {
   keepHidden: flags.has('--keep-hidden'),
   keepParts: flags.has('--keep-parts'),
   flat: flags.has('--flat'),
-  bake: flags.has('--bake'),
 }
 
 const io = reader()
