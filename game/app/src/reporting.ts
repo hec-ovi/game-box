@@ -1,11 +1,11 @@
-import type { Carried, Hud, OwnedPlace, SettingsView } from '@gb/hud'
+import type { Carried, Hud, OwnedPlace, SettingsView, WorkOffer } from '@gb/hud'
 import type { PlayerState } from '@gb/play'
 import type { Change, Objective, QuestKind, QuestLog, Reward } from '@gb/quest'
 import type { World } from '@gb/world'
 import type { Ai } from './ai.ts'
 import { codexOf, type FaceBook } from './codex.ts'
 import type { Conditions } from './conditions.ts'
-import { marked, offered, type Marked, type Whereabouts } from './places.ts'
+import { doorsOf, marked, offered, type Marked, type Offer, type Whereabouts } from './places.ts'
 import type { View } from './view.ts'
 
 /** What a box handed back: changes to announce, or an error to let go. */
@@ -105,9 +105,16 @@ export class Reporting {
     return tracked ? objectives.filter((objective) => objective.questId === tracked) : []
   }
 
-  /** Where the tracked quest is sending the player, found on the city. */
+  /**
+   * Where the tracked quest is sending the player, found on the city. With no
+   * job in hand it is where the story starts, so the compass and the guide
+   * point at the person holding the main line rather than at nothing.
+   */
   followed(): Marked[] {
-    return marked(this.#world, this.following(), (questId) => this.lineOf(questId), this.#out)
+    const goals = marked(this.#world, this.following(), (questId) => this.lineOf(questId), this.#out)
+    if (goals.length > 0) return goals
+    const start = this.offers().find((offer) => offer.line === 'main')
+    return start ? doorsOf([start]) : []
   }
 
   /** Where every live quest is sending the player, for the plan: the story and the errands apart. */
@@ -115,9 +122,14 @@ export class Reporting {
     return marked(this.#world, this.#log.objectives(), (questId) => this.lineOf(questId), this.#out)
   }
 
-  /** Where there is work to pick up: whoever is holding a job the player has not taken. */
-  offers(): Marked[] {
+  /** Every job the player could go and pick up: what it is, whose door it is behind, and where. */
+  offers(): Offer[] {
     return offered(this.#world, this.#log, this.#out)
+  }
+
+  /** Those jobs as marks on the plan, one per door. */
+  offerDoors(): Marked[] {
+    return doorsOf(this.offers())
   }
 
   /** The story or an errand. A quest with no page yet reads as an errand. */
@@ -190,11 +202,28 @@ export class Reporting {
       money: this.#player.money,
       carrying,
       quests,
+      offers: this.#waiting(),
       codex: codexOf(this.#world, this.#player, this.#faces),
       homes: this.#homes(),
       settings: this.#settings(),
     })
     this.#changed()
+  }
+
+  /**
+   * The jobs waiting behind somebody's door, as the interface lists them. It is
+   * measured whenever the board moves, because taking or finishing a job is the
+   * only thing that changes what is left on offer.
+   */
+  #waiting(): WorkOffer[] {
+    return this.offers().map((offer) => ({
+      id: offer.id,
+      questId: offer.questId,
+      title: offer.title,
+      giver: offer.giver,
+      ...(offer.place ? { place: offer.place } : {}),
+      line: offer.line,
+    }))
   }
 
   /** A thing in hand, with what it is worth and whether a live job wants it. */

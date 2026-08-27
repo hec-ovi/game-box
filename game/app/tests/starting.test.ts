@@ -279,6 +279,34 @@ describe('what the interface is handed', () => {
     expect(page.textContent).toContain(name)
   })
 
+  it('points a player who holds no job at the main line, and lists the work waiting in town', async () => {
+    const { game, mount } = await playPlain()
+    game.frame(1 / 60)
+
+    // nothing is taken in a city nobody has played, so the corner says whose
+    // door the story starts behind rather than telling the player to ask around
+    const corner = mount.querySelector<HTMLElement>('.gb-objectives')!
+    expect(corner.textContent).toContain('The main line starts with ')
+    expect(corner.dataset.line).toBe('main')
+
+    // and the strip points at that door, in the story's own colour
+    const where = mount.querySelector<HTMLElement>('.gb-compass-where')!
+    expect(where.hidden).toBe(false)
+    expect(where.dataset.line).toBe('main')
+
+    // the plan lists the work: the story under its own heading and the errands
+    // somebody in town is holding under theirs, each saying where to find it
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'm', code: 'KeyM' }))
+    game.frame(1 / 60)
+    const work = mount.querySelector<HTMLElement>('.gb-map-work')!
+    const side = [...work.querySelectorAll<HTMLElement>('.gb-map-section')].find((one) => one.textContent?.startsWith('Side jobs'))!
+    const waiting = [...side.querySelectorAll('.gb-row')]
+    expect(waiting.length).toBeGreaterThan(0)
+    for (const row of waiting) expect(row.querySelector('.gb-row-line')!.textContent).not.toBe('')
+    // the heading counts them, so a list nobody has scrolled says how much is in it
+    expect(side.querySelector('.gb-map-section-count')!.textContent).toBe(String(waiting.length))
+  })
+
   it('swaps the driving view on the view key, and the controls window says which one is on', async () => {
     const { game, mount } = await playPlain()
     game.frame(1 / 60)

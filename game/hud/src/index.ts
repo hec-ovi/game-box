@@ -70,4 +70,5 @@ export type {
   TalkMove,
   TalkPatch,
   TalkTurn,
+  WorkOffer,
 } from './types.ts'

@@ -2,8 +2,8 @@ import type { Objective } from '@gb/quest'
 import { HUD_KEYS } from '../controls.ts'
 import { el, kbd, svg } from '../dom.ts'
 import { bump } from '../motion.ts'
-import { DECIDE_TAG, moreQuests, noObjectives } from '../phrase.ts'
-import { kindOf, mainWaiting, otherQuests, stepsOf, trackedQuest } from '../tracked.ts'
+import { DECIDE_TAG, mainStarts, moreQuests, noObjectives } from '../phrase.ts'
+import { kindOf, mainOffer, mainWaiting, otherQuests, stepsOf, trackedQuest } from '../tracked.ts'
 import type { HudState } from '../types.ts'
 import { chip, mainChip } from '../ui/chip.ts'
 import { ICON_PX, icon } from '../ui/icon.ts'
@@ -55,20 +55,23 @@ export class ObjectivesSurface implements Surface {
     const steps = stepsOf(state, tracked)
     const rest = otherQuests(state, tracked)
     const waiting = mainWaiting(state, tracked)
-    const main = kindOf(state, tracked) === 'main'
-    const key = `${rest}#${state.hadQuest}#${main}#${waiting}#${steps.map(signature).join('|')}`
+    // with nothing open, the story's own next door is what the panel points at,
+    // in the giver's name rather than in a sentence about asking around
+    const start = steps.length === 0 ? mainOffer(state) : undefined
+    const main = start !== undefined || kindOf(state, tracked) === 'main'
+    const key = `${rest}#${state.hadQuest}#${main}#${waiting}#${start?.id ?? ''}#${steps.map(signature).join('|')}`
     if (key === this.#key) return
     this.#key = key
 
     this.node.dataset.line = main ? 'main' : 'side'
     this.#line.replaceChildren(icon(main ? 'quest-main' : 'quest-side', ICON_PX.line))
-    this.#quest.textContent = steps[0]?.questTitle ?? ''
+    this.#quest.textContent = start?.title ?? steps[0]?.questTitle ?? ''
     // Following the story says so; following an errand says the story is there.
     this.#main.hidden = !main
     this.#list.replaceChildren(
       ...(steps.length
         ? steps.map((step) => this.#step(step))
-        : [el('li', 'gb-empty gb-t3', noObjectives(state.hadQuest))]),
+        : [el('li', 'gb-empty gb-t3', start ? mainStarts(start.giver, start.place) : noObjectives(state.hadQuest))]),
     )
     this.#more.set(moreQuests(rest, waiting))
     this.#done = new Map(steps.flatMap((step) => (step.count ? [[id(step), step.count.done] as const] : [])))

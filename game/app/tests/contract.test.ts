@@ -25,7 +25,7 @@ import { Members } from '../src/members.ts'
 import { Guide } from '../src/guide.ts'
 import { Intents } from '../src/intents.ts'
 import { DAY, darkness, INDOORS, lookOf, NIGHT } from '../src/night.ts'
-import { marked, offered, type Marked } from '../src/places.ts'
+import { doorsOf, marked, offered, type Marked } from '../src/places.ts'
 import { Companions } from '../src/companions.ts'
 import { Playthrough } from '../src/playthrough.ts'
 import { Reporting } from '../src/reporting.ts'
@@ -1833,7 +1833,7 @@ describe('a conversation you can click through', () => {
     return { world, npcId, itemId, player, log, talking, pushed, announced, menu, spoken, does, codex, moved: arms.moved, reached: () => reached }
   }
 
-  it('draws the speaker their own face and puts it on the panel after the opening line', async () => {
+  it('draws the speaker their own face and puts it on the panel once it is up', async () => {
     const asked: string[] = []
     const { npcId, talking, pushed } = chatting(undefined, {
       of: async (npc) => {
@@ -1860,34 +1860,103 @@ describe('a conversation you can click through', () => {
     expect(pushed.some((patch) => patch.talk?.portrait !== undefined)).toBe(false)
   })
 
-  it('opens with the speaker already talking, before the player has said anything', async () => {
+  it('opens on who is there and what can be said to them, with nobody having spoken', async () => {
     const { npcId, talking, pushed, reached } = chatting()
     await talking.start(npcId)
 
-    // the panel appears the moment the key is pressed; nineteen seconds of an
-    // empty box while a model thinks is worse than the line the box already has.
-    // It goes up as the transcript, the opening line being its last turn
+    // the panel appears the moment the key is pressed, and it appears empty:
+    // nobody speaks first, so there is no line to wait on and no model call
     const opened = pushed.find((patch) => patch.talk?.speaker !== undefined)!.talk!
     expect(opened.speaker).toBe('Iris Vane')
-    expect(opened.turns).toHaveLength(1)
-    expect(opened.turns![0]!.who).toBe('them')
-    expect(opened.turns![0]!.says.length).toBeGreaterThan(0)
+    expect(opened.turns).toEqual([])
     expect(opened.moves!.length).toBeGreaterThan(0)
     expect(reached()).toBe(0)
-  })
 
-  it('puts one opening turn on the panel however often the player walks up', async () => {
-    const { npcId, talking, pushed } = chatting()
-    for (let visit = 0; visit < 3; visit++) {
+    // and walking up again adds nothing to it, however often they do it
+    for (let visit = 0; visit < 2; visit++) {
+      talking.end()
       pushed.length = 0
       await talking.start(npcId)
-      talking.end()
     }
-    // `@gb/talk` greets afresh on every opening and keeps each greeting in the
-    // transcript, so three walk-ups leave three hellos in it. What nobody
-    // answered is not history: the panel draws the one they are being given
-    const third = pushed.find((patch) => patch.talk?.speaker !== undefined)!.talk!
-    expect(third.turns!.map((turn) => turn.who)).toEqual(['them'])
+    expect(pushed.find((patch) => patch.talk?.speaker !== undefined)!.talk!.turns).toEqual([])
+  })
+
+  it('says out loud what walking up handed over, because nobody speaks first', async () => {
+    const paid = checked({
+      format: 'game-box.quest',
+      schemaVersion: 1,
+      id: 'quest_0003',
+      kind: 'side',
+      title: 'The back way',
+      summary: 'Iris has a word for the back door.',
+      giverNpcId: 'npc_0001',
+      difficulty: 'small',
+      startStepId: 'step_0001',
+      reward: rewardFor('small'),
+      steps: [
+        { id: 'step_0001', objective: 'Hear Iris out', kind: 'talk', npcId: 'npc_0001', effects: [{ kind: 'give-password', password: 'lantern' }], next: ['step_0002'] },
+        { id: 'step_0002', objective: 'Done', kind: 'complete' },
+      ],
+    })
+    const { world, npcId } = bar()
+    const player = PlayerState.create(world.id)
+    const log = QuestLog.create([paid], player)
+    const { announced, hud } = screenful()
+    const report = new Reporting({ world, log, player, hud, conditions: new Conditions(player.clock) })
+    const talking = new Talking({
+      world,
+      log,
+      player,
+      sidecar: new Sidecar({ fetch: () => Promise.reject(new Error('nothing listening')) }),
+      hud,
+      body: { setTyping: () => {} } as unknown as Player,
+      attending: { hold: () => {}, release: () => {} } as unknown as Attending,
+      report,
+    })
+    expect(log.start('quest_0003').ok).toBe(true)
+
+    await talking.start(npcId)
+    // the step was credited by the walk-up and paid out a word; with no line to
+    // carry it, the interface is the only place the player can read it
+    expect(player.knows('lantern')).toBe(true)
+    const said = announced.map((notice) => JSON.stringify(notice)).join(' ')
+    expect(said).toContain('lantern')
+    // and the fact that seeing her earns is said once, by her name
+    expect(said).toContain('Iris Vane')
+  })
+
+  it('says whether the person is at their post or out walking, so a stopped bartender is not behind a counter', async () => {
+    /** The brief a bartender's first turn goes out with, at their counter or walked off it. */
+    async function briefOf(outdoors: boolean): Promise<string> {
+      const { world } = anchorage()
+      const player = PlayerState.create(world.id)
+      const briefs: string[] = []
+      const { hud } = screenful()
+      const talking = new Talking({
+        world,
+        log: QuestLog.create([], player),
+        player,
+        outdoors: () => outdoors,
+        sidecar: new Sidecar({
+          fetch: (url, init) => {
+            briefs.push(String(init?.body))
+            return speaks({ does: 'shrugs', says: 'Fine.' })(url, init)
+          },
+        }),
+        hud,
+        body: { setTyping: () => {} } as unknown as Player,
+        attending: { hold: () => {}, release: () => {} } as unknown as Attending,
+        report: new Reporting({ world, log: QuestLog.create([], player), player, hud, conditions: new Conditions(player.clock) }),
+      })
+      await talking.start('npc_0001')
+      await talking.say('hello')
+      return briefs.join('\n')
+    }
+
+    // the same person and the same words, and a brief that is not the same one:
+    // where somebody is standing this minute is the game's to say and not the
+    // world file's, and the crowd is the one answer for who is off their post
+    expect(await briefOf(true)).not.toBe(await briefOf(false))
   })
 
   it('carries on where the two of them left off, so walking back up is not meeting a stranger', async () => {
@@ -1899,9 +1968,9 @@ describe('a conversation you can click through', () => {
     pushed.length = 0
     await talking.start(npcId)
     const again = pushed.find((patch) => patch.talk?.speaker !== undefined)!.talk!
-    // her greeting, what the player said, her answer, and a new greeting on top
-    expect(again.turns!.map((turn) => turn.who)).toEqual(['them', 'you', 'them', 'them'])
-    expect(again.turns![1]!.says).toBe('and what do I get for it?')
+    // what the player said and her answer, and nothing on top of them
+    expect(again.turns!.map((turn) => turn.who)).toEqual(['you', 'them'])
+    expect(again.turns![0]!.says).toBe('and what do I get for it?')
   })
 
   it('reopens the transcript with what they did as well as what they said', async () => {
@@ -1990,8 +2059,8 @@ describe('a conversation you can click through', () => {
     const { npcId, talking, moved } = chatting()
     await talking.start(npcId)
 
-    // the opening line is a string, not a stream: nothing is being said out
-    // loud yet, so there is nothing for their body to be doing
+    // nobody has spoken: walking up puts a menu on the panel and nothing else,
+    // so there is nothing for their body to be doing
     expect(moved).toEqual([])
 
     // a turn their reply is neither a yes nor a no to: the line opens, beats to
@@ -2201,7 +2270,7 @@ describe('where there is work to pick up', () => {
     ],
   })
 
-  it('marks the door of whoever is holding a job, and stops once it is taken', () => {
+  it('names the job, whose door it is behind and where that is, and stops once it is taken', () => {
     const { world, plotId } = anchorage()
     const player = PlayerState.create(world.id)
     const log = QuestLog.create([job], player)
@@ -2209,7 +2278,26 @@ describe('where there is work to pick up', () => {
     // a player who holds nothing has no pins at all, so the only thing that can
     // say where to start is who is still holding work
     expect(marked(world, log.objectives(), () => 'main')).toEqual([])
-    expect(offered(world, log)).toEqual([{ id: 'offer:npc_0001', label: 'Wren Ashby', x: 11, z: 13, plotId, line: 'main' }])
+    // a job is knowable once its giver can be found and its requires are met,
+    // and it comes with what the interface has to write: the job, the person
+    // and the place, never a marker id
+    const waiting = offered(world, log)
+    expect(waiting).toEqual([
+      {
+        id: 'offer:npc_0001',
+        questId: 'quest_0001',
+        title: 'A word with Wren',
+        giver: 'Wren Ashby',
+        place: world.plot(plotId)!.name,
+        label: 'Wren Ashby',
+        x: 11,
+        z: 13,
+        plotId,
+        line: 'main',
+      },
+    ])
+    // and one door on the plan, whatever is waiting behind it
+    expect(doorsOf(waiting)).toEqual([{ id: 'offer:npc_0001', label: 'Wren Ashby', x: 11, z: 13, plotId, line: 'main' }])
 
     // taken, and it is a job on the board rather than one to pick up
     expect(log.start('quest_0001').ok).toBe(true)

@@ -114,6 +114,22 @@ export function noObjectives(hadQuest: boolean): string {
   return hadQuest ? 'No step open right now. Ask around for the next job.' : 'Nothing yet. Find someone to talk to.'
 }
 
+/** Where to find whoever is holding a job: their own name, and the place they keep. */
+export function foundAt(giver: string, place: string | undefined): string {
+  return place ? `${giver}, at ${place}` : giver
+}
+
+/**
+ * The corner panel and the map's main list with no story taken and one waiting:
+ * whose door it is, rather than a sentence telling the player to go and look.
+ */
+export function mainStarts(giver: string, place: string | undefined): string {
+  return `The main line starts with ${foundAt(giver, place)}.`
+}
+
+/** On a job nobody has taken yet, wherever a taken one would wear its status. */
+export const WAITING_TAG = 'Waiting'
+
 /** The journal with no quest under way, read the same two ways. */
 export function noQuests(hadQuest: boolean): string {
   return hadQuest ? 'Nothing under way. Ask around for the next job.' : 'No quests yet. Find someone with work.'
@@ -203,11 +219,6 @@ export const MAP_KINDS: Record<MapReadingKind, string> = {
 
 /** The story says so, wherever the two lines of work are told apart. */
 export const MAP_MAIN_KIND = 'The story'
-
-/** How many people are holding work nobody has taken, so an empty list says the town is not empty. */
-export function workWaiting(people: number): string {
-  return people === 1 ? '1 person in town is holding work you have not taken.' : `${people} people in town are holding work you have not taken.`
-}
 
 /** "Step 2 of 5". */
 export function stepCount(at: number, of: number): string {

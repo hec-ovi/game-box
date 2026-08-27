@@ -1,12 +1,13 @@
 import { el } from '../dom.ts'
 import { rise } from '../motion.ts'
-import { MAP_PANELS, STATIONS, STATUS_TAG, stepCount, workWaiting } from '../phrase.ts'
+import { MAP_PANELS, STATIONS, STATUS_TAG, mainStarts, stepCount } from '../phrase.ts'
 import { progress, stateOf, statusOf, titleOf } from '../tabs/journal.ts'
-import type { HudIntent, HudState, QuestEntry, QuestStep, QuestStepState } from '../types.ts'
+import type { HudIntent, HudState, QuestEntry, QuestStep, QuestStepState, WorkOffer } from '../types.ts'
 import { chip } from '../ui/chip.ts'
 import { ICON_PX, icon } from '../ui/icon.ts'
 import { Meter } from '../ui/meter.ts'
 import { Row } from '../ui/row.ts'
+import { offerRow } from './offer-row.ts'
 import { Section } from './section.ts'
 import { StationList } from './stations.ts'
 
@@ -15,9 +16,11 @@ type Fold = 'main' | 'side' | 'stations'
 
 /**
  * Everything there is to read beside the city: the main line with its steps,
- * the side jobs and how each stands, and the stations. Each heading folds away
- * and the fold is the interface's own, so a player who only wants the stations
- * keeps the rest shut.
+ * the side jobs and how each stands, and the stations. A heading carries the
+ * jobs already in hand and, under them, the ones still waiting behind somebody's
+ * door, so a player who has taken nothing reads where the work is rather than an
+ * empty list. Each heading folds away and the fold is the interface's own, so a
+ * player who only wants the stations keeps the rest shut.
  *
  * A row picked is the same as a callout picked: it reports what the player
  * wants shown and the game answers with the view and the panel.
@@ -49,11 +52,12 @@ export class WorkLists {
     const reading = state.reading?.id
     const main = state.quests.find((quest) => quest.kind === 'main')
     const side = state.quests.filter((quest) => quest.kind !== 'main')
-    // how many people are holding work nobody has taken: an empty list that
-    // says the town has work in it reads as a town, not as a broken panel
-    const offered = (state.map?.marks ?? []).filter((mark) => mark.kind === 'offer').length
-    this.#drawMain(main, reading)
-    this.#drawSide(side, offered, reading)
+    // the work nobody has taken, split the same way: the story's next door and
+    // every errand somebody in town is holding
+    const waiting = state.offers.filter((offer) => offer.line === 'main')
+    const errands = state.offers.filter((offer) => offer.line !== 'main')
+    this.#drawMain(main, waiting, reading)
+    this.#drawSide(side, errands, reading)
     const stations = state.map?.stations ?? []
     this.#stations.count(stations.length ? String(stations.length) : null)
     this.#stationList.set(stations, state.map?.boarding, reading)
@@ -72,14 +76,22 @@ export class WorkLists {
     section.open = open
   }
 
-  /** The story: how far it has got, and every step it holds. */
-  #drawMain(quest: QuestEntry | undefined, reading: string | undefined): void {
-    const key = quest ? `${signature(quest)}#${reading ?? ''}` : ''
+  /**
+   * The story: how far it has got and every step it holds, or, with none of it
+   * taken, whose door it starts behind. The count is the steps of the job in
+   * hand, and how many are waiting when there is none.
+   */
+  #drawMain(quest: QuestEntry | undefined, waiting: readonly WorkOffer[], reading: string | undefined): void {
+    const key = `${quest ? signature(quest) : ''}#${waiting.map(offerKey).join('|')}#${reading ?? ''}`
     if (key === this.#mainKey) return
     this.#mainKey = key
     if (!quest) {
-      this.#main.count(null)
-      this.#main.body.replaceChildren(el('p', 'gb-empty gb-t3', MAP_PANELS.noMain))
+      this.#main.count(waiting.length ? String(waiting.length) : null)
+      const start = waiting[0]
+      this.#main.body.replaceChildren(
+        start ? el('p', 'gb-note gb-t2', mainStarts(start.giver, start.place)) : el('p', 'gb-empty gb-t3', MAP_PANELS.noMain),
+        ...this.#offers(waiting, reading),
+      )
       return
     }
     const at = progress(quest)
@@ -88,24 +100,36 @@ export class WorkLists {
     const steps = el('ul', 'gb-steps gb-map-steps')
     const open = quest.steps.findIndex((step) => stateOf(step) === 'open')
     for (const [index, step] of quest.steps.entries()) steps.append(this.#step(step, index === open ? at.done + 1 : 0, at.needed))
-    this.#main.body.replaceChildren(row, steps)
+    this.#main.body.replaceChildren(row, steps, ...this.#offers(waiting, reading))
   }
 
-  /** The errands: one row each, saying how far it got or how it ended. */
-  #drawSide(quests: readonly QuestEntry[], offered: number, reading: string | undefined): void {
-    const key = `${quests.map(signature).join('|')}#${offered}#${reading ?? ''}`
+  /**
+   * The errands: the ones in hand saying how far each got or how it ended, then
+   * the ones still waiting with whose door each is behind. The count is both,
+   * because that is how many jobs the list is holding.
+   */
+  #drawSide(quests: readonly QuestEntry[], waiting: readonly WorkOffer[], reading: string | undefined): void {
+    const key = `${quests.map(signature).join('|')}#${waiting.map(offerKey).join('|')}#${reading ?? ''}`
     if (key === this.#sideKey) return
     this.#sideKey = key
-    this.#side.count(quests.length ? String(quests.length) : null)
-    const rows: HTMLElement[] = quests.length
-      ? quests.map((quest, at) => {
-          const row = this.#questRow(quest, reading)
-          rise(row, at)
-          return row
-        })
-      : [el('p', 'gb-empty gb-t3', MAP_PANELS.noSide)]
-    if (offered > 0) rows.push(el('p', 'gb-note gb-t2', workWaiting(offered)))
-    this.#side.body.replaceChildren(...rows)
+    const held = quests.length + waiting.length
+    this.#side.count(held ? String(held) : null)
+    const rows: HTMLElement[] = quests.map((quest, at) => {
+      const row = this.#questRow(quest, reading)
+      rise(row, at)
+      return row
+    })
+    rows.push(...this.#offers(waiting, reading, quests.length))
+    this.#side.body.replaceChildren(...(rows.length ? rows : [el('p', 'gb-empty gb-t3', MAP_PANELS.noSide)]))
+  }
+
+  /** The jobs waiting behind somebody's door, one row each, in the order the game sent them. */
+  #offers(offers: readonly WorkOffer[], reading: string | undefined, from = 0): HTMLElement[] {
+    return offers.map((offer, at) => {
+      const row = offerRow(offer, reading, (targetId) => this.#emit({ kind: 'read', targetId }))
+      rise(row, from + at)
+      return row
+    })
   }
 
   #questRow(quest: QuestEntry, reading: string | undefined): HTMLElement {
@@ -159,6 +183,11 @@ function mark(state: QuestStepState): HTMLElement {
     node.setAttribute('aria-label', MAP_PANELS.unreached)
   }
   return node
+}
+
+/** Everything on a waiting job's row that changes what it says. */
+function offerKey(offer: WorkOffer): string {
+  return `${offer.id}/${offer.questId}/${offer.title}/${offer.giver}/${offer.place ?? ''}`
 }
 
 /** Everything on a row that changes what it says. */

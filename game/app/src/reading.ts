@@ -2,21 +2,26 @@ import type { MapFact, MapReading, MapReadingKind } from '@gb/hud'
 import type { JournalEntry, Objective } from '@gb/quest'
 import type { District, World } from '@gb/world'
 import type { Spot } from './citymap.ts'
-import type { Marked } from './places.ts'
+import type { Marked, Offer } from './places.ts'
 
 /** What the map says about a thing, in the game's own words. */
 const WORDS = {
   you: 'You',
   yourself: 'Where you are standing right now.',
-  offer: 'Somebody here is holding work you have not taken.',
   station: 'The train boards here.',
   nowhere: 'This one is not a place you can walk to.',
   part: 'Part of town',
   onFoot: 'On foot',
   buildings: 'Buildings',
   step: 'Step',
+  job: 'Job waiting',
   noWalk: 'No way there on foot',
 } as const
+
+/** Whose door this is, and that the work behind it is still there to take. */
+function holding(giver: string): string {
+  return `${giver} is holding work you have not taken.`
+}
 
 /** Where a thing is and what is known about it: the map asks, the game answers. */
 export interface Read {
@@ -39,7 +44,7 @@ export interface Read {
 export class Readings {
   #world: World
   #goals: () => readonly Marked[]
-  #offers: () => readonly Marked[]
+  #offers: () => readonly Offer[]
   #homes: () => readonly string[]
   #you: () => Spot
   #steps: () => readonly Objective[]
@@ -50,7 +55,7 @@ export class Readings {
   constructor(input: {
     world: World
     goals: () => readonly Marked[]
-    offers: () => readonly Marked[]
+    offers: () => readonly Offer[]
     homes: () => readonly string[]
     you: () => Spot
     steps: () => readonly Objective[]
@@ -88,23 +93,30 @@ export class Readings {
     return { at, districtId: this.#partOf(at)?.id, reading: this.#read('you', 'you', WORDS.you, at, { text: WORDS.yourself }) }
   }
 
-  /** A place a job is sending the player, or somebody holding work they have not taken. */
+  /**
+   * A place a job is sending the player, or a door with work behind it. A door
+   * says whose it is and names every job waiting there, so picking the story's
+   * own callout answers what the main line actually is.
+   */
   #mark(targetId: string): Read | undefined {
     const goal = this.#goals().find((one) => one.id === targetId)
-    const offer = goal ? undefined : this.#offers().find((one) => one.id === targetId)
-    const found = goal ?? offer
+    const waiting = goal ? [] : this.#offers().filter((one) => one.id === targetId)
+    const found = goal ?? waiting[0]
     if (!found) return undefined
     const kind: MapReadingKind = goal ? 'goal' : 'offer'
     const at = { x: found.x, z: found.z }
     const step = goal ? this.#steps().find((one) => `goal:${one.questId}:${one.stepId}` === targetId) : undefined
+    const stepFact = goal && found.questId ? this.#stepFact(found.questId) : undefined
     return {
       at,
       districtId: this.#partOf(at, found.plotId)?.id,
       reading: this.#read(targetId, kind, found.label, at, {
-        line: found.line,
-        text: goal ? step?.text : WORDS.offer,
+        // a door holds the story where it holds any of it, so the callout, the
+        // panel and the strip all burn the same colour
+        line: waiting.some((one) => one.line === 'main') ? 'main' : found.line,
+        text: goal ? step?.text : holding(found.label),
         plotId: found.plotId,
-        extra: goal && found.questId ? this.#stepFact(found.questId) : undefined,
+        extra: stepFact ? [stepFact] : waiting.map((one) => ({ label: WORDS.job, value: one.title })),
       }),
     }
   }
@@ -182,11 +194,10 @@ export class Readings {
     kind: MapReadingKind,
     name: string,
     at: Spot,
-    more: { line?: Marked['line']; text?: string | undefined; plotId?: string | undefined; extra?: MapFact | undefined },
+    more: { line?: Marked['line']; text?: string | undefined; plotId?: string | undefined; extra?: readonly MapFact[] },
   ): MapReading {
     const district = this.#partOf(at, more.plotId)
-    const facts: MapFact[] = []
-    if (more.extra) facts.push(more.extra)
+    const facts: MapFact[] = [...(more.extra ?? [])]
     if (district) facts.push({ label: WORDS.part, value: district.name })
     facts.push(...this.#walkFact(at, more.plotId))
     return {

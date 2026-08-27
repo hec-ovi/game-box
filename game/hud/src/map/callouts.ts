@@ -23,10 +23,10 @@ const NUDGE = { step: 20, tries: 6 } as const
  * the whole city.
  *
  * Standing back, a map of everything is a map of nothing: the whole town shows
- * where the player is, where their work is sending them and what the parts of
- * town are called, and nothing else. Coming in brings the rest with it, a kind
- * at a time, and takes the parts of town away again, because a name written
- * across a district is in the way of a street.
+ * where the player is, where their work is sending them, where the story starts
+ * and what the parts of town are called, and nothing else. Coming in brings the
+ * rest with it, a kind at a time, and takes the parts of town away again,
+ * because a name written across a district is in the way of a street.
  */
 const SHOWN: Record<MapReadingKind, { readonly from: number; readonly until?: number }> = {
   you: { from: 0 },
@@ -45,7 +45,7 @@ const MOST = 12
 const GUESS = { perChar: 6.6, chrome: 40, height: 24 } as const
 
 /** Which label gets the room when two want the same piece of glass. */
-const RANK: Record<MapReadingKind, number> = { you: 0, goal: 1, offer: 3, home: 4, station: 5, district: 6, place: 7 }
+const RANK: Record<MapReadingKind, number> = { you: 0, goal: 1, offer: 4, home: 5, station: 6, district: 7, place: 8 }
 
 /** The picture on a callout, one per kind of thing. The two lines of work carry their own. */
 const PICTURE: Record<MapReadingKind, IconName> = {
@@ -194,13 +194,20 @@ export class Callouts {
 /** The square drawn on the thing a callout is about. */
 const MARK = 7
 
+/**
+ * Whether a label is worth the room at this zoom. The story's own door is the
+ * one offer written on the whole city, because a player with no job in hand has
+ * to be able to read where the main line starts without hunting for it.
+ */
 function worthShowing(callout: Callout, zoom: number): boolean {
+  if (callout.kind === 'offer' && callout.line === 'main') return true
   const band = SHOWN[callout.kind]
   return zoom >= band.from && (band.until === undefined || zoom <= band.until)
 }
 
 function rankOf(callout: Callout): number {
   if (callout.kind === 'goal') return callout.line === 'main' ? 1 : 2
+  if (callout.kind === 'offer' && callout.line === 'main') return 3
   return RANK[callout.kind]
 }
 

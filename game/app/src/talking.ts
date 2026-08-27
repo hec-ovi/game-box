@@ -29,6 +29,19 @@ const DONE: Record<ActionName, string> = {
 }
 
 /**
+ * What walking up handed over, in the player's words. Nobody has spoken yet, so
+ * these lines are the only place a word, a key, a door or a page of the codex
+ * is said out loud.
+ */
+const HANDED = {
+  password: 'Password:',
+  key: 'a key',
+  door: 'A door is open to you.',
+  learned: 'Something noted about',
+  someone: 'someone',
+} as const
+
+/**
  * Talking to somebody: open the conversation, put the transcript and the moves
  * they will allow on screen, stream the reply into the panel with what they do
  * apart from what they say, and let the game have its keys back when it ends.
@@ -36,6 +49,9 @@ const DONE: Record<ActionName, string> = {
  * to the screen and carries the player's answer back, whether they typed it
  * or clicked it. One `Sessions` for the playthrough, so walking back up to
  * somebody carries on where the two of them left off.
+ *
+ * Nobody speaks first, so walking up is a menu and whatever the walk-up itself
+ * paid out. Nothing says that out loud, which is why it is announced here.
  */
 export class Talking {
   #world: World
@@ -54,13 +70,7 @@ export class Talking {
   #open: Conversation | undefined
   #speakerId = ''
   #portraits: FaceSource | undefined
-  /**
-   * The opening lines each person has already said on the panel. Every opening
-   * puts a fresh greeting in their transcript, so a player who walks up, walks
-   * off and walks back up has a column of hellos nobody answered; the panel
-   * draws the newest and leaves the rest off.
-   */
-  #greeted = new Map<string, Set<string>>()
+  #outdoors: (npcId: string) => boolean
 
   constructor(input: {
     world: World
@@ -80,6 +90,8 @@ export class Talking {
     over?: () => void
     /** Where a face comes from. Without one the panel draws a silhouette. */
     portraits?: FaceSource
+    /** Whether the crowd has this person out on the pavement rather than at their post. Nobody is out by default. */
+    outdoors?: (npcId: string) => boolean
     report: Reporting
   }) {
     this.#world = input.world
@@ -95,6 +107,7 @@ export class Talking {
     this.#over = input.over ?? (() => {})
     this.#report = input.report
     this.#portraits = input.portraits
+    this.#outdoors = input.outdoors ?? (() => false)
   }
 
   get active(): boolean {
@@ -108,61 +121,57 @@ export class Talking {
       player: this.#player,
       sidecar: this.#sidecar,
       npcId,
+      // somebody the crowd has walked off their post is out walking, and saying
+      // so is what stops a bartender stopped on a crossing talking about the
+      // shelf behind a counter a street away
+      ...(this.#outdoors(npcId) ? ({ where: 'street' } as const) : {}),
       sessions: this.#sessions,
     })
     if (!opened.ok) return
 
     const conversation = opened.value.conversation
+    const npc = this.#world.npc(npcId)
     this.#open = conversation
     this.#speakerId = npcId
     this.#attending.hold(npcId)
     // meeting them is what the codex earns first, and the person goes in it
     this.#report.report({ ok: true, value: opened.value.changes })
-    // a step credited on the way in has already paid: whatever it paid out is
-    // in the player's hands before the first line is on the panel
-    for (const grant of opened.value.granted) this.#granted(grant)
-    // they speak first: the opening line is built off the game's own data and
-    // costs no model call, and it is already the last turn of the transcript,
-    // so the panel has the whole history in it the instant it appears
-    const npc = this.#world.npc(npcId)
+    // a step credited on the way in has already paid, and nobody has spoken, so
+    // what changed hands and what was learned are said here. On a turn their
+    // own words carry both, which is why they are announced only on the way in
+    for (const grant of opened.value.granted) this.#handed(grant)
+    // however many facts seeing them earned, the codex gained a page: one line
+    if (opened.value.learned.length > 0) this.#report.note(`${HANDED.learned} ${npc?.name ?? HANDED.someone}`)
+    // they answer when they are spoken to, so the panel opens on the transcript
+    // the two of them already have and the moves the player walked into
     this.#hud.show({
       talk: {
         speaker: npc?.name ?? 'Someone',
-        turns: this.#read(npcId, conversation.history(), opened.value.opening.line),
+        turns: conversation.history().map(turnOf),
         moves: this.#clickable(opened.value.opening.moves),
       },
     })
     // their face follows: drawing one is a body build and a render, and the
-    // opening line is already on the panel. A face that arrives after the
-    // player has walked off goes to nobody, which is what the check is for
+    // panel is already up. A face that arrives after the player has walked off
+    // goes to nobody, which is what the check is for
     if (npc) void this.#face(npcId, npc)
+  }
+
+  /**
+   * A word, a key or a door that changed hands: the inventory, the locks and
+   * the routes read it, and the player is told in the same breath.
+   */
+  #handed(grant: Grant): void {
+    this.#granted(grant)
+    if ('password' in grant) this.#report.note(`${HANDED.password} ${grant.password}`)
+    else if ('keyItemId' in grant) this.#hud.announce({ kind: 'item-taken', item: this.#world.item(grant.keyItemId)?.name ?? HANDED.key })
+    else this.#report.note(HANDED.door)
   }
 
   /** Draw their face, and put it on the panel if they are still the one being talked to. */
   async #face(npcId: string, npc: Npc): Promise<void> {
     const portrait = await this.#portraits?.of(npc)
     if (portrait && this.#speakerId === npcId) this.#hud.show({ talk: { portrait } })
-  }
-
-  /**
-   * The transcript as the player reads it: everything the two of them said,
-   * and one greeting, this one. A greeting the player answered is history and
-   * stays; one they walked away from is not, so walking up three times leaves
-   * one hello on the panel rather than three.
-   */
-  #read(npcId: string, history: readonly Turn[], opening: string): TalkTurn[] {
-    const before = this.#greeted.get(npcId) ?? new Set<string>()
-    const turns = history.map(turnOf)
-    const shown: TalkTurn[] = []
-    let answered = false
-    for (let index = turns.length - 1; index >= 0; index--) {
-      const turn = turns[index]!
-      if (turn.who === 'you') answered = true
-      const walkedAway = !answered && index < turns.length - 1 && turn.who === 'them' && before.has(turn.says)
-      if (!walkedAway) shown.unshift(turn)
-    }
-    this.#greeted.set(npcId, before.add(opening))
-    return shown
   }
 
   /** Send a line to whoever the player is talking to and play back the reply. */

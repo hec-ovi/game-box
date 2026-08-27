@@ -1389,7 +1389,7 @@ describe('the people on the street', () => {
     const out = new Set(street.residents().map((npc) => npc.id))
 
     // a body borrowed off a counter is a room the player walked in to see and
-    // found empty, and a greeting about a shelf that is a street away
+    // found empty
     const rooms = new Set(world.npcs().flatMap((npc) => (npc.station ? [npc.station.interiorId] : [])))
     expect(rooms.size).toBeGreaterThan(0)
     for (const room of rooms) {

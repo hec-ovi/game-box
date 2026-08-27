@@ -112,7 +112,7 @@ export class Chart {
     const view: MapView = {
       width: this.#world.grid.width,
       height: this.#world.grid.height,
-      plots: this.#plots(goals),
+      plots: this.#plots(goals, offers),
       ...(this.#districts.length ? { districts: this.#districts } : {}),
       marks: [
         this.#here(),
@@ -173,9 +173,9 @@ export class Chart {
    * a hover: a plan with nine hundred names on it is unreadable, and the player
    * has no reason to read most of them.
    */
-  #plots(goals: readonly Marked[]): MapPlot[] {
+  #plots(goals: readonly Marked[], offers: readonly Marked[]): MapPlot[] {
     const named = new Set<string>(this.#landmarks)
-    for (const goal of [...goals, ...this.#offers()]) if (goal.plotId) named.add(goal.plotId)
+    for (const goal of [...goals, ...offers]) if (goal.plotId) named.add(goal.plotId)
     for (const interiorId of this.#homes()) {
       const plotId = interiorPlot(this.#world, interiorId)
       if (plotId) named.add(plotId)

@@ -115,12 +115,12 @@ export class Street {
   /**
    * Who is out there, for the crowd to draw the street from: everybody the city
    * stationed nowhere, because there is nowhere else to look for them. Anybody
-   * with a post keeps it. A person's post is what `@gb/talk` builds their
-   * greeting from, so a bartender walked onto a crossing tells the player about
-   * a shelf that is a street away; and a town this size has three open places,
-   * so one body borrowed off a counter empties the room the player came in to
-   * see. The city's own order decides, so the same town puts the same people on
-   * the same pavement every time.
+   * with a post keeps it: a town this size has three open places, so one body
+   * borrowed off a counter empties the room the player came in to see. Somebody
+   * the crowd does walk off their post is talked to as somebody out walking
+   * (`where: 'street'`), so their post is never described as where they are
+   * standing. The city's own order decides, so the same town puts the same
+   * people on the same pavement every time.
    */
   residents(): readonly Npc[] {
     return this.#world.npcs().filter((npc) => npc.station?.interiorId === undefined)

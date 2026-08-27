@@ -138,6 +138,26 @@ export interface QuestEntry {
   readonly steps: readonly QuestStep[]
 }
 
+/**
+ * A job nobody has taken yet, waiting behind somebody's door. The game decides
+ * which of these the player can see and where each one is; this box lists them
+ * beside the jobs already in hand, so a fresh city reads as a town with work in
+ * it rather than as an empty panel.
+ */
+export interface WorkOffer {
+  /** The map's handle on where it is, so a row picked reads the same thing its callout does. */
+  readonly id: string
+  readonly questId: string
+  /** The job's own name, as the quest wrote it. */
+  readonly title: string
+  /** Whose door it is, by name. */
+  readonly giver: string
+  /** Where to find them, by name. Left out for somebody stood in the open street. */
+  readonly place?: string
+  /** The story or an errand. Left out reads as `side`. */
+  readonly line?: QuestKind
+}
+
 /** A rectangle in grid cells, measured from the north-west corner of the city. */
 export interface MapRect {
   readonly x: number
@@ -623,6 +643,8 @@ export interface HudPatch {
   readonly screen?: ScreenView | null
   readonly talk?: TalkPatch | null
   readonly quests?: readonly QuestEntry[]
+  /** The jobs waiting to be picked up, replaced whole. An empty list means the town is holding none. */
+  readonly offers?: readonly WorkOffer[]
   readonly trackedQuestId?: string | null
   readonly map?: MapView | null
   /** What the map was asked to read, answered. `null` empties the panel. */
@@ -655,6 +677,7 @@ export interface HudState {
   readonly screen: ScreenView | undefined
   readonly talk: TalkState | undefined
   readonly quests: readonly QuestEntry[]
+  readonly offers: readonly WorkOffer[]
   readonly trackedQuestId: string | undefined
   readonly map: MapView | undefined
   readonly reading: MapReading | undefined

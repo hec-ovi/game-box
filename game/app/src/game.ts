@@ -412,6 +412,10 @@ export class Game {
       wares: (npcId) => this.#counters.open(npcId),
       granted: (grant) => this.#locks.handed(grant),
       over: () => this.#counters.closed(),
+      // the one answer for who is out here: somebody the crowd is walking is
+      // off their post, so they are described out walking rather than behind
+      // the counter the city file gave them
+      outdoors: (npcId) => this.#street.whereabouts(npcId) !== undefined,
       // their own face on the panel, drawn from the body the city draws them
       // with. Without an art pack there is no body to draw, and the panel says
       // who is talking without a picture of them
@@ -450,7 +454,7 @@ export class Game {
       goals: () => this.#report.goals(),
       // and where there is work waiting: a player who holds no job has to be
       // able to read off the plan where to go and get one
-      offers: () => this.#report.offers(),
+      offers: () => this.#report.offerDoors(),
       entered: () => this.#player.discovered().places,
       stations: this.#travel.marks,
       boarding: () => (this.#buildings.outdoors ? this.#travel.boarding(this.#body.position) : undefined),

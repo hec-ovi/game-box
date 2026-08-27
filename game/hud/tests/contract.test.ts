@@ -21,6 +21,7 @@ import {
   type QuestEntry,
   type MinimapView,
   type ScreenView,
+  type WorkOffer,
 } from '../src/index.ts'
 import { CORNER_RESERVED, LAYOUT } from '../src/style/layout.ts'
 import { TOKENS } from '../src/style/tokens.ts'
@@ -63,6 +64,13 @@ const QUESTS: readonly QuestEntry[] = [
 ]
 
 const CONTROLS: readonly ControlHint[] = [{ keys: ['W', 'A', 'S', 'D'], text: 'Walk', group: 'Move' }]
+
+/** Work waiting in town: the story's own door first, then two errands. */
+const OFFERS: readonly WorkOffer[] = [
+  { id: 'offer:npc_0001', questId: 'q7', title: 'The Salt Run', giver: 'Imri Rask', place: 'The Copper Wheel', line: 'main' },
+  { id: 'offer:npc_0008', questId: 'q8', title: 'Lamp oil for the yard', giver: 'Cleo Fane', place: 'The Anchor', line: 'side' },
+  { id: 'offer:npc_0008', questId: 'q9', title: 'A word with the harbourmaster', giver: 'Cleo Fane', place: 'The Anchor', line: 'side' },
+]
 
 describe('objectives', () => {
   it('lists what the player is meant to do and replaces it on the next push', () => {
@@ -179,6 +187,25 @@ describe('objectives', () => {
     within(panel).getByText('1 more quest, the main line')
   })
 
+  it('names the door the story starts behind while the player holds no job', () => {
+    const { hud, screen } = mount()
+    // with no work waiting anywhere, the panel can only point at the town
+    getByText(screen, 'Nothing yet. Find someone to talk to.')
+
+    hud.show({ offers: [OFFERS[0]!, OFFERS[1]!] })
+    // whose door it is and where, in their own name: never a marker id
+    getByText(screen, 'The main line starts with Imri Rask, at The Copper Wheel.')
+    getByText(screen, 'The Salt Run')
+    // and it reads as the story, so a player cannot mistake it for an errand
+    expect((screen.querySelector('.gb-chip-main') as HTMLElement).hidden).toBe(false)
+    expect((screen.querySelector('.gb-objectives') as HTMLElement).dataset.line).toBe('main')
+
+    // a step of their own is what the panel is for, so it takes the corner back
+    hud.show({ objectives: [objective({ text: 'Talk to Mara' })] })
+    expect(queryByText(screen, /The main line starts with/)).toBeNull()
+    getByText(screen, 'Talk to Mara')
+  })
+
   it('scrolls inside its corner rather than running off the screen', () => {
     const { screen } = mount()
     const style = getComputedStyle(screen.querySelector('.gb-objectives') as HTMLElement)
@@ -206,7 +233,7 @@ describe('conversation', () => {
     const { hud, screen } = mount()
 
     hud.show({ talk: { speaker: 'Mara Quill' } })
-    // a face is drawn from a body and arrives after the opening line, so until
+    // a face is drawn from a body and arrives after the panel is up, so until
     // it does the panel shows a silhouette rather than an empty box
     expect(screen.querySelector('.gb-caller-avatar-box .gb-portrait-svg')).not.toBeNull()
     expect(screen.querySelector('.gb-caller-face')).toBeNull()
@@ -1618,31 +1645,63 @@ describe('the map, which is the city drawn as its architecture', () => {
     expect(head.getAttribute('aria-expanded')).toBe('true')
   })
 
-  it('says what is in each list when nothing is in it, and that the town has work waiting', () => {
-    const { hud, panel } = opened()
-    hud.show({ quests: [] })
+  it('lists the work waiting to be picked up under both headings, with where to find each', async () => {
+    const user = userEvent.setup()
+    const { hud, panel, intents } = opened()
     const work = panel.querySelector('.gb-map-work') as HTMLElement
+    const main = within(work).getByText('Main quest').closest('.gb-map-section') as HTMLElement
+    const side = within(work).getByText('Side jobs').closest('.gb-map-section') as HTMLElement
 
-    // a player who has taken nothing reads why, in the words the corner panel uses
-    within(work).getByText('No main line yet. Find someone to talk to.')
-    within(work).getByText('No side jobs yet. Find someone to talk to.')
+    // nothing on offer and nothing taken on the story: the list says so
+    hud.show({ quests: [] })
+    within(main).getByText('No main line yet. Find someone to talk to.')
+    within(side).getByText('No side jobs yet. Find someone to talk to.')
 
-    // and the town is not empty: the survey says who is holding work nobody has taken
-    hud.show({
-      map: {
-        ...CITY,
-        marks: [
-          { id: 'you', x: 6, y: 20, label: 'You', kind: 'you', facing: 0 },
-          { id: 'offer:a', x: 8, y: 7, label: 'Wren Ashby', kind: 'offer', line: 'side' },
-          { id: 'offer:b', x: 9, y: 9, label: 'Mara Kell', kind: 'offer', line: 'main' },
-        ],
-      },
-    })
-    within(work).getByText('2 people in town are holding work you have not taken.')
+    hud.show({ quests: QUESTS, offers: OFFERS })
+
+    // the story's own door, named, over the two errands somebody is holding
+    within(main).getByText('The main line starts with Imri Rask, at The Copper Wheel.')
+    within(main).getByText('The Salt Run')
+    within(side).getByText('Lamp oil for the yard')
+    within(side).getByText('A word with the harbourmaster')
+    expect(within(side).getAllByText('Cleo Fane, at The Anchor')).toHaveLength(2)
+    // and each one says it is still there to take
+    expect(within(side).getAllByText('Waiting')).toHaveLength(2)
+
+    // both headings count what is under them: one waiting on the story, and the
+    // two jobs in hand with the two waiting behind them
+    expect(within(main).getByText('1', { selector: '.gb-map-section-count' })).toBeTruthy()
+    expect(within(side).getByText('4', { selector: '.gb-map-section-count' })).toBeTruthy()
+
+    // picking one is picking its door on the city, the same as its callout
+    await user.click(within(side).getByRole('button', { name: 'Lamp oil for the yard' }))
+    expect(intents).toContainEqual({ kind: 'read', targetId: 'offer:npc_0008' })
 
     // a town with no stations says so rather than hiding the heading
     hud.show({ map: { ...CITY, stations: [] } })
     within(work).getByText('This town has no stations.')
+  })
+
+  it('writes the story\'s own door on the whole city, and an errand\'s only from close up', () => {
+    const { hud, panel, surface } = opened({
+      ...CITY,
+      marks: [
+        { id: 'you', x: 6, y: 20, label: 'You', kind: 'you', facing: 0 },
+        { id: 'offer:npc_0001', x: 8, y: 7, label: 'Imri Rask', kind: 'offer', line: 'main' },
+        { id: 'offer:npc_0008', x: 30, y: 7, label: 'Cleo Fane', kind: 'offer', line: 'side' },
+      ],
+    })
+    hud.show({ quests: [] })
+
+    // standing back at the whole town, the story's door is worth its room and
+    // an errand's is not: a player with no job has to be able to read where to
+    // start without hunting for it
+    surface.place(spread(['you', 'offer:npc_0001', 'offer:npc_0008', 'district_1'], 1))
+    expect(boxes(panel).map((box) => box.textContent)).toEqual(['You', 'Imri Rask', 'Kiln Bay'])
+
+    // coming in brings the errands with it
+    surface.place(spread(['you', 'offer:npc_0001', 'offer:npc_0008', 'district_1'], 2.5))
+    expect(boxes(panel).map((box) => box.textContent)).toEqual(['You', 'Imri Rask', 'Cleo Fane', 'Kiln Bay'])
   })
 
   it('asks the game to move the camera, from the tools over the glass and from their keys', async () => {

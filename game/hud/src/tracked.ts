@@ -1,5 +1,5 @@
 import type { Objective, QuestKind } from '@gb/quest'
-import type { HudState } from './types.ts'
+import type { HudState, WorkOffer } from './types.ts'
 
 /**
  * Which quest the objectives panel and the map are about. The game says so with
@@ -22,6 +22,15 @@ export function stepsOf(state: HudState, questId: string | undefined): readonly 
 /** Story or errand, as far as the pages the game pushed say. */
 export function kindOf(state: HudState, questId: string | undefined): QuestKind | undefined {
   return state.quests.find((quest) => quest.questId === questId)?.kind
+}
+
+/**
+ * Where the story starts from here: the first job on the main line that nobody
+ * has taken. The game decides which offers the player can see; this only reads
+ * the story out of them.
+ */
+export function mainOffer(state: HudState): WorkOffer | undefined {
+  return state.offers.find((offer) => offer.line === 'main')
 }
 
 /** True while the story has work open and the player is following something else. */

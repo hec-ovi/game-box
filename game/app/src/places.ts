@@ -67,29 +67,67 @@ export function marked(world: World, objectives: readonly Objective[], lineOf: (
 
 /** The quest log as this reads it: who is holding work the player has not taken. */
 export interface OnOffer {
-  offeredBy(npcId: string): readonly { readonly kind: QuestKind }[]
+  offeredBy(npcId: string): readonly { readonly id: string; readonly title: string; readonly kind: QuestKind }[]
+}
+
+/** A job waiting behind somebody's door: what it is, whose door, and where that is. */
+export interface Offer extends Marked {
+  /** The job on offer. */
+  readonly questId: string
+  /** The job's own name, as the quest wrote it. */
+  readonly title: string
+  /** Whose door it is. */
+  readonly giver: string
+  /** Where to find them: the building they are in or heading for, by name. Nothing for somebody stood in the open street. */
+  readonly place?: string
 }
 
 /**
- * Where there is work to pick up: everybody holding a job the player could
- * take, at the door of the place they keep or wherever they are walking. A
- * player who has taken nothing has nowhere to start otherwise, because the
- * only thing that puts a mark on the plan today is a step already on the board.
+ * Every job the player could walk up and take right now: one per quest, at the
+ * door of the place its giver keeps or wherever they are walking. A job is
+ * knowable once its giver is somebody the player can find and its `requires`
+ * are met, which is what `QuestLog.offeredBy` answers; nothing here decides
+ * anything else about it.
+ *
+ * Two jobs behind one door share that door's handle, so picking either row on
+ * the plan reads the same place.
  */
-export function offered(world: World, log: OnOffer, out: Whereabouts = () => undefined): Marked[] {
+export function offered(world: World, log: OnOffer, out: Whereabouts = () => undefined): Offer[] {
+  const found: Offer[] = []
+  for (const npc of world.npcs()) {
+    const work = log.offeredBy(npc.id)
+    if (work.length === 0) continue
+    const at = somebody(world, npc.id, out)
+    if (!at) continue
+    const place = at.plotId ? world.plot(at.plotId)?.name : undefined
+    for (const quest of work) {
+      found.push({
+        ...at,
+        id: `offer:${npc.id}`,
+        line: quest.kind,
+        questId: quest.id,
+        title: quest.title,
+        giver: npc.name,
+        ...(place ? { place } : {}),
+      })
+    }
+  }
+  // the story's own door first, so whoever reads the list top down reads it
+  return found.toSorted((a, b) => (a.line === b.line ? 0 : a.line === 'main' ? -1 : 1))
+}
+
+/**
+ * The doors those jobs are behind, one mark each: two people behind one counter
+ * are one place to walk to, and two pins on one spot read as two places.
+ */
+export function doorsOf(offers: readonly Offer[]): Marked[] {
   const found: Marked[] = []
   const seen = new Set<string>()
-
-  for (const npc of world.npcs()) {
-    const work = log.offeredBy(npc.id)[0]
-    if (!work) continue
-    const place = somebody(world, npc.id, out)
-    if (!place) continue
-    // two people behind one counter are one door to walk to
-    const where = `${place.x}/${place.z}`
+  for (const offer of offers) {
+    const where = `${offer.x}/${offer.z}`
     if (seen.has(where)) continue
     seen.add(where)
-    found.push({ ...place, id: `offer:${npc.id}`, line: work.kind })
+    found.push({ id: offer.id, label: offer.label, x: offer.x, z: offer.z, line: offer.line, ...(offer.plotId ? { plotId: offer.plotId } : {}) })
   }
   return found
 }
