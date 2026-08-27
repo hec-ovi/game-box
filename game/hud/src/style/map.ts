@@ -173,14 +173,21 @@ export const MAP = `
 .gb-hud .gb-map-step-at { margin-left: auto; color: var(--gb-accent); }
 .gb-hud .gb-station-list .gb-note { margin-top: var(--gb-s2); }
 
-/* A row whose title is what the player clicks. */
+/* A row whose title is what the player clicks. It clips like the cell it
+   replaces: a long job name ends in an ellipsis rather than running under the
+   tag beside it. */
 .gb-hud .gb-map-pick {
+  display: block;
+  max-width: 100%;
   padding: 0;
   border: none;
   background: transparent;
   color: inherit;
   font: inherit;
   text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   cursor: pointer;
   transition: color var(--gb-t-press) var(--gb-in);
 }

@@ -163,6 +163,12 @@ export const PANELS = `
   pointer-events: none;
 }
 .gb-hud[data-talk='true'] .gb-prompt { left: calc((100% - ${SIDE_RIGHT}px) / 2); }
+/* The foot has room for it between the tabs and the way out on a wide view. On
+   a narrow one the tabs reach the middle, so the prompt stands over the bar
+   rather than across the words on it. */
+@media (max-width: 1440px) {
+  .gb-hud .gb-prompt { bottom: ${LAYOUT.foot + 4}px; }
+}
 .gb-hud .gb-prompt kbd {
   --cut: var(--gb-cut-key);
   --gb-line: var(--gb-accent);

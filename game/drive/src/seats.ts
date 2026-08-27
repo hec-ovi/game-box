@@ -26,11 +26,12 @@ export const EYE_HEIGHT = 1.16
 /**
  * How far below the road a seated body's root goes. The cast's driving pose is
  * 1.44 m from its root to the crown of its head and the lowest roof in the car
- * pack is 1.15 m, so a body sat on the road wears the roof as a hat. Dropped
- * this far, every head is under every roof and the feet that go under the floor
- * are behind the underbody panel, where no daylight reaches.
+ * pack is the Concept's 0.99 m, so a body sat on the road wears the roof as a
+ * hat. Dropped this far, every head is under every roof with a centimetre to
+ * spare, and the feet that go under the floor are behind the underbody panel,
+ * where no daylight reaches.
  */
-export const SEAT_DROP = -0.3
+export const SEAT_DROP = -0.46
 
 /** How much of the car's lean the eye takes. All of it in first person is seasick. */
 export const EYE_ROLL = 0.45

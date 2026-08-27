@@ -10,6 +10,9 @@ const NAMES: Record<string, string> = {
   SportsCar: 'sports car',
   SportsCar2: 'sports car',
   Cop: 'police car',
+  GranTurismo: 'coupe',
+  Concept: 'concept car',
+  Patrol: 'patrol car',
 }
 
 export function nameOf(model: string): string {

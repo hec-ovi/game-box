@@ -6154,7 +6154,10 @@
             "Taxi",
             "SportsCar",
             "SportsCar2",
-            "Cop"
+            "Cop",
+            "GranTurismo",
+            "Concept",
+            "Patrol"
           ]
         },
         "deed": {

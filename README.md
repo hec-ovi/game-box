@@ -171,7 +171,7 @@ Opening a city against art you do not have, or a newer version of it, is not ref
 
 ## The art
 
-Everything shipped is CC0 or generated here, because a world file hands assets to whoever opens it: a licence that forbids redistributing the file is unusable however free it is. Models and animations are Quaternius and KayKit. Surfaces are generated: `docs/textures/IMAGES.md` holds every prompt, where each file lands, and what was rejected and why. `assets/registry/sources.json` records every downloaded source and its licence, and `tools/fetch-assets.mjs` refuses anything that is not redistributable.
+Models and animations are Quaternius and KayKit, plus three street cars fitted from downloaded models. Surfaces are generated: `docs/textures/IMAGES.md` holds every prompt, where each file lands, and what was rejected and why. `assets/registry/sources.json` records every source with the licence its own file states, and `node tools/inspect-glb.mjs` prints that licence beside what a model would cost.
 
 A generated tile is measured rather than eyeballed: seam strength on both axes, light spread across the frame, and a repeat sheet checked for any landmark you would notice tiling up a building.
 
