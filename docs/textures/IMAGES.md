@@ -1,5 +1,12 @@
 # Image shopping list for Grok
 
+> **The theme pack has moved on.** For the windows, the room faces and the ads,
+> use `docs/textures/PROMPTS.md`: it is generator-agnostic and it names the
+> folders the pack actually reads (`game/prefab/themes/gb/`). The room and ad
+> paths written below are stale. What is still current here is the facade, wall
+> and door work, and the lessons from the first run, which are worth reading
+> before generating anything.
+
 Every image this project wants, in one file. Ordered by what a player notices, so if you stop halfway you have still bought the biggest part of the change.
 
 ## Corrections from the first run (2026-08-23)

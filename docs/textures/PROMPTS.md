@@ -92,7 +92,7 @@ For a different theme, rewrite this block once and keep the rest.
 
 # 1. Flat window panels
 
-`assets/themes/<theme>/windows/*.png` &middot; square, 1024 px, downsample to 512
+`game/prefab/themes/gb/windows/*.png` &middot; square, 1024 px, downsample to 512
 
 **These carry most of the windows in the city.** No room behind them, no box, no
 parallax: a surface seen through glass. They are cheap to draw and they are what
@@ -127,7 +127,7 @@ Aim for two or three good versions of each and keep the calmest.
 
 # 2. The faces every room shares
 
-`assets/themes/<theme>/faces/*.png` &middot; square, 1024 px, downsample to 512
+`game/prefab/themes/gb/faces/*.png` &middot; square, 1024 px, downsample to 512
 
 **Four images, used by every room in the pack.** This is the fix for the side
 walls, floor and ceiling all wearing the back wall's picture. They are meant to
@@ -150,7 +150,7 @@ room are not identical.
 
 # 3. Room back walls
 
-`assets/themes/<theme>/rooms/*.png` &middot; square, 1024 px. Street level keeps 1024, upper floors downsample to 512.
+`game/prefab/themes/gb/rooms/*.png` &middot; square, 1024 px. Street level keeps 1024, upper floors downsample to 512.
 
 **One per kind of room, and this is the only place detail belongs.** The
 existing set is too busy: a bar with a back bar, a counter, four stools, a
@@ -195,7 +195,7 @@ temptation is to keep the richer image; do not.
 
 # 4. Ads and signage
 
-`assets/themes/<theme>/ads/*.png`
+`game/prefab/themes/gb/ads/*.png`
 
 **Artwork only. The shader adds the screen.** Do not draw a dot matrix, scan
 lines, pixel grid, banding or bloom into these. The game applies the dot matrix
