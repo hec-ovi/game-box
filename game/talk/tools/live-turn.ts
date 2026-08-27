@@ -32,7 +32,7 @@ const sidecar = new Sidecar({
 
 const opened = await Conversation.open({ world, log, player, sidecar, npcId: npc.id, sessions: new Sessions() })
 if (!opened.ok) throw new Error(JSON.stringify(opened.error))
-console.log(`${npc.name}, ${npc.role} — opening: "${opened.value.opening.line}"`)
+console.log(`${npc.name}, ${npc.role}, ${opened.value.opening.moves.length} moves on the menu`)
 
 const started = performance.now()
 let says = ''

@@ -8,9 +8,8 @@ import { Brief } from './brief.ts'
 import { Credit } from './credit.ts'
 import { Decider } from './decide.ts'
 import type { Decision, Grant, Opening, TalkError, TalkEvent, Turn } from './events.ts'
-import { Greeting } from './greeting.ts'
 import { Memory } from './memory.ts'
-import { legalMoves, topicOf, type ActionName, type Move, type Situation } from './moves.ts'
+import { legalMoves, topicOf, type ActionName, type Move, type Situation, type Where } from './moves.ts'
 import { Payoffs } from './payoffs.ts'
 import { Performer } from './perform.ts'
 import { pickByKey, pickLabel, picks, type TalkMove } from './picks.ts'
@@ -24,6 +23,8 @@ interface Input {
   player: PlayerState
   sidecar: Sidecar
   npcId: string
+  /** Where they actually are right now. Left out, they are at the post the world file gives them. */
+  where?: Where | undefined
   /** The playthrough's sessions, one transcript per person. Left out, this conversation starts from nothing. */
   sessions?: Sessions | undefined
   signal?: AbortSignal | undefined
@@ -36,17 +37,16 @@ interface Input {
  * keep in mind, and how the turn left them) and is handed no ids and no menu;
  * and the action, a single choice from the moves that were legal when the turn
  * began, with doing nothing at the top of the list. What they can do is bounded
- * by the quest script, not by how the sentence was phrased. They speak first,
- * off the game's own data, so there is something on screen the instant the
- * panel opens. With no sidecar to reach, both tracks run off the quest data
- * too, and the job can still be handed out, agreed to and delivered.
+ * by the quest script, not by how the sentence was phrased. Nobody says
+ * anything until the player does: walking up opens a menu, and the person
+ * answers when spoken to. With no sidecar to reach, both tracks run off the
+ * quest data, and the job can still be handed out, agreed to and delivered.
  */
 export class Conversation {
   #situation: Situation
   #transcript: Transcript
   #brief: Brief
   #credit: Credit
-  #greeting: Greeting
   #background: Background
   #memory: Memory
   #payoffs: Payoffs
@@ -58,12 +58,17 @@ export class Conversation {
   #signal: AbortSignal | undefined
 
   private constructor(input: Input) {
-    this.#situation = { world: input.world, log: input.log, player: input.player, npcId: input.npcId }
+    this.#situation = {
+      world: input.world,
+      log: input.log,
+      player: input.player,
+      npcId: input.npcId,
+      where: input.where ?? 'station',
+    }
     this.#transcript = (input.sessions ?? new Sessions()).of(input.npcId)
     this.#signal = input.signal
     this.#brief = new Brief(this.#situation)
     this.#credit = new Credit(this.#situation)
-    this.#greeting = new Greeting(this.#situation)
     this.#background = new Background(this.#situation)
     this.#memory = new Memory(this.#situation)
     this.#payoffs = new Payoffs(this.#situation)
@@ -75,11 +80,10 @@ export class Conversation {
 
   /**
    * Walking up to someone is itself an event: they go in the codex as met, the
-   * facts that seeing them earns are earned, a quest step that already asked
-   * the player to talk to them completes here, with whatever it pays out in
-   * hand, and the person speaks first.
-   * The opening line and the moves that come with it are the game's own data,
-   * so the panel is never empty and nothing is waited on.
+   * facts that seeing them earns are earned, and a quest step that already
+   * asked the player to talk to them completes here, with whatever it pays out
+   * in hand. Nobody speaks: the panel opens on the moves the player can take,
+   * and the person answers once they are spoken to.
    *
    * `signal` is the player's way out. It rides on every model call this
    * conversation makes, so a turn can be cut short before a word of the reply
@@ -95,19 +99,11 @@ export class Conversation {
     const conversation = new Conversation(input)
     input.player.discover({ npc: input.npcId })
     const learned = conversation.#background.meet()
-    // Crediting first: a step that completes on the way in changes what is legal,
-    // and the greeting is drawn from the state the player is walking into.
+    // Crediting first: a step that completes on the way in changes what is
+    // legal, and the menu is the state the player is walking into.
     const changes = conversation.#credit.earned()
     const granted = conversation.#payoffs.landed(changes)
-    return ok({ conversation, changes, opening: conversation.#begin(granted), learned, granted })
-  }
-
-  /** They speak first, off the game's own data, and the menu opens with them. */
-  #begin(granted: readonly Grant[]): Opening {
-    const moves = legalMoves(this.#situation)
-    const line = this.#greeting.line(moves, granted)
-    this.#transcript.push({ role: 'assistant', content: line })
-    return { line, moves: picks(moves) }
+    return ok({ conversation, changes, opening: { moves: conversation.moves() }, learned, granted })
   }
 
   get npcId(): string {

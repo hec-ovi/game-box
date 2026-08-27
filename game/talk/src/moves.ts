@@ -20,11 +20,18 @@ export const ACTIONS = [
 ] as const
 export type ActionName = (typeof ACTIONS)[number]
 
+/**
+ * Where the person is while the player is talking to them: at the post the
+ * world file gives them, or out on the pavement, off it for the moment.
+ */
+export type Where = 'station' | 'street'
+
 export interface Situation {
   readonly world: World
   readonly log: QuestLog
   readonly player: PlayerState
   readonly npcId: string
+  readonly where: Where
 }
 
 /** One thing this NPC could do this turn, and the plain words it is offered in. */
@@ -50,7 +57,7 @@ export function legalMoves(situation: Situation): readonly Move[] {
   const moves: Move[] = []
 
   // The subject a step is waiting to hear raised comes first: it is what the
-  // player was sent here to do, so it is the move the greeting nudges at.
+  // player was sent here to do, so it is the first move on their menu.
   for (const topic of topicsFor(log, npcId)) {
     moves.push({ action: 'ask_about', id: topic, subject: topic, line: fill(WORDING.ask_about!, { topic }) })
   }

@@ -180,7 +180,7 @@ Read your box's `CONTRACT.md` and the contracts of anything you depend on. One c
 
 **Stage 2, small. `@gb/furnish`.** No building kind is read today and none is added. Take `finish` at the `Dressing` seam (`dressing.ts:37`, today always `corpo`), which is the cheapest visible win in the repo, and key `BAY_TASTE` on `finish` plus `room.use`. Two bugs this makes live: `heightOf` at `kit/library.ts:100` returns 0 for an unknown prop, which makes every bay clear it and runs a shelf through a wardrobe, the only wrong-picture path in the box, and it should refuse; `staffContact` at `:91` dereferences without the `?.` its three neighbours use. `CONTRACT.md:71` stops claiming an empty error set.
 
-**Stage 2, small. `@gb/talk`.** Point the greeting fallback at the `stand` pool instead of `street` (`greeting.ts:63`); an indoor anchor currently says "I'm out in it", which is wrong today, before any of this. Prefer `anchor.doing` over the `surroundings` table when the generator wrote a phrase.
+**Stage 2, small. `@gb/talk`.** Prefer `anchor.doing` over the `surroundings` table when the generator wrote a phrase for the spot somebody keeps.
 
 **Stage 2, small. `@gb/hud`.** One optional `prominence` on `MapPlot`, three fills in `style/tokens.ts`, so a jail and a chapel are not two more grey rects. Palette stays hud-owned.
 

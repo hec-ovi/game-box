@@ -197,7 +197,7 @@ describe('a town written by a narrator answering many places at once', () => {
       for (const part of ['reason', 'errand', 'history', 'interests', 'manner', 'cares', 'avoids'] as const) {
         expect(life[part]?.length, `${npc.name} has no ${part}`).toBeGreaterThan(3)
       }
-      // said as the greeting's middle beat exactly as written, so it has to be something they could say
+      // it goes into the brief as written, so it has to be something they could say
       expect(life.reason, `${npc.name}: "${life.reason}" is not said in the first person`).toMatch(/\b(I|I'm|I've|my)\b/)
       expect(life.errand).toMatch(/\b(I|I'm|I've|my)\b/)
       expect(life.history).toContain(premise.happened.replace(/\.$/, ''))

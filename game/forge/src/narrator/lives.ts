@@ -9,8 +9,9 @@ const at = (line: string, place: string): string => line.replaceAll('{place}', p
 
 /**
  * Why somebody is standing where they are, said out loud in the first person:
- * their shift, their shop, their room, their appointment. Talk says it as the
- * greeting's middle beat exactly as written.
+ * their shift, their shop, their room, their appointment. Talk puts it in the
+ * brief as written and describes them to others by it, so it has to be a
+ * sentence they could say.
  */
 const REASONS: Record<NpcRole, readonly string[]> = {
   bartender: [

@@ -411,6 +411,7 @@ function setup(
     sidecar?: Sidecar
     signal?: AbortSignal
     sessions?: Sessions
+    where?: 'station' | 'street'
   } = {},
 ) {
   const fixture = bar(options)
@@ -427,6 +428,7 @@ function setup(
     player,
     sidecar: options.sidecar ?? model.sidecar,
     npcId: fixture.mara.id,
+    where: options.where,
     sessions: options.sessions,
     signal: options.signal,
   })
@@ -435,7 +437,7 @@ function setup(
 }
 
 describe('Conversation', () => {
-  it('greeting someone completes the step that asked the player to talk to them, and pays what it pays', () => {
+  it('walking up to someone completes the step that asked the player to talk to them, and pays what it pays', () => {
     const fixture = bar()
     const player = PlayerState.create(fixture.world.id)
     const talkQuest = {
@@ -473,12 +475,14 @@ describe('Conversation', () => {
   })
 
   it('takes the turn as one call, the body before the words, and answers on top of what was already said', async () => {
-    const { conversation, model, opening } = setup({ text: 'We close at midnight.', does: 'wipes the counter' })
+    const { conversation, model } = setup({ text: 'We close at midnight.', does: 'wipes the counter' })
+    await collect(conversation.say('evening'))
     const events = await collect(conversation.say('when do you close?'))
 
     expect(events).toContainEqual({ kind: 'turn', does: 'wipes the counter', says: 'We close at midnight.' })
     expect(conversation.history()).toEqual([
-      { role: 'assistant', content: opening.line },
+      { role: 'user', content: 'evening' },
+      { role: 'assistant', content: 'We close at midnight.', does: 'wipes the counter' },
       { role: 'user', content: 'when do you close?' },
       { role: 'assistant', content: 'We close at midnight.', does: 'wipes the counter' },
     ])
@@ -488,9 +492,9 @@ describe('Conversation', () => {
     // `does` is decided before `says`: llama writes the fields in the order the schema lists them
     expect(Object.keys(call.tool.parameters.properties).slice(0, 2)).toEqual(['does', 'says'])
     expect(call.tool.parameters.required).toEqual(['says'])
-    // the model answers on top of the line the player already read, not from nothing
-    expect(call.user).toContain(`Mara Cole: "${opening.line}"`)
-    expect(call.user).toContain('Them: "when do you close?"')
+    // the second turn answers on top of what the two of them have already said
+    expect(model.voice[1]!.user).toContain('Mara Cole: "We close at midnight."')
+    expect(model.voice[1]!.user).toContain('Them: "when do you close?"')
   })
 
   it('tells the service what every call is for, on both tracks of the turn', async () => {
@@ -627,10 +631,10 @@ describe('Conversation', () => {
   it('with no sidecar at all, the job is still offered, taken and delivered', async () => {
     const { conversation, log, player, ledger } = setup({ fail: true })
 
-    const greeting = await collect(conversation.say('hello'))
-    expect(said(greeting)).toContain('The Ledger')
-    expect(said(greeting)).toContain('30 credits')
-    expect(greeting.some((e) => e.kind === 'over')).toBe(false)
+    const hello = await collect(conversation.say('hello'))
+    expect(said(hello)).toContain('The Ledger')
+    expect(said(hello)).toContain('30 credits')
+    expect(hello.some((e) => e.kind === 'over')).toBe(false)
 
     const accepted = await collect(conversation.say('yes'))
     expect(accepted).toContainEqual({ kind: 'did', action: 'give_quest', detail: 'quest_0001' })
@@ -967,13 +971,13 @@ describe('every person is their own session', () => {
 
     const again = Conversation.open({ world: first.world, log: first.log, player: first.player, sidecar: first.model.sidecar, npcId: first.mara.id, sessions })
     if (!again.ok) throw new Error('did not open')
-    expect(again.value.conversation.history().slice(0, 3)).toEqual(first.conversation.history().slice(0, 3))
+    expect(again.value.conversation.history()).toEqual(first.conversation.history())
     await collect(again.value.conversation.say('still remember me?'))
     expect(first.model.voice[1]!.user).toContain('Them: "my name is Wren"')
 
     const other = Conversation.open({ world: first.world, log: first.log, player: first.player, sidecar: first.model.sidecar, npcId: first.hollis.id, sessions })
     if (!other.ok) throw new Error('did not open')
-    expect(other.value.conversation.history()).toHaveLength(1)
+    expect(other.value.conversation.history()).toEqual([])
     await collect(other.value.conversation.say('evening'))
     expect(first.model.voice[2]!.user).not.toContain('Wren')
     expect(first.model.voice[2]!.system).toContain('You are Hollis Vance')
@@ -981,7 +985,7 @@ describe('every person is their own session', () => {
     // with no sessions handed in, a conversation starts from nothing
     const fresh = Conversation.open({ world: first.world, log: first.log, player: first.player, sidecar: first.model.sidecar, npcId: first.mara.id })
     if (!fresh.ok) throw new Error('did not open')
-    expect(fresh.value.conversation.history()).toHaveLength(1)
+    expect(fresh.value.conversation.history()).toEqual([])
   })
 
   it('keeps a bounded transcript, newest last', async () => {
@@ -1074,92 +1078,52 @@ describe('what a turn leaves behind', () => {
   })
 })
 
-describe('the first words', () => {
-  it('opens with something said and something to click, and asks nothing of the model', () => {
+describe('nobody speaks first', () => {
+  it('opens on a menu with nothing said, and asks nothing of the model', () => {
     const forbidden = () => {
-      throw new Error('the first words must run on the game data alone')
+      throw new Error('opening a conversation must not reach the sidecar')
     }
     const { conversation, opening } = setup({}, { sidecar: { ask: forbidden, converse: forbidden } as unknown as Sidecar })
 
-    expect(opening.line).not.toBe('')
+    expect(conversation.history()).toEqual([])
     expect(opening.moves).toEqual(conversation.moves())
     expect(opening.moves.map((move) => move.action)).toEqual(['give_quest', 'show_wares', 'end_talk'])
-    expect(opening.line).not.toMatch(/[a-z]+_\d{4}/)
-    expect(conversation.history()[0]).toEqual({ role: 'assistant', content: opening.line })
   })
 
-  it('greets the same way every time, so a shared world file plays the same everywhere', () => {
-    const first = setup({}).opening.line
-    expect(setup({}).opening.line).toBe(first)
+  it('answers when spoken to, and the first call carries nothing but what the player said', async () => {
+    const { conversation, model } = setup({ text: 'Evening.' })
+
+    await collect(conversation.say('evening'))
+
+    expect(model.voice).toHaveLength(1)
+    expect(model.voice[0]!.user).toContain('Them: "evening"')
+    expect(model.voice[0]!.user).not.toContain('Mara Cole: "')
+  })
+})
+
+describe('where they are when you stop them', () => {
+  it('puts somebody at their post in the room they keep a spot in', async () => {
+    const { conversation, model } = setup({ text: 'Aye.' })
+
+    await collect(conversation.say('evening'))
+
+    const brief = model.voice[0]!.system
+    expect(brief).toContain('The room: Taproom')
+    expect(brief).toContain('What you are doing: behind the counter')
+    expect(brief).toContain('Who else is here: Hollis Vance the courier')
   })
 
-  it("the hour and the player's name in town are in it", () => {
-    const { world, log, player, mara } = setup({})
-    const greet = () => {
-      const opened = Conversation.open({ world, log, player, sidecar: speaker({}).sidecar, npcId: mara.id })
-      if (!opened.ok) throw new Error('did not open')
-      return opened.value.opening.line
-    }
+  it('describes somebody stopped on the pavement as being on the street', async () => {
+    const { conversation, model } = setup({ text: 'Aye.' }, { where: 'street' })
 
-    player.clock.setTime(19, 30)
-    player.adjustReputation(-50)
-    const scorned = greet()
-    expect(scorned).toMatch(/^(Evening|Late to be out)\./)
+    await collect(conversation.say('evening'))
 
-    player.adjustReputation(100)
-    expect(greet()).not.toBe(scorned)
-  })
-
-  it('names the one thing on the menu worth mentioning, and greets without one', () => {
-    const { world, log, player, mara, hollis, ledger } = setup({})
-    log.start('quest_0001')
-    player.take(ledger.id)
-    log.handle({ kind: 'acquired', itemId: ledger.id, stolen: true })
-
-    const owed = Conversation.open({ world, log, player, sidecar: speaker({}).sidecar, npcId: mara.id })
-    if (!owed.ok) throw new Error('did not open')
-    expect(owed.value.opening.moves.map((move) => move.action)).toContain('take_delivery')
-    expect(owed.value.opening.line).toContain('salt-stained ledger')
-
-    // somebody with nothing between them and the player still says something
-    const idle = Conversation.open({ world, log, player, sidecar: speaker({}).sidecar, npcId: hollis.id })
-    if (!idle.ok) throw new Error('did not open')
-    expect(idle.value.opening.line).not.toBe('')
-    expect(idle.value.opening.moves.map((move) => move.action)).toEqual(['end_talk'])
-  })
-
-  it("says their own business when the file gives one, and never the sky", () => {
-    const { world, log, player, mara, hollis } = setup({})
-    const greet = (npcId: string) => {
-      const opened = Conversation.open({ world, log, player, sidecar: speaker({}).sidecar, npcId })
-      if (!opened.ok) throw new Error('did not open')
-      return opened.value.opening.line
-    }
-
-    expect(greet(mara.id)).toContain('Covering the day shift while Rook is away.')
-    for (const weather of ['clear', 'overcast', 'rain'] as const) {
-      player.clock.setWeather(weather)
-      for (let hour = 0; hour < 24; hour += 3) {
-        player.clock.setTime(hour)
-        for (const line of [greet(mara.id), greet(hollis.id)]) {
-          expect(line, `${weather} ${hour}`).not.toMatch(/sky|cloud|grey as stone|rain has set in|coming down/)
-        }
-      }
-    }
-  })
-
-  it('falls back to the spot they keep indoors, and to the street only for somebody out walking', () => {
-    // an anchor with no line of its own is still indoors
-    const { world, log, player, hollis } = setup({}, { hollisAt: 'dance' })
-    const indoors = Conversation.open({ world, log, player, sidecar: speaker({}).sidecar, npcId: hollis.id })
-    if (!indoors.ok) throw new Error('did not open')
-    expect(indoors.value.opening.line).toMatch(/here most days|Same courier as yesterday|On my feet where I always am/)
-
-    const walker: Npc = { id: world.mintId('npc'), name: 'Pell Adair', role: 'courier', appearance: { base: 'male', variant: 3 }, personality: 'Brisk.', knowledge: [] }
-    world.addNpc(walker)
-    const out = Conversation.open({ world, log, player, sidecar: speaker({}).sidecar, npcId: walker.id })
-    if (!out.ok) throw new Error('did not open')
-    expect(out.value.opening.line).toMatch(/on my way somewhere|only the courier|Walk with me/)
+    const brief = model.voice[0]!.system
+    expect(brief).toContain('The room: the street')
+    expect(brief).toContain('What you are doing: out on the street, going somewhere')
+    expect(brief).toContain('Who else is here: nobody')
+    // who they are does not move with them: they are still the bartender at The Anchor
+    expect(brief).toContain('You are Mara Cole, the bartender at The Anchor')
   })
 })
 
@@ -1290,11 +1254,10 @@ describe('Conversation.moves and choose', () => {
   })
 
   it('puts a clicked turn in the transcript, so a typed turn after it knows what was clicked', async () => {
-    const { conversation, model, opening } = setup({ text: 'Take your time.' })
+    const { conversation, model } = setup({ text: 'Take your time.' })
 
     await collect(conversation.choose('give_quest#quest_0001'))
     expect(conversation.history()).toEqual([
-      { role: 'assistant', content: opening.line },
       { role: 'user', content: 'Take the job: The Ledger' },
       { role: 'assistant', content: "Good. Take the ledger. Come back to me when it's done." },
     ])
@@ -1365,7 +1328,7 @@ describe('a word or a key as the payoff', () => {
     expect(model.voice[1]!.system).toContain('you have given them the word rosebud')
   })
 
-  it('pays out on the way in when the step asks for nothing more, and the first words say so', () => {
+  it('pays out on the way in when the step asks for nothing more, and hands the payout back to the caller', () => {
     const fixture = bar()
     const player = PlayerState.create(fixture.world.id)
     const log = QuestLog.create([accepted(passwordQuest(fixture.mara.id, fixture.flatDoor), fixture.world)], player)
@@ -1373,8 +1336,9 @@ describe('a word or a key as the payoff', () => {
 
     const opened = Conversation.open({ world: fixture.world, log, player, sidecar: speaker({}).sidecar, npcId: fixture.mara.id })
     if (!opened.ok) throw new Error('did not open')
+    // nobody says it, so the word only reaches the player through `granted`
     expect(opened.value.granted).toEqual([{ kind: 'granted', password: 'rosebud' }])
-    expect(opened.value.opening.line).toContain('rosebud')
+    expect(opened.value.conversation.history()).toEqual([])
     expect(player.knows('rosebud')).toBe(true)
   })
 })
@@ -1445,13 +1409,10 @@ describe('cutting a turn short', () => {
 
   it('says nothing more once the player has cut in', async () => {
     const model = cutIn('request')
-    const { conversation, opening } = setup({}, { sidecar: model.sidecar, signal: model.stop.signal })
+    const { conversation } = setup({}, { sidecar: model.sidecar, signal: model.stop.signal })
 
     await collect(conversation.say('give me the job'))
     expect(await collect(conversation.say('still there?'))).toEqual([])
-    expect(conversation.history()).toEqual([
-      { role: 'assistant', content: opening.line },
-      { role: 'user', content: 'give me the job' },
-    ])
+    expect(conversation.history()).toEqual([{ role: 'user', content: 'give me the job' }])
   })
 })

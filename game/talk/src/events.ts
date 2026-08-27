@@ -41,10 +41,8 @@ export interface Turn {
   readonly does?: string | undefined
 }
 
-/** The turn the NPC takes on their own, before the player has said anything. */
+/** What the panel has to show the moment it appears. Nobody has spoken yet. */
 export interface Opening {
-  /** What they say as the panel opens. Always something, and never a model call. */
-  readonly line: string
-  /** The same moves `moves()` gives, drawn at the moment the line was said. */
+  /** The same moves `moves()` gives, drawn as the player walked up. */
   readonly moves: readonly TalkMove[]
 }

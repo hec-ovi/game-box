@@ -9,11 +9,17 @@ const STANDING = bands(keyed(PROMPTS.standing))
 type Anchor = Interior['anchors'][number]
 
 /**
- * Where this person is and what they can see from there: the building, the
- * room and what stands in it, the spot they keep, who else is in, what the
+ * Where this person is and what they can see from there: the building they
+ * keep a spot in, the room and what stands in it, who else is in, what the
  * player is carrying, the hour and the sky, and what the player's name in
  * town is worth. Everything is read off the world and the playthrough on the
  * call, never kept, so a conversation opened in a new building describes it.
+ *
+ * Stopped on the pavement (`where: 'street'`) the same person is off their
+ * post: the room is the street, they are out walking, and there is nobody with
+ * them. The place they keep a spot in and what people in town say about a
+ * place like it stay with them, because those are who they are rather than
+ * where they are standing this minute.
  */
 export class Scene {
   #situation: Situation
@@ -22,14 +28,9 @@ export class Scene {
     this.#situation = situation
   }
 
-  /** The building they are in, named the way the town names it. */
+  /** The building they keep a spot in, named the way the town names it. */
   get place(): string {
     return this.#plot()?.name ?? WORDS.outside!
-  }
-
-  /** The spot they keep, as an anchor kind. Nothing when they are not stationed. */
-  get doing(): string | undefined {
-    return this.#anchor(this.#npc())?.kind
   }
 
   get hour(): string {
@@ -42,6 +43,7 @@ export class Scene {
 
   /** The room they keep a spot in and what stands in it. The street for somebody out walking. */
   room(): string {
+    if (this.#onTheStreet) return WORDS.outside!
     const interior = this.#interior(this.#npc())
     const anchor = this.#anchor(this.#npc())
     const room = interior?.rooms.find((candidate) => candidate.id === anchor?.roomId)
@@ -52,19 +54,17 @@ export class Scene {
     return things ? fill(WORDS.room!, { name: room.name, things }) : fill(WORDS['room-bare']!, { name: room.name })
   }
 
-  /** What they are doing where they stand: the phrase the file wrote for the spot, else the spot's kind. */
-  stance(npc: Npc = this.#npc()): string {
-    if (!npc.station) return WORDS.walking!
-    const anchor = this.#anchor(npc)
-    return anchor?.doing || (WORDS[anchor?.kind ?? ''] ?? WORDS.stand!)
+  /** What the one being spoken to is doing. Out walking when they were stopped on the street. */
+  stance(): string {
+    return this.#onTheStreet ? WORDS.walking! : this.#stanceOf(this.#npc())
   }
 
-  /** Who else is in the building, each with what they are doing there. */
+  /** Who else is in the building, each with what they are doing there. Nobody, out on the street. */
   company(): string {
     const others = this.others()
     if (!others.length) return WORDS.alone!
     return others
-      .map((other) => fill(WORDS.person!, { name: other.name, role: other.role, doing: other.life?.reason ?? this.stance(other) }))
+      .map((other) => fill(WORDS.person!, { name: other.name, role: other.role, doing: other.life?.reason ?? this.#stanceOf(other) }))
       .join('; ')
   }
 
@@ -93,9 +93,22 @@ export class Scene {
 
   /** Who else is in the building, which is who they can see from where they stand. */
   others(): readonly Npc[] {
+    if (this.#onTheStreet) return []
     const { world, npcId } = this.#situation
     const plotId = this.#plot()?.id
     return plotId ? world.npcsIn(plotId).filter((other) => other.id !== npcId) : []
+  }
+
+  /** The caller stopped this person away from their post, out on the pavement. */
+  get #onTheStreet(): boolean {
+    return this.#situation.where === 'street'
+  }
+
+  /** What somebody is doing at their spot: the phrase the file wrote for it, else the spot's kind. */
+  #stanceOf(npc: Npc): string {
+    if (!npc.station) return WORDS.walking!
+    const anchor = this.#anchor(npc)
+    return anchor?.doing || (WORDS[anchor?.kind ?? ''] ?? WORDS.stand!)
   }
 
   /**
