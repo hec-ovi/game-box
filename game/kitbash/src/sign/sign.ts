@@ -56,12 +56,6 @@ export const SIGN = {
   /** How much wall a hung sign's bracket takes, along the wall. */
   foot: 0.16,
   /**
-   * How much brighter than its own colour a tube burns after dark. Held low
-   * enough that a saturated tube stays its own colour through the tone map:
-   * the brightness past this belongs to the bloom pass, not to the surface.
-   */
-  glow: 2,
-  /**
    * How far a letter sits in front of the panel it is written on. A centimetre
    * is the same lift `@gb/scene` puts road paint on: far enough that a letter
    * and its panel are two surfaces at every distance a sign is read from, and

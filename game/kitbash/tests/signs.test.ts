@@ -1,7 +1,7 @@
 import { METRICS, SHIPPED_CHARTERS } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { cellAt, cellUv, DOORLAMP, GLYPH_KEYS, KitDressing, LETTER_SHARE, lightsFor, MODULE, nightLook, placeholderKit, SIGN, SIGN_ATTRIBUTES, signsFor, SOLID, TONES, type Sign } from '../src/index.ts'
+import { cellAt, cellUv, DOORLAMP, DOORLIGHT, GLYPH_KEYS, KitDressing, LETTER_SHARE, lightsFor, luminanceOf, MODULE, NEON, nightLook, placeholderKit, SIGN, SIGN_ATTRIBUTES, signsFor, SOLID, TONES, TRANSIT, type Sign } from '../src/index.ts'
 import { charterOf, fingerprint, inventedCharter, plotOf, signMesh, sizeOf, townOf, wallBounds } from './support.ts'
 
 const kit = placeholderKit()
@@ -126,6 +126,18 @@ describe('signs', () => {
     expect(reaches(emissiveOf(kit.material(SIGN.material)), kit.night.level), 'the emissive is wired to the clock').toBe(true)
   })
 
+  it('burns every colour of tube to the same luminance, whatever colour it is', () => {
+    // the number authored per colour is what it emits, not a multiplier: one
+    // to tune for the whole palette, and every hue over the 0.9 the app's
+    // night bloom gates on
+    const readings = NEON.map((neon) => luminanceOf(neon.ink) * neon.glow)
+    expect(Math.max(...readings)).toBeCloseTo(Math.min(...readings), 9)
+    expect(Math.min(...readings), 'over the threshold a halo starts at').toBeGreaterThan(0.9)
+    // a station's box is a tube like any other; the lamp at a door is a surface and stays under its own colour
+    expect(luminanceOf(TRANSIT.ink) * TRANSIT.glow).toBeCloseTo(readings[0]!, 9)
+    expect(DOORLIGHT.glow, 'a lamp is not a tube').toBeLessThanOrEqual(1)
+  })
+
   it('holds a cell for every letter it can write', () => {
     for (const key of GLYPH_KEYS) {
       const [u0, v0, u1, v1] = cellUv(key)
@@ -244,17 +256,33 @@ describe('signage on a generated town', () => {
 
   it('never burns a lit surface past its own colour', () => {
     let boxes = 0
-    for (const { plot, size, signs } of planned) {
-      const lights = lightsFor(plot, size, charterOf(plot))
-      signs.forEach((sign, at) => {
-        if (sign.glow[1] <= 0) return
+    for (const { plot, signs } of planned) {
+      for (const sign of signs) {
+        if (sign.glow[1] <= 0) continue
         boxes++
-        // a whole panel alight is a surface, not a tube: it lands on its colour and the halo over it is the bloom pass
-        expect(sign.glow[1] * SIGN.glow, plot.id).toBeLessThanOrEqual(1)
-        expect(lights[at]!.intensity, plot.id).toBeLessThanOrEqual(sign.width * sign.height * 20)
-      })
+        // a whole panel alight is a surface, not a tube: it lands under its own colour, four metres of it
+        expect(sign.glow[1], plot.id).toBeLessThanOrEqual(1)
+      }
     }
     expect(boxes, 'the town has nameplates lit from behind').toBeGreaterThan(5)
+  })
+
+  it('lights every colour of tube in town to the same reading, so the hot ones glow too', () => {
+    // a saturated red carries a third of a pale cyan's luminance, and what the
+    // app's bloom reads is the luminance against a hard threshold of 0.9 after
+    // dark: a hue landing under it wears no halo at all, whatever it was
+    // authored to be worth
+    const loudest = new Map<number, number>()
+    for (const { signs } of planned) {
+      for (const sign of signs) {
+        if (sign.glow[0] <= 0 || sign.kind === 'doorlamp') continue
+        loudest.set(sign.ink, Math.max(loudest.get(sign.ink) ?? 0, luminanceOf(sign.ink) * sign.glow[0]))
+      }
+    }
+    const readings = [...loudest.values()].sort((a, b) => a - b)
+    expect(loudest.size, 'the town wears the whole palette').toBeGreaterThanOrEqual(8)
+    expect(readings[0]!, 'and the dimmest colour on it still glows').toBeGreaterThan(0.9)
+    expect(readings.at(-1)! / readings[0]!, 'no colour twice another').toBeLessThanOrEqual(1.1 + 1e-9)
   })
 
   it('lights the door with a lamp either side of it, never a column', () => {
@@ -267,7 +295,7 @@ describe('signage on a generated town', () => {
         // sized to the door: no taller than its head, a few centimetres wide, and never past its own colour
         expect(lamp.origin[1] + lamp.height / 2, plot.id).toBeLessThanOrEqual(doorHeight + DOORLAMP.overhead + 1e-9)
         expect(lamp.width, plot.id).toBeLessThanOrEqual(0.06)
-        expect(lamp.glow[0] * SIGN.glow, plot.id).toBeLessThanOrEqual(1)
+        expect(lamp.glow[0], plot.id).toBeLessThanOrEqual(1)
         // beside the frame, on the door's own wall
         const beside = (lamp.origin[0] - door.position.x) * lamp.right[0] + (lamp.origin[2] - door.position.z) * lamp.right[1]
         expect(Math.abs(beside), plot.id).toBeCloseTo(doorWidth / 2 + DOORLAMP.beside, 6)

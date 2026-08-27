@@ -30,6 +30,6 @@ export function signMaterial(night: CityNight, atlas: THREE.Texture): THREE.Mate
   material.colorNode = mix(panel, mix(ink, vec3(DAYLIGHT.toward, DAYLIGHT.toward, DAYLIGHT.toward + 0.02), float(DAYLIGHT.blend)), cover)
   material.roughnessNode = float(0.42)
   material.metalnessNode = float(0)
-  material.emissiveNode = mix(panel.mul(glow.y), ink.mul(glow.x), cover).mul(float(night.level)).mul(float(SIGN.glow))
+  material.emissiveNode = mix(panel.mul(glow.y), ink.mul(glow.x), cover).mul(float(night.level))
   return material
 }

@@ -139,7 +139,7 @@ Previously claimed done: yes — `game/kitbash/CONTRACT.md:96` says there is not
 
 **26. A sign's glow at night swallows its own letters and floods the whole shopfront.**
 Boxes: kitbash, app.
-Evidence: 2.3% of the night frame is fully blown white on all three channels and 7.7% is above 200, from one sign. Two dials: `SIGN.glow` = 2 on top of emissive up to 1.25, and the night bloom at strength 0.6 / threshold 0.6. Which of the two is wrong is unproven.
+Evidence: 2.3% of the night frame is fully blown white on all three channels and 7.7% is above 200, from one sign. One dial now: `@gb/kitbash` 0.15.0 authors `TUBE` as the luminance a tube emits (1.3) and works each colour's strength back from it, so all nine read the same against the gate instead of six glowing and three never doing. What the night bloom is set to (`NIGHT` in `game/app/src/night.ts`) is the other half and is still worth a look on a street of signs.
 Previously claimed done: yes — `game/app/src/night.ts:43-50` says the halo is tight so none swallows its letters.
 
 **27. At night a wall with no lamp on it goes black; only the roofline tube and the lit windows read.**

@@ -47,17 +47,9 @@ export function assemble(placements: readonly Placement[], library: KitLibrary, 
     }
   }
   const matrix = new THREE.Matrix4()
-  const quaternion = new THREE.Quaternion()
-  const axis = new THREE.Vector3(0, 1, 0)
-  const position = new THREE.Vector3()
-  const scale = new THREE.Vector3()
 
   for (const placement of placements) {
-    matrix.compose(
-      position.set(placement.position[0], placement.position[1], placement.position[2]),
-      quaternion.setFromAxisAngle(axis, placement.rotationY),
-      scale.set(placement.scale[0], placement.scale[1], placement.scale[2]),
-    )
+    placedAt(placement, matrix)
     for (const part of library.parts(placement.piece)) {
       // the kit paints a flat plane behind its glass; the pane draws a real
       // room now, so the plane is never seen and never packed
@@ -80,6 +72,20 @@ export function assemble(placements: readonly Placement[], library: KitLibrary, 
     group.add(mesh)
   }
   return group
+}
+
+const UP = new THREE.Vector3(0, 1, 0)
+const AT = new THREE.Vector3()
+const TURN = new THREE.Quaternion()
+const STRETCH = new THREE.Vector3()
+
+/** The frame one placement stands in: where it is, the way it is turned about +Y, and the stretch on it. */
+export function placedAt(placement: Placement, into: THREE.Matrix4 = new THREE.Matrix4()): THREE.Matrix4 {
+  return into.compose(
+    AT.set(placement.position[0], placement.position[1], placement.position[2]),
+    TURN.setFromAxisAngle(UP, placement.rotationY),
+    STRETCH.set(placement.scale[0], placement.scale[1], placement.scale[2]),
+  )
 }
 
 /** One material's share of the building, as one buffer. */

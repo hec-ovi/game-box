@@ -8,7 +8,7 @@ import { checkSignage } from './bounds.ts'
 import type { WallClaims } from './claims.ts'
 import { doorLamps } from './doorlamp.ts'
 import { fasciaOf, signWall, type Fascia } from './fascia.ts'
-import { againstNeon, backing, houseNeon, type Neon } from './palette.ts'
+import { againstNeon, backing, houseNeon, LIGHTBOX, type Neon } from './palette.ts'
 import { alongOf, between, place, wallOf, within, type Panel } from './place.ts'
 import { SIGN, type Sign } from './sign.ts'
 import { across, bladeFor, down, lettersOf, panelFor, widthFor } from './text.ts'
@@ -32,15 +32,6 @@ const BLADE = { widest: 0.95, clear: 0.55, shortest: 2.4 } as const
 
 /** What hangs out over the street: how high above the shopfront, and how deep. */
 const HANGING = { high: 0.95, tall: 0.64, longest: 3.1 } as const
-
-/**
- * How hard a nameplate lit from behind burns, as a share of its hue's own
- * glow. A lit box is a surface, not a tube: at the loudest hue it lands on its
- * own colour and never past it, the way the lamp at the door does, and the
- * halo over it is the bloom pass. A tube may go brighter because a tube is a
- * few centimetres wide; a board four metres long may not.
- */
-const LIGHTBOX = 0.4
 
 export function planSigns(plot: Plot, charter: PlotCharter, height: number, faces: readonly Face[], front: Face, doorModule: number, bands: readonly Band[], rng: Rng, claims: WallClaims): Sign[] {
   checkSignage(charter.signage)
@@ -93,7 +84,7 @@ function nameplate(plot: Plot, front: Face, fascia: Fascia, wallHeight: number, 
     height,
     ink: lightbox ? 0x0b0c10 : hue.ink,
     panel: lightbox ? hue.ink : backing(rng),
-    glow: lightbox ? [0, hue.glow * LIGHTBOX * loud] : [hue.glow * loud, 0],
+    glow: lightbox ? [0, LIGHTBOX * loud] : [hue.glow * loud, 0],
     glyphs: across(name, width, height),
   }
 }

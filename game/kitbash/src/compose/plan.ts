@@ -21,6 +21,8 @@ export interface Placement {
   readonly position: readonly [number, number, number]
   readonly rotationY: number
   readonly scale: readonly [number, number, number]
+  /** Which storey of the facade it stands on. The roof deck stands on none. */
+  readonly storey?: number
   /** The room its glass looks into, when it has glass in it. */
   readonly room?: Room
 }
@@ -95,7 +97,7 @@ export function planWalls(plot: Plot, size: BuildingSize, cellSize: number, char
         const piece = module === doorAt && street
           ? recipe.door
           : pieceFor(course, face, module, phase, street, crowning ? recipe.crown : undefined)
-        placements.push(...wall(face, band, module, piece, rooms[module]!, street ? recipe.fascia : undefined))
+        placements.push(...wall(face, band, storey, module, piece, rooms[module]!, street ? recipe.fascia : undefined))
       }
     }
   }
@@ -142,7 +144,7 @@ function pieceFor(course: Course, face: Face, module: number, phase: number, str
  * module of every face, including over the door, so it reads as one course
  * round the building rather than a run of patches.
  */
-function wall(face: Face, band: Band, module: number, piece: PieceId, room: Room, fascia: PieceId | undefined): Placement[] {
+function wall(face: Face, band: Band, storey: number, module: number, piece: PieceId, room: Room, fascia: PieceId | undefined): Placement[] {
   const [x, z] = face.centreOf(module)
   const across = face.moduleWidth / MODULE.width
   const closer = fascia ? band.height - MODULE.height : 0
@@ -152,6 +154,7 @@ function wall(face: Face, band: Band, module: number, piece: PieceId, room: Room
     position: [x, band.base, z],
     rotationY: face.rotationY,
     scale: [across, wallHeight / MODULE.height, 1],
+    storey,
     ...(isGlazed(piece) ? { room } : {}),
   }]
   if (fascia && closer > 0) {
@@ -160,6 +163,7 @@ function wall(face: Face, band: Band, module: number, piece: PieceId, room: Room
       position: [x, band.base + MODULE.height, z],
       rotationY: face.rotationY,
       scale: [across, closer / MODULE.band, 1],
+      storey,
     })
   }
   return out

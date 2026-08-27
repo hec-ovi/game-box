@@ -1,4 +1,5 @@
 import { SOLID } from './glyphs.ts'
+import { luminanceOf } from './palette.ts'
 import { outward, SIGN, type Sign, type SignKind } from './sign.ts'
 
 /**
@@ -18,8 +19,14 @@ export interface LightEmitter {
   readonly radius: number
 }
 
-/** Candela a square metre of lit surface throws at emissive 1, by what is burning. */
-const CANDELA: Record<SignKind, number> = { sign: 20, strip: 20, doorlamp: 120, subway: 20 }
+/**
+ * Candela a square metre of lit surface throws per unit of the luminance it
+ * emits, by what is burning. It is read off the luminance rather than off the
+ * multiplier on the vertex, because a saturated hue carries a third of a pale
+ * one's light at the same reading: a crimson tube and a cyan one that look
+ * equally bright throw equally.
+ */
+const CANDELA: Record<SignKind, number> = { sign: 30, strip: 30, doorlamp: 180, subway: 30 }
 
 /** How much of a letter's cell is tube. */
 const INK_COVER = 0.35
@@ -37,7 +44,8 @@ export function lightsOf(signs: readonly Sign[]): LightEmitter[] {
 function lightOf(sign: Sign): LightEmitter {
   const [tube, box] = sign.glow
   const tubes = tube >= box
-  const emissive = Math.max(tube, box) * SIGN.glow
+  const burning = tubes ? sign.ink : sign.panel
+  const emissive = luminanceOf(burning) * Math.max(tube, box)
   const lit = tubes ? litArea(sign) : sign.width * sign.height
   const intensity = lit * emissive * CANDELA[sign.kind]
   const [nx, nz] = outward(sign.right)
@@ -45,7 +53,7 @@ function lightOf(sign: Sign): LightEmitter {
   return {
     kind: sign.kind,
     position: [sign.origin[0] + nx * off, sign.origin[1], sign.origin[2] + nz * off],
-    colour: tubes ? sign.ink : sign.panel,
+    colour: burning,
     intensity,
     radius: Math.min(FADE.farthest, Math.sqrt(intensity / FADE.lux)),
   }

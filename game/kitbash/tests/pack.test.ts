@@ -87,3 +87,62 @@ describe.skipIf(!packed)('the shipped kit', () => {
     }
   })
 })
+
+describe.skipIf(!packed)('a tower on the shipped kit', () => {
+  const rect = { x: 6, y: 6, w: 5, h: 4 }
+  const doorstep = { cell: { x: rect.x + 2, y: rect.y - 1 }, facing: 'north' as const }
+
+  it('carries its wall from the shopfront to the parapet with no slit in it', () => {
+    for (const charter of SHIPPED_CHARTERS) {
+      const plot = plotOf({ kind: charter.word, storeys: 20, rect, entrance: doorstep }, charter)
+      const size = sizeOf(plot, heightOf(20))
+      const shell = dressing!.shell(plot, size, charter)
+      // the storeys over the shopfront are one course stretched across the
+      // wall, so a course that did not reach its own ceiling would leave a
+      // slit you could see the sky through from across the town
+      for (const [plane, axis] of [[-size.depth / 2, 'z'], [size.width / 2, 'x']] as const) {
+        const runs = wallRuns(shell, plane, axis)
+        const unbroken = runs.find(([bottom, top]) => bottom <= METRICS.building.groundFloorHeight + 1e-3 && top >= size.height - 1e-3)
+        expect(unbroken, `${charter.word}: the ${axis} wall runs ${JSON.stringify(runs)}`).toBeDefined()
+      }
+    }
+  })
+
+  it('lays the kit\'s own texture once a module across it, however wide the wall', () => {
+    for (const modules of [2, 5]) {
+      const square = { x: 6, y: 6, w: modules, h: modules }
+      const plot = plotOf({ kind: 'house', storeys: 20, rect: square, entrance: { cell: { x: square.x, y: square.y - 1 }, facing: 'north' } })
+      const size = sizeOf(plot, heightOf(20))
+      const brick = meshesOf(dressing!.shell(plot, size, charterOf(plot))).find((mesh) => (mesh.material as THREE.Material).name === 'MI_RedBrick')!
+      const uv = brick.geometry.getAttribute('uv')
+      let [from, to] = [Infinity, -Infinity]
+      for (let vertex = 0; vertex < uv.count; vertex++) [from, to] = [Math.min(from, uv.getX(vertex)), Math.max(to, uv.getX(vertex))]
+      // the kit maps one module 0 to 1 across, so a wall of N modules runs N
+      expect(to - from, `${modules} modules across`).toBeCloseTo(modules, 3)
+    }
+  })
+})
+
+/** The runs of wall, bottom to top, that stand in one wall plane: a gap between two of them is a slit. */
+function wallRuns(object: THREE.Object3D, plane: number, axis: 'x' | 'z'): Array<[number, number]> {
+  const runs: Array<[number, number]> = []
+  for (const mesh of meshesOf(object)) {
+    if ((mesh.material as THREE.Material).name.includes('Glass')) continue
+    const position = mesh.geometry.getAttribute('position')
+    const index = mesh.geometry.getIndex()!
+    for (let triangle = 0; triangle < index.count; triangle += 3) {
+      const corners = [index.getX(triangle), index.getX(triangle + 1), index.getX(triangle + 2)]
+      const across = (vertex: number) => (axis === 'x' ? position.getX(vertex) : position.getZ(vertex))
+      if (!corners.every((vertex) => Math.abs(across(vertex) - plane) < 3e-3)) continue
+      runs.push([Math.min(...corners.map((vertex) => position.getY(vertex))), Math.max(...corners.map((vertex) => position.getY(vertex)))])
+    }
+  }
+  runs.sort((a, b) => a[0] - b[0])
+  const merged: Array<[number, number]> = []
+  for (const run of runs) {
+    const last = merged.at(-1)
+    if (last && run[0] <= last[1] + 1e-4) last[1] = Math.max(last[1], run[1])
+    else merged.push([...run])
+  }
+  return merged
+}

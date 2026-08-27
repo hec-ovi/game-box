@@ -1,4 +1,4 @@
-import { METRICS, type Plot } from '@gb/world'
+import { METRICS, SHIPPED_CHARTERS, type Plot } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { FAR_GLASS, GLASS, KitDressing, RELIEF, ROOM_ATTRIBUTES, SIGN, placeholderKit } from '../src/index.ts'
@@ -80,3 +80,75 @@ describe('the shell', () => {
     for (const mesh of meshes) expect(mesh.geometry.getIndex(), (mesh.material as THREE.Material).name).not.toBeNull()
   })
 })
+
+describe('a tall plot\'s shell', () => {
+  const rect = { x: 6, y: 6, w: 5, h: 4 }
+  const doorstep = { cell: { x: rect.x + 2, y: rect.y - 1 }, facing: 'north' as const }
+  const towers = SHIPPED_CHARTERS.map((charter) => {
+    const plot = plotOf({ kind: charter.word, name: 'The Tall One', storeys: 20, rect, entrance: doorstep }, charter)
+    return { plot, charter, size: sizeOf(plot, heightOf(20)) }
+  })
+
+  it('stands where the tower it stands in for does, to the metre it was given', () => {
+    for (const { plot, charter, size } of towers) {
+      const shell = wallBounds(dressing.shell(plot, size, charter))
+      const measured = shell.getSize(new THREE.Vector3())
+
+      expect(measured.x, plot.kind).toBeGreaterThanOrEqual(size.width - 1e-6)
+      expect(measured.x, plot.kind).toBeLessThanOrEqual(size.width + 2 * RELIEF)
+      expect(measured.z, plot.kind).toBeGreaterThanOrEqual(size.depth - 1e-6)
+      expect(measured.z, plot.kind).toBeLessThanOrEqual(size.depth + 2 * RELIEF)
+      expect(shell.max.y, plot.kind).toBeCloseTo(size.height, 3)
+      expect(shell.min.y, plot.kind).toBeCloseTo(0, 1)
+      expect(wallBounds(dressing.building(plot, size, charter)).expandByScalar(1e-6).containsBox(shell), plot.kind).toBe(true)
+    }
+  })
+
+  it('lights the same rooms in the same panes as the tower it stands in for', () => {
+    for (const { plot, charter, size } of towers) {
+      const near = roomsOf(dressing.building(plot, size, charter), GLASS)
+      const far = roomsOf(dressing.shell(plot, size, charter), FAR_GLASS)
+
+      expect([...far.keys()].sort(), `${plot.kind}: the same rooms`).toEqual([...near.keys()].sort())
+      for (const [key, pane] of near) {
+        const same = far.get(key)!
+        // the same glass, on the same wall, at the same height: what moves is
+        // out of the reveal onto the face of it, because the wall over the
+        // shopfront is one course with no opening cut in it
+        const [was, now] = [pane.getSize(new THREE.Vector3()), same.getSize(new THREE.Vector3())]
+        expect(Math.max(now.x, now.z), `${plot.kind}: room ${key} is as wide`).toBeCloseTo(Math.max(was.x, was.z), 6)
+        expect(now.y, `${plot.kind}: room ${key} is as tall`).toBeCloseTo(was.y, 6)
+        expect(pane.getCenter(new THREE.Vector3()).distanceTo(same.getCenter(new THREE.Vector3())), `${plot.kind}: room ${key} moved`).toBeLessThanOrEqual(0.25)
+      }
+    }
+  })
+
+  it('stops growing with its storeys, which is what a tower cost', () => {
+    const plot = (storeys: number) => plotOf({ kind: 'office', name: 'Up And Up', storeys, rect, entrance: doorstep })
+    const shellAt = (storeys: number) => trianglesOf(dressing.shell(plot(storeys), sizeOf(plot(storeys), heightOf(storeys)), charterOf(plot(storeys))))
+    const buildingAt = (storeys: number) => trianglesOf(dressing.building(plot(storeys), sizeOf(plot(storeys), heightOf(storeys)), charterOf(plot(storeys))))
+
+    const shell = (shellAt(40) - shellAt(20)) / 20
+    const whole = (buildingAt(40) - buildingAt(20)) / 20
+    expect(whole, 'a building is a storey of kit repeated').toBeGreaterThan(100)
+    expect(shell, 'a shell is one course stretched over it').toBeLessThan(whole / 10)
+    // so a forty storey tower's shell is a fraction of the tower
+    expect(shellAt(40)).toBeLessThan(buildingAt(40) / 5)
+  })
+})
+
+/** Every room drawn on that glass, as the box of the panes carrying it. */
+function roomsOf(object: THREE.Object3D, glass: string): Map<string, THREE.Box3> {
+  const rooms = new Map<string, THREE.Box3>()
+  for (const mesh of meshesOf(object)) {
+    if ((mesh.material as THREE.Material).name !== glass) continue
+    const look = mesh.geometry.getAttribute(ROOM_ATTRIBUTES.look)
+    const position = mesh.geometry.getAttribute('position')
+    for (let vertex = 0; vertex < position.count; vertex++) {
+      const key = look.getX(vertex).toFixed(6)
+      const box = rooms.get(key) ?? new THREE.Box3()
+      rooms.set(key, box.expandByPoint(new THREE.Vector3(position.getX(vertex), position.getY(vertex), position.getZ(vertex))))
+    }
+  }
+  return rooms
+}

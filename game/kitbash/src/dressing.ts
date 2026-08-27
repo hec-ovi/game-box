@@ -3,6 +3,7 @@ import type { AnchorKind, CellKind, FurnitureProp, Item, Npc, Plot, World } from
 import * as THREE from 'three'
 import { assemble } from './assemble.ts'
 import type { PlotCharter } from './charter.ts'
+import { massing } from './compose/massing.ts'
 import { planBuilding, planWalls, type BuildingSize } from './compose/plan.ts'
 import { fixtureParts } from './fixture/build.ts'
 import type { KitLibrary } from './kit/library.ts'
@@ -54,13 +55,19 @@ export class KitDressing implements Dressing {
    * What a shell leaves out is everything only read from the pavement: the
    * signs, the subway entrance and the camera drawn into the walls, and the
    * furnished room behind every pane. `@gb/scene` batches one of these per plot
-   * at open and asks for the whole `building` only round the player, so the far
-   * town is one draw per kit material and a fragment of it costs the wall
-   * fetch.
+   * within `SHELL_RADIUS` of the player and asks for the whole `building` only
+   * within `DETAIL_RADIUS`, so the far town is one draw per kit material and a
+   * fragment of it costs the wall fetch.
+   *
+   * Over `MASSING.storeys` everything above the shopfront is the kit's own
+   * plain course stretched across each wall with the same windows flat on it:
+   * a tower's shell is its silhouette and its lit skyline, which is all of it
+   * anybody 64 m away can read.
    */
   shell(plot: Plot, size: BuildingSize, charter: PlotCharter): THREE.Object3D {
     const plan = planWalls(plot, size, size.width / plot.rect.w, charter)
-    return assemble(plan.placements, this.#kit, plot.id, { far: true })
+    const massed = massing(plan, charter, this.#kit)
+    return assemble(massed.placements, this.#kit, plot.id, { far: true, fixtures: massed.parts })
   }
 
   /**
