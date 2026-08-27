@@ -4,6 +4,24 @@ What the project does now. Each entry is the present state, not a diff.
 
 ## 2026-08-27
 
+**A city has a downtown.** How tall a plot builds is read off how near the
+middle of the grid its door stands, pushed out along the avenues: past the band
+the catalogue is drawn for, the kit stacks a storey of wall at a time. On a 20
+block town 15.5% to 17.3% of the plots clear the band, the tallest at 23 to 24
+storeys, the core standing at a median of 6 and the edge keeping to the band.
+Standing at the spawn that is 333,501 triangles in 11 draws, against 79,070 in 6
+with the ceiling at 4.
+
+**A door is a face, and a window is a face.** The model says where its entrance
+plate stands, and that patch of the wall's own uv is written onto the wall
+behind it, so the bay grid drops every bay the door reaches. The opening, the
+pane over it and the room behind it are cut from the same place.
+
+**A wall picture is read at the metres of wall under it.** The pictures are
+generated over a two metre frame, so the shader measures the surface and reads
+them at that size rather than at the uv the producer laid. Brick is brick sized
+on a twelve metre front and on the metre of fascia over a door.
+
 **The pavement and the bare ground are generated tiles.** The city floor takes
 its pavement from a concrete flag laid six to a four metre tile and its parks
 and empty lots from bare compacted earth, both cut seamless by
