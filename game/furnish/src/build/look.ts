@@ -45,6 +45,18 @@ export function shade(look: Look): Shaded {
   return resolved
 }
 
+/**
+ * How bright a colour reads, in the renderer's working space. A strength
+ * multiplying a colour is not a brightness: the same number over a pale cyan
+ * and over a saturated red emits two and a half times as much of the first, so
+ * anything that has to read at a level is authored by this and the strength is
+ * worked back from it.
+ */
+export function luminanceOf(hex: number): number {
+  const [red, green, blue] = linear(hex)
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue
+}
+
 function linear(hex: number): readonly [number, number, number] {
   const colour = new THREE.Color().setHex(hex, THREE.SRGBColorSpace)
   return [colour.r, colour.g, colour.b]

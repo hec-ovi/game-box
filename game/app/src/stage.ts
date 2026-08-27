@@ -29,9 +29,10 @@ export interface Stage {
    */
   carrySky(brighter: number, turned: number): void
   /**
-   * Light a room, and stop lighting it on the way out. Outdoor light belongs to
-   * the landscape and goes dark with it, so without this a building is pitch
-   * black inside.
+   * The player is inside a building, or back out of one. A room carries its own
+   * light, so this adds none: it takes the outdoor light away, because a room
+   * is never lit by a sun it cannot see, and it develops the frame for a lit
+   * interior instead of for the hour.
    */
   indoors(on: boolean): void
   /** Develop the frame for how dark it is, 0 full daylight to 1 after dark: exposure, and how hard neon glows. */

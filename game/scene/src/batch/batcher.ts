@@ -242,11 +242,6 @@ export class CityBatcher {
   }
 }
 
-/** A place in the city with nothing in it, so a plot whose dressing drew nothing is still a building. */
-export function drawsNothing(): Placing {
-  return { bounds: new THREE.Box3(), show: () => {}, remove: () => {} }
-}
-
 function placingOf(bounds: THREE.Box3, pieces: readonly Piece[]): Placing {
   return {
     bounds,

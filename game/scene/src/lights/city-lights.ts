@@ -13,6 +13,27 @@ export const LIVE_LIGHTS = 16
 const DECAY = 2
 
 /**
+ * How many of a budget's lights cast shadows, and how well.
+ *
+ * A shadow casting point light is six renders of the scene a frame, one per
+ * face of its cube, so this is a small number and it is fixed to the first
+ * slots rather than handed to whichever light is nearest. Moving it would flip
+ * `castShadow` on a light, and that is part of the node graph every lit
+ * material is compiled against: the frame it moved would rebuild every shader
+ * in the room.
+ */
+export interface Shadowing {
+  /** The first this many lights cast. Landing at once gives those the nearest emitters. */
+  readonly casters: number
+  /** The edge of one face of a caster's shadow cube, in texels. */
+  readonly mapSize: number
+  /** Metres a receiving surface is pushed along its own normal before its depth is compared, against shadow acne. */
+  readonly normalBias: number
+  /** How far the five filter samples spread, in shadow texels. */
+  readonly softness: number
+}
+
+/**
  * How long a light takes to come up on an emitter it has just been handed, and
  * to go back down when it loses one. Without it a lamp arrives at its full
  * candela on the frame the player walks into its budget, which reads as a
@@ -73,6 +94,10 @@ interface Near {
  * another, so walking down a street brings the lamps up ahead rather than
  * switching them on. `follow` told no elapsed time does all of it at once,
  * which is what a city opening at the spawn wants: lit on the first frame.
+ *
+ * Told a `Shadowing`, the first few slots cast. Which slots is fixed for the
+ * life of the budget, and landing at once is what gives those the nearest
+ * emitters.
  */
 export class CityLights {
   readonly group = new THREE.Group()
@@ -90,7 +115,7 @@ export class CityLights {
   /** Whether the last `follow` was told to land at once, which is what a building put up mid-walk follows. */
   #snapped = true
 
-  constructor(night: number, budget = LIVE_LIGHTS) {
+  constructor(night: number, budget = LIVE_LIGHTS, shadowing?: Shadowing) {
     this.group.name = 'lights'
     this.#budget = budget
     this.#night = 0
@@ -99,6 +124,12 @@ export class CityLights {
       const light = new THREE.PointLight(0xffffff, 0, 0, DECAY)
       light.name = `light:${at}`
       light.visible = false
+      if (shadowing && at < shadowing.casters) {
+        light.castShadow = true
+        light.shadow.mapSize.set(shadowing.mapSize, shadowing.mapSize)
+        light.shadow.normalBias = shadowing.normalBias
+        light.shadow.radius = shadowing.softness
+      }
       this.#lights.push(light)
       this.#slots.push({ light, emitter: undefined, level: 0, leaving: false })
       this.group.add(light)

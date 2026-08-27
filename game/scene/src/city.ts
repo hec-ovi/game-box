@@ -1,15 +1,16 @@
-import { METRICS, cellCentre, type Plot, type World } from '@gb/world'
+import { METRICS, cellCentre, type Plot, type ResolvedCharter, type World } from '@gb/world'
 import * as THREE from 'three'
-import { CityBatcher, drawsNothing, type Placing } from './batch/batcher.ts'
+import { CityBatcher } from './batch/batcher.ts'
 import { CityBuilding } from './batch/building.ts'
 import { clutterMesh } from './clutter/mesh.ts'
 import { CLUTTER_DENSITY, planClutter, type ClutterDensity, type ClutterPiece } from './clutter/plan.ts'
-import type { Dressing } from './dressing.ts'
+import type { BuildingSize, Dressing } from './dressing.ts'
 import { GROUND_KINDS, groundMesh, mountainMesh } from './ground.ts'
 import type { InteriorBuild } from './interior.ts'
 import { CityLights, LIVE_LIGHTS } from './lights/city-lights.ts'
-import { CityDetail, type Dressed } from './lod/detail.ts'
-import { cellOf, DETAIL_RADIUS, sameCell, type Cell } from './lod/near.ts'
+import { CityMassing, type Site } from './lod/massing.ts'
+import { cellOf, DETAIL_RADIUS, sameCell, SHELL_RADIUS, type Cell } from './lod/near.ts'
+import { CityRing, STREAM_BUILDS, type Dressed } from './lod/ring.ts'
 import { CityRooms } from './lod/rooms.ts'
 import { markingMeshes } from './marking-mesh.ts'
 import { planMarkings, type Marking } from './markings.ts'
@@ -32,6 +33,8 @@ export interface CityOptions {
   readonly lights?: number
   /** Metres from the player within which buildings are drawn in detail and rooms stay built. Left out, `DETAIL_RADIUS`. */
   readonly detail?: number
+  /** Metres from the player within which buildings wear the shell their dressing drew. Left out, `SHELL_RADIUS`. */
+  readonly shell?: number
 }
 
 export interface CityBuild {
@@ -54,8 +57,9 @@ export interface CityBuild {
    * Where the player is, in metres on the ground, every frame. The lights go
    * to the nearest emitters, fading over `seconds` if the frame's elapsed time
    * is given and arriving at once if it is not; when the cell changes, the
-   * buildings that came near are drawn in detail, the ones that went far fall
-   * back to their shells, and far rooms are let go of.
+   * buildings that came near are drawn in detail, the ones that came within the
+   * shell radius wear their shells, the ones that went beyond fall back to
+   * their massing, and far rooms are let go of.
    */
   follow(x: number, z: number, seconds?: number): void
   /** That interior, built on first entry and kept while the player is near. Nothing for an id the world lacks. */
@@ -78,14 +82,20 @@ export interface CityBuild {
  * building still culls, hides and raycasts on its own. The street surface and
  * everything lying on it are one draw each on the same principle.
  *
- * Every building is batched as its shell at open; the ones near the player
- * are dressed in detail on top, and that set moves with the player's cell.
+ * A building is drawn one of three ways and the player's cell picks which: its
+ * massing across town, its dressing's shell down the street, its whole detail
+ * on the pavement. Only the skyline is held for the whole town; the shells and
+ * the detail stream in rings round the player, so a city of any size costs the
+ * player's own neighbourhood plus twelve triangles a plot.
  */
 export function buildCity(world: World, dressing: Dressing, options: CityOptions = {}): CityBuild {
   const root = new THREE.Group()
   root.name = world.id
   const seed = options.seed ?? world.seed
-  const radius = options.detail ?? DETAIL_RADIUS
+  const near = options.detail ?? DETAIL_RADIUS
+  // the shell never reaches less far than the detail: a building would have to
+  // drop from its whole self to its silhouette in one step
+  const far = Math.max(near, options.shell ?? SHELL_RADIUS)
 
   for (const kind of GROUND_KINDS) {
     const mesh = groundMesh(world, kind, dressing)
@@ -104,68 +114,82 @@ export function buildCity(world: World, dressing: Dressing, options: CityOptions
     root.add(skin.mesh)
   }
 
-  const shells = new CityBatcher(root, 'city')
   const lights = new CityLights(options.night ?? 1, options.lights ?? LIVE_LIGHTS)
   root.add(lights.group)
   const buildings = new Map<string, CityBuilding>()
   const doorsteps = new Map<string, THREE.Vector3>()
   const cell = world.cellSize
-  // a dressing with no far look draws its whole building at every distance
+  // a dressing with no far look draws its whole building wherever it is drawn
   const splits = dressing.shell !== undefined
 
-  const siteOf = (plot: Plot) => {
-    const size = { width: plot.rect.w * cell, depth: plot.rect.h * cell, height: storeyHeight(plot.storeys) }
+  /** Where one plot's building stands, how big it is, and what the world says it is. */
+  const placeOf = (plot: Plot) => {
     // a plot's kind is the word of a charter the world holds: that is what makes it a plot
     const charter = world.charter(plot.kind)!
     const centre = cellCentre(plot.rect.x + plot.rect.w / 2 - 0.5, plot.rect.y + plot.rect.h / 2 - 0.5, cell)
-    return { size, charter, at: new THREE.Matrix4().makeTranslation(centre.x, 0, centre.z) }
+    const size = { width: plot.rect.w * cell, depth: plot.rect.h * cell, height: storeyHeight(plot.storeys) }
+    const site: Site = { x: centre.x, z: centre.z, size, tint: charter.tint }
+    return { charter, size, site, at: new THREE.Matrix4().makeTranslation(centre.x, 0, centre.z) }
   }
 
-  /**
-   * The far look of one plot into the city, and, for a dressing with no far
-   * look at all, its lights with it. A `shell` that answers nothing leaves
-   * that plot with no far look of its own, so its whole building stands at
-   * every distance rather than the plot standing empty.
-   */
-  const shellOf = (plot: Plot) => {
-    const { size, charter, at } = siteOf(plot)
-    const doorstep = cellCentre(plot.entrance.cell.x, plot.entrance.cell.y, cell)
-    doorsteps.set(plot.id, new THREE.Vector3(doorstep.x, 0, doorstep.z))
-    let taken = offerTo(shells, plot.id, splits ? dressing.shell!(plot, size, charter) : undefined, at)
-    if (!taken.draws) taken = offerTo(shells, plot.id, dressing.building(plot, size, charter), at)
-    shells.settle()
-    if (!splits && taken.draws) lights.add(plot.id, emittersOf(dressing.lights?.(plot, size, charter)), at)
-    return taken.placing
+  /** One way of drawing a plot, and whether the ring that draws it that way carries its light. */
+  const look =
+    (build: (plot: Plot, size: BuildingSize, charter: ResolvedCharter) => THREE.Object3D | undefined, lit: boolean) =>
+    (plot: Plot): Dressed => {
+      const { size, charter, at } = placeOf(plot)
+      return { object: build(plot, size, charter), emitters: lit ? emittersOf(dressing.lights?.(plot, size, charter)) : [], at }
+    }
+
+  const asBuilding = (plot: Plot, size: BuildingSize, charter: ResolvedCharter) => dressing.building(plot, size, charter)
+  const asShell = (plot: Plot, size: BuildingSize, charter: ResolvedCharter) => dressing.shell!(plot, size, charter)
+
+  /** Where a plot's door is, on the pavement in front of it. */
+  const doorstepOf = (plot: Plot) => {
+    const at = cellCentre(plot.entrance.cell.x, plot.entrance.cell.y, cell)
+    return new THREE.Vector3(at.x, 0, at.z)
   }
 
-  const dress = (plot: Plot): Dressed => {
-    const { size, charter, at } = siteOf(plot)
-    return { object: dressing.building(plot, size, charter), emitters: emittersOf(dressing.lights?.(plot, size, charter)), at }
-  }
-
-  // every plot is a building whatever its dressing drew, so nothing is left
-  // without a place in the city to be hidden, shown or dressed in detail
+  // every plot stands in the skyline whatever its dressing draws, so nothing is
+  // left without a place in the city to be hidden, shown or dressed from
   const plots = world.plots()
-  const raised = new Map<string, Placing>()
-  for (const plot of plots) {
-    const placing = shellOf(plot)
-    if (placing) raised.set(plot.id, placing)
+  const sites = plots.map((plot) => placeOf(plot).site)
+  const massing = new CityMassing(root, dressing, plots.length, sites.map((site) => site.tint))
+  for (const [at, plot] of plots.entries()) {
+    doorsteps.set(plot.id, doorstepOf(plot))
+    buildings.set(plot.id, new CityBuilding(plot.id, massing.place(plot.id, sites[at]!)))
   }
-  for (const [plotId, placing] of shells.seal()) raised.set(plotId, placing)
-  for (const plot of plots) buildings.set(plot.id, new CityBuilding(plot.id, raised.get(plot.id) ?? drawsNothing()))
+  massing.settle()
 
   const spawn = spawnAt(world, doorsteps)
   let standing: Cell = cellOf(spawn.x, spawn.z, cell)
   // live round where the player opens their eyes, until the app says where the camera is
   lights.follow(spawn.x, spawn.z)
 
+  const shells = new CityBatcher(root, 'city', true)
+  const shelled = new CityRing({
+    world,
+    batcher: shells,
+    buildings,
+    step: 'shell',
+    // a shell that answers nothing for a plot leaves its whole building as the
+    // far look, so the plot never jumps from its massing straight to its detail
+    looks: splits ? [look(asShell, false), look(asBuilding, false)] : [look(asBuilding, true)],
+    radius: far,
+    // with no near ring to hang them on, the far ring carries the lights
+    ...(splits ? {} : { lights }),
+  })
+  shelled.open(standing)
+  shelled.sealed(shells.seal())
+
   const details = new CityBatcher(root, 'detail', true)
-  const detail = splits ? new CityDetail(world, details, lights, buildings, dress, radius) : undefined
-  if (detail) {
-    for (const plot of plots) if (detail.isNear(plot, standing)) detail.build(plot)
-    detail.sealed(details.seal())
+  const detailed = splits
+    ? new CityRing({ world, batcher: details, buildings, step: 'detail', looks: [look(asBuilding, true)], radius: near, lights })
+    : undefined
+  if (detailed) {
+    detailed.open(standing)
+    detailed.sealed(details.seal())
   }
-  const rooms = new CityRooms(world, dressing, radius)
+  const rooms = new CityRooms(world, dressing, near)
 
   const clutter = litterOf(world, doorsteps, markings, seed, options.clutter)
   const rubbish = clutterMesh(clutter, seed, dressing)
@@ -176,9 +200,12 @@ export function buildCity(world: World, dressing: Dressing, options: CityOptions
     buildings,
     doorsteps,
     add: (plot) => {
-      const building = new CityBuilding(plot.id, shellOf(plot) ?? drawsNothing())
+      doorsteps.set(plot.id, doorstepOf(plot))
+      const building = new CityBuilding(plot.id, massing.place(plot.id, placeOf(plot).site))
+      massing.settle()
       buildings.set(plot.id, building)
-      if (detail?.isNear(plot, standing)) detail.build(plot)
+      if (shelled.isNear(plot, standing)) shelled.hold(plot)
+      if (detailed?.isNear(plot, standing)) detailed.hold(plot)
       return building
     },
     spawn,
@@ -188,10 +215,18 @@ export function buildCity(world: World, dressing: Dressing, options: CityOptions
     follow: (x, z, seconds) => {
       lights.follow(x, z, seconds)
       const now = cellOf(x, z, cell)
-      if (sameCell(standing, now)) return
-      standing = now
-      detail?.follow(now)
-      rooms.follow(now)
+      if (!sameCell(standing, now)) {
+        standing = now
+        shelled.follow(now)
+        detailed?.follow(now)
+        rooms.follow(now)
+      }
+      // a frame that was told its own elapsed time is a frame in a running
+      // game, and it takes as much of the backlog as it can afford; one that
+      // was not is a city opening or a test, and it takes the lot
+      const builds = seconds === undefined ? Number.POSITIVE_INFINITY : STREAM_BUILDS
+      detailed?.catchUp(builds)
+      shelled.catchUp(builds)
     },
     interior: (interiorId) => rooms.enter(interiorId),
     get interiors(): ReadonlySet<string> {

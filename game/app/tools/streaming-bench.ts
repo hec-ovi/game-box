@@ -1,12 +1,13 @@
 /**
  * What the city costs to open, in the chain the game actually builds it with.
  *
- * `@gb/scene` draws every building as its shell at open and dresses only the
- * ones near the player, and it lights the street off what the dressing says
- * each building throws. Both ride on the seam, so a link in the chain that
- * drops them costs the whole town. This builds one city twice, once through a
- * chain with them dropped and once through the chain `src/pack.ts` composes,
- * and prints what each is worth.
+ * `@gb/scene` stands the whole town as its skyline, dresses the shell only
+ * within `SHELL_RADIUS` of the player and the whole building only within
+ * `DETAIL_RADIUS`, and it lights the street off what the dressing says each
+ * building throws. The shell and the lights ride on the seam, so a link in the
+ * chain that drops them costs the neighbourhood the whole town's detail. This
+ * builds one city twice, once through a chain with them dropped and once
+ * through the chain `src/pack.ts` composes, and prints what each is worth.
  *
  * `node game/app/tools/streaming-bench.ts [blocks]`
  */
@@ -58,7 +59,11 @@ function count(root: THREE.Object3D): { meshes: number; triangles: number } {
   return { meshes, triangles }
 }
 
-/** What a ride between two stations costs the frame it lands on: the whole neighbourhood at once. */
+/**
+ * What a ride between two stations costs the frame it lands on: the whole
+ * neighbourhood at once, because a jump is told no elapsed time and the rings
+ * take their backlog in one go behind the veil.
+ */
 function ride(world: World, city: ReturnType<typeof buildCity>): void {
   const stops = world.stations().flatMap((plot) => {
     const at = city.doorsteps.get(plot.id)
@@ -89,15 +94,18 @@ function open(world: World, dressing: Dressing, label: string): { city: ReturnTy
   const ms = performance.now() - began
   const held = count(city.root)
   const spawn = city.spawn
-  let follows = 0
-  const walk = performance.now()
+  // the way the game calls it: told the frame's own elapsed time, so the rings
+  // take their backlog a few buildings at a time
+  const took: number[] = []
   for (let step = 0; step < 200; step++) {
-    city.follow(spawn.x + step * 0.25, spawn.z)
-    follows += 1
+    const began = performance.now()
+    city.follow(spawn.x + step * 0.25, spawn.z, 1 / 60)
+    took.push(performance.now() - began)
   }
-  const perFollow = (performance.now() - walk) / follows
+  took.sort((a, b) => a - b)
+  const worn = [...city.buildings.values()].filter((one) => one.step !== 'massing').length
   console.log(
-    `${label.padEnd(22)} open ${ms.toFixed(0).padStart(6)} ms   meshes ${String(held.meshes).padStart(5)}   triangles ${String(Math.round(held.triangles)).padStart(9)}   emitters ${String(city.lights.emitters.length).padStart(6)}   follow ${perFollow.toFixed(3)} ms`,
+    `${label.padEnd(22)} open ${ms.toFixed(0).padStart(6)} ms   meshes ${String(held.meshes).padStart(5)}   drawn triangles ${String(Math.round(held.triangles)).padStart(9)}   dressed ${String(worn).padStart(5)} of ${city.buildings.size}   emitters ${String(city.lights.emitters.length).padStart(6)}   follow ${(took[Math.floor(took.length / 2)] ?? 0).toFixed(3)} ms, worst ${(took.at(-1) ?? 0).toFixed(2)} ms`,
   )
   return { city }
 }

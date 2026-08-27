@@ -30,7 +30,6 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
   const grade = new Grade(renderer, scene, camera)
 
   let current: THREE.Object3D | undefined
-  let roomLight: THREE.Group | undefined
   let daylight: THREE.Group | undefined
   let horizon: PMREMGenerator | undefined
   let reflected: ReturnType<PMREMGenerator['fromScene']> | undefined
@@ -86,19 +85,14 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
       grade.carrySky(brighter, turned)
     },
     indoors(on) {
-      if (!roomLight) {
-        roomLight = new THREE.Group()
-        roomLight.name = 'room-light'
-        // a room is lit by its own ceiling and its windows, not by the sun
-        // outside, so this works whatever the weather and whatever the hour
-        roomLight.add(new THREE.HemisphereLight(0xf3ecdd, 0x413a30, 2.2))
-        const lamp = new THREE.DirectionalLight(0xffeacb, 1.5)
-        lamp.position.set(3, 12, 4)
-        roomLight.add(lamp)
-        scene.add(roomLight)
-      }
-      roomLight.visible = on
-      // whichever daylight is in play goes off, so a room is never lit by a sun
+      // a room carries its own light: the fixtures its art drew, standing where
+      // they are drawn, under `@gb/scene`'s budget, and the bounce off its own
+      // surfaces. Nothing is added here, because a light added here would be
+      // the same light in every room in the city, from the same direction,
+      // whatever is over the player's head, which is the whole of what made a
+      // room read as a cartoon.
+      //
+      // Whichever daylight is in play goes off, so a room is never lit by a sun
       // it cannot see. The sky reflected into every material goes with it: that
       // is the grade's, and it takes the room's own level while the player is
       // inside rather than holding the hour they walked in at

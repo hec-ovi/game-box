@@ -2,9 +2,9 @@ import type { AnchorKind, Interior, World } from '@gb/world'
 import * as THREE from 'three'
 import { blockersOf } from './blockers.ts'
 import type { Dressing } from './dressing.ts'
-import { ceilingFill } from './fill.ts'
 import { PropFootprint } from './footprint.ts'
 import { Leaving } from './leaving.ts'
+import { RoomLight } from './lights/room-lights.ts'
 import { Pickups } from './pickups.ts'
 import { shellOf } from './shell.ts'
 import { PropSurface } from './surface.ts'
@@ -30,6 +30,11 @@ export interface InteriorBuild {
   readonly people: ReadonlyMap<string, THREE.Object3D>
   /** What is lying about in here, by item id. */
   readonly pickups: ReadonlyMap<string, THREE.Object3D>
+  /**
+   * What the room is lit by. Built on one plain lamp over each of its rooms;
+   * hand it the fixtures the art drew and it stands on those instead.
+   */
+  readonly lights: RoomLight
   /**
    * Leaves a thing at one of this room's anchors, the same way the room was
    * built: on the piece of furniture the anchor belongs to, at the height it is
@@ -59,7 +64,8 @@ export function buildInterior(world: World, interior: Interior, dressing: Dressi
 
   const shell = shellOf(interior, dressing)
   for (const surface of shell) root.add(surface)
-  const fill = ceilingFill(root)
+  const lights = new RoomLight(interior)
+  root.add(lights.group)
 
   const props = new Map<string, THREE.Object3D>()
   const tops = new Map<string, PropSurface>()
@@ -122,12 +128,16 @@ export function buildInterior(world: World, interior: Interior, dressing: Dressi
   const footprints = new Map([...tops].map(([id, top]) => [id, top.footprint]))
   const blockers = blockersOf(interior, footprints.values())
 
+  // the budget opens round the door, which is where the player walks in
+  lights.follow(entrance.x, entrance.z)
+
   return {
     root,
     anchors,
     props,
     people,
     pickups: pickups.all,
+    lights,
     leave: (itemId, anchorId) => leaving.leave(itemId, anchorId),
     blockers,
     visitorCells: visitorCellsOf(interior, blockers, footprints),
@@ -135,7 +145,7 @@ export function buildInterior(world: World, interior: Interior, dressing: Dressi
     inward,
     dispose: () => {
       for (const surface of shell) surface.geometry.dispose()
-      fill.dispose()
+      lights.dispose()
       pickups.dispose()
       root.clear()
     },

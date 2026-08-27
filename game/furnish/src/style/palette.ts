@@ -1,4 +1,4 @@
-import type { Look } from '../build/look.ts'
+import { luminanceOf, type Look } from '../build/look.ts'
 
 /**
  * The two interior languages, as twelve surfaces each.
@@ -31,7 +31,7 @@ export interface Palette {
   readonly frame: Look
   /** Upholstery: a seat pad, a back, a mattress. */
   readonly soft: Look
-  /** A light strip. Architecture, not a lamp. */
+  /** A light strip. Architecture, not a lamp, and the thing that lights the room. */
   readonly glow: Look
   /** A screen: a till display, a television, a lit sign. */
   readonly screen: Look
@@ -43,8 +43,24 @@ export interface Palette {
   readonly pot: Look
 }
 
-/** How hard a strip emits. Over 1 so the app's bloom has something to find. */
-const STRIP = 3.2
+/**
+ * How bright a light strip reads: luminance in the renderer's working space,
+ * not a multiplier.
+ *
+ * A multiplier is not a brightness. 0xbdf0ff carries 0.80 of luminance and
+ * 0xff6478 carries 0.32, so one strength over both made a corpo cove emit 2.57
+ * and a home cove 1.02, one of them over the app's indoor bloom threshold and
+ * the other under it, and a home cove read as a painted line rather than as the
+ * thing lighting the room. Authored as a luminance, both clear it, and the
+ * corpo strength comes out where it was set by hand.
+ */
+const STRIP = 2.57
+
+/** The strength a lens has to carry to emit that luminance in its own colour. */
+function strip(colour: number): number {
+  return STRIP / luminanceOf(colour)
+}
+
 const SCREEN = 1.6
 /** A desktop's glass at rest: lit enough to read as on, dark enough for what is printed on it to show. */
 const READOUT = 0.5
@@ -59,7 +75,7 @@ export const PALETTES: Record<FurnishStyle, Palette> = {
     accent: { colour: 0x1f6f7a, roughness: 0.5, metalness: 0.1 },
     frame: { colour: 0x17191c, roughness: 0.35, metalness: 0.8 },
     soft: { colour: 0x2f3338, roughness: 0.95, metalness: 0 },
-    glow: { colour: 0x0e1416, glow: 0xbdf0ff, glowStrength: STRIP, roughness: 0.4, metalness: 0 },
+    glow: { colour: 0x0e1416, glow: 0xbdf0ff, glowStrength: strip(0xbdf0ff), roughness: 0.4, metalness: 0 },
     screen: { colour: 0x0a0d10, glow: 0x63c8ff, glowStrength: SCREEN, roughness: 0.2, metalness: 0 },
     readout: { colour: 0x06101a, glow: 0x1f6b8a, glowStrength: READOUT, roughness: 0.2, metalness: 0 },
     pane: { colour: 0x08111a, glow: 0x2f7fb4, glowStrength: PANE, roughness: 0.08, metalness: 0.1 },
@@ -73,7 +89,7 @@ export const PALETTES: Record<FurnishStyle, Palette> = {
     accent: { colour: 0x8e2338, roughness: 0.4, metalness: 0.05 },
     frame: { colour: 0x2a2528, roughness: 0.25, metalness: 0.85 },
     soft: { colour: 0x5d5563, roughness: 0.9, metalness: 0 },
-    glow: { colour: 0x1a1013, glow: 0xff6478, glowStrength: STRIP, roughness: 0.35, metalness: 0 },
+    glow: { colour: 0x1a1013, glow: 0xff6478, glowStrength: strip(0xff6478), roughness: 0.35, metalness: 0 },
     screen: { colour: 0x0d0a0c, glow: 0xff8ba0, glowStrength: SCREEN, roughness: 0.2, metalness: 0 },
     readout: { colour: 0x140b12, glow: 0x7a3a5a, glowStrength: READOUT, roughness: 0.2, metalness: 0 },
     pane: { colour: 0x100c14, glow: 0x5d84ae, glowStrength: PANE, roughness: 0.08, metalness: 0.1 },

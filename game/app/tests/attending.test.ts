@@ -119,6 +119,7 @@ async function play(): Promise<{ game: Game; bench: Bench; cast: PaperCast }> {
   const room: RoomArt = () => ({
     dressing: guarded(new CastDressing(cast.cast, new FurnishDressing(kit, new Greybox()))),
     decor: new THREE.Object3D(),
+    lights: [],
   })
   let bench: Bench | undefined
   const game = await Game.start(mount, await town(), {

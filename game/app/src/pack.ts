@@ -2,7 +2,7 @@ import { Cast, CastDressing, parseWardrobe } from '@gb/cast'
 import { FurnishDressing, loadFurnish } from '@gb/furnish'
 import { KitDressing, loadKit, type CityNight } from '@gb/kitbash'
 import { PrefabDressing, loadPrefab, type Catalogue } from '@gb/prefab'
-import { Greybox, type Dressing } from '@gb/scene'
+import { Greybox, type Dressing, type LightEmitter } from '@gb/scene'
 import type { Interior, ResolvedCharter } from '@gb/world'
 import type * as THREE from 'three'
 import { guarded } from './guarded.ts'
@@ -11,12 +11,16 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
 
 /**
- * An interior's own room: the dressing that paints it and the wall bays to add
- * to what came back. Each interior draws its own floor, walls and ceiling from
- * its id, so the shop is not the same room as the flat above it, and its
- * charter says what each room is used for when the file left that out.
+ * An interior's own room: the dressing that paints it, the wall bays to add to
+ * what came back, and the fixtures all of it burns. Each interior draws its own
+ * floor, walls and ceiling from its id, so the shop is not the same room as the
+ * flat above it, and its charter says what each room is used for when the file
+ * left that out.
  */
-export type RoomArt = (interior: Interior, charter: ResolvedCharter) => { dressing: Dressing; decor: THREE.Object3D }
+export type RoomArt = (
+  interior: Interior,
+  charter: ResolvedCharter,
+) => { dressing: Dressing; decor: THREE.Object3D; lights: readonly LightEmitter[] }
 
 /** What the art pack answers for, and what is left of it when a piece is missing. */
 export interface ArtPack {
@@ -53,7 +57,7 @@ export async function loadDressing(theme: string, base = ''): Promise<ArtPack> {
   const room: RoomArt | undefined = furnish
     ? (interior, charter) => {
         const dressed = furnish.room(interior, charter)
-        return { dressing: guarded(withCast(dressed.dressing)), decor: dressed.decor }
+        return { dressing: guarded(withCast(dressed.dressing)), decor: dressed.decor, lights: dressed.lights }
       }
     : undefined
 

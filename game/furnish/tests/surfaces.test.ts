@@ -79,7 +79,11 @@ function readProbe(texture: THREE.DataTexture) {
     const weight = Math.cos((elevation * Math.PI) / 180)
     for (let column = 0; column < width; column++) {
       const at = (row * width + column) * 4
-      const value = Math.max(...[0, 1, 2].map((channel) => THREE.DataUtils.fromHalfFloat(data[at + channel]!)))
+      // luminance, because how much a picture lifts a room is how bright it
+      // is and not how much of its strongest channel there is: a saturated lens
+      // carries a third of the luminance of a pale one at the same reading
+      const [red, green, blue] = [0, 1, 2].map((channel) => THREE.DataUtils.fromHalfFloat(data[at + channel]!)) as [number, number, number]
+      const value = 0.2126 * red + 0.7152 * green + 0.0722 * blue
       whole += value * weight
       solid += weight
       if (elevation > 0) above += value * weight

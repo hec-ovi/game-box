@@ -1,10 +1,10 @@
 # @gb/furnish contract
 
-contractVersion: 0.13.0
+contractVersion: 0.14.0
 
 ## Purpose
 
-Dresses the inside of a building: every piece of furniture the generator can place and every thing a player can pick up off it, built from parameters to the cells of floor the room planner claims and to the height a body meets it at, walls that are a run of bays rather than one flat surface, a television playing a schedule computed from the clock, the machines on the desks with what each one is running printed on its glass, the camera on the wall, the gate of bars across a locked door and the same gate open, and the lit floor under whoever is dancing with the booth it is played from, in one of two interior languages, on floors and walls laid in a pattern and a finish that tile at real-world size.
+Dresses the inside of a building: every piece of furniture the generator can place and every thing a player can pick up off it, built from parameters to the cells of floor the room planner claims and to the height a body meets it at, walls that are a run of bays rather than one flat surface, a television playing a schedule computed from the clock, the machines on the desks with what each one is running printed on its glass, the camera on the wall, the gate of bars across a locked door and the same gate open, the lit floor under whoever is dancing with the booth it is played from, and a light standing in every one of those lit things so the room is lit by its own ceiling, in one of two interior languages, on floors and walls laid in a pattern and a finish that tile at real-world size.
 
 ## Inputs
 
@@ -27,7 +27,7 @@ Dresses the inside of a building: every piece of furniture the generator can pla
 
 | Param | Schema | Postconditions |
 |---|---|---|
-| `room(interior, charter?)` | `FurnishRoom` | that interior's own room, in the language its finish gives it: `dressing` to build it with and `decor` to add to what came back. See **Standing a room up** |
+| `room(interior, charter?)` | `FurnishRoom` | that interior's own room, in the language its finish gives it: `dressing` to build it with, `decor` to add to what came back, `lights` to light it by. See **Standing a room up** |
 | `FurnishRoom.finish` | `Finish` | the finish the room was dressed to: `interior.finish`, else the charter's, else the one this dressing's own language stands for |
 | `FurnishRoom.style` | `FurnishStyle` | the language the room came out in: `styleOf(finish)`, whatever language the dressing that made it was in |
 | `FurnishRoom.dressing` | `FurnishDressing` | paints this interior's own floor, walls and ceiling, drawn from its id, so the shop is not the same room as the flat above it |
@@ -36,6 +36,9 @@ Dresses the inside of a building: every piece of furniture the generator can pla
 | `FurnishRoom.contacts` | metres | every height in that room a body can put something down on, exactly: niche sills, shelf ledges and the booth's top |
 | `FurnishRoom.screens` | `Printed[]` | every machine in the interior: `machineId`, `propId` and the `program` printed on its glass, in file order |
 | `FurnishRoom.tiles` | `LitTile[]` | every lit tile of a dance floor: `roomId` and the middle of the tile in interior metres |
+| `FurnishRoom.lights` | `@gb/scene` `LightEmitter[]` | **what the room is lit by**: one emitter standing in each lit thing the room drew, in the interior's own metres. `cove` every `COVE_SPAN` metres of the lit channel over each wall, `strip`, `niche`, `booth` and `window` in the bays that carry one, `screen` at the glass of each machine, `dance` over each lit floor. Hand it to `@gb/scene`'s `InteriorBuild.lights.lit` |
+| `FIXTURE`, `COVE_SPAN` | candela per fixture, and 5 m | what each kind throws, and the most channel one cove light stands for. A fixture's `radius` is where it falls to 0.05 lux and never past 12 m, which is further than any room is wide. See **The light a room throws** |
+| `luminanceOf(hex)` | the luminance a colour carries in the renderer's working space | what a lit thing is authored by, because a strength times a colour is not a brightness |
 | `prop(prop)` | `THREE.Mesh` | one indexed mesh on the one shared material, origin at the centre of its base, front looking north, inside the cells `@gb/world` claims for it and no further. Geometry is shared with every other copy of that prop in that language |
 | `contactHeight(prop)` | metres, or nothing | how high the top of that piece is drawn: the number a till, a coffee machine or a screen is lifted by to stand on it, and the number the planner writes as `Furniture.lift`. Nothing for a piece nobody stands anything on |
 | `opened(prop)` | `THREE.Mesh`, or nothing | the same piece in its open state, for a piece that opens: the gate of bars with its leaf slid sideways into the wall beside the doorway, on the same material, inside the wall's own thickness, its opening clear. Nothing for a piece that does not open |
@@ -99,15 +102,16 @@ Nothing else can fail. Nothing here loads a model, so nothing can arrive missing
 
 ## Standing a room up
 
-Two lines beyond what a room already took, because a wall's bays are geometry and `@gb/scene` builds the shell:
+Three lines beyond what a room already took, because a wall's bays are geometry, what they burn is a list of lights, and `@gb/scene` builds the shell:
 
 ```ts
 const room = dressing.room(interior, world.charter(interior.kind))
 const built = buildInterior(world, interior, room.dressing)
 built.root.add(room.decor)
+built.lights.lit(room.lights)
 ```
 
-`room.dressing` in place of the plain one is what gives that interior its own floor and walls; `room.decor` is what makes the walls a run of bays instead of one surface. Leave either out and the room still builds, one flatter than the other. The charter is what a room's use is read through when the file left `Room.use` out; leave it out and such a room draws from its finish's row alone.
+`room.dressing` in place of the plain one is what gives that interior its own floor and walls; `room.decor` is what makes the walls a run of bays instead of one surface; `room.lights` is what those bays burn. Leave any of them out and the room still builds, one flatter than the other and, without the last, standing on the plain lamps `@gb/scene` hung in it. The charter is what a room's use is read through when the file left `Room.use` out; leave it out and such a room draws from its finish's row alone.
 
 ## Invariants
 
@@ -181,11 +185,20 @@ built.root.add(room.decor)
 
 - **One primitive.** Every piece and every bay is an extrusion of a rectangle with a radius on each corner, between two heights, with an edge treatment at each end. A full corner radius makes it a cylinder and an inset at one end makes it a taper, so a worktop, a leg, a plinth, a cushion, a light strip, a wall panel, a shelf ledge and a cup all come out of the same call. There is no second primitive and no model file.
 - **One material.** Colour, emission, roughness and metalness ride on the vertices, so the whole catalog, both languages, every carried thing and every wall in town draw with one `MeshStandardNodeMaterial`. A room of 21 pieces, 3 items and 80 bays is 25 meshes on 1 material, all indexed and all agreeing attribute for attribute, which is what `@gb/scene`'s `BatchedMesh` path needs to collapse an interior the way it collapsed the city.
-- Light is architecture, not a lamp: a lit trim, a screen, a chilled case, a niche strip and a wall rail are emissive faces authored above 1.
+- Light is architecture, not a lamp: a lit trim, a screen, a chilled case, a niche strip and a wall rail are emissive faces, and each one also publishes a light. See **The light a room throws**.
 - **Variation is per prop kind, not per instance.** One draw from a stream forked per language and per prop decides the edge profile, the corner radii, what holds the piece up and whether a strip is lit, and the wall is a kind like any other. So the chairs in a room match and every bay in a building is moulded the same way, which is what a real room looks like and what keeps geometry shared.
 - A wall bay is drawn at two points per rounded corner rather than the catalog's four. A bay's radius is capped by how thin it is, so a 6 mm fillet at four steps is triangles nobody can see: it is the whole difference between a moulded room costing 35,000 triangles and costing 19,000.
 - The two languages differ in palette and in taste, never in size: corpo is square in plan with chamfered edges, thin metal frames and cool white strips; home is radiused, moulded, on plinths, with warm coves. A corpo chair and a home chair put a body in the same place.
 - **Which language a room gets is the interior's finish, not the caller's choice.** `room(interior, charter?)` reads `interior.finish`, which `@gb/world` writes from the charter: `domestic` is `home`, and `civic`, `industrial`, `corporate` and `worn` are `corpo`. A dressing made in either language hands back the same room for the same interior, so a flat is moulded and warm whichever dressing the app happens to hold. A file from before finishes reads its charter's, and an interior with neither is dressed in the dressing's own language, the way `prop` and `surface` on an unbound dressing are, which is what the preview and the tests use. The table is exhaustive over `FINISHES`, so a new finish says which it is before it compiles. No building kind is read anywhere in the box.
+
+### The light a room throws
+
+- **Every lit thing publishes a light.** Emissive geometry draws itself and lights nothing, so a room that was all emissive had no light in it at all and the app lit it with one flat fill. `FurnishRoom.lights` is the other half: an emitter standing where each lit thing is drawn, in the interior's own metres, in the colour that thing burns, with a candela and a reach. A test holds each one to its own bay, so a fixture cannot drift off the thing it stands for.
+- **A lens is authored by how bright it reads, not by a multiplier.** A strength times a colour is not a brightness: `0xbdf0ff` carries 0.80 of luminance and `0xff6478` carries 0.32, so one strength over both made a corpo channel emit 2.57 and a home channel 1.02, one over the app's indoor bloom threshold and the other under it. `STRIP` is the luminance a channel emits and the strength is worked back from the colour, so both languages read as light. The corpo strength comes out at the 3.2 it was set at by hand.
+- **What a fixture throws is not the colour of its lens.** A lens is authored saturated so it reads as a line of light against a dark wall; the same hue as the room's only illuminant makes a home a red cave, because nothing in there is lit by anything else. `washed` lifts a fixture's colour 55% towards white, which keeps the hue and gives the surfaces their colour back. A screen throws what the pictures really average over a whole schedule, and a dance floor the four tile colours as one.
+- **The candela are set against what a room used to get.** They cannot be derived from the emissive: taken as radiance, two square metres of channel at 2.57 is 20 lumens, and a room is developed for some hundreds. So they are set so a room lands where it did under the flat fill. Measured over a town's twelve interiors, standing in each of its thirty-six rooms in turn, under `@gb/scene`'s twenty light budget: a floor takes a median 1.9 against 3.0 flat, a wall at eye height 1.5 against 0.97 to 1.26, and the spread across a floor runs 0.36 to 4.11 between the fifth and ninety-fifth percentile where the fill gave every point the same number.
+- **One cove light stands for at most `COVE_SPAN` metres of channel** and carries the candela of the stretch it stands for, so a ten metre run reads as a line and not as one hot spot in the middle of the wall. Five metres: shorter costs emitters a room's budget cannot hold, and a room's own walls are rarely longer, so most runs come out as one light either way.
+- **A fixture stands about a hand further into the room than its lens.** A channel is 3 cm off the wall and a light put there lays a hot line along the skirting under it; 12 cm out, the wash under it reads as a gradient.
 
 ### The surfaces
 
@@ -211,6 +224,8 @@ built.root.add(room.decor)
 Fixed, whatever size the town is. Both languages of the furniture catalog, 60 shapes in every screening they can carry and the gate in both its states, are 25,938 triangles and 2.14 MB of buffers; all 26 archetypes in all 3 casts are 21,344 triangles and 1.88 MB. Both are built together in about 38 ms in Node. The two probes are 16 KB each, prefiltered once per renderer and never again. A second bar and a thousand more items add objects, not buffers. A room's walls, its screens' prints and its dance floor are that room's own geometry, built when it is entered and thrown away with it.
 
 The pack is 48 KB on disk, five webp layers across four surfaces. Every layer is resized to 512, which is 1.40 MB resident with its mips, so the interior surfaces hold 6.99 MB of texture whatever size the town is. Two more images than the box carried before cost 24 KB of world file and 2.80 MB resident, and no draw and no triangle: a room in the preview is 11 draws and 121 triangles either way.
+
+The fixtures cost neither. A room of 80 bays publishes about 38 emitters, which is 38 small objects built with the walls that drew them and no geometry, no draw and no buffer; what they cost on screen is `@gb/scene`'s light budget and is charged there.
 
 Screens cost bytes and nothing else. Against the same catalog without them: no triangle and no draw anywhere moved, and the buffers went 1.70 MB to 1.81 MB and 1.70 MB to 1.80 MB, +220 KB in all, +6.5%. That is the four byte attribute on every vertex in the box (206 KB) plus the six screenings of the television (14 KB).
 
@@ -253,7 +268,7 @@ Every item geometry is indexed, on the one shared material and agreeing attribut
 
 ## How to modify this blackbox safely
 
-A prop's footprint or its contact height is `@gb/world`'s `PROP_SPECS`, which `@gb/forge` places from and this box builds to, so a change there is a change to both at once and the tests here measure the drawn triangles against it. **`footprintOf(prop)` is the whole answer to how much floor a piece needs**: every one of the 30 fills at least 85% of its declared rectangle on each axis and none of them exceeds it, so a planner sizes a slot from the table and never from the triangles. What a prop looks like is one file per family under `src/props/`, one exported builder per prop kind (`machine.ts` the four screens, `camera.ts`, `gate.ts`), all of them drawing through `Solid.block` in `src/build/solid.ts`, or through `src/build/bar.ts`, which is the same block laid on its side; nothing else may make geometry, and nothing in the box is loaded from a model file: the one `.glb` it reads carries four tiling images. Which language a finish is dressed in is `src/style/finish.ts` alone. A piece that opens is named in `OPENS` (`src/props/index.ts`) and its builder reads `Build.open`.
+A prop's footprint or its contact height is `@gb/world`'s `PROP_SPECS`, which `@gb/forge` places from and this box builds to, so a change there is a change to both at once and the tests here measure the drawn triangles against it. **`footprintOf(prop)` is the whole answer to how much floor a piece needs**: every one of the 30 fills at least 85% of its declared rectangle on each axis and none of them exceeds it, so a planner sizes a slot from the table and never from the triangles. What a lit thing throws is `src/lights/` alone: the table of candela, reach and wash in `fixtures.ts`, the wall's own fixtures in `walls.ts` and the machines' and the dance floor's in `room.ts`. How bright a lens reads is `STRIP` in `src/style/palette.ts`. What a prop looks like is one file per family under `src/props/`, one exported builder per prop kind (`machine.ts` the four screens, `camera.ts`, `gate.ts`), all of them drawing through `Solid.block` in `src/build/solid.ts`, or through `src/build/bar.ts`, which is the same block laid on its side; nothing else may make geometry, and nothing in the box is loaded from a model file: the one `.glb` it reads carries four tiling images. Which language a finish is dressed in is `src/style/finish.ts` alone. A piece that opens is named in `OPENS` (`src/props/index.ts`) and its builder reads `Build.open`.
 
 A machine's screen is `src/machines/`: `panel.ts` is where the glass is on each prop (the builder and the print both read it, so they cannot drift), `schematic.ts` reads what a camera sees off the document, `print.ts` lays every program on every machine of an interior, and `programs/` is one file per program (`ledger.ts`, `mail.ts`, `feed.ts`, `blank.ts`, `idle.ts`) over `programs/page.ts`, which is the glass as a program sees it and the one `print` call everything is drawn with. The inks are `src/style/lit.ts`. Changing what a ledger looks like is `ledger.ts` alone; moving a laptop's screen is one row of `PANELS`.
 

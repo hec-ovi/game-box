@@ -1,18 +1,20 @@
 import { Forge, OfflineNarrator } from '@gb/forge'
 import type { Plot, ResolvedCharter } from '@gb/world'
 import * as THREE from 'three'
-import { buildCity, Greybox, type BuildingSize, type CityBuild, type Dressing, type LightEmitter } from '../../src/index.ts'
+import { buildCity, Greybox, type BuildingSize, type BuildingStep, type CityBuild, type CityOptions, type Dressing, type LightEmitter } from '../../src/index.ts'
 
 /**
  * What a city costs with no browser: how long it takes to open, how many
- * meshes it is, what a camera at the spawn would submit, and what following
- * the player costs a frame. A draw is a mesh in the frustum, or a batch with
- * at least one visible instance in it; the triangles are those instances'
- * own, culled per instance the way three culls them.
+ * meshes it is, what it holds, what a camera at the spawn would submit, and
+ * what following the player costs a frame. A draw is a mesh in the frustum, or
+ * a batch with at least one visible instance in it; the triangles are those
+ * instances' own, culled per instance the way three culls them.
  *
- * Each dressing is measured twice: `whole`, with no far look, so every
- * building is dressed at open and drawn at every distance, and `lod`, with
- * the shell batched for every plot and the detail on the near ones only.
+ * Each dressing is measured three ways: `lod`, the streaming path, with the
+ * skyline for the whole town, the shell within `SHELL_RADIUS` and the detail
+ * within `DETAIL_RADIUS`; `all`, with a shell on every plot in the town, which
+ * is what a city cost before the skyline carried the far field; and `whole`,
+ * with no far look at all, which is what a dressing without one costs.
  *
  *   node game/scene/tools/bench/headless.ts 20
  */
@@ -62,6 +64,27 @@ class Dressed extends Greybox {
     }
     signs.push({ kind: 'screen', position: [0, size.height - 1, -size.depth / 2 - 0.3], colour: 0xffa040, intensity: 20, radius: 10 })
     return [...super.lights(plot, size), ...signs]
+  }
+}
+
+/**
+ * A greybox whose far look costs what a real kit's does: a band of geometry per
+ * storey rather than one box, so a tall building's shell is thousands of
+ * triangles and not twelve. It stands in for the shipped pack, which is where
+ * the far field's cost really lives; `game/prefab/tools/bench-city.ts` measures
+ * that one.
+ */
+class Kitted extends Dressed {
+  readonly #stone = new THREE.MeshStandardMaterial({ color: 0x6a6a70, name: 'stone' })
+
+  override shell(plot: Plot, size: BuildingSize, charter: ResolvedCharter): THREE.Object3D {
+    const group = super.shell(plot, size, charter)
+    for (let storey = 0; storey < plot.storeys; storey++) {
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(size.width / 2, size.width / 2, 0.4, 24), this.#stone)
+      band.position.y = 3 * storey + 2.8
+      group.add(band)
+    }
+    return group
   }
 }
 
@@ -125,9 +148,14 @@ function batched(batch: THREE.BatchedMesh, frustum: THREE.Frustum): { draws: num
   return { draws: triangles > 0 ? 1 : 0, triangles, held }
 }
 
-/** The camera at the spawn, looking the way the player opens their eyes. */
+/**
+ * The camera at the spawn, looking the way the player opens their eyes. Its
+ * far plane is the one the game gives it, which comes off the air rather than
+ * off the size of the map and is kilometres: the whole town is inside it, and
+ * what a heading does not reach is what the frustum throws away.
+ */
 function frustumAt(city: CityBuild): THREE.Frustum {
-  const camera = new THREE.PerspectiveCamera(70, 16 / 9, 0.1, 400)
+  const camera = new THREE.PerspectiveCamera(75, 16 / 9, 0.1, 4_000)
   camera.position.set(city.spawn.x, 1.7, city.spawn.z)
   camera.rotation.order = 'YXZ'
   camera.rotation.y = city.spawn.heading + Math.PI / 2
@@ -136,10 +164,13 @@ function frustumAt(city: CityBuild): THREE.Frustum {
   return new THREE.Frustum().setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse))
 }
 
-function costOf(city: CityBuild): { meshes: number; held: number; draws: number; triangles: number } {
+/** The batches the buildings are drawn out of, as against the ground, the paint and the rubbish. */
+const isBuilding = (name: string) => name.startsWith('city:') || name.startsWith('detail:')
+
+function costOf(city: CityBuild): { meshes: number; held: number; draws: number; triangles: number; heldBuildings: number; buildings: number } {
   const frustum = frustumAt(city)
   city.root.updateMatrixWorld(true)
-  const total = { meshes: 0, held: 0, draws: 0, triangles: 0 }
+  const total = { meshes: 0, held: 0, draws: 0, triangles: 0, heldBuildings: 0, buildings: 0 }
   city.root.traverse((child) => {
     if (!(child as THREE.Mesh).isMesh) return
     total.meshes++
@@ -147,46 +178,65 @@ function costOf(city: CityBuild): { meshes: number; held: number; draws: number;
     total.draws += cost.draws
     total.triangles += cost.triangles
     total.held += cost.held
+    if (!isBuilding(child.name)) return
+    total.buildings += cost.triangles
+    total.heldBuildings += cost.held
   })
   return total
 }
 
-/** A walk along +x from the spawn, `follow` every step: what the calls that cross a cell cost, and the ones that do not. */
-function walk(city: CityBuild): { steps: number; crossings: number; sameCellUs: number; crossingMs: number; worstCrossingMs: number } {
-  const same: number[] = []
-  const crossing: number[] = []
+/**
+ * A walk along +x from the spawn, `follow` every frame the way the game calls
+ * it, told the frame's own elapsed time so the rings take their backlog a few
+ * buildings at a time: what the worst frame of the walk costs, and the usual one.
+ */
+function walk(city: CityBuild): { frames: number; crossings: number; medianUs: number; ninetyNinthMs: number; worstMs: number } {
+  const took: number[] = []
   const cell = world.cellSize
+  let crossings = 0
   let last = Math.floor(city.spawn.x / cell)
   for (let metres = WALK.step; metres <= WALK.metres; metres += WALK.step) {
     const x = city.spawn.x + metres
     const now = Math.floor(x / cell)
-    const started = performance.now()
-    city.follow(x, city.spawn.z)
-    const took = performance.now() - started
-    if (now === last) same.push(took)
-    else crossing.push(took)
+    if (now !== last) crossings++
     last = now
+    const started = performance.now()
+    city.follow(x, city.spawn.z, 1 / 60)
+    took.push(performance.now() - started)
   }
-  const median = (list: number[]) => [...list].sort((a, b) => a - b)[Math.floor(list.length / 2)] ?? 0
+  const sorted = [...took].sort((a, b) => a - b)
   return {
-    steps: same.length + crossing.length,
-    crossings: crossing.length,
-    sameCellUs: Number((median(same) * 1000).toFixed(1)),
-    crossingMs: Number(median(crossing).toFixed(3)),
-    worstCrossingMs: Number(Math.max(0, ...crossing).toFixed(3)),
+    frames: took.length,
+    crossings,
+    medianUs: Number(((sorted[Math.floor(sorted.length / 2)] ?? 0) * 1000).toFixed(1)),
+    ninetyNinthMs: Number((sorted[Math.floor(sorted.length * 0.99)] ?? 0).toFixed(3)),
+    worstMs: Number((sorted.at(-1) ?? 0).toFixed(3)),
   }
 }
 
-function measure(name: string, dressing: Dressing): void {
-  const started = performance.now()
-  const city = buildCity(world, dressing)
-  const openMs = Number((performance.now() - started).toFixed(0))
-  const detailed = [...city.buildings.values()].filter((one) => one.detailed).length
-  console.log(JSON.stringify({ dressing: name, openMs, ...costOf(city), detailed, emitters: city.lights.emitters.length, walk: walk(city) }))
+/** How many buildings are drawn each way right now. */
+function stepsOf(city: CityBuild): Record<BuildingStep, number> {
+  const counted = { massing: 0, shell: 0, detail: 0 }
+  for (const building of city.buildings.values()) counted[building.step]++
+  return counted
 }
+
+function measure(name: string, dressing: Dressing, options: CityOptions = {}): void {
+  const started = performance.now()
+  const city = buildCity(world, dressing, options)
+  const openMs = Number((performance.now() - started).toFixed(0))
+  console.log(JSON.stringify({ dressing: name, openMs, ...costOf(city), ...stepsOf(city), emitters: city.lights.emitters.length, walk: walk(city) }))
+}
+
+/** Every plot shelled at open, which is what the city cost before the skyline carried the far field. */
+const EVERY: CityOptions = { shell: Number.POSITIVE_INFINITY }
 
 console.log(JSON.stringify({ blocks, cells: [world.grid.width, world.grid.height], plots: world.plots().length, interiors: world.interiors().length }))
-measure('greybox whole', whole(new Greybox()))
+measure('greybox all', new Greybox(), EVERY)
 measure('greybox lod', new Greybox())
-measure('dressed whole', whole(new Dressed()))
+measure('greybox whole', whole(new Greybox()))
+measure('dressed all', new Dressed(), EVERY)
 measure('dressed lod', new Dressed())
+measure('dressed whole', whole(new Dressed()))
+measure('kitted all', new Kitted(), EVERY)
+measure('kitted lod', new Kitted())

@@ -1,7 +1,7 @@
 import type { Furniture } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { buildInterior, CEILING_FILL, CEILING_HEIGHT, Greybox, type SurfacePart, type SurfaceSize } from '../src/index.ts'
+import { buildInterior, CEILING_HEIGHT, Greybox, type SurfacePart, type SurfaceSize } from '../src/index.ts'
 import { bar } from './bar.ts'
 
 /** The bar's shell, built for real, with whatever the test wants standing in it. */
@@ -60,23 +60,5 @@ describe('the shell of a room', () => {
     // the bar's street door is on the north wall, so that wall is asked for in two pieces and the rest whole
     expect(walls.filter((one) => one.size.u === w)).toHaveLength(3)
     expect(walls.every((one) => one.size.v === CEILING_HEIGHT && one.size.u > 0 && one.size.u <= w)).toBe(true)
-  })
-
-  it('lights the ceiling with a fill that reaches only what looks down', () => {
-    const { built } = room()
-    const fill = built.root.getObjectByName('fill') as THREE.DirectionalLight
-
-    expect(fill.isDirectionalLight).toBe(true)
-    expect(fill.intensity).toBe(CEILING_FILL)
-    expect(fill.castShadow).toBe(false)
-    // the target rides in the room, so the light shines straight up wherever the room is put
-    expect(fill.target.parent).toBe(built.root)
-    built.root.updateMatrixWorld(true)
-    const towards = fill.getWorldPosition(new THREE.Vector3()).sub(fill.target.getWorldPosition(new THREE.Vector3())).normalize()
-    expect(towards.toArray().map((n) => Math.round(n * 1000) / 1000)).toEqual([0, -1, 0])
-    // a face looking down takes all of it, a wall and a floor none
-    expect(Math.max(0, new THREE.Vector3(0, -1, 0).dot(towards))).toBe(1)
-    expect(Math.max(0, new THREE.Vector3(1, 0, 0).dot(towards))).toBe(0)
-    expect(Math.max(0, new THREE.Vector3(0, 1, 0).dot(towards))).toBe(0)
   })
 })

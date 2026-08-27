@@ -53,6 +53,13 @@ export interface Dressing {
    * street gets a plain dull one.
    */
   clutter?(): THREE.Material
+  /**
+   * One material for the skyline: every building past the shell radius as the
+   * box it occupies. The charter's `tint` rides on the vertices, so this is
+   * asked for once and never per building. Left out, the skyline gets a plain
+   * matte one.
+   */
+  massing?(): THREE.Material
 }
 
 /**

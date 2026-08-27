@@ -1,7 +1,7 @@
 import type { Plot, ResolvedCharter, World } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { buildCity, Greybox, type BuildingSize, type CityBuild, type Dressing, type LightEmitter } from '../src/index.ts'
+import { buildCity, Greybox, type BuildingSize, type BuildingStep, type CityBuild, type CityOptions, type Dressing, type LightEmitter } from '../src/index.ts'
 import { drawn, inView, looking } from './seen.ts'
 import { otherTown, town } from './town.ts'
 
@@ -72,13 +72,16 @@ function withoutShell(): Dressing {
   return dressing
 }
 
-const CHAINS: ReadonlyArray<{ how: string; dressing: () => Dressing }> = [
-  { how: 'publishes a shell', dressing: () => new Greybox() },
-  { how: 'publishes no shell at all', dressing: withoutShell },
-  { how: 'carries a shell that answers nothing', dressing: () => greyboxWith({ shell: () => undefined as unknown as THREE.Object3D }) },
-  { how: 'carries a shell that answers an empty object', dressing: () => greyboxWith({ shell: () => new THREE.Group() }) },
-  { how: 'answers an empty object for the whole building', dressing: () => greyboxWith({ building: () => new THREE.Group() }) },
-  { how: 'draws a building out of several materials, the way a kit does', dressing: () => new Kit() },
+/** Every way a dressing can answer, and which of the three steps that leaves a building standing at. */
+const CHAINS: ReadonlyArray<{ how: string; dressing: () => Dressing; stands: BuildingStep[] }> = [
+  { how: 'publishes a shell', dressing: () => new Greybox(), stands: ['massing', 'shell', 'detail'] },
+  // no near ring at all, so the far one draws the whole building
+  { how: 'publishes no shell at all', dressing: withoutShell, stands: ['massing', 'shell'] },
+  { how: 'carries a shell that answers nothing', dressing: () => greyboxWith({ shell: () => undefined as unknown as THREE.Object3D }), stands: ['massing', 'shell', 'detail'] },
+  { how: 'carries a shell that answers an empty object', dressing: () => greyboxWith({ shell: () => new THREE.Group() }), stands: ['massing', 'shell', 'detail'] },
+  // nothing to dress a near building in, so it stands as the shell it had
+  { how: 'answers an empty object for the whole building', dressing: () => greyboxWith({ building: () => new THREE.Group() }), stands: ['massing', 'shell'] },
+  { how: 'draws a building out of several materials, the way a kit does', dressing: () => new Kit(), stands: ['massing', 'shell', 'detail'] },
 ]
 
 /** Where the player stands, crossing the town cell by cell: east along the middle, then south down it. */
@@ -94,15 +97,25 @@ function* walk(world: World): Generator<{ x: number; z: number }> {
 const TURNS = [0, Math.PI / 2, Math.PI, -Math.PI / 2]
 const PITCHES = [0, 0.5, -0.35, 0.25]
 
+/**
+ * How far the rings reach. The towns here are a couple of hundred metres
+ * across, so the published radii would put the whole of one inside the shell
+ * ring and never draw a massing; the tight pair puts all three steps on screen
+ * at once, which is the case a camera can catch out.
+ */
+const RINGS: ReadonlyArray<CityOptions> = [{}, { detail: 16, shell: 48 }]
+
 describe('streaming a city round the player', () => {
   for (const chain of CHAINS) {
     it(`draws every building a camera reaches, and lights only the ones it draws, when the dressing ${chain.how}`, async () => {
-      for (const world of [await town(), await otherTown()]) {
-        const city = buildCity(world, chain.dressing(), { clutter: false })
+      const stood = new Set<string>()
+      for (const [world, rings] of [await town(), await otherTown()].flatMap((one) => RINGS.map((how) => [one, how] as const))) {
+        const city = buildCity(world, chain.dressing(), { clutter: false, ...rings })
         expect(world.plots().length).toBeGreaterThan(0)
 
         for (const at of [{ x: city.spawn.x, z: city.spawn.z }, ...walk(world)]) {
           city.follow(at.x, at.z)
+          for (const building of city.buildings.values()) stood.add(building.step)
           for (const [turn, yaw] of TURNS.entries()) {
             const camera = looking(at.x, at.z, yaw, PITCHES[turn]!)
             const where = `${world.id} from ${at.x.toFixed(0)},${at.z.toFixed(0)} facing ${((yaw * 180) / Math.PI).toFixed(0)}`
@@ -122,12 +135,14 @@ describe('streaming a city round the player', () => {
           }
         }
       }
+      // a walk that never drew a massing would prove nothing about the far field
+      expect(stood).toEqual(new Set(chain.stands))
     })
   }
 
   it('never swaps the buffers a batch is drawn through without telling the renderer', async () => {
     const world = await otherTown()
-    const city = buildCity(world, new Kit(), { clutter: false })
+    const city = buildCity(world, new Kit(), { clutter: false, detail: 16, shell: 48 })
     new THREE.Scene().add(city.root)
 
     let grew = 0

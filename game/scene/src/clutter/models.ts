@@ -1,6 +1,6 @@
 import { Rng } from '@gb/kit'
 import * as THREE from 'three'
-import { Assembly } from './assembly.ts'
+import { Assembly } from '../assembly.ts'
 import { CLUTTER, type ClutterKind } from './catalog.ts'
 
 /**

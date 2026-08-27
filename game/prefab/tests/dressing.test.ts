@@ -124,7 +124,7 @@ describe('dressing a plot', () => {
     expect(box.min.y).toBeCloseTo(0)
   })
 
-  it('gives @gb/scene something it can batch: every shell in one draw, and the walls and glass near the player in one each', () => {
+  it('gives @gb/scene something it can batch: the skyline and every shell in one draw each, and the walls and glass near the player in one each', () => {
     const world = World.create({ name: 'T', theme: 'neon', seed: 's', width: 40, height: 40 })
     for (let i = 0; i < 6; i++) {
       const added = world.addPlot({
@@ -141,7 +141,8 @@ describe('dressing a plot', () => {
     const city = buildCity(world, dressing)
     city.follow(12, 18)
     const batches = city.root.children.filter((child) => (child as THREE.BatchedMesh).isBatchedMesh && child.name !== 'clutter')
-    expect(batches.map((batch) => batch.name)).toEqual([`city:${SHELL_MATERIAL_NAME}`, `detail:${MATERIAL_NAME}`, `detail:${GLASS_MATERIAL_NAME}`])
+    // the skyline is @gb/scene's own, one draw for the town whatever a building costs
+    expect(batches.map((batch) => batch.name)).toEqual(['city:massing', `city:${SHELL_MATERIAL_NAME}`, `detail:${MATERIAL_NAME}`, `detail:${GLASS_MATERIAL_NAME}`])
     expect(city.buildings.size).toBe(6)
   })
 

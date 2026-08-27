@@ -2,21 +2,25 @@ import { Forge, OfflineNarrator } from '@gb/forge'
 import type { World } from '@gb/world'
 import * as THREE from 'three'
 import { WebGPURenderer } from 'three/webgpu'
-import { buildCity, buildInterior, CEILING_FILL, CEILING_HEIGHT, Greybox, LIVE_LIGHTS, type Dressing, type SurfacePart } from '../../src/index.ts'
+import { buildCity, buildInterior, CEILING_HEIGHT, Greybox, LIVE_LIGHTS, ROOM_SHADOWS, type Dressing, type SurfacePart } from '../../src/index.ts'
 
 /**
  * Two measurements, chosen by `?view=`:
  *
  * `street` (default): the city at `?blocks=N` (default 2), greyboxed, the
  * camera at the spawn, `?lights=N` of the buildings' emitters live as point
- * lights, `?gl=1` for the WebGL2 backend, `?whole=1` for every building
- * whole at every distance instead of the shells past the detail radius.
+ * lights, `?gl=1` for the WebGL2 backend, `?whole=1` for every building whole
+ * at every distance instead of the shells past the detail radius, and
+ * `?shell=all` for a shell on every plot in the town rather than the skyline
+ * past `SHELL_RADIUS`.
  * The frame is timed off requestAnimationFrame, so run the browser with its
  * frame rate uncapped or every answer is the vsync.
  *
- * `ceiling`: one room, its lid painted the colour `@gb/furnish` publishes for
- * a corpo ceiling, lit by the fill alone, read back in linear light where the
- * camera looks straight up at it. `?fill=0` takes the fill away.
+ * `room`: one room, its lid and walls painted the colours `@gb/furnish`
+ * publishes for a corpo interior, lit by nothing but its own fixtures. The
+ * floor is read back in linear light from straight above, so the spread across
+ * it is the answer, and the frame is timed from standing in the doorway.
+ * `?casters=N` is how many of the room's lights cast (0 for none).
  *
  * Both write what they found to `window.bench` and the page title when done.
  */
@@ -82,8 +86,14 @@ async function street(): Promise<void> {
   const budget = Number(query.get('lights') ?? LIVE_LIGHTS)
   const world = await city(blocks)
   const dressing = query.get('whole') === '1' ? whole(new Greybox()) : new Greybox()
+  const reach = query.get('shell')
   const opened = performance.now()
-  const built = buildCity(world, dressing, { lights: budget, night: 1, wetness: 0.6 })
+  const built = buildCity(world, dressing, {
+    lights: budget,
+    night: 1,
+    wetness: 0.6,
+    ...(reach ? { shell: reach === 'all' ? Number.POSITIVE_INFINITY : Number(reach) } : {}),
+  })
   const openMs = Number((performance.now() - opened).toFixed(0))
 
   const scene = new THREE.Scene()
@@ -130,8 +140,9 @@ async function street(): Promise<void> {
     blocks,
     plots: world.plots().length,
     whole: query.get('whole') === '1',
+    shell: reach ?? 'the published reach',
     openMs,
-    detailed: [...built.buildings.values()].filter((one) => one.detailed).length,
+    steps: [...built.buildings.values()].reduce<Record<string, number>>((counted, one) => ({ ...counted, [one.step]: (counted[one.step] ?? 0) + 1 }), {}),
     emitters: built.lights.emitters.length,
     lights: budget,
     live: built.lights.lights.filter((light) => light.visible).length,
@@ -142,46 +153,79 @@ async function street(): Promise<void> {
   })
 }
 
-async function ceiling(): Promise<void> {
-  const fill = Number(query.get('fill') ?? CEILING_FILL)
+async function room(): Promise<void> {
+  const casters = Number(query.get('casters') ?? ROOM_SHADOWS.casters)
   const world = await city(1)
   const interior = world.interiors()[0]!
-  const room = buildInterior(world, interior, new CorpoLid())
-  const light = room.root.getObjectByName('fill') as THREE.DirectionalLight
-  light.intensity = fill
+  const built = buildInterior(world, interior, new CorpoLid())
+  for (const [at, light] of built.lights.lights.entries()) light.castShadow = at < casters
 
   const scene = new THREE.Scene()
   scene.background = new THREE.Color(0x000000)
-  scene.add(room.root)
-
-  const size = 64
-  const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 20)
-  camera.position.set(interior.size.w / 2, 1.6, interior.size.h / 2)
-  camera.lookAt(interior.size.w / 2, CEILING_HEIGHT, interior.size.h / 2)
+  scene.add(built.root)
 
   const made = renderer()
   await made.init()
+  made.shadowMap.enabled = true
+  made.shadowMap.type = THREE.PCFSoftShadowMap
   made.toneMapping = THREE.NoToneMapping
+
+  // what the light lays across the floor, from just under the lid looking down
+  const above = new THREE.OrthographicCamera(0, interior.size.w, interior.size.h, 0, 0.1, CEILING_HEIGHT)
+  above.position.set(0, CEILING_HEIGHT - 0.05, 0)
+  above.rotation.set(-Math.PI / 2, 0, 0)
+  above.updateProjectionMatrix()
+  const size = 64
   const target = new THREE.RenderTarget(size, size, { type: THREE.FloatType })
   made.setRenderTarget(target)
-  made.render(scene, camera)
-  const pixel = await made.readRenderTargetPixelsAsync(target, size / 2, size / 2, 1, 1)
+  made.render(scene, above)
+  const pixels = await made.readRenderTargetPixelsAsync(target, 0, 0, size, size)
   made.setRenderTarget(null)
-  made.render(scene, camera)
 
-  const lid = new THREE.Color(0x4a4d52)
+  const lit: number[] = []
+  for (let at = 0; at < size * size; at++) {
+    const light = 0.2126 * Number(pixels[at * 4]) + 0.7152 * Number(pixels[at * 4 + 1]) + 0.0722 * Number(pixels[at * 4 + 2])
+    if (light > 0) lit.push(light)
+  }
+  lit.sort((one, two) => one - two)
+  const quantile = (q: number) => Number((lit[Math.min(lit.length - 1, Math.floor(q * lit.length))] ?? 0).toFixed(5))
+
+  // and what it costs to stand in, shadows and all
+  const camera = new THREE.PerspectiveCamera(75, innerWidth / Math.max(1, innerHeight), 0.1, 60)
+  camera.position.set(built.entrance.x + built.inward.x * 1.2, 1.6, built.entrance.z + built.inward.z * 1.2)
+  camera.lookAt(interior.size.w / 2, 1.2, interior.size.h / 2)
+  const frames: number[] = []
+  let last = performance.now()
+  for (let frame = 0; frame < 120; frame++) {
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    made.render(scene, camera)
+    const now = performance.now()
+    if (frame > 20) frames.push(now - last)
+    last = now
+  }
+  frames.sort((one, two) => one - two)
+
+  let meshes = 0
+  built.root.traverse((child) => {
+    if ((child as THREE.Mesh).isMesh) meshes++
+  })
+
   done({
-    view: 'ceiling',
+    view: 'room',
     gpu: gpuOf(made),
-    fill,
-    lidLinear: [lid.r, lid.g, lid.b].map((n) => Number(n.toFixed(4))),
-    predictedLinear: [lid.r, lid.g, lid.b].map((n) => Number(((n * fill) / Math.PI).toFixed(4))),
-    readLinear: [pixel[0], pixel[1], pixel[2]].map((n) => Number(Number(n).toFixed(4))),
-    readSrgb: [pixel[0], pixel[1], pixel[2]].map((n) => Number(new THREE.Color(Number(n), 0, 0).convertLinearToSRGB().r.toFixed(3))),
+    interior: interior.id,
+    size: [interior.size.w, interior.size.h],
+    meshes,
+    fixtures: built.lights.fixtures.length,
+    live: built.lights.lights.filter((light) => light.visible).length,
+    casters,
+    floorLinear: { p05: quantile(0.05), median: quantile(0.5), p95: quantile(0.95) },
+    floorSpread: Number((quantile(0.95) / Math.max(quantile(0.05), 1e-6)).toFixed(2)),
+    frameMs: Number(frames[Math.floor(frames.length / 2)]!.toFixed(3)),
   })
 }
 
-;(query.get('view') === 'ceiling' ? ceiling() : street()).catch((error: unknown) => {
+;(query.get('view') === 'room' ? room() : street()).catch((error: unknown) => {
   out.textContent = String(error)
   document.title = 'failed'
 })

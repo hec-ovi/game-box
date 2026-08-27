@@ -33,7 +33,7 @@ export function printScreens(solid: Solid, interior: Interior, seed: string): Pr
     if (!piece.machine || !isMachine(piece.prop)) continue
     const top = PROP_SPECS[piece.prop].height ?? 0
     const glass = glassOf(PANELS[piece.prop], top)
-    const frame = placeOf(piece).multiply(glassFrame(piece.prop, top))
+    const frame = pieceFrame(piece).multiply(glassFrame(piece.prop, top))
     const program = piece.machine.program
 
     solid.in(frame, () =>
@@ -52,7 +52,7 @@ export function printScreens(solid: Solid, interior: Interior, seed: string): Pr
 }
 
 /** Where a piece stands in the interior, the way `@gb/scene` places it: at its position and lift, turned by its compass heading. */
-function placeOf(piece: Interior['furniture'][number]): THREE.Matrix4 {
+export function pieceFrame(piece: Interior['furniture'][number]): THREE.Matrix4 {
   return new THREE.Matrix4().compose(
     new THREE.Vector3(piece.pos.x, piece.lift ?? 0, piece.pos.y),
     new THREE.Quaternion().setFromAxisAngle(UP, (-piece.rot * Math.PI) / 180),

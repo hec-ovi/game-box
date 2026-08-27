@@ -3,6 +3,8 @@ import { GameClock } from '@gb/play'
 import { World } from '@gb/world'
 import type * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
+import { COVE_SPAN, FIXTURE, FURNISH_STYLES, LIT, PALETTES, WALL, luminanceOf, type FurnishStyle } from '@gb/furnish'
+import { METRICS } from '@gb/world'
 import { DAY, INDOORS, NIGHT } from '../src/night.ts'
 import { Sky } from '../src/sky.ts'
 import { Bench } from './support/bench.ts'
@@ -103,4 +105,43 @@ describe('what lights the city', () => {
     // a halo that reaches past its own sign reads as fog on the lens
     expect(NIGHT.radius).toBeLessThan(DAY.radius)
   })
+
+  it('glows indoors at what is burning, and not at what the burning lights', () => {
+    // the bloom gate is a hard one: over the threshold a pixel goes into the
+    // halo whole, so the number has to sit between the brightest thing in a
+    // room that is not a light and the dimmest thing that is
+    expect(INDOORS.strength).toBeGreaterThan(0)
+
+    for (const style of FURNISH_STYLES) {
+      const palette = PALETTES[style]
+      // what the room's own channel emits, in both languages
+      const channel = emits(palette.glow)
+      expect(channel, style).toBeGreaterThan(INDOORS.threshold)
+      // what a screen and a printed line emit, which are pictures and not lamps
+      expect(emits(palette.screen), style).toBeLessThan(INDOORS.threshold)
+      expect(emits(LIT.paper), style).toBeLessThan(INDOORS.threshold)
+      // and the brightest lit surface a room makes: the pale top of a worktop
+      // standing directly under that channel
+      expect(worktopUnderACove(palette), style).toBeLessThan(INDOORS.threshold)
+    }
+  })
 })
+
+/** The luminance a lit look emits, the way the bloom's high pass reads it. */
+function emits(look: { glow?: number; glowStrength?: number }): number {
+  return luminanceOf(look.glow!) * (look.glowStrength ?? 1)
+}
+
+/**
+ * The radiance off a worktop standing directly under a lit channel: the
+ * brightest thing in a room that is not itself a light. The channel is at the
+ * height `@gb/furnish` draws it, the worktop at the height `@gb/world` says a
+ * body meets it, and the light falls off the way the renderer's does.
+ */
+function worktopUnderACove(palette: (typeof PALETTES)[FurnishStyle]): number {
+  const cove = { y: WALL.rail.under - 0.03, out: 0.12 }
+  const up = cove.y - METRICS.furniture.worktopHeight
+  const away = Math.hypot(0.3 - cove.out, up)
+  const lux = ((FIXTURE.cove * COVE_SPAN) * (up / away)) / (away * away)
+  return (luminanceOf(palette.top.colour) * lux) / Math.PI
+}

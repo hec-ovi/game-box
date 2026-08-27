@@ -193,9 +193,10 @@ export class Buildings {
   /**
    * The room, standing or built again. `@gb/scene` builds it with the dressing
    * the city was built with, so the art of this one interior is aimed at it for
-   * the length of the build: the shell is the scene's and the bays standing on
-   * its walls are the furniture's. A room that was let go comes back as the
-   * file wrote it, so everything this playthrough did to it goes on again.
+   * the length of the build: the shell is the scene's, the bays standing on its
+   * walls are the furniture's, and so is the light they throw. A room that was
+   * let go comes back as the file wrote it, so everything this playthrough did
+   * to it goes on again.
    */
   #build(interior: Interior): InteriorBuild | undefined {
     const standing = this.room(interior.id)
@@ -209,7 +210,12 @@ export class Buildings {
     // they can be looked up; a room built again is dressed again, and the set
     // it hands back this time is the one with the bodies now on the floor
     this.#remember(interior.id, room?.dressing)
-    if (room) built.root.add(room.decor)
+    if (room) {
+      built.root.add(room.decor)
+      // the room stands on its own fixtures from here: the lit channel over its
+      // walls, its strips, its niches and its screens, where the art drew them
+      built.lights.lit(room.lights)
+    }
     this.#asLeft(built, interior.id)
     for (const [npcId, body] of built.people) body.visible = !this.#away.has(npcId)
     return built

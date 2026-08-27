@@ -1,3 +1,4 @@
+import type { LightEmitter } from '@gb/scene'
 import type { Finish, Interior } from '@gb/world'
 import * as THREE from 'three'
 import { Solid } from './build/solid.ts'
@@ -5,6 +6,7 @@ import { layDanceFloor, type LitTile } from './dance/floor.ts'
 import type { RoomDress } from './dress.ts'
 import type { FurnishDressing } from './dressing.ts'
 import type { FurnishLibrary } from './kit/library.ts'
+import { danceFixtures, screenFixtures } from './lights/room.ts'
 import { printScreens, type Printed } from './machines/print.ts'
 import type { FurnishStyle } from './style/palette.ts'
 import { buildWalls, type PlacedBay } from './walls/build.ts'
@@ -25,6 +27,9 @@ import { buildWalls, type PlacedBay } from './walls/build.ts'
  *   under its dancers. One indexed mesh on the one shared material, in the
  *   interior's own coordinates, so it goes straight into what `buildInterior`
  *   hands back and costs one draw however much of it there is.
+ * - `lights` is what all of that burns: a light emitter standing in every lit
+ *   thing the room drew, so the room is lit by its own ceiling rather than by a
+ *   fill from nowhere.
  *
  * ```ts
  * const room = dressing.room(interior)
@@ -57,6 +62,8 @@ export class FurnishRoom {
   readonly screens: readonly Printed[]
   /** Every lit tile of a dance floor, in interior metres. */
   readonly tiles: readonly LitTile[]
+  /** What this room is lit by: every fixture in it, in interior metres. */
+  readonly lights: readonly LightEmitter[]
   readonly triangles: number
 
   constructor(kit: FurnishLibrary, dressing: FurnishDressing, dress: RoomDress, interior: Interior) {
@@ -79,6 +86,7 @@ export class FurnishRoom {
     this.contacts = walls.contacts
     this.screens = screens
     this.tiles = tiles
+    this.lights = [...walls.lights, ...screenFixtures(interior), ...danceFixtures(tiles)]
     this.triangles = solid.triangles
   }
 

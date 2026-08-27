@@ -13,11 +13,13 @@
  * wall faces.
  */
 import { Rng } from '@gb/kit'
+import type { LightEmitter } from '@gb/scene'
 import type { Interior } from '@gb/world'
 import * as THREE from 'three'
 import type { Solid } from '../build/solid.ts'
 import type { RoomDress } from '../dress.ts'
 import { variantOf } from '../style/variant.ts'
+import { wallFixtures } from '../lights/walls.ts'
 import { BAY_SPECS, type BayKind } from './bays.ts'
 import { BAY_DRAWS, drawRail, type BayFrame } from './draw.ts'
 import { planInterior } from './plan.ts'
@@ -46,6 +48,8 @@ export interface BuiltWalls {
   readonly bays: readonly PlacedBay[]
   /** Every height in this room a body can put something down on, exactly. */
   readonly contacts: readonly number[]
+  /** What every lit bay and every stretch of the lit channel throws, in interior metres. */
+  readonly lights: readonly LightEmitter[]
 }
 
 const UP = new THREE.Vector3(0, 1, 0)
@@ -66,7 +70,9 @@ export function buildWalls(solid: Solid, interior: Interior, dress: RoomDress, s
   const contacts = new Set<number>()
   const standsOn = (height: number): void => void contacts.add(height)
 
-  for (const planned of planInterior(interior, dress, seed, topOf)) {
+  const plan = planInterior(interior, dress, seed, topOf)
+
+  for (const planned of plan) {
     const { run } = planned
 
     for (const [at, band] of planned.bands.entries()) {
@@ -103,7 +109,11 @@ export function buildWalls(solid: Solid, interior: Interior, dress: RoomDress, s
     }
   }
 
-  return { bays, contacts: [...contacts].sort((one, two) => one - two) }
+  return {
+    bays,
+    contacts: [...contacts].sort((one, two) => one - two),
+    lights: wallFixtures(plan, variant.palette),
+  }
 }
 
 /** A bay's own frame, standing on the wall at `along` metres down the run. */

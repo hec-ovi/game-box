@@ -1,12 +1,21 @@
-import type { Plot, World } from '@gb/world'
+import type { Plot } from '@gb/world'
 
 /**
  * How far from the player a building is drawn in detail and a room is kept
  * built, in metres. Signs and lit windows are read from the pavement and
  * across a street, not from the next district; past this the shell carries
- * the silhouette.
+ * the walls and the roof.
  */
 export const DETAIL_RADIUS = 64
+
+/**
+ * How far from the player a building wears the shell its dressing drew, in
+ * metres: four times the detail, which is about four blocks of a forged city.
+ * Past it the building is its massing, so the far half of a town costs its
+ * skyline rather than its facades. `CityOptions.shell` moves it for a machine
+ * that can pay for more.
+ */
+export const SHELL_RADIUS = 256
 
 /** A cell of the city grid: where the player is, to the cell. */
 export interface Cell {
@@ -34,9 +43,4 @@ export function isNear(plot: Plot, cell: Cell, radius: number, cellSize: number)
   const dx = Math.max(plot.rect.x * cellSize - px, 0, px - (plot.rect.x + plot.rect.w) * cellSize)
   const dz = Math.max(plot.rect.y * cellSize - pz, 0, pz - (plot.rect.y + plot.rect.h) * cellSize)
   return dx * dx + dz * dz <= radius * radius
-}
-
-/** Every plot near that cell, in the order the world lists them. */
-export function nearPlots(world: World, cell: Cell, radius: number): Plot[] {
-  return world.plots().filter((plot) => isNear(plot, cell, radius, world.cellSize))
 }

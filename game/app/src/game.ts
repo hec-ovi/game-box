@@ -632,6 +632,9 @@ export class Game {
     // the camera last, so driving is seen from behind the car: the seat has
     // just put the eye at the windscreen and the chase view moves it back
     this.#chase.follow()
+    // and indoors the room's own fixtures take their turn of the budget, off
+    // where the player is standing in the room's own metres
+    this.#buildings.inside?.lights.follow(this.#body.position.x, this.#body.position.z, seconds)
     mark('player')
     // the street only carries on while the player is out in it
     if (this.#buildings.outdoors) {

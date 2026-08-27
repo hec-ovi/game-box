@@ -1,7 +1,7 @@
 import { World } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { buildCity, Greybox } from '../src/index.ts'
+import { buildCity, Greybox, type BuildingSize } from '../src/index.ts'
 import { bigTown, town } from './town.ts'
 
 /** What one city costs to draw, counted the way a renderer counts it. */
@@ -84,15 +84,45 @@ describe('what a city costs', () => {
     // in it hides the ring altogether
     const town = cost(root, (name) => name !== 'mountains')
 
-    // measured: 64,848 for 141 buildings, ground, kerbs, paint, the stand-in
+    // measured: 71,302 for 142 buildings, ground, kerbs, paint, the stand-in
     // ring, the wet street surface and its rubbish, of which 24,192 is the
-    // ring. Swept it is 33,108: the rubbish is 31,740 of it, and it scales with
-    // paved area rather than with plots, which is why the budget moved rather
-    // than the rubbish being thinned to fit a per-plot number. A greybox
-    // building is a box and a door slab, so this is the floor a real kit is
-    // measured against, not a target
-    expect(triangles).toBeLessThan(70_000)
+    // ring and 37,452 the rubbish. The rubbish scales with paved area rather
+    // than with plots, which is why the budget moved rather than the rubbish
+    // being thinned to fit a per-plot number. The buildings are 5,112 of it:
+    // 1,704 of skyline (twelve triangles a plot, the whole town), the rest the
+    // shells and the detail round the spawn. A greybox building is a box and a
+    // door slab, so this is the floor a real kit is measured against, not a
+    // target
+    expect(triangles).toBeLessThan(75_000)
     expect(town.triangles / world.plots().length).toBeLessThan(400)
+  })
+
+  it('costs the skyline for the far field, whatever a building costs to draw', async () => {
+    const world = await bigTown()
+    const heavy = new THREE.MeshStandardMaterial({ color: 0x808080 })
+    // a 32 by 24 sphere is 1,472 triangles: a hundred times what a plot costs
+    // in the skyline, and what a real kit's shell is nearer to
+    const lump = 1_472
+
+    class Heavy extends Greybox {
+      override shell(plot: Parameters<Greybox['shell']>[0], size: BuildingSize, charter: Parameters<Greybox['shell']>[2]): THREE.Object3D {
+        const group = super.shell(plot, size, charter)
+        group.add(new THREE.Mesh(new THREE.SphereGeometry(size.width / 2, 32, 24), heavy))
+        return group
+      }
+    }
+
+    const buildings = (name: string) => name.startsWith('city:') || name.startsWith('detail:')
+    const plain = buildCity(world, new Greybox(), { detail: 24, shell: 72 })
+    const dear = buildCity(world, new Heavy(), { detail: 24, shell: 72 })
+    const worn = [...plain.buildings.values()].filter((one) => one.step !== 'massing').length
+    const near = [...plain.buildings.values()].filter((one) => one.detailed).length
+
+    // only the buildings in the rings pay: the far field is the same skyline
+    // either way, so the town's cost is its neighbourhood and nothing else
+    expect(worn).toBeLessThan(world.plots().length / 2)
+    expect(cost(dear.root, buildings).triangles - cost(plain.root, buildings).triangles).toBe(lump * (worn + near))
+    expect(cost(plain.root, (name) => name === 'city:massing').triangles).toBe(world.plots().length * 12)
   })
 
   it('takes another building without rebuilding the city', () => {
@@ -137,7 +167,10 @@ describe('what a city costs', () => {
     for (const batch of all) expect(batch.perObjectFrustumCulled, batch.name).toBe(true)
 
     const buildings = all.filter((batch) => batch.userData['plots'] !== undefined)
-    const drawnFrom = (building: { detailed: boolean }) => buildings.filter((batch) => batch.name.startsWith(building.detailed ? 'detail:' : 'city:'))
+    const drawnFrom = (building: { step: string }) =>
+      buildings.filter((batch) =>
+        building.step === 'detail' ? batch.name.startsWith('detail:') : building.step === 'massing' ? batch.name === 'city:massing' : batch.name.startsWith('city:') && batch.name !== 'city:massing',
+      )
     const instancesOf = (plotId: string, list: THREE.BatchedMesh[]) =>
       list.flatMap((batch) => (batch.userData['plots'] as string[]).map((id, at) => ({ id, batch, at })).filter((one) => one.id === plotId))
     for (const plot of [world.plots()[0]!, world.plots().at(-1)!]) {
