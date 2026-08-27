@@ -48,7 +48,10 @@ written with a segment left off.
 
 The model a request gets when it names none belongs to the upstream, not to the
 request path: `default` for a server of your own, and for OpenRouter the model
-named in `src/providers/openrouter.ts`.
+named in `src/providers/openrouter.ts`. A command-line agent runs the model its
+provider configuration names whatever the request says, because a model name in
+a request is a word out of an HTTP service's catalogue and means nothing to an
+agent installed here.
 
 ## Inputs
 

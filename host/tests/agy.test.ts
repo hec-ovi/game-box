@@ -127,6 +127,17 @@ describe('a job pointed at a command', () => {
     assert.equal(body.salvaged, undefined, 'a call asked for as a schema is the answer by design, not a salvage')
   })
 
+  it('runs the model its provider names, whatever model the request asks for', async () => {
+    await route('call')
+
+    // the game asks a server of its own for `default`, and an agent installed
+    // here has never heard of it: handed on, it exits 1 with nothing to say
+    const body = await (await ask({ ...(forced() as object), model: 'crash' })).json()
+
+    assert.ok(chatResponseContract.is(body), `response off-contract: ${JSON.stringify(body)}`)
+    assert.equal(body.choices[0]?.message.tool_calls?.[0]?.function.name, 'echo_input')
+  })
+
   // The command enforces the schema on its own answer, but a run can still end
   // in prose: its own turn timed out, or it answered without the tool. The JSON
   // in that prose is still the call it was.

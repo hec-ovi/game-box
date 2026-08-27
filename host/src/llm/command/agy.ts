@@ -9,6 +9,13 @@
  * over stdin came back in 6.0 s wall clock. The schema goes to a file in the
  * scratch directory for the same reason.
  *
+ * It runs the model its own configuration names, never the one the request
+ * carries: a model name in a request is a word out of an HTTP service's
+ * catalogue, and the game sends `default` for a server of its own, which an
+ * agent on this machine has never heard of. Measured on 2026-08-27: `--model
+ * default` exits 1 with nothing on stderr, which is how a whole build came
+ * back as 21 refusals in 24 calls.
+ *
  * A forced call is asked for with `--json-schema`, which agy holds its answer
  * to. The enforced answer is `result.structured_output`, not `result.response`:
  * the text carries two extra fields (`toolAction`, `toolSummary`) that agy adds
@@ -60,7 +67,7 @@ export class Agy {
         tool === undefined ? undefined : scratch.file(SCHEMA_FILE, `${JSON.stringify(grammarSchema(tool.function.parameters))}\n`)
       const ended = await new Child({
         binary: this.#engine.binary,
-        args: this.#args(request.model ?? this.#engine.model, schema),
+        args: this.#args(this.#engine.model, schema),
         stdin: `${JSON.stringify(turn(promptOf(request.messages)))}\n`,
         cwd: scratch.dir,
         env: safeEnvironment(process.env),

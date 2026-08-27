@@ -11,7 +11,7 @@ export interface CommandEngine {
   readonly transport: 'command'
   /** The binary, by name on PATH or as a path to it. */
   readonly binary: string
-  /** The model asked for when the caller names none. */
+  /** The model it runs. A request's own model name is an HTTP service's word and never reaches it. */
   readonly model: string
   /** How long one run may take before its process group is killed. */
   readonly timeoutMs: number
