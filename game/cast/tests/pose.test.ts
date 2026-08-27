@@ -327,7 +327,9 @@ describe('what a spawned person is doing', () => {
         }
       }
     },
-    60_000,
+    // every clip against every gesture, sampled frame by frame: 62 s on this
+    // machine, so the cap is not a stopwatch on a busy one
+    120_000,
   )
 })
 
