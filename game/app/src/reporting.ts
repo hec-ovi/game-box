@@ -2,6 +2,7 @@ import type { Carried, Hud, OwnedPlace, SettingsView } from '@gb/hud'
 import type { PlayerState } from '@gb/play'
 import type { Change, Objective, QuestKind, QuestLog, Reward } from '@gb/quest'
 import type { World } from '@gb/world'
+import type { Ai } from './ai.ts'
 import { codexOf, type FaceBook } from './codex.ts'
 import type { Conditions } from './conditions.ts'
 import { marked, offered, type Marked, type Whereabouts } from './places.ts'
@@ -24,6 +25,7 @@ export class Reporting {
   #hud: Hud
   #conditions: Conditions
   #view: View | undefined
+  #ai: Ai | undefined
   #out: Whereabouts
   #changed: () => void
   #paid: (reward: Reward) => void
@@ -40,6 +42,8 @@ export class Reporting {
     conditions: Conditions
     /** What the player set about the screen. Without one the tab reads its own defaults: the corner view on, the game in a window. */
     view?: View
+    /** Which AI runs which job. Without one, and until the service answers, the tab draws none of it. */
+    ai?: Ai
     /** Where somebody out walking is, for the pins. Nobody is out by default. */
     out?: Whereabouts
     changed?: () => void
@@ -54,6 +58,7 @@ export class Reporting {
     this.#hud = input.hud
     this.#conditions = input.conditions
     this.#view = input.view
+    this.#ai = input.ai
     this.#out = input.out ?? (() => undefined)
     this.#changed = input.changed ?? (() => {})
     this.#paid = input.paid ?? (() => {})
@@ -168,9 +173,10 @@ export class Reporting {
     this.#hud.show({ settings: this.#settings(), quests })
   }
 
-  /** The clock, the sky and the screen, which the tab reads as one. */
+  /** The clock, the sky, the screen and which AI runs which job, which the tab reads as one. */
   #settings(): SettingsView {
-    return { ...this.#conditions.view(), ...(this.#view ? this.#view.settings : {}) }
+    const ai = this.#ai?.view()
+    return { ...this.#conditions.view(), ...(this.#view ? this.#view.settings : {}), ...(ai ? { ai } : {}) }
   }
 
   refresh(): void {

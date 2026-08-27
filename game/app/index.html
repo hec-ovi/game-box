@@ -383,6 +383,12 @@
         text-align: center;
         margin: 0 auto;
       }
+      .gb-boot[data-face='settings'] .gb-boot-crown-headings {
+        align-items: flex-start;
+        text-align: left;
+        margin-right: auto;
+        padding-left: var(--gb-s5);
+      }
       .gb-boot-title {
         margin: 0;
         color: #ffffff;
@@ -428,7 +434,8 @@
       .gb-boot[data-face='home'] .gb-btn-huge-back {
         display: none !important;
       }
-      .gb-boot[data-face='make'] .gb-btn-huge-back {
+      .gb-boot[data-face='make'] .gb-btn-huge-back,
+      .gb-boot[data-face='settings'] .gb-btn-huge-back {
         display: inline-flex !important;
       }
 
@@ -452,10 +459,17 @@
         flex: 1;
         min-height: 0;
       }
-      .gb-boot[data-face='home'] [data-boot='make'] {
-        display: none !important;
+      .gb-boot[data-face='settings'] .gb-boot-fold[data-boot='settings'] {
+        display: flex !important;
+        flex: 1;
+        min-height: 0;
       }
-      .gb-boot[data-face='make'] [data-boot='home'] {
+      .gb-boot[data-face='home'] [data-boot='make'],
+      .gb-boot[data-face='home'] [data-boot='settings'],
+      .gb-boot[data-face='make'] [data-boot='home'],
+      .gb-boot[data-face='make'] [data-boot='settings'],
+      .gb-boot[data-face='settings'] [data-boot='home'],
+      .gb-boot[data-face='settings'] [data-boot='make'] {
         display: none !important;
       }
 
@@ -1756,7 +1770,8 @@
         flex: 1;
         max-width: 980px;
       }
-      .gb-boot[data-face='home'] .gb-boot-stepper {
+      .gb-boot[data-face='home'] .gb-boot-stepper,
+      .gb-boot[data-face='settings'] .gb-boot-stepper {
         display: none !important;
       }
       .gb-boot[data-face='make'] .gb-boot-stepper {
@@ -2523,6 +2538,253 @@
       }
 
       /* ------------------------------------------------------------------
+         Settings: what belongs to the player rather than to any city. The
+         televisions, the providers behind the model, and which of the five
+         jobs each one writes. The same screen as the settings tab in game,
+         in the panel's own shapes.
+         ------------------------------------------------------------------ */
+      .gb-boot-settings {
+        flex: 1;
+        min-height: 0;
+        width: 100%;
+      }
+      .gb-boot-settings-layout {
+        display: flex;
+        flex-direction: column;
+        gap: var(--gb-s4);
+        width: 100%;
+        max-width: 1060px;
+        padding: 24px 44px;
+        box-sizing: border-box;
+        overflow-y: auto;
+      }
+      .gb-set-panel {
+        gap: var(--gb-s3);
+        flex: none;
+      }
+      .gb-set-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--gb-s3);
+      }
+
+      /* one provider: how it stands, what can be asked of it, what it needs */
+      .gb-set-provider,
+      .gb-set-job {
+        position: relative;
+        background: var(--gb-well);
+        border: 1px solid var(--gb-edge);
+        box-sizing: border-box;
+      }
+      .gb-set-provider {
+        display: flex;
+        flex-direction: column;
+        gap: var(--gb-s3);
+        padding: 12px 14px 12px 16px;
+      }
+      .gb-set-provider::before,
+      .gb-set-job::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--gb-off);
+      }
+      .gb-set-provider[data-health='ok']::before {
+        background: var(--gb-good);
+      }
+      .gb-set-provider[data-health='checking']::before {
+        background: var(--gb-accent);
+      }
+      .gb-set-provider[data-health='failed']::before {
+        background: var(--gb-danger);
+      }
+      .gb-set-provider-head {
+        display: flex;
+        align-items: center;
+        gap: var(--gb-s3);
+      }
+      .gb-set-tile {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+        width: 32px;
+        height: 32px;
+        background: var(--gb-lift);
+        border: 1px solid var(--gb-edge);
+        color: var(--gb-dim);
+      }
+      .gb-set-provider[data-health='ok'] .gb-set-tile {
+        border-color: var(--gb-edge-accent);
+        color: var(--gb-accent);
+      }
+      .gb-set-names {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        flex: 1;
+        min-width: 0;
+      }
+      .gb-set-name {
+        color: var(--gb-ink);
+      }
+      .gb-set-under {
+        color: var(--gb-dim);
+        font-family: var(--gb-mono);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .gb-set-acts {
+        display: flex;
+        align-items: center;
+        gap: var(--gb-s2);
+        flex: none;
+      }
+      .gb-boot .gb-set-acts .gb-btn > span {
+        min-height: 30px;
+        padding: 0 12px;
+      }
+      .gb-set-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 8px;
+        background: var(--gb-lift);
+        border: 1px solid var(--gb-edge);
+        color: var(--gb-dim);
+      }
+      .gb-set-chip[data-tone='good'] {
+        border-color: color-mix(in srgb, var(--gb-good) 40%, transparent);
+        color: var(--gb-good);
+      }
+      .gb-set-chip[data-tone='bad'] {
+        border-color: color-mix(in srgb, var(--gb-danger) 40%, transparent);
+        color: var(--gb-danger);
+      }
+      .gb-set-chip[data-tone='accent'] {
+        border-color: var(--gb-edge-accent);
+        color: var(--gb-accent);
+      }
+
+      /* the fields a provider needs: what it runs, where it is, and its key */
+      .gb-set-fields {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: var(--gb-s3);
+      }
+      .gb-set-field {
+        display: flex;
+        align-items: flex-end;
+        gap: var(--gb-s2);
+        min-width: 0;
+      }
+      .gb-set-fields > .gb-set-field {
+        flex: 1 1 240px;
+      }
+      .gb-set-label {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: var(--gb-s1);
+        flex: 1;
+        min-width: 0;
+      }
+      .gb-set-caption {
+        color: var(--gb-dim);
+      }
+      /* the panel dresses every field the same, so these say it again over the
+         plain rules the form's own boxes are drawn with */
+      .gb-boot .gb-set-field .gb-set-box,
+      .gb-boot .gb-set-field .gb-set-pick {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px 10px;
+        background: var(--gb-well);
+        border: 1px solid var(--gb-edge-lit);
+        color: var(--gb-ink);
+        font: 400 13px/1.45 var(--gb-body);
+        letter-spacing: 0;
+        text-transform: none;
+        outline: none;
+        transition:
+          border-color var(--gb-t-press) var(--gb-in),
+          box-shadow var(--gb-t-press) var(--gb-in);
+      }
+      .gb-boot .gb-set-field .gb-set-pick {
+        appearance: none;
+        padding-right: 30px;
+        cursor: pointer;
+      }
+      .gb-boot .gb-set-field .gb-set-box:focus,
+      .gb-boot .gb-set-field .gb-set-pick:focus {
+        border-color: var(--gb-accent);
+        box-shadow: 0 0 14px var(--gb-accent-glow);
+      }
+      .gb-boot .gb-set-field .gb-set-pick:disabled {
+        border-color: var(--gb-off);
+        color: var(--gb-off-ink);
+        cursor: default;
+      }
+      /* the arrow the list lost with its platform dressing */
+      .gb-set-chevron {
+        position: absolute;
+        right: 10px;
+        bottom: 10px;
+        color: var(--gb-dim);
+        transform: rotate(90deg);
+        pointer-events: none;
+      }
+      .gb-boot .gb-set-field .gb-btn > span {
+        min-height: 34px;
+      }
+
+      /* what it is waiting on, and what the last real call came back with */
+      .gb-set-line {
+        margin: 0;
+        color: var(--gb-dim);
+      }
+      .gb-set-line[data-tone='bad'] {
+        color: var(--gb-danger);
+      }
+      .gb-set-said {
+        display: flex;
+        flex-direction: column;
+        gap: var(--gb-s1);
+        padding: 8px 10px;
+        background: var(--gb-lift);
+        border: 1px solid var(--gb-edge);
+      }
+      .gb-set-said-when {
+        font-family: var(--gb-mono);
+        font-variant-numeric: tabular-nums;
+        color: var(--gb-good);
+      }
+      .gb-set-said-when[data-tone='bad'] {
+        color: var(--gb-danger);
+      }
+      .gb-set-said-text {
+        color: var(--gb-ink);
+      }
+
+      /* one job, and the provider it is pointed at */
+      .gb-set-job {
+        display: flex;
+        align-items: center;
+        gap: var(--gb-s3);
+        padding: 10px 12px 10px 16px;
+      }
+      .gb-set-job[data-on='true']::before {
+        background: var(--gb-accent);
+      }
+      .gb-set-job .gb-set-field {
+        flex: 0 1 260px;
+      }
+
+      /* ------------------------------------------------------------------
          The blueprint: the architecture on screen before anything is written
          into it. It owns the view, so the card leaves the page under it, and
          everything read over the drawing is the panel's own shapes and tokens.
@@ -2810,8 +3072,6 @@
             <button type="submit" class="gb-sr-only" data-boot="generate" aria-label="Generate">Generate</button>
             <label class="gb-sr-only" for="boot-open">Open a city somebody sent you</label>
             <input id="boot-open" data-boot="open" type="file" accept=".json,.gbworld.json,application/json" class="gb-sr-only" />
-            <label class="gb-sr-only" for="boot-screens">Video on the screens</label>
-            <input id="boot-screens" data-boot="screens" type="url" autocomplete="off" spellcheck="false" placeholder="https://... a video of your own" class="gb-sr-only" />
             <label class="gb-sr-only" for="boot-apply">Open a pack onto the city on the shelf</label>
             <input id="boot-apply" data-boot="apply" type="file" accept=".json,.gbpack.json,application/json" class="gb-sr-only" />
 
@@ -2828,10 +3088,10 @@
                     <span class="gb-i gb-i-20" data-icon="door"></span>
                     <span>Import City</span>
                   </label>
-                  <label class="gb-hud-btn" for="boot-screens" aria-label="Settings" data-hint="What your own televisions play: the address of a video, kept in this browser and never written into a city.">
+                  <button type="button" class="gb-hud-btn" data-boot="settings-open" aria-label="Settings" data-hint="What your televisions play, and which AI writes what: the providers behind the model and the five jobs pointed at them.">
                     <span class="gb-i gb-i-20" data-icon="settings"></span>
                     <span>Settings</span>
-                  </label>
+                  </button>
 
                   <p class="gb-boot-rail-hint" data-boot="intel-text" aria-live="polite"></p>
                 </nav>
@@ -2843,6 +3103,52 @@
                     <p class="gb-boot-empty gb-cut gb-c10 gb-t3" data-boot="library-empty">Nothing on the shelf yet. Every game you make or open is kept here, with its playthrough.</p>
                     <ul class="gb-boot-shelf" data-boot="library"></ul>
                   </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- SETTINGS: what belongs to the player rather than to any city.
+                 The televisions, the providers behind the model, and which of
+                 them writes what. The same screen as the settings tab in game,
+                 reading the same state off the same service. -->
+            <section class="gb-boot-fold gb-boot-settings" data-boot="settings" aria-label="Settings" hidden>
+              <div class="gb-boot-settings-layout">
+                <div class="gb-cyber-panel gb-set-panel">
+                  <div class="gb-panel-head">
+                    <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="screen"></span>Your televisions</span>
+                  </div>
+                  <div class="gb-set-field">
+                    <label class="gb-set-label" for="boot-screens">
+                      <span class="gb-t1 gb-set-caption">Video on the screens</span>
+                      <input
+                        id="boot-screens"
+                        data-boot="screens"
+                        type="url"
+                        autocomplete="off"
+                        spellcheck="false"
+                        placeholder="https://... a video of your own"
+                        class="gb-set-box gb-t3"
+                      />
+                    </label>
+                  </div>
+                  <p class="gb-set-line gb-t2">What every set in town plays, by address. Kept on this machine and never written into a city.</p>
+                </div>
+
+                <div class="gb-cyber-panel gb-set-panel">
+                  <div class="gb-panel-head">
+                    <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="ai"></span>Providers</span>
+                  </div>
+                  <p class="gb-set-line gb-t2" data-boot="ai-trouble">Reading how the providers stand.</p>
+                  <p class="gb-set-line gb-t2" data-boot="ai-no-providers" hidden>The game has offered no provider yet.</p>
+                  <div class="gb-set-list" data-boot="ai-providers"></div>
+                </div>
+
+                <div class="gb-cyber-panel gb-set-panel">
+                  <div class="gb-panel-head">
+                    <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="settings"></span>Which AI does what</span>
+                  </div>
+                  <p class="gb-set-line gb-t2" data-boot="ai-no-jobs" hidden>The game has offered no job yet.</p>
+                  <div class="gb-set-list" data-boot="ai-jobs"></div>
                 </div>
               </div>
             </section>

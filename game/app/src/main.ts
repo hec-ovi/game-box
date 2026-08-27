@@ -16,6 +16,9 @@ const boot = new Boot({
   panel,
   library: new Library(new IndexedShelf()),
   sidecar: base ? { base } : {},
+  // the providers live on the same service, so pointing the game at another
+  // one points both at it
+  providers: base ? { base } : {},
 })
 
 if (import.meta.env.DEV) {

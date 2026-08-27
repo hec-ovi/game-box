@@ -1,4 +1,7 @@
+import type { AiView } from '@gb/hud'
 import type { Sidecar } from '@gb/sidecar'
+import type { AiIntent } from '../ai.ts'
+import { AiSettings } from './ai-settings.ts'
 import type { CityBrief } from './brief.ts'
 import { paintIcons } from './chrome.ts'
 import { CityForm } from './form.ts'
@@ -50,19 +53,22 @@ export interface PanelHandlers {
   close(): void
   /** The player's own settings changed: what their televisions play. */
   settings(settings: { screens: string }): void
+  /** The player set something about the AI. The same six the settings tab in game reports. */
+  ai?(intent: AiIntent): void
 }
 
 /**
  * Which face the panel is showing: the cities the player has, or the form that
  * makes another one.
  */
-export type PanelFace = 'home' | 'make'
+export type PanelFace = 'home' | 'make' | 'settings'
 
 /** What each face calls itself, and what it says under that. */
-const TITLES: Record<PanelFace, string> = { home: 'game-box', make: 'A new city' }
+const TITLES: Record<PanelFace, string> = { home: 'game-box', make: 'A new city', settings: 'Settings' }
 const SUBS: Record<PanelFace, string> = {
   home: 'Pick a game to play, open one somebody sent you, or make a new one.',
   make: 'Three steps over one brief: the city, the writing, then build it. Every field is optional.',
+  settings: 'What belongs to you rather than to any city: your televisions, and which AI writes what.',
 }
 
 /**
@@ -77,12 +83,14 @@ export class Panel {
   #stage: HTMLElement
   #form: CityForm
   #library: LibraryView
+  #ai: AiSettings
   #rail: HTMLElement
   #open: HTMLInputElement
   #apply: HTMLInputElement
   #screens: HTMLInputElement
   #home: HTMLElement
   #make: HTMLElement
+  #settings: HTMLElement
   #title: HTMLElement
   #sub: HTMLElement
   #new: HTMLButtonElement
@@ -138,9 +146,18 @@ export class Panel {
       generate: () => this.#handlers.generate(this.brief),
     })
     this.#library = new LibraryView(find)
+    this.#ai = new AiSettings({
+      providers: find('ai-providers'),
+      jobs: find('ai-jobs'),
+      noProviders: find('ai-no-providers'),
+      noJobs: find('ai-no-jobs'),
+      trouble: find('ai-trouble'),
+      emit: (intent) => this.#handlers.ai?.(intent),
+    })
     this.#rail = find('rail')
     this.#home = find('home')
     this.#make = find('make')
+    this.#settings = find('settings')
     this.#title = find('title')
     this.#sub = find('sub')
     this.#new = find('new')
@@ -184,6 +201,7 @@ export class Panel {
     // a settings change describes another city, so whatever was laid out goes
     this.#form.onEdit(() => this.#unplanned())
     this.#new.addEventListener('click', () => void (this.face = 'make'))
+    find('settings-open').addEventListener('click', () => void (this.face = 'settings'))
     this.#crownNew.addEventListener('click', () => void (this.face = 'make'))
     this.#homeAgain.addEventListener('click', () => void (this.face = 'home'))
     this.#draft.addEventListener('click', () => {
@@ -252,16 +270,17 @@ export class Panel {
     this.#root.dataset.face = face
     this.#home.hidden = face !== 'home'
     this.#make.hidden = face !== 'make'
+    this.#settings.hidden = face !== 'settings'
     this.#new.hidden = face !== 'home'
     this.#crownNew.hidden = face !== 'home'
-    this.#homeAgain.hidden = face !== 'make'
+    this.#homeAgain.hidden = face === 'home'
     this.#generate.hidden = face !== 'make'
     this.#title.textContent = TITLES[face]
     this.#sub.textContent = SUBS[face]
     if (face === 'make') {
       this.#form.step = 1
     }
-    this.#arrive(face === 'home' ? this.#home : this.#make)
+    this.#arrive(face === 'home' ? this.#home : face === 'make' ? this.#make : this.#settings)
   }
 
   /** What the player set that belongs to them rather than to any city. */
@@ -271,6 +290,14 @@ export class Panel {
 
   set settings(settings: { screens: string }) {
     this.#screens.value = settings.screens
+  }
+
+  /**
+   * Which AI runs which job, as the service has it. `trouble` is why there is
+   * nothing, when the service could not be read at all.
+   */
+  showAi(ai: AiView | undefined, trouble?: string): void {
+    this.#ai.render(ai, trouble)
   }
 
   /** The cities on the shelf, newest first. */
@@ -305,6 +332,7 @@ export class Panel {
    */
   #focus(): void {
     if (this.#face === 'make') return this.#form.focus()
+    if (this.#face === 'settings') return this.#settings.querySelector<HTMLElement>('input, select, button')?.focus()
     const first = this.#home.querySelector<HTMLButtonElement>('.gb-boot-shelved button')
     ;(first ?? this.#new).focus()
   }

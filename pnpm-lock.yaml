@@ -77,6 +77,9 @@ importers:
       '@gb/prefab':
         specifier: workspace:*
         version: link:../prefab
+      '@gb/providers':
+        specifier: workspace:*
+        version: link:../providers
       '@gb/quest':
         specifier: workspace:*
         version: link:../quest
@@ -376,6 +379,19 @@ importers:
       sharp:
         specifier: ^0.35.3
         version: 0.35.3(@types/node@26.2.0)
+
+  game/providers:
+    dependencies:
+      '@gb/kit':
+        specifier: workspace:*
+        version: link:../kit
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
 
   game/quest:
     dependencies:

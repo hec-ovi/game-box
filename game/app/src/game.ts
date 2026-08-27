@@ -11,6 +11,7 @@ import { buildCity, type CityBuild, type Dressing } from '@gb/scene'
 import { Sidecar } from '@gb/sidecar'
 import type { World } from '@gb/world'
 import * as THREE from 'three'
+import type { Ai } from './ai.ts'
 import { Attending, type Post } from './attending.ts'
 import { Buildings } from './buildings.ts'
 import { Chase } from './chase.ts'
@@ -62,6 +63,8 @@ export interface GameOptions {
   kit?: KitDressing
   cars?: ArrayBuffer
   sidecar?: Sidecar
+  /** Which AI runs which job. Without one the settings tab draws none of it. */
+  ai?: Ai
   /** Where the playthrough is kept, so a refresh picks it up where it left off. */
   save?: SaveStore
   /**
@@ -131,6 +134,8 @@ export class Game {
   #riderCast: SceneCast | undefined
   #session: Session | undefined
   #target: Target | undefined
+  /** Stop watching which AI runs which job. */
+  #aiOff: (() => void) | undefined
   #sinceKept = 0
   #paused = false
   /** The prompt the interface is showing, so the same words are not pushed twice. */
@@ -143,6 +148,7 @@ export class Game {
     player: PlayerState
     log: QuestLog
     sidecar: Sidecar
+    ai?: Ai
     dressing: Dressing
     leave: () => void
     room?: RoomArt
@@ -209,6 +215,7 @@ export class Game {
       hud: this.#hud,
       conditions,
       view: this.#view,
+      ...(input.ai ? { ai: input.ai } : {}),
       // a pin on somebody who is out walking goes where they are heading
       out: (npcId) => this.#street.whereabouts(npcId),
       // a job that paid out a house or a car: the city is told whose the place
@@ -483,6 +490,7 @@ export class Game {
       counters: this.#counters,
       travel: this.#travel,
       view: this.#view,
+      ...(input.ai ? { ai: input.ai } : {}),
       pause: (on) => this.pause(on),
       // a thing opened in the inventory is drawn from every side and pushed
       // back, and a part of the city clicked on the plan says how far it is
@@ -514,6 +522,10 @@ export class Game {
       report: this.#report,
       aimed: () => this.#target,
     })
+
+    // the settings tab reads which AI runs which job off the same hand the
+    // launcher's settings face does, so a change made in either shows in both
+    this.#aiOff = input.ai?.onChange(() => this.#report.refresh())
 
     this.#hud.show({ controls: controlsFor(this.#driving.view) })
     // the town's story is what everybody in it knows, so the player arrives
@@ -553,6 +565,7 @@ export class Game {
         player,
         log,
         sidecar: options.sidecar ?? new Sidecar(),
+        ...(options.ai ? { ai: options.ai } : {}),
         dressing: options.dressing,
         leave: options.leave ?? (() => {}),
         ...(options.room ? { room: options.room } : {}),
@@ -738,6 +751,7 @@ export class Game {
   /** Take the game off the page: every listener, every timer, the renderer. */
   dispose(): void {
     this.keep()
+    this.#aiOff?.()
     this.#screens?.close()
     this.#interaction.dispose()
     this.#view.dispose()

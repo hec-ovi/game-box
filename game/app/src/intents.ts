@@ -1,5 +1,6 @@
 import type { Hud, HudIntent } from '@gb/hud'
 import type { QuestLog } from '@gb/quest'
+import type { Ai } from './ai.ts'
 import type { Chart } from './chart.ts'
 import type { Conditions } from './conditions.ts'
 import type { Counters } from './counters.ts'
@@ -28,6 +29,7 @@ export class Intents {
   #counters: Counters
   #travel: Travel
   #view: View | undefined
+  #ai: Ai | undefined
   #pause: (on: boolean) => void
   #inspecting: Inspect | undefined
   #guide: { walkTo(districtId: string): string | undefined } | undefined
@@ -47,6 +49,8 @@ export class Intents {
     travel: Travel
     /** What the player set about the screen. Without one, the corner view and full screen do nothing. */
     view?: View
+    /** Which AI runs which job. Without one, the settings tab draws none of it and reports none of it. */
+    ai?: Ai
     pause?: (on: boolean) => void
     /** Drawing a thing the player opened in the inventory. Without one the panel keeps its icon. */
     inspecting?: Inspect
@@ -67,6 +71,7 @@ export class Intents {
     this.#counters = input.counters
     this.#travel = input.travel
     this.#view = input.view
+    this.#ai = input.ai
     this.#pause = input.pause ?? (() => {})
     this.#inspecting = input.inspecting
     this.#guide = input.guide
@@ -86,6 +91,10 @@ export class Intents {
   }
 
   handle(intent: HudIntent): void {
+    // which AI runs which job, and the providers behind it. The service holds
+    // all of it, so the same six go the same way from the launcher's settings
+    // and from the tab in game, and either screen reads back what the other saved
+    if (this.#ai?.handle(intent)) return
     switch (intent.kind) {
       case 'say':
         void this.#talking.say(intent.text)

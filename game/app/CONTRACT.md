@@ -1,6 +1,6 @@
 # @gb/app contract
 
-contractVersion: 0.27.0
+contractVersion: 0.28.0
 
 ## Purpose
 
@@ -19,12 +19,14 @@ The game you can play: the landing screen your cities are laid out on, the panel
 | a city file | a `.gbworld.json` picked off the player's own machine | the file Export wrote, opened with nothing done to it in between |
 | a pack file | a `.gbpack.json` picked off the player's own machine | cut from the city that is open. A pack names the city it was cut from, so one cut from another is a sentence on the panel |
 | the player's own settings | the address of a video for the televisions | kept in this browser and handed to the game; never part of a brief and never written into a city |
+| which AI runs which job | the providers the AI service holds, and the five jobs pointed at them | the same two groups on both settings screens: the one behind Settings on the landing rail, and the settings tab in game. The service holds all of it, so whichever screen writes, the other reads it back |
+| a provider's key | typed into the key field of an external provider | write only: it goes to the service on the same tick and is never drawn back, never kept in the browser and never in a push |
 | the shelf | a card per city the player made or opened, newest first, the last one marked: its name, what it is about, its size and seed, when it was written, whether a playthrough is waiting in it, and Continue or Open beside Remove | the library is read when the panel is built and again after every change |
 | URL query | `?bundle=` a world file, or `?seed=`, `?theme=`, `?blocks=`, `?places=`, `?storeys=`, `?model`, `?sidecar=` | a city named in it is opened straight away, which is how a city is shared; with none of them the landing screen waits for a pick, and with an empty shelf the form does. `?sidecar=` is written back untouched, so a refresh keeps it |
-| `new Boot({ mount, panel, library, sidecar?, start?, art?, blueprint? })` | a `Panel`, a `Library` over a `Shelf`, `@gb/sidecar`'s options | the page holds `#game` and `#boot`; the sidecar is built here so a busy model reaches the screen. `blueprint` is a `Show`, which is how a test opens the view with no GPU in the room; left out, the real one is fetched on the press |
+| `new Boot({ mount, panel, library, sidecar?, providers?, start?, art?, blueprint? })` | a `Panel`, a `Library` over a `Shelf`, `@gb/sidecar`'s options, `@gb/providers`' options | the page holds `#game` and `#boot`; the sidecar is built here so a busy model reaches the screen, and so is the one hand on the providers, watched by both settings screens. `blueprint` is a `Show`, which is how a test opens the view with no GPU in the room; left out, the real one is fetched on the press |
 | `Boot.start(query)` | a `URLSearchParams` | |
 | `Game.start(mount, bundle, options)` | an opened `@gb/bundle`, `GameOptions` | the bundle opened, so its world and quests are sound |
-| `GameOptions` | `{ dressing, room?, cast?, kit?, cars?, sidecar?, save?, leave?, stage?, screens? }` | `save` is where the playthrough is kept between visits; `room` dresses one interior at a time and is handed the interior's charter; `leave` is what leaving means, decided by whoever started the game; `stage` is where the frames are drawn, `createStage` unless the caller has no GPU to give it; `screens` is the address of a video for the televisions |
+| `GameOptions` | `{ dressing, room?, cast?, kit?, cars?, sidecar?, ai?, save?, leave?, stage?, screens? }` | `ai` is the hand on which AI runs which job, shared with the launcher; without one the settings tab draws none of it. `save` is where the playthrough is kept between visits; `room` dresses one interior at a time and is handed the interior's charter; `leave` is what leaving means, decided by whoever started the game; `stage` is where the frames are drawn, `createStage` unless the caller has no GPU to give it; `screens` is the address of a video for the televisions |
 
 ## Outputs
 
@@ -35,7 +37,7 @@ The game you can play: the landing screen your cities are laid out on, the panel
 | a generated city | a sealed `@gb/bundle` document | byte for byte what the same brief builds anywhere else, carrying what the form asked for (`world.brief()`, `world.asks()`) |
 | the shelf | `Library` over `IndexedShelf` (the browser's database) or `MemoryShelf` | every city kept with its document and when it was written, keyed by the brief it was made from or the hash of the file it came in; the save of each keyed the same |
 | the loader | `@gb/hud`'s loading view | while the model writes: the four stages of `@gb/scribe`'s progress, named in the player's words, the town's name on it once the city stage names it; gone before the game's own interface goes up |
-| what the interface is pushed | `@gb/hud` patches | the objectives, the money with what is carried and what each thing is worth, the places that are the player's with what they left in them, the journal, the codex with the town's story under History, the settings (the clock, the sky, the corner view and full screen), the compass, the corner view of the streets round the player, the map with every station on it and the one the player is standing at, a goal mark per live quest on both the map and the corner, the controls, the conversation as turns with what the speaker did on each, the counter the player is buying at, the screen they are sitting at, the veil over a ride, and the notices |
+| what the interface is pushed | `@gb/hud` patches | the objectives, the money with what is carried and what each thing is worth, the places that are the player's with what they left in them, the journal, the codex with the town's story under History, the settings (the clock, the sky, the corner view, full screen, and which AI runs which job with the providers behind it), the compass, the corner view of the streets round the player, the map with every station on it and the one the player is standing at, a goal mark per live quest on both the map and the corner, the controls, the conversation as turns with what the speaker did on each, the counter the player is buying at, the screen they are sitting at, the veil over a ride, and the notices |
 | Export | a `.gbworld.json` file | the document the game is playing, so what is kept is what was played |
 | the architecture | a `@gb/world` `World` with no interiors, people, items or quests in it (`Boot.laid`) | the grid, the roads, the named parts of town, every building with its height and its part, and the stations. Nothing is filed and nothing is played from it: it is the city before anybody writes it, and the summary's zone count comes off `world.districts()` once there is one |
 | the blueprint | the architecture on screen, in the panel, over the form (`Boot.preview()`, `Boot.leavePreview()`) | the streets, every building at its real footprint and height, the named parts of town as the shapes they are with their names over them, and the stations. Nobody in it, nothing in the street, no interiors, no sky and no hour: a plan has none of them. Nothing is built, filed, shelved or played, and leaving hands back the form with the brief exactly as it was typed |
@@ -51,7 +53,7 @@ None at the boundary. A city that will not build and a file that will not open a
 
 ## Dependencies
 
-`@gb/bundle`, `@gb/cast`, `@gb/crowd`, `@gb/drive`, `@gb/forge`, `@gb/furnish`, `@gb/hud`, `@gb/kitbash`, `@gb/land`, `@gb/nav`, `@gb/play`, `@gb/quest`, `@gb/scene`, `@gb/scribe`, `@gb/sidecar`, `@gb/talk`, `@gb/traffic`, `@gb/world`, `three`.
+`@gb/bundle`, `@gb/cast`, `@gb/crowd`, `@gb/drive`, `@gb/forge`, `@gb/furnish`, `@gb/hud`, `@gb/kitbash`, `@gb/land`, `@gb/nav`, `@gb/play`, `@gb/providers`, `@gb/quest`, `@gb/scene`, `@gb/scribe`, `@gb/sidecar`, `@gb/talk`, `@gb/traffic`, `@gb/world`, `three`.
 
 ## Invariants
 
@@ -167,6 +169,9 @@ None at the boundary. A city that will not build and a file that will not open a
 - **The compass is the body's yaw and the guide's answer.** The strip is pushed which way the player faces, in radians clockwise from north, whenever it moves, and the tracked goal as the guide measured it (its bearing, the metres along the walk, `main` or `side`), measured again when the quests change, and while the player is moving once a second. Indoors the strip goes, because a room has its own metres and the route is measured from the door.
 - **The codex is `@gb/play`'s record in the world's words.** A place walked into is noted through `player.discover` on the way through the door; meeting somebody is `@gb/talk`'s to note; the town's story is told through `player.told` on the way in, every line of it as `@gb/forge` renders the premise, because what everybody in town knows is what the player arrives knowing. The tab is pushed the places by name with what the city was written to say about each (`Interior.description`, else what kind of place it is), the people with their role, their standing and every fact of their background (the learned ones in words and the rest as still to learn, a fact's id being its place in the background as `@gb/talk` earns them), and under History every line the player was told, its heading read off the line before the colon and a line with none drawn as heard.
 - **The settings tab is the clock and the sky, and its intents are the keys' own calls.** `lock-time`, `skip-time` and `weather` go through the same `Conditions` `P`, `T` and `K` go through, and what the tab reads back is what the clock says.
+- **Which AI runs which job is the service's, and both screens read it there.** The launcher's Settings and the settings tab in game draw the same providers and the same five jobs, with the same words, from one hand on `@gb/providers`. Either screen's six reports (`ai-model`, `ai-detail`, `ai-key`, `ai-health`, `ai-test`, `ai-job`) write to the service and both screens redraw from what it answers, so a provider set up at the front door is already set up in the tab. Nothing about a provider is kept in this browser, and a provider that is not configured says what it is waiting on rather than sitting blank.
+- **A key goes one way, from either screen.** It is reported once, the field empties on the same tick, and it reaches the service and nothing else: it is never drawn back, never pushed to the interface, never written to storage and never read. Whether one is stored is the service's word, read off `secretSet` on the next answer.
+- **A check and a test are slow, so the screen says it is asking.** Both mark the provider `checking` while the call is out, and neither can be pressed again while it is. A check that answers also lists what the provider can run, so the model becomes a list to pick from instead of a line to remember. A test is one real generation and its answer is drawn as it came: how long it took over what the model wrote, or why nothing came.
 - **The quest log hears the clock before any job is taken, and on every frame after.** A timer counts from the last `clock` reading the log heard, and one that heard none fails on its first, so the first reading goes in from the constructor, before the first push and before a save is put back. Whatever a reading ends is announced, and the list is pushed with the failed page on it, `status: 'failed'` and its reason. The settings tab and the journal are pushed again once a game second while a page is counting down, so the time left moves, and once a game minute otherwise, so the hour reads right without a push a frame.
 - **The quests tab is the quest log's own journal page, pushed as it stands.** Nothing here decides what a journal says: the page carries where every step stands, what it wants and how far along it is, and a step the player has not been told about is not on it, because the engine leaves it off. Walking the progress by hand instead is what listed a secret from the moment the quest was taken.
 - **Giving a job up costs one report.** `@gb/hud` asks a second time on its own before it says so, so nothing here confirms it again; the quest log takes the job off and the list goes back without it, because the interface removes nothing itself.
@@ -251,7 +256,7 @@ One responsibility each. `boot/` is everything before there is a game; the rest 
 | File | Holds |
 |---|---|
 | `boot/boot.ts` | the composition root: a brief in, a running game out, the shelf between |
-| `boot/panel.ts` | the front door, driving the markup in `index.html`: which of its two faces is showing, what each offers, and how each arrives and goes |
+| `boot/panel.ts` | the front door, driving the markup in `index.html`: which of its three faces is showing, what each offers, and how each arrives and goes |
 | `boot/form.ts` | the creation form: the four pieces under it, held together and nothing of its own |
 | `boot/fields.ts` | every control on the form: the fields read as a brief, and a brief written back |
 | `boot/steps.ts` | which of the three steps is on screen, and moving to another |
@@ -259,6 +264,11 @@ One responsibility each. `boot/` is everything before there is a game; the rest 
 | `boot/review.ts` | what the form says back about itself, and the one question before it builds |
 | `boot/hints.ts` | the sentence that goes with a control, into the rail and under the pointer |
 | `boot/library-view.ts` | the landing screen: a card per city with enough on it to know the city again, the last one marked, Open and Remove |
+| `boot/ai-settings.ts` | the settings face's two groups: the providers, and the five jobs pointed at them |
+| `boot/ai-provider-row.ts` | one provider: how it stands, Check and Test, and the fields it needs |
+| `boot/ai-job-row.ts` | one job, and the provider it is pointed at |
+| `boot/ai-field.ts` | the line typed into and the list picked from, in the panel's own shapes |
+| `boot/ai-words.ts` | what that screen calls things, word for word with the settings tab in game |
 | `boot/chrome.ts` | the shapes the panel is built from: the chamfered box with its two-layer edge, the button, the chip, the icon |
 | `boot/icons.ts` | the line drawings those icons are, by name |
 | `boot/motion.ts` | a thing arriving: the entrance it plays, and the hint taken off once it has |
@@ -291,6 +301,8 @@ One responsibility each. `boot/` is everything before there is a game; the rest 
 | `compass.ts` | the strip along the top: which way the player faces, which way the goal is |
 | `minimap.ts` | the corner view: the city windowed to what is round the player, and the doors they have been through |
 | `view.ts` | what the player set about the screen: the corner view, and full screen through the browser |
+| `ai.ts` | which AI runs which job, for both settings screens: reading it, writing it, and asking a provider whether it answers and what it says |
+| `ai-view.ts` | that state as the two screens read it: a provider with what the last probe found, and the five jobs in words |
 | `codex.ts` | what the player has found, in the world's words |
 | `story.ts` | the town's story, told on the way in, and read back for the codex |
 | `conditions.ts` | the hour and the weather: what a key or a setting does to them, and how the tab reads them |
@@ -344,6 +356,8 @@ Anything with a rule in it belongs in another box. Keep `walk.ts` free of three.
 Everything before there is a game is one card in `index.html` with two folds, `[data-boot="home"]` and `[data-boot="make"]`, and `Panel.face` shows one and takes the other out of the page.
 
 `home` is a rail of four actions (create a game, create a city, import a city, settings) beside the shelf of cities already kept. A shelf card carries its name, its counts and whether a playthrough is in progress, and the last one played is marked.
+
+`settings` is what belongs to the player rather than to any city, in three panels: the televisions (the address of a video, kept in this browser), the providers, and the five jobs. The last two are the settings tab in game, word for word, drawn in the panel's own shapes and reporting the same six intents to the same hand on `@gb/providers`. Until the service answers, the providers panel says it is reading; a service that never answers says so with the address it looked at, rather than standing empty.
 
 `make` is the form in three steps, with the step strip in the foot: the city (theme, premise, the three style axes, size, how many instances open, how tall it may build), the writing (main quest, side jobs, tone, and whether the model writes the city), and reading it back before it is built. Every step reads and writes the same `CityBrief`; the step strip only decides which fields are on screen. Each step plate carries a chevron mark in the plate's own colour, whole on the step being read and quiet on the others.
 

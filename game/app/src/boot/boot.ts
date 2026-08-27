@@ -1,7 +1,9 @@
 import type { OpenedBundle } from '@gb/bundle'
 import type { Notice } from '@gb/hud'
 import type { World } from '@gb/world'
+import { Providers, type ProvidersOptions } from '@gb/providers'
 import { Sidecar, type SidecarOptions } from '@gb/sidecar'
+import { Ai } from '../ai.ts'
 import { Game, type GameOptions } from '../game.ts'
 import { loadCars, loadDressing, type ArtPack } from '../pack.ts'
 import { briefFromQuery, briefToQuery, DEFAULTS, sameBrief, type CityBrief } from './brief.ts'
@@ -64,6 +66,7 @@ export class Boot {
   #loader: Loader
   #notices = new Notices()
   #sidecar: Sidecar
+  #ai: Ai
   #start: Start
   #art: LoadArt
   #show: Show
@@ -82,6 +85,8 @@ export class Boot {
     panel: Panel
     library: Library
     sidecar?: SidecarOptions
+    /** Where the provider settings are read and written. The AI service on this machine unless a test says otherwise. */
+    providers?: ProvidersOptions
     start?: Start
     art?: LoadArt
     blueprint?: Show
@@ -95,6 +100,12 @@ export class Boot {
     // and the panel writes a field of a brief through the same one, so the form
     // and the city it builds are talking to one model
     this.#panel.sidecar = this.#sidecar
+    // and one hand on which AI runs which job, watched by the launcher's
+    // settings face and by the settings tab in game alike: the service holds
+    // it, so whichever screen saves, the other reads the same thing back
+    this.#ai = new Ai({ ...(input.providers ? { client: new Providers(input.providers) } : {}), say: (line) => this.#tell(line) })
+    this.#ai.onChange(() => this.#panel.showAi(this.#ai.view(), this.#ai.trouble))
+    this.#panel.showAi(undefined)
     this.#start = input.start ?? Game.start
     this.#art = input.art ?? loadDressing
     this.#show = input.blueprint ?? showBlueprint
@@ -118,6 +129,7 @@ export class Boot {
       cancel: () => this.cancel(),
       close: () => this.hidePanel(),
       settings: (settings) => this.settings(settings),
+      ai: (intent) => this.#ai.handle(intent),
     })
     addEventListener('pagehide', () => this.#game?.keep())
   }
@@ -136,6 +148,9 @@ export class Boot {
    */
   async start(query: URLSearchParams): Promise<void> {
     this.#asked = query
+    // how the providers stand, read once: both settings screens draw it, and
+    // nothing about them is kept in this browser
+    void this.#ai.load()
     const asked = briefFromQuery(query)
     const last = await this.#library.last()
     keepHasShelf(Boolean(last))
@@ -311,6 +326,12 @@ export class Boot {
     this.#panel.stage(false)
   }
 
+  /** Something the player has to be told, wherever they are: in the game, or at the front door. */
+  #tell(line: string): void {
+    if (this.#game && !this.#panel.open) this.#game.announce({ kind: 'note', text: line })
+    else this.#panel.waiting(line, true)
+  }
+
   /** What the player set that belongs to them rather than to any city. */
   settings(settings: Settings): void {
     this.#settings = settings
@@ -453,6 +474,7 @@ export class Boot {
     try {
       this.#game = await this.#start(this.#mount, city.bundle, {
         sidecar: this.#sidecar,
+        ai: this.#ai,
         dressing: art.dressing,
         save: localSaves(entry.key),
         leave: () => this.showPanel(),

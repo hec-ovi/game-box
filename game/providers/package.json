@@ -1,0 +1,19 @@
+{
+  "name": "@gb/providers",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@gb/kit": "workspace:*",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "ajv": "^8.20.0"
+  }
+}

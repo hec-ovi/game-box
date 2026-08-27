@@ -16,6 +16,7 @@
     "@gb/bundle": "workspace:*",
     "@gb/nav": "workspace:*",
     "@gb/play": "workspace:*",
+    "@gb/providers": "workspace:*",
     "@gb/quest": "workspace:*",
     "@gb/scene": "workspace:*",
     "@gb/sidecar": "workspace:*",

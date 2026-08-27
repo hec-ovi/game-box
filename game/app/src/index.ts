@@ -1,4 +1,5 @@
 /** @gb/app: see CONTRACT.md. */
+export { Ai, type AiIntent } from './ai.ts'
 export { Boot, type Playing, type Show, type Start } from './boot/boot.ts'
 export {
   BLOCKS,
