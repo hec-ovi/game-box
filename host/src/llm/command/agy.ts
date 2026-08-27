@@ -75,8 +75,19 @@ export class Agy {
   /**
    * No output-length cap, here as anywhere. The tools it carries are kept away
    * from anything of ours: it runs sandboxed, with slash commands off, in a
-   * scratch directory. Its own print timeout matches ours so a run left behind
-   * by a dying process still ends itself.
+   * scratch directory of its own, on an environment holding nothing but PATH
+   * and HOME. Its own print timeout matches ours so a run left behind by a
+   * dying process still ends itself.
+   *
+   * Permissions are auto-approved, and that is what makes this work at all.
+   * This is an agent rather than an endpoint: handed a real schema it reaches
+   * for a tool, and headless mode cannot prompt, so with permissions left at
+   * review the run is auto-denied and comes back `CANCELED` with an empty
+   * response. Measured on a 3 by 3 city: 26 of 26 model calls died that way,
+   * every one reported as `agy exited with status 1`, while the same call with
+   * a two-field schema answered fine. What makes the approval safe is the
+   * containment above, not the review it replaces: it is granted to a throwaway
+   * process in a throwaway directory that can see none of this project.
    */
   #args(model: string, schemaPath: string | undefined): string[] {
     return [
@@ -90,6 +101,7 @@ export class Agy {
       `${Math.ceil(this.#engine.timeoutMs / 1000)}s`,
       '--sandbox',
       '--disable-slash-commands',
+      '--dangerously-skip-permissions',
       ...(schemaPath === undefined ? [] : ['--json-schema', schemaPath]),
       // print mode with the turns on stdin: the flag still wants a value
       '--print',

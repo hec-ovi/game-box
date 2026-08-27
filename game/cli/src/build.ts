@@ -80,7 +80,22 @@ export async function build(args: BuildArgs, io: Io): Promise<number> {
       : `  no buildings pinned, so the file names no art: ${pins.why}`,
   )
   if (scribe?.problems().length) {
-    io.out(`  ${scribe.problems().length} model calls fell back to the offline narrator`)
+    const problems = scribe.problems()
+    io.out(`  ${problems.length} model calls fell back to the offline narrator`)
+    // the count alone cannot be acted on: 115 fallbacks with no reason is a
+    // build that looks like it worked. Group them, worst first, so one line
+    // says whether the model is refusing, timing out or writing the wrong shape
+    const byReason = new Map<string, { count: number; where: string[] }>()
+    for (const one of problems) {
+      const key = `${one.task} ${one.error.code ?? 'unknown'}`
+      const held = byReason.get(key) ?? { count: 0, where: [] }
+      held.count += 1
+      if (held.where.length < 3) held.where.push(one.at)
+      byReason.set(key, held)
+    }
+    for (const [reason, held] of [...byReason].sort((a, b) => b[1].count - a[1].count)) {
+      io.out(`    ${held.count} x ${reason} (${held.where.join(', ')}${held.count > held.where.length ? ', ...' : ''})`)
+    }
   }
   io.out(`  written to ${args.out} in ${seconds}s (${bundle.contentHash.slice(0, 12)})`)
   return 0

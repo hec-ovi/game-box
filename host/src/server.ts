@@ -90,7 +90,12 @@ async function completions(request: IncomingMessage, response: ServerResponse, c
   const gone = new AbortController()
   response.once('close', () => gone.abort())
   const result = await chat(body.value, gone.signal)
-  if (result.kind === 'json') return json(response, result.status, result.body, { ...cors, ...result.headers })
+  if (result.kind === 'json') {
+    // the chat endpoint answers its own status and never went through `refuse`,
+    // so every generation failure left the process silent
+    if (result.status >= 400) console.error(`chat ${result.status}: ${JSON.stringify(result.body).slice(0, 400)}`)
+    return json(response, result.status, result.body, { ...cors, ...result.headers })
+  }
 
   openStream(response, cors)
   for await (const chunk of result.chunks) {
@@ -136,5 +141,8 @@ function json(response: ServerResponse, status: number, body: unknown, cors: Hea
 }
 
 function refuse(response: ServerResponse, status: number, message: string, cors: Headers = {}): void {
+  // A refusal the caller sees as `refused` and nobody here writes down is a
+  // build that reports 115 fallbacks and no reason. One line, on the way out.
+  console.error(`refused ${status}: ${message}`)
   json(response, status, errorBody(message, status >= 500 ? 'server_error' : 'invalid_request_error'), cors)
 }
