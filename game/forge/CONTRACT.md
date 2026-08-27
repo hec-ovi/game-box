@@ -1,6 +1,6 @@
 # @gb/forge contract
 
-contractVersion: 0.32.0
+contractVersion: 0.33.0
 
 ## Purpose
 
@@ -199,17 +199,22 @@ where a place is.
 - **Parks and plazas are cut in with the built blocks.** A district is a part of
   the town rather than a set of buildings, so a green square belongs to the
   quarter it stands in and the map fills with no gaps in it.
-- **How many.** About one district per seven blocks across, which at ordinary
-  block sizes is around 400 m: a district stays a walk whatever the city's
-  size, and what grows with the city is how many there are. `MAX_DISTRICTS` is
-  `@gb/world`'s 12, and past it the districts get bigger instead of more
-  numerous. `districtCount(blocksX, blocksY)` is that rule, published so a form
-  can say how many parts a brief will give before anything is built. Measured
-  over twelve cities a size, four themes crossed with three seeds: a 2 and a 5 block town come out as one district (the town is the
-  district, so it is the one shape that is a rectangle), a 10 block town 1.8,
-  a 20 block city 7.3 of 37 to 60 blocks each, and a 32 block city the full 12
-  of 39 to 107. Across all of those, 0 districts in two pieces, 0 blocks in two
-  districts, 0 plots standing in none, and 0 rectangles at 10 blocks and up.
+- **How many.** One district per sixteen blocks, which is four blocks across, a
+  neighbourhood rather than a quarter. What grows with the city is how many
+  there are. `MAX_DISTRICTS` is `@gb/world`'s 12, and past it the districts get
+  bigger instead of more numerous. `districtCount(blocksX, blocksY)` is that
+  rule, published so a form can say how many parts a brief will give before
+  anything is built. Measured over twelve cities a size, four themes crossed
+  with three seeds: a 2 block town is one district of 2 to 4 blocks (the town is
+  the district, so it is the one shape that is a rectangle), a 5 block town 1.7
+  of 12 to 20 blocks, a 10 block town 5.0 of 13 to 20, and a 20 block city the
+  full 12 of 22 to 36.
+
+  It was one per seven blocks across, and that gave every city under fourteen
+  blocks wide exactly one district. A town with one district has none as far as
+  a player can tell: the map draws a single zone the size of the city and the
+  codex has one name to say. The sizes people actually build are five to twenty
+  blocks, so the rule was tuned for cities that were never made.
 - **The names are the narrator's.** `nameDistricts` asks for the whole cut in
   one call. Whatever comes back blank, too long for the file or the same as
   another district's is composed here instead (`src/narrator/districts.ts`),

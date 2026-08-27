@@ -2,16 +2,21 @@ import type { Rng } from '@gb/kit'
 import { MAX_DISTRICTS, type Rect } from '@gb/world'
 
 /**
- * Blocks across a district: about seven, which at ordinary block sizes is
- * around 400 m, five minutes on foot and about the spacing the stations are
- * set at. A district is a piece of town a player crosses and holds as one
- * place, so what grows with the city is the number of districts rather than
- * their size: a 2 block hamlet is one district, a 10 by 10 town two, a 20 by
- * 20 city six to eight, which is the handful `docs/CITY.md` asks for. Past
- * `MAX_DISTRICTS` they get bigger instead of more numerous, because a map
- * carrying more labels than a person holds in their head is a map of labels.
+ * Blocks across a district: four, which at ordinary block sizes is a couple of
+ * hundred metres, a neighbourhood rather than a quarter. A district is a piece
+ * of town a player crosses and holds as one place, and it is what the map
+ * labels, so what grows with the city is the number of districts rather than
+ * their size: a 4 by 4 town is one district, an 8 by 8 four, a 9 by 9 five, a
+ * 12 by 12 nine. Past `MAX_DISTRICTS` they get bigger instead of more numerous,
+ * because a map carrying more labels than a person holds in their head is a map
+ * of labels.
+ *
+ * It was seven, which made a district a 400 m quarter and gave every city under
+ * fourteen blocks across exactly one. A town with one district has no districts
+ * as far as a player can tell: the map draws one zone the size of the city and
+ * the codex has one name to say.
  */
-const BLOCKS_ACROSS = 7
+const BLOCKS_ACROSS = 4
 
 /** How many parts a town of this many blocks is cut into. */
 export function districtsWanted(blocks: number): number {
