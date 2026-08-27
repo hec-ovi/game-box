@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { PMREMGenerator, WebGPURenderer } from 'three/webgpu'
 import { Grade } from './grade.ts'
+import { type Api, pictureOf } from './readback.ts'
 import { Stall } from './stall.ts'
 import type { Stage } from './stage.ts'
 
@@ -12,6 +13,10 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
   // only ever holds one full screen quad, which has nothing to antialias
   const renderer = new WebGPURenderer()
   await renderer.init()
+  // three picks the fallback itself, and the two APIs hand a readback back in
+  // opposite row orders with different padding, so which one is really under
+  // this renderer has to be asked rather than assumed
+  const api: Api = renderer.coordinateSystem === THREE.WebGLCoordinateSystem ? 'webgl' : 'webgpu'
   renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio ?? 1, 2))
   renderer.setSize(mount.clientWidth || window.innerWidth, mount.clientHeight || window.innerHeight)
   renderer.setClearColor(SKY)
@@ -109,17 +114,27 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
     },
     async snapshot(scene, camera, size) {
       const target = new THREE.RenderTarget(size, size)
+      // the picture goes straight from here into an `<img>`, so it has to leave
+      // the GPU in the space a screen shows. A target left in linear light
+      // reads back at about a third of the brightness it was drawn at.
+      target.texture.colorSpace = THREE.SRGBColorSpace
       const was = renderer.getRenderTarget()
+      // nothing behind the subject: the panel this lands on has a ground of its
+      // own, and a square of the city's sky sitting on it is not a portrait
+      const opaque = renderer.getClearAlpha()
       try {
+        renderer.setClearAlpha(0)
         renderer.setRenderTarget(target)
-        await renderer.renderAsync(scene, camera)
+        renderer.render(scene, camera)
         const pixels = await renderer.readRenderTargetPixelsAsync(target, 0, 0, size, size)
-        return pngOf(new Uint8ClampedArray(pixels.buffer, pixels.byteOffset, pixels.byteLength), size)
+        const picture = pictureOf(pixels, size, api)
+        return picture && pngOf(picture, size)
       } catch (cause) {
         // a face is worth nothing to fail a conversation over
         console.warn('no portrait', cause)
         return undefined
       } finally {
+        renderer.setClearAlpha(opaque)
         renderer.setRenderTarget(was)
         target.dispose()
       }
@@ -165,24 +180,14 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
   return stage
 }
 
-/**
- * Pixels off a render target, as a PNG.
- *
- * The rows come back bottom up, the way the graphics API holds them, and a
- * canvas puts row zero at the top, so they are copied over in reverse.
- */
-function pngOf(pixels: Uint8ClampedArray, size: number): string | undefined {
+/** A square picture, top row first, as a PNG the interface can put in an `<img>`. */
+function pngOf(picture: Uint8ClampedArray<ArrayBuffer>, size: number): string | undefined {
   const canvas = document.createElement('canvas')
   canvas.width = size
   canvas.height = size
   const paint = canvas.getContext('2d')
   if (!paint) return undefined
-  const image = paint.createImageData(size, size)
-  const stride = size * 4
-  for (let row = 0; row < size; row++) {
-    image.data.set(pixels.subarray((size - 1 - row) * stride, (size - row) * stride), row * stride)
-  }
-  paint.putImageData(image, 0, 0)
+  paint.putImageData(new ImageData(picture, size, size), 0, 0)
   return canvas.toDataURL('image/png')
 }
 

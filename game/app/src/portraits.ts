@@ -43,8 +43,8 @@ export interface FaceSource {
  * borrowed out of the city: the one standing in the street is mid-clip, lit by
  * whatever hour it is and facing wherever they were walking, and taking a
  * portrait off it would mean moving them out of the world for a frame. A second
- * copy costs one body build, once per person, and it comes out the same on
- * every machine because it is the same rest pose under the same two lights.
+ * copy costs one body build, once per person, and it comes out the same on every
+ * machine: the first frame of the same clip under the same two lights.
  *
  * A face is kept once it is drawn: a conversation reopened is the same face
  * without a second build, and one that could not be drawn is remembered as
@@ -103,14 +103,21 @@ export class Portraits implements FaceSource {
     const body = member.object
     try {
       this.#scene.add(body)
+      // a body spawns with its clip playing but its skeleton still in the bind
+      // pose, which is arms straight out at shoulder height. One step of no time
+      // writes the first frame of what they are doing, so they stand like a person
+      this.#cast.update(0)
       body.updateMatrixWorld(true)
       this.#aim(body)
       const face = await this.#stage.snapshot(this.#scene, this.#camera, SIZE)
       this.#drawn.set(npc.id, face)
       return face
     } finally {
+      // Taking the copy out of this scene is all there is to give back. It owns
+      // its bones and its mixer, which cost no GPU; everything drawable under it
+      // is the cast's, shared by every clone of that outfit, so disposing any of
+      // it takes the buffers away from the people wearing it out in the city.
       this.#scene.remove(body)
-      dispose(body)
     }
   }
 
@@ -130,9 +137,10 @@ export class Portraits implements FaceSource {
     const height = (box.max.y - box.min.y) * HEAD
     at.y += height * 0.35 - height * DROP
 
-    // far enough back that a head of that height fills the frame with `MARGIN`
-    // of air round it, at a lens narrow enough not to bend the face
-    const away = (height * MARGIN) / Math.tan(((LENS / 2) * Math.PI) / 180)
+    // far enough back that `MARGIN` heads of frame fit at the face's distance,
+    // at a lens narrow enough not to bend the face. The lens is the whole angle
+    // and the frame is the whole height, so both are halved to make the triangle.
+    const away = (height * MARGIN) / (2 * Math.tan(((LENS / 2) * Math.PI) / 180))
     // A body spawns facing -Z, so the camera stands on -Z: in front of them.
     // Standing on +Z is standing behind them, which is a portrait of the back
     // of somebody's head.
@@ -149,16 +157,4 @@ function headBone(body: THREE.Object3D): THREE.Object3D | undefined {
     if (!found && (child as THREE.Bone).isBone && /^head$/i.test(child.name)) found = child
   })
   return found
-}
-
-/**
- * What the copy allocated for itself, given back: its geometry, which the clone
- * made fresh. Not its materials, which the whole cast shares, so disposing one
- * here would take the coat off everybody in the city wearing it.
- */
-function dispose(body: THREE.Object3D): void {
-  body.traverse((child) => {
-    const mesh = child as THREE.Mesh
-    if (mesh.isMesh) mesh.geometry.dispose()
-  })
 }

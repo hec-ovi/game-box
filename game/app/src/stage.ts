@@ -50,6 +50,10 @@ export interface Stage {
    * Draw a scene of your own once, off screen, and give back what it drew as an
    * image the interface can put in an `<img>`. Used for a face: a portrait is
    * one square of one person, taken once and kept.
+   *
+   * Square, in the space a screen shows, and with nothing behind the subject, so
+   * whatever the picture lands on shows through. Nothing at all rather than a
+   * picture with no scene in it.
    */
   snapshot(scene: THREE.Scene, camera: THREE.Camera, size: number): Promise<string | undefined>
   /** Draw one frame now, whatever the browser is doing with its frame loop. */
