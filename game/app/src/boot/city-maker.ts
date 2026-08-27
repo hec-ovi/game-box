@@ -4,6 +4,7 @@ import type { Notice } from '@gb/hud'
 import type { Catalogue } from '@gb/prefab'
 import { Scribe, type ScribeProgress } from '@gb/scribe'
 import type { Sidecar } from '@gb/sidecar'
+import type { World } from '@gb/world'
 import type { CityBrief } from './brief.ts'
 import { pin } from './pinning.ts'
 
@@ -18,6 +19,9 @@ export interface City {
 }
 
 export type Made = { ok: true; value: City } | { ok: false; message: string }
+
+/** The architecture a brief lays out, or why the generator would not lay it out. */
+export type Plan = { ok: true; value: World } | { ok: false; message: string }
 
 /**
  * What the panel says while it waits. It may return a promise, and the maker
@@ -55,17 +59,8 @@ export class CityMaker {
         })
       : undefined
 
-    await options.step(brief.model ? 'Asking the local model to write the city' : 'Laying out the city')
-    const built = await new Forge(scribe ?? new OfflineNarrator(brief.seed)).build({
-      theme: brief.theme,
-      seed: brief.seed,
-      blocksX: brief.blocks,
-      blocksY: brief.blocks,
-      ...(brief.places ? { openPlaces: brief.places } : {}),
-      ...(brief.storeys ? { maxStoreys: brief.storeys } : {}),
-      ...(brief.brief ? { brief: brief.brief } : {}),
-      ...(brief.asks ? { asks: brief.asks } : {}),
-    })
+    await options.step(brief.model ? 'Asking the model to write the city' : 'Laying out the city')
+    const built = await new Forge(scribe ?? new OfflineNarrator(brief.seed)).build(asked(brief))
     if (options.signal.aborted) return { ok: false, message: 'Stopped.' }
     if (!built.ok) return { ok: false, message: refused(built.error) }
 
@@ -80,6 +75,17 @@ export class CityMaker {
       requires: pinned.requires,
     })
     return this.#open(document, [...leftOut(built.value), ...(scribe ? failed(scribe) : [])])
+  }
+
+  /**
+   * The architecture the brief lays out, with nothing written into it: the
+   * grid, the roads, the named parts of town, every building and where the
+   * trains board. No door opens, so nobody is asked anything and no model is
+   * involved, which is why this runs on a press rather than behind a loader.
+   */
+  async plan(brief: CityBrief): Promise<Plan> {
+    const laid = await new Forge(new OfflineNarrator(brief.seed)).plan(asked(brief))
+    return laid.ok ? { ok: true, value: laid.value } : { ok: false, message: refused(laid.error) }
   }
 
   /**
@@ -126,6 +132,20 @@ export class CityMaker {
       })
     }
     return { ok: true, value: { bundle: opened.value, document, notes } }
+  }
+}
+
+/** The form's brief as the generator takes it. Blank is absent, never an empty field. */
+function asked(brief: CityBrief) {
+  return {
+    theme: brief.theme,
+    seed: brief.seed,
+    blocksX: brief.blocks,
+    blocksY: brief.blocks,
+    ...(brief.places ? { openPlaces: brief.places } : {}),
+    ...(brief.storeys ? { maxStoreys: brief.storeys } : {}),
+    ...(brief.brief ? { brief: brief.brief } : {}),
+    ...(brief.asks ? { asks: brief.asks } : {}),
   }
 }
 

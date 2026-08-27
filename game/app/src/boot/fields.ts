@@ -103,11 +103,6 @@ export class Fields {
     this.#changed()
   }
 
-  /** Whether the city is to be written by the local model. */
-  get model(): boolean {
-    return this.#model.checked
-  }
-
   /** What the player has typed of the five fields the model can write, blanks left out. */
   get soFar(): BriefSoFar {
     const so: BriefSoFar = {}

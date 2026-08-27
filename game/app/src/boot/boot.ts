@@ -1,18 +1,19 @@
 import type { OpenedBundle } from '@gb/bundle'
 import type { Notice } from '@gb/hud'
+import type { World } from '@gb/world'
 import { Sidecar, type SidecarOptions } from '@gb/sidecar'
 import { Game, type GameOptions } from '../game.ts'
 import { loadCars, loadDressing, type ArtPack } from '../pack.ts'
 import { briefFromQuery, briefToQuery, DEFAULTS, sameBrief, type CityBrief } from './brief.ts'
 import { CityMaker, type City, type Made } from './city-maker.ts'
 import { download, exportName, packName } from './export.ts'
-import { keepHasShelf, keepSettings, localSaves, localSettings, type Settings } from './kept.ts'
+import { keepDraft, keepHasShelf, keepSettings, localDraft, localSaves, localSettings, type Settings } from './kept.ts'
 import { briefOf, type Library, type Shelved } from './library.ts'
 import { Loader } from './loader.ts'
 import { Notices } from './notices.ts'
 import { Packs } from './packs.ts'
 import { painted } from './painted.ts'
-import { Panel } from './panel.ts'
+import { Panel, type Planned } from './panel.ts'
 
 /** A running game, as the boot layer needs it: something to hand the keys to and to say things on. */
 export interface Playing {
@@ -56,6 +57,7 @@ export class Boot {
   #art: LoadArt
   #game: Playing | undefined
   #city: City | undefined
+  #laid: World | undefined
   #shelved: Shelved | undefined
   #loaded: ArtPack | undefined
   #settings: Settings = localSettings()
@@ -88,6 +90,8 @@ export class Boot {
     this.#panel.settings = this.#settings
     this.#panel.on({
       generate: (brief) => void this.generate(brief),
+      draft: (brief) => keepDraft(brief),
+      plan: (brief) => this.layOut(brief),
       open: (file) => void this.openFile(file),
       apply: (file) => void this.applyPack(file),
       grow: () => void this.grow(),
@@ -120,7 +124,10 @@ export class Boot {
     const last = await this.#library.last()
     keepHasShelf(Boolean(last))
     await this.#shelve()
-    this.#panel.brief = asked ?? (last ? briefOf(last) : DEFAULTS)
+    // what the address bar asked for first, then a draft the player kept, then
+    // the city they were last in: a saved draft is the one they meant to come
+    // back to, so it wins over the shelf
+    this.#panel.brief = asked ?? localDraft() ?? (last ? briefOf(last) : DEFAULTS)
 
     const file = query.get('bundle')
     if (file) {
@@ -241,6 +248,24 @@ export class Boot {
       if (grown.ok) download(grown.pack, packName(grown.value.bundle.world))
       return { made: grown, ...(this.#loaded ? { art: this.#loaded } : {}), file: (grew) => this.#library.grew(shelved, grew) }
     })
+  }
+
+  /**
+   * The architecture this brief lays out, with nothing written into it, kept
+   * here for the blueprint view to open. Nothing is filed and nothing is
+   * played from it: it is the city before anybody writes it.
+   */
+  async layOut(brief: CityBrief): Promise<Planned> {
+    const laid = await this.#maker.plan(brief)
+    if (!laid.ok) return { ok: false, message: laid.message }
+    this.#laid = laid.value
+    const zones = laid.value.districts().length
+    const plots = laid.value.plots().length
+    return {
+      ok: true,
+      message: `${plots} buildings across ${zones} ${zones === 1 ? 'zone' : 'zones'}, laid out from the seed.`,
+      laid: { zones },
+    }
   }
 
   /** What the player set that belongs to them rather than to any city. */
@@ -433,5 +458,10 @@ export class Boot {
   /** The city on screen, for the dev console to ask about. */
   get world(): OpenedBundle['world'] | undefined {
     return this.#city?.bundle.world
+  }
+
+  /** The architecture the last layout laid out, for whatever draws the blueprint. */
+  get laid(): World | undefined {
+    return this.#laid
   }
 }

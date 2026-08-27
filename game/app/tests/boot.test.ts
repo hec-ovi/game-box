@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { Bundle, type OpenedBundle } from '@gb/bundle'
+import { districtCount } from '@gb/forge'
 import { CityNav } from '@gb/nav'
 import { PlayerState } from '@gb/play'
 import { QuestLog } from '@gb/quest'
@@ -43,6 +44,7 @@ const NEVER = new AbortController().signal
 const QUIET = { signal: NEVER, step: () => {} }
 const QUIET_HANDLERS: PanelHandlers = {
   generate: () => {},
+  draft: () => {},
   open: () => {},
   apply: () => {},
   grow: () => {},
@@ -126,7 +128,7 @@ describe('the panel', () => {
     await user.type(screen.getByLabelText(/main quest/i), 'who owns the customs house')
     await user.type(screen.getByLabelText(/tone/i), '  grim  ')
     await user.selectOptions(screen.getByLabelText(/wear/i), 'run-down')
-    await user.click(screen.getByRole('button', { name: /generate/i }))
+    await user.click(screen.getByRole('button', { name: 'Generate' }))
 
     expect(asked).toEqual([
       {
@@ -167,7 +169,7 @@ describe('the panel', () => {
 
     await user.clear(screen.getByLabelText(/blocks/i))
     await user.type(screen.getByLabelText(/blocks/i), '400')
-    await user.click(screen.getByRole('button', { name: /generate/i }))
+    await user.click(screen.getByRole('button', { name: 'Generate' }))
 
     expect(asked[0]!.blocks).toBe(BLOCKS.max)
   })
@@ -209,7 +211,7 @@ describe('the panel', () => {
     front.working('Laying out the city')
     expect(screen.getByRole('status').textContent).toBe('Laying out the city')
     expect(screen.getByRole('button', { name: /cancel/i })).toBeTruthy()
-    expect(screen.getByRole<HTMLButtonElement>('button', { name: /generate/i }).disabled).toBe(true)
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Generate' }).disabled).toBe(true)
 
     front.waiting('That will not build.', true)
     expect(screen.queryByRole('button', { name: /cancel/i })).toBeNull()
@@ -332,13 +334,13 @@ describe('the panel', () => {
     // no clicks, no keyboard, and out of the accessible tree, all at once
     expect(root.dataset.leaving).toBe('true')
     expect(root.hasAttribute('inert')).toBe(true)
-    expect(screen.queryByRole('button', { name: /generate/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Generate' })).toBeNull()
 
     front.show()
     expect(front.open).toBe(true)
     expect(root.hidden).toBe(false)
     expect(root.hasAttribute('inert')).toBe(false)
-    expect(screen.getByRole('button', { name: /generate/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Generate' })).toBeTruthy()
   })
 
   it('swaps between the cities you have and the form that makes another, and only one is on the page', async () => {
@@ -384,15 +386,28 @@ function writes(draft: Record<string, string>, sent: unknown[]): SidecarOptions 
   }
 }
 
-describe('having the local model write a field of the brief', () => {
+/** The Generate with AI button beside one field of the brief. */
+function ai(field: string): HTMLButtonElement {
+  return document.querySelector<HTMLButtonElement>(`[data-write="${field}"]`)!
+}
+
+/** The line the group a control sits in answers on. */
+function noteFor(control: HTMLElement): string {
+  return control.closest('[data-notes]')!.querySelector('[data-note]')!.textContent ?? ''
+}
+
+describe('having the model write a field of the brief', () => {
   beforeEach(servePage)
 
-  /** The toggle lives on the last step, so this is the walk a player takes to reach it. */
-  async function turnTheModelOn(user: ReturnType<typeof userEvent.setup>): Promise<void> {
-    await user.click(screen.getByRole('button', { name: /3\. build it/i }))
-    await user.click(screen.getByLabelText(/local model/i))
-    await user.click(screen.getByRole('button', { name: /1\. the city/i }))
-  }
+  it('is one button wherever it sits: the same words and the same icon beside every field', () => {
+    panel()
+    const buttons = [...document.querySelectorAll<HTMLElement>('[data-write]')]
+    expect(buttons.map((button) => button.dataset.write)).toEqual(['theme', 'brief', 'all', 'mainQuest', 'sideQuests', 'tone'])
+    for (const button of buttons) {
+      expect(button.querySelector('[data-label]')!.textContent).toBe('Generate with AI')
+      expect(button.querySelector('[data-icon]')!.getAttribute('data-icon')).toBe('ai')
+    }
+  })
 
   it('fills the field it sits beside with what the model wrote, and leaves the others alone', async () => {
     const user = userEvent.setup()
@@ -401,10 +416,9 @@ describe('having the local model write a field of the brief', () => {
     front.sidecar = new Sidecar(writes(DRAFT, sent))
     front.on(QUIET_HANDLERS)
     front.waiting()
-    await turnTheModelOn(user)
 
     await user.type(screen.getByLabelText(/^the main quest$/i), 'who owns the customs house')
-    await user.click(screen.getByRole('button', { name: /write the premise/i }))
+    await user.click(ai('brief'))
 
     await waitFor(() => expect(screen.getByLabelText<HTMLTextAreaElement>(/what the city is about/i).value).toBe(DRAFT.brief))
     // only the box the button sits beside is written: the theme the player left
@@ -412,46 +426,105 @@ describe('having the local model write a field of the brief', () => {
     expect(front.brief.theme).toBe(DEFAULTS.theme)
     expect(front.brief.asks?.mainQuest).toBe('who owns the customs house')
     expect(screen.getByRole('status').textContent).toMatch(/wrote what the city is about/i)
+    // pressing it is the ask: nothing on another step had to be switched on
+    // first, and the switch that decides who writes the city has not moved
+    expect(front.brief.model).toBe(false)
 
-    // and it really was one forced call to the local model, carrying what was already typed
+    // and it really was one forced call to the model, carrying what was already typed
     expect(sent).toHaveLength(1)
     const call = sent[0] as { tools: { function: { name: string } }[]; messages: { content: string }[] }
     expect(call.tools.map((tool) => tool.function.name)).toEqual(['write_brief'])
     expect(call.messages.map((message) => message.content).join('\n')).toContain('who owns the customs house')
   })
 
-  it('says it needs the local model when the model is off, and writes nothing', async () => {
-    const user = userEvent.setup()
-    const sent: unknown[] = []
-    const front = panel()
-    front.sidecar = new Sidecar(writes(DRAFT, sent))
-    front.on(QUIET_HANDLERS)
-    front.waiting()
-
-    expect(front.brief.model).toBe(false)
-    await user.click(screen.getByRole('button', { name: /write the theme/i }))
-
-    expect(screen.getByRole('status').textContent).toMatch(/local model/i)
-    expect(screen.getByRole('status').dataset.trouble).toBe('true')
-    // nothing canned went into the field, and nothing went out to the sidecar
-    expect(front.brief.theme).toBe(DEFAULTS.theme)
-    expect(sent).toHaveLength(0)
-  })
-
-  it('says the model did not answer when it will not, rather than falling back on canned words', async () => {
+  it('says the model did not answer beside the button that was pressed, not across the foot', async () => {
     const user = userEvent.setup()
     const front = panel()
     front.sidecar = new Sidecar(DOWN)
     front.on(QUIET_HANDLERS)
     front.waiting()
-    await turnTheModelOn(user)
 
-    await user.click(screen.getByRole('button', { name: /write the theme/i }))
+    await user.click(ai('theme'))
 
-    await waitFor(() => expect(screen.getByRole('status').textContent).toMatch(/did not answer/i))
-    expect(screen.getByRole('status').dataset.trouble).toBe('true')
+    // the sentence lands on the line under the control the player pressed, and
+    // the foot is left to say what the panel as a whole is doing
+    await waitFor(() => expect(noteFor(ai('theme'))).toMatch(/did not answer/i))
+    expect(screen.getByRole('status').dataset.trouble).toBe('false')
+    expect(screen.getByRole('status').textContent).toBe('')
+    // and nothing canned went into the field
     expect(front.brief.theme).toBe(DEFAULTS.theme)
   }, 30_000)
+})
+
+describe('step one: the actions beside the summary', () => {
+  beforeEach(servePage)
+
+  /** The tiles in the action grid, in the order they are read. */
+  function tiles(): string[] {
+    return [...document.querySelectorAll<HTMLElement>('[data-boot="make"] .gb-actions-grid .gb-action-tile')].map(
+      (tile) => tile.querySelector('.gb-action-title')!.textContent!,
+    )
+  }
+
+  it('offers the five actions in order, with the blueprint out of reach until there is one', () => {
+    const front = panel()
+    front.on(QUIET_HANDLERS)
+    front.waiting()
+
+    expect(tiles()).toEqual(['Generate with AI', 'Save draft', 'Generate the city', 'Preview blueprint', 'Next: the writing'])
+    // out of reach and plainly so, rather than a tile that swallows the click
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Preview blueprint' }).disabled).toBe(true)
+  })
+
+  it('says the layout is not connected rather than opening a blueprint nothing laid out', async () => {
+    const front = panel()
+    front.on(QUIET_HANDLERS)
+    front.waiting()
+
+    const lay = screen.getByRole('button', { name: 'Generate the city' })
+    await userEvent.setup().click(lay)
+
+    await waitFor(() => expect(noteFor(lay)).toMatch(/not connected/i))
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Preview blueprint' }).disabled).toBe(true)
+  })
+
+  it('lays the architecture out through the handler, and only then opens the blueprint', async () => {
+    const asked: CityBrief[] = []
+    const front = panel()
+    front.on({
+      ...QUIET_HANDLERS,
+      plan: async (brief) => (asked.push(brief), { ok: true, message: '39 buildings across 1 zone, laid out from the seed.', laid: { zones: 1 } }),
+    })
+    front.waiting()
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Generate the city' }))
+
+    await waitFor(() => expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Preview blueprint' }).disabled).toBe(false))
+    expect(asked).toEqual([DEFAULTS])
+    expect(noteFor(screen.getByRole('button', { name: 'Generate the city' }))).toMatch(/laid out from the seed/)
+  }, 20_000)
+
+  it('says the zones are the rule until a town exists, then the town\'s own count', async () => {
+    const user = userEvent.setup()
+    const front = panel()
+    front.on({ ...QUIET_HANDLERS, plan: async () => ({ ok: true, message: 'Laid out.', laid: { zones: 5 } }) })
+    front.waiting()
+    const said = (key: string) => document.querySelector<HTMLElement>(`[data-said="${key}"]`)!.textContent
+
+    // the rule is an upper bound on a town nobody has cut yet, so it never
+    // reads as an exact number beside the ones that are exact
+    expect([said('blocks'), said('zones')]).toEqual(['20 x 20', `About ${districtCount(20, 20)}`])
+
+    await user.click(screen.getByRole('button', { name: 'Generate the city' }))
+    await waitFor(() => expect(said('zones')).toBe('5'))
+
+    // and changing the settings describes another city, so the count and the
+    // blueprint both go back to what is actually known
+    await user.clear(screen.getByLabelText(/blocks/i))
+    await user.type(screen.getByLabelText(/blocks/i), '40')
+    expect(said('zones')).toBe(`About ${districtCount(40, 40)}`)
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Preview blueprint' }).disabled).toBe(true)
+  }, 20_000)
 })
 
 describe('what the form says it is about to build', () => {
@@ -466,7 +539,7 @@ describe('what the form says it is about to build', () => {
 
     await user.clear(screen.getByLabelText(/blocks/i))
     await user.type(screen.getByLabelText(/blocks/i), '8')
-    await user.type(screen.getByLabelText(/doors that open/i), '5')
+    await user.type(screen.getByLabelText(/total instances/i), '5')
     await user.type(screen.getByLabelText(/tallest building/i), '12')
 
     // the readout beside the fields is the fields, not an estimate of anything
@@ -810,8 +883,48 @@ describe('the front door end to end', () => {
     expect(started).toEqual([])
     expect(panel.open).toBe(true)
     expect(panel.face).toBe('make')
-    expect(screen.getByRole<HTMLButtonElement>('button', { name: /generate/i }).disabled).toBe(false)
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Generate' }).disabled).toBe(false)
   })
+
+  it('keeps a draft of the form, and opens the form on it the next time round', async () => {
+    const shelf = new MemoryShelf()
+    const user = userEvent.setup()
+    const first = open(DOWN, shelf)
+    await first.boot.start(new URLSearchParams(''))
+
+    await user.clear(screen.getByLabelText(/urban theme/i))
+    await user.type(screen.getByLabelText(/urban theme/i), 'flooded refinery')
+    await user.type(screen.getByLabelText(/total instances/i), '7')
+    await user.click(screen.getByRole('button', { name: 'Save draft' }))
+    // it keeps what was typed and builds nothing
+    expect(started).toEqual([])
+
+    // a fresh page over the same browser opens the form on what was kept
+    const again = open(DOWN, shelf)
+    await again.boot.start(new URLSearchParams(''))
+    expect(again.panel.brief).toMatchObject({ theme: 'flooded refinery', places: 7 })
+    expect(screen.getByLabelText<HTMLInputElement>(/urban theme/i).value).toBe('flooded refinery')
+  })
+
+  it('lays the architecture out from the form without writing a city or shelving one', async () => {
+    const shelf = new MemoryShelf()
+    const { boot } = open(DOWN, shelf)
+    await boot.start(new URLSearchParams(''))
+
+    const planned = await boot.layOut({ ...DEFAULTS, blocks: 2, seed: 'blueprint' })
+    expect(planned.ok).toBe(true)
+
+    // a real town: buildings standing in named parts of it, and nobody in them
+    const laid = boot.laid!
+    expect(laid.plots().length).toBeGreaterThan(0)
+    expect(laid.districts().length).toBe(planned.laid!.zones)
+    expect(laid.interiors()).toHaveLength(0)
+    expect(laid.npcs()).toHaveLength(0)
+
+    // and it is the city before anybody wrote it: nothing played, nothing filed
+    expect(started).toEqual([])
+    expect(await shelf.list()).toEqual([])
+  }, 30_000)
 
   it('takes the city off the screen while the panel is over it, and puts it back on the way in', async () => {
     const { boot, panel } = open()
@@ -1089,7 +1202,7 @@ describe('the front door end to end', () => {
     await waitFor(() => expect(screen.getByRole('status').textContent).toMatch(/will not open/i), { timeout: 20_000 })
     expect(started).toEqual([])
     expect(panel.open).toBe(true)
-    expect(screen.getByRole<HTMLButtonElement>('button', { name: /generate/i }).disabled).toBe(false)
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Generate' }).disabled).toBe(false)
   }, 30_000)
 
   it('says why a file will not open, rather than throwing at the player', async () => {
@@ -1112,7 +1225,7 @@ describe('the front door end to end', () => {
     expect(panel.open).toBe(true)
     expect(screen.getByRole('status').textContent).toMatch(/would not draw/i)
     expect(screen.getByRole('status').dataset.trouble).toBe('true')
-    expect(screen.getByRole<HTMLButtonElement>('button', { name: /generate/i }).disabled).toBe(false)
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Generate' }).disabled).toBe(false)
     // the city itself is sound, so it can still be kept
     expect(screen.getByRole<HTMLButtonElement>('button', { name: /export/i }).disabled).toBe(false)
   }, 30_000)

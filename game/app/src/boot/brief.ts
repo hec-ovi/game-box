@@ -13,7 +13,7 @@ export interface CityBrief {
   readonly places?: number
   /** The tallest building the city may raise, in storeys. Left out, the generator's own ceiling. */
   readonly storeys?: number
-  /** Write the names, people and quests with the local model rather than offline. */
+  /** Write the names, people and quests with the model rather than offline. */
   readonly model: boolean
   /** What the city is about, in the player's own words. Unbounded: it is theirs. */
   readonly brief?: string

@@ -5,9 +5,30 @@ import { CityForm } from './form.ts'
 import { Hints } from './hints.ts'
 import { LibraryView, type OnTheShelf } from './library-view.ts'
 import { enters, replays } from './motion.ts'
+import { note } from './notes.ts'
+import { painted } from './painted.ts'
+import type { Laid } from './review.ts'
+
+/** What laying the architecture out came back with, and what to say about it. */
+export interface Planned {
+  readonly ok: boolean
+  readonly message: string
+  /** What the town actually came out as, when one came out. */
+  readonly laid?: Laid
+}
 
 export interface PanelHandlers {
   generate(brief: CityBrief): void
+  /** Keep this brief on this browser. Builds nothing. */
+  draft(brief: CityBrief): void
+  /** Lay the architecture out from these settings so it can be previewed. */
+  plan?(brief: CityBrief): Promise<Planned>
+  /**
+   * Open the architecture the last plan laid out. The seam for the blueprint
+   * view: left out until that lands, and while it is out the tile says so
+   * rather than opening something that is not there.
+   */
+  preview?(): void
   /** A city file the player picked off their own machine. */
   open(file: File): void
   /** A pack file, onto the city that is open. */
@@ -61,6 +82,9 @@ export class Panel {
   #crownNew: HTMLButtonElement
   #homeAgain: HTMLButtonElement
   #generate: HTMLButtonElement
+  #draft: HTMLButtonElement
+  #plan: HTMLButtonElement
+  #preview: HTMLButtonElement
   #export: HTMLButtonElement
   #grow: HTMLButtonElement
   #cancel: HTMLButtonElement
@@ -68,11 +92,13 @@ export class Panel {
   #status: HTMLElement
   #shelf: readonly OnTheShelf[] = []
   #face: PanelFace = 'home'
+  #planned = false
   #playing = false
   #shown = true
   #leaving: ReturnType<typeof setTimeout> | undefined
   #handlers: PanelHandlers = {
     generate: () => {},
+    draft: () => {},
     open: () => {},
     apply: () => {},
     grow: () => {},
@@ -115,6 +141,9 @@ export class Panel {
     this.#apply = find('apply')
     this.#screens = find('screens')
     this.#generate = find('generate')
+    this.#draft = find('draft')
+    this.#plan = find('plan')
+    this.#preview = find('preview')
     this.#export = find('export')
     this.#grow = find('grow')
     this.#cancel = find('cancel')
@@ -143,9 +172,21 @@ export class Panel {
       export: (key) => this.#handlers.exportCity?.(key),
       remove: (key) => this.#handlers.remove(key),
     })
+    // a settings change describes another city, so whatever was laid out goes
+    this.#form.onEdit(() => this.#unplanned())
     this.#new.addEventListener('click', () => void (this.face = 'make'))
     this.#crownNew.addEventListener('click', () => void (this.face = 'make'))
     this.#homeAgain.addEventListener('click', () => void (this.face = 'home'))
+    this.#draft.addEventListener('click', () => {
+      this.#handlers.draft(this.brief)
+      note(this.#draft, 'Draft kept on this browser. It opens here next time.')
+    })
+    this.#plan.addEventListener('click', () => void this.#lay())
+    this.#preview.addEventListener('click', () => {
+      const open = this.#handlers.preview
+      if (!open) return note(this.#preview, 'The blueprint view is not connected to this button, so there is nothing to open.')
+      open()
+    })
     this.#export.addEventListener('click', () => this.#handlers.save())
     this.#grow.addEventListener('click', () => this.#handlers.grow())
     this.#cancel.addEventListener('click', () => this.#handlers.cancel())
@@ -175,7 +216,7 @@ export class Panel {
 
   /**
    * The page's one sidecar, handed over by whoever built it, so the buttons
-   * that have the local model write a field of the brief reach the same model
+   * that have the model write a field of the brief reach the same model
    * the city itself is written by.
    */
   set sidecar(sidecar: Sidecar) {
@@ -310,6 +351,42 @@ export class Panel {
   }
 
   /**
+   * The architecture laid out from the form as it stands, so it can be looked
+   * at before the city is written. Preview opens what this leaves behind and
+   * stays disabled until there is one, and a layout that did not happen says so
+   * on the line under the tiles rather than lighting Preview on nothing.
+   */
+  async #lay(): Promise<void> {
+    const ask = this.#handlers.plan
+    if (!ask) return note(this.#plan, 'The city layout is not connected to this button, so nothing was laid out.')
+    note(this.#plan, 'Laying the architecture out.')
+    this.#plan.disabled = true
+    // the layout blocks this thread once it starts, so the line above it is on
+    // the glass before it does
+    await painted()
+    let planned: Planned
+    try {
+      planned = await ask(this.brief)
+    } catch (cause) {
+      planned = { ok: false, message: `The architecture would not lay out (${String(cause)}).` }
+    } finally {
+      this.#plan.disabled = false
+    }
+    note(this.#plan, planned.message)
+    this.#planned = planned.ok
+    this.#form.laid = planned.laid
+    this.#preview.disabled = !this.#planned
+  }
+
+  /** The layout dropped: the form moved, so what was laid out is not this city. */
+  #unplanned(): void {
+    if (!this.#planned) return
+    this.#planned = false
+    this.#preview.disabled = true
+    note(this.#plan, '')
+  }
+
+  /**
    * A face arriving, with the rows on it landing one after another. The mark of
    * the last arrival comes off the whole group first, in one go, so a face the
    * player has been back and forth to still arrives rather than sitting there.
@@ -332,6 +409,9 @@ export class Panel {
     // the steps go quiet while a city is being written: none of them is the answer to that
     this.#rail.dataset.quiet = String(working)
     this.#generate.disabled = working
+    this.#draft.disabled = working
+    this.#plan.disabled = working
+    this.#preview.disabled = working || !this.#planned
     this.#open.disabled = working
     this.#grow.disabled = working || this.#grow.disabled
     this.#apply.disabled = working || this.#apply.disabled

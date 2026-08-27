@@ -2,6 +2,7 @@ import { BRIEF_FIELDS, Scribe, type BriefField } from '@gb/scribe'
 import type { Sidecar } from '@gb/sidecar'
 import { freshSeed } from './brief.ts'
 import type { Fields } from './fields.ts'
+import { note } from './notes.ts'
 
 /** What each button asks for, and how that reads on the status line. */
 const ASKS: Record<string, { want: readonly BriefField[]; called: string } | undefined> = {
@@ -13,27 +14,32 @@ const ASKS: Record<string, { want: readonly BriefField[]; called: string } | und
   all: { want: BRIEF_FIELDS, called: 'the whole brief' },
 }
 
-/** What a button says while its call is out. */
-const WORKING = 'Writing...'
+/** What every one of these buttons says while its call is out. */
+const WORKING = 'Generating...'
 
 /**
- * The buttons that have the local model write a field of the brief. Each one
- * asks for the field it sits beside and puts the answer straight into it; the
- * fast track asks for all five.
+ * The buttons that have the model write a field of the brief. Every one of them
+ * is the same button doing the same thing, Generate with AI, and reads that way
+ * wherever it sits: each asks for the field it stands beside and puts the
+ * answer straight into it, and the one in the action grid asks for all five.
  *
- * There is nothing canned behind them. With the model off, or with the sidecar
- * unreachable, a button says what it needs and changes nothing, because a
- * composed sentence handed over as the model's answer is the thing these are
- * here to replace.
+ * Pressing one is asking for the model, so nothing else has to be switched on
+ * first; the toggle on the last step is about who writes the city, not who
+ * writes a line of the brief. What a press could not do is said on the line
+ * beside the button that was pressed.
+ *
+ * There is nothing canned behind them. With no model reachable a button says so
+ * and changes nothing, because a composed sentence handed over as the model's
+ * answer is the thing these are here to replace.
  */
 export class BriefWriting {
   #fields: Fields
-  #say: (message: string, trouble?: boolean) => void
+  #say: (message: string) => void
   #buttons: HTMLButtonElement[]
   #sidecar: Sidecar | undefined
   #busy = false
 
-  constructor(root: HTMLElement, fields: Fields, say: (message: string, trouble?: boolean) => void) {
+  constructor(root: HTMLElement, fields: Fields, say: (message: string) => void) {
     this.#fields = fields
     this.#say = say
     this.#buttons = [...root.querySelectorAll<HTMLButtonElement>('[data-write]')]
@@ -48,23 +54,26 @@ export class BriefWriting {
   async #write(button: HTMLButtonElement): Promise<void> {
     const asked = ASKS[button.dataset.write ?? '']
     if (!asked || this.#busy) return
-    if (!this.#fields.model) return this.#say('That is written by the local model. Turn the model on at the last step and try again.', true)
-    if (!this.#sidecar) return this.#say('There is no local model on this page to write it.', true)
+    note(button, '')
+    if (!this.#sidecar) return note(button, 'No model is connected to this page, so there is nothing to write it.')
 
     this.#busy = true
     const words = button.querySelector<HTMLElement>('[data-label]')
     const said = words?.textContent ?? ''
     if (words) words.textContent = WORKING
     for (const other of this.#buttons) other.disabled = true
-    this.#say(`Asking the local model to write ${asked.called}`)
+    this.#say(`Asking the model to write ${asked.called}`)
     try {
       // a fresh seed each press: the same seed writes the same words, and a
       // button that hands back what it handed back last time reads as broken
       const seed = freshSeed()
       const draft = await new Scribe({ sidecar: this.#sidecar, seed }).writeBrief({ want: asked.want, have: this.#fields.soFar, seed })
-      if (!draft) return this.#say('The local model did not answer, so nothing was written. Check it is running and try again.', true)
+      if (!draft) {
+        this.#say('')
+        return note(button, 'The model did not answer, so nothing was written. Check it is running and press this again.')
+      }
       this.#fields.write(draft, asked.want)
-      this.#say(`The local model wrote ${asked.called}.`)
+      this.#say(`The model wrote ${asked.called}.`)
     } finally {
       this.#busy = false
       if (words) words.textContent = said

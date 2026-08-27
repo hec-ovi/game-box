@@ -1,24 +1,34 @@
+import { districtCount } from '@gb/forge'
 import { STYLE, type CityBrief, type StyleAxis } from './brief.ts'
 import type { Fields } from './fields.ts'
 
 /** How each style axis reads in a sentence. */
 const AXIS: Record<StyleAxis, string> = { neon: 'Neon', density: 'Density', wear: 'Wear' }
 
+/** What the architecture actually came out as, once it has been laid out. */
+export interface Laid {
+  readonly zones: number
+}
+
 /**
  * Saying back what was asked for, and asking once before it is built.
  *
  * Every readout on the form is a `[data-said]` slot filled from the brief the
  * fields hold, so what the player reads on the summary, on the review and in
- * the confirmation is the same brief said three times. Nothing here estimates:
- * how many buildings go up, who lives in them and what work they hand out are
- * settled while the city is built, and the generator cannot be asked before it
- * runs.
+ * the confirmation is the same brief said three times. The grid, the seed, the
+ * instances and the height are the fields themselves. The zones are the only
+ * readout that is not, and it says so: `@gb/forge`'s rule is an upper bound
+ * before a town exists, so it reads "About 6" until a plan has been laid and
+ * the town's own count off `world.districts()` replaces it. How many buildings
+ * go up, who lives in them and what work they hand out are settled while the
+ * city is built, so the form does not say them at all.
  */
 export class Review {
   #root: HTMLElement
   #fields: Fields
   #modal: HTMLElement | null
   #lines: HTMLElement | null
+  #laid: Laid | undefined
 
   constructor(root: HTMLElement, fields: Fields, proceed: () => void) {
     this.#root = root
@@ -36,9 +46,15 @@ export class Review {
     })
   }
 
+  /** What the architecture came out as, or nothing until it has been laid out. */
+  set laid(laid: Laid | undefined) {
+    this.#laid = laid
+    this.refresh()
+  }
+
   /** Every slot on the form, filled from the brief as it stands. */
   refresh(): void {
-    const said = says(this.#fields.brief)
+    const said = says(this.#fields.brief, this.#laid)
     for (const slot of this.#root.querySelectorAll<HTMLElement>('[data-said]')) {
       const key = slot.dataset.said ?? ''
       if (key in said) slot.textContent = said[key]!
@@ -68,10 +84,11 @@ export class Review {
 }
 
 /** Every readout on the form, by the name the markup asks for it under. */
-function says(brief: CityBrief): Record<string, string> {
+function says(brief: CityBrief, laid: Laid | undefined): Record<string, string> {
   return {
     blocks: `${brief.blocks} x ${brief.blocks}`,
     grid: `${brief.blocks} by ${brief.blocks} blocks`,
+    zones: laid ? String(laid.zones) : `About ${districtCount(brief.blocks, brief.blocks)}`,
     seed: `Seed: ${brief.seed}`,
     doorsCount: brief.places === undefined ? 'Any' : String(brief.places),
     doors: brief.places === undefined ? 'The generator chooses how many doors open' : `${brief.places} doors open`,
@@ -117,7 +134,7 @@ function sentences(brief: CityBrief): string[] {
     brief.asks?.sideQuests ? `The side jobs: ${brief.asks.sideQuests}` : 'The side jobs are left to the generator.',
     brief.asks?.tone ? `How people talk: ${brief.asks.tone}` : 'How people talk is left to the generator.',
     brief.model
-      ? 'The local model writes the history, the places and the quests.'
+      ? 'The model writes the history, the places and the quests.'
       : 'It is written offline, with no model, from the seed alone.',
     'How many buildings go up, who lives in them and what work they hand out are settled while it is built.',
   ]

@@ -1058,12 +1058,18 @@
         flex: 1;
         min-height: 0;
       }
-      /* The buttons that have the local model write a field of the brief */
+      /* The Generate with AI buttons beside a field, and the line they answer on */
       .gb-write-row {
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
         justify-content: flex-start;
+        gap: 4px 10px;
         padding-top: 4px;
+      }
+      .gb-write-row .gb-note {
+        flex: 1 1 150px;
+        min-height: 0;
       }
       .gb-write-foot {
         margin-top: auto;
@@ -1182,7 +1188,7 @@
       /* The readouts on step one: the grid, the doors and the height the brief asked for */
       .gb-live-telemetry {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(4, 1fr);
         gap: 6px;
         padding: 10px 12px;
         background: rgba(2, 6, 10, 0.95);
@@ -1538,16 +1544,16 @@
       .gb-actions-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
-        gap: 8px;
+        gap: 6px;
       }
       .gb-action-tile {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 5px;
-        height: 60px;
-        padding: 6px 4px;
+        gap: 4px;
+        height: 52px;
+        padding: 5px 4px;
         background: linear-gradient(180deg, #0d1a22 0%, #060d12 100%);
         border: 1px solid rgba(47, 217, 230, 0.35);
         color: #d1f4f8;
@@ -1568,14 +1574,18 @@
         box-shadow: 0 0 14px rgba(47, 217, 230, 0.4);
         transform: translateY(-1px);
       }
+      /* A disabled tile is readable and plainly out of reach, never faded to a
+         ghost: the ground stands, the edge and the words go to the off tokens. */
       .gb-action-tile:disabled {
-        opacity: 0.35;
-        cursor: not-allowed;
-        border-color: rgba(47, 217, 230, 0.15);
-        background: rgba(4, 8, 12, 0.6);
-        color: #5c7882;
+        cursor: default;
+        border-color: var(--gb-off);
+        background: var(--gb-well);
+        color: var(--gb-off-ink);
         box-shadow: none;
         transform: none;
+      }
+      .gb-action-tile.gb-action-wide {
+        grid-column: 1 / -1;
       }
       .gb-action-tile[data-lit='true']:not(:disabled) {
         border-color: var(--gb-accent);
@@ -1594,6 +1604,17 @@
       .gb-action-title {
         line-height: 1.15;
         font-size: 9.5px;
+      }
+
+      /* The line a control answers on: what it did, or what it could not do. It
+         holds a line's height whether or not it has words in it. */
+      .gb-note {
+        margin: 0;
+        min-height: 15px;
+        font-family: var(--gb-body);
+        font-size: 12px;
+        line-height: 1.25;
+        color: var(--gb-dim);
       }
 
       /* Step Pane Action Rows */
@@ -1758,21 +1779,34 @@
         transition: all 0.18s ease;
         position: relative;
       }
-      .gb-step-chevron .gb-chevron-wings {
+      /* The mark at the head of each step plate: a chamfered cap round the set's
+         own chevron, taking the plate's colour. The step being read wears it
+         whole; the ones either side wear it quietly. */
+      .gb-step-chevron .gb-chevron-mark {
         display: flex;
         align-items: center;
-        width: 24px;
-        height: 24px;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
         flex: none;
-        transition: transform 0.2s ease;
+        --cut: 4px;
+        clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+        background: var(--gb-void);
+        box-shadow: inset 0 0 0 1px currentColor;
+        opacity: 0.5;
+        transition:
+          transform var(--gb-t-press) var(--gb-in),
+          opacity var(--gb-t-state) var(--gb-in);
       }
-      .gb-step-chevron:hover .gb-chevron-wings {
-        transform: translateX(4px);
+      .gb-step-chevron .gb-chevron-mark .gb-i {
+        width: 14px;
+        height: 14px;
       }
-      .gb-step-chevron .gb-chevron-trail {
-        opacity: 0.7;
-        font-size: 11px;
-        letter-spacing: -0.06em;
+      .gb-step-chevron[aria-current='true'] .gb-chevron-mark {
+        opacity: 1;
+      }
+      .gb-step-chevron:hover .gb-chevron-mark {
+        transform: translateX(2px);
       }
       .gb-step-chevron .gb-chevron-num {
         font-family: var(--gb-mono);
@@ -1786,9 +1820,6 @@
         background: linear-gradient(90deg, rgba(0, 230, 118, 0.28) 0%, rgba(4, 20, 12, 0.95) 100%);
         color: #80eec0;
         z-index: 3;
-      }
-      .gb-step-chevron.gb-step-arch .gb-chevron-wings path {
-        stroke: #00e676;
       }
       .gb-step-chevron.gb-step-arch:hover {
         background: linear-gradient(90deg, rgba(0, 230, 118, 0.45) 0%, rgba(4, 32, 18, 0.98) 100%);
@@ -1809,9 +1840,6 @@
         color: #fae078;
         z-index: 2;
       }
-      .gb-step-chevron.gb-step-story .gb-chevron-wings path {
-        stroke: #ffd600;
-      }
       .gb-step-chevron.gb-step-story:hover {
         background: linear-gradient(90deg, rgba(255, 214, 0, 0.4) 0%, rgba(36, 30, 6, 0.98) 100%);
         color: #ffffff;
@@ -1830,9 +1858,6 @@
         background: linear-gradient(90deg, rgba(255, 23, 68, 0.22) 0%, rgba(20, 4, 8, 0.95) 100%);
         color: #ff8597;
         z-index: 1;
-      }
-      .gb-step-chevron.gb-step-compile .gb-chevron-wings path {
-        stroke: #ff1744;
       }
       .gb-step-chevron.gb-step-compile:hover {
         background: linear-gradient(90deg, rgba(255, 23, 68, 0.4) 0%, rgba(36, 8, 14, 0.98) 100%);
@@ -2582,22 +2607,24 @@
                       <label for="boot-theme">Urban Theme</label>
                     </div>
                     <p class="gb-field-desc">The setting in a handful of words: quiet coastal town, neon megacity, rust foundry.</p>
-                    <div class="gb-write-row">
-                      <button type="button" class="gb-btn-write" data-write="theme" data-hint="Have the local model write the theme, reading whatever else you have already typed.">
-                        <span class="gb-i gb-i-16" data-icon="write"></span>
-                        <span data-label>Write the theme</span>
+                    <div class="gb-write-row" data-notes>
+                      <button type="button" class="gb-btn-write" data-write="theme" data-hint="Have the model write the theme, reading whatever else you have already typed.">
+                        <span class="gb-i gb-i-16" data-icon="ai"></span>
+                        <span data-label>Generate with AI</span>
                       </button>
+                      <p class="gb-note" data-note></p>
                     </div>
                     <div class="gb-cyber-field gb-field-flex gb-floating">
                       <textarea id="boot-brief" data-boot="brief" spellcheck="false" placeholder=" "></textarea>
                       <label for="boot-brief">What the city is about</label>
                     </div>
                     <p class="gb-field-desc">In your own words, as long as you like. The history, the places and the people are written from this.</p>
-                    <div class="gb-write-row gb-write-foot">
-                      <button type="button" class="gb-btn-write" data-write="brief" data-hint="Have the local model write the premise, reading whatever else you have already typed.">
-                        <span class="gb-i gb-i-16" data-icon="write"></span>
-                        <span data-label>Write the premise</span>
+                    <div class="gb-write-row gb-write-foot" data-notes>
+                      <button type="button" class="gb-btn-write" data-write="brief" data-hint="Have the model write the premise, reading whatever else you have already typed.">
+                        <span class="gb-i gb-i-16" data-icon="ai"></span>
+                        <span data-label>Generate with AI</span>
                       </button>
+                      <p class="gb-note" data-note></p>
                     </div>
                   </div>
 
@@ -2664,19 +2691,19 @@
                         <input type="range" class="gb-cyber-range" min="1" max="116" value="20" data-sync="blocks" data-hint="Drag to set the grid size (1 to 116)." />
                       </div>
                     </div>
-                    <div class="gb-cyber-dial-card" data-hint="How many doors in the town open onto a furnished place with people in it. Left blank, the generator chooses.">
+                    <div class="gb-cyber-dial-card" data-hint="How many places in the town are furnished, open and lived in: a door you can walk through onto people. Left blank, the generator chooses.">
                       <div class="gb-dial-control">
-                        <label class="gb-cyber-lbl" for="boot-places">Doors That Open</label>
+                        <label class="gb-cyber-lbl" for="boot-places">Total Instances</label>
                         <div class="gb-num-stepper-group">
-                          <button type="button" class="gb-num-step-btn" data-step-field="places" data-step-dir="-1" aria-label="One door fewer" data-hint="One door fewer">
+                          <button type="button" class="gb-num-step-btn" data-step-field="places" data-step-dir="-1" aria-label="One instance fewer" data-hint="One instance fewer">
                             <span class="gb-i gb-i-14" data-icon="chevron-left"></span>
                           </button>
-                          <input id="boot-places" data-boot="places" type="number" min="1" max="24" step="1" placeholder="3" data-hint="Type how many doors open, or drag the slider (1 to 24). Blank leaves it to the generator." />
-                          <button type="button" class="gb-num-step-btn" data-step-field="places" data-step-dir="1" aria-label="One door more" data-hint="One door more">
+                          <input id="boot-places" data-boot="places" type="number" min="1" max="24" step="1" placeholder="3" data-hint="Type how many places open, or drag the slider (1 to 24). Blank leaves it to the generator." />
+                          <button type="button" class="gb-num-step-btn" data-step-field="places" data-step-dir="1" aria-label="One instance more" data-hint="One instance more">
                             <span class="gb-i gb-i-14" data-icon="chevron-right"></span>
                           </button>
                         </div>
-                        <input type="range" class="gb-cyber-range" min="1" max="24" value="3" data-sync="places" data-hint="Drag to set how many doors open (1 to 24)." />
+                        <input type="range" class="gb-cyber-range" min="1" max="24" value="3" data-sync="places" data-hint="Drag to set how many places open (1 to 24)." />
                       </div>
                     </div>
                     <div class="gb-cyber-dial-card" data-hint="Tallest building the city may raise, in storeys (1 to 40). Above four storeys a plot is built from the street kit, so a high ceiling gives the downtown a skyline of towers.">
@@ -2710,7 +2737,7 @@
                   <!-- Panel 4: Bottom-Right - What was asked for, and the way on -->
                   <div class="gb-cyber-panel">
                     <div class="gb-panel-head">
-                      <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="seed"></span>WHAT YOU ASKED FOR</span>
+                      <span class="gb-panel-badge"><span class="gb-i gb-i-14" data-icon="seed"></span>SUMMARY</span>
                     </div>
 
                     <div class="gb-live-telemetry">
@@ -2718,9 +2745,13 @@
                         <span class="gb-telem-num" data-said="blocks">20 x 20</span>
                         <span class="gb-telem-lbl">BLOCKS</span>
                       </div>
-                      <div class="gb-telem-item" data-hint="How many doors open onto a place you can walk into. Any means the generator chooses.">
+                      <div class="gb-telem-item" data-hint="How many districts the city is cut into, each one a part of town you cross on foot. It is the generator's rule until Generate the city has run, and the town's own count after.">
+                        <span class="gb-telem-num" data-said="zones">About 8</span>
+                        <span class="gb-telem-lbl">TOTAL ZONES</span>
+                      </div>
+                      <div class="gb-telem-item" data-hint="How many places open onto rooms you can walk into. Any means the generator chooses.">
                         <span class="gb-telem-num" data-said="doorsCount">Any</span>
-                        <span class="gb-telem-lbl">DOORS THAT OPEN</span>
+                        <span class="gb-telem-lbl">TOTAL INSTANCES</span>
                       </div>
                       <div class="gb-telem-item" data-hint="The storey ceiling the city builds under. Any means the generator chooses.">
                         <span class="gb-telem-num" data-said="storeysCount">Any</span>
@@ -2733,17 +2764,30 @@
                       Nothing here can say them before it runs.
                     </p>
 
-                    <div class="gb-arch-actions-panel">
+                    <div class="gb-arch-actions-panel" data-notes>
                       <div class="gb-actions-grid">
-                        <button type="button" class="gb-action-tile" data-write="all" data-hint="Have the local model write all five: the theme, the premise, the story, the side jobs and the tone.">
-                          <span class="gb-i" data-icon="write"></span>
-                          <span class="gb-action-title" data-label>Write the whole brief</span>
+                        <button type="button" class="gb-action-tile" data-write="all" data-hint="Have the model write all five: the theme, the premise, the story, the side jobs and the tone.">
+                          <span class="gb-i" data-icon="ai"></span>
+                          <span class="gb-action-title" data-label>Generate with AI</span>
                         </button>
-                        <button type="button" class="gb-action-tile" data-step-nav="2" data-lit="true" data-hint="On to the story, the side jobs and the tone.">
+                        <button type="button" class="gb-action-tile" data-boot="draft" data-hint="Keep this brief on this browser, so closing the panel and coming back opens the form on it. Builds nothing.">
+                          <span class="gb-i" data-icon="draft"></span>
+                          <span class="gb-action-title">Save draft</span>
+                        </button>
+                        <button type="button" class="gb-action-tile" data-boot="plan" data-hint="Lay the architecture out from these settings, so it can be looked at before the city is written.">
+                          <span class="gb-i" data-icon="city"></span>
+                          <span class="gb-action-title">Generate the city</span>
+                        </button>
+                        <button type="button" class="gb-action-tile" data-boot="preview" data-hint="Open the architecture that was laid out. Generate the city first." disabled>
+                          <span class="gb-i" data-icon="eye"></span>
+                          <span class="gb-action-title">Preview blueprint</span>
+                        </button>
+                        <button type="button" class="gb-action-tile gb-action-wide" data-step-nav="2" data-lit="true" data-hint="On to the story, the side jobs and the tone.">
                           <span class="gb-i" data-icon="chevron-right"></span>
                           <span class="gb-action-title">Next: the writing</span>
                         </button>
                       </div>
+                      <p class="gb-note" data-note></p>
                     </div>
                   </div>
                 </section>
@@ -2784,11 +2828,12 @@
                         <label for="boot-main">The main quest</label>
                       </div>
                       <p class="gb-field-desc">What the story asks the player to do. Something a person could walk to a place and do.</p>
-                      <div class="gb-write-row gb-write-foot">
-                        <button type="button" class="gb-btn-write" data-write="mainQuest" data-hint="Have the local model write the main quest, reading the rest of the brief.">
-                          <span class="gb-i gb-i-16" data-icon="write"></span>
-                          <span data-label>Write the story</span>
+                      <div class="gb-write-row gb-write-foot" data-notes>
+                        <button type="button" class="gb-btn-write" data-write="mainQuest" data-hint="Have the model write the main quest, reading the rest of the brief.">
+                          <span class="gb-i gb-i-16" data-icon="ai"></span>
+                          <span data-label>Generate with AI</span>
                         </button>
+                        <p class="gb-note" data-note></p>
                       </div>
                     </div>
 
@@ -2801,11 +2846,12 @@
                         <label for="boot-side">Side quests and errands</label>
                       </div>
                       <p class="gb-field-desc">The kind of small work this town hands out, and who would pay for it.</p>
-                      <div class="gb-write-row gb-write-foot">
-                        <button type="button" class="gb-btn-write" data-write="sideQuests" data-hint="Have the local model write the side jobs, reading the rest of the brief.">
-                          <span class="gb-i gb-i-16" data-icon="write"></span>
-                          <span data-label>Write the side jobs</span>
+                      <div class="gb-write-row gb-write-foot" data-notes>
+                        <button type="button" class="gb-btn-write" data-write="sideQuests" data-hint="Have the model write the side jobs, reading the rest of the brief.">
+                          <span class="gb-i gb-i-16" data-icon="ai"></span>
+                          <span data-label>Generate with AI</span>
                         </button>
+                        <p class="gb-note" data-note></p>
                       </div>
                     </div>
 
@@ -2818,11 +2864,12 @@
                         <label for="boot-tone">Dialogue tone</label>
                       </div>
                       <p class="gb-field-desc">A few adjectives, the way people here sound: guarded, dry, tired.</p>
-                      <div class="gb-write-row gb-write-foot">
-                        <button type="button" class="gb-btn-write" data-write="tone" data-hint="Have the local model write the tone, reading the rest of the brief.">
-                          <span class="gb-i gb-i-16" data-icon="write"></span>
-                          <span data-label>Write the tone</span>
+                      <div class="gb-write-row gb-write-foot" data-notes>
+                        <button type="button" class="gb-btn-write" data-write="tone" data-hint="Have the model write the tone, reading the rest of the brief.">
+                          <span class="gb-i gb-i-16" data-icon="ai"></span>
+                          <span data-label>Generate with AI</span>
                         </button>
+                        <p class="gb-note" data-note></p>
                       </div>
                     </div>
                   </div>
@@ -2890,16 +2937,16 @@
                             <span class="gb-arch-sum-val" data-said="tone">The generator picks how people talk</span>
                           </div>
                           <div class="gb-review-item-card">
-                            <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="screen"></span>THE LOCAL MODEL</span>
+                            <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="screen"></span>THE MODEL</span>
                             <label class="gb-boot-toggle">
                               <input id="boot-model" data-boot="model" type="checkbox" />
                               <span class="gb-boot-switch"><span></span></span>
-                              <span class="gb-boot-label">Write it with the local model</span>
+                              <span class="gb-boot-label">Write the city with the model</span>
                               <span class="gb-boot-state" data-boot="model-state">Off</span>
                             </label>
                             <span class="gb-arch-sum-sub">
-                              On, the model writes the history, the places and the quests, and the Write buttons on this form work. Off, the city is written
-                              from the seed alone.
+                              On, the model writes the history, the places and the quests. Off, the city is written from the seed alone. Either way, the
+                              Generate with AI buttons on this form ask the model for that one field.
                             </span>
                           </div>
                         </div>
@@ -2959,34 +3006,19 @@
               <!-- The three steps, as chevrons that run into one another -->
               <div class="gb-boot-stepper" data-boot="stepper">
                 <button type="button" class="gb-step-chevron gb-step-arch" data-step-target="1" aria-current="true" data-hint="Step 1: the theme, what the city is about, its look, its size and its seed.">
-                  <svg class="gb-chevron-wings" viewBox="0 0 32 32" aria-hidden="true">
-                    <path d="M4 6 L14 16 L4 26" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-                    <path d="M16 6 L26 16 L16 26" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                  <span class="gb-chevron-trail">»»</span>
+                  <span class="gb-chevron-mark"><span class="gb-i" data-icon="chevron-right"></span></span>
                   <span class="gb-chevron-num">01</span>
                   <span class="gb-chevron-label">THE CITY</span>
-                  <span class="gb-chevron-trail">»»</span>
                 </button>
                 <button type="button" class="gb-step-chevron gb-step-story" data-step-target="2" aria-current="false" data-hint="Step 2: the story, the side jobs and how people here talk.">
-                  <svg class="gb-chevron-wings" viewBox="0 0 32 32" aria-hidden="true">
-                    <path d="M4 6 L14 16 L4 26" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-                    <path d="M16 6 L26 16 L16 26" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                  <span class="gb-chevron-trail">»»</span>
+                  <span class="gb-chevron-mark"><span class="gb-i" data-icon="chevron-right"></span></span>
                   <span class="gb-chevron-num">02</span>
                   <span class="gb-chevron-label">THE WRITING</span>
-                  <span class="gb-chevron-trail">»»</span>
                 </button>
-                <button type="button" class="gb-step-chevron gb-step-compile" data-step-target="3" aria-current="false" data-hint="Step 3: read the brief back, choose whether the local model writes it, and build the city.">
-                  <svg class="gb-chevron-wings" viewBox="0 0 32 32" aria-hidden="true">
-                    <path d="M4 6 L14 16 L4 26" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-                    <path d="M16 6 L26 16 L16 26" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                  <span class="gb-chevron-trail">»»</span>
+                <button type="button" class="gb-step-chevron gb-step-compile" data-step-target="3" aria-current="false" data-hint="Step 3: read the brief back, choose whether the model writes it, and build the city.">
+                  <span class="gb-chevron-mark"><span class="gb-i" data-icon="chevron-right"></span></span>
                   <span class="gb-chevron-num">03</span>
                   <span class="gb-chevron-label">BUILD IT</span>
-                  <span class="gb-chevron-trail">»»</span>
                 </button>
               </div>
 

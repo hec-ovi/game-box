@@ -1,7 +1,9 @@
 import type { SaveStore } from '../session.ts'
+import { tidy, type CityBrief } from './brief.ts'
 
 const SAVE = 'game-box.save'
 const SETTINGS = 'game-box.settings'
+const DRAFT = 'game-box.draft'
 
 /**
  * The browser's own store, or nothing at all. A private window throws on the
@@ -43,6 +45,25 @@ export function localSettings(): Settings {
 
 export function keepSettings(settings: Settings): void {
   store()?.setItem(SETTINGS, JSON.stringify(settings))
+}
+
+/**
+ * The brief the player was part way through writing. Save draft puts it here
+ * and nothing is built from it, so closing the panel and coming back opens the
+ * form on what they had typed. Anything unreadable is no draft at all.
+ */
+export function localDraft(): CityBrief | undefined {
+  const raw = store()?.getItem(DRAFT)
+  if (!raw) return undefined
+  try {
+    return tidy(JSON.parse(raw) as CityBrief)
+  } catch {
+    return undefined
+  }
+}
+
+export function keepDraft(brief: CityBrief): void {
+  store()?.setItem(DRAFT, JSON.stringify(brief))
 }
 
 /**
