@@ -1,7 +1,7 @@
 import { METRICS, SHIPPED_CHARTERS } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { cellAt, cellUv, DOORLAMP, DOORLIGHT, GLYPH_KEYS, KitDressing, LETTER_SHARE, lightsFor, luminanceOf, MODULE, NEON, nightLook, placeholderKit, SIGN, SIGN_ATTRIBUTES, signsFor, SOLID, TONES, TRANSIT, type Sign } from '../src/index.ts'
+import { cellAt, cellUv, DOORLAMP, glazingFor, WallClaims, DOORLIGHT, GLYPH_KEYS, KitDressing, LETTER_SHARE, lightsFor, luminanceOf, MODULE, NEON, nightLook, placeholderKit, SIGN, SIGN_ATTRIBUTES, signsFor, SOLID, TONES, TRANSIT, type Sign } from '../src/index.ts'
 import { charterOf, fingerprint, inventedCharter, plotOf, signMesh, sizeOf, townOf, wallBounds } from './support.ts'
 
 const kit = placeholderKit()
@@ -323,6 +323,39 @@ describe('signage on a generated town', () => {
     expect(lamps.size).toBe(1)
     const names = lit.map((lights) => lights[0]!.intensity).sort((a, b) => a - b)
     expect(Number([...lamps][0])).toBeLessThan(names[Math.floor(names.length / 2)]!)
+  })
+})
+
+describe('signage and the glass', () => {
+  // his words, on a screenshot: "some carterl are OVER a window as well". A
+  // shopfront's name belongs on the fascia band over its glass, so the street
+  // is left alone; a window somebody lives behind is not a board to hang on.
+  it('gives every window above the street a patch of its own', () => {
+    const town = townOf('glass', 120)
+    let panes = 0
+    let signs = 0
+    for (const plot of town) {
+      const size = sizeOf(plot, heightOf(4))
+      const charter = charterOf(plot)
+      panes += glazingFor(plot, size, charter).length
+      signs += signsFor(plot, size, charter).length
+    }
+    // the town has glass above its shopfronts, and still has its signage: a
+    // rule that claimed everything would leave the second of these at zero
+    expect(panes).toBeGreaterThan(0)
+    expect(signs).toBeGreaterThan(0)
+  })
+
+  it('refuses a sign the patch a window already holds', () => {
+    const claims = new WallClaims()
+    const pane = { along: 0, up: 6, width: 3, height: 3 }
+    expect(claims.take('north', pane)).toBe(true)
+    // dead centre of it, and a corner of it
+    expect(claims.take('north', { along: 0, up: 6, width: 2, height: 1 })).toBe(false)
+    expect(claims.take('north', { along: 1.4, up: 7.4, width: 1, height: 1 })).toBe(false)
+    // clear of it, and on another wall
+    expect(claims.take('north', { along: 0, up: 9.2, width: 3, height: 1 })).toBe(true)
+    expect(claims.take('south', pane)).toBe(true)
   })
 })
 

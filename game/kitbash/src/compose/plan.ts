@@ -6,13 +6,13 @@ import type { PlotCharter } from '../charter.ts'
 import { planFixtures, type Fixtures } from '../fixture/plan.ts'
 import { subwaySign } from '../fixture/subway/plan.ts'
 import type { Room } from '../night/room.ts'
-import { WallClaims } from '../sign/claims.ts'
+import { WallClaims, type Patch } from '../sign/claims.ts'
 import { lightsOf, type LightEmitter } from '../sign/light.ts'
 import { planSigns } from '../sign/plan.ts'
 import { alongOf } from '../sign/place.ts'
 import type { Sign } from '../sign/sign.ts'
 import { bandsOf, type Band } from './bands.ts'
-import { doorModule, entranceFace, facesOf, type Face } from './faces.ts'
+import { doorModule, entranceFace, facesOf, type Face, type FaceId } from './faces.ts'
 import { roomsAcross } from './rooms.ts'
 
 /** One kit piece, placed in the building's own frame: origin at the centre of its base. */
@@ -47,6 +47,12 @@ export interface Walls {
   readonly front: Face
   readonly doorIndex: number
   readonly bands: readonly Band[]
+  /**
+   * Every glazed module, as the patch of wall it covers. A sign hung over glass
+   * is a sign in front of a room somebody is meant to see into, so the glass
+   * claims its own wall before anything is offered a place on it.
+   */
+  readonly glazing: readonly { readonly face: FaceId; readonly patch: Patch }[]
 }
 
 export interface BuildingPlan extends WallPlan {
@@ -84,6 +90,7 @@ export function planWalls(plot: Plot, size: BuildingSize, cellSize: number, char
   const doorIndex = doorModule(plot, front, cellSize)
   const [doorX, doorZ] = front.centreOf(doorIndex)
   const placements: Placement[] = []
+  const glazing: { face: FaceId; patch: Patch }[] = []
 
   for (const face of faces) {
     const phase = rhythm.int(0, 3)
@@ -98,11 +105,15 @@ export function planWalls(plot: Plot, size: BuildingSize, cellSize: number, char
           ? recipe.door
           : pieceFor(course, face, module, phase, street, crowning ? recipe.crown : undefined)
         placements.push(...wall(face, band, storey, module, piece, rooms[module]!, street ? recipe.fascia : undefined))
+        // above the street only: a shopfront glazes right round the corner and
+        // its name goes on the fascia band over the glass, but a window
+        // somebody lives behind is not a board to hang a sign on
+        if (isGlazed(piece) && !street) glazing.push({ face: face.id, patch: paneOf(face, band, module, undefined) })
       }
     }
   }
   placements.push(...deck(size))
-  return { placements, door: { position: [doorX, 0, doorZ], rotationY: front.rotationY }, walls: { faces, front, doorIndex, bands } }
+  return { placements, door: { position: [doorX, 0, doorZ], rotationY: front.rotationY }, walls: { faces, front, doorIndex, bands, glazing } }
 }
 
 /**
@@ -116,6 +127,7 @@ export function planBuilding(plot: Plot, size: BuildingSize, cellSize: number, c
   const { faces, front, doorIndex, bands } = plan.walls
   // every wall is claimed once, by signs first and by the camera after, so nothing is hung through anything else
   const claims = new WallClaims()
+  for (const pane of plan.walls.glazing) claims.take(pane.face, pane.patch)
   const signs = planSigns(plot, charter, size.height, faces, front, doorIndex, bands, seedOf(plot).fork('signs'), claims)
   const fixtures = planFixtures(plot, charter, front, alongOf(front, doorIndex), cellSize, claims)
   if (fixtures.subway) signs.push(subwaySign(fixtures.subway, charter.blade, front))
@@ -167,6 +179,18 @@ function wall(face: Face, band: Band, storey: number, module: number, piece: Pie
     })
   }
   return out
+}
+
+/**
+ * The patch of wall one glazed module covers, in the frame a sign is written
+ * against: metres right of the wall's middle, and up from the pavement, both at
+ * its centre. The fascia band above a ground module is not glass, so a shopfront
+ * still has its own band to hang a name on.
+ */
+function paneOf(face: Face, band: Band, module: number, fascia: PieceId | undefined): Patch {
+  const closer = fascia ? band.height - MODULE.height : 0
+  const height = closer > 0 ? MODULE.height : band.height
+  return { along: alongOf(face, module), up: band.base + height / 2, width: face.moduleWidth, height }
 }
 
 /** The flat roof, tiled across the footprint and sunk 0.2 m so the walls stand round it as a parapet. */
