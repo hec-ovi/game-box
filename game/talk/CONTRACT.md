@@ -1,6 +1,6 @@
 # @gb/talk contract
 
-contractVersion: 0.11.0
+contractVersion: 0.12.0
 
 ## Purpose
 
@@ -65,6 +65,7 @@ One fixed labelled template, `prompts/npc.md`, filled from three places:
 
 - **By the engine, every turn:** the building, the room and what stands in it (furniture, and the things lying on its surfaces that the player has not taken), what they are doing there (the anchor's `doing` phrase when the world file wrote one, else a line for the anchor's kind, from `prompts/surroundings.md`), the hour, the weather, who else is in the building and what each is doing, what the player is carrying, what they hold (what they sell with the price of each, what is in their pocket, and their home with whether this player is welcome in it, from `prompts/holding.md`), what the player's name in town is worth, how this person feels about them, what they remember of them, and what is between them read off the moves they may make and the targets the quest log resolved (they are told they are owed a ledger and what the job pays, never the objective line the HUD shows).
 - **By the generator, once per person, in the world file:** `personality`, and every `Npc.life` field it wrote (`manner`, `history`, `interests`, `cares`, `avoids`, `reason`, `errand`), one labelled line each and none for a field it did not write; `knowledge`, plus the premise's `common` facts marked as what everybody in town knows; and the `background` facts whose stage the player has reached and has not earned yet, numbered.
+- **By the charter of the place they stand in:** its `rumours`, what people in town say about a place like this, under a heading that says it is talk rather than something they know, so it can be repeated as talk and never as fact. Somebody standing in no place, or in one whose charter carries none, is told they have heard nothing. The premise's `common` facts stay where they were, in what the person knows.
 - **Fixed in the template:** how to speak, as a short list of rules (the first clause answers what was actually said, a name put as a question is confirmed or corrected first, the length follows the question, the room and the sky are drawn on only when they bear on what was asked, the body goes in `does`), and three worked examples per turn, each a question with a reply of the right shape beside one of the wrong shape and why. The examples carry no name, place, price or sky, and a different three are drawn every turn, seeded off the world, the person and the turn count, so none can settle in as the answer.
 
 The weather is one labelled line the model may draw on. It is not seeded into anything the character says.

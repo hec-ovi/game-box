@@ -751,6 +751,21 @@ describe('Conversation', () => {
     expect(brief).not.toMatch(/[a-z]+_\d{4}/)
   })
 
+  it('tells them what people say about a place like this, as talk rather than as fact', async () => {
+    const { conversation, model } = setup({ text: 'Aye.' })
+    await collect(conversation.say('evening'))
+
+    // the bar's charter carries them; the brief marks them talk so they are not
+    // repeated as something the person knows
+    const brief = model.voice[0]!.system
+    expect(brief).toContain('It is talk, not something you')
+    expect(brief).toContain('- The back room is booked on the same night every week.')
+    expect(brief).toContain('- The cellar door sticks unless you lift it.')
+    // and they stay out of the block of things they know for a fact
+    const facts = brief.slice(brief.indexOf('What you know for a fact'), brief.indexOf('What people in town say'))
+    expect(facts).not.toContain('The back room is booked')
+  })
+
   it('asks for the action as a call the model has to make, with the menu for a schema', async () => {
     const { conversation, model } = setup({ text: 'Aye.' })
     await collect(conversation.say('anything going?'))

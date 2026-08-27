@@ -6,6 +6,8 @@ lying: {{items}} lying about
 alone: nobody
 person: {{name}} the {{role}}, {{doing}}
 empty-handed: nothing in their hands
+# What people say about a place like this, when nobody says anything.
+no-hearsay: - nothing you have heard
 # What somebody is doing, taken from the spot they keep. The same words serve
 # for the speaker and for whoever is in the room with them.
 browse: at the shelves

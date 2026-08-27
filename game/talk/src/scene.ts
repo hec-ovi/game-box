@@ -75,6 +75,17 @@ export class Scene {
     return names.length ? names.join(', ') : WORDS['empty-handed']!
   }
 
+  /**
+   * What people in town say about a place like this, off the charter of the
+   * plot they stand in. Somebody out on the street stands in no place and has
+   * heard nothing. It is talk rather than knowledge, and the brief says so.
+   */
+  hearsay(): string {
+    const plot = this.#plot()
+    const said = (plot && this.#situation.world.charter(plot.kind)?.rumours) || []
+    return said.length ? said.map((rumour) => `- ${rumour}`).join('\n') : WORDS['no-hearsay'] ?? ''
+  }
+
   /** How this person takes the player before a word is said. */
   standing(): string {
     return inBand(STANDING, this.#situation.player.reputation()) ?? ''

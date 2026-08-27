@@ -68,6 +68,7 @@ export class Brief {
       pocket: this.#holding.pocket(),
       home: this.#holding.home(),
       knowledge: this.#knowledge(npc),
+      hearsay: this.#scene.hearsay(),
       background: offered.length
         ? offered.map((fact, index) => fill(LINES.fact!, { number: String(index + 1), fact: fact.fact })).join('\n')
         : LINES['no-background']!,
