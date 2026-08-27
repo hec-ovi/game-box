@@ -16,7 +16,13 @@ const FIXED = ['format', 'schemaVersion', 'id', 'name', 'theme', 'brief', 'asks'
  * moved.
  */
 export class Extension {
-  constructor(readonly doc: ExtensionDoc) {}
+  readonly doc: ExtensionDoc
+
+  // written out rather than as a constructor parameter property: `gb` runs
+  // under node's strip-only TypeScript, which refuses one outright
+  constructor(doc: ExtensionDoc) {
+    this.doc = doc
+  }
 
   /** The extension between two documents, or every place the extended one changed what the base had. */
   static between(base: WorldDoc, extended: WorldDoc): Result<Extension, SchemaViolation[]> {

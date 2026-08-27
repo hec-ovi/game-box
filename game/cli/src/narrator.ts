@@ -34,10 +34,12 @@ class HistoryNarrator implements Narrator {
   readonly writeInstances?: NonNullable<Narrator['writeInstances']>
   readonly namePlaces?: NonNullable<Narrator['namePlaces']>
 
-  constructor(
-    base: Narrator,
-    private readonly history: History,
-  ) {
+  readonly #history: History
+
+  // written out rather than as a constructor parameter property: `gb` runs
+  // under node's strip-only TypeScript, which refuses one outright
+  constructor(base: Narrator, history: History) {
+    this.#history = history
     this.nameCity = base.nameCity.bind(base)
     this.namePlace = base.namePlace.bind(base)
     this.describeNpc = base.describeNpc.bind(base)
@@ -48,7 +50,7 @@ class HistoryNarrator implements Narrator {
   }
 
   async writePremise(): Promise<History> {
-    return this.history
+    return this.#history
   }
 }
 

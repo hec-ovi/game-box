@@ -18,7 +18,13 @@ const KIND_OF_CHAR = new Map<string, CellKind>(Object.entries(CELL).map(([kind, 
  * `gridField` against the base: applying a pack never rewrites the base's bytes.
  */
 export class GridDelta {
-  constructor(readonly cells: readonly CellChange[]) {}
+  readonly cells: readonly CellChange[]
+
+  // written out rather than as a constructor parameter property: `gb` runs
+  // under node's strip-only TypeScript, which refuses one outright
+  constructor(cells: readonly CellChange[]) {
+    this.cells = cells
+  }
 
   /** The cells that differ between the base and the extended grid. Anything but empty ground turning into something is a problem. */
   static between(base: GridDoc, extended: GridDoc): Result<GridDelta, SchemaViolation[]> {
