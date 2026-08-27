@@ -57,6 +57,11 @@ export class Hud {
   #confirm: ConfirmSurface
   #keys: Keys
   #handlers: HudHandlers
+  /** Where the game draws a thing the player has opened in the inventory. */
+  get itemCanvas(): HTMLCanvasElement {
+    return this.#panel.itemCanvas
+  }
+
   /** True while focus is somewhere in the conversation. */
   #talkHeld = false
   /** What was last reported: the conversation or a screen holding the keyboard. */

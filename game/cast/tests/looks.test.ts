@@ -34,7 +34,10 @@ interface Look {
   readonly hair: string
   readonly brows: string
   readonly beard: boolean
+  /** What the hair and the beard were painted. */
   readonly colour: string
+  /** What the brows were painted, which is never a dye. */
+  readonly browColour: string
   readonly materials: THREE.Material[]
 }
 
@@ -44,6 +47,7 @@ function look(member: { object: THREE.Object3D; outfit: string }): Look {
   let brows = 'none'
   let beard = false
   let colour = ''
+  let browColour = ''
   const materials: THREE.Material[] = []
   member.object.traverse((child) => {
     const mesh = child as THREE.Mesh
@@ -53,9 +57,16 @@ function look(member: { object: THREE.Object3D; outfit: string }): Look {
     else if (mesh.name.startsWith('beard_')) beard = true
     else return
     materials.push(mesh.material)
-    colour = `#${(mesh.material as THREE.MeshStandardMaterial).color.getHexString()}`
+    const painted = `#${(mesh.material as THREE.MeshStandardMaterial).color.getHexString()}`
+    if (mesh.name.startsWith('brows_')) browColour = painted
+    else colour = painted
   })
-  return { outfit: member.outfit, hair, brows, beard, colour, materials }
+  return { outfit: member.outfit, hair, brows, beard, colour, browColour, materials }
+}
+
+/** What the brows on a face were painted, without their hash. */
+function browColourOf(one: Look): string {
+  return one.browColour.replace('#', '')
 }
 
 /** The centre of a mesh's own box, where the game has it. */
@@ -376,16 +387,28 @@ describe('what a person is made of', () => {
     }
   })
 
-  it('colours the hair and the eyebrows together, instead of leaving the grey of the map', () => {
+  /**
+   * A pair of brows is one sheet holding a brow row and a lash row, so whatever
+   * colours the brows colours the lashes with them. They used to take the
+   * hair's own colour, which gave somebody with acid green hair acid green
+   * eyelashes: the one thing on a face nobody dyes.
+   */
+  it('colours the hair and the eyebrows, and never dyes the eyebrows', () => {
+    const dyed = new Set(['#2e6fd8', '#17b6c8', '#0f8f7a', '#c02f86', '#8a3fd0', '#c8365a', '#5fbb2a', '#e07a1c', '#f2efe9'])
     for (const base of BODIES) {
       const haired = street(24, base).filter((one) => one.hair !== 'bald')
       expect(haired.length, `${base}: nobody on the street has hair`).toBeGreaterThan(10)
+      let dyedHeads = 0
       for (const one of haired) {
         expect(one.brows, `${base}: hair but no eyebrows`).not.toBe('none')
-        const colours = new Set(one.materials.map((material) => (material as THREE.MeshStandardMaterial).color.getHexString()))
-        expect(colours.size, `${base}: the brows and the hair are different colours`).toBe(1)
         expect(one.colour, `${base}: the hair is still the white of the untinted map`).not.toBe('#ffffff')
+        const brows = browColourOf(one)
+        expect(brows, `${base}: the brows are the grey of the untinted map`).not.toBe('#ffffff')
+        expect(dyed.has(`#${brows}`), `${base}: the eyebrows are dyed #${brows}`).toBe(false)
+        if (dyed.has(one.colour)) dyedHeads++
       }
+      // and the city really does dye its hair, so the case is being exercised
+      expect(dyedHeads, `${base}: nobody on this street dyed their hair`).toBeGreaterThan(2)
     }
   })
 })
@@ -415,10 +438,13 @@ describe('how much a street varies', () => {
       for (const base of BODIES) for (const one of street(count, base)) for (const m of one.materials) materials.add(m)
       return materials.size
     }
-    const few = worn(100)
-    const many = worn(500)
-    expect(many, `the palette grew with the crowd: ${few} materials for 200 people, ${many} for 1000`).toBe(few)
-    expect(many, `${many} hair materials is more than the palette can account for`).toBeLessThan(48)
+    // taken on two crowds both big enough to have met every colour, and no
+    // bigger: a smaller sample only proves it missed a few, and a larger one
+    // spends the whole test budget spawning people
+    const few = worn(200)
+    const many = worn(400)
+    expect(many, `the palette grew with the crowd: ${few} materials for 400 people, ${many} for 800`).toBe(few)
+    expect(many, `${many} hair materials is more than the palette can account for`).toBeLessThan(72)
   })
 
   it('rarely puts two people with the same body, clothes, hair and colour on one street', () => {

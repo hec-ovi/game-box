@@ -44,7 +44,6 @@ import { atAnOpenDoor, atTheKerb } from './spawn.ts'
 import { Sky } from './sky.ts'
 import { Inspecting } from './inspecting.ts'
 import { Portraits } from './portraits.ts'
-import { Turntable } from './turntable.ts'
 import type { MakeStage, Stage } from './stage.ts'
 import { Stashing } from './stashing.ts'
 import { tellStory } from './story.ts'
@@ -127,6 +126,7 @@ export class Game {
   #interaction: Interaction
   #cast: Cast | undefined
   #portraits: Portraits | undefined
+  #inspecting: Inspecting
   #screens: Screens | undefined
   #riderCast: SceneCast | undefined
   #session: Session | undefined
@@ -199,6 +199,9 @@ export class Game {
     // here rather than beside the conversation because the codex reads the
     // faces already drawn, and the codex is pushed by the reporting below
     this.#portraits = input.cast ? new Portraits({ cast: input.cast, stage: this.#stage }) : undefined
+    // the thing the player opens in the inventory, drawn live into the canvas
+    // the interface holds so they can turn it in their hands
+    this.#inspecting = new Inspecting({ world: this.#world, hud: this.#hud, dressing: input.dressing })
     this.#report = new Reporting({
       world: this.#world,
       log: this.#log,
@@ -483,11 +486,7 @@ export class Game {
       pause: (on) => this.pause(on),
       // a thing opened in the inventory is drawn from every side and pushed
       // back, and a part of the city clicked on the plan says how far it is
-      inspecting: new Inspecting({
-        world: this.#world,
-        hud: this.#hud,
-        turntable: new Turntable({ dressing: input.dressing, stage: this.#stage }),
-      }),
+      inspecting: this.#inspecting,
       guide,
       leave: input.leave,
       // a page with no pointer lock to give back has nothing to release

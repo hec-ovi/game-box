@@ -926,7 +926,7 @@ describe('the inventory tab', () => {
     expect(panel.querySelectorAll('.gb-inv-slot .gb-value')).toHaveLength(1)
   })
 
-  it('asks the game to draw a thing that is opened, and turns the views it gets back', async () => {
+  it('asks the game to draw a thing that is opened, and reports how it is turned', async () => {
     const user = userEvent.setup()
     const { hud, screen, intents } = mount()
     hud.show({
@@ -940,30 +940,33 @@ describe('the inventory tab', () => {
 
     // the first thing is open, so that is the one the game is asked to draw
     expect(intents).toContainEqual({ kind: 'inspect', itemId: 'i2' })
-    // and until the views land the box holds the thing's own icon, not a blank
+    // and until the game draws there the box holds the thing's own icon
     expect(panel.querySelector('.gb-inv-3d-blank')).not.toBeNull()
 
     await user.click(within(panel).getByText('Green bottle'))
     expect(intents).toContainEqual({ kind: 'inspect', itemId: 'i1' })
     within(panel).getByText('Cloudy glass with the label gone.')
 
-    hud.show({ inspecting: { itemId: 'i1', frames: ['data:a', 'data:b', 'data:c'] } })
-    const face = panel.querySelector('.gb-inv-3d-face') as HTMLImageElement
-    expect(face.src).toBe('data:a')
+    // the game is handed a canvas rather than pictures: what is in it is the
+    // game's, and this box never touches three.js
+    hud.show({ inspecting: { itemId: 'i1' } })
+    const canvas = panel.querySelector('.gb-inv-3d-face') as HTMLCanvasElement
+    expect(canvas.tagName).toBe('CANVAS')
+    expect(canvas).toBe(hud.itemCanvas)
+    expect(panel.querySelector('.gb-inv-3d-blank')).toBeNull()
 
-    // dragging across it walks the views, which is what turning it is, and it
-    // comes round rather than stopping at the last one
+    // dragging reports where it now stands, not how far the pointer moved
     const box = panel.querySelector('.gb-inv-3d-box') as HTMLElement
     Object.defineProperty(box, 'clientWidth', { value: 120, configurable: true })
+    Object.defineProperty(box, 'clientHeight', { value: 120, configurable: true })
     box.setPointerCapture = () => {}
-    const showing = (): string => (panel.querySelector('.gb-inv-3d-face') as HTMLImageElement).src
-    box.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 0 }))
-    const walked: string[] = []
-    for (let step = 1; step <= 3; step++) {
-      box.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: step * 40 }))
-      walked.push(showing())
-    }
-    expect(walked).toEqual(['data:b', 'data:c', 'data:a'])
+    box.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 0, clientY: 0 }))
+    box.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 30, clientY: 0 }))
+    box.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 60, clientY: 0 }))
+    const turns = intents.filter((intent) => intent.kind === 'turn') as { yaw: number; pitch: number }[]
+    expect(turns.length).toBeGreaterThan(2)
+    // it accumulates rather than resetting each move
+    expect(turns.at(-1)!.yaw).toBeGreaterThan(turns.at(-2)!.yaw)
   })
 
   it('lists the places the player owns and what they left in each', () => {

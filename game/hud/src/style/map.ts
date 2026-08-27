@@ -33,7 +33,15 @@ export const MAP = `
 .gb-hud .gb-plan .gb-name text { fill: var(--gb-dim); }
 /* The player, the work and the doorways are drawn by the shared mark rules;
    only the name written beside a mark belongs to the plan. */
-.gb-hud .gb-plan .gb-mark text { fill: var(--gb-quest-side); }
+/* A name sits beside its mark and comes up under the pointer, so the plan reads
+   as a city rather than as a list of labels. */
+.gb-hud .gb-plan .gb-mark text {
+  fill: var(--gb-quest-side);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--gb-t-press) var(--gb-in);
+}
+.gb-hud .gb-plan .gb-mark:hover text { opacity: 1; }
 .gb-hud .gb-plan .gb-mark[data-line='main'] text { fill: var(--gb-quest-main); }
 .gb-hud .gb-plan .gb-mark-home text { fill: var(--gb-accent-lit); }
 /* A station is a square of ink: the one mark that is neither the player nor a goal. */

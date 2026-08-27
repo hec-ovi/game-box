@@ -23,7 +23,7 @@ export class InventoryTab implements Tab {
   #emit: (intent: HudIntent) => void
   #coin = new Count()
   #showcase = el('div', 'gb-inv-showcase gb-plate gb-cut gb-edged')
-  #turntable = new Turntable()
+  #turntable: Turntable
   #name = el('h3', 'gb-t6 gb-inv-name')
   #line = el('p', 'gb-t2 gb-inv-value')
   #what = el('p', 'gb-t3 gb-inv-desc')
@@ -35,6 +35,7 @@ export class InventoryTab implements Tab {
 
   constructor(emit: (intent: HudIntent) => void) {
     this.#emit = emit
+    this.#turntable = new Turntable(emit)
     this.#showcase.append(this.#name, this.#turntable.node, this.#line, this.#what, this.#questTag)
 
     const purse = el('p', 'gb-coin gb-cut gb-edged')
@@ -45,6 +46,11 @@ export class InventoryTab implements Tab {
     const right = el('div', 'gb-inv-right-pane')
     right.append(purse, this.#body)
     this.node.append(this.#showcase, right)
+  }
+
+  /** Where the game draws the thing that is open. It is the same canvas for every thing. */
+  get itemCanvas(): HTMLCanvasElement {
+    return this.#turntable.canvas
   }
 
   render(state: HudState): void {

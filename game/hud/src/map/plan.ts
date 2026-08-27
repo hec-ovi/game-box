@@ -167,8 +167,10 @@ export class Plan {
   #mark(mark: MapMark): void {
     const node = svg('g', { class: `gb-mark gb-mark-${mark.kind}`, ...(mark.line ? { 'data-line': mark.line } : {}) })
     node.append(shapeOf(mark), title(mark.label))
-    // the player's own arrow needs no name written beside it, and the plan
-    // would carry one for every step of every job if the marks all wrote theirs
+    // The name is written beside the mark but only shown under the pointer: a
+    // plan with a name on every step of every job, every offer and every place
+    // the player owns is a plan of names with a city somewhere behind them.
+    // The player's own arrow never needs one.
     if (mark.kind !== 'you') node.append(text(mark.label, MARK_PX.gap, 0, 'start'))
     this.#marks.append(node)
     this.#fixed.push({ node, x: mark.x, y: mark.y, rotate: mark.kind === 'you' ? degrees(mark.facing) : 0 })

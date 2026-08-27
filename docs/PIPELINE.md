@@ -201,7 +201,7 @@ Layer: **G** generation-time, **P** play-time, **A** art, **C** contract/plumbin
 | Drivable car with passengers | P | play | `game/drive` | in flight |
 | Modern wardrobe | A | S3 | recut of owned outfits, 24 CC0 sources rejected on the 65 joint rig | in flight |
 | Cyberpunk interior props | A | S3 | props are still Fantasy MegaKit and Dungeon Pack | no |
-| Lip sync, conversation gestures | A+P | play | gestures exist in `@gb/cast`, nothing drives them | no |
+| Conversation gestures | A+P | play | gestures exist in `@gb/cast`, nothing drives them | no |
 | TV screen plays something | A | play | prop exists, screen is dead | no |
 | Voice in the game | C | play | `host/src/stt`, `host/src/tts` exist, nothing under `game/` calls them | no |
 | Repo hygiene (PLAN 19) | C | none | dead files, three `nodeNames()`, five GLTFLoader setups, two gate holes in `check-isolation.mjs` | no |

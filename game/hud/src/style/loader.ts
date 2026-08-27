@@ -101,14 +101,6 @@ export const LOADER = `
   animation: gb-orb-spin 2.2s linear infinite;
 }
 
-.gb-hud .gb-radar-percent {
-  font-family: var(--gb-mono);
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--gb-accent);
-  letter-spacing: 0.05em;
-  z-index: 1;
-}
 
 .gb-hud .gb-loader-card h2 {
   margin-bottom: var(--gb-s6);

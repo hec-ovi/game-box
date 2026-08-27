@@ -15,7 +15,7 @@ import type { WardrobeEntry } from './wardrobe.ts'
  * grown colours still carry half of it so a crowd is not a parade, and the
  * other half is out of a bottle, cyan and magenta most of all.
  */
-const COLOURS: ReadonlyArray<readonly [string, number]> = [
+const GROWN: ReadonlyArray<readonly [string, number]> = [
   ['#2f2a26', 10], // black
   ['#4a382a', 9], // dark brown
   ['#6b4d33', 8], // brown
@@ -27,6 +27,10 @@ const COLOURS: ReadonlyArray<readonly [string, number]> = [
   ['#b4552a', 3], // ginger
   ['#8e8377', 3], // going grey
   ['#b8b2a8', 3], // grey
+]
+
+/** Out of a bottle. The city dyes its hair, and cyan and magenta most of all. */
+const DYED: ReadonlyArray<readonly [string, number]> = [
   ['#f2efe9', 4], // bleached white
   ['#2e6fd8', 9], // electric blue
   ['#17b6c8', 8], // cyan
@@ -38,20 +42,33 @@ const COLOURS: ReadonlyArray<readonly [string, number]> = [
   ['#e07a1c', 3], // orange
 ]
 
+const COLOURS: ReadonlyArray<readonly [string, number]> = [...GROWN, ...DYED]
+
 /** How often somebody has no hair at all. */
 const BALD = 0.09
 
 /** How often somebody with a beard available grows one. */
 const BEARDED = 0.35
 
-/** One person's hair: the style, the brows, whether they have a beard, and the colour of all three. */
+/** One person's hair: the style, the brows, whether they have a beard, and what each is coloured. */
 export interface Look {
   /** The hairstyle node to show, or undefined for a bald head. */
   readonly style: string | undefined
   /** The eyebrow node to show. */
   readonly brows: string | undefined
   readonly beard: boolean
+  /** The hair and the beard, which may be out of a bottle. */
   readonly colour: string
+  /**
+   * The brows, which never are.
+   *
+   * The pack draws a pair of brows as one sheet holding a brow row and a lash
+   * row, so whatever colours the brows colours the lashes with them. Dyed to
+   * match the hair, somebody with acid green hair got acid green eyelashes,
+   * which is the one thing on a face nobody dyes. So the brows take a grown
+   * colour near the hair's own darkness and the bottle stays on the head.
+   */
+  readonly browColour: string
 }
 
 /**
@@ -63,12 +80,24 @@ export interface Look {
  */
 export function chooseLook(entry: WardrobeEntry, npcId: string): Look {
   const bald = !entry.styles.length || hash01(`${npcId}/bald`) < BALD
+  const colour = weighted(COLOURS, hash01(`${npcId}/hair-colour`))
   return {
     style: bald ? undefined : pick(entry.styles, npcId, 'hair'),
     brows: pick(entry.brows, npcId, 'brows'),
     beard: Boolean(entry.beard) && hash01(`${npcId}/beard`) < BEARDED,
-    colour: weighted(COLOURS, hash01(`${npcId}/hair-colour`)),
+    colour,
+    browColour: grownLike(colour, npcId),
   }
+}
+
+/**
+ * A grown colour for the brows. Somebody whose hair grew that colour keeps it;
+ * somebody who dyed theirs gets the grown colour nearest what they started
+ * from, drawn off their own id so it is the same face every time.
+ */
+function grownLike(colour: string, npcId: string): string {
+  if (GROWN.some(([grown]) => grown === colour)) return colour
+  return weighted(GROWN, hash01(`${npcId}/brow-colour`))
 }
 
 function pick<T>(options: readonly T[], npcId: string, what: string): T | undefined {

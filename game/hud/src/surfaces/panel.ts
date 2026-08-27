@@ -26,6 +26,7 @@ export class PanelSurface implements Surface {
   #strip: TabStrip
   #title = el('h2')
   #tabs: readonly Tab[]
+  #inventory: InventoryTab
   #face: HudWindowName | null = null
 
   constructor(emit: (intent: HudIntent) => void) {
@@ -38,14 +39,9 @@ export class PanelSurface implements Surface {
       // not on screen. It waits for the leave so the last frame still reads.
       onClosed: () => this.#clear(),
     })
-    this.#tabs = [
-      new QuestsTab(emit),
-      new MapTab(emit),
-      new InventoryTab(emit),
-      new CodexTab(),
-      new SettingsTab(emit),
-      new ControlsTab(),
-    ]
+    // held by name as well as in the list, because the game draws into its canvas
+    this.#inventory = new InventoryTab(emit)
+    this.#tabs = [new QuestsTab(emit), new MapTab(emit), this.#inventory, new CodexTab(), new SettingsTab(emit), new ControlsTab()]
     this.#window.body.setAttribute('role', 'tabpanel')
     this.#window.body.append(...this.#tabs.map((tab) => tab.node))
   }
@@ -91,6 +87,11 @@ export class PanelSurface implements Surface {
     body.removeAttribute('data-slide')
     void body.offsetWidth
     body.dataset.slide = tabAt(to) > tabAt(from) ? 'next' : 'prev'
+  }
+
+  /** Where the game draws the thing the player has open in the inventory. */
+  get itemCanvas(): HTMLCanvasElement {
+    return this.#inventory.itemCanvas
   }
 
   #clear(): void {

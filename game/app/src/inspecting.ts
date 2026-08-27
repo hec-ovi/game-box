@@ -1,42 +1,55 @@
 import type { Hud } from '@gb/hud'
+import type { Dressing } from '@gb/scene'
 import type { World } from '@gb/world'
-import type { Turntable } from './turntable.ts'
+import { ItemView } from './item-view.ts'
 
-/** Drawing a thing the player has opened in the inventory, and putting it on the panel. */
+/** A thing the player has opened in the inventory, and how they are turning it. */
 export interface Inspect {
   show(itemId: string): Promise<void>
+  turn(yaw: number, pitch: number): void
+  /** The window closed: nothing is open and nothing is being drawn. */
+  closed(): void
 }
 
 /**
- * The thing open in the inventory, drawn from every side and pushed to the
- * panel so the player can turn it.
+ * The thing open in the inventory, drawn live into the canvas the interface
+ * holds so the player can turn it in their hands.
  *
- * The views are only asked for while the window is open, and the panel keeps
- * the thing's icon until they land, so opening the inventory costs nothing and
- * the wait is never a blank box. A thing opened after the player has walked on
- * to another one is dropped: the views take a moment and the panel has moved.
+ * The view is made on the first thing opened rather than with the game, so a
+ * playthrough that never opens the inventory never pays for it, and it only
+ * ever draws while the window is open, which is when the game behind it is
+ * paused.
  */
 export class Inspecting implements Inspect {
   #world: World
   #hud: Hud
-  #turntable: Turntable
-  #open: string | undefined
+  #dressing: Dressing
+  #view: ItemView | undefined
 
-  constructor(input: { world: World; hud: Hud; turntable: Turntable }) {
+  constructor(input: { world: World; hud: Hud; dressing: Dressing }) {
     this.#world = input.world
     this.#hud = input.hud
-    this.#turntable = input.turntable
+    this.#dressing = input.dressing
   }
 
   async show(itemId: string): Promise<void> {
     const item = this.#world.item(itemId)
     if (!item) return
-    this.#open = itemId
-    // the panel is told which thing it is straight away, so it stops showing
-    // the last one while this one is drawn
-    this.#hud.show({ inspecting: { itemId, frames: [] } })
-    const frames = await this.#turntable.of(item)
-    if (this.#open !== itemId || frames.length === 0) return
-    this.#hud.show({ inspecting: { itemId, frames } })
+    this.#hud.show({ inspecting: { itemId } })
+    this.#view ??= new ItemView({ dressing: this.#dressing, canvas: this.#hud.itemCanvas })
+    await this.#view.show(item)
+  }
+
+  turn(yaw: number, pitch: number): void {
+    this.#view?.turn(yaw, pitch)
+  }
+
+  closed(): void {
+    this.#view?.close()
+  }
+
+  dispose(): void {
+    this.#view?.dispose()
+    this.#view = undefined
   }
 }

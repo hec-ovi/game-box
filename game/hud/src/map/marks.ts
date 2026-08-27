@@ -7,7 +7,7 @@ import type { MapMark } from '../types.ts'
  * the same size at every zoom and on the minimap as on the plan. `halo` and
  * `ring` are multiples of the mark's own half-width.
  */
-export const MARK_PX = { you: 9, main: 8, side: 7, station: 5, door: 5, home: 7, gap: 10, halo: 2.2, ring: 1.6 } as const
+export const MARK_PX = { you: 8, main: 4.5, side: 4, station: 5, door: 5, home: 5, gap: 9, halo: 2.1, ring: 1.9 } as const
 
 /**
  * Which way the player is looking: an arrow with a notch cut in its tail, so

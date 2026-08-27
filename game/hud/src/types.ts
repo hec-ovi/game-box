@@ -20,15 +20,12 @@ export interface Carried {
 }
 
 /**
- * The thing the player has open in the inventory, drawn by the game as a ring
- * of views around it: dragging across them turns it. The interface asks for one
- * with `inspect` and draws whatever comes back, or the item's icon until it
- * does.
+ * The thing the player has open in the inventory. The interface asks for one
+ * with `inspect` and hands the game a canvas to draw it into; what is in it is
+ * the game's, and this only says which thing it is.
  */
 export interface Inspecting {
   readonly itemId: string
-  /** Views from all the way round, in order, starting face on. Empty while the game is still drawing them. */
-  readonly frames: readonly string[]
 }
 
 /** A place the player owns, and what they have put in it. */
@@ -452,8 +449,10 @@ export type HudIntent =
   | { readonly kind: 'skip-time' }
   /** A part of the city was clicked on the plan: the player is asking to be pointed at it. */
   | { readonly kind: 'district'; readonly districtId: string }
-  /** The player opened a thing in the inventory: the game draws it and pushes the views back. */
+  /** The player opened a thing in the inventory: the game draws it into the canvas the interface holds. */
   | { readonly kind: 'inspect'; readonly itemId: string }
+  /** They turned it: where it stands now, in radians, not how far it moved. */
+  | { readonly kind: 'turn'; readonly yaw: number; readonly pitch: number }
   | { readonly kind: 'weather'; readonly weather: string }
   | { readonly kind: 'minimap'; readonly shown: boolean }
   | { readonly kind: 'fullscreen'; readonly on: boolean }

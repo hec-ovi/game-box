@@ -70,7 +70,7 @@ Three states, and the difference matters:
 | Clothes not medieval | done | Twelve outfits recut from four, near-black coated garments with one lit accent each; the boots were a fused mesh and had to be cut by triangle height |
 | Hair and hair colour variety | done | Five cuts, twenty colours, half of them dyed |
 | Face turns to you when talked to | done | The body stops, turns, and the head leads it |
-| **Lip sync, gestures, drinking** | **open** | Gestures exist in the box; nothing drives them from conversation |
+| **Conversation gestures, drinking** | **open** | Gestures exist in the box; nothing drives them from conversation |
 
 ## Look
 
@@ -114,7 +114,7 @@ Open, and who has it:
   inside the street door, and 8 of 365 stationed people plus 7 of 242 items sit
   in floor the player cannot walk to. This is what "the shopkeeper is out of
   reach" actually was.
-- Lip sync and gestures driven by conversation.
+- Gestures driven by conversation.
 - No way to add to a finished city as a pack. `Forge.extend` is built, tested,
   and called by nobody, and nothing packages or applies a pack.
 - A timed quest is an invisible real-time stopwatch, and one model reply is 8 to

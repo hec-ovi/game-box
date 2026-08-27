@@ -56,9 +56,9 @@ export class Portraits implements FaceSource {
     // with a fill from below: the same two lights for everybody, so nobody is
     // in shadow because of the hour they happened to be talked to at.
     const key = new THREE.DirectionalLight(0xfff4e2, 3)
-    key.position.set(0.6, 1.2, 2)
+    key.position.set(-0.6, 1.2, -2)
     const fill = new THREE.DirectionalLight(0xbfd8ea, 1.1)
-    fill.position.set(-0.8, -0.4, 1.4)
+    fill.position.set(0.8, -0.4, -1.4)
     this.#scene.add(key, fill, new THREE.AmbientLight(0xffffff, 0.35))
   }
 
@@ -124,8 +124,10 @@ export class Portraits implements FaceSource {
     // far enough back that a head of that height fills the frame with `MARGIN`
     // of air round it, at a lens narrow enough not to bend the face
     const away = (height * MARGIN) / Math.tan(((LENS / 2) * Math.PI) / 180)
-    // a body spawns facing -Z, so the camera stands on +Z looking back at it
-    this.#camera.position.set(at.x, at.y, at.z + away)
+    // A body spawns facing -Z, so the camera stands on -Z: in front of them.
+    // Standing on +Z is standing behind them, which is a portrait of the back
+    // of somebody's head.
+    this.#camera.position.set(at.x, at.y, at.z - away)
     this.#camera.lookAt(at)
     this.#camera.updateProjectionMatrix()
   }

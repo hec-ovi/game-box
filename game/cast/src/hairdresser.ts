@@ -35,10 +35,15 @@ export class Hairdresser {
     })
 
     // matched by material name, not by identity: a loader hands out its own
-    // copy of a material per mesh that needs one
+    // copy of a material per mesh that needs one.
+    //
+    // A pair of brows is one sheet holding a brow row and a lash row, so it
+    // takes a grown colour while the head may be out of a bottle: dyed to match,
+    // acid green hair came with acid green eyelashes.
+    const brows = new Set(entry.brows)
     for (const mesh of meshes) {
       if (Array.isArray(mesh.material) || !shaders.has(mesh.material.name)) continue
-      mesh.material = this.#tint(mesh.material, look.colour)
+      mesh.material = this.#tint(mesh.material, brows.has(mesh.name) ? look.browColour : look.colour)
     }
   }
 

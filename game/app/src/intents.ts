@@ -125,11 +125,16 @@ export class Intents {
         this.#chart.open = intent.window === 'map'
         if (intent.window !== null) this.#releasePointer()
         this.#pause(intent.window !== null)
+        // nothing is being drawn into the inventory's canvas once it is off screen
+        if (intent.window !== 'inventory') this.#inspecting?.closed()
         return
       // a thing opened in the inventory: the game draws every side of it and
       // pushes the views back, so the panel can be turned
       case 'inspect':
         void this.#inspecting?.show(intent.itemId)
+        return
+      case 'turn':
+        this.#inspecting?.turn(intent.yaw, intent.pitch)
         return
       // a part of the city clicked on the plan: point the player at it
       case 'district': {
