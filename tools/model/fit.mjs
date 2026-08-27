@@ -10,6 +10,7 @@ import { Logger } from '@gltf-transform/core'
 import { MeshoptSimplifier } from 'meshoptimizer'
 import sharp from 'sharp'
 import { dedup, flatten, join, palette, prune, simplify, textureCompress, weld } from '@gltf-transform/functions'
+import { bakeVertexColour } from './bake.mjs'
 import { hiddenGroupOf, HIDDEN_GROUPS } from './hidden.mjs'
 import { BUDGET, measure, triangleCount } from './measure.mjs'
 
@@ -24,7 +25,7 @@ export class Fit {
   /**
    * @param {import('@gltf-transform/core').Document} document
    * @param {{ triangles?: number, texture?: number, spare?: string[], keepHidden?: boolean,
-   *           flat?: boolean, keepParts?: boolean }} how
+   *           flat?: boolean, bake?: boolean, keepParts?: boolean }} how
    */
   constructor(document, how = {}) {
     this.document = document.setLogger(new Logger(Logger.Verbosity.ERROR))
@@ -33,6 +34,7 @@ export class Fit {
     this.spare = how.spare ?? []
     this.keepHidden = how.keepHidden ?? false
     this.flat = how.flat ?? false
+    this.bake = how.bake ?? false
     this.keepParts = how.keepParts ?? false
     this.steps = []
   }
@@ -42,9 +44,12 @@ export class Fit {
     if (!this.keepHidden) await this.dropHidden()
     if (this.flat) await this.dropTextures()
     await this.decimate()
+    if (this.bake) await this.paintVertices()
     await this.shrinkTextures()
     await this.mergeMaterials()
-    await this.document.transform(dedup(), prune({ keepAttributes: false }))
+    // the baked colour is the only place a model's paint is left, and no
+    // material declares it, so pruning must be told to leave the vertices alone
+    await this.document.transform(dedup(), prune({ keepAttributes: this.bake }))
     this.after = measure(this.document)
     return this
   }
@@ -131,6 +136,19 @@ export class Fit {
     })
   }
 
+  /**
+   * Reads the sheets onto the vertices and drops them. It runs after the
+   * simplifier, so it samples the vertices that survived rather than the ones
+   * that were about to go.
+   */
+  async paintVertices() {
+    const read = await bakeVertexColour(this.document)
+    this.steps.push({
+      name: 'bake',
+      said: `${read.sheets} sheets onto the vertices, ${read.painted} parts sampled, ${read.flat} left their own colour`,
+    })
+  }
+
   async shrinkTextures() {
     const widest = measure(this.document).widest
     if (widest <= this.texture) {
@@ -148,14 +166,22 @@ export class Fit {
    * texture, then joins the meshes that end up sharing one, which is what
    * turns a merged material into a saved draw call.
    *
-   * `keepParts` stops the joining: a model that still has to be rigged, wheels
+   * `keepParts` leaves both alone: a model that still has to be rigged, wheels
    * onto pivots and a nose pointed down +Z, is only useful while its parts are
-   * still their own nodes, and whoever rigs it joins the body itself.
+   * still their own nodes and its materials still carry the names that say
+   * which part is glass and which is a tyre. Whoever rigs it does the merging.
    */
   async mergeMaterials() {
     const before = measure(this.document)
+    if (this.keepParts) {
+      this.steps.push({
+        name: 'materials',
+        said: `${before.materials} materials and ${before.draws} draws kept for rigging`,
+      })
+      return
+    }
     await this.document.transform(palette({ min: 2, blockSize: 4 }))
-    if (!this.keepParts) await this.document.transform(flatten(), join({ keepNamed: false, keepMeshes: false }))
+    await this.document.transform(flatten(), join({ keepNamed: false, keepMeshes: false }))
     await this.document.transform(dedup(), prune({ keepAttributes: false }))
     const after = measure(this.document)
     this.steps.push({

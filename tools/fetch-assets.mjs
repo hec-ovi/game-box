@@ -1,7 +1,9 @@
 /**
  * Downloads the art packs listed in assets/registry/sources.json into
  * assets/src/, and records what it got. A pack with a `download` link is
- * fetched straight; the rest come through itch.io's free-download flow.
+ * fetched straight; the rest come through itch.io's free-download flow. A pack
+ * marked `byHand` sits behind a login: it prints where to get the file and
+ * what to run on it, and downloads nothing.
  *
  * A pack that is not marked redistributable is refused here rather than
  * discovered later: our world files hand assets to other players, so
@@ -25,6 +27,13 @@ const packs = registry.packs.filter((pack) => wanted.length === 0 || wanted.incl
 const lock = existsSync(LOCK) ? JSON.parse(readFileSync(LOCK, 'utf8')) : {}
 
 for (const pack of packs) {
+  // Some sources are behind a login and cannot be fetched by a script. The row
+  // says where the file comes from and what it costs to fit; this prints it.
+  if (pack.byHand) {
+    console.log(`  ${pack.id}  by hand, ${pack.license}  ${pack.page}`)
+    console.log(`    ${pack.byHand}`)
+    continue
+  }
   if (!pack.redistributable) {
     console.error(`refusing ${pack.id}: not redistributable, and our world files redistribute`)
     process.exitCode = 1

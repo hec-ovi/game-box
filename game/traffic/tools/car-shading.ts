@@ -16,25 +16,28 @@ import { CAR_MATERIAL, surfaceOf } from '../src/pack-layout.ts'
 /** Panels meeting at less than this are one surface. Radians. */
 export const CREASE = (48 * Math.PI) / 180
 
-/** The head lamp glass in the source is a muddy orange. A lens is near white. */
-const LENS: Readonly<Record<string, string>> = { Headlights: '#fff3e0' }
+/**
+ * What a lens is painted, whichever pack it came from. A source bakes an unlit
+ * lamp the muddy colour it is in daylight, and muddy is not what glows at night.
+ */
+export const LENS = { head: '#fff3e0', tail: '#e01008' } as const
 
 /** One material for the whole pack: colour and surface ride on the vertices. */
 export function packMaterial(): MeshStandardMaterial {
   return new MeshStandardMaterial({ name: CAR_MATERIAL, vertexColors: true, roughness: 0.5, metalness: 0.2 })
 }
 
-/** Smooth the panels, keep the corners. */
-export function crease(geometry: BufferGeometry): void {
-  toCreasedNormals(geometry, CREASE)
+/** Smooth the panels, keep the corners. Non-indexed geometry is creased in place. */
+export function crease(geometry: BufferGeometry): BufferGeometry {
+  return toCreasedNormals(geometry, CREASE)
 }
 
 /**
  * Folds a mesh's material groups into a colour per vertex: base colour in RGB
  * and which of `CAR_SURFACES` it is in alpha, both as bytes, which is what
- * `COLOR_0` is in glTF. Leaves the mesh wearing one material.
+ * `COLOR_0` is in glTF. What is left is a geometry that needs no materials.
  */
-export function bakeSurfaces(mesh: Mesh, material: MeshStandardMaterial): void {
+export function bakeSurfaces(mesh: Mesh): void {
   const geometry = mesh.geometry
   if (geometry.index) throw new Error('bakeSurfaces: the groups of an indexed geometry are not vertex ranges')
   const worn = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
@@ -53,7 +56,6 @@ export function bakeSurfaces(mesh: Mesh, material: MeshStandardMaterial): void {
   }
   geometry.setAttribute('color', new BufferAttribute(colours, 4, true))
   geometry.clearGroups()
-  mesh.material = material
 }
 
 /**
@@ -63,8 +65,7 @@ export function bakeSurfaces(mesh: Mesh, material: MeshStandardMaterial): void {
 function swatch(material: Material): [number, number, number, number] {
   const name = material.name
   const colour = new Color()
-  const lens = LENS[name]
-  if (lens) colour.set(lens)
+  if (name === 'Headlights') colour.set(LENS.head)
   else colour.copy((material as MeshStandardMaterial).color)
   const byte = (v: number): number => Math.max(0, Math.min(255, Math.round(v * 255)))
   return [byte(colour.r), byte(colour.g), byte(colour.b), surfaceOf(name)]

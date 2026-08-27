@@ -3,10 +3,23 @@ import type { CarBodies } from './bodies.ts'
 import type { Obstacles } from './obstacles.ts'
 
 /**
- * The Quaternius Realistic Car Pack, by file name, with how common each one is
- * on the street. Closed on purpose: a name here is a model the app can load.
+ * Every car the pack draws, with how common each one is on the street. Closed
+ * on purpose: a name here is a model the app can load. The first seven are the
+ * Quaternius pack; the last three are models fitted from downloads, which is
+ * why they are named for what they are rather than for a file.
  */
-export const CAR_MODELS = ['NormalCar1', 'NormalCar2', 'SUV', 'Taxi', 'SportsCar', 'SportsCar2', 'Cop'] as const
+export const CAR_MODELS = [
+  'NormalCar1',
+  'NormalCar2',
+  'SUV',
+  'Taxi',
+  'SportsCar',
+  'SportsCar2',
+  'Cop',
+  'GranTurismo',
+  'Concept',
+  'Patrol',
+] as const
 export type CarModel = (typeof CAR_MODELS)[number]
 
 export const MODEL_MIX: ReadonlyArray<readonly [CarModel, number]> = [
@@ -17,6 +30,9 @@ export const MODEL_MIX: ReadonlyArray<readonly [CarModel, number]> = [
   ['SportsCar', 1],
   ['SportsCar2', 1],
   ['Cop', 0.5],
+  ['GranTurismo', 3],
+  ['Concept', 2],
+  ['Patrol', 1],
 ]
 
 /** Metres per second by road kind: 30, 50 and 60 km/h. */
