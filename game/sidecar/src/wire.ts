@@ -1,4 +1,4 @@
-import type { AskOptions, ConverseOptions, Sampling, ToolSpec } from './options.ts'
+import type { AskOptions, ConverseOptions, Routed, Sampling, ToolSpec } from './options.ts'
 
 /** The sidecar's own `POST /v1/chat/completions` shapes. Nothing else builds or reads them. */
 
@@ -9,7 +9,7 @@ export function askBody(model: string, options: AskOptions, parameters: Record<s
       { role: 'system', content: options.system },
       { role: 'user', content: options.user },
     ],
-    ...sampling(options),
+    ...carried(options),
     tools: [tool({ name: options.toolName, description: options.toolDescription, parameters })],
     tool_choice: { type: 'function', function: { name: options.toolName } },
   }
@@ -20,7 +20,7 @@ export function converseBody(model: string, options: ConverseOptions): Record<st
     model,
     stream: true,
     messages: [{ role: 'system', content: options.system }, ...options.messages],
-    ...sampling(options),
+    ...carried(options),
     ...(options.tools?.length ? { tools: options.tools.map(tool), tool_choice: 'auto' } : {}),
   }
 }
@@ -29,9 +29,10 @@ function tool(spec: ToolSpec) {
   return { type: 'function', function: { name: spec.name, description: spec.description, parameters: spec.parameters } }
 }
 
-/** Only what the caller pinned goes on the wire; the service invents nothing for what it leaves out. */
-function sampling({ temperature, seed }: Sampling) {
+/** Only what the caller named goes on the wire; the service invents nothing for what it leaves out. */
+function carried({ job, temperature, seed }: Routed & Sampling) {
   return {
+    ...(job === undefined ? {} : { job }),
     ...(temperature === undefined ? {} : { temperature }),
     ...(seed === undefined ? {} : { seed }),
   }

@@ -12,6 +12,14 @@ interface Cancellable {
   readonly signal?: AbortSignal | undefined
 }
 
+/** Which work a call is. The service routes it to whichever provider that job is assigned to. */
+export type Job = 'history' | 'city' | 'places' | 'quests' | 'dialogs'
+
+/** What the call is for. A caller that names one is routed on it; one that names none goes where everything goes. */
+export interface Routed {
+  readonly job?: Job | undefined
+}
+
 /** What pins the engine's draw. Both go out exactly when given; nothing is invented for a call that names neither. */
 export interface Sampling {
   readonly temperature?: number | undefined
@@ -19,7 +27,7 @@ export interface Sampling {
   readonly seed?: number | undefined
 }
 
-export interface AskOptions extends Cancellable, Sampling {
+export interface AskOptions extends Cancellable, Routed, Sampling {
   readonly system: string
   readonly user: string
   /** The tool the model must call. Its schema is both the contract and the constraint. */
@@ -29,7 +37,7 @@ export interface AskOptions extends Cancellable, Sampling {
   readonly timeoutMs?: number | undefined
 }
 
-export interface ConverseOptions extends Cancellable, Sampling {
+export interface ConverseOptions extends Cancellable, Routed, Sampling {
   readonly system: string
   readonly messages: ReadonlyArray<{ role: 'user' | 'assistant'; content: string }>
   /** What the speaker is allowed to do right now. Only these can be called. */

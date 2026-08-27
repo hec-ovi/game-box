@@ -1,6 +1,6 @@
 # @gb/talk contract
 
-contractVersion: 0.12.0
+contractVersion: 0.13.0
 
 ## Purpose
 
@@ -56,6 +56,8 @@ The line goes into the transcript as their turn, so the model answers on top of 
 The voice goes first and is the person. It is given the character, the room and what is going on, and one call it has no choice about making: `take_turn`, whose fields are `does` (what their body does, in a few words, left out when they only speak), `says` (the words out loud), `reveals` (the number of a fact about themselves they let slip, offered only while there is one to let slip), `remembers` (what the player told them worth keeping) and `mood` (how the turn left them: warmer, cooler, same). `does` is first in the schema on purpose: llama writes the fields in schema order, so the body is settled before the words are written and the words follow it. The call is offered no menu and no ids. The turn arrives whole: 4.1 to 6.6 s per turn measured on 2026-08-25 against gemma-4-26b on a generated city, with a brief of about 1,100 tokens.
 
 The action track then decides, once. Every move that was legal when the turn began is written out as a numbered menu in plain words, with "nothing but talk" as number 1, and the model answers by making a call it is given no choice about making, at temperature 0. The parameters of that call are the menu: one line number, checked against the number of lines before it gets back here. There is no text to parse and no answer off the list to interpret. One turn is at most one action, and nothing is the usual answer. A call that comes back any other way (prose instead of the call, a number the menu has not got, nothing running at all) has not answered it, and the player's own words decide the turn instead. Measured at 1.9 to 2.2 s, which is how late the nod lands after the words: the decision reads the reply, so the two calls cannot overlap.
+
+Both calls go out as the `dialogs` job, so the service can put conversations on a different model from the one that wrote the city.
 
 Ids never appear in either track. The menu says "the job: The Ledger", not a quest id, and the number maps back to the id on this side of the boundary. Both `does` and `says` are scrubbed of anything id-shaped before they are published.
 
@@ -164,6 +166,7 @@ The spoken side is terse but never reads stored text out as it is stored: a fact
 - A background fact is earned once, at or after its stage, and published as `learned` the turn it is earned, whichever track earned it.
 - Clicking and typing are one conversation: a picked move goes into the transcript as the player's turn, so a typed turn after it answers with the click in mind.
 - With no model reachable, the same words in the same state give the same conversation every time, down to the line.
+- Every call this box makes carries the `dialogs` job, the voice track and the decider alike.
 - A conversation opens with a line and a menu, whatever the model is doing. Nothing about opening one reaches the sidecar.
 - The same world file, the same person and the same hour give the same opening line on every machine.
 - A turn the player cut short changes nothing: no quest moves, no item, no money, no companion, no door.

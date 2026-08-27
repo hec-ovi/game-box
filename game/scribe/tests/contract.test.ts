@@ -3,7 +3,7 @@ import { Sidecar } from '@gb/sidecar'
 import { describe, expect, it } from 'vitest'
 import { Scribe } from '../src/index.ts'
 import { fakeModel } from './fake-model.ts'
-import { charterOf } from './places.ts'
+import { JAIL, charterOf } from './places.ts'
 
 const CITY: WorldSummary = {
   cityName: 'Cold Harbour',
@@ -24,6 +24,19 @@ const CITY: WorldSummary = {
       items: [{ itemId: 'item_0001', name: 'Ledger' }],
     },
   ],
+}
+
+/** A history that invents a kind of place no preset is, so the build asks for its charter too. */
+const PREMISE = {
+  livesOn: 'Container freight off the elevated line.',
+  happened: 'The line shut last winter.',
+  stake: 'Who gets the freight contract.',
+  sides: [
+    { name: 'the Vance yards', wants: 'the contract back' },
+    { name: 'the Dockhands Local', wants: 'the yards broken up' },
+  ],
+  common: ['Nothing has moved since November.'],
+  build: { moreOf: ['warehouse'], fewerOf: [], mustHave: ['jail'] },
 }
 
 describe('Scribe', () => {
@@ -179,6 +192,36 @@ describe('Scribe', () => {
     const name = await stopped.nameCity({ theme: 'port', seed: 's' })
     expect(name).not.toBe('Saltmere')
     expect(stopped.problems().map((problem) => problem.error.code)).toEqual(['aborted'])
+  })
+
+  it('tells every call what work it is, so the service can route it to the model that job is on', async () => {
+    const { sent, sidecar } = fakeModel((call) =>
+      call.toolName === 'write_premise' ? PREMISE : call.toolName === 'write_charter' ? JAIL : { name: 'Cold Harbour' },
+    )
+    const scribe = new Scribe({ sidecar, seed: 'city', attempts: 1 })
+
+    const built = await new Forge(scribe).build({ theme: 'rain-soaked port', seed: 'scribe-city', blocksX: 1, blocksY: 1, blockCells: 16 })
+    expect(built.ok).toBe(true)
+    // and the calls a build does not make on its own
+    await scribe.namePlace({ kind: 'bar', charter: charterOf('bar'), theme: 'port', index: 0 })
+    await scribe.describeNpc({ role: 'bartender', placeKind: 'bar', place: charterOf('bar'), placeName: 'The Anchor', theme: 'port', index: 0 })
+    await scribe.describeItem({ archetype: 'ledger', theme: 'port', index: 0 })
+    await scribe.writeBrief({ want: ['theme'], seed: 's' })
+
+    // read off every request that went out: an untagged one shows up here as its own line
+    expect([...new Set(sent.map((call) => `${call.toolName} -> ${call.job}`))].sort()).toEqual([
+      'describe_item -> places',
+      'describe_npc -> places',
+      'name_city -> city',
+      'name_districts -> city',
+      'name_place -> city',
+      'name_signs -> city',
+      'write_brief -> history',
+      'write_charter -> history',
+      'write_instance -> places',
+      'write_premise -> history',
+      'write_quest -> quests',
+    ])
   })
 
   it('builds a whole city with the model as its narrator, quests included', async () => {

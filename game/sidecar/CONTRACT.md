@@ -1,6 +1,6 @@
 # @gb/sidecar contract
 
-contractVersion: 0.3.0
+contractVersion: 0.4.0
 
 ## Purpose
 
@@ -11,12 +11,14 @@ The client for the local AI sidecar: ask it for one checked answer, or stream a 
 | Param | Schema | Preconditions |
 |---|---|---|
 | `new Sidecar(options?)` | `base?`, `model?`, `fetch?`, `timeouts?`, `backoff?`, `onBusy?` | base defaults to `GAME_BOX_URL` or `http://127.0.0.1:8976`; `fetch` is injectable, so this runs in a browser, in Node and in a test; `timeouts` and `backoff` set this client's defaults; `onBusy` is told before every wait on a busy model |
-| `ask(contract, options)` | a `@gb/kit` `Contract`, plus system text, user text, a tool name and description, and optionally `seed`, `temperature`, `signal` and `timeoutMs` | the contract's JSON Schema becomes the tool's parameters |
-| `converse(options)` | system text, the messages so far, the tools the speaker may call now, and optionally `seed`, `temperature`, `signal`, `firstTokenMs` and `idleMs` | offering no tools means the speaker can only talk |
+| `ask(contract, options)` | a `@gb/kit` `Contract`, plus system text, user text, a tool name and description, and optionally `job`, `seed`, `temperature`, `signal` and `timeoutMs` | the contract's JSON Schema becomes the tool's parameters |
+| `converse(options)` | system text, the messages so far, the tools the speaker may call now, and optionally `job`, `seed`, `temperature`, `signal`, `firstTokenMs` and `idleMs` | offering no tools means the speaker can only talk |
 
 Both send the sidecar's own `POST /v1/chat/completions` shape (host/CONTRACT.md), and the tests check every outgoing request against its published `chat-request.json`.
 
 `seed` (0 to 4294967294) and `temperature` go on the wire exactly when a call names them, on every call, `ask` and `converse` alike. A call that names neither sends neither, and the engine's own defaults decide. Whether the engine repeats itself for a pinned call is the engine's business; this box only carries the pin.
+
+`job` goes the same way: one of `history`, `city`, `places`, `quests` or `dialogs`, on the wire exactly when a call names one. It says what the call is for, and the service routes it to whichever provider that job is assigned to; a call that names none goes wherever the service sends everything else. This box carries the word and never reads it.
 
 ## Stopping a call
 
@@ -83,7 +85,7 @@ An engine that dies mid-reply is reported as a failure, never passed off as an a
 - A streamed call whose arguments do not parse is dropped, not guessed at.
 - `timeout`, `aborted` and `unreachable` are three different answers. A rejected request is never reported as the wrong one, and the clock that decides is always this box's, never the transport's.
 - A busy model is never retried tightly: every retry waits at least what the sidecar asked, and a wait that would outlive the call's clock is not started. `busy` is the only code a rate limit can come back as, so it is never mistaken for a dead sidecar.
-- What a call pins (`seed`, `temperature`) reaches the wire unchanged, and what it leaves out is left out.
+- What a call names (`job`, `seed`, `temperature`) reaches the wire unchanged, and what it leaves out is left out.
 - A caller signal that is already aborted stops the call before a request goes out.
 - A call that ends leaves nothing behind: the timer is cleared, the listener comes off the caller's signal, and the response body reader is cancelled. That holds when the stream finishes, when it breaks off, and when the caller walks away from it mid-reply.
 - Nothing here knows what a quest, an NPC or a city is. It moves calls and text.

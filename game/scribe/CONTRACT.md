@@ -1,6 +1,6 @@
 # @gb/scribe contract
 
-contractVersion: 0.8.0
+contractVersion: 0.9.0
 
 ## Purpose
 
@@ -52,7 +52,7 @@ Scribe implements `@gb/forge`'s `Narrator`, so a `Forge` takes one and builds a 
 ## Dependencies
 
 - `@gb/kit` contract: contracts, results, the deterministic rng the per-call seeds are drawn with.
-- `@gb/sidecar` contract (game/sidecar/CONTRACT.md): the client that makes the call and carries the seed and the temperature.
+- `@gb/sidecar` contract (game/sidecar/CONTRACT.md): the client that makes the call and carries the seed, the temperature and the job.
 - `@gb/forge` contract: the `Narrator` interface it implements, the `History` it answers, the instance shapes, `premiseLines`, and the `OfflineNarrator` it falls back to.
 - `@gb/quest` contract: the quest draft shape a quest writer fills in, the validator every draft goes through with the seven questions of its `WorldView`, and the reward table the prompt is written from.
 - `@gb/world` contract: the closed vocabularies a narrator must choose from, the premise contract the city's history is written against, the charter contract a kind of place is written against and `SHIPPED_CHARTERS` (the kinds every town has), `Life` and `BackgroundFact` for a person, `MachineProgram` for what a screen runs, and `Asks` for what the owner typed.
@@ -63,6 +63,7 @@ Scribe implements `@gb/forge`'s `Narrator`, so a `Forge` takes one and builds a 
 - Nothing caps how long an answer runs: no `max_tokens`, and no prompt asking for so many words.
 - A rejected call is retried with the exact violations quoted back, then given up on. Two failures cost one name, never the world.
 - **Every call is pinned.** Each request carries a `seed` and a `temperature`. The seed is drawn from the build's seed, the call's position (`premise`, `charter:jail`, `city-name`, `signs:2`, `place:12`, `person:4`, `thing:9`, `quest:3`) and the attempt number, never from a counter, so the same build sends the same seed to the same call however many calls were in the air and whichever order they landed in, and a second attempt is a second draw. Reproducibility is best effort: the engine decides whether a pinned request comes back the same, and the ones measured do not promise it (llama-server holds a seed only while nothing else shares the engine; the hosted router does not honour one at all). What the seed buys is that a draw which went wrong once is not the draw tried again.
+- **Every call says what work it is.** The history, the charters it calls for and a field written for the form go out as `history`; the city's name, its districts, its signs and a single sign as `city`; the places, the people in them and the things as `places`; the quests as `quests`. The service routes on that word, so a town can be written with one model on its history and another on its quests.
 - **No example in a prompt can come back as an answer.** Measured: a house-style example name was hung over a bar. So a shape is shown with bracketed slots (`[first name]'s [trade]`) and never with a name, the system prompt says the brackets are slots, and the prompts test refuses a quoted proper name in any of them. The live scan reads the slots off the prompts themselves, so it is always about what the prompts say today: measured on one live 3x3 town (61 signs, 25 people, 5 quests, every string of the world and the quests scanned), none of the eleven came back; `pnpm --filter @gb/scribe run measure 10` scans ten towns.
 - Quests are written one per call: a small model writes a better single quest than a batch, and a failure costs one quest.
 - A place is written whole, in one call: what it is, everybody in it and everything lying about are one decision, because they are one decision in the world. That call is shown its own building and nothing else.

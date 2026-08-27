@@ -53,6 +53,7 @@ export class Decider {
         rules: rulesFor(input.moves),
       }),
       user: fill(PROMPTS['decide-turn'], { transcript: input.transcript }),
+      job: 'dialogs',
       toolName: TOOL.name!,
       toolDescription: fill(TOOL.description!, { name: input.npcName }),
       temperature: 0,

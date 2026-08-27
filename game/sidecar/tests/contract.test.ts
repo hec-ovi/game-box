@@ -118,6 +118,24 @@ describe('pinning the draw', () => {
   })
 })
 
+describe('what a call is for', () => {
+  it('sends the job on every call that names one, and nothing for one that does not', async () => {
+    const { seen, sidecar } = sidecarOver((body) => (body.stream ? sseReply([chunk({}, 'stop')]) : toolCallReply('name_city', { name: 'Cold Harbour' })))
+    const ask = { system: 's', user: 'u', toolName: 'name_city', toolDescription: 'd' }
+    const converse = { system: 's', messages: [{ role: 'user' as const, content: 'hi' }] }
+
+    await sidecar.ask(Name, { ...ask, job: 'quests' })
+    const spoken = await sidecar.converse({ ...converse, job: 'dialogs' })
+    if (spoken.ok) await drain(spoken.value)
+    await sidecar.ask(Name, ask)
+    const unrouted = await sidecar.converse(converse)
+    if (unrouted.ok) await drain(unrouted.value)
+
+    expect(seen.map((body) => body.job)).toEqual(['quests', 'dialogs', undefined, undefined])
+    expect(seen.map((body) => 'job' in body)).toEqual([true, true, false, false])
+  })
+})
+
 describe('Sidecar.converse', () => {
   it('streams the reply in pieces and hands back the actions taken', async () => {
     const { seen, sidecar } = sidecarOver(() =>

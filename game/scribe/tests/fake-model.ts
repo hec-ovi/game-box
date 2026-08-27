@@ -15,6 +15,8 @@ const validateChatRequest = new Ajv2020({ strict: false }).compile(chatRequestSc
 
 export interface Sent {
   readonly toolName: string
+  /** What the request said the call was for, read straight off the wire. */
+  readonly job: string | undefined
   readonly parameters: Record<string, unknown>
   readonly description: string
   readonly user: string
@@ -43,6 +45,7 @@ export function fakeModel(answer: Reply[] | ((sent: Sent, index: number) => Answ
     const tool = body.tools[0].function
     const call: Sent = {
       toolName: tool.name,
+      job: body.job,
       parameters: tool.parameters,
       description: tool.description,
       user: body.messages[1].content,

@@ -276,6 +276,8 @@ interface Call {
   readonly system: string
   readonly user: string
   readonly forced: string
+  /** What the request said the call was for, read straight off the wire. */
+  readonly job: string | undefined
   readonly tool: ToolCall
 }
 
@@ -290,9 +292,16 @@ function speaker(script: Script) {
       messages: Array<{ role: string; content: string }>
       tools: Array<{ function: ToolCall }>
       tool_choice: { function: { name: string } }
+      job?: string
     }
     const tool = body.tools[0]!.function
-    const call: Call = { system: body.messages[0]!.content, user: body.messages[body.messages.length - 1]!.content, forced: body.tool_choice.function.name, tool }
+    const call: Call = {
+      system: body.messages[0]!.content,
+      user: body.messages[body.messages.length - 1]!.content,
+      forced: body.tool_choice.function.name,
+      job: body.job,
+      tool,
+    }
 
     if (tool.name === 'take_turn') {
       voice.push(call)
@@ -482,6 +491,15 @@ describe('Conversation', () => {
     // the model answers on top of the line the player already read, not from nothing
     expect(call.user).toContain(`Mara Cole: "${opening.line}"`)
     expect(call.user).toContain('Them: "when do you close?"')
+  })
+
+  it('tells the service what every call is for, on both tracks of the turn', async () => {
+    const { conversation, model } = setup({ text: 'Fetch me the ledger.', pick: 2 })
+    await collect(conversation.say('anything going?'))
+    await collect(conversation.say('where do I find it?'))
+
+    expect(model.voice.map((call) => call.job)).toEqual(['dialogs', 'dialogs'])
+    expect(model.decisions.map((call) => call.job)).toEqual(['dialogs', 'dialogs'])
   })
 
   it('puts only the legal moves to the decider, in plain words, with no ids anywhere', async () => {

@@ -1,6 +1,6 @@
 import type { DistrictRequest, History, Instance, InstanceRequest, ItemProfile, Narrator, NpcProfile } from '@gb/forge'
 import { OfflineNarrator, premiseLines } from '@gb/forge'
-import { Sidecar } from '@gb/sidecar'
+import { Sidecar, type Job } from '@gb/sidecar'
 import type { Charter, ItemArchetype, NpcRole, Premise, Word } from '@gb/world'
 import { Asker, type ScribeProblem } from './asker.ts'
 import { BRIEF_FIELDS, BRIEF_LABELS, type BriefDraft, type BriefField, type BriefSoFar } from './brief.ts'
@@ -37,6 +37,8 @@ const TEMPERATURE = 0.9
 /** How many spare answers the offline narrator is asked for before a single-place call takes what it has. */
 const ATTEMPTS = 40
 
+/** The jobs this box writes for. Every call it makes goes through the asker for one of them. */
+type WritingJob = Extract<Job, 'history' | 'city' | 'places' | 'quests'>
 
 export interface ScribeOptions {
   readonly sidecar?: Sidecar
@@ -62,8 +64,7 @@ export interface ScribeOptions {
  * instead and the failure is recorded rather than hidden.
  */
 export class Scribe implements Narrator {
-  #descriptive: Asker
-  #questions: Asker
+  #askers: Record<WritingJob, Asker>
   #fallback: Narrator
   #registry = new NameRegistry()
   #waves: Waves
@@ -84,8 +85,14 @@ export class Scribe implements Narrator {
     this.#pins = new Pins(this.#seed, options.temperature ?? TEMPERATURE)
     this.#claims = new FamilyClaims(this.#seed)
     const pins = this.#pins
-    this.#descriptive = new Asker({ sidecar, pins, attempts, signal: options.signal, record })
-    this.#questions = new Asker({ sidecar, pins, attempts, timeoutMs: QUEST_MS, signal: options.signal, record })
+    const asker = (job: WritingJob, timeoutMs?: number): Asker =>
+      new Asker({ sidecar, pins, job, attempts, timeoutMs, signal: options.signal, record })
+    this.#askers = {
+      history: asker('history'),
+      city: asker('city'),
+      places: asker('places'),
+      quests: asker('quests', QUEST_MS),
+    }
     this.#fallback = options.fallback ?? new OfflineNarrator(this.#seed)
     this.#waves = new Waves(options.concurrency)
     this.#progress = new Progress(options.progress)
@@ -107,8 +114,8 @@ export class Scribe implements Narrator {
   async writePremise(input: PremiseInput): Promise<History> {
     this.#reseed(input.seed)
     this.#progress.open('history', 1, 'writing the history')
-    const charters = new CharterWriter({ asker: this.#descriptive, waves: this.#waves, progress: this.#progress })
-    const history = await new PremiseWriter({ asker: this.#descriptive, fallback: this.#fallback, charters }).write(input)
+    const charters = new CharterWriter({ asker: this.#askers.history, waves: this.#waves, progress: this.#progress })
+    const history = await new PremiseWriter({ asker: this.#askers.history, fallback: this.#fallback, charters }).write(input)
     this.#progress.finished(history.livesOn)
     return history
   }
@@ -131,7 +138,7 @@ export class Scribe implements Narrator {
     const written = BRIEF_FIELDS.map((field) => (have[field]?.trim() ? `- ${BRIEF_LABELS[field]}: ${have[field]!.trim()}` : undefined)).filter(
       (line): line is string => line !== undefined,
     )
-    const answer = await this.#descriptive.ask(
+    const answer = await this.#askers.history.ask(
       WRITE_BRIEF,
       prompt('write-brief', {
         wanted: want.map((field) => BRIEF_LABELS[field]).join(', '),
@@ -150,7 +157,7 @@ export class Scribe implements Narrator {
   async nameCity(input: { theme: string; seed: string; premise?: Premise }): Promise<string> {
     this.#reseed(input.seed)
     this.#progress.open('city', 1, 'naming the city')
-    const answer = await this.#descriptive.ask(
+    const answer = await this.#askers.city.ask(
       NAME_CITY,
       prompt('name-city', {
         theme: input.theme,
@@ -166,7 +173,7 @@ export class Scribe implements Narrator {
 
   /** One sign on its own. A head word already over a door goes to the offline composer instead. */
   async namePlace(input: { kind: Word; charter: Charter; theme: string; index: number; premise?: string }): Promise<string> {
-    const answer = await this.#descriptive.ask(
+    const answer = await this.#askers.city.ask(
       NAME_PLACE,
       prompt('name-place', {
         theme: input.theme,
@@ -192,7 +199,7 @@ export class Scribe implements Narrator {
    */
   async namePlaces(requests: readonly PlaceRequest[]): Promise<string[]> {
     return new SignNamer({
-      asker: this.#descriptive,
+      asker: this.#askers.city,
       waves: this.#waves,
       fallback: this.#fallback,
       registry: this.#registry,
@@ -208,7 +215,7 @@ export class Scribe implements Narrator {
    */
   async nameDistricts(requests: readonly DistrictRequest[]): Promise<string[]> {
     return new DistrictNamer({
-      asker: this.#descriptive,
+      asker: this.#askers.city,
       fallback: this.#fallback,
       registry: this.#registry,
       progress: this.#progress,
@@ -226,7 +233,7 @@ export class Scribe implements Narrator {
    */
   async writeInstances(requests: readonly InstanceRequest[]): Promise<Instance[]> {
     const written = await new InstanceWriter({
-      asker: this.#descriptive,
+      asker: this.#askers.places,
       waves: this.#waves,
       fallback: this.#fallback,
       registry: this.#registry,
@@ -250,7 +257,7 @@ export class Scribe implements Narrator {
     premise?: string
   }): Promise<NpcProfile> {
     const letters = this.#claims.for(input.index)
-    const answer = await this.#descriptive.ask(
+    const answer = await this.#askers.places.ask(
       describeNpcTool(letters),
       prompt('describe-npc', {
         theme: input.theme,
@@ -273,7 +280,7 @@ export class Scribe implements Narrator {
   }
 
   async describeItem(input: { archetype: ItemArchetype; theme: string; index: number }): Promise<ItemProfile> {
-    const answer = await this.#descriptive.ask(
+    const answer = await this.#askers.places.ask(
       DESCRIBE_ITEM,
       prompt('describe-item', { ...input, ...this.#city() }),
       `thing:${input.index}`,
@@ -292,7 +299,7 @@ export class Scribe implements Narrator {
    */
   async writeQuests(input: QuestInput): Promise<unknown[]> {
     return new QuestWriter({
-      asker: this.#questions,
+      asker: this.#askers.quests,
       waves: this.#waves,
       fallback: this.#fallback,
       progress: this.#progress,

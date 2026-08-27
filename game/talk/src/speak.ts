@@ -43,6 +43,7 @@ export class Speaker {
       signal: input.signal,
       system: input.system,
       user: fill(PROMPTS.turn, { transcript: input.exchange, name: input.npcName }),
+      job: 'dialogs',
       toolName: TOOL.name!,
       toolDescription: fill(TOOL.description!, { name: input.npcName }),
     })

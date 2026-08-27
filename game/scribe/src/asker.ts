@@ -1,4 +1,4 @@
-import type { Sidecar, SidecarError } from '@gb/sidecar'
+import type { Job, Sidecar, SidecarError } from '@gb/sidecar'
 import type { Pins } from './pins.ts'
 import { bullets, prompt } from './prompts.ts'
 import type { Tool } from './tools.ts'
@@ -26,6 +26,8 @@ const RETRIED: ReadonlySet<SidecarError['code']> = new Set(['timeout', 'broken',
 export interface AskerOptions {
   readonly sidecar: Sidecar
   readonly pins: Pins
+  /** What the calls made through this asker are for. Every one of them carries it. */
+  readonly job: Job
   readonly attempts: number
   /** Left out for the sidecar's own clock, set only where a call is genuinely longer than the rest. */
   readonly timeoutMs?: number | undefined
@@ -39,11 +41,13 @@ export interface AskerOptions {
  * or came back as prose is tried again on the next attempt's seed, and anything else gives up
  * so a dead sidecar costs one answer rather than the whole build. Every request
  * carries the seed for its position and attempt, so a second try is a second
- * draw rather than the same one over.
+ * draw rather than the same one over, and the job it belongs to, so the service
+ * can send it to the model that job is assigned to.
  */
 export class Asker {
   #sidecar: Sidecar
   #pins: Pins
+  #job: Job
   #attempts: number
   #timeoutMs?: number | undefined
   #signal?: AbortSignal | undefined
@@ -52,6 +56,7 @@ export class Asker {
   constructor(options: AskerOptions) {
     this.#sidecar = options.sidecar
     this.#pins = options.pins
+    this.#job = options.job
     this.#attempts = Math.max(1, options.attempts)
     this.#timeoutMs = options.timeoutMs
     this.#signal = options.signal
@@ -67,6 +72,7 @@ export class Asker {
         user: request,
         toolName: tool.name,
         toolDescription: tool.description,
+        job: this.#job,
         signal: this.#signal,
         ...this.#pins.for(at, attempt),
         ...(this.#timeoutMs === undefined ? {} : { timeoutMs: this.#timeoutMs }),
