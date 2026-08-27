@@ -89,7 +89,7 @@ curl -s -X POST 127.0.0.1:8976/v1/chat/completions \
 
 The `model` field in the reply is the answer. `game-box/standin` means no upstream was read, so either nothing is configured or the environment did not reach the process. Any other name is the model that answered.
 
-**The sidecar, in front of a hosted model.** The same sidecar, routed through OpenRouter to `stealth/ox-alpha` instead of a machine of your own. The key is read from the environment, sent only to OpenRouter, and never written to a tracked file: copy `.env.example` to `.env`, fill it in, and run the same `pnpm -C host dev`.
+**The sidecar, in front of a hosted model.** The same sidecar, routed through OpenRouter to `google/gemma-4-31b-it:free` instead of a machine of your own. The key is read from the environment, sent only to OpenRouter, and never written to a tracked file: copy `.env.example` to `.env`, fill it in, and run the same `pnpm -C host dev`. The game's settings can write the key for you instead, into a `.env.local` the repo ignores.
 
 ```
 GAME_BOX_LLM_UPSTREAM=openrouter
@@ -104,7 +104,7 @@ Then add `&model` to the URL, or `--model` to `gb build`, and the names, the his
 
 Everything generated comes back as a **tool call whose parameters are the JSON Schema of the contract that will validate it**, so the thing that defines the shape and the thing that checks it are the same object. Nothing a model writes is trusted: a quest is refused unless every path ends, every person and thing it names exists, and every item is in the player's hands before they are asked for it. A malformed answer is dropped and the offline author fills in, so a bad reply costs some flavour rather than the city.
 
-One thing to know before relying on a model for a shared world. A request can now pin its answer with `temperature: 0` and a `seed`, and both reach the endpoint, but repeating is the endpoint's own property: `stealth/ox-alpha` answered the same pinned question three different ways when measured. The offline author is reproducible today; the model path is not yet.
+One thing to know before relying on a model for a shared world. A request pins its answer with `temperature: 0` and a `seed`, and both reach the endpoint, but repeating is the endpoint's own property rather than a promise this project can make. Measured on 2026-08-27 through OpenRouter on `google/gemma-4-31b-it:free`, one request at a time: the same pinned question came back identical byte for byte, 3 of 3. A local llama-server holds a seed only while nothing else shares the engine, because a batch it is computed in changes the answer. Run `host/tools/repeatable.ts` against whichever engine you configured, as you actually start it.
 
 ## Layout
 
