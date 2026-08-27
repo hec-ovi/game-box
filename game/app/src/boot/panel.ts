@@ -17,6 +17,12 @@ export interface Planned {
   readonly laid?: Laid
 }
 
+/** Whether a view opened, and what to say when it did not. */
+export interface Opened {
+  readonly ok: boolean
+  readonly message: string
+}
+
 export interface PanelHandlers {
   generate(brief: CityBrief): void
   /** Keep this brief on this browser. Builds nothing. */
@@ -24,11 +30,11 @@ export interface PanelHandlers {
   /** Lay the architecture out from these settings so it can be previewed. */
   plan?(brief: CityBrief): Promise<Planned>
   /**
-   * Open the architecture the last plan laid out. The seam for the blueprint
-   * view: left out until that lands, and while it is out the tile says so
-   * rather than opening something that is not there.
+   * Open the architecture the last plan laid out, and answer once it is on the
+   * screen. Left out, the tile says so rather than opening something that is
+   * not there.
    */
-  preview?(): void
+  preview?(): Promise<Opened>
   /** A city file the player picked off their own machine. */
   open(file: File): void
   /** A pack file, onto the city that is open. */
@@ -68,6 +74,7 @@ const SUBS: Record<PanelFace, string> = {
 export class Panel {
   #root: HTMLElement
   #card: HTMLElement
+  #stage: HTMLElement
   #form: CityForm
   #library: LibraryView
   #rail: HTMLElement
@@ -94,6 +101,7 @@ export class Panel {
   #face: PanelFace = 'home'
   #planned = false
   #playing = false
+  #staged = false
   #shown = true
   #leaving: ReturnType<typeof setTimeout> | undefined
   #handlers: PanelHandlers = {
@@ -122,6 +130,7 @@ export class Panel {
     paintIcons(root)
     new Hints(root)
     this.#card = find('card')
+    this.#stage = find('stage')
     this.#form = new CityForm({
       find,
       root,
@@ -182,11 +191,7 @@ export class Panel {
       note(this.#draft, 'Draft kept on this browser. It opens here next time.')
     })
     this.#plan.addEventListener('click', () => void this.#lay())
-    this.#preview.addEventListener('click', () => {
-      const open = this.#handlers.preview
-      if (!open) return note(this.#preview, 'The blueprint view is not connected to this button, so there is nothing to open.')
-      open()
-    })
+    this.#preview.addEventListener('click', () => void this.#show())
     this.#export.addEventListener('click', () => this.#handlers.save())
     this.#grow.addEventListener('click', () => this.#handlers.grow())
     this.#cancel.addEventListener('click', () => this.#handlers.cancel())
@@ -202,9 +207,11 @@ export class Panel {
       createCity.addEventListener('click', () => void (this.face = 'make'))
     }
 
-    // the way back is a key as well as a button, and the button prints it
+    // the way back is a key as well as a button, and the button prints it.
+    // A step drawn over the card has the key while it is up, because Escape
+    // there means leave that step rather than leave the panel.
     root.addEventListener('keydown', (event) => {
-      if (event.key !== 'Escape' || !this.#playing) return
+      if (event.key !== 'Escape' || !this.#playing || this.#staged) return
       event.preventDefault()
       this.#handlers.close()
     })
@@ -376,6 +383,46 @@ export class Panel {
     this.#planned = planned.ok
     this.#form.laid = planned.laid
     this.#preview.disabled = !this.#planned
+  }
+
+  /**
+   * Open what the layout laid out. The renderer is not part of the page the
+   * panel is served on, so the tile says it is opening while it arrives; a view
+   * that would not open says why where it was pressed and the form stays put.
+   */
+  async #show(): Promise<void> {
+    const open = this.#handlers.preview
+    if (!open) return note(this.#preview, 'The blueprint view is not connected to this button, so there is nothing to open.')
+    note(this.#preview, 'Opening the blueprint.')
+    this.#preview.disabled = true
+    await painted()
+    let opened: Opened
+    try {
+      opened = await open()
+    } catch (cause) {
+      opened = { ok: false, message: `The blueprint would not open (${String(cause)}).` }
+    } finally {
+      this.#preview.disabled = !this.#planned
+    }
+    note(this.#preview, opened.ok ? '' : opened.message)
+  }
+
+  /**
+   * The surface a whole step is drawn on, in front of the card: the blueprint
+   * mounts here. While it is up the form leaves the accessible tree and the
+   * keyboard with it; taken down, the form is exactly as it was and the
+   * keyboard is back on the tile that opened it.
+   */
+  stage(on: boolean): HTMLElement {
+    this.#staged = on
+    this.#root.dataset.stage = String(on)
+    this.#card.toggleAttribute('inert', on)
+    this.#stage.hidden = !on
+    if (!on) {
+      this.#stage.replaceChildren()
+      this.#preview.focus()
+    }
+    return this.#stage
   }
 
   /** The layout dropped: the form moved, so what was laid out is not this city. */

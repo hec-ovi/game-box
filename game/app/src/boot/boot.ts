@@ -12,8 +12,9 @@ import { briefOf, type Library, type Shelved } from './library.ts'
 import { Loader } from './loader.ts'
 import { Notices } from './notices.ts'
 import { Packs } from './packs.ts'
+import type { Showing } from './blueprint/blueprint.ts'
 import { painted } from './painted.ts'
-import { Panel, type Planned } from './panel.ts'
+import { Panel, type Opened, type Planned } from './panel.ts'
 
 /** A running game, as the boot layer needs it: something to hand the keys to and to say things on. */
 export interface Playing {
@@ -30,6 +31,16 @@ export type Start = (mount: HTMLElement, bundle: OpenedBundle, options: GameOpti
 
 /** Where the art comes from. `loadDressing` unless a test says otherwise. */
 export type LoadArt = (theme: string) => Promise<ArtPack>
+
+/** How the architecture is looked at. The blueprint view unless a test says otherwise. */
+export type Show = (input: { world: World; mount: HTMLElement; leave: () => void }) => Promise<Showing>
+
+/**
+ * The blueprint, fetched on the press. The panel is served with the first byte
+ * of the page and the renderer is not, so the view a player may never open is
+ * not part of what they wait for before they can type in the form.
+ */
+const showBlueprint: Show = async (input) => (await import('./blueprint/blueprint.ts')).open(input)
 
 /** How a city was made: the sealed city, the art it was pinned to, and filing it on the shelf. */
 interface Making {
@@ -55,9 +66,11 @@ export class Boot {
   #sidecar: Sidecar
   #start: Start
   #art: LoadArt
+  #show: Show
   #game: Playing | undefined
   #city: City | undefined
   #laid: World | undefined
+  #showing: Showing | undefined
   #shelved: Shelved | undefined
   #loaded: ArtPack | undefined
   #settings: Settings = localSettings()
@@ -71,6 +84,7 @@ export class Boot {
     sidecar?: SidecarOptions
     start?: Start
     art?: LoadArt
+    blueprint?: Show
   }) {
     this.#mount = input.mount
     this.#panel = input.panel
@@ -83,6 +97,7 @@ export class Boot {
     this.#panel.sidecar = this.#sidecar
     this.#start = input.start ?? Game.start
     this.#art = input.art ?? loadDressing
+    this.#show = input.blueprint ?? showBlueprint
     this.#maker = new CityMaker(this.#sidecar)
     this.#packs = new Packs(this.#sidecar)
     this.#loader = new Loader(input.mount)
@@ -92,6 +107,7 @@ export class Boot {
       generate: (brief) => void this.generate(brief),
       draft: (brief) => keepDraft(brief),
       plan: (brief) => this.layOut(brief),
+      preview: () => this.preview(),
       open: (file) => void this.openFile(file),
       apply: (file) => void this.applyPack(file),
       grow: () => void this.grow(),
@@ -266,6 +282,33 @@ export class Boot {
       message: `${plots} buildings across ${zones} ${zones === 1 ? 'zone' : 'zones'}, laid out from the seed.`,
       laid: { zones },
     }
+  }
+
+  /**
+   * The architecture on screen, to be looked at and left. Nothing is built,
+   * nothing is filed and no game starts: the form is still behind it with the
+   * brief exactly as it was typed.
+   */
+  async preview(): Promise<Opened> {
+    if (!this.#laid) return { ok: false, message: 'Generate the city first, and this opens what it laid out.' }
+    // one view at a time: opening a second over the first would leave the first
+    // holding its renderer with nothing to draw on
+    this.leavePreview()
+    const mount = this.#panel.stage(true)
+    try {
+      this.#showing = await this.#show({ world: this.#laid, mount, leave: () => this.leavePreview() })
+    } catch (cause) {
+      this.leavePreview()
+      return { ok: false, message: `The blueprint would not open (${String(cause)}).` }
+    }
+    return { ok: true, message: '' }
+  }
+
+  /** Back to the form from the blueprint, with everything on it as it was. */
+  leavePreview(): void {
+    this.#showing?.dispose()
+    this.#showing = undefined
+    this.#panel.stage(false)
   }
 
   /** What the player set that belongs to them rather than to any city. */

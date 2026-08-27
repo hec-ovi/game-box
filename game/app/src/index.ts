@@ -1,5 +1,5 @@
 /** @gb/app: see CONTRACT.md. */
-export { Boot, type Playing, type Start } from './boot/boot.ts'
+export { Boot, type Playing, type Show, type Start } from './boot/boot.ts'
 export {
   BLOCKS,
   DEFAULTS,
@@ -18,7 +18,7 @@ export { IndexedShelf } from './boot/indexed-shelf.ts'
 export { localSaves } from './boot/kept.ts'
 export { Library, MemoryShelf, briefOf, keyOf, type Shelf, type Shelved } from './boot/library.ts'
 export { type OnTheShelf } from './boot/library-view.ts'
-export { Panel, type PanelFace, type PanelHandlers } from './boot/panel.ts'
+export { Panel, type Opened, type PanelFace, type PanelHandlers } from './boot/panel.ts'
 export { Game, type GameOptions } from './game.ts'
 export { loadCars, loadDressing } from './pack.ts'
 export { Session, type SaveStore } from './session.ts'

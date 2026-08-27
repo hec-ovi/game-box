@@ -2521,6 +2521,270 @@
           transform: none;
         }
       }
+
+      /* ------------------------------------------------------------------
+         The blueprint: the architecture on screen before anything is written
+         into it. It owns the view, so the card leaves the page under it, and
+         everything read over the drawing is the panel's own shapes and tokens.
+         ------------------------------------------------------------------ */
+      .gb-boot-stage {
+        position: absolute;
+        inset: 0;
+        z-index: 3;
+      }
+      .gb-boot-stage[hidden] {
+        display: none;
+      }
+      .gb-boot[data-stage='true'] .gb-boot-card {
+        display: none;
+      }
+
+      .gb-boot .gb-bp {
+        position: absolute;
+        inset: 0;
+        contain: paint;
+      }
+      .gb-boot .gb-bp-glass {
+        position: absolute;
+        inset: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+        cursor: grab;
+        animation: gb-veil var(--gb-t-veil) var(--gb-in) both;
+      }
+      .gb-boot .gb-bp-glass:active {
+        cursor: grabbing;
+      }
+
+      /* the names over the drawing, where the map writes them */
+      .gb-boot .gb-bp-names {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        pointer-events: none;
+      }
+      .gb-boot .gb-bp-name {
+        position: absolute;
+        top: 0;
+        left: 0;
+        white-space: nowrap;
+        text-shadow: 0 0 5px var(--gb-void), 0 0 2px var(--gb-void);
+        transition: opacity var(--gb-t-state) var(--gb-in);
+        will-change: transform;
+      }
+      .gb-boot .gb-bp-name-zone {
+        color: var(--gb-accent-lit);
+      }
+      .gb-boot .gb-bp-name-station {
+        color: var(--gb-ink);
+        font-size: 10px;
+      }
+      .gb-boot .gb-bp-name[data-read='false'] {
+        opacity: 0.3;
+      }
+
+      .gb-boot .gb-bp-crown {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--gb-s4);
+        height: 54px;
+        padding: 0 var(--gb-s4);
+        background-color: var(--gb-lift);
+        background-image: var(--gb-hatch);
+        border-bottom: 1px solid var(--gb-edge);
+        animation: gb-lift var(--gb-t-enter) var(--gb-in) both;
+      }
+      .gb-boot .gb-bp-crown::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        bottom: -1px;
+        width: 48px;
+        height: 1px;
+        background: var(--gb-accent);
+      }
+      .gb-boot .gb-bp-headings {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        min-width: 0;
+      }
+      .gb-boot .gb-bp-title {
+        margin: 0;
+        color: var(--gb-ink);
+      }
+      .gb-boot .gb-bp-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--gb-s2);
+        color: var(--gb-dim);
+      }
+      .gb-boot .gb-bp-leave,
+      .gb-boot .gb-bp-fit {
+        flex: none;
+      }
+      .gb-boot .gb-bp-cap {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 5px;
+        background: var(--gb-lift);
+        border: 1px solid var(--gb-edge);
+        color: var(--gb-dim);
+        font-family: var(--gb-mono);
+        font-size: 10px;
+        font-weight: 500;
+        letter-spacing: 0.06em;
+        font-variant-numeric: tabular-nums;
+        text-transform: none;
+      }
+
+      /* the parts of town, as a list you can read one out of */
+      .gb-boot .gb-bp-zones {
+        position: absolute;
+        top: 70px;
+        left: var(--gb-s4);
+        width: 258px;
+        max-height: calc(100% - 190px);
+        animation: gb-lift var(--gb-t-enter) var(--gb-in) both;
+      }
+      .gb-boot .gb-bp-zones-in {
+        --gb-ground: var(--gb-panel);
+        display: flex;
+        flex-direction: column;
+        max-height: inherit;
+        overflow: hidden;
+      }
+      .gb-boot .gb-bp-zones-head {
+        display: block;
+        padding: 11px var(--gb-s3);
+        background-image: var(--gb-hatch);
+        border-bottom: 1px solid var(--gb-edge);
+        color: var(--gb-dim);
+      }
+      .gb-boot .gb-bp-zone-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        overflow-y: auto;
+      }
+      .gb-boot .gb-bp-zone + .gb-bp-zone {
+        border-top: 1px solid var(--gb-edge);
+      }
+      .gb-boot .gb-bp-zone-pick {
+        display: grid;
+        grid-template-columns: 28px 1fr auto;
+        align-items: center;
+        gap: var(--gb-s3);
+        width: 100%;
+        height: 44px;
+        padding: 0 var(--gb-s3);
+        background: transparent;
+        border: 0;
+        border-left: 2px solid transparent;
+        color: var(--gb-dim);
+        text-align: left;
+        cursor: pointer;
+        transition: transform var(--gb-t-press) var(--gb-in);
+      }
+      .gb-boot .gb-bp-zone-pick:focus-visible {
+        outline: none;
+      }
+      .gb-boot .gb-bp-zone[data-read='true'] .gb-bp-zone-pick {
+        background: var(--gb-well);
+        border-left-color: var(--gb-accent);
+        color: var(--gb-ink);
+        transform: translateX(2px);
+      }
+      .gb-boot .gb-bp-zone-tile {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        background: var(--gb-lift);
+        border: 1px solid var(--gb-edge);
+        color: var(--gb-dim);
+      }
+      .gb-boot .gb-bp-zone[data-read='true'] .gb-bp-zone-tile {
+        border-color: var(--gb-edge-accent);
+        color: var(--gb-accent);
+      }
+      .gb-boot .gb-bp-zone-name {
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+      .gb-boot .gb-bp-zone-count {
+        font-family: var(--gb-mono);
+        font-size: 11px;
+        font-weight: 500;
+        font-variant-numeric: tabular-nums;
+        color: var(--gb-faint);
+      }
+      .gb-boot .gb-bp-zone[data-read='true'] .gb-bp-zone-count {
+        color: var(--gb-accent);
+      }
+
+      /* what it came out as, and how to move the camera */
+      .gb-boot .gb-bp-foot {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        gap: var(--gb-s5);
+        height: 88px;
+        padding: 0 var(--gb-s4);
+        background: var(--gb-panel);
+        border-top: 1px solid var(--gb-edge);
+        animation: gb-lift var(--gb-t-enter) var(--gb-in) both;
+      }
+      .gb-boot .gb-bp-readouts {
+        display: flex;
+        gap: var(--gb-s5);
+      }
+      .gb-boot .gb-bp-readout {
+        display: flex;
+        flex-direction: column;
+        gap: var(--gb-s1);
+      }
+      .gb-boot .gb-bp-readout-num {
+        font-family: var(--gb-mono);
+        font-size: 17px;
+        font-weight: 500;
+        font-variant-numeric: tabular-nums;
+        color: var(--gb-ink);
+      }
+      .gb-boot .gb-bp-readout-lbl {
+        color: var(--gb-faint);
+      }
+      .gb-boot .gb-bp-keys {
+        display: flex;
+        align-items: center;
+        gap: var(--gb-s4);
+        margin: 0 0 0 auto;
+        padding: 0;
+        list-style: none;
+      }
+      .gb-boot .gb-bp-keys li {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--gb-s2);
+      }
+      .gb-boot .gb-bp-key-does {
+        color: var(--gb-dim);
+      }
     </style>
   </head>
   <body>
@@ -2778,7 +3042,7 @@
                           <span class="gb-i" data-icon="city"></span>
                           <span class="gb-action-title">Generate the city</span>
                         </button>
-                        <button type="button" class="gb-action-tile" data-boot="preview" data-hint="Open the architecture that was laid out. Generate the city first." disabled>
+                        <button type="button" class="gb-action-tile" data-boot="preview" data-hint="Look round the architecture that was laid out: the streets, the buildings and the parts of town. Generate the city to lay one out." disabled>
                           <span class="gb-i" data-icon="eye"></span>
                           <span class="gb-action-title">Preview blueprint</span>
                         </button>
@@ -3027,6 +3291,9 @@
           </form>
         </div>
       </div>
+
+      <!-- Where a whole step is drawn in front of the card: the blueprint mounts here -->
+      <div class="gb-boot-stage" data-boot="stage" hidden></div>
     </section>
 
     <script type="module" src="./src/main.ts"></script>

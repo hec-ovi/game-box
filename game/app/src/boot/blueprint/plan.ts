@@ -1,0 +1,142 @@
+import { storeyHeight } from '@gb/scene'
+import type { CellKind, Rect, World } from '@gb/world'
+import { patchesOf } from './cells.ts'
+import { shapeOf, type Edge } from './zones.ts'
+
+/** A rectangle of ground, in metres: its near corner and how far it runs. */
+export interface Patch {
+  readonly x: number
+  readonly z: number
+  readonly w: number
+  readonly d: number
+}
+
+/** A building, as the blueprint draws it: its footprint on the ground, how tall it stands, and the part of town it is in. */
+export interface Massing extends Patch {
+  readonly height: number
+  /** The zone it stands in, or empty for a building in none. */
+  readonly zone: string
+}
+
+/** A straight line on the ground, in metres. */
+export interface Line {
+  readonly x1: number
+  readonly z1: number
+  readonly x2: number
+  readonly z2: number
+}
+
+/** A named part of the city: the blocks it holds, the line round them, and where its name floats. */
+export interface Zone {
+  readonly id: string
+  readonly name: string
+  readonly pads: readonly Patch[]
+  readonly border: readonly Line[]
+  /** The middle of its largest block, where the name is written. */
+  readonly heart: { readonly x: number; readonly z: number }
+  /** How far above the ground the name floats: clear of the tallest thing in the zone. */
+  readonly top: number
+  readonly buildings: number
+}
+
+/** A place with a name on the plan: where fast travel boards. */
+export interface Marker extends Patch {
+  readonly id: string
+  readonly name: string
+  /** How far above the ground its name floats. */
+  readonly top: number
+}
+
+/** Everything the blueprint draws, in metres, worked out once when it opens. */
+export interface Plan {
+  readonly name: string
+  readonly ground: Patch
+  readonly roadway: readonly Patch[]
+  readonly pavement: readonly Patch[]
+  readonly open: readonly Patch[]
+  readonly water: readonly Patch[]
+  readonly buildings: readonly Massing[]
+  readonly zones: readonly Zone[]
+  readonly stations: readonly Marker[]
+  /** The tallest building in town, in storeys. */
+  readonly tallest: number
+}
+
+/** How far above the tallest building in a zone its name floats. */
+const NAME_LIFT = 30
+/** How far above the ground a station's name floats. */
+const MARK_LIFT = 26
+
+/**
+ * A laid out city as a blueprint: the streets, the buildings at the heights
+ * they will stand at, the named parts of town as the shapes they are, and the
+ * stations. Nothing else is in a plan, so nothing else is here.
+ *
+ * Everything is in metres, worked out the way `@gb/scene` works it out, so a
+ * tower in the blueprint is the tower the game builds.
+ */
+export function planOf(world: World): Plan {
+  const cell = world.cellSize
+  const ground = { x: 0, z: 0, w: world.grid.width * cell, d: world.grid.height * cell }
+  const buildings = world
+    .plots()
+    .map((plot) => ({ ...patch(plot.rect, cell), height: storeyHeight(plot.storeys), zone: plot.district ?? '' }))
+
+  return {
+    name: world.name,
+    ground,
+    roadway: paved(world, 'street', cell),
+    pavement: paved(world, 'sidewalk', cell),
+    open: paved(world, 'park', cell),
+    water: paved(world, 'water', cell),
+    buildings,
+    zones: zonesOf(world, cell),
+    stations: world.stations().map((plot) => ({ id: plot.id, name: plot.name, top: MARK_LIFT, ...patch(plot.rect, cell) })),
+    tallest: world.plots().reduce((most, plot) => Math.max(most, plot.storeys), 0),
+  }
+}
+
+/** The buildings of each part of town, and under the empty key the ones in none. */
+export function byZone(buildings: readonly Massing[]): Map<string, Massing[]> {
+  const grouped = new Map<string, Massing[]>()
+  for (const building of buildings) {
+    const standing = grouped.get(building.zone)
+    if (standing) standing.push(building)
+    else grouped.set(building.zone, [building])
+  }
+  return grouped
+}
+
+function paved(world: World, kind: CellKind, cell: number): Patch[] {
+  return patchesOf(world.grid, kind).map((rect) => patch(rect, cell))
+}
+
+function zonesOf(world: World, cell: number): Zone[] {
+  const tallest = new Map<string, number>()
+  const counted = new Map<string, number>()
+  for (const plot of world.plots()) {
+    if (!plot.district) continue
+    tallest.set(plot.district, Math.max(tallest.get(plot.district) ?? 0, storeyHeight(plot.storeys)))
+    counted.set(plot.district, (counted.get(plot.district) ?? 0) + 1)
+  }
+  return world.districts().map((district) => {
+    const shape = shapeOf(district)
+    return {
+      id: district.id,
+      name: district.name,
+      pads: shape.blocks.map((block) => patch(block, cell)),
+      border: shape.border.map((edge) => line(edge, cell)),
+      heart: { x: shape.heart.x * cell, z: shape.heart.y * cell },
+      top: (tallest.get(district.id) ?? 0) + NAME_LIFT,
+      buildings: counted.get(district.id) ?? 0,
+    }
+  })
+}
+
+function patch(rect: Rect, cell: number): Patch {
+  return { x: rect.x * cell, z: rect.y * cell, w: rect.w * cell, d: rect.h * cell }
+}
+
+function line(edge: Edge, cell: number): Line {
+  return { x1: edge.x1 * cell, z1: edge.y1 * cell, x2: edge.x2 * cell, z2: edge.y2 * cell }
+}
