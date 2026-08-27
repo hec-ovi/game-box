@@ -1,5 +1,5 @@
 import { HUD_KEYS, TALK_HINTS, TALK_PICK_HINT, hintList } from '../controls.ts'
-import { el, setText } from '../dom.ts'
+import { el, setText, svg } from '../dom.ts'
 import { FocusReturn, cycleFocus } from '../focus.ts'
 import { Reveal } from '../reveal.ts'
 import type { HudIntent, HudState, TalkMove } from '../types.ts'
@@ -7,7 +7,10 @@ import { closeButton } from '../ui/act.ts'
 import type { Surface } from './surface.ts'
 import { Transcript } from './transcript.ts'
 
-const PLACEHOLDER = 'Enter custom query_'
+const PLACEHOLDER = 'Say something'
+
+/** What the box says while the answer is on its way. */
+const WAITING = 'Waiting for a reply'
 
 /**
  * The conversation, as a panel of fixed width down one side of the view: who
@@ -37,6 +40,8 @@ export class TalkSurface implements Surface {
   #transcript = new Transcript()
   #input = el('input', 'gb-say gb-field gb-cut gb-edged')
   #send = el('button', 'gb-talk-send-btn')
+  #arrow = sendArrow()
+  #orb = el('span', 'gb-ai-thinking-orb')
   #close: HTMLButtonElement
   #emit: (intent: HudIntent) => void
   #focus = new FocusReturn()
@@ -54,7 +59,12 @@ export class TalkSurface implements Surface {
 
     this.#send.type = 'button'
     this.#send.setAttribute('aria-label', 'Send message')
-    this.#send.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`
+    // Both faces of the button are built once and one of them is hidden. They
+    // were swapped by rewriting the button's markup, which restarts a CSS
+    // animation every time it happens, and while a reply streams that is every
+    // chunk: the orb never got far enough round to be seen turning.
+    this.#send.append(this.#arrow, this.#orb)
+    this.#face(false)
     this.#send.addEventListener('click', () => {
       const text = this.#input.value.trim()
       if (text) {
@@ -94,17 +104,21 @@ export class TalkSurface implements Surface {
       this.#transcript.render(talk.turns)
       this.#menu(talk.moves, talk.pending)
       this.#input.disabled = talk.pending
-      this.#input.placeholder = talk.pending ? 'AI thinking...' : PLACEHOLDER
-      if (talk.pending) {
-        this.#send.disabled = true
-        this.#send.innerHTML = `<span class="gb-ai-thinking-orb" data-thinking="true"></span>`
-      } else {
-        this.#send.disabled = false
-        this.#send.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`
-      }
+      this.#input.placeholder = talk.pending ? WAITING : PLACEHOLDER
+      // waiting on the answer: the button stops taking clicks and turns into
+      // the orb, which keeps turning because it is never rebuilt
+      this.#send.disabled = talk.pending
+      this.#send.setAttribute('aria-label', talk.pending ? 'Waiting for a reply' : 'Send message')
+      this.#face(talk.pending)
     }
     if (talk && !this.#reveal.open) this.#start()
     if (!talk && this.#reveal.open) this.#end()
+  }
+
+  /** Which face the send button wears: the arrow, or the orb while an answer is on its way. */
+  #face(waiting: boolean): void {
+    this.#arrow.toggleAttribute('hidden', waiting)
+    this.#orb.toggleAttribute('hidden', !waiting)
   }
 
   /** Whether the conversation still has the keyboard: the panel and the moves both count. */
@@ -189,4 +203,11 @@ export class TalkSurface implements Surface {
     this.#transcript.clear()
     this.aside.replaceChildren()
   }
+}
+
+/** The paper plane on the send button. */
+function sendArrow(): SVGSVGElement {
+  const node = svg('svg', { viewBox: '0 0 24 24', width: 15, height: 15, fill: 'currentColor', 'aria-hidden': 'true' })
+  node.append(svg('path', { d: 'M 2 21 L 23 12 L 2 3 L 2 10 L 17 12 L 2 14 Z' }))
+  return node
 }

@@ -325,7 +325,7 @@ Thrown as `HudError` with a `code`:
 - A quest's clock moves only when the journal is pushed, because it runs on the game clock; a wait's clock runs one real second at a time from the value announced. Both are written in place and never rebuild what is around them.
 - What just changed says so: the reticle opens and goes accent while something is in reach, a step count bumps when it climbs, and a credit count runs to its new value instead of jumping.
 - Everything a mouse can do, the keyboard can do.
-- Square corners: no `border-radius` in the stylesheet. Corners are chamfered with `clip-path`, two opposite corners on the diagonal that faces the middle of the view.
+- Square corners: corners are chamfered with `clip-path`, two opposite corners on the diagonal that faces the middle of the view. One exception, asked for by name: the conversation's box runs into a round right end with a circular send button sitting in it, and the thinking orb and the waiting dots inside it are circles. Nothing else in the stylesheet may round a corner, and a test holds it to that list.
 - Asked for less movement, every duration collapses to an instant: nothing is removed from the screen and nothing changes place.
 - `Objective.markerLabel` names a place, so the map reads it; putting a marker in the world belongs to the scene, not here.
 - A place the player owns is never a gap: with nothing placed it says so, and a player with no place is told as much.

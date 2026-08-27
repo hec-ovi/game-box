@@ -7,14 +7,23 @@ import type { Stage } from './stage.ts'
 const SIZE = 288
 
 /**
- * How much of the head is in shot, as a share of its own height above and below.
- * A little over one, so the frame holds the hair and the chin with air round
- * them rather than cropping into the face.
+ * How much is in shot, as a share of a head's own height.
+ *
+ * Well over one: a head cropped at the neck is a passport photograph, and what
+ * reads as somebody standing in front of you is the head with the shoulders and
+ * the tops of the arms under it. Three heads of frame is about that.
  */
-const MARGIN = 1.15
+const MARGIN = 3
 
 /** A head, as a share of the whole body's height. */
 const HEAD = 0.13
+
+/**
+ * How far below the head the shot is centred, in heads. The head is at the top
+ * of what is in frame rather than the middle of it, because what is under it is
+ * shoulders and what is over it is air.
+ */
+const DROP = 0.75
 
 /** A narrow lens, so the camera stands well back and a portrait does not bend the nose out towards it. */
 const LENS = 22
@@ -117,9 +126,9 @@ export class Portraits implements FaceSource {
     if (head) head.getWorldPosition(at)
     else box.getCenter(at).setY(box.max.y - (box.max.y - box.min.y) * 0.07)
     // the head bone sits about at the ears, so the shot is raised a little to
-    // where the face is
+    // where the face is, then dropped to put the shoulders in under it
     const height = (box.max.y - box.min.y) * HEAD
-    at.y += height * 0.35
+    at.y += height * 0.35 - height * DROP
 
     // far enough back that a head of that height fills the frame with `MARGIN`
     // of air round it, at a lens narrow enough not to bend the face

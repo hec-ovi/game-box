@@ -15,7 +15,7 @@ luminous edges, corner readouts, an icon on every row, chips, keyed options,
 monospaced numbers. Their fiction, their logos, their currencies and their XP
 badges stay there.
 
-Two rules that override taste: no `border-radius` anywhere (corners are
+Two rules that override taste: no `border-radius` anywhere except the conversation's own box, send button, thinking orb and waiting dots, which he asked for round (corners are
 chamfered with `clip-path`), and nothing animates except `transform` and
 `opacity`, because this interface draws over a 3D scene running every frame.
 No `backdrop-filter`, no animated `width`, `height`, `top`, `left`, `filter`,

@@ -2036,8 +2036,16 @@ describe('the look', () => {
     expect(TOKENS).toMatch(/--gb-accent:/)
   })
 
-  it('cuts its corners rather than rounding them, and never draws a border-radius', () => {
-    expect(HUD_CSS).not.toMatch(/border-radius/)
+  it('cuts its corners rather than rounding them, everywhere but the one control he asked round', () => {
+    // Corners are cut with clip-path, never rounded. The exception is the
+    // conversation's own box and send, which he asked for round: the box runs
+    // into a round end with a circular button sitting in it, and the orb and
+    // the waiting dots inside it are circles. Nothing else may round a corner.
+    const rounded = [...HUD_CSS.matchAll(/([^{}]+)\{[^}]*border-radius[^}]*\}/g)].map((rule) => rule[1]!.trim())
+    expect(rounded.length).toBeGreaterThan(0)
+    for (const selector of rounded) {
+      expect(selector, `${selector} rounds a corner`).toMatch(/gb-say|gb-talk-send-btn|gb-ai-thinking-orb|gb-says-waiting/)
+    }
     expect(HUD_CSS).toMatch(/clip-path: polygon/)
     const { hud, screen } = mount()
     hud.show({ window: 'quests', quests: QUESTS })
@@ -2181,7 +2189,6 @@ describe('what the interface claims', () => {
     const installed = [...document.head.querySelectorAll('style')].filter((style) => style.textContent === HUD_CSS)
     expect(installed).toHaveLength(1)
     expect(HUD_CSS.length).toBeGreaterThan(0)
-    expect(HUD_CSS).not.toMatch(/border-radius/)
   })
 })
 

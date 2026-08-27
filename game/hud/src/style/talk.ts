@@ -49,19 +49,6 @@ export const TALK = `
   overflow-y: auto;
 }
 .gb-hud .gb-turn { display: flex; flex-direction: column; gap: 2px; }
-.gb-hud .gb-turn-name {
-  font-weight: 700;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.gb-hud .gb-turn[data-who='them'] .gb-turn-name {
-  color: var(--gb-good);
-}
-.gb-hud .gb-turn[data-who='you'] .gb-turn-name {
-  color: var(--gb-accent);
-  align-self: flex-end;
-}
 .gb-hud .gb-turn .gb-says {
   white-space: pre-wrap;
   line-height: 1.45;
@@ -91,8 +78,11 @@ export const TALK = `
 .gb-hud .gb-turn .gb-does { color: var(--gb-faint); font-style: italic; }
 
 .gb-hud .gb-talk-foot { flex: none; padding: var(--gb-s3) var(--gb-s4); pointer-events: auto; }
-/* What the player can do without saying a word. Positioned at bottom-left as cyber items. */
-.gb-hud .gb-talk .gb-moves {
+/* What the player can do without saying a word: at the foot of the screen over
+   the bar, not in the panel. It is mounted beside the panel because a panel
+   that slides in on a transform is the containing block for anything fixed
+   inside it, and these are fixed to the screen. */
+.gb-hud .gb-moves {
   position: fixed;
   left: 24px;
   bottom: ${LAYOUT.foot + 16}px;
@@ -104,7 +94,7 @@ export const TALK = `
   z-index: ${LAYERS.side + 1};
   pointer-events: auto;
 }
-.gb-hud .gb-talk .gb-moves li {
+.gb-hud .gb-moves li {
   pointer-events: auto;
 }
 .gb-hud .gb-move {
@@ -141,10 +131,13 @@ export const TALK = `
 /* Waiting on the answer: the menu is still there to read, and takes nothing. */
 .gb-hud .gb-move:disabled { opacity: 0.5; cursor: default; }
 
+/* The box and the send are one control. Corners are square everywhere else in
+   this interface; he asked for this one round, so the box runs into a round end
+   with the button sitting in it. */
 .gb-hud .gb-talk-input-row {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: var(--gb-s2);
 }
 .gb-hud .gb-talk-input-row .gb-say {
   flex: 1;
@@ -152,8 +145,9 @@ export const TALK = `
   margin: 0;
   background: var(--gb-solid);
   border: 1px solid var(--gb-edge-accent);
+  border-radius: 0 22px 22px 0;
   color: var(--gb-ink);
-  padding: 10px 14px;
+  padding: 10px 52px 10px 14px;
   font: inherit;
   font-family: var(--gb-mono);
 }
@@ -169,50 +163,69 @@ export const TALK = `
   background: var(--gb-lift);
 }
 .gb-hud .gb-talk-send-btn {
-  width: 38px;
-  height: 38px;
-  --cut: var(--gb-cut-key);
-  background: var(--gb-well);
-  border: 1px solid var(--gb-edge-accent);
-  color: var(--gb-accent-lit);
+  position: absolute;
+  right: 5px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--gb-accent);
+  border: none;
+  color: var(--gb-accent-ink);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   flex: none;
-  transition: color var(--gb-t-press) var(--gb-in), background-color var(--gb-t-press) var(--gb-in);
+  transition: background-color var(--gb-t-press) var(--gb-in);
 }
-.gb-hud .gb-talk-send-btn:hover:not(:disabled) {
-  background: var(--gb-lift);
-  --gb-line: var(--gb-accent);
-  color: var(--gb-accent);
-}
+.gb-hud .gb-talk-send-btn:hover:not(:disabled) { background: var(--gb-accent-lit); }
+/* Waiting on the answer: it stops taking clicks and turns into the orb. */
 .gb-hud .gb-talk-send-btn:disabled {
-  opacity: 0.8;
+  background: transparent;
   cursor: default;
 }
+.gb-hud .gb-talk-send-btn > [hidden] { display: none; }
 .gb-hud .gb-ai-thinking-orb {
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   position: relative;
-  flex: none;
+  width: 26px;
+  height: 26px;
+  display: block;
 }
-.gb-hud .gb-ai-thinking-orb[data-thinking='true']::before {
+/* The core: it breathes rather than spins, so the two motions read apart. */
+.gb-hud .gb-ai-thinking-orb::before {
   content: '';
-  width: 9px;
-  height: 9px;
+  position: absolute;
+  inset: 7px;
+  border-radius: 50%;
   background: var(--gb-accent);
-  transform: rotate(45deg);
-  animation: gb-orb-pulse 1.2s ease-in-out infinite alternate;
+  animation: gb-orb-breathe 1.4s ease-in-out infinite alternate;
 }
-.gb-hud .gb-ai-thinking-orb[data-thinking='true']::after {
+/* The ring: one gap in it, turning, which is what makes the turn readable. */
+.gb-hud .gb-ai-thinking-orb::after {
   content: '';
   position: absolute;
   inset: 0;
-  border: 1px solid var(--gb-accent-lit);
-  animation: gb-orb-spin 2s linear infinite;
+  border-radius: 50%;
+  border: 2px solid var(--gb-accent-lit);
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+  animation: gb-orb-spin 0.9s linear infinite;
 }
+
+/* The moment between the question going out and the first word coming back. */
+.gb-hud .gb-says-waiting {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 1.45em;
+}
+.gb-hud .gb-says-waiting i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--gb-good);
+  animation: gb-wait-dot 1.1s ease-in-out infinite;
+}
+.gb-hud .gb-says-waiting i:nth-child(2) { animation-delay: 0.18s; }
+.gb-hud .gb-says-waiting i:nth-child(3) { animation-delay: 0.36s; }
 `

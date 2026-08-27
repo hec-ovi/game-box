@@ -79,8 +79,8 @@ export const PANELS = `
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--gb-s2);
-  padding: var(--gb-s3);
+  gap: 2px;
+  padding: var(--gb-s2) var(--gb-s3);
 }
 .gb-hud .gb-caller-avatar-box {
   width: 140px;
@@ -121,7 +121,7 @@ export const PANELS = `
   text-transform: uppercase;
   letter-spacing: 0.08em;
   text-align: center;
-  margin: 4px 0 2px;
+  margin: 0;
 }
 .gb-hud .gb-caller-voice-wave {
   display: flex;

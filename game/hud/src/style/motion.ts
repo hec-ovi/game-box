@@ -101,10 +101,19 @@ export const MOTION = `
   to { transform: none; color: var(--gb-accent); }
 }
 
-@keyframes gb-orb-pulse {
-  0% { transform: rotate(45deg) scale(0.85); opacity: 0.7; }
-  100% { transform: rotate(45deg) scale(1.15); opacity: 1; }
 }
+/* The orb's core, breathing. Transform and opacity only, like everything here. */
+@keyframes gb-orb-breathe {
+  from { transform: scale(0.72); opacity: 0.65; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Three dots waiting on the first word of a reply. */
+@keyframes gb-wait-dot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
+  30% { transform: translateY(-3px); opacity: 1; }
+}
+
 @keyframes gb-orb-spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
