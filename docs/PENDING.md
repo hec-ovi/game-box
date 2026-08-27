@@ -17,52 +17,48 @@ the current state, not a log.
    `navigator.gpu.requestAdapter()`, so the game falls back to software and
    tells you nothing.
 
-## Content
-
-2. **Nobody ever says a rumour.** `Charter.rumours` is filled on every kind of
-   place and read by exactly one file, which renders it into a prompt.
-   `@gb/talk`, `@gb/hud` and `@gb/app` never read one, so "what people say about
-   such places" is never said by anybody. Boxes: `world`, `scribe`, `talk`.
-   (`docs/HANDOVERS.md` row 305.)
-3. **`Instance.character` is written and reaches nothing.** The model is asked
-   what a building is, at a 20 character floor, and the answer dies with the
-   process: no field on `@gb/world`'s interior, so it is not in the world file,
-   not in the codex and never on screen. Either give it a home or stop asking.
-   (Row 304.)
-
 ## The pipeline
 
-4. **A world file cannot give back the input it was written from.** It does not
+2. **A world file cannot give back the input it was written from.** It does not
    carry `blocksX`, `blocksY`, `blockCells`, `density`, `maxStoreys` or
    `openPlaces`, so a shared city cannot be rebuilt on its own terms and a pack
    that rewrites one place has to re-run the whole build to recover the
    question. Boxes: `forge`, `world`, `bundle`. (Row 307.)
-5. **A refresh with the model on wipes the playthrough.** Reproducibility cannot
-   be bought back: OpenRouter gave three different cities from one seed at
-   temperature 0, and llama-server defaults to a fresh seed. So `Bundle.resume`
-   has to tolerate a regenerated city rather than clearing the save. Box:
-   `bundle`.
-6. **Tool calls through OpenRouter are unproven.** A forced call came back with
-   `content: null` and no `tool_calls`. Every generated thing in the project is
-   a forced tool call, so nothing generates through the hosted path until this
-   is settled. Likely candidates: needing `stream: true`, the call arriving in a
-   reasoning field, or a shape difference from llama-server. The local path
-   works and is what the game runs on.
+3. **The hosted path calls tools; the free pool refuses more than it answers.**
+   Measured 2026-08-27 with the owner's key: `google/gemma-4-31b-it:free`
+   answered all four shapes (a named `tool_choice` and `required`, streamed and
+   not) with a whole `name_city` call in about 2 s, including through the
+   sidecar's own streamed parser, and not rebuilt from prose. What is left is
+   capacity, not shape: every free model on the account spends long stretches
+   answering HTTP 429 from a shared upstream pool, so a build through the
+   hosted path stalls on waits. A paid key, or the account's privacy setting
+   opened so paid models are reachable at all, is what fixes that. The sidecar
+   can now point each of the five jobs at its own provider (`host/src/providers`),
+   so the slow ones can sit on a machine of your own while the rest go hosted.
 
 ## Look
 
-7. **The plot shape band is written down twice.** `FRONTS` / `DEPTHS` live in
+4. **A district's outline is derived twice.** `@gb/hud`'s map and the launcher's
+   blueprint each turn a district's blocks into an outline: the cells it covers,
+   the cell edges facing a cell it does not, the runs along one line joined, and
+   the name at the middle of its largest block. The hud's `districtShape` is
+   private and answers an `SVGGElement`, so a 3D view cannot take it;
+   `game/app/src/boot/blueprint/zones.ts` carries the same derivation in grid
+   coordinates answering line segments. Publishing the geometry from `@gb/hud`
+   would leave one. It is also what the in-game map would need to become the
+   blueprint. (`docs/HANDOVERS.md` row 316.)
+5. **The plot shape band is written down twice.** `FRONTS` / `DEPTHS` live in
    `game/prefab/src/bucket.ts`, but how wide a plot is cut is a fact about the
    generator, not about the art. Until it moves, a generator that cuts outside
    the band is a coverage coincidence rather than a named bug.
-8. **Two fifths of the street face is the producer's plain finish.** On the
+6. **Two fifths of the street face is the producer's plain finish.** On the
    three looks that show the most wall, 42 to 44 percent of what a player sees
    is one flat base finish, identical across all four families. Giving each
    look's base the same picture as its facade is four layers and beats any
    remaining variant choice. Box: `prefab`.
-9. **Minigames, and a score that survives.** Two games on a machine screen
+7. **Minigames, and a score that survives.** Two games on a machine screen
    exist; nothing else does.
 
 ## His own list, still open
 
-10. **Voice.** He has it solved in another project and wants it here.
+8. **Voice.** He has it solved in another project and wants it here.
