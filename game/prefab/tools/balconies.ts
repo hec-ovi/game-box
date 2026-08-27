@@ -56,7 +56,7 @@ export function balconyPieces(look: Look, bucket: Bucket, layers: Layers): Piece
     const floor = y + SLAB
     const top = floor + look.balcony.guard
 
-    pieces.push(box([left, y, wall - BITE], [right, floor, out], slab, BASE_TILE.across))
+    pieces.push(box([left, y, wall - BITE], [right, floor, out], slab, BASE_TILE))
     pieces.push(box([left, floor, out - RAIL], [right, top, out], guard, GUARD_TILE))
     pieces.push(box([left, floor, wall - BITE], [left + RAIL, top, out], guard, GUARD_TILE))
     pieces.push(box([right - RAIL, floor, wall - BITE], [right, top, out], guard, GUARD_TILE))

@@ -1,6 +1,7 @@
 import * as THREE from 'three'
-import { clamp, float, floor, fract, max, mix, smoothstep, step, uniformArray, uv, vec2 } from 'three/tsl'
+import { attribute, ceil, clamp, float, floor, fract, max, mix, smoothstep, step, uniformArray, uv, vec2 } from 'three/tsl'
 import type { Node } from 'three/webgpu'
+import { ENTRANCE_ATTRIBUTE } from './doorway.ts'
 import type { SurfaceFrame } from './surface.ts'
 import { glassShareOf, windowsOn, type WindowKind } from './windows.ts'
 
@@ -17,6 +18,11 @@ import { glassShareOf, windowsOn, type WindowKind } from './windows.ts'
  * The bay index runs on along the wall and never repeats with the picture, so
  * which room a bay looks into is a function of where the bay is, not of where
  * the picture happens to wrap.
+ *
+ * A bay the entrance stands on is not a window. The model says where its door
+ * is and `Doorway` writes that patch onto the wall behind it, so the opening,
+ * the pane over it and the room behind it all stop at the same place: a door
+ * is a face, a window is a face, and one face is one thing.
  */
 
 /**
@@ -93,10 +99,24 @@ export class Bays {
       .mul(band(fract(q.x), pane.z, aq.x))
       .mul(band(fract(q.y), pane.z, aq.y))
     const melt = clamp(max(aa.x, aa.y).mul(MELT), 0, 1)
-    const share = mix(sharp, room.z, melt).mul(step(room.w, tall))
+    const share = mix(sharp, room.z, melt).mul(step(room.w, tall)).mul(float(1).sub(shut(id, grid)))
 
     return { id, at, aa, wide, tall, share, deep: pane.w, keys: room.x, street: room.y }
   }
+}
+
+/**
+ * 1 where this bay is the one the entrance stands on, 0 everywhere else.
+ *
+ * The attribute is the patch of the face's own uv the door plate covers, so
+ * the bays it reaches are the ones it starts in and ends in. All zeroes is an
+ * empty range, which is every face in the city with no door on it.
+ */
+function shut(id: Node<'vec2'>, grid: Node<'vec2'>): Node<'float'> {
+  const patch = attribute<'vec4'>(ENTRANCE_ATTRIBUTE, 'vec4')
+  const first = floor(vec2(patch.x, patch.z).mul(grid))
+  const last = ceil(vec2(patch.y, patch.w).mul(grid)).sub(1)
+  return step(first.x, id.x).mul(step(id.x, last.x)).mul(step(first.y, id.y)).mul(step(id.y, last.y))
 }
 
 /** 1 between the two insets, 0 outside them, feathered by a pixel's own footprint. */

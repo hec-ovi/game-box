@@ -1,19 +1,18 @@
 import type { CityNight } from '@gb/kitbash'
 import * as THREE from 'three'
-import { Fn, If, float, floor, hash, int, mix, step, texture, uniformArray, uv, vec2, vec4 } from 'three/tsl'
+import { Fn, If, float, floor, hash, int, mix, step, texture, uniformArray, uv, vec4 } from 'three/tsl'
 import { MeshStandardNodeMaterial } from 'three/webgpu'
 import { Bays } from './bays.ts'
 import { SCREEN } from './display.ts'
 import { ROOM } from './interior.ts'
 import { layerIndex } from './layer.ts'
 import type { ScreenTint } from './lights.ts'
-import { SURFACE, type PrefabAtlas } from './material.ts'
+import { pictureUv, SURFACE, type PrefabAtlas } from './material.ts'
 import { GLOW, SHELL_MATERIAL_NAME } from './pack.ts'
 import { ROOM_TINTS } from './rooms.ts'
 import { BAY, SALT } from './pick.ts'
 import { DISPLAY_FINISH } from './screens.ts'
 import { surfaceFrame } from './surface.ts'
-import { stretchOf } from './wall.ts'
 
 /**
  * A building as seen from far off: the same walls, the same pictures, and
@@ -44,8 +43,8 @@ const UNLIT = 0.05
 
 export function shellMaterial(atlas: PrefabAtlas, night: CityNight, tints: readonly ScreenTint[]): THREE.Material {
   const layer = layerIndex()
-  const stretch = uniformArray<'float'>(atlas.finishes.map(stretchOf), 'float')
-  const at = uv().mul(vec2(1, stretch.element(layer)))
+  const frame = surfaceFrame()
+  const at = pictureUv(frame, atlas.finishes, layer)
   const wall = texture(atlas.colour, at).depth(layer)
   const burning = texture(atlas.emissive, at).depth(layer).rgb.mul(float(GLOW))
 
@@ -64,7 +63,6 @@ export function shellMaterial(atlas: PrefabAtlas, night: CityNight, tints: reado
   // what glows here and how much of the fragment it covers: a flat lit window
   // in its room's tint, or a screen in its picture's mean colour
   const lit = Fn(() => {
-    const frame = surfaceFrame()
     const out = vec4(0, 0, 0, 0).toVar()
     If(bays.windowed(layer), () => {
       const bay = bays.layout(layer, frame)

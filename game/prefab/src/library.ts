@@ -1,6 +1,7 @@
 import type { CityNight } from '@gb/kitbash'
 import * as THREE from 'three'
 import type { Catalogue } from './catalogue.ts'
+import { Doorway } from './doorway.ts'
 import { glassMaterial } from './glass.ts'
 import { screenTints, type ScreenTint } from './lights.ts'
 import { prefabMaterial, type PrefabAtlas } from './material.ts'
@@ -77,6 +78,10 @@ export class Library {
     if (missing.length) throw new LibraryIncomplete(missing)
 
     const geometries = new Map(spec.catalogue.models.map((model) => [model.id, found.get(model.id)!]))
+    // where each model stands its entrance, written onto the wall behind it, so
+    // the bay it covers is a door rather than a door over a window
+    const doorway = new Doorway(spec.atlas.finishes)
+    for (const geometry of geometries.values()) doorway.on(geometry)
     const panes = new Panes(spec.atlas.finishes)
     const glass = new Map<string, THREE.BufferGeometry>()
     for (const [id, geometry] of geometries) {
@@ -104,10 +109,11 @@ export class Library {
 }
 
 /**
- * One shape for every geometry in the pack: float position, normal, uv and the
- * layer index, indexed, nothing else. `@gb/scene` only welds two geometries
- * into one buffer when they agree attribute for attribute, so a pack whose
- * models disagree would batch as several.
+ * One shape for every geometry in the pack: float position, normal, uv, the
+ * layer index and where the entrance stands, indexed, nothing else.
+ * `@gb/scene` only welds two geometries into one buffer when they agree
+ * attribute for attribute, so a pack whose models disagree would batch as
+ * several.
  *
  * Positions come out in metres. The pack stores them as whole numbers with a
  * scale on the node, which is what makes it 3 MB instead of 13, so the scale is

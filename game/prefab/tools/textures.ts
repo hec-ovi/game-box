@@ -13,9 +13,10 @@ import type { Producer } from './producer.ts'
  *
  * The picture goes in three times. As the facade it holds the bay grid the
  * shader reads. As the wall and the base it is the same picture on the bands a
- * door or a board is composed on, which the producer tiles square by the
- * metre: it is told `BASE_TILE.across`, and the shader stretches v the rest of
- * the way so it lands at the facade's own scale.
+ * door or a board is composed on, which the producer tiles square by the metre
+ * from `BASE_TILE`. What size the picture ends up at on the built wall is the
+ * shader's, off the surface's own metres, so what this fixes is the uv the bay
+ * grid and the room are read in.
  *
  * What comes back is a texture pack folder per look. The build copies the right
  * one into each model's home before it builds, so the look is the only thing
@@ -28,7 +29,7 @@ export async function drawTextures(producer: Producer, scratch: string, looks: r
     await mkdir(files, { recursive: true })
     const home = join(scratch, `textures-${look.id}`)
     const facade = await facadePicture(look)
-    const metres = ['--metres', BASE_TILE.across.toFixed(2)]
+    const metres = ['--metres', BASE_TILE.toFixed(2)]
 
     for (const [finish, tile, holds] of [
       ['facade', facade, ['--across', String(GRID.facade.across), '--down', String(GRID.facade.down)]],

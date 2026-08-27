@@ -20,6 +20,7 @@ import * as THREE from 'three'
 import { context, vec4 } from 'three/tsl'
 import { WGSLNodeBuilder } from 'three/webgpu'
 import { prefabMaterial } from '../src/material.ts'
+import { ENTRANCE_ATTRIBUTE } from '../src/doorway.ts'
 import { LAYER_ATTRIBUTE } from '../src/pack.ts'
 import { BOXED, boxedAt } from '../src/pick.ts'
 import { designFor } from '../src/pin.ts'
@@ -196,7 +197,9 @@ function atlasOf() {
  */
 function fragmentOf(material: THREE.Material): string {
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(), material)
-  mesh.geometry.setAttribute(LAYER_ATTRIBUTE, new THREE.Float32BufferAttribute(new Float32Array(mesh.geometry.getAttribute('position').count), 1))
+  const vertices = mesh.geometry.getAttribute('position').count
+  mesh.geometry.setAttribute(LAYER_ATTRIBUTE, new THREE.Float32BufferAttribute(new Float32Array(vertices), 1))
+  mesh.geometry.setAttribute(ENTRANCE_ATTRIBUTE, new THREE.Float32BufferAttribute(new Float32Array(vertices * 4), 4))
   const scene = new THREE.Scene()
   scene.add(mesh)
   const renderer = {

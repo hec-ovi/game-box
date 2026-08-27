@@ -17,7 +17,7 @@ import { DISPLAY_FINISH, SCREEN_SIZE } from '../src/screens.ts'
 import { planStrip, readTheme } from '../src/theme.ts'
 import { DOOR, doorTile } from '../tools/doors.ts'
 import { io } from '../tools/intake.ts'
-import { baseFinish, stretchOf, wallFinish } from '../src/wall.ts'
+import { baseFinish, tiledByMetre, wallFinish } from '../src/wall.ts'
 import { loadLooks } from '../tools/look.ts'
 import { CLEAR } from '../tools/stack.ts'
 import { verifyPack } from '../tools/verify.ts'
@@ -201,10 +201,11 @@ describe('the shipped pack', () => {
       expect(windowsOn(baseFinish(picture))).toBeUndefined()
       expect(Buffer.compare(layer(baseFinish(picture)), layer(wallFinish(picture))), picture).toBe(0)
     }
-    // the producer tiles a base square by the metre and lays the wall over two
-    // floors, so the shader stretches a base's v to the wall's own scale
-    expect(stretchOf(baseFinish(pictures[0]!))).toBeCloseTo(12 / 6.42, 6)
-    expect(stretchOf(wallFinish(pictures[0]!))).toBe(1)
+    // both are read at the metres the surface measures, so one picture is one
+    // size whether it is on the wall above the street or on the fascia band
+    expect(tiledByMetre(baseFinish(pictures[0]!))).toBe(true)
+    expect(tiledByMetre(wallFinish(pictures[0]!))).toBe(true)
+    expect(tiledByMetre('glass')).toBe(false)
     expect(catalogue.atlas.finishes.filter((finish) => !finish.startsWith('wall:') && !finish.startsWith('base:'))).toEqual([
       DOOR_FINISH,
       DISPLAY_FINISH,

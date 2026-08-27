@@ -8,7 +8,7 @@ import { flatPanel } from './panel.ts'
 import { BAY, BOXED, SALT } from './pick.ts'
 import { roomBox } from './roombox.ts'
 import { ROOM_TINTS, type Banks, type GlazingStrip } from './rooms.ts'
-import { surfaceFrame } from './surface.ts'
+import type { SurfaceFrame } from './surface.ts'
 
 /**
  * What is behind the glass, drawn in the fragment shader.
@@ -63,16 +63,13 @@ export interface Glazing {
  * A layer with no windows costs one comparison and no texture fetch.
  */
 export class InteriorWindows {
-  readonly #glazing: () => Node<'vec4'>
+  readonly #glazing: (frame: SurfaceFrame) => Node<'vec4'>
 
   constructor(strip: THREE.DataArrayTexture, layout: GlazingStrip, night: CityNight, finishes: readonly string[]) {
     const bays = new Bays(finishes)
     const tints = uniformArray<'vec3'>(ROOM_TINTS.map(([r, g, b]) => new THREE.Vector3(r, g, b)), 'vec3')
 
-    this.#glazing = Fn(() => {
-      // how much wall a unit of uv covers here, read off the surface itself
-      // and read before the branch, which is where a derivative has to be taken
-      const frame = surfaceFrame()
+    this.#glazing = (frame: SurfaceFrame) => Fn(() => {
       const layer = layerIndex()
       const out = vec4(0, 0, 0, 0).toVar()
 
@@ -104,12 +101,16 @@ export class InteriorWindows {
       })
 
       return out
-    })
+    })()
   }
 
-  /** What is behind the glass on the layer this fragment wears. */
-  glazing(): Glazing {
-    const seen = this.#glazing().toVar()
+  /**
+   * What is behind the glass on the layer this fragment wears. The frame is the
+   * material's own, read outside every branch: a derivative taken inside flow
+   * that only some fragments of a quad enter is not defined.
+   */
+  glazing(frame: SurfaceFrame): Glazing {
+    const seen = this.#glazing(frame).toVar()
     return { light: seen.rgb, share: seen.a }
   }
 }

@@ -25,9 +25,10 @@ Dresses a plot with the whole building its world file names, out of one committe
 | `shellMaterial(atlas, night, tints)` | a `PrefabAtlas`, a `CityNight`, `screenTints(screens)` | |
 | `new Panes(finishes)`, `.of(geometry)` | the finishes, a pack geometry in its own frame | |
 | `new Bays(finishes)`, `.windowed(layer)`, `.layout(layer, frame)` | the finishes, then a layer node and a `surfaceFrame()` | `layout` inside a branch `windowed` opened, with the frame read outside it |
+| `new Doorway(finishes)`, `.on(geometry)` | the finishes, then one pack geometry in its own frame | once per model, before it is batched: it writes the attribute in place |
 | `new BuildingLights(finishes, tints)`, `.of(geometry, facing, lit, rooms)` | the finishes, `screenTints(screens)`, a geometry `orient` has turned, the plot's `Facing`, whether its door opens, its `design.rooms` | |
 | `screenTints(screens)` | the screen strip | its bytes are in memory, which a loaded `DataArrayTexture`'s are |
-| `windowsOn(finish)`, `glassShareOf(kind)`, `stretchOf(finish)` | a finish name, a `WindowKind`, a finish name | |
+| `windowsOn(finish)`, `glassShareOf(kind)`, `tiledByMetre(finish)` | a finish name, a `WindowKind`, a finish name | |
 | `wallFinish(picture)`, `baseFinish(picture)`, `pictureFor(rooms, held)` | a picture name from `finishes/`, a `design.rooms` and how many pictures the screen strip holds | |
 | `readTheme(value)`, `planStrip(theme)` | [themes/gb/theme.json](themes/gb/theme.json), then what it parsed to | any untrusted JSON for the first; the second only ever sees a parsed one |
 | `boxedAt(across, down, street)` | a bay's place on its wall, and whether it is a shop window on the pavement | for anyone who needs the shader's own answer without a GPU |
@@ -73,7 +74,8 @@ Dresses a plot with the whole building its world file names, out of one committe
 | `turnsFor(facing)` | 0 to 3 | quarter turns that put a south door on that wall |
 | `prefabMaterial(atlas, night)`, `glassMaterial(finishes, night)`, `shellMaterial(atlas, night, tints)` | `THREE.Material` each | the three materials, for anyone building a library by hand |
 | `WALL`, `BASE`, `wallFinish`, `baseFinish` | two prefixes and the two names one picture lands under | `wall:<picture>` has windows cut into it, `base:<picture>` is the same pixels with none; the rest of the name is the committed picture |
-| `BASE_TILE`, `stretchOf(finish)` | metres one base repeat covers, and the v stretch the shader reads a finish with | 1 for everything but a base |
+| `BASE_TILE`, `FACADE_TILE`, `tiledByMetre(finish)`, `pictureUv(frame, finishes, layer)` | metres of wall one base repeat is laid over (12), metres of wall one committed picture covers (2), whether a finish tiles, and where to read it | the producer and `BASE_TILE` have to agree: it is what fixes the uv the bay grid and the room are cut from |
+| `ENTRANCE_ATTRIBUTE` | the vertex attribute carrying the patch of a face's uv the door plate covers, as `(u0, u1, v0, v1)` | all zeroes on every face with no door on it, which blocks nothing |
 | `SCREEN`, `SCREEN_SIZE`, `DISPLAY_FINISH`, `pictureFor(rooms, held)` | how a screen is built, how big a picture is, the finish a panel wears, and which picture a plot's panels carry | `pictureFor` is the fold the shader takes of `design.rooms`, so the two agree |
 | `readTheme(value)` | `ThemeDoc` | a theme pack's manifest, checked. Throws `InvalidTheme` for anything that is not one |
 | `planStrip(theme)` | `StripPlan` | how that pack stacks into one array texture: every layer in order, and the `GlazingStrip` the runtime reads it by |
@@ -163,7 +165,9 @@ The wall pictures are **committed art**, in [finishes/](finishes/), read by `too
 
 **A look names the picture it wears, and the picture lands on two layers.** `looks/<id>.json` carries a `facade` field naming a file in `finishes/`; the pack stacks it as `wall:<picture>`, which `windowsOn` cuts bays out of, and as `base:<picture>`, the same pixels on the walls a band is composed on (the street level round the door, the parapet storey a board hangs on, the roof), where a window in the middle of every bay is exactly where the door and the board land. Two looks naming one picture land on one pair and pay for it once, which is what `tower-a` and `corpo-a` do. The base is a large share of what is seen: on the 12 m fronts it is 94% of a two storey `block-c` or `lodge-d`, 54% of a three storey one and 39 to 53% of `yard-c`, so a base that was one plain producer wall for the whole catalogue read as one building repeated, and a base that is the look's own picture reads as the look.
 
-**The base is read at the wall's scale.** The producer lays a wall picture over four bays of 3 m and two floors of 3.21 m and tiles a base square by the metre, so the base is told `BASE_TILE.across` and the shader stretches its v by `across / down` on the way in. One `uniformArray` lookup per fragment, and the same courses run the same size above the fascia and below it.
+**A wall picture is read at the metres of wall under it.** The pictures are generated over a two metre frame (`FACADE_TILE`), and a slope, a course and a joint are only right at the size they were drawn, while the uv a plate carries is the producer's: four bays of 3 m by two floors of 3.21 m on a wall, `BASE_TILE` metres on a base. So the shader multiplies the uv by the metres the surface itself measures, which its own derivatives give for nothing, and divides by two. Brick is brick sized on a twelve metre front and on the metre of fascia over a door, and the uv is left where it is, because the bay grid, the room raymarch and the glass are all cut from it.
+
+**A door is a face, and a window is a face.** The producer stands the entrance plate on the street level band, and on half the pack that band is the shopfront glazing, so the bay grid used to run on underneath it and draw a shop window behind the door. `Doorway` reads off each model where its entrance plate stands and writes that patch of the wall's own uv onto the wall behind it (`ENTRANCE_ATTRIBUTE`), and `Bays` drops every bay the patch reaches. The opening, the pane over it and the room behind it are all cut from `Bays`, so all three stop at the same place with no second rule. It rides on the vertices because the whole city is one material and one draw, the same way the layer does.
 
 Which picture suits which look was decided with eyes on the running city, at night on a wet street and again in daylight, not from the file names:
 

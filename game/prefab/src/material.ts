@@ -1,6 +1,7 @@
 import type { CityNight } from '@gb/kitbash'
 import type * as THREE from 'three'
 import { float, mix, texture, uniformArray, uv, vec2 } from 'three/tsl'
+import type { Node } from 'three/webgpu'
 import { MeshStandardNodeMaterial } from 'three/webgpu'
 import { SCREEN, WallScreens } from './display.ts'
 import { InteriorWindows, ROOM } from './interior.ts'
@@ -8,7 +9,8 @@ import type { GlazingStrip } from './rooms.ts'
 import { layerIndex } from './layer.ts'
 import { GLOW, MATERIAL_NAME } from './pack.ts'
 import { WallRelief } from './relief.ts'
-import { stretchOf } from './wall.ts'
+import { surfaceFrame, type SurfaceFrame } from './surface.ts'
+import { FACADE_TILE, tiledByMetre } from './wall.ts'
 
 /**
  * What a wall is when the pack carries no relief for it: one coated dark
@@ -50,9 +52,9 @@ export interface PrefabAtlas {
  *
  * An array texture rather than an atlas because the producer's wall pictures
  * tile: a facade runs several bays across one wall, and only a layer of its own
- * lets the sampler wrap it without bleeding into the picture next door. A base
- * layer is read with its v stretched, so the same picture lands at the same
- * scale on the wall above the street and on the walls a band is composed on.
+ * lets the sampler wrap it without bleeding into the picture next door. A wall
+ * picture is read at the metres the surface measures (`pictureUv`), so brick is
+ * brick sized on a twelve metre front and on the metre of fascia over a door.
  *
  * The windows are not in the picture. `InteriorWindows` cuts them out of the
  * wall arithmetically and draws what is behind each one, a flat panel on most
@@ -78,12 +80,14 @@ export interface PrefabAtlas {
  */
 export function prefabMaterial(atlas: PrefabAtlas, night: CityNight): THREE.Material {
   const layer = layerIndex()
-  const stretch = uniformArray<'float'>(atlas.finishes.map(stretchOf), 'float')
-  const at = uv().mul(vec2(1, stretch.element(layer)))
+  // the surface reads its own metres once, outside every branch, and the wall,
+  // the windows and the screens on it all measure against that one frame
+  const frame = surfaceFrame()
+  const at = pictureUv(frame, atlas.finishes, layer)
   const wall = texture(atlas.colour, at).depth(layer)
   const burning = texture(atlas.emissive, at).depth(layer).rgb.mul(float(GLOW))
-  const room = new InteriorWindows(atlas.rooms, atlas.glazing, night, atlas.finishes).glazing()
-  const panel = new WallScreens(atlas.screens, atlas.finishes).panel()
+  const room = new InteriorWindows(atlas.rooms, atlas.glazing, night, atlas.finishes).glazing(frame)
+  const panel = new WallScreens(atlas.screens, atlas.finishes).panel(frame)
 
   const surface = atlas.relief ? new WallRelief(atlas.relief).read(at, layer) : undefined
   const wallRoughness = surface?.roughness ?? float(SURFACE.roughness)
@@ -96,4 +100,18 @@ export function prefabMaterial(atlas: PrefabAtlas, night: CityNight): THREE.Mate
   material.metalnessNode = float(SURFACE.metalness)
   if (surface) material.normalNode = surface.normal
   return material
+}
+
+/**
+ * Where to read the picture on this fragment's layer.
+ *
+ * A tiling wall surface is read at `FACADE_TILE` metres a repeat, measured off
+ * the surface itself, so it lands at the size it was generated at whatever uv
+ * the producer laid on that plate. Everything else is a picture cut to fit its
+ * own plate and is read at that uv.
+ */
+export function pictureUv(frame: SurfaceFrame, finishes: readonly string[], layer: Node<'int'>): Node<'vec2'> {
+  const tiled = uniformArray<'float'>(finishes.map((finish) => (tiledByMetre(finish) ? 1 : 0)), 'float')
+  const metres = uv().mul(vec2(frame.wide, frame.tall)).div(float(FACADE_TILE))
+  return mix(uv(), metres, tiled.element(layer))
 }

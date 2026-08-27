@@ -1,5 +1,5 @@
 /**
- * The two layers one wall picture lands on.
+ * The two layers one wall picture lands on, and the size it is read at.
  *
  * A look names a picture in `finishes/`, and the pack stacks it twice: once as
  * the wall above the street, which the shader cuts window bays out of, and once
@@ -25,15 +25,34 @@ export function baseFinish(picture: string): string {
 }
 
 /**
- * Metres one repeat of the base covers, so it sits at the scale of the wall
- * above it. The producer lays a wall picture over four bays of 3 m and two
- * floors of 3.21 m (a floor and the centimetre bands overlap by), and tiles a
- * base square by the metre; it is told `across`, and the shader stretches v by
- * `across / down` to land on the wall's own scale.
+ * Metres of wall the producer lays one base repeat over. It is what fixes the
+ * uv on a base plate, which is the frame the bay grid and the room are read in,
+ * so the producer and this have to agree on it.
  */
-export const BASE_TILE = { across: 12, down: 6.42 } as const
+export const BASE_TILE = 12
 
-/** How far the shader stretches a layer's v to read it at the wall's scale. 1 for everything but a base. */
-export function stretchOf(finish: string): number {
-  return finish.startsWith(BASE) ? BASE_TILE.across / BASE_TILE.down : 1
+/**
+ * Metres of real wall one repeat of a committed picture covers.
+ *
+ * It is the size the picture was generated at: `docs/textures/PROMPTS.md` asks
+ * for a frame two metres square, and a slope, a course and a joint are only
+ * right at the size they were drawn. The producer lays a wall picture over four
+ * bays of 3 m and two floors of 3.21 m, and it tiles a base by `BASE_TILE`, so
+ * the uv a wall carries is nothing like this number: read at it, brick came out
+ * a metre a course.
+ *
+ * So a wall picture is read at the metres the surface itself measures rather
+ * than at the uv the producer laid, which the surface's own derivatives give
+ * for nothing. The uv is left where it is, because the bay grid, the room
+ * raymarch and the glass are all cut from it.
+ */
+export const FACADE_TILE = 2
+
+/**
+ * Whether a finish is a tiling wall surface, read at `FACADE_TILE`. Everything
+ * else is a picture laid to fit its own plate (a door, a screen, a shopfront
+ * surround, a balustrade, a tube) and is read at the uv it was laid with.
+ */
+export function tiledByMetre(finish: string): boolean {
+  return finish.startsWith(WALL) || finish.startsWith(BASE)
 }

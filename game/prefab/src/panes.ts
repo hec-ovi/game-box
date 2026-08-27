@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { ENTRANCE_ATTRIBUTE } from './doorway.ts'
 import { PANE } from './glass.ts'
 import { LAYER_ATTRIBUTE } from './pack.ts'
 import { windowsOn } from './windows.ts'
@@ -7,8 +8,9 @@ import { windowsOn } from './windows.ts'
  * The glass of one model, derived from its walls.
  *
  * Every upright face on a windowed layer is copied out and pushed `PANE.stand`
- * along its normal, keeping its uv and its layer, so the glass material cuts
- * the same bays the wall does and the pane lands over the opening. Caps and
+ * along its normal, keeping its uv, its layer and where its entrance stands, so
+ * the glass material cuts the same bays the wall does and the pane lands over
+ * the opening and nowhere else. Caps and
  * chamfers on a glazed band are left out: a pane is upright. Nothing is stored
  * in the pack for this, so the stand-off is a runtime number and the mesh file
  * stays the walls alone.
@@ -28,6 +30,7 @@ export class Panes {
     const normal = geometry.getAttribute('normal')
     const uv = geometry.getAttribute('uv')
     const layer = geometry.getAttribute(LAYER_ATTRIBUTE)
+    const entrance = geometry.getAttribute(ENTRANCE_ATTRIBUTE)
 
     const kept: number[] = []
     const a = new THREE.Vector3()
@@ -52,6 +55,7 @@ export class Panes {
     const normals = new Float32Array(count * 3)
     const uvs = new Float32Array(count * 2)
     const layers = new Float32Array(count)
+    const entrances = new Float32Array(count * 4)
     for (const [from, to] of renumbered) {
       const nx = normal.getX(from)
       const ny = normal.getY(from)
@@ -60,6 +64,7 @@ export class Panes {
       normals.set([nx, ny, nz], to * 3)
       uvs.set([uv.getX(from), uv.getY(from)], to * 2)
       layers[to] = layer.getX(from)
+      if (entrance) entrances.set([entrance.getX(from), entrance.getY(from), entrance.getZ(from), entrance.getW(from)], to * 4)
     }
 
     const out = new THREE.BufferGeometry()
@@ -67,6 +72,7 @@ export class Panes {
     out.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3))
     out.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2))
     out.setAttribute(LAYER_ATTRIBUTE, new THREE.Float32BufferAttribute(layers, 1))
+    out.setAttribute(ENTRANCE_ATTRIBUTE, new THREE.Float32BufferAttribute(entrances, 4))
     out.setIndex(kept.map((vertex) => renumbered.get(vertex)!))
     return out
   }

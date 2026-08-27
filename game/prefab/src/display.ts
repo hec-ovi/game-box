@@ -3,7 +3,7 @@ import { Fn, If, clamp, float, floor, fract, int, max, mix, smoothstep, step, te
 import type { Node } from 'three/webgpu'
 import { layerIndex } from './layer.ts'
 import { DISPLAY_FINISH, SCREEN_SIZE } from './screens.ts'
-import { surfaceFrame } from './surface.ts'
+import type { SurfaceFrame } from './surface.ts'
 
 /**
  * The lit screens over the street, drawn in the fragment shader.
@@ -64,14 +64,13 @@ export interface Panel {
  * lights the street from a screen knows what colour it is.
  */
 export class WallScreens {
-  readonly #panel: () => Node<'vec4'>
+  readonly #panel: (frame: SurfaceFrame) => Node<'vec4'>
 
   constructor(screens: THREE.DataArrayTexture, finishes: readonly string[]) {
     const wearing = finishes.indexOf(DISPLAY_FINISH)
     const count = screens.image.depth
 
-    this.#panel = Fn(() => {
-      const frame = surfaceFrame()
+    this.#panel = (frame: SurfaceFrame) => Fn(() => {
       const out = vec4(0, 0, 0, 0).toVar()
       if (wearing < 0) return out
 
@@ -110,12 +109,12 @@ export class WallScreens {
       })
 
       return out
-    })
+    })()
   }
 
-  /** What is on the panel this fragment wears, if it wears one at all. */
-  panel(): Panel {
-    const seen = this.#panel().toVar()
+  /** What is on the panel this fragment wears, if it wears one at all, read against the material's own frame. */
+  panel(frame: SurfaceFrame): Panel {
+    const seen = this.#panel(frame).toVar()
     return { light: seen.rgb, share: seen.a }
   }
 }
