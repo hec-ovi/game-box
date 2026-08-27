@@ -28,4 +28,4 @@ export type {
   WorldSummary,
 } from './narrator.ts'
 export { BANDS, MOUNTAIN_CELLS, RoadBand, type BandKind } from './layout/bands.ts'
-export { BEARINGS, type Bearing } from './layout/districts.ts'
+export { BEARINGS, districtCount, type Bearing } from './layout/districts.ts'

@@ -18,6 +18,18 @@ export function districtsWanted(blocks: number): number {
   return Math.max(1, Math.min(MAX_DISTRICTS, Math.round(blocks / (BLOCKS_ACROSS * BLOCKS_ACROSS))))
 }
 
+/**
+ * How many parts a brief's town is cut into, off the blocks it asks for, so a
+ * form can say how many parts a city will have before anything is built. It is
+ * the rule and not a promise about one town: the planner sometimes leaves an
+ * inner street out and makes two blocks one, so a real town cuts a few blocks
+ * fewer than the brief names and can come out a district short. The exact
+ * number is `Forge.plan`'s, on `world.districts()`.
+ */
+export function districtCount(blocksX: number, blocksY: number): number {
+  return districtsWanted(blocksX * blocksY)
+}
+
 /** Which way a part of town lies from the middle of it: how a name is placed without naming a metre. */
 export const BEARINGS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west', 'middle'] as const
 
