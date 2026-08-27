@@ -3,14 +3,14 @@
  * in: one node per surface, a quad carrying nothing but the material its maps
  * hang on. The game never draws the quad, it only reads the maps off it.
  *
- * Colour and relief are the kit's own, so the two the buildings already use
- * cost nothing: the pack's dedup step folds them into one copy. Wear is not:
- * the kit's own ORM carries a flat 255 of occlusion on the concrete and the
- * marble and a flat 0 on the dirt, so there is nothing in it to hang a hollow
- * on. It is derived from each surface's own colour map by
- * `tools/textures/relief.mjs` and committed under `assets/gen`, which is also
- * why the pavement is a concrete flag rather than the polished marble the kit
- * authored that image as.
+ * The road is the kit's own asphalt, which the buildings already carry, so the
+ * pack's dedup step folds it into one copy. The pavement and the earth are
+ * generated tiles under `assets/gen`, cut seamless by `tools/textures/tile.mjs`.
+ *
+ * No surface takes its wear from the kit: the ORM the kit ships with its
+ * asphalt has a flat 255 of occlusion in it, so there is nothing to hang a
+ * hollow on. Every wear image, and the normal of every generated tile, comes
+ * from `tools/textures/relief.mjs` and is committed under `assets/gen`.
  *
  * Called by tools/build-kit.ts.
  * Reads:  the kit's texture folder (GB_DOWNTOWN_KIT overrides) and assets/gen
@@ -24,12 +24,13 @@ import { KIT_DIRECTORY } from './measure.ts'
 /** Where the maps we derived ourselves live. */
 const GENERATED = resolve(import.meta.dirname, '../../../assets/gen')
 
-/** Which of the kit's textures each surface is made of, and the wear we derived from it. */
-const SOURCES: Record<GroundTextureId, { colour: string; normal: string; wear: string }> = {
-  asphalt: { colour: 'T_Concrete_Asphalt_BaseColor', normal: 'T_Concrete_Normal', wear: 'ground-asphalt-orm' },
-  // the kit's marble floor: laid four slabs to a tile, tinted grey, it is a pavement
-  paving: { colour: 'T_MarbleFloor_BaseColor', normal: 'T_MarbleFloor_Normal', wear: 'ground-paving-orm' },
-  earth: { colour: 'T_Dirt_BaseColor', normal: 'T_Dirt_Normal', wear: 'ground-earth-orm' },
+/** What each surface is painted and shaped by, and where those images come from. */
+const SOURCES: Record<GroundTextureId, { from: string; colour: string; normal: string; wear: string }> = {
+  // the roadway stays the kit's own asphalt: its albedo is what @gb/scene's wet
+  // film and its road paint are aimed at, and the town tones are measured off it
+  asphalt: { from: KIT_DIRECTORY, colour: 'T_Concrete_Asphalt_BaseColor', normal: 'T_Concrete_Normal', wear: 'ground-asphalt-orm' },
+  paving: { from: GENERATED, colour: 'ground-paving-flags-tile', normal: 'ground-paving-flags-normal', wear: 'ground-paving-flags-orm' },
+  earth: { from: GENERATED, colour: 'ground-earth-bare-tile', normal: 'ground-earth-bare-normal', wear: 'ground-earth-bare-orm' },
 }
 
 const REPEAT = TextureInfo.WrapMode['REPEAT']!
@@ -51,9 +52,9 @@ export async function writeGroundSurfaces(file: string): Promise<void> {
     const source = SOURCES[id]
     const material = document.createMaterial(`MI_${GROUND_TEXTURES[id].node}`).setRoughnessFactor(1).setMetallicFactor(0)
 
-    material.setBaseColorTexture(texture(document, source.colour))
+    material.setBaseColorTexture(texture(document, source.colour, source.from))
     repeating(material.getBaseColorTextureInfo())
-    material.setNormalTexture(texture(document, source.normal))
+    material.setNormalTexture(texture(document, source.normal, source.from))
     repeating(material.getNormalTextureInfo())
     // one image in two slots: glTF reads roughness off green and occlusion off
     // red, so a surface pays for one image and the runtime for one sampler
@@ -74,7 +75,7 @@ export async function writeGroundSurfaces(file: string): Promise<void> {
   await new NodeIO().write(file, document)
 }
 
-function texture(document: Document, name: string, from = KIT_DIRECTORY) {
+function texture(document: Document, name: string, from: string) {
   return document.createTexture(name).setMimeType('image/png').setImage(readFileSync(join(from, `${name}.png`)))
 }
 

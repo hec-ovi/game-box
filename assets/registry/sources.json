@@ -43,7 +43,7 @@
       "license": "CC0-1.0",
       "attribution": null,
       "redistributable": true,
-      "take": "Street level: shopfronts, cornices, fire escapes, rooftop plant, street furniture. Its concrete and marble also tile the inside of a building, and the roughness and occlusion of the city floor are derived from its own colour maps by tools/textures/relief.mjs and committed under assets/gen, which the CC0 licence allows us to ship."
+      "take": "Street level: shopfronts, cornices, fire escapes, rooftop plant, street furniture. Its concrete also tiles the inside of a building and paints the city's roadway, whose relief and wear are derived from that colour map by tools/textures/relief.mjs and committed under assets/gen, which the CC0 licence allows us to ship."
     },
     {
       "id": "kaykit-animations",

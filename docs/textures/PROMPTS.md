@@ -280,9 +280,14 @@ suits a wall; a road wants four.
 | `wall-steel-corrugated.png` | `steel` | 2 | Corrugated weathering steel sheet, the ribs running vertically, an even oxide grain over the whole face, rust running downward from the fixings. |
 | `wall-tile-glazed.png` | `tile` | 2 | Small square glazed ceramic tiles in a regular grid, the glaze reflective and even, the grout between them dull and darker, three tiles chipped at a corner. |
 | `wall-plaster-painted.png` | `formed-concrete` | 2 | Painted rendered plaster, the paint chalky and fading, two hairline cracks running at an angle, a patch where an older coat shows through. |
-| `ground-asphalt-worn.png` | `asphalt` | 4 | Worn road asphalt seen from directly above, the chippings even across the frame, a patched trench crossing it, tyre polish darkening two bands. |
 | `ground-paving-flags.png` | `paving` | 4 | Concrete paving flags from directly above in a regular grid, the joints between them holding dirt, two flags cracked, the surface scuffed evenly. |
 | `ground-earth-bare.png` | `earth` | 4 | Bare compacted earth from directly above, small stones and clods spread evenly, no plants, no tracks, dry and mid brown. |
+
+The roadway is not in this table: it is painted by the Downtown kit's own
+asphalt, which `@gb/scene`'s wet film and its road paint are aimed at. A
+generated road tile has to hold the tyre polish and the patched trench even
+across the frame, and a band of either survives the seam cut as a stripe running
+the length of every street in town.
 
 **Shared opening for this section**, before the subject:
 

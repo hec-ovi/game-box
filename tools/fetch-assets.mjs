@@ -12,13 +12,12 @@
 import { createHash } from 'node:crypto'
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import { ALLOWED } from './licences.mjs'
 
 const ROOT = resolve(import.meta.dirname, '..')
 const REGISTRY = join(ROOT, 'assets', 'registry', 'sources.json')
 const OUT = join(ROOT, 'assets', 'src')
 const LOCK = join(ROOT, 'assets', 'registry', 'downloaded.json')
-
-const ALLOWED = new Set(['CC0-1.0', 'CC-BY-4.0', 'MIT', 'Apache-2.0'])
 
 const wanted = process.argv.slice(2)
 const registry = JSON.parse(readFileSync(REGISTRY, 'utf8'))

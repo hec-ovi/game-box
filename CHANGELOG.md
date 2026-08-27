@@ -4,6 +4,24 @@ What the project does now. Each entry is the present state, not a diff.
 
 ## 2026-08-27
 
+**The pavement and the bare ground are generated tiles.** The city floor takes
+its pavement from a concrete flag laid six to a four metre tile and its parks
+and empty lots from bare compacted earth, both cut seamless by
+`tools/textures/tile.mjs` and given their normal and their wear by
+`tools/textures/relief.mjs`. The roadway stays the kit's own asphalt, which the
+wet film and the road paint are aimed at. Every surface lands on the albedo the
+night look is lit against: 0.091 on a neon town's pavement, 0.066 on a park,
+0.082 on a vacant lot, 0.042 on the road.
+
+**A downloaded model is measured and fitted before it is adopted.**
+`node tools/inspect-glb.mjs <file-or-folder>` prints what a model would cost
+against a street car's budget (12,000 triangles, 4 draws, 1024 px) and the
+licence out of its own metadata. `node tools/fit-model.mjs <file> --out <dir>`
+drops what nobody sees from outside, welds and simplifies to the budget, resizes
+the textures and merges the materials, printing every step. Neither will pass a
+model whose licence forbids redistributing the file, because a world file hands
+assets to other players.
+
 **The map is the city drawn as its architecture.** The map face of the window
 is the blueprint the front door shows before a city is written, standing in the
 game: every building a box at its real footprint and storey height, the streets

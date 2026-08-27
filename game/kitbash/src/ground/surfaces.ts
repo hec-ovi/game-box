@@ -7,11 +7,12 @@
  * every `tile` metres asks for `repeat = 1 / tile`, whatever the cell size is.
  *
  * Each surface is four maps, not one: what it is painted, how it is shaped, how
- * rough it is and how much sky a hollow in it can see. The colour and the shape
- * are the kit's own; the roughness and the occlusion are derived from the
- * colour by `tools/textures/relief.mjs` and committed in `assets/gen`, because
- * the kit ships an ORM whose occlusion channel is a flat 255 on two of the
- * three and a flat 0 on the other.
+ * rough it is and how much sky a hollow in it can see. The roadway is painted
+ * by the kit's own asphalt; the pavement and the earth are generated tiles. The
+ * shape, the roughness and the occlusion are derived from whichever colour map
+ * a surface takes, by `tools/textures/relief.mjs`, and committed in
+ * `assets/gen`: a generated tile carries no maps at all, and the ORM the kit
+ * ships with its asphalt has a flat 255 of occlusion in it.
  */
 import type { CellKind } from '@gb/world'
 import type { Flavour } from '../look/flavour.ts'
@@ -36,8 +37,8 @@ export interface GroundTexture {
 
 export const GROUND_TEXTURES: Record<GroundTextureId, GroundTexture> = {
   asphalt: { node: 'Ground_Asphalt', tile: 4, texel: 3.91, roughness: [0.8, 1] },
-  // four slabs across a tile, so the pavement is laid in half-metre flags
-  paving: { node: 'Ground_Paving', tile: 2, texel: 1.95, roughness: [0.74, 0.98] },
+  // six flags across a tile, so the pavement is laid in 0.67 m flags
+  paving: { node: 'Ground_Paving', tile: 4, texel: 3.91, roughness: [0.74, 0.98] },
   earth: { node: 'Ground_Earth', tile: 4, texel: 3.91, roughness: [0.9, 0.99] },
 }
 
@@ -57,7 +58,7 @@ export interface GroundLook {
    * track is polished and the grit beside it is not.
    */
   readonly wear?: GroundTextureId
-  /** Multiplied over the colour map: the kit's textures are shared, the tint is what separates them. */
+  /** Multiplied over the colour map: one tile serves several kinds of cell, and the tint is what separates them. */
   readonly colour: number
   /** Over a wear image, the factor its roughness is read at; with no wear image, the whole of it. */
   readonly roughness: number
@@ -67,17 +68,19 @@ export interface GroundLook {
   readonly toned?: boolean
 }
 
-// the pavement and the strip a building stands on are the same slabs. The
-// tint is what turns the kit's warm marble into concrete grey.
-const PAVEMENT: GroundLook = { name: 'ground:paving', map: 'paving', normal: 'paving', wear: 'paving', colour: 0xb4cef9, roughness: 1, toned: true }
+// the pavement and the strip a building stands on are the same slabs, and the
+// tile is already concrete grey, so nothing tints it: what moves is the value,
+// and the town's tone is what moves it.
+const PAVEMENT: GroundLook = { name: 'ground:paving', map: 'paving', normal: 'paving', wear: 'paving', colour: 0xffffff, roughness: 1, toned: true }
 
 export const GROUND_LOOKS: Record<CellKind, GroundLook> = {
   street: { name: 'ground:asphalt', map: 'asphalt', normal: 'asphalt', wear: 'asphalt', colour: 0xffffff, roughness: 1 },
   sidewalk: PAVEMENT,
   building: PAVEMENT,
-  // bare earth greened down, so a park is planted ground rather than a flat green field
-  park: { name: 'ground:grass', map: 'earth', normal: 'earth', wear: 'earth', colour: 0xa9ff96, roughness: 1 },
-  empty: { name: 'ground:earth', map: 'earth', normal: 'earth', wear: 'earth', colour: 0xffffff, roughness: 1 },
+  // bare earth greened and taken down, so a park is planted ground rather than a flat green field
+  park: { name: 'ground:grass', map: 'earth', normal: 'earth', wear: 'earth', colour: 0x7fc271, roughness: 1 },
+  // and taken down on its own, so a vacant lot never out-shines the pavement
+  empty: { name: 'ground:earth', map: 'earth', normal: 'earth', wear: 'earth', colour: 0xc1c1c1, roughness: 1 },
   // no colour map and no wear: water is its own colour at one roughness, and the
   // road's relief breaks the light up into ripples
   water: { name: 'ground:water', normal: 'asphalt', colour: 0x2f5a72, roughness: 0.2, normalScale: 0.35 },
@@ -86,23 +89,23 @@ export const GROUND_LOOKS: Record<CellKind, GroundLook> = {
 }
 
 /**
- * How much of the kit's own pavement a town keeps, and what that leaves on the
+ * How much of the pavement flag a town keeps, and what that leaves on the
  * ground as linear albedo. It scales the tint, so the slabs keep their joints
  * and their wear and only the value moves.
  *
  * Measured off the shipped pack with `tools/measure-ground.ts`, the kit's
- * asphalt is 0.042 linear and its marble slabs, tinted grey, are 0.221. So the
- * roadway already sits where @gb/scene's wet film paints it and the pavement is
- * the one that reads pale after dark, the brightest thing in a street whose
- * walls are toned to 0.01 and lit only by lamps and signs. A night town takes
- * it to about 0.09; a daylight town keeps the kit's concrete, because a pale
- * pavement under a sun is what a pavement looks like.
+ * asphalt is 0.042 linear and the paving tile is 0.251. So the roadway already
+ * sits where @gb/scene's wet film paints it and the pavement is the one that
+ * reads pale after dark, the brightest thing in a street whose walls are toned
+ * to 0.01 and lit only by lamps and signs. A night town takes it to about 0.09;
+ * a daylight town keeps the whole flag, because a pale pavement under a sun is
+ * what a pavement looks like.
  */
 export const PAVEMENT_TONES: Record<Flavour, number> = {
-  //                 share of the kit's slabs   albedo
-  neon: 0.41, //                                0.091
-  industrial: 0.5, //                           0.111
-  frontier: 1, //                               0.221
+  //                 share of the flag          albedo
+  neon: 0.363, //                               0.091
+  industrial: 0.442, //                         0.111
+  frontier: 1, //                               0.251
   coastal: 1,
   alpine: 1,
   agrarian: 1,
