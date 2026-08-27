@@ -20,19 +20,43 @@ Three findings drive everything below.
   the banding) is applied by the shader over the artwork. **Do not draw it into
   the image.** A fine grid baked into a texture and then shrunk produces moire.
 
-## The folder
+## Where the images go
+
+The pack that ships is `game/prefab/themes/gb/`, and it is a normal pack in the
+normal format. Every image below is already declared in its `theme.json` under
+the exact filename in the tables, and every one of them is drawn from arithmetic
+today. So **saving a real image over the drawn one replaces it, with no code
+change and no edit to any manifest**:
 
 ```
-assets/themes/<theme>/
-  theme.json      what each image is and which rooms may use it
+game/prefab/themes/gb/
+  theme.json      what each image is and which windows and rooms may use it
   windows/        flat panels: what most windows show
   rooms/          one back wall per kind of room
   faces/          the floor, ceiling and side walls every room shares
   ads/            artwork for the screens on the sides of buildings
 ```
 
-A pack is that folder. Drop in your own images, name them in `theme.json`, and
-the game reads them. Nothing in the code names a picture.
+Then restack the pack and bump its version:
+
+```bash
+node game/prefab/tools/theme-buildings.ts
+```
+
+An **ad** is the one exception: a new one needs its filename adding to the `ads`
+list in `theme.json`, because the others are declared already.
+
+To author a whole pack of your own instead of replacing this one, put the same
+four folders and a `theme.json` anywhere (`assets/themes/<name>/` is the tidy
+place) and build against it:
+
+```bash
+node game/prefab/tools/theme-buildings.ts --theme assets/themes/<name>
+```
+
+Anything a pack leaves out falls back to the shipped one, and anything that
+lacks an image too is drawn, so a half-finished pack still runs and nothing is
+ever a blank window.
 
 ## How to work
 
@@ -218,6 +242,7 @@ land on, so the same artwork does not read as the same ad twice.
 
 ## When you have them
 
-Drop each into its folder under `assets/themes/<theme>/` with the filename in
-the tables above, and the pack builder picks them up. Anything missing falls
-back to what ships, so a half-finished pack still runs.
+Save each over the drawn one in `game/prefab/themes/gb/`, under the filename in
+the tables above, then run `node game/prefab/tools/theme-buildings.ts`. Anything
+you have not replaced yet keeps its drawing, so you can do this ten images at a
+time and look at the result after each batch.
