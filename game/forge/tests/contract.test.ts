@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import { err, ok } from '@gb/kit'
 import { PlayerState } from '@gb/play'
 import { validateQuest, type QuestDoc } from '@gb/quest'
 import { questView, ROOM_USES, World, type WorldDoc } from '@gb/world'
@@ -91,14 +92,14 @@ describe('Forge', () => {
 
   it('hands back the quests it could not verify instead of shipping them', async () => {
     const forge = new Forge({
-      nameCity: async () => 'Nowhere',
-      namePlace: async () => 'A Place',
-      describeNpc: async () => ({ name: 'Someone', personality: 'Vague.', knowledge: [] }),
-      describeItem: async () => ({ name: 'A thing', description: 'Unremarkable.' }),
-      writeQuests: async () => [
+      nameCity: async () => ok('Nowhere'),
+      namePlace: async () => ok('A Place'),
+      describeNpc: async () => ok({ name: 'Someone', personality: 'Vague.', knowledge: [] }),
+      describeItem: async () => ok({ name: 'A thing', description: 'Unremarkable.' }),
+      writeQuests: async () => ok([
         { format: 'game-box.quest', schemaVersion: 1, id: 'quest_0001', kind: 'side', title: 'Bad', summary: 'Points nowhere.', giverNpcId: 'npc_9999', startStepId: 'step_0001', steps: [{ id: 'step_0001', kind: 'complete', objective: 'x', next: [], requires: [], effects: [] }], reward: { money: 1, reputation: 0, faction: 'town', items: [] } },
         { nonsense: true },
-      ],
+      ]),
     })
     const built = await forge.build({ theme: 'test', seed: 'reject', blocksX: 1, blocksY: 1, blockCells: 12 })
     expect(built.ok).toBe(true)
@@ -163,6 +164,50 @@ describe('Forge', () => {
     // and it is genuinely an older city: this generator lays that seed out differently now
     const today = await town(String(SEALED.brief.seed), SEALED.brief)
     expect(today.world.grid.rows().join('')).not.toBe(sealed.grid.rows().join(''))
+  })
+
+  it('stops the build at the stage that could not be written, and says so in one sentence', async () => {
+    // a city somebody asked a story of is written by whoever they asked, or the
+    // build stops: nothing is composed in its place and no half-written town
+    // reaches the player
+    const offline = new OfflineNarrator('stopped')
+    const message = 'the history could not be written: the model at 127.0.0.1:8080 did not answer'
+    const forge = new Forge({
+      writePremise: async () => err({ stage: 'history' as const, message }),
+      nameCity: (input) => offline.nameCity(input),
+      namePlace: (input) => offline.namePlace(input),
+      describeNpc: (input) => offline.describeNpc(input),
+      describeItem: (input) => offline.describeItem(input),
+      writeQuests: (input) => offline.writeQuests(input),
+    })
+    const built = await forge.build({ theme: 'test', seed: 'stopped', blocksX: 2, blocksY: 2 })
+
+    expect(built.ok).toBe(false)
+    if (built.ok) return
+    expect(built.error.code).toBe('unwritten')
+    if (built.error.code !== 'unwritten') return
+    expect(built.error.stage).toBe('history')
+    expect(built.error.message).toBe(message)
+  })
+
+  it('stops a build whose work could not be written, rather than shipping a city with nothing to do', async () => {
+    const offline = new OfflineNarrator('quietened')
+    const message = 'the main line could not be written: the model wrote prose instead of calling the tool'
+    const forge = new Forge({
+      writePremise: (input) => offline.writePremise(input),
+      nameCity: (input) => offline.nameCity(input),
+      namePlace: (input) => offline.namePlace(input),
+      describeNpc: (input) => offline.describeNpc(input),
+      describeItem: (input) => offline.describeItem(input),
+      writeInstances: (requests) => offline.writeInstances(requests),
+      writeQuests: async () => err({ stage: 'quests' as const, message }),
+    })
+    const built = await forge.build({ theme: 'test', seed: 'quietened', blocksX: 2, blocksY: 2 })
+
+    expect(built.ok).toBe(false)
+    if (built.ok || built.error.code !== 'unwritten') return
+    expect(built.error.stage).toBe('quests')
+    expect(built.error.message).toBe(message)
   })
 
   it('refuses a brief that does not make sense', async () => {

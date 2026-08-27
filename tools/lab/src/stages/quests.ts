@@ -15,9 +15,9 @@ import { pinToCorner } from '../../../../game/scribe/src/schema/corner.ts'
 import { narrowToSummary } from '../../../../game/scribe/src/schema/narrow.ts'
 import { CitySummary } from '../../../../game/scribe/src/summary.ts'
 import { el, field, json, table } from '../dom.ts'
-import { acceptQuest, narratorFor, problemsOf } from '../pipeline.ts'
+import { acceptQuest, narratorFor } from '../pipeline.ts'
 import type { Json } from '../schema.ts'
-import { exchangeViews, sandbox, type Call, type Fact, type Lab, type Stage } from '../stage.ts'
+import { exchangeViews, sandbox, showProblems, type Call, type Fact, type Lab, type Stage } from '../stage.ts'
 import { site } from '../source.ts'
 
 /** How much of the city one quest is shown, the same constant the writer uses. */
@@ -28,7 +28,7 @@ export const QUESTS: Stage = {
   n: 4,
   title: 'The quests',
   lede:
-    'One forced call per quest: the main line first, then each side errand. The writer is blind to the city as a place. It is shown a corner of it: eight places by name, what each of them is, who is in them and what is in them, and nothing about geometry. A quest that sends the player across town is entertaining rather than broken (docs/CITY.md section 9), so what the writer needs is which places hang together, not how far apart they are. Every draft is checked here against the ids it was shown, walked the way the harness plays it, then handed to the forge, which validates it again against the real city.',
+    'One forced call per quest: the main line first, then each side errand. The work is written over the bare architecture, before a sign is hung, so every id is the one the finished city will carry and every name is a placeholder. The writer is blind to the city as a place. It is shown a corner of it: eight places, what each of them is, who is in them and what is in them, and nothing about geometry. A quest that sends the player across town is entertaining rather than broken (docs/CITY.md section 9), so what the writer needs is which places hang together, not how far apart they are. Every draft is checked here against the ids it was shown, walked the way the harness plays it, then handed to the forge, which validates it again against the real city.',
 
   calls(lab) {
     const summary = lab.captured.summary
@@ -58,18 +58,18 @@ export const QUESTS: Stage = {
         run.out.appendChild(json({ ...summary, places: summary.places }, true))
 
         const author = narratorFor(lab.author, lab.form, lab.recorder, lab.base, signal)
-        const drafts = await author.writeQuests({ summary, sideQuests })
-
+        const written = await author.writeQuests({ summary, sideQuests })
         run.out.appendChild(el('h3', {}, `The calls (${lab.recorder.exchanges.length})`))
         run.out.appendChild(exchangeViews(lab.recorder.exchanges))
+        showProblems(run, author)
+        if (!written.ok) {
+          run.stopped(written.error)
+          return
+        }
+
+        const drafts = written.value
         run.out.appendChild(el('h3', {}, `The drafts that came back (${drafts.length})`))
         run.out.appendChild(json(drafts, true))
-
-        const problems = problemsOf(author)
-        if (problems.length) {
-          run.out.appendChild(el('h3', {}, `Rejected along the way (${problems.length})`))
-          run.out.appendChild(json(problems, true))
-        }
 
         const world = lab.captured.world
         run.out.appendChild(el('h3', {}, 'What the forge then does with them'))
@@ -149,7 +149,8 @@ const size = (schema: unknown): string => JSON.stringify(schema).length.toLocale
 
 const TOLD: readonly Fact[] = [
   { text: 'The city\'s name, its theme, and the town\'s whole history: what it lives on, what happened, what is at stake, who is arguing and what everybody knows.', at: site('game/scribe/src/quests.ts', 'premise: city.history', '') },
-  { text: 'Eight places of the city, and only eight. For each: its name, what it is in the words the instance writer used for it, its people with their roles and where they stand, its things with seller and price, its locked doors with the key and whose pocket it is in, its screens with what each runs, and what it sells for.', at: site('game/scribe/src/place-lines.ts', 'export function placeLines', '') },
+  { text: 'Eight places of the city, and only eight. For each: what kind of place it is, its people with their roles and where they stand, its things with seller and price, its locked doors with the key and whose pocket it is in, its screens with what each runs, and what it sells for.', at: site('game/scribe/src/place-lines.ts', 'export function placeLines', '') },
+  { text: 'Every id is the id the finished city will carry and every name is a placeholder: the work is written before a sign is hung, so a slot reads `Instance 3` and `Person 8`. The names go up afterwards, over the same ids.', at: site('game/forge/src/forge.ts', '// 3. the work, over the bare architecture', '') },
   { text: 'What each tier of job is allowed to pay, so the reward is written inside a band instead of named and then broken.', at: site('game/scribe/src/reward-bands.ts', 'export function rewardBands', '') },
   { text: 'Whether this slot is the main line or side errand n of m, and what the owner asked of that slot.', at: site('game/scribe/src/quests.ts', "prompt('quest-role-main'", '') },
   { text: 'The titles already used, so two quests in one town are not called the same thing.', at: site('game/scribe/src/quests.ts', 'usedTitles: bullets(', '') },
@@ -163,7 +164,7 @@ const ENGINE: readonly Fact[] = [
   { text: 'What each tier is allowed to pay, and which tier a quest ends up in: the model writes the pay, `tier.ts` reads the tier off it.', at: site('game/quest/src/balance.ts', 'export const REWARD_TABLE', ''), values: DIFFICULTIES.map((tier) => `${tier}: ${REWARD_TABLE[tier].money.min} to ${REWARD_TABLE[tier].money.max} credits`) },
   { text: 'Which step kinds are offered at all. A corner with no locked screen is not shown `hack`; one with nothing on a counter is not shown `buy`.', at: site('game/scribe/src/schema/corner.ts', 'export function pinToCorner', '') },
   { text: 'Whether the draft is playable: the flow check refuses a dead end, an unreachable step and a quest that cannot complete.', at: site('game/quest/src/validate.ts', 'export function checkFlow', '') },
-  { text: 'What a slot gets when the model cannot fill it: the offline narrator\'s quest for that same slot, so a model build never has fewer quests than an offline one.', at: site('game/scribe/src/quests.ts', '#offlineQuests(input: QuestInput)', '') },
+  { text: 'A slot the model will not fill stops the stage. Nothing is composed in its place, so the build has no city rather than a town half somebody\'s.', at: site('game/forge/src/forge.ts', 'if (!written.ok) return err(stopped(written.error))', '') },
 ]
 
 /**
@@ -172,7 +173,7 @@ const ENGINE: readonly Fact[] = [
  * geography and careless about the story. Today it is handed metres.
  */
 const TODAY: readonly Fact[] = [
-  { text: 'Every place in the summary carries its street door in metres, put there by the forge.', at: site('game/forge/src/forge.ts', 'door: cellCentre(', '') },
+  { text: 'Every place in the summary carries its street door in metres, put there by the forge.', at: site('game/forge/src/summary.ts', 'door: cellCentre(', '') },
   { text: 'The corner is cut by nearness measured off those doors, and the walk to each neighbour goes into the prompt as a number of metres.', at: site('game/scribe/src/neighbourhood.ts', 'export function walk', '') },
-  { text: 'There is no district anywhere in the summary a quest writer reads, so the coarser handle section 9 asks for does not exist yet.', at: site('game/forge/src/narrator.ts', 'export interface WorldSummary', '') },
+  { text: 'The coarse handle exists in the summary (the parts of the town, and the part each place stands in) and the corner is still cut by metres rather than by it.', at: site('game/forge/src/summary.ts', 'districtId', '') },
 ]

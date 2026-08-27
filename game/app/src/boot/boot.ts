@@ -90,6 +90,13 @@ export class Boot {
     start?: Start
     art?: LoadArt
     blueprint?: Show
+    /**
+     * Who writes a city and who writes a growth. The real pair, over the page's
+     * one sidecar, unless a test says otherwise: it is how a test gets a city
+     * with no model in the room.
+     */
+    maker?: CityMaker
+    packs?: Packs
   }) {
     this.#mount = input.mount
     this.#panel = input.panel
@@ -109,8 +116,8 @@ export class Boot {
     this.#start = input.start ?? Game.start
     this.#art = input.art ?? loadDressing
     this.#show = input.blueprint ?? showBlueprint
-    this.#maker = new CityMaker(this.#sidecar)
-    this.#packs = new Packs(this.#sidecar)
+    this.#maker = input.maker ?? new CityMaker(this.#sidecar)
+    this.#packs = input.packs ?? new Packs(this.#sidecar)
     this.#loader = new Loader(input.mount)
 
     this.#panel.settings = this.#settings
@@ -188,11 +195,9 @@ export class Boot {
       // world file, and the seal covers it
       await this.#step('Loading the art')
       const art = await this.#art(brief.theme)
-      if (brief.model) {
-        this.#loader.begin(`Writing a city: ${brief.theme}`)
-        this.#panel.aside(true)
-        this.#notices.aim(this.#loader)
-      }
+      this.#loader.begin(`Writing a city: ${brief.theme}`)
+      this.#panel.aside(true)
+      this.#notices.aim(this.#loader)
       const made = await this.#maker.build(brief, {
         signal,
         step: this.#step,
@@ -260,18 +265,14 @@ export class Boot {
     const city = this.#city
     const shelved = this.#shelved
     if (!city || !shelved) return this.#panel.waiting('Open a city first, then grow it.', true)
-    const model = this.#panel.brief.model
     await this.#run(async (signal) => {
       await this.#step(`Building onto ${city.bundle.world.name}`)
-      if (model) {
-        this.#loader.begin(`Building onto ${city.bundle.world.name}`)
-        this.#panel.aside(true)
-        this.#notices.aim(this.#loader)
-      }
+      this.#loader.begin(`Building onto ${city.bundle.world.name}`)
+      this.#panel.aside(true)
+      this.#notices.aim(this.#loader)
       const grown = await this.#packs.grow(city, {
         signal,
         step: this.#step,
-        model,
         progress: (event) => this.#loader.progress(event),
         ...(this.#loaded?.catalogue ? { catalogue: this.#loaded.catalogue } : {}),
       })

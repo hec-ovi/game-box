@@ -12,8 +12,15 @@ import { familyPattern } from './claim.ts'
  */
 export function personSchema(letters: string) {
   return z.object({
-    given: z.string().min(2).max(30),
-    family: z.string().regex(familyPattern(letters)),
+    given: z
+      .string()
+      .min(2)
+      .max(30)
+      .describe('Their first name: an ordinary one of the kind real people have, spellable and sayable on first hearing. Nothing invented.'),
+    family: z
+      .string()
+      .regex(familyPattern(letters))
+      .describe('Their family name: an ordinary one, spellable and sayable on first hearing. Nothing invented, and it starts with one of the letters this building was dealt.'),
     personality: z.string().min(10).max(400),
     knowledge: z.array(z.string().min(4).max(300)).min(2).max(4),
     life: LifeSchema.required(),

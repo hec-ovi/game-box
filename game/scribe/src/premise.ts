@@ -1,9 +1,12 @@
-import { OfflineNarrator, type History, type Narrator } from '@gb/forge'
+import type { History, Narrator } from '@gb/forge'
+import { err, ok, type Result } from '@gb/kit'
 import { SHIPPED_CHARTERS, type Asks, type Premise } from '@gb/world'
 import { askedLines, type Asked } from './asked.ts'
 import type { Asker, Violation } from './asker.ts'
 import { CharterWriter, declared, onPresets } from './charters.ts'
+import type { ScribeFailure } from './failure.ts'
 import { prompt } from './prompts.ts'
+import { answered } from './stand-in.ts'
 import { WRITE_PREMISE } from './tools.ts'
 
 /** The first question of a build: the theme, the seed, and whatever the owner typed beyond them. */
@@ -16,8 +19,9 @@ export interface PremiseInput extends Asked {
 
 export interface PremiseWriterOptions {
   readonly asker: Asker
-  readonly fallback: Narrator
   readonly charters: CharterWriter
+  /** Only where a caller handed one in. Nothing in the game does. */
+  readonly standIn?: Narrator | undefined
 }
 
 /**
@@ -29,8 +33,9 @@ export interface PremiseWriterOptions {
  * every place that opens is written knowing it, and the main line is about what
  * it says is at stake. So a history the town cannot be built out of is worse
  * than no history at all, which is why an answer that names no buildings, or
- * whose two sides are one side twice, goes back to the model with the reason
- * before the town falls back to the one the seed composes.
+ * whose two sides are one side twice, goes back to the model with the reason,
+ * and a history the model will not write stops the build instead of being
+ * composed behind the owner's back.
  *
  * A history may build the town out of a kind of place no preset is. Each such
  * word is asked for next as a charter, and the history hands back only the
@@ -39,16 +44,16 @@ export interface PremiseWriterOptions {
  */
 export class PremiseWriter {
   #asker: Asker
-  #fallback: Narrator
   #charters: CharterWriter
+  #standIn: Narrator | undefined
 
   constructor(options: PremiseWriterOptions) {
     this.#asker = options.asker
-    this.#fallback = options.fallback
     this.#charters = options.charters
+    this.#standIn = options.standIn
   }
 
-  async write(input: PremiseInput): Promise<History> {
+  async write(input: PremiseInput): Promise<Result<History, ScribeFailure>> {
     const written = await this.#asker.ask(
       WRITE_PREMISE,
       prompt('write-premise', {
@@ -57,25 +62,17 @@ export class PremiseWriter {
         asked: askedLines(input, ['brief', 'tone', 'mainQuest', 'look']) || prompt('asked-nothing'),
         kinds: SHIPPED_CHARTERS.map((charter) => charter.word).join(', '),
       }),
-      'premise',
+      { at: 'premise', what: 'the history' },
       problemsWith,
     )
-    if (!written) return this.#spare(input)
-    const folded = onPresets(written)
+    if (!written.ok) {
+      const spare = answered(await this.#standIn?.writePremise?.(input))
+      return spare ? ok(spare) : err(written.error)
+    }
+    const folded = onPresets(written.value)
     const charters = await this.#charters.write(folded, input.theme, input)
     const premise = declared(folded, charters)
-    return charters.length ? { ...premise, charters } : premise
-  }
-
-  /**
-   * The history a town gets when the model writes none: the fallback narrator's
-   * own, or the offline narrator's when the fallback writes no history at all.
-   * A build with the model on never leaves a town with less story than the same
-   * build with it off, the same way it never leaves one with fewer quests.
-   */
-  async #spare(input: PremiseInput): Promise<History> {
-    const written = await this.#fallback.writePremise?.(input)
-    return written ?? (await new OfflineNarrator(input.seed).writePremise(input))
+    return ok(charters.length ? { ...premise, charters } : premise)
   }
 }
 

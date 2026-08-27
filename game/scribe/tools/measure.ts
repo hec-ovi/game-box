@@ -154,7 +154,7 @@ for (let i = 0; i < cities; i++) {
   const started = Date.now()
   const built = await new Forge(scribe).build({ theme: town.theme, seed, blocksX: blocks, blocksY: blocks, blockCells, brief: town.brief })
   if (!built.ok) {
-    console.log(`${seed}: ${built.error.code}`)
+    console.log(`${seed}: ${'message' in built.error ? built.error.message : built.error.code}`)
     continue
   }
   const world = built.value.world

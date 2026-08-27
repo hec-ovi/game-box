@@ -1,7 +1,7 @@
-import { Rng } from '@gb/kit'
+import { ok, Rng } from '@gb/kit'
 import { describe, expect, it } from 'vitest'
 import { Forge, OfflineNarrator } from '../src/index.ts'
-import type { Instance, InstanceRequest, Narrator, NpcProfile, PlaceRequest, WorldSummary } from '../src/narrator.ts'
+import type { Instance, InstanceRequest, Narrator, NpcProfile, PlaceRequest, WorldSummary, Written } from '../src/narrator.ts'
 import { headOf } from '../src/narrator/places.ts'
 import { StreetNames } from '../src/narrator/streets.ts'
 import type { Premise } from '@gb/world'
@@ -31,36 +31,38 @@ class Fanned implements Narrator {
     this.#rng = new Rng(`fan/${width}`)
   }
 
-  writePremise(input: { theme: string; seed: string }): Promise<Premise> {
+  writePremise(input: { theme: string; seed: string }): Promise<Written<Premise>> {
     return this.#offline.writePremise(input)
   }
 
-  nameCity(input: Parameters<Narrator['nameCity']>[0]): Promise<string> {
+  nameCity(input: Parameters<Narrator['nameCity']>[0]): Promise<Written<string>> {
     return this.#offline.nameCity(input)
   }
 
-  namePlace(input: Parameters<Narrator['namePlace']>[0]): Promise<string> {
+  namePlace(input: Parameters<Narrator['namePlace']>[0]): Promise<Written<string>> {
     this.asked.places++
     return this.#offline.namePlace(input)
   }
 
-  describeNpc(input: Parameters<Narrator['describeNpc']>[0]): Promise<NpcProfile> {
+  describeNpc(input: Parameters<Narrator['describeNpc']>[0]): Promise<Written<NpcProfile>> {
     this.asked.npcs++
     return this.#offline.describeNpc(input)
   }
 
-  describeItem(input: Parameters<Narrator['describeItem']>[0]): Promise<{ name: string; description: string }> {
+  describeItem(input: Parameters<Narrator['describeItem']>[0]): Promise<Written<{ name: string; description: string }>> {
     this.asked.items++
     return this.#offline.describeItem(input)
   }
 
-  writeQuests(input: { summary: WorldSummary; sideQuests: number }): Promise<unknown[]> {
+  writeQuests(input: { summary: WorldSummary; sideQuests: number }): Promise<Written<readonly unknown[]>> {
     return this.#offline.writeQuests(input)
   }
 
-  async writeInstances(requests: readonly InstanceRequest[]): Promise<readonly Instance[]> {
+  async writeInstances(requests: readonly InstanceRequest[]): Promise<Written<readonly Instance[]>> {
     this.asked.instances++
-    const settled = await this.#offline.writeInstances(requests)
+    const answer = await this.#offline.writeInstances(requests)
+    if (!answer.ok) return answer
+    const settled = answer.value
     const landed: Instance[] = new Array(settled.length)
     for (let sent = 0; sent < settled.length; sent += this.#width) {
       const wave = settled.slice(sent, sent + this.#width).map((one, at) => ({ one, at: sent + at }))
@@ -71,7 +73,7 @@ class Fanned implements Narrator {
         }),
       )
     }
-    return landed
+    return ok(landed)
   }
 }
 
@@ -115,7 +117,11 @@ describe('a town written by a narrator answering many places at once', () => {
     const narrator = new Fanned('fanned', 5)
     const { world } = await town(narrator)
 
-    expect(narrator.asked).toEqual({ instances: 1, places: 0, npcs: 0, items: 0 })
+    // one call for every place that opens, and nobody asked a thing about a
+    // person or a thing on its own. The signs are the naming pass: this
+    // narrator offers no plural for them, so it is asked for the handful of
+    // doors that open and for none of the frontage
+    expect(narrator.asked).toEqual({ instances: 1, places: world.interiors().length, npcs: 0, items: 0 })
     // and the rest of the town still has its signs up, written here rather than asked for
     const shut = world.plots().filter((plot) => !world.interiors().some((interior) => interior.plotId === plot.id))
     expect(shut.length).toBeGreaterThan(world.interiors().length * 4)
@@ -140,12 +146,17 @@ describe('a town written by a narrator answering many places at once', () => {
     // somebody else's job
     const thin = new Fanned('fanned', 3)
     const inner = thin.writeInstances.bind(thin)
-    thin.writeInstances = async (requests) =>
-      (await inner(requests)).map((one) => ({
-        ...one,
-        people: [...one.people.slice(0, 1), { postId: 'anchor_nowhere', role: 'guard' as const, name: 'A Stranger', personality: 'Uninvited.', knowledge: [] }],
-        things: [],
-      }))
+    thin.writeInstances = async (requests) => {
+      const answer = await inner(requests)
+      if (!answer.ok) return answer
+      return ok(
+        answer.value.map((one) => ({
+          ...one,
+          people: [...one.people.slice(0, 1), { postId: 'anchor_nowhere', role: 'guard' as const, name: 'A Stranger', personality: 'Uninvited.', knowledge: [] }],
+          things: [],
+        })),
+      )
+    }
 
     const { world } = await town(thin)
     expect(world.check()).toEqual([])
@@ -176,7 +187,10 @@ describe('a town written by a narrator answering many places at once', () => {
     const said = (at: number) => `The ${at}th place, with the radio left on and a tab nobody has settled since spring.`
     const fanned = new Fanned('character', 3)
     const inner = fanned.writeInstances.bind(fanned)
-    fanned.writeInstances = async (requests) => (await inner(requests)).map((one, at) => (at === 0 ? one : { ...one, character: said(at) }))
+    fanned.writeInstances = async (requests) => {
+      const answer = await inner(requests)
+      return answer.ok ? ok(answer.value.map((one, at) => (at === 0 ? one : { ...one, character: said(at) }))) : answer
+    }
 
     const { world } = await town(fanned)
     const interiors = world.interiors()
@@ -212,7 +226,7 @@ describe('a town written by a narrator answering many places at once', () => {
 })
 
 describe('the signs over the doors', () => {
-  it('asks a narrator that hangs signs for every shut door at once, and keeps its answers in order', async () => {
+  it('asks a narrator that hangs signs for every door at once, and keeps its answers in order', async () => {
     const asked: PlaceRequest[][] = []
     const offline = new OfflineNarrator('hung')
     const narrator: Narrator = {
@@ -225,20 +239,22 @@ describe('the signs over the doors', () => {
       namePlaces: async (requests) => {
         asked.push([...requests])
         // one left blank, to prove the sign written here stays over that door
-        return requests.map((request, at) => (at === 1 ? '' : `Sign ${request.index} ${request.charter.label}`))
+        return ok(requests.map((request, at) => (at === 1 ? '' : `Sign ${request.index} ${request.charter.label}`)))
       },
     }
     const built = await new Forge(narrator).build({ ...BRIEF, seed: 'hung' })
     if (!built.ok) throw new Error('the town would not build')
     const { world } = built.value
-    const shut = world.plots().filter((plot) => !world.interiors().some((interior) => interior.plotId === plot.id))
+    const plots = world.plots()
+    // every door in the town, open or shut: a place is named in the naming pass
+    // and the whole street comes out of one call
     expect(asked.length).toBe(1)
-    expect(asked[0]!.map((request) => request.kind)).toEqual(shut.map((plot) => plot.kind))
-    expect(shut[0]!.name).toBe(`Sign ${asked[0]![0]!.index} ${world.charter(shut[0]!.kind)!.label}`)
-    expect(shut[1]!.name).not.toMatch(/^Sign /)
-    expect(shut.slice(2).every((plot, at) => plot.name === `Sign ${asked[0]![at + 2]!.index} ${world.charter(plot.kind)!.label}`)).toBe(true)
-    // and no open door was named that way
-    for (const interior of world.interiors()) expect(world.plot(interior.plotId)!.name).not.toMatch(/^Sign /)
+    expect(asked[0]!.map((request) => request.kind)).toEqual(plots.map((plot) => plot.kind))
+    expect(plots[0]!.name).toBe(`Sign ${asked[0]![0]!.index} ${world.charter(plots[0]!.kind)!.label}`)
+    expect(plots[1]!.name).not.toMatch(/^Sign /)
+    expect(plots.slice(2).every((plot, at) => plot.name === `Sign ${asked[0]![at + 2]!.index} ${world.charter(plot.kind)!.label}`)).toBe(true)
+    // and a place that opens took its name from that call too, not from whoever wrote the people in it
+    for (const interior of world.interiors()) expect(world.plot(interior.plotId)!.name).toMatch(/^Sign /)
   })
 
   it('tells every narrator the street a door is on, and a numbered address is on that street', async () => {
@@ -257,7 +273,7 @@ describe('the signs over the doors', () => {
       },
       namePlaces: async (requests) => {
         asked.push(...requests)
-        return []
+        return ok([])
       },
     }
     const built = await new Forge(narrator).build({ ...BRIEF, seed: 'kettle-row' })
@@ -266,7 +282,8 @@ describe('the signs over the doors', () => {
     const streets = StreetNames.of(world)
 
     // every door, open or shut, is on a named street, and the town's streets are all different
-    expect(asked.length).toBe(world.plots().length)
+    // (the naming pass asks about every door; the last pass asks again about the ones that open)
+    expect(asked.length).toBe(world.plots().length + world.interiors().length)
     for (const request of asked) expect(request.street, `plot ${request.index} is on no street`).toBeTruthy()
     expect(new Set(streets.all).size).toBe(streets.all.length)
     expect(new Set(asked.map((request) => request.street))).toEqual(new Set(streets.all))

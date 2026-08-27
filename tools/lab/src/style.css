@@ -265,6 +265,7 @@ button:disabled { border-color: var(--gb-off); color: var(--gb-off-ink); backgro
 .status.work { color: var(--gb-warn); }
 
 .hint { font-size: 11.5px; color: var(--gb-faint); }
+.hint.order { padding: 10px 16px 0; margin: 0; max-width: 120ch; }
 .hint code { color: var(--gb-dim); }
 
 ul.facts { margin: 0; padding-left: 18px; font-size: 12.5px; color: var(--gb-ink); }
@@ -280,4 +281,4 @@ ul.facts li > .at { color: var(--gb-faint); font-family: var(--gb-mono); font-si
   padding: 1px 6px;
 }
 
-.drift { border: 1px solid var(--gb-danger); color: var(--gb-danger); padding: 6px 9px; font-size: 12px; }
+.drift, .stopped { border: 1px solid var(--gb-danger); color: var(--gb-danger); padding: 6px 9px; font-size: 12px; }

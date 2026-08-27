@@ -1,23 +1,26 @@
 import type { DistrictRequest, History, Instance, InstanceRequest, ItemProfile, Narrator, NpcProfile } from '@gb/forge'
-import { OfflineNarrator, premiseLines } from '@gb/forge'
-import { Sidecar, type Job } from '@gb/sidecar'
+import { premiseLines } from '@gb/forge'
+import { err, ok, type Result } from '@gb/kit'
+import { Sidecar } from '@gb/sidecar'
 import type { Charter, ItemArchetype, NpcRole, Premise, Word } from '@gb/world'
-import { Asker, type ScribeProblem } from './asker.ts'
+import { Asker, type ScribeProblem, type Violation } from './asker.ts'
 import { BRIEF_FIELDS, BRIEF_LABELS, type BriefDraft, type BriefField, type BriefSoFar } from './brief.ts'
 import { charterLines } from './charter-lines.ts'
 import { CharterWriter } from './charters.ts'
 import { FamilyClaims } from './claim.ts'
 import { DistrictNamer } from './districts.ts'
+import { addressOf, type ScribeFailure } from './failure.ts'
 import { InstanceWriter } from './instance.ts'
 import { profileOf } from './person.ts'
 import { Pins } from './pins.ts'
 import { PremiseWriter, type PremiseInput } from './premise.ts'
-import { Progress, type ProgressPort } from './progress.ts'
+import { Progress, type ProgressPort, type ScribeStage } from './progress.ts'
 import { bullets, prompt } from './prompts.ts'
 import { QuestWriter, type QuestInput } from './quests.ts'
 import { NameRegistry } from './registry.ts'
-import { SignNamer, type PlaceRequest } from './signs.ts'
-import { DESCRIBE_ITEM, describeNpcTool, NAME_CITY, NAME_PLACE, WRITE_BRIEF } from './tools.ts'
+import { OneSign, SignNamer, type PlaceRequest } from './signs.ts'
+import { answered } from './stand-in.ts'
+import { DESCRIBE_ITEM, describeNpcTool, NAME_CITY, WRITE_BRIEF } from './tools.ts'
 import { Waves } from './waves.ts'
 
 /**
@@ -34,18 +37,31 @@ const QUEST_MS = 900_000
  */
 const TEMPERATURE = 0.9
 
-/** How many spare answers the offline narrator is asked for before a single-place call takes what it has. */
+/** How many spare answers a stand-in is asked for before a single call takes what it has. */
 const ATTEMPTS = 40
 
-/** The jobs this box writes for. Every call it makes goes through the asker for one of them. */
-type WritingJob = Extract<Job, 'history' | 'city' | 'places' | 'quests'>
+/** One person asked for on their own: their post, the place they stand in, and what such a place is here. */
+interface NpcRequest {
+  readonly role: NpcRole
+  readonly placeKind: Word
+  readonly place: Charter
+  readonly placeName: string
+  readonly theme: string
+  readonly index: number
+  readonly premise?: string
+}
 
 export interface ScribeOptions {
   readonly sidecar?: Sidecar
-  /** Used whenever the model cannot answer, so a world always generates. */
-  readonly fallback?: Narrator
+  /**
+   * Somewhere to get an answer the model would not give. Nothing in the game
+   * passes one: it is here for the tests and the quest harness, which need a
+   * city to exist without an engine behind it. Left out, a call the model will
+   * not make good comes back as a `ScribeFailure`.
+   */
+  readonly standIn?: Narrator
   readonly seed?: string
-  /** Tries per call before falling back. */
+  /** Tries per call before the call comes back as a failure. */
   readonly attempts?: number
   /** Calls in flight at once. Defaults to `GAME_BOX_SLOTS`, or four. */
   readonly concurrency?: number
@@ -60,12 +76,16 @@ export interface ScribeOptions {
 /**
  * The narrator backed by the local model. Every answer is a forced tool call
  * validated against the schema the tool was built from, so nothing reaches the
- * world as prose. When a call cannot be made good, the offline narrator answers
- * instead and the failure is recorded rather than hidden.
+ * world as prose.
+ *
+ * A call the model will not make good comes back as a `ScribeFailure` saying
+ * which stage stopped and what the engine said. There is nothing behind it: a
+ * city somebody asked a story of is written by the model, or the build stops
+ * and says so.
  */
 export class Scribe implements Narrator {
-  #askers: Record<WritingJob, Asker>
-  #fallback: Narrator
+  #askers: Record<ScribeStage, Asker>
+  #standIn: Narrator | undefined
   #registry = new NameRegistry()
   #waves: Waves
   #progress: Progress
@@ -73,7 +93,9 @@ export class Scribe implements Narrator {
   #seed: string
   #claims: FamilyClaims
   #problems: ScribeProblem[] = []
+  #dropped: ScribeFailure[] = []
   #characters = new Map<string, string>()
+  #oneSign: OneSign
 
   constructor(options: ScribeOptions = {}) {
     const sidecar = options.sidecar ?? new Sidecar()
@@ -85,17 +107,19 @@ export class Scribe implements Narrator {
     this.#pins = new Pins(this.#seed, options.temperature ?? TEMPERATURE)
     this.#claims = new FamilyClaims(this.#seed)
     const pins = this.#pins
-    const asker = (job: WritingJob, timeoutMs?: number): Asker =>
-      new Asker({ sidecar, pins, job, attempts, timeoutMs, signal: options.signal, record })
+    const where = addressOf(sidecar.base)
+    const asker = (stage: ScribeStage, timeoutMs?: number): Asker =>
+      new Asker({ sidecar, pins, stage, where, attempts, timeoutMs, signal: options.signal, record })
     this.#askers = {
       history: asker('history'),
       city: asker('city'),
       places: asker('places'),
       quests: asker('quests', QUEST_MS),
     }
-    this.#fallback = options.fallback ?? new OfflineNarrator(this.#seed)
+    this.#standIn = options.standIn
     this.#waves = new Waves(options.concurrency)
     this.#progress = new Progress(options.progress)
+    this.#oneSign = new OneSign({ asker: this.#askers.city, registry: this.#registry, standIn: this.#standIn })
   }
 
   problems(): readonly ScribeProblem[] {
@@ -103,20 +127,31 @@ export class Scribe implements Narrator {
   }
 
   /**
+   * Work the city went without: a side errand the model would not write in the
+   * end, dropped so the rest of the town still stands. Each one carries the
+   * same sentence a stopped stage does, for whoever reports what the city is
+   * short of. A stage that stopped is never in here: that came back as a
+   * failure instead.
+   */
+  dropped(): readonly ScribeFailure[] {
+    return this.#dropped
+  }
+
+  /**
    * The city's history, written before a street is laid. Everything the forge
    * does afterwards is built out of it, so an answer the town cannot be built
-   * from is never handed on: the model is told what was wrong, and a town whose
-   * history the model will not write gets the one the seed composes. The
-   * owner's brief goes to this call verbatim, with the tone, the main errand
-   * and the look they asked for. A kind of place the history invents is asked
-   * for next, one charter per word, and rides back on the history.
+   * from is never handed on: the model is told what was wrong, and a history it
+   * will not write stops the build. The owner's brief goes to this call
+   * verbatim, with the tone, the main errand and the look they asked for. A
+   * kind of place the history invents is asked for next, one charter per word,
+   * and rides back on the history.
    */
-  async writePremise(input: PremiseInput): Promise<History> {
+  async writePremise(input: PremiseInput): Promise<Result<History, ScribeFailure>> {
     this.#reseed(input.seed)
     this.#progress.open('history', 1, 'writing the history')
     const charters = new CharterWriter({ asker: this.#askers.history, waves: this.#waves, progress: this.#progress })
-    const history = await new PremiseWriter({ asker: this.#askers.history, fallback: this.#fallback, charters }).write(input)
-    this.#progress.finished(history.livesOn)
+    const history = await new PremiseWriter({ asker: this.#askers.history, charters, standIn: this.#standIn }).write(input)
+    if (history.ok) this.#progress.finished(history.value.livesOn)
     return history
   }
 
@@ -126,9 +161,9 @@ export class Scribe implements Narrator {
    * five fields and nothing else, and the ones that were not asked for come
    * back as they went in.
    *
-   * There is no fallback. A composed brief would be a canned one, and a canned
-   * brief handed over as the model's answer is the thing this is here to
-   * replace, so a model that will not answer says nothing and the form says so.
+   * A model that will not answer says nothing and the form says so. A composed
+   * brief would be a canned one, and a canned brief handed over as the model's
+   * answer is the thing this is here to replace.
    */
   async writeBrief(input: { want: readonly BriefField[]; have?: BriefSoFar; seed: string }): Promise<BriefDraft | undefined> {
     const want = BRIEF_FIELDS.filter((field) => input.want.includes(field))
@@ -144,17 +179,18 @@ export class Scribe implements Narrator {
         wanted: want.map((field) => BRIEF_LABELS[field]).join(', '),
         sofar: written.length ? prompt('brief-so-far', { fields: written.join('\n') }) : prompt('brief-blank'),
       }),
-      'brief',
+      { at: 'brief', what: 'the brief' },
     )
-    if (!answer) return undefined
+    if (!answer.ok) return undefined
     // only what was asked for is taken: the model is told to give the rest back
     // word for word and mostly does, but "mostly" would quietly rewrite a field
     // somebody had typed themselves
-    return { ...answer, ...Object.fromEntries(BRIEF_FIELDS.filter((field) => !want.includes(field)).map((field) => [field, have[field] ?? answer[field]])) }
+    const draft = answer.value
+    return { ...draft, ...Object.fromEntries(BRIEF_FIELDS.filter((field) => !want.includes(field)).map((field) => [field, have[field] ?? draft[field]])) }
   }
 
   /** Named after what the town lives on, which is why the history goes out with the question. */
-  async nameCity(input: { theme: string; seed: string; premise?: Premise }): Promise<string> {
+  async nameCity(input: { theme: string; seed: string; premise?: Premise }): Promise<Result<string, ScribeFailure>> {
     this.#reseed(input.seed)
     this.#progress.open('city', 1, 'naming the city')
     const answer = await this.#askers.city.ask(
@@ -163,33 +199,16 @@ export class Scribe implements Narrator {
         theme: input.theme,
         premise: input.premise ? premiseLines(input.premise) : prompt('no-history'),
       }),
-      'city-name',
+      { at: 'city-name', what: "the city's name" },
     )
-    const name = answer?.name ?? (await this.#fallback.nameCity(input))
-    this.#registry.nameCity(name)
-    this.#progress.finished(name)
-    return name
+    if (answer.ok) return ok(this.#named(answer.value.name))
+    const spare = answered(await this.#standIn?.nameCity(input))
+    return spare === undefined ? err(answer.error) : ok(this.#named(spare))
   }
 
-  /** One sign on its own. A head word already over a door goes to the offline composer instead. */
-  async namePlace(input: { kind: Word; charter: Charter; theme: string; index: number; premise?: string }): Promise<string> {
-    const answer = await this.#askers.city.ask(
-      NAME_PLACE,
-      prompt('name-place', {
-        theme: input.theme,
-        label: input.charter.label,
-        charter: charterLines(input.charter),
-        premise: input.premise ?? prompt('no-history'),
-        ...this.#city(),
-      }),
-      `sign:${input.index}`,
-    )
-    let name = answer?.name ?? (await this.#fallback.namePlace(input))
-    for (let attempt = 1; attempt <= ATTEMPTS && this.#registry.signTaken(name); attempt++) {
-      name = await this.#fallback.namePlace({ ...input, index: input.index * ATTEMPTS + attempt })
-    }
-    this.#registry.hang(name)
-    return name
+  /** One sign on its own. A word already over a door is quoted back and drawn again. */
+  async namePlace(input: PlaceRequest): Promise<Result<string, ScribeFailure>> {
+    return this.#oneSign.write(input)
   }
 
   /**
@@ -197,13 +216,13 @@ export class Scribe implements Narrator {
    * town's history in front of the model and each building's trade and street.
    * Back in the order they were asked for, no word heading two of them.
    */
-  async namePlaces(requests: readonly PlaceRequest[]): Promise<string[]> {
+  async namePlaces(requests: readonly PlaceRequest[]): Promise<Result<string[], ScribeFailure>> {
     return new SignNamer({
       asker: this.#askers.city,
       waves: this.#waves,
-      fallback: this.#fallback,
       registry: this.#registry,
       progress: this.#progress,
+      standIn: this.#standIn,
     }).write(requests)
   }
 
@@ -213,12 +232,12 @@ export class Scribe implements Narrator {
    * which way it lies. Back in the order they were asked for, no two of them
    * called the same thing.
    */
-  async nameDistricts(requests: readonly DistrictRequest[]): Promise<string[]> {
+  async nameDistricts(requests: readonly DistrictRequest[]): Promise<Result<string[], ScribeFailure>> {
     return new DistrictNamer({
       asker: this.#askers.city,
-      fallback: this.#fallback,
       registry: this.#registry,
       progress: this.#progress,
+      standIn: this.#standIn,
     }).write(requests)
   }
 
@@ -231,32 +250,26 @@ export class Scribe implements Narrator {
    * like people who work together rather than three strangers who were
    * described one at a time.
    */
-  async writeInstances(requests: readonly InstanceRequest[]): Promise<Instance[]> {
+  async writeInstances(requests: readonly InstanceRequest[]): Promise<Result<Instance[], ScribeFailure>> {
     const written = await new InstanceWriter({
       asker: this.#askers.places,
       waves: this.#waves,
-      fallback: this.#fallback,
       registry: this.#registry,
       progress: this.#progress,
       claims: this.#claims,
+      standIn: this.#standIn,
     }).write(requests)
-    for (const instance of written) {
+    if (!written.ok) return written
+    for (const instance of written.value) {
       if (instance.character) this.#characters.set(instance.name, instance.character)
     }
     return written
   }
 
   /** One person on their own, with their life and their codex, the family name held to their index's letters. */
-  async describeNpc(input: {
-    role: NpcRole
-    placeKind: Word
-    place: Charter
-    placeName: string
-    theme: string
-    index: number
-    premise?: string
-  }): Promise<NpcProfile> {
+  async describeNpc(input: NpcRequest): Promise<Result<NpcProfile, ScribeFailure>> {
     const letters = this.#claims.for(input.index)
+    const call = { at: `person:${input.index}`, what: `the ${input.role} at ${input.placeName}` }
     const answer = await this.#askers.places.ask(
       describeNpcTool(letters),
       prompt('describe-npc', {
@@ -269,43 +282,69 @@ export class Scribe implements Narrator {
         letters: letters.split('').join(', '),
         ...this.#city(),
       }),
-      `person:${input.index}`,
+      call,
+      (value) => this.#spent(`${value.given} ${value.family}`),
     )
-    let person = answer ? profileOf(answer) : await this.#fallback.describeNpc(input)
-    for (let attempt = 1; attempt <= ATTEMPTS && this.#registry.taken(person.name); attempt++) {
-      person = await this.#fallback.describeNpc({ ...input, index: input.index * ATTEMPTS + attempt })
-    }
-    this.#registry.add(person.name)
-    return person
+    if (answer.ok) return ok(this.#spend(profileOf(answer.value)))
+    const spare = await this.#spareNpc(input)
+    return spare === undefined ? err(answer.error) : ok(this.#spend(spare))
   }
 
-  async describeItem(input: { archetype: ItemArchetype; theme: string; index: number }): Promise<ItemProfile> {
+  async describeItem(input: { archetype: ItemArchetype; theme: string; index: number }): Promise<Result<ItemProfile, ScribeFailure>> {
     const answer = await this.#askers.places.ask(
       DESCRIBE_ITEM,
       prompt('describe-item', { ...input, ...this.#city() }),
-      `thing:${input.index}`,
+      { at: `thing:${input.index}`, what: `the ${input.archetype}` },
     )
-    const thing = answer ?? (await this.#fallback.describeItem(input))
-    this.#registry.add(thing.name)
-    return thing
+    if (answer.ok) return ok(this.#spend(answer.value))
+    const spare = answered(await this.#standIn?.describeItem(input))
+    return spare === undefined ? err(answer.error) : ok(this.#spend(spare))
   }
 
   /**
    * One call per quest, run in waves. Every draft is checked against the city
-   * before it is handed back, and a slot the model cannot fill is filled by the
-   * offline narrator, so a build never reports a city with no quests in it.
+   * before it is handed back, and a slot the model cannot fill stops the stage.
    * What the owner asked of the main errand, the side work and the tone goes
    * out with each call.
    */
-  async writeQuests(input: QuestInput): Promise<unknown[]> {
+  async writeQuests(input: QuestInput): Promise<Result<unknown[], ScribeFailure>> {
     return new QuestWriter({
       asker: this.#askers.quests,
       waves: this.#waves,
-      fallback: this.#fallback,
       progress: this.#progress,
       seed: this.#seed,
       characters: this.#characters,
+      dropped: (failure) => void this.#dropped.push(failure),
+      standIn: this.#standIn,
     }).write(input)
+  }
+
+  /** A person from the stand-in a caller handed in, asked again until their name is free. Nothing in the game passes one. */
+  async #spareNpc(input: NpcRequest): Promise<NpcProfile | undefined> {
+    if (!this.#standIn) return undefined
+    let person = answered(await this.#standIn.describeNpc(input))
+    for (let attempt = 1; attempt <= ATTEMPTS && person !== undefined && this.#registry.taken(person.name); attempt++) {
+      person = answered(await this.#standIn.describeNpc({ ...input, index: input.index * ATTEMPTS + attempt }))
+    }
+    return person
+  }
+
+  /** The city's name, spent and published. */
+  #named(name: string): string {
+    this.#registry.nameCity(name)
+    this.#progress.finished(name)
+    return name
+  }
+
+  /** A name this city has now given out, so no later call writes it again. */
+  #spend<T extends { readonly name: string }>(written: T): T {
+    this.#registry.add(written.name)
+    return written
+  }
+
+  /** A name this city has already given somebody else, quoted back so the next draw is a different person. */
+  #spent(name: string): Violation[] {
+    return this.#registry.taken(name) ? [{ path: 'family', message: `${name} is already somebody else in this city` }] : []
   }
 
   /** The build's own seed, from the first call that names it: every later pin and claim is drawn off it. */

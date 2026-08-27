@@ -21,7 +21,7 @@ const HAGGLE = 0.15
  * whether anybody is home. Nobody is recorded as its owner until the deed is
  * bought (`assemble.ts`).
  */
-export function putUpForSale(planned: readonly PlannedSite[], counts: { items: number }, rng: Rng): PlannedSite[] {
+export function putUpForSale(planned: readonly PlannedSite[], counts: { items: number }, mint: () => string, rng: Rng): PlannedSite[] {
   const homes = planned.filter((one) => one.inside && one.charter.residential && one.charter.access === 'open')
   const sellers = planned.filter((one) => one.inside && !homes.includes(one) && counterOf(one.inside) !== undefined)
   const desks = sellers.filter((one) => one.charter.holding.includes('papers'))
@@ -34,9 +34,20 @@ export function putUpForSale(planned: readonly PlannedSite[], counts: { items: n
     const seller = (desks.length ? desks : sellers)[at % (desks.length || sellers.length)]!
     const price = priceOf(home, rng)
     sold.set(home, { ...home.inside!, forSale: price })
+    const counter = counterOf(seller.inside!)!
+    const behindIt = seller.inside!.posts.find((post) => post.anchor.id === counter)?.npcId
     deeds.set(seller, [
       ...(deeds.get(seller) ?? []),
-      { thingId: `${seller.inside!.interiorId}/deed/${at}`, archetype: 'deed', anchorId: counterOf(seller.inside!)!, index: counts.items++, value: price, deedTo: home.inside!.interiorId },
+      {
+        thingId: `${seller.inside!.interiorId}/deed/${at}`,
+        itemId: mint(),
+        archetype: 'deed',
+        anchorId: counter,
+        index: counts.items++,
+        value: price,
+        ...(behindIt ? { ownerNpcId: behindIt } : {}),
+        deedTo: home.inside!.interiorId,
+      },
     ])
   }
   return planned.map((one) => {

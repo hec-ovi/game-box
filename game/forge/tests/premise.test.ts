@@ -1,8 +1,8 @@
-import { Rng } from '@gb/kit'
+import { ok, Rng } from '@gb/kit'
 import { World, type Premise } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { Forge, OfflineNarrator, premiseLines } from '../src/index.ts'
-import type { Instance, InstanceRequest, Narrator } from '../src/narrator.ts'
+import type { Instance, InstanceRequest, Narrator, Written } from '../src/narrator.ts'
 import { FLAVOURS } from '../src/theme/flavour.ts'
 import { tradesFor, turnsFor } from '../src/premise/wording.ts'
 import { composePremise } from '../src/premise/write.ts'
@@ -50,8 +50,8 @@ class Told implements Narrator {
     this.#premise = premise
   }
 
-  async writePremise(): Promise<Premise> {
-    return this.#premise as Premise
+  async writePremise(): Promise<Written<Premise>> {
+    return ok(this.#premise as Premise)
   }
 
   nameCity = (input: Parameters<Narrator['nameCity']>[0]) => this.#offline.nameCity(input)
@@ -60,7 +60,7 @@ class Told implements Narrator {
   describeItem = (input: Parameters<Narrator['describeItem']>[0]) => this.#offline.describeItem(input)
   writeQuests = (input: Parameters<Narrator['writeQuests']>[0]) => this.#offline.writeQuests(input)
 
-  async writeInstances(requests: readonly InstanceRequest[]): Promise<readonly Instance[]> {
+  async writeInstances(requests: readonly InstanceRequest[]): Promise<Written<readonly Instance[]>> {
     this.seen.push(...requests)
     return this.#offline.writeInstances(requests)
   }
@@ -75,7 +75,7 @@ class Storyless implements Narrator {
   describeNpc = (input: Parameters<Narrator['describeNpc']>[0]) => this.#offline.describeNpc(input)
   describeItem = (input: Parameters<Narrator['describeItem']>[0]) => this.#offline.describeItem(input)
   writeQuests = (input: Parameters<Narrator['writeQuests']>[0]) => this.#offline.writeQuests(input)
-  async writeInstances(requests: readonly InstanceRequest[]): Promise<readonly Instance[]> {
+  async writeInstances(requests: readonly InstanceRequest[]): Promise<Written<readonly Instance[]>> {
     this.seen.push(...requests)
     return this.#offline.writeInstances(requests)
   }

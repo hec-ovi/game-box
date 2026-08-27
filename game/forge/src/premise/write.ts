@@ -10,7 +10,7 @@ import { tradesFor, turnsFor, type Kinds } from './wording.ts'
 const FACTS = 2
 
 /** A history, and the noun a town that lives on this can be named after. */
-export interface Written {
+export interface Composed {
   readonly history: History
   readonly word: string
 }
@@ -25,7 +25,7 @@ export interface Written {
  * one decision rather than two. The wording is in `premise/*.md`; this only
  * picks and joins.
  */
-export function composePremise(theme: string, rng: Rng): Written {
+export function composePremise(theme: string, rng: Rng): Composed {
   const flavour = flavourOf(theme)
   const trade = rng.pick(tradesFor(flavour))
   const turn = rng.pick(turnsFor(flavour))

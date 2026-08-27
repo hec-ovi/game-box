@@ -4,6 +4,7 @@ import { Scribe, type PlaceRequest, type ScribeProgress } from '../src/index.ts'
 import { fakeModel, type Sent } from './fake-model.ts'
 import { backgroundOf, lifeOf, shellOf } from './people.ts'
 import { JAIL, PLAIN, charterOf } from './places.ts'
+import { wrote } from './wrote.ts'
 
 const CITY: WorldSummary = {
   cityName: 'Cold Harbour',
@@ -22,6 +23,8 @@ const CITY: WorldSummary = {
 const PLACES: InstanceRequest[] = ['bar', 'shop'].map((kind, i) => ({
   index: i,
   kind,
+  name: `Place ${i}`,
+  cast: [],
   charter: charterOf(kind),
   theme: 'port',
   rooms: ['main'],
@@ -91,11 +94,11 @@ function model(call: Sent) {
 async function build(progress?: (step: ScribeProgress) => void) {
   const { sent, sidecar } = fakeModel(model)
   const scribe = new Scribe({ sidecar, seed: 'harbour', concurrency: 2, ...(progress ? { progress } : {}) })
-  await scribe.writePremise({ theme: 'port', seed: 'harbour' })
-  await scribe.nameCity({ theme: 'port', seed: 'harbour' })
-  await scribe.namePlaces(FRONTAGE)
-  await scribe.writeInstances(PLACES)
-  await scribe.writeQuests({ summary: CITY, sideQuests: 0 })
+  await wrote(scribe.writePremise({ theme: 'port', seed: 'harbour' }))
+  await wrote(scribe.nameCity({ theme: 'port', seed: 'harbour' }))
+  await wrote(scribe.namePlaces(FRONTAGE))
+  await wrote(scribe.writeInstances(PLACES))
+  await wrote(scribe.writeQuests({ summary: CITY, sideQuests: 0 }))
   return sent.map((call) => call.user)
 }
 

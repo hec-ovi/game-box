@@ -2,11 +2,10 @@
 import { readFile } from 'node:fs/promises'
 import { Bundle } from '@gb/bundle'
 import { Catalogue, PACK_MANIFEST, designFor, heightOf } from '@gb/prefab'
-import { Sidecar } from '@gb/sidecar'
 import type { AssetPackRef, Plot, World } from '@gb/world'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { DEFAULTS } from '../src/boot/brief.ts'
-import { CityMaker } from '../src/boot/city-maker.ts'
+import { fixtureMaker } from './support/fixture-city.ts'
 
 const QUIET = { signal: new AbortController().signal, step: () => {} }
 const BRIEF = { ...DEFAULTS, blocks: 2, seed: 'pack' }
@@ -41,7 +40,7 @@ let city: { world: World; requires: readonly AssetPackRef[]; asBuilt: boolean }
 // one city, made the way the panel makes one and opened the way the game opens it
 beforeAll(async () => {
   pack = await Catalogue.read(await readFile(PACK_MANIFEST))
-  const made = await new CityMaker(new Sidecar()).build(BRIEF, { ...QUIET, catalogue: pack })
+  const made = await fixtureMaker().build(BRIEF, { ...QUIET, catalogue: pack })
   if (!made.ok) throw new Error(made.message)
   const opened = await Bundle.open(JSON.parse(JSON.stringify(made.value.document)), [pack.identity])
   if (!opened.ok) throw new Error(`the city the panel made will not open: ${opened.error.code}`)
@@ -87,7 +86,7 @@ describe('a city made in the browser', () => {
 it('pins nothing at all when the art would not load', async () => {
   // half a truth is the worst outcome here: a city naming a catalogue with no
   // plot pinned to it reads as pinned and is not
-  const made = await new CityMaker(new Sidecar()).build({ ...BRIEF, blocks: 1 }, QUIET)
+  const made = await fixtureMaker().build({ ...BRIEF, blocks: 1 }, QUIET)
   if (!made.ok) throw new Error(made.message)
 
   const opened = await Bundle.open(JSON.parse(JSON.stringify(made.value.document)))

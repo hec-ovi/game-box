@@ -50,10 +50,13 @@ export function rewardFor(difficulty: Difficulty, faction: string = DEFAULT_FACT
 }
 
 /**
- * Checks the pay against the band for the quest's difficulty. Every `pay` on a
- * step counts towards the same ceiling, so a quest cannot slip a fortune past
- * the table by handing it over mid-flow. Each complaint names the field to fix,
- * which is what a generator needs to write the quest again.
+ * Money is settled, not refused. A quest that pays 150 where its tier pays 600
+ * is a number in the wrong place, not a broken quest, and throwing the whole
+ * thing away over it costs the player a job they could have played. `settle`
+ * moves the amounts into the band; what is left here is what changing the
+ * number cannot fix: a car, a home or a fistful of items a small errand does
+ * not hand over. Each complaint names the field to fix, which is what a
+ * generator needs to write the quest again.
  */
 export function checkReward(quest: QuestDoc): SchemaViolation[] {
   const difficulty = difficultyOf(quest)
@@ -62,22 +65,8 @@ export function checkReward(quest: QuestDoc): SchemaViolation[] {
   const violations: SchemaViolation[] = []
   const fail = (path: string, message: string) => void violations.push({ path, message })
 
-  const paid = sum(quest, 'pay') + quest.reward.money
-  if (paid > band.money.max) fail('reward.money', `${tier} pays at most ${band.money.max}, this hands over ${paid}`)
-  if (quest.reward.money < band.money.min) {
-    fail('reward.money', `${tier} pays at least ${band.money.min}, this rewards ${quest.reward.money}`)
-  }
-
   const charged = sum(quest, 'charge')
   if (charged > band.money.max) fail('steps.effects.charge', `${tier} may cost at most ${band.money.max}, this charges ${charged}`)
-
-  const swing = Math.max(
-    Math.abs(quest.reward.reputation),
-    ...quest.steps.flatMap((step) => step.effects.filter((e) => e.kind === 'reputation').map((e) => Math.abs(e.delta))),
-  )
-  if (swing > band.reputation) {
-    fail('reward.reputation', `${tier} moves reputation by at most ${band.reputation}, this moves it by ${swing}`)
-  }
   if (quest.reward.items.length > band.items) {
     fail('reward.items', `${tier} rewards at most ${band.items} item(s), this rewards ${quest.reward.items.length}`)
   }
@@ -86,6 +75,22 @@ export function checkReward(quest: QuestDoc): SchemaViolation[] {
   if (quest.reward.car && !band.car) fail('reward.car', `${tier} does not hand over a car`)
   if (quest.reward.deed && !band.deed) fail('reward.deed', `${tier} does not hand over a home`)
   return violations
+}
+
+/**
+ * The same quest with its money and its standing inside the band its tier
+ * allows: too little is raised to the floor, too much is cut to the ceiling,
+ * with whatever the steps hand over along the way counted against the same
+ * ceiling. Nothing else is touched, and a quest that already fits comes back
+ * as it went in.
+ */
+export function settle(quest: QuestDoc): QuestDoc {
+  const band = REWARD_TABLE[difficultyOf(quest)]
+  const room = Math.max(0, band.money.max - sum(quest, 'pay'))
+  const money = Math.min(Math.max(quest.reward.money, Math.min(band.money.min, room)), room)
+  const reputation = Math.sign(quest.reward.reputation) * Math.min(Math.abs(quest.reward.reputation), band.reputation)
+  if (money === quest.reward.money && reputation === quest.reward.reputation) return quest
+  return { ...quest, reward: { ...quest.reward, money, reputation } }
 }
 
 function sum(quest: QuestDoc, kind: 'pay' | 'charge'): number {

@@ -7,7 +7,7 @@ import { Sidecar } from '@gb/sidecar'
 import * as THREE from 'three'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { DEFAULTS } from '../src/boot/brief.ts'
-import { CityMaker } from '../src/boot/city-maker.ts'
+import { fixtureMaker } from './support/fixture-city.ts'
 import { Game } from '../src/game.ts'
 import type { SaveStore } from '../src/session.ts'
 import type { Vec2 } from '../src/walk.ts'
@@ -70,7 +70,7 @@ async function twoStations(): Promise<OpenedBundle> {
 /** The city the panel makes, sealed. Reopened per game, so no two share a world. */
 let sealed: unknown
 beforeAll(async () => {
-  const made = await new CityMaker(new Sidecar()).build(
+  const made = await fixtureMaker().build(
     { ...DEFAULTS, blocks: 2, seed: 'starting' },
     { signal: new AbortController().signal, step: () => {} },
   )
@@ -417,7 +417,7 @@ describe('what the interface is handed', () => {
     running = []
     document.body.innerHTML = ''
 
-    const other = await new CityMaker(new Sidecar()).build(
+    const other = await fixtureMaker().build(
       { ...DEFAULTS, blocks: 1, seed: 'rewritten' },
       { signal: new AbortController().signal, step: () => {} },
     )

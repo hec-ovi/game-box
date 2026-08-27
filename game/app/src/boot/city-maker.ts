@@ -1,12 +1,13 @@
 import { Bundle, type OpenedBundle } from '@gb/bundle'
-import { Forge, OfflineNarrator, type ForgeResult } from '@gb/forge'
+import { Forge, OfflineNarrator, type ForgeResult, type Narrator } from '@gb/forge'
 import type { Notice } from '@gb/hud'
 import type { Catalogue } from '@gb/prefab'
-import { Scribe, type ScribeProgress } from '@gb/scribe'
+import { Scribe, type ScribeProblem, type ScribeProgress } from '@gb/scribe'
 import type { Sidecar } from '@gb/sidecar'
 import type { World } from '@gb/world'
 import type { CityBrief } from './brief.ts'
 import { pin } from './pinning.ts'
+import { thrown } from './thrown.ts'
 
 /**
  * A city, the sealed document it came in (which is what Export writes out), and
@@ -19,6 +20,15 @@ export interface City {
 }
 
 export type Made = { ok: true; value: City } | { ok: false; message: string }
+
+/** What `@gb/forge` hands back from a build, so a throw can be told from a refusal. */
+type Built = Awaited<ReturnType<Forge['build']>>
+
+/** Who writes a city, and which of their calls did not come back. */
+export interface Writer {
+  readonly narrator: Narrator
+  problems(): readonly ScribeProblem[]
+}
 
 /** The architecture a brief lays out, or why the generator would not lay it out. */
 export type Plan = { ok: true; value: World } | { ok: false; message: string }
@@ -43,24 +53,27 @@ export class CityMaker {
   }
 
   /**
-   * A city written from the brief, sealed and reopened exactly as a file would
-   * be. With the model on, `progress` hears every stage of the writing.
+   * A city written from the brief by the model, sealed and reopened exactly as
+   * a file would be. `progress` hears every stage of the writing.
+   *
+   * The model is what writes a city: its history, its names, the people in it
+   * and the work they hand out. A call that cannot be made good stops the
+   * build, and what the writer said went wrong is what the player is told.
    */
   async build(
     brief: CityBrief,
     options: { signal: AbortSignal; step: Progress; catalogue?: Catalogue; progress?: (event: ScribeProgress) => void },
   ): Promise<Made> {
-    const scribe = brief.model
-      ? new Scribe({
-          sidecar: this.#sidecar,
-          seed: brief.seed,
-          signal: options.signal,
-          ...(options.progress ? { progress: options.progress } : {}),
-        })
-      : undefined
+    const writer = this.writer(brief, options)
 
-    await options.step(brief.model ? 'Asking the model to write the city' : 'Laying out the city')
-    const built = await new Forge(scribe ?? new OfflineNarrator(brief.seed)).build(asked(brief))
+    await options.step('Asking the model to write the city')
+    let built: Built
+    try {
+      built = await new Forge(writer.narrator).build(asked(brief))
+    } catch (cause) {
+      if (options.signal.aborted) return { ok: false, message: 'Stopped.' }
+      return { ok: false, message: `The model would not write this city: ${thrown(cause)}` }
+    }
     if (options.signal.aborted) return { ok: false, message: 'Stopped.' }
     if (!built.ok) return { ok: false, message: refused(built.error) }
 
@@ -74,14 +87,28 @@ export class CityMaker {
       generator: 'browser',
       requires: pinned.requires,
     })
-    return this.#open(document, [...leftOut(built.value), ...(scribe ? failed(scribe) : [])])
+    return this.#open(document, [...leftOut(built.value), ...failed(writer)])
+  }
+
+  /**
+   * Who writes the city: the model, through `@gb/scribe`. Every word of a town,
+   * its history, its names, its people and its work, comes from here.
+   */
+  protected writer(brief: CityBrief, options: { signal: AbortSignal; progress?: (event: ScribeProgress) => void }): Writer {
+    const scribe = new Scribe({
+      sidecar: this.#sidecar,
+      seed: brief.seed,
+      signal: options.signal,
+      ...(options.progress ? { progress: options.progress } : {}),
+    })
+    return { narrator: scribe, problems: () => scribe.problems() }
   }
 
   /**
    * The architecture the brief lays out, with nothing written into it: the
    * grid, the roads, the named parts of town, every building and where the
-   * trains board. No door opens, so nobody is asked anything and no model is
-   * involved, which is why this runs on a press rather than behind a loader.
+   * trains board. No door opens and nothing is written, so `@gb/forge` asks
+   * its narrator nothing and this runs on a press rather than behind a loader.
    */
   async plan(brief: CityBrief): Promise<Plan> {
     const laid = await new Forge(new OfflineNarrator(brief.seed)).plan(asked(brief))
@@ -136,7 +163,7 @@ export class CityMaker {
 }
 
 /** The form's brief as the generator takes it. Blank is absent, never an empty field. */
-function asked(brief: CityBrief) {
+export function asked(brief: CityBrief) {
   return {
     theme: brief.theme,
     seed: brief.seed,
@@ -158,20 +185,19 @@ function leftOut(built: ForgeResult): Notice[] {
 }
 
 /**
- * What the model did not answer, as one line rather than one per call. A call
- * the sidecar gave up waiting on is a busy model, said as the wait it was; the
- * calls that came back wrong or not at all are a fault. Either way the offline
- * writer covered them.
+ * What the model did not answer on a build that finished anyway, as one line
+ * rather than one per call. A call the sidecar gave up waiting on is a busy
+ * model, said as the wait it was; the calls that came back wrong are a fault.
  */
-function failed(scribe: Scribe): Notice[] {
-  const problems = scribe.problems()
+function failed(writer: Writer): Notice[] {
+  const problems = writer.problems()
   const busy = problems.filter((problem) => problem.error.code === 'busy').length
   const broken = problems.filter((problem) => problem.error.code !== 'busy')
   const notes: Notice[] = []
-  if (busy > 0) notes.push({ kind: 'note', text: `The model was busy for ${busy} of its calls; the offline writer filled them in` })
+  if (busy > 0) notes.push({ kind: 'note', text: `The model was busy for ${busy} of its calls` })
   if (broken.length > 0) {
     const codes = [...new Set(broken.map((problem) => problem.error.code))].join(', ')
-    notes.push({ kind: 'error', text: `The model failed ${broken.length} of its calls (${codes}); the offline writer filled them in` })
+    notes.push({ kind: 'error', text: `The model failed ${broken.length} of its calls (${codes})` })
   }
   return notes
 }
@@ -190,6 +216,10 @@ function refused(error: { code: string }): string {
   const detail = problems(error)
   if (error.code === 'invalid-brief') return `That is not a city the generator will build${detail}.`
   if (error.code === 'unsound-world') return `The generator built a city that does not hold together${detail}.`
+  // a build the writing stopped says why for itself, and that sentence is the
+  // only part of it the player can act on
+  const said = (error as { message?: unknown }).message
+  if (typeof said === 'string' && said.trim()) return `The model would not write this city: ${said.trim()}`
   return `The city could not be built (${error.code})${detail}.`
 }
 

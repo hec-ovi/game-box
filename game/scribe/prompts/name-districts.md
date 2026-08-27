@@ -31,6 +31,9 @@ like this town and nowhere else. A name may carry the side of town it is on
 where that reads naturally, and a part in the middle of town is named after
 something else.
 
+Every part of the name is an everyday word or an ordinary family name: nothing
+invented and nothing spelled to look unusual.
+
 Never the words district, quarter, zone or sector with a number after them, and
 never a name that is only a compass point.
 

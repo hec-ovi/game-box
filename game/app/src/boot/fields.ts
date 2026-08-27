@@ -32,8 +32,6 @@ export class Fields {
   #text: Texts
   #style: Styles
   #numbers: Record<NumberName, HTMLInputElement>
-  #model: HTMLInputElement
-  #modelState: HTMLElement
   #changed: () => void = () => {}
 
   constructor(find: <T extends HTMLElement>(name: string) => T, root: HTMLElement) {
@@ -44,11 +42,7 @@ export class Fields {
       NumberName,
       HTMLInputElement
     >
-    this.#model = find('model')
-    this.#modelState = find('model-state')
-
     for (const axis of Object.keys(STYLE) as StyleAxis[]) this.#offer(axis)
-    this.#model.addEventListener('change', () => this.#sayModel())
     find<HTMLButtonElement>('roll').addEventListener('click', () => {
       this.#text.seed.value = freshSeed()
       this.#text.seed.focus()
@@ -83,7 +77,6 @@ export class Fields {
       blocks: Number(this.#numbers.blocks.value),
       ...this.#typed('places'),
       ...this.#typed('storeys'),
-      model: this.#model.checked,
       brief: this.#text.brief.value,
       asks: {
         mainQuest: this.#text.main.value,
@@ -105,8 +98,6 @@ export class Fields {
     this.#numbers.blocks.value = String(brief.blocks)
     this.#numbers.places.value = brief.places !== undefined ? String(brief.places) : ''
     this.#numbers.storeys.value = brief.storeys !== undefined ? String(brief.storeys) : ''
-    this.#model.checked = brief.model
-    this.#sayModel()
     this.sync()
     this.#changed()
   }
@@ -197,10 +188,5 @@ export class Fields {
       // blank: blank is the generator choosing, and it has to stay that way
       this.#numbers[name].addEventListener('input', () => this.sync())
     }
-  }
-
-  /** The toggle says which of its two states it is in, in words, the moment it is flipped. */
-  #sayModel(): void {
-    this.#modelState.textContent = this.#model.checked ? 'On' : 'Off'
   }
 }

@@ -16,7 +16,8 @@ import { buildTown } from './support.ts'
  * and its stock, so the quest writer downstream can build a line on it. A lock
  * with its key in somebody's pocket, a screen with a program and a code, a
  * camera over the door, a home for sale with its deed on a counter, somewhere
- * to board.
+ * to board. And the cast: who the town's work already needs standing in it by
+ * the time anybody is written.
  */
 
 /** The offline narrator, keeping every place it was asked to write. */
@@ -358,3 +359,52 @@ describe('the harness at a locked door', () => {
     expect(log2.start(quest.id).ok).toBe(false)
   })
 })
+
+describe('the cast a place is written to', () => {
+  it('hands the writer of a place the people the work needs in it, at the posts the work points at', () => {
+    const world = wide.value.world
+    const atPost = new Map(world.npcs().flatMap((npc) => (npc.station ? [[npc.station.anchorId, npc] as const] : [])))
+    const quests = new Map(wide.value.quests.map((quest) => [quest.id, quest]))
+
+    let cast = 0
+    for (const request of wideNarrator.requests) {
+      const posts = new Set(request.posts.map((post) => post.postId))
+      for (const casting of request.cast) {
+        cast++
+        // the post is one of this place's own, and the person written into it is the person the quest names
+        expect(posts.has(casting.postId), `${request.name} was told to cast a post it does not have`).toBe(true)
+        const npc = atPost.get(casting.postId)
+        expect(npc, `${casting.questTitle} needs somebody at ${casting.postId} and nobody was written there`).toBeDefined()
+        const quest = quests.get(casting.questId)
+        expect(quest, `${request.name} was cast for ${casting.questId}, which is not in the town`).toBeDefined()
+        expect(named(quest!).has(npc!.id), `${quest!.title} does not name ${npc!.name}`).toBe(true)
+      }
+    }
+    expect(cast, 'the town wrote work and told nobody they were in it').toBeGreaterThan(3)
+  })
+
+  it('casts everybody the work names, so no job points at a post nobody was written for', () => {
+    const world = wide.value.world
+    const promised = new Set(wideNarrator.requests.flatMap((request) => request.cast.map((casting) => casting.postId)))
+    const stationed = new Map(world.npcs().flatMap((npc) => (npc.station ? [[npc.id, npc.station.anchorId] as const] : [])))
+
+    for (const quest of wide.value.quests) {
+      for (const npcId of named(quest)) {
+        const post = stationed.get(npcId)
+        expect(post, `${quest.title} names ${npcId}, who stands nowhere`).toBeDefined()
+        expect(promised.has(post!), `${quest.title} names ${world.npc(npcId)!.name}, who was written for nobody`).toBe(true)
+      }
+    }
+  })
+})
+
+/** Everybody one quest names: who hands it out, who it sends the player to, who it wants a thing delivered to. */
+function named(quest: QuestDoc): Set<string> {
+  const people = new Set([quest.giverNpcId])
+  for (const step of quest.steps) {
+    if (step.kind === 'talk' || step.kind === 'escort') people.add(step.npcId)
+    if (step.kind === 'deliver') people.add(step.toNpcId)
+    for (const effect of step.effects) if (effect.kind === 'companion-join') people.add(effect.npcId)
+  }
+  return people
+}

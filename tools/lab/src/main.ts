@@ -56,6 +56,13 @@ root.appendChild(
 )
 root.appendChild(el('div', { class: 'page' }, el('div', { class: 'cols' }, briefPanel(), runPanel(), inHandPanel())))
 root.appendChild(tabs())
+root.appendChild(
+  el(
+    'p',
+    { class: 'hint order' },
+    'The tabs group the calls by what they write. A build runs them in this order: the history, the architecture under placeholder names, the work, the names, then the people and the insides.',
+  ),
+)
 root.appendChild(page)
 
 show(current)
@@ -164,7 +171,7 @@ function sayWhatIsInHand(): void {
     `history      ${captured.history ? `${captured.history.build.mustHave.length} must-have kinds, ${captured.history.charters?.length ?? 0} charters` : 'none'}`,
     `city         ${captured.cityName ?? 'none'}`,
     `places       ${captured.instanceRequests?.length ?? 0} instance requests, ${captured.instances?.length ?? 0} written`,
-    `signs        ${captured.signRequests?.length ?? 0} requested (the offline author hangs its own, so it asks for none)`,
+    `signs        ${captured.signRequests?.length ?? 0} requested (every door is asked about, open or shut)`,
     `summary      ${captured.summary ? `${captured.summary.places.length} places, ${captured.summary.places.reduce((n, place) => n + place.npcs.length, 0)} people` : 'none'}`,
     `quests       ${captured.quests?.length ?? 0}`,
     `world        ${captured.world ? `${captured.world.plots().length} plots` : 'none'}`,

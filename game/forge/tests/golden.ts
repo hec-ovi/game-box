@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { ok } from '@gb/kit'
 import type { Charter } from '@gb/world'
 import { Forge, OfflineNarrator, type History, type Narrator } from '../src/index.ts'
 
@@ -75,7 +76,7 @@ function narratorFor(seed: string, history: History | undefined): Narrator {
   const offline = new OfflineNarrator(seed)
   if (!history) return offline
   return {
-    writePremise: async () => history,
+    writePremise: async () => ok(history),
     nameCity: (input) => offline.nameCity(input),
     namePlace: (input) => offline.namePlace(input),
     describeNpc: (input) => offline.describeNpc(input),

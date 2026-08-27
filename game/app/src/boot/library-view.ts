@@ -198,7 +198,7 @@ function aboutOf(entry: Shelved): string {
 
 /** How big it is, how it was asked for, and when it was written. */
 function metaOf(entry: Shelved): string {
-  const size = entry.source === 'made' ? `${entry.blocks} blocks, seed ${entry.seed}${entry.model ? ', model' : ''}` : 'From a file'
+  const size = entry.source === 'made' ? `${entry.blocks} blocks, seed ${entry.seed}` : 'From a file'
   return `${size} · made ${ago(entry.madeAt ?? entry.openedAt)}`
 }
 

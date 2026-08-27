@@ -13,18 +13,18 @@ import {
   OfflineNarrator,
   STOREYS_DEFAULT,
   summarise,
+  type ForgeError,
   type Instance,
   type InstanceRequest,
-  type ItemProfile,
   type Narrator,
-  type NpcProfile,
   type PlaceRequest,
   type Premise,
+  type Unwritten,
   type WorldSummary,
 } from '@gb/forge'
 import type { History } from '@gb/forge'
 import { validateQuest, type QuestProblem } from '@gb/quest'
-import { Scribe } from '@gb/scribe'
+import { Scribe, type ScribeFailure } from '@gb/scribe'
 import { Sidecar } from '@gb/sidecar'
 import { questView, World, type Asks } from '@gb/world'
 
@@ -153,6 +153,32 @@ export function premiseInputOf(form: Form): { theme: string; seed: string; brief
 /** The two authors a stage can be run against. */
 export type Author = 'model' | 'offline'
 
+/** A stage that would not write, in the words the page shows. */
+export interface Stop {
+  readonly stage: string
+  /** Where in the build it stopped (`premise`, `charter:jail`, `quest:3`). */
+  readonly at: string
+  /** Why (`unreachable`, `refused`, `invalid-arguments`). */
+  readonly code: string
+  /** One sentence: what could not be written, and what the engine said. */
+  readonly message: string
+}
+
+/**
+ * `Unwritten` carries the stage and the sentence. A `@gb/scribe` failure is an
+ * `Unwritten` with the call and the code beside them, so both are read off it
+ * when the narrator behind the stage is a Scribe.
+ */
+export function stopOf(error: Unwritten): Stop {
+  const failure = error as Partial<ScribeFailure>
+  return { stage: error.stage, at: failure.at ?? 'not said', code: failure.code ?? 'not said', message: error.message }
+}
+
+/**
+ * The narrator a sandbox runs against. `OfflineNarrator` is a stand-in this page
+ * asks for by name, the way the tests and the quest harness do; nothing in the
+ * game selects it, and no stage falls back to it.
+ */
 export function narratorFor(author: Author, form: Form, recorder: Recorder, base: string, signal?: AbortSignal): Narrator {
   if (author === 'offline') return new OfflineNarrator(form.seed)
   const sidecar = new Sidecar({ base, fetch: recorder.fetch })
@@ -177,31 +203,37 @@ export interface Captured {
  *
  * It forwards every member the inner narrator has and adds none it does not: an
  * offline narrator has no `namePlaces`, so a build through this one still hangs
- * its signs inside the forge, exactly as it does without the page watching.
+ * its signs inside the forge, exactly as it does without the page watching. A
+ * stage that would not write is passed straight on, so the build stops here
+ * exactly where it stops without the page watching.
  */
 export function capturing(inner: Narrator, into: Captured, history?: History): Narrator {
   const narrator: Narrator = {
     async nameCity(input) {
-      const name = await inner.nameCity(input)
-      into.cityName = name
-      return name
+      const written = await inner.nameCity(input)
+      if (written.ok) into.cityName = written.value
+      return written
     },
     namePlace: (input) => inner.namePlace(input),
-    describeNpc: (input): Promise<NpcProfile> => inner.describeNpc(input),
-    describeItem: (input): Promise<ItemProfile> => inner.describeItem(input),
+    describeNpc: (input) => inner.describeNpc(input),
+    describeItem: (input) => inner.describeItem(input),
     async writeQuests(input) {
       into.summary = input.summary
-      const quests = await inner.writeQuests(input)
-      into.quests = quests
-      return quests
+      const written = await inner.writeQuests(input)
+      if (written.ok) into.quests = written.value
+      return written
     },
   }
 
   if (history || inner.writePremise) {
     narrator.writePremise = async (input) => {
       into.premiseInput = input
-      const written = history ?? (await inner.writePremise!(input))
-      into.history = written
+      if (history) {
+        into.history = history
+        return { ok: true, value: history }
+      }
+      const written = await inner.writePremise!(input)
+      if (written.ok) into.history = written.value
       return written
     }
   }
@@ -209,7 +241,7 @@ export function capturing(inner: Narrator, into: Captured, history?: History): N
     narrator.writeInstances = async (requests) => {
       into.instanceRequests = requests
       const written = await inner.writeInstances!(requests)
-      into.instances = written
+      if (written.ok) into.instances = written.value
       return written
     }
   }
@@ -227,7 +259,10 @@ export function capturing(inner: Narrator, into: Captured, history?: History): N
 
 export interface BuildOutcome {
   readonly captured: Captured
+  /** Why the build refused: its code and what it carried. */
   readonly error?: string
+  /** The stage that would not write, when that is what refused it. */
+  readonly stopped?: Unwritten
   readonly ms: number
 }
 
@@ -242,14 +277,24 @@ export async function buildCity(form: Form, author: Narrator, history?: History)
   const result = await new Forge(capturing(author, captured, history)).build(briefOf(form))
   const ms = Math.round(performance.now() - started)
   if (!result.ok) {
-    const error =
-      result.error.code === 'invalid-brief'
-        ? result.error.violations.map((v) => `${v.path}: ${v.message}`).join('\n')
-        : result.error.problems.map((p) => `${p.where}: ${p.message}`).join('\n')
-    return { captured, error: `${result.error.code}\n${error}`, ms }
+    const error = `${result.error.code}\n${refusalOf(result.error)}`
+    if (result.error.code === 'unwritten') return { captured, error, stopped: result.error, ms }
+    return { captured, error, ms }
   }
   captured.world = result.value.world
   return { captured, ms }
+}
+
+/** Why a build refused, in the words of whichever refusal it was. */
+function refusalOf(error: ForgeError): string {
+  switch (error.code) {
+    case 'invalid-brief':
+      return error.violations.map((one) => `${one.path}: ${one.message}`).join('\n')
+    case 'unsound-world':
+      return error.problems.map((one) => `${one.where}: ${one.message}`).join('\n')
+    case 'unwritten':
+      return `${error.stage}: ${error.message}`
+  }
 }
 
 /** A world file off disk, read through `@gb/world`'s own loader. */

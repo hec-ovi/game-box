@@ -1,16 +1,19 @@
 import type { DistrictRequest, Narrator } from '@gb/forge'
+import { err, ok, type Result } from '@gb/kit'
 import type { Asker, Violation } from './asker.ts'
+import type { ScribeFailure } from './failure.ts'
 import type { Progress } from './progress.ts'
 import { bullets, prompt } from './prompts.ts'
 import type { NameRegistry } from './registry.ts'
+import { answered } from './stand-in.ts'
 import { districtsTool, type WrittenDistricts } from './tools.ts'
 
 export interface DistrictNamerOptions {
   readonly asker: Asker
-  /** Used for whatever the model will not name, so a city always comes out with every part of it named. */
-  readonly fallback: Narrator
   readonly registry: NameRegistry
   readonly progress: Progress
+  /** Only where a caller handed one in. Nothing in the game does. */
+  readonly standIn?: Narrator | undefined
 }
 
 /**
@@ -19,51 +22,41 @@ export interface DistrictNamerOptions {
  * A city has a handful of districts, so there is never a second batch: the
  * whole cut goes out together with the town's history in front of it, which is
  * what lets one name answer another (a wharf end and a hill above it) instead
- * of each being written in the dark. A name that comes back missing, or the
- * same as another, is composed by the offline narrator instead, so the answer
- * is always one name per part with no two of them alike.
+ * of each being written in the dark. An answer that misses a part, names one
+ * twice, or calls two of them the same thing is quoted the fault and asked
+ * again; a cut the model will not name in the end stops the build.
  */
 export class DistrictNamer {
   #asker: Asker
-  #fallback: Narrator
   #registry: NameRegistry
   #progress: Progress
+  #standIn: Narrator | undefined
 
   constructor(options: DistrictNamerOptions) {
     this.#asker = options.asker
-    this.#fallback = options.fallback
     this.#registry = options.registry
     this.#progress = options.progress
+    this.#standIn = options.standIn
   }
 
-  async write(requests: readonly DistrictRequest[]): Promise<string[]> {
-    if (!requests.length) return []
+  async write(requests: readonly DistrictRequest[]): Promise<Result<string[], ScribeFailure>> {
+    if (!requests.length) return ok([])
     this.#progress.open('city', requests.length, `${requests.length} districts`)
     const written = await this.#ask(requests)
-    const spare = await this.#spare(requests)
+    if (written.ok) return ok(this.#counted(requests.map((request) => written.value.get(label(request))!)))
 
-    // what the model wrote, each name kept once, then the holes filled from the
-    // composed set. There is one spare per part and no two of them are alike,
-    // so a hole always has one left however many the model got right
-    const taken = new Set<string>()
-    const names = requests.map((request) => {
-      const answer = written.get(label(request))
-      if (!answer || taken.has(answer.toLowerCase())) return ''
-      taken.add(answer.toLowerCase())
-      return answer
-    })
-    for (const [index, name] of names.entries()) {
-      if (name) continue
-      const filled = spare.find((one) => !taken.has(one.toLowerCase())) ?? spare[index] ?? ''
-      taken.add(filled.toLowerCase())
-      names[index] = filled
-    }
+    const spare = answered(await this.#standIn?.nameDistricts?.(requests))
+    return spare ? ok(this.#counted([...spare])) : err(written.error)
+  }
+
+  /** Every part named once, published as it goes. */
+  #counted(names: string[]): string[] {
     for (const name of names) this.#progress.finished(name)
     return names
   }
 
-  /** One call: the names by label, or none of them when the model would not write them at all. */
-  async #ask(requests: readonly DistrictRequest[]): Promise<ReadonlyMap<string, string>> {
+  /** One call: the names by label. Every part is in it exactly once, and no two of them alike. */
+  async #ask(requests: readonly DistrictRequest[]): Promise<Result<ReadonlyMap<string, string>, ScribeFailure>> {
     const labels = requests.map(label)
     const first = requests[0]!
     const town = requests.reduce((sum, one) => sum + one.blocks, 0)
@@ -78,15 +71,10 @@ export class DistrictNamer {
           'None.',
         ),
       }),
-      'districts',
+      { at: 'districts', what: 'the names of the parts of the city' },
       (value) => [...labelProblems(value, labels), ...repeatProblems(value)],
     )
-    return new Map((answer?.districts ?? []).map((one) => [one.district, one.name]))
-  }
-
-  /** A composed name for every part, ready for whichever ones the model left unnamed or named twice. */
-  async #spare(requests: readonly DistrictRequest[]): Promise<readonly string[]> {
-    return (await this.#fallback.nameDistricts?.(requests)) ?? requests.map((request) => `Part ${request.index + 1}`)
+    return answer.ok ? ok(new Map(answer.value.districts.map((one) => [one.district, one.name]))) : err(answer.error)
   }
 }
 

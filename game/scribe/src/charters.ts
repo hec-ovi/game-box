@@ -62,11 +62,11 @@ export class CharterWriter {
           asked: askedLines(owner, ['brief']),
           presets: PRESETS.join(', '),
         }),
-        `charter:${word}`,
+        { at: `charter:${word}`, what: `the charter for a ${word}` },
         problemsWith,
       )
-      this.#progress.finished(charter ? `a ${charter.label}` : `no ${word}`)
-      return charter
+      this.#progress.finished(charter.ok ? `a ${charter.value.label}` : `no ${word}`)
+      return charter.ok ? charter.value : undefined
     })
     return written.flatMap((charter) => (charter ? [charter] : []))
   }

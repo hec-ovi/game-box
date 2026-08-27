@@ -1,6 +1,7 @@
 /** @gb/scribe: the narrator backed by the local model, one forced tool call per answer. See CONTRACT.md. */
 export { Scribe, type ScribeOptions } from './scribe.ts'
 export type { ScribeProblem } from './asker.ts'
+export type { ScribeFailure, ScribeFailureCode } from './failure.ts'
 export type { Asked } from './asked.ts'
 export { BRIEF_FIELDS, type BriefDraft, type BriefField, type BriefSoFar } from './brief.ts'
 export type { PremiseInput } from './premise.ts'

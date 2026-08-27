@@ -1,9 +1,9 @@
-import { OfflineNarrator, type History } from '@gb/forge'
 import { charterContract, premiseContract, SHIPPED_CHARTERS, type Premise } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { Scribe, type ScribeProblem } from '../src/index.ts'
 import { fakeModel } from './fake-model.ts'
 import { JAIL } from './places.ts'
+import { stopped, wrote } from './wrote.ts'
 
 const THEME = 'neon city, the freight lines shut last winter'
 const SEED = 'harbour'
@@ -27,9 +27,6 @@ const WITH_JAIL: Premise = {
   build: { moreOf: ['warehouse', 'jail'], fewerOf: ['office'], mustHave: ['station', 'jail'] },
 }
 
-/** What the town falls back to when the model writes nothing usable. */
-const composed = (): Promise<History> => new OfflineNarrator(SEED).writePremise({ theme: THEME, seed: SEED })
-
 const scribeWith = (answers: unknown[], attempts?: number) => {
   const { sent, sidecar } = fakeModel(answers)
   return { sent, scribe: new Scribe({ sidecar, seed: SEED, ...(attempts ? { attempts } : {}) }) }
@@ -43,7 +40,7 @@ describe('the city history', () => {
   it('is one forced call whose parameters are the premise contract, the buildings written last', async () => {
     const { sent, scribe } = scribeWith([WRITTEN])
 
-    expect(await scribe.writePremise({ theme: THEME, seed: SEED })).toEqual(WRITTEN)
+    expect(await wrote(scribe.writePremise({ theme: THEME, seed: SEED }))).toEqual(WRITTEN)
     expect(sent[0]!.toolName).toBe('write_premise')
     // the shape is the forge's own, never a copy of it: a copy is a shape that can drift
     expect(sent[0]!.parameters).toEqual(premiseContract.jsonSchema())
@@ -71,7 +68,7 @@ describe('the city history', () => {
   it('asks for the charter behind a kind no preset is, against the world\'s own charter contract, and hands it back on the history', async () => {
     const { sent, scribe } = scribeWith([WITH_JAIL, JAIL])
 
-    expect(await scribe.writePremise({ theme: THEME, seed: SEED })).toEqual({ ...WITH_JAIL, charters: [JAIL] })
+    expect(await wrote(scribe.writePremise({ theme: THEME, seed: SEED }))).toEqual({ ...WITH_JAIL, charters: [JAIL] })
 
     // one call per invented word, none for a preset, the word pinned in the schema
     expect(sent.map((call) => call.toolName)).toEqual(['write_premise', 'write_charter'])
@@ -90,8 +87,8 @@ describe('the city history', () => {
     const asked = scribeWith([WITH_JAIL, JAIL])
     const blank = scribeWith([WITH_JAIL, JAIL])
 
-    await asked.scribe.writePremise({ theme: THEME, seed: SEED, brief })
-    await blank.scribe.writePremise({ theme: THEME, seed: SEED })
+    await wrote(asked.scribe.writePremise({ theme: THEME, seed: SEED, brief }))
+    await wrote(blank.scribe.writePremise({ theme: THEME, seed: SEED }))
 
     expect(asked.sent[1]!.user).toContain(`> ${brief}`)
     // a brief nobody wrote puts nothing in the call, not a line saying it is blank
@@ -101,7 +98,7 @@ describe('the city history', () => {
   it('sends a charter back with the reason when its blade spells nothing or a template puts one sign over every door', async () => {
     const { sent, scribe } = scribeWith([WITH_JAIL, { ...JAIL, blade: '  ', names: ['County Jail', '{family} Jail'] }, JAIL], 2)
 
-    expect(await scribe.writePremise({ theme: THEME, seed: SEED })).toEqual({ ...WITH_JAIL, charters: [JAIL] })
+    expect(await wrote(scribe.writePremise({ theme: THEME, seed: SEED }))).toEqual({ ...WITH_JAIL, charters: [JAIL] })
     expect(sent).toHaveLength(3)
     expect(scribe.problems().flatMap(refused)).toEqual(['blade', 'names.0'])
     expect(sent[2]!.user).toContain('names.0: County Jail has no slot')
@@ -111,7 +108,7 @@ describe('the city history', () => {
     const plural: Premise = { ...WRITTEN, build: { moreOf: ['warehouses', 'bars'], fewerOf: ['offices', 'cafes'], mustHave: ['station', 'bar'] } }
     const { sent, scribe } = scribeWith([plural])
 
-    expect(await scribe.writePremise({ theme: THEME, seed: SEED })).toEqual({
+    expect(await wrote(scribe.writePremise({ theme: THEME, seed: SEED }))).toEqual({
       ...WRITTEN,
       build: { moreOf: ['warehouse', 'bar'], fewerOf: ['office', 'cafe'], mustHave: ['station', 'bar'] },
     })
@@ -121,7 +118,7 @@ describe('the city history', () => {
   it('takes a kind the model will not write out of the build rather than handing it on', async () => {
     const { sent, scribe } = scribeWith([WITH_JAIL, 'no-call'], 1)
 
-    expect(await scribe.writePremise({ theme: THEME, seed: SEED })).toEqual({
+    expect(await wrote(scribe.writePremise({ theme: THEME, seed: SEED }))).toEqual({
       ...WITH_JAIL,
       build: { moreOf: ['warehouse'], fewerOf: ['office'], mustHave: ['station'] },
     })
@@ -129,19 +126,15 @@ describe('the city history', () => {
     expect(scribe.problems().map((problem) => problem.error.code)).toEqual(['no-tool-call'])
   })
 
-  it('drops a history the contract refuses and gives the town the one the seed composes', async () => {
+  it('stops the build on a history the contract refuses, rather than composing one', async () => {
     // half a premise: the sides and the buildings the town would have been built from are missing
     const { scribe } = scribeWith([{ livesOn: 'Freight.', happened: 'The line shut.', stake: 'The contract.' }], 1)
 
-    expect(await scribe.writePremise({ theme: THEME, seed: SEED })).toEqual(await composed())
+    const failure = await stopped(scribe.writePremise({ theme: THEME, seed: SEED }))
+
+    expect(failure).toMatchObject({ stage: 'history', at: 'premise', code: 'invalid-arguments' })
+    expect(failure.message).toContain('the history could not be written')
     expect(scribe.problems().map((problem) => problem.error.code)).toEqual(['invalid-arguments'])
-  })
-
-  it('gives the town a history when the model is down', async () => {
-    const { scribe } = scribeWith(['no-call'], 1)
-
-    expect(await scribe.writePremise({ theme: THEME, seed: SEED })).toEqual(await composed())
-    expect(scribe.problems().map((problem) => problem.error.code)).toEqual(['no-tool-call'])
   })
 
   it('sends a history that would build no town back with the reason, and takes the corrected one', async () => {
@@ -157,7 +150,7 @@ describe('the city history', () => {
     const bothWays: Premise = { ...WRITTEN, build: { moreOf: ['bar'], fewerOf: ['bar'], mustHave: [] } }
     const { sent, scribe } = scribeWith([noTown, bothWays, WRITTEN], 3)
 
-    expect(await scribe.writePremise({ theme: THEME, seed: SEED })).toEqual(WRITTEN)
+    expect(await wrote(scribe.writePremise({ theme: THEME, seed: SEED }))).toEqual(WRITTEN)
     expect(sent).toHaveLength(3)
     expect(scribe.problems().flatMap(refused)).toEqual(['common', 'sides.1.name', 'build', 'build.fewerOf'])
     expect(sent[1]!.user).toContain('rejected')
@@ -168,12 +161,12 @@ describe('the city history', () => {
     const brief = 'A port where the freight line shut and everybody pretends it is coming back. Keep it damp.'
     const { sent, scribe } = scribeWith([WRITTEN])
 
-    await scribe.writePremise({
+    await wrote(scribe.writePremise({
       theme: THEME,
       seed: SEED,
       brief,
       asks: { tone: 'dry, unsentimental', mainQuest: 'the missing manifest', style: { neon: 'lit', wear: 'run-down' } },
-    })
+    }))
 
     const asked = sent[0]!.user
     expect(asked).toContain(`> ${brief}`)
@@ -187,7 +180,7 @@ describe('the city history', () => {
   it('asks for a good town when the owner left every field blank, and says nothing about the blanks', async () => {
     const { sent, scribe } = scribeWith([WRITTEN])
 
-    await scribe.writePremise({ theme: THEME, seed: SEED, brief: '  ', asks: { tone: '', style: {} } })
+    await wrote(scribe.writePremise({ theme: THEME, seed: SEED, brief: '  ', asks: { tone: '', style: {} } }))
 
     const asked = sent[0]!.user
     expect(asked).toContain('The owner left all of this to you')
@@ -199,7 +192,7 @@ describe('the city history', () => {
   it('asks the same question for the same theme and seed, and a different one for another seed', async () => {
     const run = async (seed: string) => {
       const { sent, scribe } = scribeWith([WRITTEN])
-      await scribe.writePremise({ theme: THEME, seed })
+      await wrote(scribe.writePremise({ theme: THEME, seed }))
       return sent[0]!.user
     }
 
@@ -210,12 +203,12 @@ describe('the city history', () => {
   it('names the city out of the history, and says so when there is none', async () => {
     const { sent, scribe } = scribeWith([{ name: 'Vance Reach' }])
 
-    expect(await scribe.nameCity({ theme: THEME, seed: SEED, premise: WRITTEN })).toBe('Vance Reach')
+    expect(await wrote(scribe.nameCity({ theme: THEME, seed: SEED, premise: WRITTEN }))).toBe('Vance Reach')
     expect(sent[0]!.user).toContain('Lives on: Container freight off the elevated line, run by the Vance yards.')
     expect(sent[0]!.user).toContain('the Dockhands Local want the yards broken up')
 
     const without = scribeWith([{ name: 'Vance Reach' }])
-    await without.scribe.nameCity({ theme: THEME, seed: SEED })
+    await wrote(without.scribe.nameCity({ theme: THEME, seed: SEED }))
     expect(without.sent[0]!.user).toContain('Nothing has been written about the city itself yet.')
   })
 })

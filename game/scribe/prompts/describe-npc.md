@@ -11,6 +11,11 @@ Their role there: {{role}}
 Give them a name, the way they behave when a stranger walks in, the things they
 know, their own life, and the facts about them a player earns.
 
+The name is an ordinary one: a first name and a family name of the kind real
+people have, that another person can spell and say after hearing it once.
+Nothing invented, no coined syllables, no spelling chosen to look unusual, no
+flourish.
+
 Their family name starts with one of these letters: {{letters}}.
 
 For the behaviour, take the one habit somebody would notice from the doorway and

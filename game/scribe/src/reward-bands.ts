@@ -20,3 +20,22 @@ export function rewardBands(): string {
 function yesNo(allowed: boolean): string {
   return allowed ? 'yes' : 'no'
 }
+
+/**
+ * The pay bands as the `money` field's own description, because the prompt's
+ * table is read once and this is read where the number is written. Measured: a
+ * side job handed over a home and paid 150, which is under the floor of the
+ * only tier that allows one, and it cost a whole city.
+ */
+export function moneyMeans(): string {
+  const bands = DIFFICULTIES.map((tier) => `${tier} ${REWARD_TABLE[tier].money.min} to ${REWARD_TABLE[tier].money.max}`).join(', ')
+  return `What the job pays in credits. The tier is read off what the whole reward hands over, and the pay has to sit in that tier's band: ${bands}. Pay for the work: a fetch across the street is the bottom of the range and a job that hands over a car or a home is the top.`
+}
+
+/** What handing this over commits the pay to, said on the field that hands it over. */
+export function floorFor(carries: 'car' | 'deed'): string {
+  const tier = DIFFICULTIES.find((one) => REWARD_TABLE[one][carries])
+  if (!tier) return ''
+  const article = /^[aeiou]/.test(tier) ? 'an' : 'a'
+  return ` Handing one over makes this at least ${article} ${tier} job, so \`money\` has to be ${REWARD_TABLE[tier].money.min} or more.`
+}

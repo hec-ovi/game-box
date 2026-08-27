@@ -13,9 +13,9 @@
 import { ANCHOR_KINDS, ITEM_ARCHETYPES, MACHINE_PROGRAMS, METRICS, NPC_ROLES, PROP_SPECS, ROOM_KINDS } from '@gb/world'
 import { instanceTool } from '../../../../game/scribe/src/tools.ts'
 import { el, field, json, pre } from '../dom.ts'
-import { narratorFor, problemsOf } from '../pipeline.ts'
+import { narratorFor } from '../pipeline.ts'
 import type { Json } from '../schema.ts'
-import { exchangeViews, sandbox, type Call, type Fact, type Lab, type Stage } from '../stage.ts'
+import { exchangeViews, sandbox, showProblems, type Call, type Fact, type Lab, type Stage } from '../stage.ts'
 import { site } from '../source.ts'
 
 export const INSTANCES: Stage = {
@@ -23,7 +23,7 @@ export const INSTANCES: Stage = {
   n: 2,
   title: 'The instances',
   lede:
-    'One forced call per place that opens, all of them in the air at once, each blind to the others. An instance is its own space: a door on the street, and behind it as many rooms as the place needs (docs/CITY.md section 9). So what this call is told is what the place is, who is inside it and what is in it, and what it hands back is the place named and written, its people and its stock. Nothing here is a size it has to fit.',
+    'One forced call per place that opens, all of them in the air at once, each blind to the others, and last of the build. An instance is its own space: a door on the street, and behind it as many rooms as the place needs (docs/CITY.md section 9). By the time this call goes out the sign is already over the door and the work already names who has to be standing inside, both of them on the request. What the call is told is what the place is, who is inside it and what is in it, and what it hands back is the place written, its people and its stock. Nothing here is a size it has to fit.',
 
   calls(lab) {
     const request = pick(lab)
@@ -50,8 +50,8 @@ export const INSTANCES: Stage = {
           site('game/scribe/src/brief-lines.ts', 'export function briefLines', 'how that brief is worded to the model'),
         ],
         returns: [
-          { field: 'name', marks: ['file', 'screen'], note: 'the sign over the door and the interior\'s name. Refused and rewritten by the offline composer if its head word is already over another door.' },
-          { field: 'character', marks: ['prompt', 'file', 'screen'], note: 'what the place is. Written to `@gb/world`\'s `Interior.description` by `assemble.ts`, so it is in the file and under the place\'s name in the codex; the Scribe also keeps it in a map and shows it to the quest writer for this city. The one-place-at-a-time path writes none, and the interior carries no field at all.' },
+          { field: 'name', marks: ['dropped'], note: 'still in the tool, and the building keeps the sign that went up over it before this call. Measured on a 2x2 offline town: three places written under names of their own, three plots still carrying the names the sign call hung.' },
+          { field: 'character', marks: ['file', 'screen'], note: 'what the place is. Written to `@gb/world`\'s `Interior.description` by `assemble.ts`, so it is in the file and under the place\'s name in the codex. The one-place-at-a-time path writes none, and the interior carries no field at all.' },
           { field: 'people[].postId', marks: ['shape'], note: 'the caller\'s own anchor id, handed out and handed back, so a person is zipped onto a post by id and never by position.' },
           { field: 'people[].given, people[].family', marks: ['file', 'screen'], note: 'joined into `npc.name`. The family name can only start with the four letters this place was dealt, because the schema will not decode anything else.' },
           { field: 'people[].personality, knowledge, life, background', marks: ['file'], note: 'stage 3. Straight into the world file and read by @gb/talk at play time.' },
@@ -98,23 +98,24 @@ export const INSTANCES: Stage = {
         const author = narratorFor(lab.author, lab.form, lab.recorder, lab.base, signal)
         if (!author.writeInstances) throw new Error('this author writes places one question at a time; it has no writeInstances')
         const written = await author.writeInstances([request])
-
         run.out.appendChild(el('h3', {}, `The call (${lab.recorder.exchanges.length})`))
         run.out.appendChild(exchangeViews(lab.recorder.exchanges))
-        run.out.appendChild(el('h3', {}, 'The validated place'))
-        run.out.appendChild(json(written[0], true))
-
-        const problems = problemsOf(author)
-        if (problems.length) {
-          run.out.appendChild(el('h3', {}, `Rejected along the way (${problems.length})`))
-          run.out.appendChild(json(problems, true))
+        showProblems(run, author)
+        if (!written.ok) {
+          run.stopped(written.error)
+          return
         }
+
+        const place = written.value[0]
+        run.out.appendChild(el('h3', {}, 'The validated place'))
+        run.out.appendChild(json(place, true))
         run.out.appendChild(
           pre(
             [
-              `posts asked for: ${request.posts.length}, people written: ${written[0]?.people.length ?? 0}`,
-              `things asked for: ${request.things.length}, things named: ${written[0]?.things.length ?? 0}`,
-              `character: ${written[0]?.character ? `${written[0].character.length} characters, and it goes no further than the quest writer` : 'none written'}`,
+              `posts asked for: ${request.posts.length}, people written: ${place?.people.length ?? 0}`,
+              `cast the work asked for: ${request.cast.length}`,
+              `things asked for: ${request.things.length}, things named: ${place?.things.length ?? 0}`,
+              `character: ${place?.character ? `${place.character.length} characters` : 'none written'}`,
             ].join('\n'),
           ),
         )
@@ -129,6 +130,8 @@ function pick(lab: Lab) {
 
 const TOLD: readonly Fact[] = [
   { text: 'What kind of place it is, as its charter reads in plain words: the post at the front, the work done here, what it keeps, who gets in, its rooms, what people say of such places.', at: site('game/scribe/src/charter-lines.ts', 'export function charterLines', '') },
+  { text: 'The name already hung over its door is on the request, and the prompt does not render it: the model is asked for a name of its own, and the sign that went up before this call is what the building keeps.', at: site('game/forge/src/raise/plan.ts', 'name: one.sign', '') },
+  { text: 'The cast the work asked for is on the request too, and the prompt does not render it: which post a quest needs somebody standing at, in what part, which quest it is and the line the player reads there, all read back off the quests\' own steps.', at: site('game/forge/src/quests/casting.ts', 'export function castOf', '') },
   { text: 'The city\'s name, its theme, and the town\'s whole history.', at: site('game/scribe/src/instance.ts', 'cityName: this.#registry.cityName', '') },
   { text: 'The rooms the shell was cut into, by kind and by nothing else. No metres, no plan, no positions.', at: site('game/forge/src/raise/plan.ts', 'rooms: one.inside.plan.rooms.map', '') },
   { text: 'One post per person to write, each with the job that stands at it and an id to answer under.', at: site('game/forge/src/raise/plan.ts', 'posts: one.inside.posts.map', '') },

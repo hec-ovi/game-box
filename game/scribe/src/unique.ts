@@ -1,3 +1,5 @@
+import { err, ok, type Result } from '@gb/kit'
+import type { ScribeFailure } from './failure.ts'
 import { lastFew } from './prompts.ts'
 import type { NameRegistry } from './registry.ts'
 import type { Waves } from './waves.ts'
@@ -5,13 +7,19 @@ import type { Waves } from './waves.ts'
 /** One pass of authoring whose answers have to end up with names of their own. */
 export interface Pass<Request, Answer> {
   /** Writes one of them, told nothing but its own request and the names already spent. */
-  ask(request: Request, index: number, taken: readonly string[]): Promise<Answer | undefined>
+  ask(request: Request, index: number, taken: readonly string[]): Promise<Result<Answer, ScribeFailure>>
   /** The people's and things' names this answer would spend. */
   namesIn(answer: Answer): readonly string[]
   /** The signs this answer would hang, each spent by its head word as well. */
   signsIn(answer: Answer): readonly string[]
-  /** The same answer, with any name the city has already spent replaced by one the fallback narrator writes. */
-  repair(request: Request, index: number, answer: Answer | undefined): Promise<Answer>
+  /**
+   * The same answer with every spent name written again by the stand-in a
+   * caller handed in, or nothing where there is no stand-in. Nothing in the
+   * game hands one in, so this is normally nothing and the clash is a failure.
+   */
+  mend(request: Request, index: number, answer: Answer | undefined): Promise<Answer | undefined>
+  /** Why an answer the model wrote twice over cannot stand. */
+  clash(request: Request, index: number, answer: Answer): ScribeFailure
 }
 
 /**
@@ -22,10 +30,10 @@ export interface Pass<Request, Answer> {
  * with the weather. So nothing is spent while the wave is in the air: the
  * answers come back in index order and are read in index order, the lower index
  * keeps the name, and the higher one is asked again with the taken names quoted
- * at it. A second repeat is written by the fallback narrator rather than costing
- * a third call. Which answer is re-asked is therefore a function of the indices
- * alone, and so is what it is told, which is what keeps the same seed building
- * the same city however many calls were in flight.
+ * at it. A name the model spends twice even then stops the pass, so the city
+ * never quietly gets a name nobody asked the model for. Which answer is re-asked
+ * is a function of the indices alone, and so is what it is told, which is what
+ * keeps the same seed building the same city however many calls were in flight.
  */
 export class UniqueNames<Request, Answer> {
   #waves: Waves
@@ -38,26 +46,23 @@ export class UniqueNames<Request, Answer> {
     this.#pass = pass
   }
 
-  async write(requests: readonly Request[]): Promise<Answer[]> {
+  async write(requests: readonly Request[]): Promise<Result<Answer[], ScribeFailure>> {
+    type Written = Result<Answer, ScribeFailure>
     const spent = this.#registry.names()
-    const first = await this.#waves.run<Request, Answer | undefined>(requests, (request, index, earlier) =>
+    const first = await this.#waves.run<Request, Written>(requests, (request, index, earlier) =>
       this.#pass.ask(request, index, lastFew([...spent, ...earlier.flatMap((answer) => this.#allOf(answer))])),
     )
 
-    const settled: Array<Answer | undefined> = requests.map((_, index) => this.#keep(first[index]))
+    const settled: Array<Answer | undefined> = first.map((answer) => this.#keep(answer))
     // only an answer that came back and clashed is worth asking for again: one
     // the model never gave will not arrive the second time either
-    const again = settled.flatMap((answer, index) =>
-      answer === undefined && first[index] !== undefined ? [index] : [],
-    )
+    const again = settled.flatMap((answer, index) => (answer === undefined && first[index]!.ok ? [index] : []))
 
     // every retry in this wave is told the same taken list, so none of them
     // depends on which of the others came back first
     const taken = this.#registry.names()
-    const second = await this.#waves.run<number, Answer | undefined>(again, (index) =>
-      this.#pass.ask(requests[index]!, index, taken),
-    )
-    const retried = new Map(again.map((index, k) => [index, second[k]]))
+    const second = await this.#waves.run<number, Written>(again, (index) => this.#pass.ask(requests[index]!, index, taken))
+    const retried = new Map(again.map((index, k) => [index, second[k]!]))
     for (const [index, answer] of retried) settled[index] = this.#keep(answer)
 
     const out: Answer[] = []
@@ -67,24 +72,26 @@ export class UniqueNames<Request, Answer> {
         out.push(answer)
         continue
       }
-      const mended = await this.#pass.repair(request, index, retried.get(index) ?? first[index])
+      const last = retried.get(index) ?? first[index]!
+      const mended = await this.#pass.mend(request, index, last.ok ? last.value : undefined)
+      if (mended === undefined) return err(last.ok ? this.#pass.clash(request, index, last.value) : last.error)
       this.#spend(mended)
       out.push(mended)
     }
-    return out
+    return ok(out)
   }
 
   /** Takes the answer if every name in it is free, and spends them if it does. */
-  #keep(answer: Answer | undefined): Answer | undefined {
-    if (answer === undefined) return undefined
-    const names = this.#pass.namesIn(answer)
-    const signs = this.#pass.signsIn(answer)
+  #keep(answer: Result<Answer, ScribeFailure>): Answer | undefined {
+    if (!answer.ok) return undefined
+    const names = this.#pass.namesIn(answer.value)
+    const signs = this.#pass.signsIn(answer.value)
     const repeated = (list: readonly string[]) => list.some((name, i) => list.indexOf(name) !== i)
     if (repeated([...names, ...signs])) return undefined
     if (names.some((name) => this.#registry.taken(name))) return undefined
     if (signs.some((sign) => this.#registry.signTaken(sign))) return undefined
-    this.#spend(answer)
-    return answer
+    this.#spend(answer.value)
+    return answer.value
   }
 
   #spend(answer: Answer): void {
@@ -92,7 +99,7 @@ export class UniqueNames<Request, Answer> {
     for (const sign of this.#pass.signsIn(answer)) this.#registry.hang(sign)
   }
 
-  #allOf(answer: Answer | undefined): readonly string[] {
-    return answer === undefined ? [] : [...this.#pass.signsIn(answer), ...this.#pass.namesIn(answer)]
+  #allOf(answer: Result<Answer, ScribeFailure>): readonly string[] {
+    return answer.ok ? [...this.#pass.signsIn(answer.value), ...this.#pass.namesIn(answer.value)] : []
   }
 }

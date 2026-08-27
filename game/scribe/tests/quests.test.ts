@@ -1,4 +1,5 @@
 import type { WorldSummary } from '@gb/forge'
+import { ok } from '@gb/kit'
 import { REWARD_TABLE, validateQuest } from '@gb/quest'
 import { describe, expect, it } from 'vitest'
 import { Scribe } from '../src/index.ts'
@@ -6,6 +7,7 @@ import { fakeModel, type Sent } from './fake-model.ts'
 import { backgroundOf, lifeOf, shellOf } from './people.ts'
 import { HACK_JOB, HIGH_SCORE, KEY_RUN, LOCKED, SHOPPING, lockedDraft } from './locked-city.ts'
 import { PLAIN, charterOf } from './places.ts'
+import { stopped, wrote } from './wrote.ts'
 
 const CITY: WorldSummary = {
   cityName: 'Cold Harbour',
@@ -92,7 +94,7 @@ function draft(id: string) {
   }
 }
 
-/** The same quest as a finished document, the shape a fallback narrator hands back. */
+/** The same quest as a finished document, the shape a stand-in narrator hands back. */
 function sealed(id: string) {
   return { format: 'game-box.quest', schemaVersion: 1, ...draft(id) }
 }
@@ -105,7 +107,7 @@ function idIn(call: Sent): string {
 describe('writing quests', () => {
   it('sends the quest tool a schema the contract still validates, without the repeats', async () => {
     const { sent, sidecar } = fakeModel((call) => (call.toolName === 'write_quest' ? draft('quest_0001') : {}))
-    await new Scribe({ sidecar }).writeQuests({ summary: CITY, sideQuests: 0 })
+    await wrote(new Scribe({ sidecar }).writeQuests({ summary: CITY, sideQuests: 0 }))
 
     const parameters = JSON.stringify(sent[0]!.parameters)
     expect(parameters.length).toBeLessThan(20_000)
@@ -116,7 +118,7 @@ describe('writing quests', () => {
     const { sent, sidecar } = fakeModel((call) => draft(idIn(call)))
     const scribe = new Scribe({ sidecar, concurrency: 1 })
 
-    const quests = await scribe.writeQuests({ summary: CITY, sideQuests: 1 })
+    const quests = await wrote(scribe.writeQuests({ summary: CITY, sideQuests: 1 }))
 
     expect(quests).toHaveLength(2)
     for (const quest of quests) {
@@ -139,7 +141,7 @@ describe('writing quests', () => {
 
   it('tells the model the pay bands from the table the validator uses', async () => {
     const { sent, sidecar } = fakeModel((call) => draft(idIn(call)))
-    await new Scribe({ sidecar, concurrency: 1 }).writeQuests({ summary: CITY, sideQuests: 0 })
+    await wrote(new Scribe({ sidecar, concurrency: 1 }).writeQuests({ summary: CITY, sideQuests: 0 }))
 
     const band = REWARD_TABLE.small
     expect(sent[0]!.user).toContain(`${band.money.min} to ${band.money.max}`)
@@ -152,7 +154,7 @@ describe('writing quests', () => {
     const { sent, sidecar } = fakeModel([deadEnd, draft('quest_0001')])
     const scribe = new Scribe({ sidecar, concurrency: 1 })
 
-    const quests = await scribe.writeQuests({ summary: CITY, sideQuests: 0 })
+    const quests = await wrote(scribe.writeQuests({ summary: CITY, sideQuests: 0 }))
 
     expect(sent).toHaveLength(2)
     expect(sent[1]!.user).toContain('steps.1.next')
@@ -161,44 +163,84 @@ describe('writing quests', () => {
     expect(scribe.problems().map((problem) => problem.error.code)).toEqual(['invalid-arguments'])
   })
 
-  it('reads the tier off the pay, and quotes back a reward no tier holds whole', async () => {
+  it('reads the tier off the pay, and ships the pay the validator settled', async () => {
     const small = draft('quest_0001')
-    const cheapCar = { ...draft('quest_0001'), reward: { ...small.reward, car: 'SportsCar' } }
-    const { sent, sidecar } = fakeModel([cheapCar, { ...small, reward: { ...small.reward, money: 420 } }])
+    const cheapCar = { ...small, reward: { ...small.reward, car: 'SportsCar' } }
+    const { sent, sidecar } = fakeModel([cheapCar])
     const scribe = new Scribe({ sidecar, concurrency: 1 })
 
-    const quests = await scribe.writeQuests({ summary: CITY, sideQuests: 0 })
+    const quests = await wrote(scribe.writeQuests({ summary: CITY, sideQuests: 0 }))
 
-    // 45 credits with a car: a car is hard work, and hard work pays at least 200
-    expect(sent[1]!.user).toContain('reward.money')
-    expect(sent[1]!.user).toContain('at least 200')
-    expect(quests[0]).toMatchObject({ difficulty: 'hard' })
+    // 45 credits with a car: a car is hard work, and hard work pays at least 200.
+    // `@gb/quest` moves the number into the band rather than throwing a playable
+    // job away, so it takes one call and the city carries the settled document
+    expect(sent).toHaveLength(1)
+    expect(quests[0]).toMatchObject({ difficulty: 'hard', reward: { money: REWARD_TABLE.hard.money.min, car: 'SportsCar' } })
     expect(validateQuest(quests[0], VIEW).ok).toBe(true)
     // and the model was never asked for a tier
     expect(JSON.stringify(sent[0]!.parameters)).not.toContain('difficulty')
+  })
+
+  it('tells the model what a reward commits the pay to, on the fields that commit it', async () => {
+    const { sent, sidecar } = fakeModel((call) => draft(idIn(call)))
+    await wrote(new Scribe({ sidecar, concurrency: 1 }).writeQuests({ summary: LOCKED, sideQuests: 0 }))
+
+    // the prompt's table is read once; this is read where the number is written
+    const reward = (sent[0]!.parameters as { properties: { reward: { properties: Record<string, { description?: string }> } } }).properties.reward.properties
+    expect(reward['money']!.description).toContain(`epic ${REWARD_TABLE.epic.money.min} to ${REWARD_TABLE.epic.money.max}`)
+    expect(reward['deed']!.description).toContain(`at least an epic job, so \`money\` has to be ${REWARD_TABLE.epic.money.min} or more`)
   })
 
   it('quotes back an id it made up, because a step can only point at what is in the city', async () => {
     const invented = draft('quest_0001')
     invented.steps[0]!.npcId = 'npc_9999'
     const { sent, sidecar } = fakeModel([invented, draft('quest_0001')])
-    await new Scribe({ sidecar, concurrency: 1 }).writeQuests({ summary: CITY, sideQuests: 0 })
+    await wrote(new Scribe({ sidecar, concurrency: 1 }).writeQuests({ summary: CITY, sideQuests: 0 }))
 
     expect(sent[1]!.user).toContain('npc_9999 is not in the world')
   })
 
-  it('fills a slot the model cannot write from the fallback rather than shipping no quest', async () => {
-    const { sidecar } = fakeModel(['no-call'])
-    const fallback = {
-      nameCity: async () => 'Cold Harbour',
-      namePlace: async () => 'Somewhere',
-      describeNpc: async () => ({ name: 'Someone', personality: 'Stands there.', knowledge: ['a', 'b'] }),
-      describeItem: async () => ({ name: 'Something', description: 'A thing.' }),
-      writeQuests: async () => [sealed('quest_0001'), sealed('quest_0002')],
-    }
-    const scribe = new Scribe({ sidecar, fallback, concurrency: 1 })
+  it('drops a side job the model cannot write and keeps the rest of the town\'s work', async () => {
+    // measured on a live 3x3 city: one side errand priced under its band refused
+    // the whole city, which left the owner with nothing over a job nobody would
+    // have missed
+    const { sidecar } = fakeModel((call) => (idIn(call) === 'quest_0003' ? 'no-call' : draft(idIn(call))))
+    const scribe = new Scribe({ sidecar, concurrency: 1, attempts: 1 })
 
-    const quests = await scribe.writeQuests({ summary: CITY, sideQuests: 1 })
+    const quests = await wrote(scribe.writeQuests({ summary: CITY, sideQuests: 2 }))
+
+    expect(quests.map((quest) => (quest as { id: string }).id)).toEqual(['quest_0001', 'quest_0002'])
+    for (const quest of quests) expect(validateQuest(quest, VIEW).ok).toBe(true)
+    // and the town is one job short for a reason the caller can report
+    expect(scribe.dropped()).toHaveLength(1)
+    expect(scribe.dropped()[0]).toMatchObject({ stage: 'quests', at: 'quest:2', code: 'no-tool-call' })
+    expect(scribe.dropped()[0]!.message).toContain('side job 2 could not be written')
+  })
+
+  it('stops the stage when the main line cannot be written, whatever the side jobs did', async () => {
+    const { sidecar } = fakeModel((call) => (idIn(call) === 'quest_0001' ? 'no-call' : draft(idIn(call))))
+    const scribe = new Scribe({ sidecar, concurrency: 1, attempts: 1 })
+
+    const failure = await stopped(scribe.writeQuests({ summary: CITY, sideQuests: 2 }))
+
+    // the city's spine: a town whose main story the model would not write is not the town that was asked for
+    expect(failure).toMatchObject({ stage: 'quests', at: 'quest:0', code: 'no-tool-call' })
+    expect(failure.message).toContain('the main line could not be written')
+    expect(scribe.dropped()).toEqual([])
+  })
+
+  it('takes a quest for every slot from a stand-in a caller hands in, which nothing in the game does', async () => {
+    const { sidecar } = fakeModel(['no-call'])
+    const standIn = {
+      nameCity: async () => ok('Cold Harbour'),
+      namePlace: async () => ok('Somewhere'),
+      describeNpc: async () => ok({ name: 'Someone', personality: 'Stands there.', knowledge: ['a', 'b'] }),
+      describeItem: async () => ok({ name: 'Something', description: 'A thing.' }),
+      writeQuests: async () => ok([sealed('quest_0001'), sealed('quest_0002')]),
+    }
+    const scribe = new Scribe({ sidecar, standIn, concurrency: 1 })
+
+    const quests = await wrote(scribe.writeQuests({ summary: CITY, sideQuests: 1 }))
 
     expect(quests.map((quest) => (quest as { id: string }).id)).toEqual(['quest_0001', 'quest_0002'])
     for (const quest of quests) expect(validateQuest(quest, VIEW).ok).toBe(true)
@@ -209,7 +251,7 @@ describe('writing quests', () => {
     const { sent, sidecar } = fakeModel((call, index) => draft(index === 0 ? 'quest_0009' : idIn(call)))
     const scribe = new Scribe({ sidecar, concurrency: 1 })
 
-    const quests = await scribe.writeQuests({ summary: CITY, sideQuests: 0 })
+    const quests = await wrote(scribe.writeQuests({ summary: CITY, sideQuests: 0 }))
 
     expect(sent[1]!.user).toContain("this quest's id is quest_0001")
     expect(quests[0]).toMatchObject({ id: 'quest_0001' })
@@ -218,7 +260,7 @@ describe('writing quests', () => {
   it('hands each quest the same corner of the city on every run, and a different one per seed', async () => {
     const cornerFor = async (seed: string) => {
       const { sent, sidecar } = fakeModel((call) => draft(idIn(call)))
-      await new Scribe({ sidecar, seed, concurrency: 1 }).writeQuests({ summary: BOROUGH, sideQuests: 1 })
+      await wrote(new Scribe({ sidecar, seed, concurrency: 1 }).writeQuests({ summary: BOROUGH, sideQuests: 1 }))
       return sent.map((call) => call.user)
     }
     const [first, again, elsewhere] = await Promise.all([
@@ -251,6 +293,8 @@ describe('writing quests', () => {
       })),
     }
     const { sent, sidecar } = fakeModel((call) => draft(idIn(call)))
+    // the drafts this fake writes name ids the corner does not hold, which is
+    // beside the point: what is measured is the corner every call was shown
     await new Scribe({ sidecar, seed: 'lopsided', concurrency: 1 }).writeQuests({ summary: lopsided, sideQuests: 4 })
 
     expect(sent.length).toBeGreaterThanOrEqual(5)
@@ -262,7 +306,7 @@ describe('writing quests', () => {
 
   it('sets each quest in one neighbourhood, and says how far apart its doors are', async () => {
     const { sent, sidecar } = fakeModel((call) => draft(idIn(call)))
-    await new Scribe({ sidecar, seed: 'harbour', concurrency: 1 }).writeQuests({ summary: STREET, sideQuests: 3 })
+    await wrote(new Scribe({ sidecar, seed: 'harbour', concurrency: 1 }).writeQuests({ summary: STREET, sideQuests: 3 }))
 
     for (const call of sent) {
       const home = /- (Place \d+), a shop \(plot_\d{4}\)\. The errand starts here\./.exec(call.user)![1]!
@@ -302,10 +346,10 @@ describe('writing quests', () => {
     )
     const scribe = new Scribe({ sidecar, seed: 'harbour', concurrency: 1 })
 
-    await scribe.writeInstances([
-      { index: 0, kind: 'bar', charter: charterOf('bar'), theme: 'port', rooms: ['main'], posts: [{ postId: 'anchor_0001', role: 'bartender', index: 0 }], things: [], has: PLAIN },
-    ])
-    await scribe.writeQuests({ summary: CITY, sideQuests: 0 })
+    await wrote(scribe.writeInstances([
+      { index: 0, kind: 'bar', name: 'Place 0', cast: [], charter: charterOf('bar'), theme: 'port', rooms: ['main'], posts: [{ postId: 'anchor_0001', role: 'bartender', index: 0 }], things: [], has: PLAIN },
+    ]))
+    await wrote(scribe.writeQuests({ summary: CITY, sideQuests: 0 }))
 
     expect(sent.at(-1)!.user).toContain('what it is: A bar the harbour crews drink in before the early tide.')
   })
@@ -324,7 +368,7 @@ describe('writing quests', () => {
     }
     const asks = { mainQuest: 'a missing ledger that both sides want', sideQuests: 'small favours between neighbours', tone: 'tired and funny' }
     const { sent, sidecar } = fakeModel((call) => draft(idIn(call)))
-    await new Scribe({ sidecar, concurrency: 1 }).writeQuests({ summary: { ...CITY, premise, asks }, sideQuests: 1 })
+    await wrote(new Scribe({ sidecar, concurrency: 1 }).writeQuests({ summary: { ...CITY, premise, asks }, sideQuests: 1 }))
 
     const [main, side] = sent.map((call) => call.user)
     expect(main).toContain('Lives on: Container freight off the elevated line.')
@@ -337,7 +381,7 @@ describe('writing quests', () => {
 
     // and a town with nothing asked of it is asked nothing about it
     const plain = fakeModel((call) => draft(idIn(call)))
-    await new Scribe({ sidecar: plain.sidecar, concurrency: 1 }).writeQuests({ summary: CITY, sideQuests: 0 })
+    await wrote(new Scribe({ sidecar: plain.sidecar, concurrency: 1 }).writeQuests({ summary: CITY, sideQuests: 0 }))
     expect(plain.sent[0]!.user).not.toContain('the owner')
     expect(plain.sent[0]!.user).toContain('Nothing has been written about the city itself yet.')
   })
@@ -352,7 +396,7 @@ describe('writing quests', () => {
       next: ['step_0003'],
     } as never
     const { sent, sidecar } = fakeModel([indoors, draft('quest_0001')])
-    await new Scribe({ sidecar, concurrency: 1 }).writeQuests({ summary: CITY, sideQuests: 0 })
+    await wrote(new Scribe({ sidecar, concurrency: 1 }).writeQuests({ summary: CITY, sideQuests: 0 }))
 
     expect(sent[1]!.user).toContain('interior_0001 is not in the world')
   })
@@ -361,7 +405,7 @@ describe('writing quests', () => {
 describe('writing quests through locks, screens and counters', () => {
   it('shows the writer every lock, what opens it, every screen, every price and what is for sale', async () => {
     const { sent, sidecar } = fakeModel(() => lockedDraft(KEY_RUN))
-    await new Scribe({ sidecar, concurrency: 1 }).writeQuests({ summary: LOCKED, sideQuests: 0 })
+    await wrote(new Scribe({ sidecar, concurrency: 1 }).writeQuests({ summary: LOCKED, sideQuests: 0 }))
 
     const user = sent[0]!.user
     expect(user).toContain('locked doors: door_0003, the Cellar door, opened by the key item_0001 in Neve Vesper\'s pocket (npc_0002)')
@@ -387,7 +431,7 @@ describe('writing quests through locks, screens and counters', () => {
     const { sent, sidecar } = fakeModel(() => lockedDraft(steps, extra))
     const scribe = new Scribe({ sidecar, concurrency: 1 })
 
-    const quests = await scribe.writeQuests({ summary: LOCKED, sideQuests: 0 })
+    const quests = await wrote(scribe.writeQuests({ summary: LOCKED, sideQuests: 0 }))
 
     expect(sent).toHaveLength(1)
     expect(scribe.problems()).toEqual([])
@@ -405,7 +449,7 @@ describe('writing quests through locks, screens and counters', () => {
     const { sent, sidecar } = fakeModel([lockedDraft(broken, extra), lockedDraft(KEY_RUN)])
     const scribe = new Scribe({ sidecar, concurrency: 1 })
 
-    const quests = await scribe.writeQuests({ summary: LOCKED, sideQuests: 0 })
+    const quests = await wrote(scribe.writeQuests({ summary: LOCKED, sideQuests: 0 }))
 
     expect(sent).toHaveLength(2)
     expect(sent[1]!.user).toContain(message)

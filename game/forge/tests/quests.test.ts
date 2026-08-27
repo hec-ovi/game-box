@@ -1,6 +1,6 @@
 import { PlayerState } from '@gb/play'
 import { QuestLog, REWARD_TABLE, type QuestDoc } from '@gb/quest'
-import { METRICS } from '@gb/world'
+import { METRICS, type World } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { secondsFor } from '../src/quests/pace.ts'
 import { buildTold, LOCKUP } from './histories.ts'
@@ -229,3 +229,160 @@ describe('generated quests', () => {
     }
   })
 })
+
+/**
+ * Where one line of a quest sends the player, and who it names when it gets
+ * there. Read straight off the step, the way the interface reads it: what the
+ * marker on the map points at, and whose name is in the sentence.
+ */
+function pointsAt(step: QuestDoc['steps'][number], world: World): { plotId: string | undefined; names: string[] } {
+  const plotOfNpc = (npcId: string): string | undefined => {
+    const station = world.npc(npcId)?.station
+    return station ? world.interior(station.interiorId)?.plotId : undefined
+  }
+  const plotOfItem = (itemId: string): string | undefined => {
+    const placement = world.placements().find((one) => one.itemId === itemId)
+    if (!placement) return undefined
+    if (placement.at === 'anchor') return world.interior(placement.interiorId)?.plotId
+    return placement.at === 'npc' ? plotOfNpc(placement.npcId) : undefined
+  }
+  const plotOf = (place: { plotId: string } | { interiorId: string }): string | undefined =>
+    'plotId' in place ? place.plotId : world.interior(place.interiorId)?.plotId
+
+  switch (step.kind) {
+    case 'talk':
+      return { plotId: plotOfNpc(step.npcId), names: [step.npcId] }
+    case 'deliver':
+      return { plotId: plotOfNpc(step.toNpcId), names: [step.toNpcId] }
+    case 'collect':
+    case 'buy':
+      return { plotId: plotOfItem(step.itemId), names: [] }
+    case 'stash':
+      return { plotId: world.interior(step.interiorId)?.plotId, names: [] }
+    case 'goto':
+      return { plotId: plotOf(step.place), names: [] }
+    // the marker on an escort is where the two of them are walking to; the
+    // companion was found at an earlier step, which is checked below
+    case 'escort':
+      return { plotId: plotOf(step.place), names: [] }
+    case 'unlock':
+      return { plotId: world.interior(world.door(step.doorId)?.interiorId ?? '')?.plotId, names: [] }
+    case 'hack':
+    case 'beat-game':
+      return { plotId: world.interior(world.machine(step.machineId)?.interiorId ?? '')?.plotId, names: [] }
+    default:
+      return { plotId: undefined, names: [] }
+  }
+}
+
+describe('the people a quest names', () => {
+  it('names nothing that is not in the world', () => {
+    // measured against the local model: offered three people by id, it answered
+    // with a fourth that was never in the town. Every id in a shipped quest has
+    // to resolve, or the map points at a place where nobody by that name stands
+    let ids = 0
+    for (const town of towns) {
+      for (const quest of town.quests) {
+        for (const id of idsIn(quest)) {
+          ids++
+          expect(resolves(town.world, id), `${quest.title} names ${id}, which is nothing in ${town.world.name}`).toBe(true)
+        }
+      }
+    }
+    expect(ids, 'no quest in any of these towns names anything').toBeGreaterThan(100)
+  })
+
+  it('never names somebody who is not standing in the place the step points at', () => {
+    // the reason the work is written before anybody is. A quest written over a
+    // town that is already full can say "talk to John" and drop a marker on a
+    // building with five strangers in it; a quest written first has its people
+    // written to it, so this cannot happen
+    let checked = 0
+    for (const town of towns) {
+      const { world } = town
+      for (const quest of town.quests) {
+        for (const step of quest.steps) {
+          const { plotId, names } = pointsAt(step, world)
+          if (step.kind !== 'complete' && step.kind !== 'join' && step.kind !== 'choice') {
+            expect(plotId, `${quest.title}: its ${step.kind} points at nowhere in town`).toBeDefined()
+            const plot = world.plot(plotId!)!
+            // the marker over the map says which building it is
+            expect(clipped(plot.name), `${quest.title}: "${step.objective}" marks ${step.markerLabel} and points at ${plot.name}`).toBe(step.markerLabel)
+          }
+          for (const npcId of names) {
+            const npc = world.npc(npcId)
+            expect(npc, `${quest.title}: "${step.objective}" names ${npcId}, who is nobody`).toBeDefined()
+            expect(npc!.station, `${quest.title}: ${npc!.name} stands nowhere`).toBeDefined()
+            expect(world.interior(npc!.station!.interiorId)?.plotId, `${quest.title}: "${step.objective}" sends the player to ${world.plot(plotId!)!.name}, and ${npc!.name} is not in it`).toBe(plotId)
+            expect(step.objective, `${quest.title}: "${step.objective}" points at ${npc!.name} without saying their name`).toContain(npc!.name)
+            checked++
+          }
+        }
+      }
+    }
+    expect(checked, 'no quest in any of these towns names anybody').toBeGreaterThan(30)
+  })
+
+  it('walks a companion off a step that found them where they were standing', () => {
+    // an escort is the one line whose marker is not where its person is, because
+    // the two of them are walking. The step that picked them up has to be
+    // honest, or nobody is ever found
+    let escorts = 0
+    for (const town of towns) {
+      const { world } = town
+      for (const quest of town.quests) {
+        for (const step of quest.steps) {
+          if (step.kind !== 'escort') continue
+          escorts++
+          const found = quest.steps.find((other) => other.kind === 'talk' && other.npcId === step.npcId)
+          expect(found, `${quest.title} asks the player to walk somebody they were never sent to find`).toBeDefined()
+          const home = world.interior(world.npc(step.npcId)!.station!.interiorId)!.plotId
+          expect(found!.markerLabel).toBe(clipped(world.plot(home)!.name))
+        }
+      }
+    }
+    expect(escorts, 'nobody in any of these towns is walked anywhere').toBeGreaterThan(0)
+  })
+
+  it('names every person and every place off the town, never off the architecture it was written against', () => {
+    // the work is written under placeholders (Person 3 at Instance 7) and bound
+    // to the names the story wrote. A placeholder left in a line is a line the
+    // player reads as a spreadsheet
+    for (const town of towns) {
+      for (const quest of town.quests) {
+        expect(JSON.stringify(quest), `${quest.title} still reads off the blueprint`).not.toMatch(/\b(Zone|Instance|Person|Thing) \d+\b/i)
+      }
+    }
+  })
+})
+
+/** A marker is capped shorter than a place name, so a long sign is clipped where it is bound. */
+const clipped = (name: string): string => (name.length <= 40 ? name : `${name.slice(0, 39).trimEnd()}.`)
+
+/** Every id a quest names, wherever in the document it is written. */
+function idsIn(quest: QuestDoc): Set<string> {
+  return new Set(JSON.stringify(quest).match(/\b(?:npc|item|plot|interior|anchor|door|machine)_\d+\b/g) ?? [])
+}
+
+/** Whether the city holds the thing an id names. */
+function resolves(world: World, id: string): boolean {
+  const [kind] = id.split('_')
+  switch (kind) {
+    case 'npc':
+      return world.npc(id) !== undefined
+    case 'item':
+      return world.item(id) !== undefined
+    case 'plot':
+      return world.plot(id) !== undefined
+    case 'interior':
+      return world.interior(id) !== undefined
+    case 'door':
+      return world.door(id) !== undefined
+    case 'machine':
+      return world.machine(id) !== undefined
+    case 'anchor':
+      return world.interiors().some((interior) => interior.anchors.some((anchor) => anchor.id === id))
+    default:
+      return false
+  }
+}

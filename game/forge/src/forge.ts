@@ -1,16 +1,6 @@
 import { err, ok, Rng, type Result, type SchemaViolation } from '@gb/kit'
 import { validateQuest, type QuestDoc, type QuestProblem } from '@gb/quest'
-import {
-  cellCentre,
-  questView,
-  World,
-  type IntegrityProblem,
-  type Interior,
-  type Item,
-  type Premise,
-  type Rect,
-  type WorldError,
-} from '@gb/world'
+import { questView, World, type IntegrityProblem, type Premise, type Rect, type WorldError } from '@gb/world'
 import { briefContract, type Brief } from './brief.ts'
 import type { Dropped } from './charters/resolve.ts'
 import { openPlacesFor, placesOnNewLand } from './interior/budget.ts'
@@ -23,26 +13,29 @@ import { Skyline } from './layout/skyline.ts'
 import { layRoads } from './layout/roads.ts'
 import { spreadSites, stationsWanted } from './layout/stations.ts'
 import { paintStreets } from './layout/streets.ts'
-import type { DistrictRequest, Narrator, SummaryLock, SummaryMachine, WorldSummary } from './narrator.ts'
-import { districtNames } from './narrator/districts.ts'
+import { askCityName, askSigns, askZoneNames, type Asking, type Zone } from './naming/ask.ts'
+import { bindings, bindNames } from './naming/bind.ts'
+import { instanceName, PLACEHOLDER_CITY, zoneName } from './naming/placeholders.ts'
+import { writeNames, type WrittenNames } from './naming/write.ts'
+import type { Instance, InstanceCasting, Narrator, Unwritten, Written, WritingStage } from './narrator.ts'
 import { writeEachPlace } from './narrator/one-at-a-time.ts'
 import { Signs } from './narrator/signs.ts'
 import { StreetNames } from './narrator/streets.ts'
-import { cityName } from './narrator/places.ts'
 import { readHistory, type Founding } from './premise/history.ts'
-import { premiseLines } from './premise/render.ts'
-import { surfacesOf } from './populate.ts'
+import { castOf, type Casting } from './quests/casting.ts'
 import { questDemand } from './quests/demand.ts'
-import { assemble } from './raise/assemble.ts'
-import { hangSigns, instanceRequests, planRaise, signRequests, type RaiseSetup } from './raise/plan.ts'
-import type { Chosen } from './raise/planned.ts'
+import { assemble, dress, PlaceNames, raiseShell } from './raise/assemble.ts'
+import { hangSigns, instanceRequests, nameRequests, planRaise, wantsName, type RaiseSetup } from './raise/plan.ts'
+import type { Chosen, PlannedSite } from './raise/planned.ts'
+import { planSummary, summarise } from './summary.ts'
 import { flavourOf } from './theme/flavour.ts'
 import { kindWeights, stapleKinds } from './theme/plot-mix.ts'
-import { wordsFor } from './theme/words.ts'
 
 export type ForgeError =
   | { readonly code: 'invalid-brief'; readonly violations: readonly SchemaViolation[] }
   | { readonly code: 'unsound-world'; readonly problems: readonly IntegrityProblem[] }
+  /** A stage of the writing stopped. `message` is the sentence to show whoever asked for the city. */
+  | { readonly code: 'unwritten'; readonly stage: WritingStage; readonly message: string }
 
 export interface ForgeResult {
   readonly world: World
@@ -75,13 +68,11 @@ export interface GrownQuests {
   readonly rejected: ForgeResult['rejected']
 }
 
-/** Who names the parts of a town: a narrator asked for all of them at once, or nobody. */
-type DistrictNamer = (requests: readonly DistrictRequest[]) => PromiseLike<readonly string[]> | readonly string[]
-
-/** A town laid out: the world with its streets, roads and named parts in it, and every site a building goes up on. */
+/** A town laid out: the world with its streets, roads and parts in it, every site a building goes up on, and the parts waiting to be named. */
 interface LaidOut {
   readonly world: World
   readonly sites: readonly Chosen[]
+  readonly zones: readonly Zone[]
 }
 
 const GENERATOR_VERSION = '0.1.0'
@@ -94,10 +85,10 @@ const GENERATOR_VERSION = '0.1.0'
 const EXTEND = new Skyline({ maxStoreys: 2, density: 1 })
 
 /**
- * Builds a city from a brief: streets and plots by arithmetic, names and people
- * and quests by a narrator, then checks the result before handing it over.
- * Geometry is never left to the narrator, and nothing invented is trusted
- * without validation.
+ * Builds a city from a brief: streets and plots by arithmetic, the history, the
+ * work, the names and the people by a narrator, in that order, then checks the
+ * result before handing it over. Geometry is never left to the narrator, and
+ * nothing invented is trusted without validation.
  *
  * `plan` is the arithmetic half on its own: the town a brief lays out, with
  * nothing written into it and nobody asked anything.
@@ -109,46 +100,104 @@ export class Forge {
     this.#narrator = narrator
   }
 
+  /**
+   * Builds a city, in the order the parts of it actually depend on each other:
+   *
+   * 1. **The history.** Written from the brief before a plot is placed. It
+   *    decides the mix of buildings, which doors open and what the main line is
+   *    about.
+   * 2. **The architecture.** Streets, roads, the parts of town and every
+   *    building, all arithmetic, all under placeholder names: `Zone 1`,
+   *    `Instance 1`. Nothing is asked of anybody.
+   * 3. **The work.** The quests are written against that bare architecture, so
+   *    what they name is a post the plan cut and a building that stands there.
+   * 4. **The names.** The city, every part of it and every door in it, out of
+   *    the story and out of what the work does where. Written over the
+   *    placeholders in one pass.
+   * 5. **The people and the insides.** Each place that opens is written whole,
+   *    told its name and the cast the quests already need standing in it, and
+   *    the town is filled in around them.
+   * 6. **The binding.** The lines the quests were written under are bound to the
+   *    names that landed, and every draft goes through `@gb/quest` against the
+   *    finished city.
+   *
+   * The order is the whole point. A quest written after the people were
+   * invented can name somebody who is not in the building the map points at;
+   * a quest written before them cannot, because the people are written to it.
+   */
   async build(input: unknown): Promise<Result<ForgeResult, ForgeError>> {
     const parsed = briefContract.parse(input)
     if (!parsed.ok) return err({ code: 'invalid-brief', violations: parsed.error })
     const brief = parsed.value
     const rng = new Rng(brief.seed)
-
-    // the town's history, before a plot is placed: it decides the kinds of
-    // place the town has, the mix, which doors open, how every place is
-    // written and what the main line is about
     const { brief: owner, asks } = brief
-    const history = readHistory(
-      await this.#narrator.writePremise?.({ theme: brief.theme, seed: brief.seed, ...(owner ? { brief: owner } : {}), ...(asks ? { asks } : {}) }),
-    )
+
+    // 1. the town's history, before a plot is placed
+    const told = this.#narrator.writePremise
+      ? await this.#narrator.writePremise({ theme: brief.theme, seed: brief.seed, ...(owner ? { brief: owner } : {}), ...(asks ? { asks } : {}) })
+      : undefined
+    if (told && !told.ok) return err(stopped(told.error))
+    const history = readHistory(told?.value)
     const premise = history.premise
-    const name = await this.#narrator.nameCity({ theme: brief.theme, seed: brief.seed, ...(premise ? { premise } : {}) })
 
-    const laid = await this.#layOut(brief, rng, name, history, (requests) => this.#narrator.nameDistricts?.(requests) ?? [])
+    // 2. the architecture, under placeholder names
+    const laid = this.#layOut(brief, rng, history)
     if (!laid.ok) return err(laid.error)
-    const { world, sites } = laid.value
-    await this.#raise(world, sites, this.#building(brief, premise, world, rng, brief.openPlaces ?? openPlacesFor(sites.length)))
+    const { world, sites, zones } = laid.value
+    const setup = this.#building(brief, premise, world, rng, brief.openPlaces ?? openPlacesFor(sites.length))
+    const bare = planRaise(world, sites, setup)
+    const plots = raiseShell(world, bare, new PlaceNames(bare, (one) => instanceName(one.index)))
 
-    const problems = world.check()
+    // 3. the work, over the bare architecture
+    const summary = planSummary(world, bare, plots, premise)
+    const written = await this.#narrator.writeQuests({ summary, sideQuests: questDemand(summary, rng.fork('quests')) })
+    if (!written.ok) return err(stopped(written.error))
+    const drafts = written.value
+    const cast = new Cast(bare, castOf(drafts))
+
+    // 4. the names, out of the story and out of the work
+    const [city, zoneNames, signs] = await Promise.all([
+      askCityName(this.#narrator, { theme: brief.theme, seed: brief.seed, ...(premise ? { premise } : {}) }),
+      askZoneNames(this.#narrator, zones, { theme: brief.theme, seed: brief.seed, ...(premise ? { premise } : {}) }),
+      askSigns(this.#narrator, asking(bare, setup, cast)),
+    ])
+    if (!city.ok) return err(stopped(city.error))
+    if (!zoneNames.ok) return err(stopped(zoneNames.error))
+    if (!signs.ok) return err(stopped(signs.error))
+    const planned = hangSigns(bare, signs.value)
+    const places = new Map(planned.filter(wantsName).map((one) => [plots.get(one.index)!, one.sign] as const))
+    const names: WrittenNames = { city: city.value, zones: zoneNames.value, places }
+    const renamed = writeNames(world, names)
+    if (!renamed.ok) return err({ code: 'unsound-world', problems: renamed.problems })
+
+    // 5. the people and the insides, written to the cast
+    const town = renamed.world
+    const inside = await this.#writePlaces(planned, setup, cast)
+    if (!inside.ok) return err(stopped(inside.error))
+    const wrote = dress(town, planned, plots, new PlaceNames(planned, (one) => one.sign), inside.value)
+
+    // 6. the work bound to the names that landed, then checked against the city it names
+    const book = bindings(planned, zoneNames.value, wrote)
+    const { quests, rejected } = this.#read(town, drafts.map((draft) => bindNames(draft, book)))
+
+    const problems = town.check()
     if (problems.length) return err({ code: 'unsound-world', problems })
-
-    const { quests, rejected } = await this.#writeQuests(world, premise, rng.fork('quests'))
-    return ok({ world, quests, rejected, dropped: history.dropped })
+    return ok({ world: town, quests, rejected, dropped: history.dropped })
   }
 
   /**
    * The architecture of a city, with nothing written into it: the street grid,
-   * the roads and the roads out, the named parts of town, every building with
+   * the roads and the roads out, the parts of town, every building with
    * its footprint, its height and the part it stands in, and where the trains
    * board. No interiors, so nobody is standing anywhere, nothing is lying about
    * and there is no work: this is what a brief gives, before anybody writes it.
    *
    * It is the same plan `build` raises, drawn from the same seed by the same
    * code, so a plot on a plan is the plot the build puts up: same place, same
-   * height, same part of town. What a build adds is the writing, and the one
-   * thing it moves is the name over a door that opens, because whoever writes
-   * the place names it.
+   * height, same part of town. What a build adds is the writing, names
+   * included: here the city is `City`, its parts are `Zone 1` and `Zone 2` and
+   * its buildings `Instance 1` and `Instance 2`, which is the architecture
+   * saying what it is rather than a gap where a name goes.
    *
    * `history` is what a narrator already wrote, and the plan is drawn against
    * it exactly as a build would be. Without one nothing is asked of anybody and
@@ -161,12 +210,13 @@ export class Forge {
     const rng = new Rng(brief.seed)
     const founding = readHistory(history)
 
-    const laid = await this.#layOut(brief, rng, plannedName(brief.theme, rng), founding, () => [])
+    const laid = this.#layOut(brief, rng, founding)
     if (!laid.ok) return err(laid.error)
     const { world, sites } = laid.value
-    // no door opens, so nothing is asked of a narrator and no sign is hung over
-    // one: every building on a plan is the frontage it is on the street
-    assemble(world, planRaise(world, sites, this.#building(brief, founding.premise, world, rng, 0)), [])
+    // no door opens, so nothing is asked of a narrator: every building on a plan
+    // is the frontage it is on the street, under the number it was laid out with
+    const planned = planRaise(world, sites, this.#building(brief, founding.premise, world, rng, 0))
+    raiseShell(world, planned, new PlaceNames(planned, (one) => instanceName(one.index)))
 
     const problems = world.check()
     if (problems.length) return err({ code: 'unsound-world', problems })
@@ -175,15 +225,15 @@ export class Forge {
 
   /**
    * Everything about a town that is arithmetic: the grid founded and painted,
-   * the roads laid, the parts of the city cut and named, and every site a
-   * building goes up on. `names` is the one question in it, and a plan answers
-   * it with nothing.
+   * the roads laid, the parts of the city cut, and every site a building goes
+   * up on. Nobody is asked anything here, and nothing is named: the city is
+   * `City` and its parts are `Zone 1` upwards until the story says otherwise.
    */
-  async #layOut(brief: Brief, rng: Rng, name: string, history: Founding, names: DistrictNamer): Promise<Result<LaidOut, ForgeError>> {
+  #layOut(brief: Brief, rng: Rng, history: Founding): Result<LaidOut, ForgeError> {
     const streets = planStreets(brief, rng.fork('streets'))
     const { brief: owner, asks } = brief
     const found = World.found({
-      name,
+      name: PLACEHOLDER_CITY,
       theme: brief.theme,
       seed: brief.seed,
       width: streets.size.width,
@@ -201,12 +251,12 @@ export class Forge {
     const world = found.value
     paintStreets(world, streets)
     layRoads(world, streets.crossings, streets.exits)
-    // the town is cut into its named parts before a plot is placed, so every
-    // plot can say which one it stands in as it goes up
-    const districts = await this.#cut(world, streets, rng.fork('districts'), history.premise, names)
+    // the town is cut into its parts before a plot is placed, so every plot can
+    // say which one it stands in as it goes up
+    const cut = this.#cut(world, streets, rng.fork('districts'))
     // the sites are chosen before the doors are counted, because how many open
     // follows how many buildings there are and not how far the town spreads
-    return ok({ world, sites: this.#townSites(brief, streets, rng, history.premise, world, districts) })
+    return ok({ world, sites: this.#townSites(brief, streets, rng, history.premise, world, cut.byBlock), zones: cut.zones })
   }
 
   /** What a whole city is raised against: its theme, its story, its signs, its streets and its door stream. */
@@ -240,12 +290,15 @@ export class Forge {
 
     if (places > 0) {
       const facades = rng.fork('facades')
-      await this.#raise(world, this.#facadeSites(world, facades), this.#growing(world, premise, world.interiors().length + places, facades.fork('people')))
+      const opened = await this.#raise(world, this.#facadeSites(world, facades), this.#growing(world, premise, world.interiors().length + places, facades.fork('people')))
+      if (!opened.ok) return err(opened.error)
     }
-    const added =
+    const grown =
       blocks > 0
         ? await this.#raise(world, this.#gapSites(world, blocks, rng, premise), this.#growing(world, premise, world.interiors().length + placesOnNewLand(blocks), rng.fork('extend/people')))
-        : []
+        : ok([] as string[])
+    if (!grown.ok) return err(grown.error)
+    const added = grown.value
 
     const problems = world.check()
     if (problems.length) return err({ code: 'unsound-world', problems })
@@ -259,12 +312,14 @@ export class Forge {
    * Never nothing, because a pack nobody can do anything in is scenery. Ids
    * continue from the ones already handed out.
    */
-  async extendQuests(world: World, existing: readonly QuestDoc[], rng = new Rng(`${world.seed}/extend`)): Promise<GrownQuests> {
+  async extendQuests(world: World, existing: readonly QuestDoc[], rng = new Rng(`${world.seed}/extend`)): Promise<Result<GrownQuests, ForgeError>> {
     const summary = summarise(world, world.premise())
     const stream = rng.fork('more-quests')
     const from = existing.reduce((most, quest) => Math.max(most, Number(quest.id.split('_')[1] ?? 0) || 0), existing.length)
     const wanted = Math.max(1, questDemand(summary, stream) - existing.length)
-    return this.#read(world, await this.#narrator.writeQuests({ summary, sideQuests: wanted, from }))
+    const written = await this.#narrator.writeQuests({ summary, sideQuests: wanted, from })
+    if (!written.ok) return err(stopped(written.error))
+    return ok(this.#read(world, written.value))
   }
 
   /** What every growth is raised against: the town's own theme, story, streets and door stream. */
@@ -283,61 +338,63 @@ export class Forge {
   }
 
   /**
-   * Puts buildings up: plan the whole town with no awaits, ask about every place
-   * that opens in one call and every sign over a shut door in another, both in
-   * the air at once, then write it all in the order it was planned.
+   * Puts a growth up: plan it with no awaits, name every door it adds in one
+   * call, write every place that opens in another, then put the lot into the
+   * world in the order it was planned.
    *
-   * The three steps are apart because the middle one is the only slow one, and
-   * because a town that is planned before anything is asked can ask about all of
-   * it at once. Nothing downstream depends on which answer landed first.
+   * A growth has its names before it has its plots, because the town it is
+   * growing onto was argued about long ago: what is new here is buildings, not
+   * a story. A build takes the same pieces in a different order, because its
+   * quests are written between the two.
    */
-  async #raise(world: World, chosen: readonly Chosen[], setup: RaiseSetup): Promise<string[]> {
-    const planned = planRaise(world, chosen, setup)
-    const requests = instanceRequests(planned, setup)
-    const wantSigns = signRequests(planned, setup)
-    // nothing to ask about is nothing asked: a growth that only opens doors
-    // hangs no signs, and a batch that opens none writes no places
-    const [written, signs] = await Promise.all([
-      requests.length ? (this.#narrator.writeInstances?.(requests) ?? writeEachPlace(this.#narrator, requests)) : [],
-      wantSigns.length ? (this.#narrator.namePlaces?.(wantSigns) ?? []) : [],
-    ])
-    return assemble(world, hangSigns(planned, signs), written)
+  async #raise(world: World, chosen: readonly Chosen[], setup: RaiseSetup): Promise<Result<string[], ForgeError>> {
+    const bare = planRaise(world, chosen, setup)
+    const signs = await askSigns(this.#narrator, asking(bare, setup))
+    if (!signs.ok) return err(stopped(signs.error))
+    const planned = hangSigns(bare, signs.value)
+    const inside = await this.#writePlaces(planned, setup)
+    if (!inside.ok) return err(stopped(inside.error))
+    return ok(assemble(world, planned, inside.value))
   }
 
   /**
-   * Cuts the town into its named parts and writes them into the world.
-   *
-   * The shapes are arithmetic and the names are invention, like everything
-   * else here: the cut is the seed's, and whoever names districts is asked for
-   * all of them in one call. Whatever comes back blank, or twice, is composed
-   * from the seed instead, so a city always comes out with every part of it
-   * named and no two of them called the same thing.
+   * Every place that opens, written whole in one call: what it is, the people
+   * in it and what is lying about. Nothing to ask about is nothing asked, so a
+   * growth that only opens doors that were painted on writes no places.
    */
-  async #cut(world: World, streets: StreetPlan, rng: Rng, premise: Premise | undefined, names: DistrictNamer): Promise<ReadonlyMap<number, string>> {
+  async #writePlaces(planned: readonly PlannedSite[], setup: RaiseSetup, cast?: Cast): Promise<Written<readonly Instance[]>> {
+    const requests = instanceRequests(planned, setup, cast ? (one) => cast.at(one) : undefined)
+    if (!requests.length) return ok([])
+    return this.#narrator.writeInstances?.(requests) ?? writeEachPlace(this.#narrator, requests)
+  }
+
+  /**
+   * Cuts the town into its parts and writes them into the world under
+   * placeholder names.
+   *
+   * The shapes are arithmetic, like everything else here: the cut is the
+   * seed's. What each part is called comes later, out of the story and the work
+   * in it, so what goes in now is `Zone 1` upwards and the naming pass writes
+   * over it.
+   */
+  #cut(world: World, streets: StreetPlan, rng: Rng): { byBlock: ReadonlyMap<number, string>; zones: Zone[] } {
     // parks and plazas are cut in with the built blocks: a district is a part
     // of the town rather than a set of buildings, so the map fills and a green
     // square belongs to the quarter it stands in. The built blocks come first,
     // so a block's number here is its number in the plan
     const ground = [...streets.blocks, ...streets.open.map((one) => one.rect)]
     const cut = cutDistricts(ground, rng)
-    if (!cut.length) return new Map()
-    const story = premise ? premiseLines(premise) : undefined
-    const requests: DistrictRequest[] = cut.map((one, index) => ({
-      index,
-      theme: world.theme,
-      blocks: one.blocks.length,
-      bearing: one.bearing,
-      ...(story ? { premise: story } : {}),
-    }))
-    const written = await names(requests)
-    const called = districtNames(cut, written, { theme: world.theme, seed: world.seed })
+    if (!cut.length) return { byBlock: new Map(), zones: [] }
     const districts = cut.map((one, index) => ({
       id: world.mintId('district'),
-      name: called[index]!,
+      name: zoneName(index),
       blocks: one.blocks.map((block) => ground[block]!),
     }))
-    if (!world.recordDistricts(districts).ok) return new Map()
-    return new Map(cut.flatMap((one, index) => one.blocks.map((block) => [block, districts[index]!.id] as const)))
+    if (!world.recordDistricts(districts).ok) return { byBlock: new Map(), zones: [] }
+    return {
+      byBlock: new Map(cut.flatMap((one, index) => one.blocks.map((block) => [block, districts[index]!.id] as const))),
+      zones: cut.map((one, index) => ({ id: districts[index]!.id, bearing: one.bearing, blocks: one.blocks.length })),
+    }
   }
 
   /**
@@ -441,11 +498,6 @@ export class Forge {
     return chosen
   }
 
-  async #writeQuests(world: World, premise: Premise | undefined, rng: Rng): Promise<GrownQuests> {
-    const summary = summarise(world, premise)
-    return this.#read(world, await this.#narrator.writeQuests({ summary, sideQuests: questDemand(summary, rng) }))
-  }
-
   /** Nothing a narrator writes is trusted: every draft goes through `@gb/quest` against this city, and what fails comes back with why. */
   #read(world: World, raw: readonly unknown[]): GrownQuests {
     const quests: QuestDoc[] = []
@@ -492,16 +544,10 @@ export class Forge {
   }
 }
 
-const overlaps = (a: Rect, b: Rect): boolean => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+/** A stage that stopped, as the error a caller reads: the sentence goes on `message`, where the launcher looks for it. */
+const stopped = (failure: Unwritten): ForgeError => ({ code: 'unwritten', stage: failure.stage, message: failure.message })
 
-/**
- * What a planned city is called. A build takes the name its narrator wrote; a
- * plan asks nobody, so the name is composed off the theme and the seed the way
- * every other offline name in the town is.
- */
-function plannedName(theme: string, rng: Rng): string {
-  return cityName(wordsFor(flavourOf(theme)), rng.fork('city'))
-}
+const overlaps = (a: Rect, b: Rect): boolean => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
 
 /** The world refusing a spec means the brief asked for a city that cannot exist. */
 function violationsOf(error: WorldError): readonly SchemaViolation[] {
@@ -511,90 +557,42 @@ function violationsOf(error: WorldError): readonly SchemaViolation[] {
 }
 
 /**
- * The abstract world a quest writer reads: what the town is about, its places,
- * who is in them, what is there, where its door is and what a thing can be left
- * on. No coordinates beyond the door, because that is all a quest ever needs to
- * measure a walk.
+ * The people the town's work needs, by the building they have to be standing
+ * in. It is the contract between the two halves of a build: the quests were
+ * written against posts the plan cut, and this is what turns that into a
+ * sentence the writer of each place is handed, so the person a step names is
+ * written into the very post the step points at.
  */
-export function summarise(world: World, premise?: Premise): WorldSummary {
-  const asks = world.asks()
-  const carried = new Map<string, string>()
-  for (const placement of world.placements()) if (placement.at === 'npc') carried.set(placement.itemId, placement.npcId)
-  return {
-    cityName: world.name,
-    theme: world.theme,
-    ...(premise ? { premise } : {}),
-    ...(asks ? { asks } : {}),
-    districts: world.districts().map((district) => ({ districtId: district.id, name: district.name })),
-    places: world.plots().map((plot) => {
-      const interior = world.interiors().find((i) => i.plotId === plot.id)
-      const npcs = interior ? world.npcs().filter((n) => n.station?.interiorId === interior.id) : []
-      const roomOf = new Map((interior?.anchors ?? []).map((anchor) => [anchor.id, anchor.roomId]))
-      const items = interior
-        ? world
-            .placements()
-            .flatMap((p) => {
-              if (p.at !== 'anchor' || p.interiorId !== interior.id) return []
-              const item = world.item(p.itemId)
-              return item ? [{ item, roomId: roomOf.get(p.anchorId) }] : []
-            })
-        : []
-      const surface = interior ? surfacesOf(interior.anchors)[0] : undefined
-      const work = world.charter(plot.kind)?.work
-      return {
-        plotId: plot.id,
-        ...(interior ? { interiorId: interior.id } : {}),
-        kind: plot.kind,
-        name: plot.name,
-        ...(plot.district ? { districtId: plot.district } : {}),
-        door: cellCentre(plot.entrance.cell.x, plot.entrance.cell.y, world.cellSize),
-        ...(surface ? { stashAnchorId: surface.id } : {}),
-        ...(work ? { work } : {}),
-        ...(interior?.forSale !== undefined ? { forSale: interior.forSale } : {}),
-        ...(interior ? { locks: locksOf(interior, items, carried), machines: machinesOf(interior) } : {}),
-        npcs: npcs.map((n) => {
-          const roomId = n.station ? roomOf.get(n.station.anchorId) : undefined
-          return { npcId: n.id, name: n.name, role: n.role, ...(roomId ? { roomId } : {}) }
-        }),
-        items: items.map(({ item, roomId }) => ({
-          itemId: item.id,
-          name: item.name,
-          archetype: item.archetype,
-          ...(item.ownerNpcId ? { ownerNpcId: item.ownerNpcId } : {}),
-          value: item.value,
-          ...(roomId ? { roomId } : {}),
-        })),
-      }
-    }),
+class Cast {
+  readonly #byPlace = new Map<number, InstanceCasting[]>()
+  readonly #work = new Map<number, string[]>()
+
+  constructor(planned: readonly PlannedSite[], cast: readonly Casting[]) {
+    const posts = new Map(planned.flatMap((one) => (one.inside?.posts ?? []).map((post) => [post.npcId, { one, post }] as const)))
+    for (const casting of cast) {
+      const stands = posts.get(casting.npcId)
+      if (!stands) continue
+      const { one, post } = stands
+      const { npcId: _, ...rest } = casting
+      this.#byPlace.set(one.index, [...(this.#byPlace.get(one.index) ?? []), { postId: post.anchor.id, ...rest }])
+      this.#work.set(one.index, [...(this.#work.get(one.index) ?? []), `${casting.questTitle}: ${casting.line}`])
+    }
+  }
+
+  /** Who the work needs standing in this place. */
+  at(one: PlannedSite): readonly InstanceCasting[] {
+    return this.#byPlace.get(one.index) ?? []
+  }
+
+  /** What the work does here, in the lines the player reads, so a place can be named after what happens in it. */
+  work(one: PlannedSite): readonly string[] {
+    return [...new Set(this.#work.get(one.index) ?? [])]
   }
 }
 
-/** Every locked door of a place: what opens it, who has that in their pocket, and what is lying behind it. */
-function locksOf(interior: Interior, items: ReadonlyArray<{ item: Item; roomId: string | undefined }>, carried: ReadonlyMap<string, string>): SummaryLock[] {
-  const named = new Map(interior.rooms.map((room) => [room.id, room.name]))
-  return interior.doors
-    .filter((door) => door.locked)
-    .map((door) => {
-      const street = door.from === 'outside'
-      const keeper = door.keyItemId ? carried.get(door.keyItemId) : undefined
-      return {
-        doorId: door.id,
-        room: named.get(door.to) ?? door.to,
-        roomId: door.to,
-        street,
-        ...(door.keyItemId ? { keyItemId: door.keyItemId } : {}),
-        ...(keeper ? { keeperNpcId: keeper } : {}),
-        ...(door.password ? { password: door.password } : {}),
-        behind: items.filter(({ roomId }) => street || roomId === door.to).map(({ item }) => item.id),
-      }
-    })
-}
-
-/** Every screen of a place: what it runs and what opens it. */
-function machinesOf(interior: Interior): SummaryMachine[] {
-  return interior.furniture.flatMap((piece) =>
-    piece.machine
-      ? [{ machineId: piece.machine.id, program: piece.machine.program, locked: piece.machine.locked, ...(piece.machine.password ? { password: piece.machine.password } : {}), roomId: piece.roomId }]
-      : [],
-  )
+/** Every door this pass has to name, with the sign composed for it and what the work does behind it. */
+function asking(planned: readonly PlannedSite[], setup: RaiseSetup, cast?: Cast): Asking[] {
+  const wanted = planned.filter(wantsName)
+  const requests = nameRequests(planned, setup, cast ? (one) => cast.work(one) : undefined)
+  return wanted.map((one, at) => ({ request: requests[at]!, composed: one.sign, opens: one.inside !== undefined }))
 }

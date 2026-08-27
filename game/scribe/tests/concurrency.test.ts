@@ -2,6 +2,7 @@ import type { WorldSummary } from '@gb/forge'
 import { describe, expect, it } from 'vitest'
 import { Scribe } from '../src/index.ts'
 import { fakeModel, type Sent } from './fake-model.ts'
+import { wrote } from './wrote.ts'
 
 const CITY: WorldSummary = {
   cityName: 'Cold Harbour',
@@ -53,10 +54,9 @@ function backwards(total: number) {
 describe('quests written several at a time', () => {
   it('come back in the order they were asked for, never the order they landed in', async () => {
     const model = backwards(6)
-    const quests = await new Scribe({ sidecar: model.sidecar, concurrency: 3 }).writeQuests({
-      summary: CITY,
-      sideQuests: 5,
-    })
+    const quests = await wrote(
+      new Scribe({ sidecar: model.sidecar, concurrency: 3 }).writeQuests({ summary: CITY, sideQuests: 5 }),
+    )
 
     expect(quests.map((quest) => (quest as { id: string }).id)).toEqual([
       'quest_0001',
@@ -71,7 +71,7 @@ describe('quests written several at a time', () => {
 
   it('never hold the engine more work than it has slots for', async () => {
     const model = backwards(6)
-    await new Scribe({ sidecar: model.sidecar, concurrency: 2 }).writeQuests({ summary: CITY, sideQuests: 5 })
+    await wrote(new Scribe({ sidecar: model.sidecar, concurrency: 2 }).writeQuests({ summary: CITY, sideQuests: 5 }))
     expect(model.peak()).toBe(2)
   })
 
@@ -79,10 +79,9 @@ describe('quests written several at a time', () => {
     const runs = await Promise.all(
       [1, 2].map(async () => {
         const model = backwards(6)
-        await new Scribe({ sidecar: model.sidecar, concurrency: 3, seed: 'harbour' }).writeQuests({
-          summary: CITY,
-          sideQuests: 5,
-        })
+        await wrote(
+          new Scribe({ sidecar: model.sidecar, concurrency: 3, seed: 'harbour' }).writeQuests({ summary: CITY, sideQuests: 5 }),
+        )
         return model.sent.map((call) => call.user).sort()
       }),
     )
@@ -91,7 +90,7 @@ describe('quests written several at a time', () => {
 
   it('are told the titles of the wave before them, and nothing from their own wave', async () => {
     const model = backwards(6)
-    await new Scribe({ sidecar: model.sidecar, concurrency: 3 }).writeQuests({ summary: CITY, sideQuests: 5 })
+    await wrote(new Scribe({ sidecar: model.sidecar, concurrency: 3 }).writeQuests({ summary: CITY, sideQuests: 5 }))
 
     const byId = new Map(model.sent.map((call) => [/quest_\d{4}/.exec(call.user)![0], call.user]))
     expect(byId.get('quest_0001')).toContain('None yet.')
@@ -102,10 +101,9 @@ describe('quests written several at a time', () => {
 
   it('writes one quest per side quest asked for, with no ceiling on how many', async () => {
     const model = backwards(30)
-    const quests = await new Scribe({ sidecar: model.sidecar, concurrency: 5 }).writeQuests({
-      summary: CITY,
-      sideQuests: 29,
-    })
+    const quests = await wrote(
+      new Scribe({ sidecar: model.sidecar, concurrency: 5 }).writeQuests({ summary: CITY, sideQuests: 29 }),
+    )
     expect(quests).toHaveLength(30)
   })
 })

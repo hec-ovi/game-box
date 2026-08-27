@@ -24,7 +24,7 @@ Quests as flows: a checked graph of steps ("talk to her, get through the back do
 
 | Param | Schema | Postconditions |
 |---|---|---|
-| `validateQuest` | a `QuestDoc` | every step reachable, every path ends, every reference exists, every item in hand before it is asked for, reward inside the band |
+| `validateQuest` | a `QuestDoc` | every step reachable, every path ends, every reference exists, every item in hand before it is asked for, and the pay settled into the band it belongs in |
 | `checkReward` | `SchemaViolation[]` | empty means the pay fits the difficulty; each entry names the field to fix |
 | `rewardFor` | a `Reward` | inside the band for that difficulty |
 | `QuestLog.handle` / `start` / `abandon` | `Change[]` | `quest-started`, `step-opened`, `step-revealed`, `step-progress`, `step-done`, `step-abandoned`, `quest-abandoned`, `quest-complete` (carrying the whole `Reward`), `quest-failed`; empty when nothing moved |
@@ -203,13 +203,13 @@ Every id is checked against the world with the rest of the quest: an access to a
 
 ## Difficulty and pay
 
-`difficulty` is one of `errand`, `small`, `standard`, `hard`, `epic` (default `small`). `REWARD_TABLE` holds one band per tier: what the whole quest may hand over (the reward plus every `pay` effect), how far one reputation swing may go, how many items and how many accesses the reward may include, and whether it may be a car or a home. A car is `hard` or `epic` work; a home is `epic`. `rewardFor(difficulty)` returns a reward that fits, so a generator asks for "a small job" instead of inventing a number. The table is the one place pay is tuned.
+`difficulty` is one of `errand`, `small`, `standard`, `hard`, `epic` (default `small`). `REWARD_TABLE` holds one band per tier: what the whole quest may hand over (the reward plus every `pay` effect), how far one reputation swing may go, how many items and how many accesses the reward may include, and whether it may be a car or a home. A car is `hard` or `epic` work; a home is `epic`. `rewardFor(difficulty)` returns a reward that fits, so a generator asks for "a small job" instead of inventing a number. The table is the one place pay is tuned. Money and standing are **settled, not refused**: a quest that pays 150 where its tier pays 600 comes back paying 600, and one that pays a fortune comes back at the ceiling, with whatever the steps hand over counted against the same ceiling. A number in the wrong place is not a reason to throw a playable job away. What is still refused is what changing a number cannot fix: more items, doors, a car or a home than the tier hands over.
 
 ## Errors (closed set)
 
 - `invalid-quest`: failed the JSON Schema. Carries the offending paths.
 - `broken-flow`: schema-valid but unplayable. Carries every problem: dangling reference (a person, thing, place, door or machine the world has not got, a reward's access or deed included), unreachable step, dead end, loop, no completion, a count larger than its pool, a secret nothing reveals, required work hanging off optional work, or an item asked for before the player can have it.
-- `unbalanced-reward`: playable, but the pay does not match the difficulty. Carries the difficulty and one violation per offending field.
+- `unbalanced-reward`: playable, but it hands over something the tier does not: too many items or doors, a car, a home, or steps that charge more than the tier may cost. Carries the difficulty and one violation per offending field. Money and standing never land here, because they are settled first.
 - `invalid-event`: the reported event is not one of the known shapes. Nothing moves.
 - `invalid-progress`: the save is not quest progress.
 - `unknown-quest` / `already-started` / `requirements-not-met`: from `start`. The last one carries the conditions the player does not meet.

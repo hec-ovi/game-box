@@ -2,17 +2,17 @@
  * Stage 1: the city.
  *
  * The history, the kinds of place that history invents, the name over the road
- * sign, and the signs on every door that does not open. Then the grid, the
- * plots and which of them the town spends its doors on, none of which the model
- * is asked about.
+ * sign, and the sign on every door in the town. Then the grid, the plots and
+ * which of them the town spends its doors on, none of which the model is asked
+ * about.
  */
 import { MOUNTAIN_CELLS } from '@gb/forge'
 import { CELL, METRICS, SHIPPED_CHARTERS, type Word } from '@gb/world'
 import { charterTool, NAME_CITY, signsTool, WRITE_PREMISE } from '../../../../game/scribe/src/tools.ts'
 import { el, field, json, pre } from '../dom.ts'
-import { buildCity, narratorFor, premiseInputOf, problemsOf } from '../pipeline.ts'
+import { buildCity, narratorFor, premiseInputOf } from '../pipeline.ts'
 import type { Json } from '../schema.ts'
-import { exchangeViews, sandbox, type Call, type Fact, type Lab, type Stage } from '../stage.ts'
+import { exchangeViews, sandbox, showProblems, type Call, type Fact, type Lab, type Stage } from '../stage.ts'
 import { site } from '../source.ts'
 
 const PRESET_WORDS = SHIPPED_CHARTERS.map((charter) => charter.word)
@@ -22,7 +22,7 @@ export const CITY: Stage = {
   n: 1,
   title: 'The city',
   lede:
-    'Four forced calls, in this order: the history, one charter for every kind of place the history invented that no preset covers, the city name, and the signs over the doors that do not open, twenty to a call. Between them the forge lays the grid, cuts the plots, rolls a kind onto each one and decides which handful of doors open. None of that is asked.',
+    'Four forced calls. The history opens the build, and one charter follows for every kind of place the history invented that no preset covers. Then the forge lays the grid, cuts the plots, rolls a kind onto each one and decides which handful of doors open, all under placeholder names, and the work is written over that. The city name and the signs come after the work, every door in the town asked about, twenty to a call.',
 
   told: () => TOLD,
 
@@ -53,27 +53,32 @@ export const CITY: Stage = {
         run.out.appendChild(el('h3', {}, 'The input the forge hands it'))
         run.out.appendChild(json(input))
 
-        const history = await author.writePremise(input)
-        lab.captured.history = history
-        lab.captured.premiseInput = input
-
+        const written = await author.writePremise(input)
         run.out.appendChild(el('h3', {}, `The calls (${lab.recorder.exchanges.length})`))
         run.out.appendChild(exchangeViews(lab.recorder.exchanges))
+        showProblems(run, author)
+        if (!written.ok) {
+          run.stopped(written.error)
+          return
+        }
+
+        const history = written.value
+        lab.captured.history = history
+        lab.captured.premiseInput = input
         run.out.appendChild(el('h3', {}, 'The validated history'))
         run.out.appendChild(json(history, true))
-
-        const problems = problemsOf(author)
-        if (problems.length) {
-          run.out.appendChild(el('h3', {}, `Rejected along the way (${problems.length})`))
-          run.out.appendChild(json(problems, true))
-        }
 
         if (alsoBuild.checked) {
           run.say('building the city offline on that history', 'work')
           const offline = narratorFor('offline', lab.form, lab.recorder, lab.base)
           const outcome = await buildCity(lab.form, offline, history)
           Object.assign(lab.captured, outcome.captured)
+          lab.refresh()
           run.out.appendChild(el('h3', {}, `The city, built offline in ${outcome.ms} ms`))
+          if (outcome.stopped) {
+            run.stopped(outcome.stopped)
+            return
+          }
           run.out.appendChild(
             pre(
               outcome.error ??
@@ -86,7 +91,6 @@ export const CITY: Stage = {
                 ].join('\n'),
             ),
           )
-          lab.refresh()
         }
       },
     )
@@ -103,7 +107,7 @@ function premiseCall(): Call {
     sites: [
       site('game/scribe/src/premise.ts', 'WRITE_PREMISE,', 'the call'),
       site('game/scribe/src/tools.ts', 'contract: premiseContract', 'the tool'),
-      site('game/forge/src/forge.ts', 'this.#narrator.writePremise?.', 'who asks for it'),
+      site('game/forge/src/forge.ts', 'const told = this.#narrator.writePremise', 'who asks for it'),
       site('game/sidecar/src/wire.ts', 'tool_choice: { type:', 'what forces the call'),
     ],
     returns: [
@@ -140,7 +144,7 @@ function charterCall(word: Word): Call {
     returns: [
       { field: 'label', marks: ['file', 'prompt'], note: 'what a person calls such a place. Every later prompt about one of these buildings is shown it.' },
       { field: 'blade', marks: ['file', 'screen'], note: 'the word spelled down the blade sign on the front of the building, and on a subway entrance.' },
-      { field: 'names[]', marks: ['file'], note: 'the templates the offline sign composer fills, `{family}`, `{adjective}`, `{noun}`. The model path hangs signs with `name_signs` instead.' },
+      { field: 'names[]', marks: ['file'], note: 'the templates `{family}`, `{adjective}` and `{noun}` that `OfflineNarrator` fills, which is what the tests and the quest harness get. A build hangs its signs with `name_signs`.' },
       { field: 'rumours[]', marks: ['prompt'], note: 'rendered into prompts by `charter-lines.ts` and read by nothing else in the repository. No person in the game ever says one.' },
       { field: 'share, prominence, residential, size, street, access, transit, service, work, holding, finish, rooms', marks: ['file', 'shape'], note: 'every one is a routine the engine already runs: the mix weight, the facade, whether the door opens to you, which rooms are cut, what stands in them, whether a room is shut and whether a screen goes on the desk.' },
     ],
@@ -155,13 +159,13 @@ function charterCall(word: Word): Call {
 function nameCityCall(): Call {
   return {
     tool: 'name_city',
-    what: 'the name on the road sign at the edge of town',
+    what: 'the name on the road sign at the edge of town, asked once the work is written',
     prompts: ['system', 'name-city', 'no-history', 'tool-name-city'],
     schema: () => NAME_CITY.contract.jsonSchema() as Json,
     schemaNote: 'one string, 2 to 60 characters',
     sites: [
       site('game/scribe/src/scribe.ts', '      NAME_CITY,', 'the call'),
-      site('game/forge/src/forge.ts', 'await this.#narrator.nameCity', 'who asks for it'),
+      site('game/forge/src/naming/ask.ts', 'return narrator.nameCity(input)', 'who asks for it'),
     ],
     returns: [
       { field: 'name', marks: ['file', 'screen', 'prompt'], note: '`World.found({ name })`, so it is the city\'s name in the file and on the landing card, and it heads every later descriptive prompt.' },
@@ -172,19 +176,19 @@ function nameCityCall(): Call {
 function signsCall(labels: readonly string[]): Call {
   return {
     tool: 'name_signs',
-    what: 'the signs over the doors that do not open, twenty to a call',
+    what: 'the sign over every door in the town, twenty to a call',
     prompts: ['system', 'name-signs', 'no-history', 'tool-name-signs'],
     schema: () => signsTool(labels).contract.jsonSchema() as Json,
     schemaNote: `pinned to this batch's labels (${labels.join(', ')}); a batch is 20`,
     sites: [
       site('game/scribe/src/signs.ts', 'signsTool(labels)', 'the call'),
       site('game/scribe/src/signs.ts', 'const BATCH', 'how many to a call'),
-      site('game/forge/src/forge.ts', 'this.#narrator.namePlaces?.', 'who asks for it'),
+      site('game/forge/src/naming/ask.ts', 'if (narrator.namePlaces)', 'who asks for it'),
       site('game/forge/src/raise/plan.ts', 'export function hangSigns', 'where the answers are put on the buildings'),
     ],
     returns: [
       { field: 'signs[].building', marks: ['shape'], note: 'the caller\'s own label, `b<plot index>`. It comes straight back so the answers are zipped on by id, never by order.' },
-      { field: 'signs[].name', marks: ['file', 'screen'], note: '`plot.name`: the sign on the front of the building. A name whose head word is already over another door is thrown away and the offline composer writes that one instead.' },
+      { field: 'signs[].name', marks: ['file', 'screen'], note: '`plot.name`: the sign on the front of the building. A name whose head word is already over another door is asked of the model again, that one sign on its own, so the other nineteen of the batch are kept.' },
     ],
     checks: [
       { text: 'A building named twice, or missed. The batch is refused with the label named.', at: site('game/scribe/src/signs.ts', 'function labelProblems', 'checked here') },
@@ -198,7 +202,7 @@ const TOLD: readonly Fact[] = [
   { text: 'The owner\'s own words, verbatim and quoted, under "What the owner asked for". The tone, the main errand and the look go beside it, each only if it was filled in; a form left wholly blank is told the choice is the model\'s.', at: site('game/scribe/src/asked.ts', 'export function askedLines', '') },
   { text: 'The words every town already has a kind of place for, so it knows what it need not invent:', at: site('game/scribe/src/premise.ts', 'SHIPPED_CHARTERS.map', ''), values: PRESET_WORDS },
   { text: 'The charter call is told the history, the one word it is filling in, and the preset words it is not.', at: site('game/scribe/src/charters.ts', "prompt('write-charter'", '') },
-  { text: 'The sign batch is told the history and, for each of twenty buildings, its label and the street its door is on. Nothing else about the building.', at: site('game/scribe/src/signs.ts', 'buildings: bullets(', '') },
+  { text: 'The sign batch is told the history and, for each of twenty buildings, its label, the trade its charter names and the street its door is on. The request also carries the lines of work done in that building; the sign prompt renders none of them.', at: site('game/scribe/src/signs.ts', 'buildings: bullets(', '') },
   { text: 'Nothing about size. No grid, no plot count, no metres, no storeys: the history is written before a street is laid, so there is nothing yet to be told.', at: site('game/forge/src/forge.ts', 'const history = readHistory(', '') },
 ]
 

@@ -30,8 +30,13 @@ for (const blocks of sizes) {
   const started = performance.now()
   const built = await new Forge(new OfflineNarrator(seed)).build({ theme, seed, blocksX: blocks, blocksY: blocks, ...(blockCells ? { blockCells } : {}) })
   if (!built.ok) {
-    const why = built.error.code === 'invalid-brief' ? built.error.violations : built.error.problems
-    console.log(`${`${blocks}x${blocks}`.padEnd(8)}refused: ${why.map((one) => one.message).join('; ')}`)
+    const why =
+      built.error.code === 'invalid-brief'
+        ? built.error.violations.map((one) => one.message).join('; ')
+        : built.error.code === 'unsound-world'
+          ? built.error.problems.map((one) => one.message).join('; ')
+          : built.error.message
+    console.log(`${`${blocks}x${blocks}`.padEnd(8)}refused: ${why}`)
     continue
   }
   const { world, quests } = built.value

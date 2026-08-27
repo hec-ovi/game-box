@@ -2,6 +2,7 @@ import type { DistrictRequest } from '@gb/forge'
 import { describe, expect, it } from 'vitest'
 import { Scribe } from '../src/index.ts'
 import { fakeModel, type Sent } from './fake-model.ts'
+import { stopped, wrote } from './wrote.ts'
 
 /** The parts of a city as the forge hands them over: how much of the town each holds, and which way it lies. */
 function cut(count: number): DistrictRequest[] {
@@ -30,9 +31,9 @@ describe('naming the parts of the city', () => {
   it('asks for all of them in one call, with the history and how much of the town each part holds', async () => {
     const { sent, sidecar } = fakeModel((call) => (call.toolName === 'name_districts' ? answer(call) : { name: 'Cold Harbour' }))
     const scribe = new Scribe({ sidecar, seed: 'harbour' })
-    await scribe.nameCity({ theme: 'rain-soaked cargo port', seed: 'harbour' })
+    await wrote(scribe.nameCity({ theme: 'rain-soaked cargo port', seed: 'harbour' }))
 
-    const names = await scribe.nameDistricts(cut(5))
+    const names = await wrote(scribe.nameDistricts(cut(5)))
 
     expect(names).toEqual(['Kiln 0', 'Kiln 1', 'Kiln 2', 'Kiln 3', 'Kiln 4'])
     // one call for the city's name, one for every district in it
@@ -52,38 +53,38 @@ describe('naming the parts of the city', () => {
     const { sent, sidecar } = fakeModel((call, index) => answer(call, (label) => (index === 0 && label === 'd2' ? 'Kiln 1' : `Kiln ${label.slice(1)}`)))
     const scribe = new Scribe({ sidecar, seed: 'harbour' })
 
-    const names = await scribe.nameDistricts(cut(4))
+    const names = await wrote(scribe.nameDistricts(cut(4)))
 
     expect(sent).toHaveLength(2)
     expect(sent[1]!.user).toContain('districts.2.name: Kiln 1 already names another part of this city')
     expect(names[2]).toBe('Kiln 2')
   })
 
-  it('composes a name for whatever the model will not write, and still names no two parts alike', async () => {
-    // the model keeps every part but one, and heads two of them the same way
-    const { sidecar } = fakeModel((call) => ({
-      districts: labelsOf(call)
-        .filter((label) => label !== 'd1')
-        .map((label) => ({ district: label, name: label === 'd3' ? 'Kiln 0' : `Kiln ${label.slice(1)}` })),
+  it('refuses a batch that names one part twice and leaves another unnamed, and takes the corrected cut', async () => {
+    const { sent, sidecar } = fakeModel((call, index) => ({
+      districts: labelsOf(call).map((label, at) => ({
+        district: index === 0 && label === 'd1' ? 'd0' : label,
+        name: `Kiln ${at}`,
+      })),
     }))
-    const scribe = new Scribe({ sidecar, seed: 'harbour', attempts: 1 })
+    const scribe = new Scribe({ sidecar, seed: 'harbour' })
 
-    const names = await scribe.nameDistricts(cut(5))
+    const names = await wrote(scribe.nameDistricts(cut(5)))
 
-    expect(names).toHaveLength(5)
-    expect(names.every((name) => name.length > 2)).toBe(true)
-    expect(new Set(names.map((name) => name.toLowerCase())).size).toBe(5)
+    expect(sent).toHaveLength(2)
+    expect(sent[1]!.user).toContain('districts: name part d0 exactly once, not 2 times')
+    expect(sent[1]!.user).toContain('districts: name part d1 exactly once, not 0 times')
+    expect(names).toEqual(['Kiln 0', 'Kiln 1', 'Kiln 2', 'Kiln 3', 'Kiln 4'])
   })
 
-  it('names every part from the offline composer when the model will not answer at all', async () => {
+  it('stops the city stage when the model will not name the parts, rather than composing them', async () => {
     const { sent, sidecar } = fakeModel(['no-call'])
     const scribe = new Scribe({ sidecar, seed: 'harbour', attempts: 1 })
 
-    const names = await scribe.nameDistricts(cut(6))
+    const failure = await stopped(scribe.nameDistricts(cut(6)))
 
     expect(sent).toHaveLength(1)
-    expect(names).toHaveLength(6)
-    expect(names.every((name) => name.length > 2)).toBe(true)
-    expect(new Set(names.map((name) => name.toLowerCase())).size).toBe(6)
+    expect(failure).toMatchObject({ stage: 'city', at: 'districts', code: 'no-tool-call' })
+    expect(failure.message).toContain('the names of the parts of the city could not be written')
   })
 })

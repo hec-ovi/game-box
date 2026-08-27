@@ -37,7 +37,8 @@ async function grow(base: Awaited<ReturnType<typeof sealed>>, growth: number | G
   const added = await one.extend(world, growth)
   if (!added.ok) throw new Error(JSON.stringify(added.error).slice(0, 400))
   const work = await one.extendQuests(world, base.quests)
-  return { world, added: added.value, ...work }
+  if (!work.ok) throw new Error(JSON.stringify(work.error).slice(0, 400))
+  return { world, added: added.value, ...work.value }
 }
 
 /** Which plots you can walk into. */

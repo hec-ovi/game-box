@@ -1,11 +1,12 @@
 import { Bundle, Pack, type OpenedBundle } from '@gb/bundle'
-import { Forge, OfflineNarrator } from '@gb/forge'
+import { Forge, type Narrator } from '@gb/forge'
 import type { Notice } from '@gb/hud'
 import type { Catalogue } from '@gb/prefab'
 import { Scribe, type ScribeProgress } from '@gb/scribe'
 import type { Sidecar } from '@gb/sidecar'
 import type { City, Progress } from './city-maker.ts'
 import { pin } from './pinning.ts'
+import { thrown } from './thrown.ts'
 
 /** How many buildings a growth puts up: the number `gb extend` uses when it is not told. */
 const GROWTH = 10
@@ -79,26 +80,29 @@ export class Packs {
   }
 
   /**
-   * Grow this city and cut the pack for what went up. The city that comes back
-   * is the grown one, so the player is walking round what they just added, and
-   * the pack beside it is the file that puts the same buildings on somebody
-   * else's copy.
+   * Grow this city and cut the pack for what went up. The model writes what
+   * goes into the new land. The city that comes back is the grown one, so the
+   * player is walking round what they just added, and the pack beside it is
+   * the file that puts the same buildings on somebody else's copy.
    */
   async grow(
     city: City,
-    options: { signal: AbortSignal; step: Progress; model?: boolean; catalogue?: Catalogue; progress?: (event: ScribeProgress) => void },
+    options: { signal: AbortSignal; step: Progress; catalogue?: Catalogue; progress?: (event: ScribeProgress) => void },
   ): Promise<Grown> {
     const base = await Bundle.open(city.document)
     const growing = await Bundle.open(structuredClone(city.document))
     if (!base.ok || !growing.ok) return { ok: false, message: 'That city will not open again to be grown.' }
 
     const seed = growing.value.world.seed
-    const scribe = options.model
-      ? new Scribe({ sidecar: this.#sidecar, seed, signal: options.signal, ...(options.progress ? { progress: options.progress } : {}) })
-      : undefined
 
     await options.step('Building onto the city')
-    const grown = await new Forge(scribe ?? new OfflineNarrator(seed)).extend(growing.value.world, GROWTH)
+    let grown: Awaited<ReturnType<Forge['extend']>>
+    try {
+      grown = await new Forge(this.narrator(seed, options)).extend(growing.value.world, GROWTH)
+    } catch (cause) {
+      if (options.signal.aborted) return { ok: false, message: 'Stopped.' }
+      return { ok: false, message: `The model would not write what went up: ${thrown(cause)}` }
+    }
     if (options.signal.aborted) return { ok: false, message: 'Stopped.' }
     if (!grown.ok) return { ok: false, message: `The city would not grow (${grown.error.code}).` }
     if (grown.value.length === 0) return { ok: false, message: 'That city has no land left to build on.' }
@@ -118,6 +122,11 @@ export class Packs {
     const applied = await this.apply(city, blobOf(cut.value), { signal: options.signal, step: options.step })
     if (!applied.ok) return applied
     return { ok: true, value: applied.value, pack: cut.value, added: applied.added }
+  }
+
+  /** Who writes what goes up: the model, through `@gb/scribe`, the way a first build is written. */
+  protected narrator(seed: string, options: { signal: AbortSignal; progress?: (event: ScribeProgress) => void }): Narrator {
+    return new Scribe({ sidecar: this.#sidecar, seed, signal: options.signal, ...(options.progress ? { progress: options.progress } : {}) })
   }
 }
 

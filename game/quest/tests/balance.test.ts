@@ -30,27 +30,26 @@ describe('reward balance', () => {
     expect(accept(job(reward, { difficulty: 'standard' })).reward.money).toBe(140)
   })
 
-  it('refuses a fortune for an errand and pocket change for a hard job', () => {
-    const fortune = refusal(job({ money: 40000, reputation: 0, faction: 'town', items: [] }, { difficulty: 'errand' }))
-    expect(fortune.code).toBe('unbalanced-reward')
-    expect(fortune.messages).toContain('reward.money: an errand pays at most 25, this hands over 40000')
+  it('settles a fortune and pocket change into the band instead of refusing the job', () => {
+    // a number in the wrong place is not a reason to throw a playable job away
+    const fortune = accept(job({ money: 40000, reputation: 0, faction: 'town', items: [] }, { difficulty: 'errand' }))
+    expect(fortune.reward.money).toBe(REWARD_TABLE.errand.money.max)
 
-    const stingy = refusal(job({ money: 4, reputation: 0, faction: 'town', items: [] }, { difficulty: 'hard' }))
-    expect(stingy.code).toBe('unbalanced-reward')
-    expect(stingy.messages).toContain('reward.money: a hard job pays at least 200, this rewards 4')
+    const stingy = accept(job({ money: 4, reputation: 0, faction: 'town', items: [] }, { difficulty: 'hard' }))
+    expect(stingy.reward.money).toBe(REWARD_TABLE.hard.money.min)
   })
 
   it('counts money handed over mid-quest against the same ceiling', () => {
-    const smuggled = refusal(
+    const smuggled = accept(
       job({ money: 20, reputation: 0, faction: 'town', items: [] }, { step_0003: { effects: [{ kind: 'pay', amount: 900 }] } }),
     )
-    expect(smuggled.code).toBe('unbalanced-reward')
-    expect(smuggled.messages).toContain('reward.money: a small job pays at most 90, this hands over 920')
+    // the steps already hand over more than a small job may, so the pay at the end is nothing
+    expect(smuggled.reward.money).toBe(0)
   })
 
-  it('refuses a standing swing and an item pile the tier cannot carry', () => {
-    const swing = refusal(job({ money: 20, reputation: 50, faction: 'town', items: [] }))
-    expect(swing.messages).toContain('reward.reputation: a small job moves reputation by at most 12, this moves it by 50')
+  it('settles a standing swing, and still refuses an item pile the tier cannot carry', () => {
+    const swing = accept(job({ money: 20, reputation: 50, faction: 'town', items: [] }))
+    expect(swing.reward.reputation).toBe(REWARD_TABLE.small.reputation)
 
     const pile = refusal(job({ money: 20, reputation: 0, faction: 'town', items: ['item_0001', 'item_0002'] }))
     expect(pile.messages).toContain('reward.items: a small job rewards at most 1 item(s), this rewards 2')

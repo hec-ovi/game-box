@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { Scribe, type PlaceRequest } from '../src/index.ts'
 import { fakeModel, type Sent } from './fake-model.ts'
 import { charterOf } from './places.ts'
+import { stopped, wrote } from './wrote.ts'
 
 const KINDS = ['bar', 'shop', 'office', 'warehouse', 'house'] as const
 
@@ -32,9 +33,9 @@ describe('naming the buildings that do not open', () => {
   it('asks for twenty at a time, with the history, the trade and the street of each, and hands the names back in order', async () => {
     const { sent, sidecar } = fakeModel((call) => (call.toolName === 'name_signs' ? answer(call) : { name: 'Cold Harbour' }))
     const scribe = new Scribe({ sidecar, seed: 'harbour', concurrency: 2 })
-    await scribe.nameCity({ theme: 'rain-soaked port', seed: 'harbour' })
+    await wrote(scribe.nameCity({ theme: 'rain-soaked port', seed: 'harbour' }))
 
-    const names = await scribe.namePlaces(frontage(45))
+    const names = await wrote(scribe.namePlaces(frontage(45)))
 
     expect(names).toHaveLength(45)
     expect(names.slice(0, 3)).toEqual(['Head0 Supply', 'Head1 Supply', 'Head2 Supply'])
@@ -57,9 +58,9 @@ describe('naming the buildings that do not open', () => {
         : { name: 'Cold Harbour' },
     )
     const scribe = new Scribe({ sidecar, seed: 'harbour', concurrency: 1 })
-    await scribe.nameCity({ theme: 'rain-soaked port', seed: 'harbour' })
+    await wrote(scribe.nameCity({ theme: 'rain-soaked port', seed: 'harbour' }))
 
-    const names = await scribe.namePlaces(frontage(25))
+    const names = await wrote(scribe.namePlaces(frontage(25)))
 
     // the second batch was told the first batch's heads, repeated one, and was asked again
     expect(sent[2]!.user).toContain('- head3')
@@ -74,54 +75,61 @@ describe('naming the buildings that do not open', () => {
     )
     const scribe = new Scribe({ sidecar, seed: 'harbour' })
 
-    const names = await scribe.namePlaces(frontage(5))
+    const names = await wrote(scribe.namePlaces(frontage(5)))
 
     expect(sent).toHaveLength(2)
     expect(sent[1]!.user).toContain('signs.2.name: The Head1 Supply starts with head1, which already heads another sign in this batch')
     expect(names[2]).toBe('Head2 Supply')
   })
 
-  it('keeps a batch the model would not mend, and writes only the clashing sign offline', async () => {
+  it('keeps a batch the model would not mend, and asks the model again for the clashing sign alone', async () => {
     // a repeat is worth a second draw, never the other nineteen signs the batch got right
-    const { sent, sidecar } = fakeModel((call) => answer(call, (label) => (label === 'b2' ? 'The Head1' : `Head${label.slice(1)}`)))
+    const { sent, sidecar } = fakeModel((call) =>
+      call.toolName === 'name_signs' ? answer(call, (label) => (label === 'b2' ? 'The Head1' : `Head${label.slice(1)}`)) : { name: 'Kettle Rooms' },
+    )
     const scribe = new Scribe({ sidecar, seed: 'harbour' })
 
-    const names = await scribe.namePlaces(frontage(5))
+    const names = await wrote(scribe.namePlaces(frontage(5)))
 
-    expect(sent).toHaveLength(2)
+    // two batch calls, then one call for the one building whose word was spent
+    expect(sent.map((call) => call.toolName)).toEqual(['name_signs', 'name_signs', 'name_place'])
     expect(names[0]).toBe('Head0 Supply')
     expect(names[4]).toBe('Head4 Supply')
-    expect(names[2]).not.toMatch(/^(The )?Head1/)
+    expect(names[2]).toBe('Kettle Rooms')
     const heads = names.map((name) => name.toLowerCase().replace(/^the /, '').split(' ')[0])
     expect(new Set(heads).size).toBe(5)
   })
 
   it('lets no word head two signs in the city, whatever the batches came back with', async () => {
     // two batches in one wave cannot see each other, and this model has one favourite word
-    const { sidecar } = fakeModel((call) => answer(call, (label) => (Number(label.slice(1)) % 20 === 0 ? 'Kettle' : `Head${label.slice(1)}`)))
+    const { sidecar } = fakeModel((call, index) =>
+      call.toolName === 'name_signs'
+        ? answer(call, (label) => (Number(label.slice(1)) % 20 === 0 ? 'Kettle' : `Head${label.slice(1)}`))
+        : { name: `Mend${index} Rooms` },
+    )
     const scribe = new Scribe({ sidecar, seed: 'harbour', concurrency: 3, attempts: 1 })
 
-    const names = await scribe.namePlaces(frontage(45))
+    const names = await wrote(scribe.namePlaces(frontage(45)))
 
     expect(names[0]).toBe('Kettle Supply')
     const heads = names.map((name) => name.toLowerCase().replace(/^the /, '').split(' ')[0])
     expect(new Set(heads).size).toBe(45)
-    // the lower index kept the word; the others were written by the offline composer
+    // the lower index kept the word; the model was asked again for the other two
     expect(names[20]).not.toMatch(/^Kettle/)
     expect(names[40]).not.toMatch(/^Kettle/)
   })
 
-  it('names every building from the offline composer when the model will not, still with no head twice', async () => {
+  it('stops the city stage when the model will not write the signs, rather than composing them', async () => {
     const { sent, sidecar } = fakeModel(['no-call'])
     const scribe = new Scribe({ sidecar, seed: 'harbour', attempts: 1 })
 
-    const names = await scribe.namePlaces(frontage(30))
+    const failure = await stopped(scribe.namePlaces(frontage(30)))
 
+    // the two batches were asked and neither answered; no building is then asked for on its own
     expect(sent).toHaveLength(2)
-    expect(names).toHaveLength(30)
-    expect(names.every((name) => name.length > 2)).toBe(true)
-    const heads = names.map((name) => name.toLowerCase().replace(/^the /, '').split(' ')[0])
-    expect(new Set(heads).size).toBe(30)
+    expect(failure).toMatchObject({ stage: 'city', at: 'signs:0', code: 'no-tool-call' })
+    expect(failure.message).toContain('the signs over the doors could not be written')
+    expect(failure.message).toContain('127.0.0.1:8976')
   })
 
   it('writes the same signs on the same seed whatever order the batches landed in', async () => {
@@ -131,7 +139,7 @@ describe('naming the buildings that do not open', () => {
           await new Promise((resolve) => setTimeout(resolve, (3 - index) * 4))
           return answer(call)
         })
-        const names = await new Scribe({ sidecar, seed: 'harbour', concurrency: 3 }).namePlaces(frontage(45))
+        const names = await wrote(new Scribe({ sidecar, seed: 'harbour', concurrency: 3 }).namePlaces(frontage(45)))
         return { asked: sent.map((call) => call.user).sort(), names }
       }),
     )

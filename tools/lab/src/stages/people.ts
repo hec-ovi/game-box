@@ -11,9 +11,9 @@
 import { BACKGROUND_UNLOCKS, BODY_KINDS, MAX_BACKGROUND_FACTS, NPC_ROLES } from '@gb/world'
 import { describeNpcTool, instanceTool } from '../../../../game/scribe/src/tools.ts'
 import { el, field, json, pre } from '../dom.ts'
-import { narratorFor, problemsOf } from '../pipeline.ts'
+import { narratorFor } from '../pipeline.ts'
 import type { Json } from '../schema.ts'
-import { exchangeViews, sandbox, type Call, type Fact, type Lab, type Stage } from '../stage.ts'
+import { exchangeViews, sandbox, showProblems, type Call, type Fact, type Lab, type Stage } from '../stage.ts'
 import { site } from '../source.ts'
 
 const LETTERS = 'ABCD'
@@ -58,31 +58,33 @@ export const PEOPLE: Stage = {
         const chosen = posts[Number(choose.value)]
         if (!chosen) throw new Error('no post captured: build a city from the header first')
         const { request, post } = chosen
+        const cast = request.cast.filter((one) => one.postId === post.postId)
         const input = {
           role: post.role,
           placeKind: request.kind,
           place: request.charter,
-          placeName: lab.captured.instances?.find((one) => one.people.some((person) => person.postId === post.postId))?.name ?? request.charter.label,
+          placeName: request.name,
           theme: request.theme,
           index: post.index,
           ...(request.premise === undefined ? {} : { premise: request.premise }),
+          ...(cast.length ? { cast } : {}),
         }
         run.out.appendChild(el('h3', {}, 'The input'))
         run.out.appendChild(json(input))
 
         const author = narratorFor(lab.author, lab.form, lab.recorder, lab.base, signal)
-        const person = await author.describeNpc(input)
-
+        const written = await author.describeNpc(input)
         run.out.appendChild(el('h3', {}, `The call (${lab.recorder.exchanges.length})`))
         run.out.appendChild(exchangeViews(lab.recorder.exchanges))
+        showProblems(run, author)
+        if (!written.ok) {
+          run.stopped(written.error)
+          return
+        }
+
+        const person = written.value
         run.out.appendChild(el('h3', {}, 'The validated person'))
         run.out.appendChild(json(person, true))
-
-        const problems = problemsOf(author)
-        if (problems.length) {
-          run.out.appendChild(el('h3', {}, `Rejected along the way (${problems.length})`))
-          run.out.appendChild(json(problems, true))
-        }
         const stages = new Set((person.background ?? []).map((fact) => fact.unlockedBy))
         run.out.appendChild(
           pre(
@@ -154,7 +156,8 @@ function peopleSchemaOf(schema: Json): Json | undefined {
 
 const TOLD: readonly Fact[] = [
   { text: 'The job they do, and what kind of place they do it in, as the charter reads in plain words.', at: site('game/scribe/src/scribe.ts', 'role: input.role', '') },
-  { text: 'The name of the place they stand in, the city\'s name and its theme.', at: site('game/scribe/src/scribe.ts', 'placeName: input.placeName', '') },
+  { text: 'The name of the place they stand in, hung over its door before anybody was written into it, the city\'s name and its theme.', at: site('game/scribe/src/scribe.ts', 'placeName: input.placeName', '') },
+  { text: 'Which quest needs somebody at this post, in what part and with what line, is on the input; the describe-npc prompt renders none of it. A person asked for one at a time is handed the same cast the whole-place call gets.', at: site('game/forge/src/narrator/one-at-a-time.ts', 'const cast = request.cast.filter', '') },
   { text: 'The town\'s whole history, so what they know is about this town and could not have been said in another.', at: site('game/scribe/src/scribe.ts', "prompt('describe-npc', {", '') },
   { text: 'The four letters their family name may start with, and every name the city has already spent.', at: site('game/scribe/src/scribe.ts', 'letters: letters.split', '') },
   { text: 'Nothing about where the post is. No room size, no metres, no coordinates and no body: a person is written from their job and their town.' },
@@ -163,11 +166,11 @@ const TOLD: readonly Fact[] = [
 const ENGINE: readonly Fact[] = [
   { text: 'Whether there is a person here at all: an anchor gets a post only if the charter gives that kind of post a job.', at: site('game/forge/src/populate.ts', 'export function roleFor', '') },
   { text: 'What that job is. The role is handed to the model, never chosen by it:', at: site('game/world/src/model/vocabulary.ts', 'export const NPC_ROLES', ''), values: [...NPC_ROLES] },
-  { text: 'Which post in which room they stand at, and therefore what they are doing all day.', at: site('game/forge/src/raise/plan.ts', 'posts.push({ anchor, role, index', '') },
+  { text: 'Which post in which room they stand at, and therefore what they are doing all day.', at: site('game/forge/src/raise/plan.ts', 'posts.push({ npcId: world.mintId', '') },
   { text: 'What body they get and which variant of it:', at: site('game/world/src/model/vocabulary.ts', 'export const BODY_KINDS', ''), values: [...BODY_KINDS] },
   { text: 'Which four letters their family name may start with, dealt four at a time off a shuffle of the alphabet so any six places in a row hold disjoint letters.', at: site('game/scribe/src/claim.ts', 'export class FamilyClaims', '') },
   { text: 'Their number in the town, which is what their seed and their letters are drawn from.', at: site('game/forge/src/raise/plan.ts', 'const index = counts.npcs++', '') },
   { text: `How many facts a codex may hold: at least one for each of ${BACKGROUND_UNLOCKS.join(', ')}, at most ${MAX_BACKGROUND_FACTS}.`, at: site('game/world/src/model/life.ts', 'export const MAX_BACKGROUND_FACTS', '') },
   { text: 'Who carries the key to the locked room. The model is told who keeps the place; it does not decide whose pocket it is in.', at: site('game/forge/src/populate.ts', 'export function keeperOf', '') },
-  { text: 'Whether anybody is outdoors. Nobody is: every person is filtered by their station, so a person with no post appears in no summary and no quest can name them.', at: site('game/forge/src/forge.ts', 'n.station?.interiorId === interior.id', '') },
+  { text: 'Whether anybody is outdoors. Nobody is: every person is filtered by their station, so a person with no post appears in no summary and no quest can name them.', at: site('game/forge/src/summary.ts', 'npc.station?.interiorId === interior.id', '') },
 ]

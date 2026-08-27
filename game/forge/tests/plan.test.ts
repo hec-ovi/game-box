@@ -5,15 +5,16 @@ import { LOCKUP, Told } from './histories.ts'
 
 /**
  * The architecture of a city: everything a plan promises to be the same as the
- * build it stands for. The name over a door is not in it, because a place that
- * opens is named by whoever writes it.
+ * build it stands for. No name is in it. A plan is the architecture under its
+ * placeholders and a build is the same architecture with the story written
+ * over it, so what the two have to agree on is the shape of the town.
  */
 function architecture(world: World) {
   const doc = world.toJSON()
   return {
     grid: doc.grid,
     roads: doc.roads,
-    districts: world.districts(),
+    districts: world.districts().map((district) => ({ id: district.id, blocks: district.blocks })),
     stations: world.stations().map((plot) => plot.id),
     plots: world.plots().map((plot) => ({
       id: plot.id,
@@ -86,6 +87,24 @@ describe('Forge.plan', () => {
 
     expect(plan.premise()?.stake).toBe(LOCKUP.stake)
     expect(plan.charters().map((charter) => charter.word)).toContain('jail')
+    expect(architecture(plan)).toEqual(architecture(built.world))
+  })
+
+  it('lays the town out under placeholders, and writes its names over them once there is a story', async () => {
+    // the order the owner asks for: the architecture is arithmetic and says so
+    // in its own names, and the writing comes after it. A plan that composed
+    // names would be inventing a town before anybody had written one
+    const { built, plan } = await bothWays('quay-9')
+
+    expect(plan.name).toBe('City')
+    expect(plan.districts().map((zone) => zone.name)).toEqual(plan.districts().map((_, at) => `Zone ${at + 1}`))
+    expect(plan.plots().map((plot) => plot.name)).toEqual(plan.plots().map((_, at) => `Instance ${at + 1}`))
+
+    // and the same town built carries names instead, on all three
+    expect(built.world.name).not.toBe('City')
+    for (const zone of built.world.districts()) expect(zone.name, `${zone.id} was never named`).not.toMatch(/^Zone \d+$/)
+    for (const plot of built.world.plots()) expect(plot.name, `${plot.id} was never named`).not.toMatch(/^Instance \d+$/)
+    // the shapes are the same town, so it really is the same architecture named
     expect(architecture(plan)).toEqual(architecture(built.world))
   })
 

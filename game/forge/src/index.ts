@@ -1,5 +1,6 @@
 /** @gb/forge: builds a city from a brief, then checks what it built. See CONTRACT.md. */
-export { Forge, summarise, type ForgeError, type ForgeResult, type Growth, type GrownQuests } from './forge.ts'
+export { Forge, type ForgeError, type ForgeResult, type Growth, type GrownQuests } from './forge.ts'
+export { summarise } from './summary.ts'
 export { BLOCKS_MAX, STOREYS_DEFAULT, briefContract, type Brief } from './brief.ts'
 export { MOST_PLACES, OPEN_PLACES } from './interior/budget.ts'
 export { OfflineNarrator } from './offline-narrator.ts'
@@ -10,8 +11,14 @@ export { premiseContract, type Premise } from '@gb/world'
 /** What a narrator writes as a history: the premise, and the kinds of place it declares. */
 export { historyContract, HistorySchema, type History } from './premise/shape.ts'
 export type { Dropped } from './charters/resolve.ts'
+export type { Casting } from './quests/casting.ts'
 export type {
+  CastPart,
+  Unwritten,
+  WritingStage,
+  Written,
   Instance,
+  InstanceCasting,
   InstanceBrief,
   InstancePerson,
   InstancePost,

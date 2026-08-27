@@ -13,8 +13,6 @@ export interface CityBrief {
   readonly places?: number
   /** The tallest building the city may raise, in storeys. Left out, the generator's own ceiling. */
   readonly storeys?: number
-  /** Write the names, people and quests with the model rather than offline. */
-  readonly model: boolean
   /** What the city is about, in the player's own words. Unbounded: it is theirs. */
   readonly brief?: string
   /** The main quest, the side quests, the tone, and the style choices the art can draw. */
@@ -22,7 +20,7 @@ export interface CityBrief {
 }
 
 /** What the panel starts on, and what a bare address builds: `@gb/forge`'s own default size, a city rather than a hamlet. */
-export const DEFAULTS: CityBrief = { theme: 'quiet coastal town', seed: 'town', blocks: 20, model: false }
+export const DEFAULTS: CityBrief = { theme: 'quiet coastal town', seed: 'town', blocks: 20 }
 
 /**
  * The size the generator will take, read straight off `@gb/forge`'s brief
@@ -83,7 +81,6 @@ export function tidy(brief: CityBrief): CityBrief {
     blocks: clampBlocks(brief.blocks),
     ...(brief.places ? { places: clampPlaces(brief.places) } : {}),
     ...(brief.storeys ? { storeys: clampStoreys(brief.storeys) } : {}),
-    model: brief.model,
     ...(text ? { brief: text } : {}),
     ...(asks ? { asks } : {}),
   }
@@ -114,7 +111,7 @@ export function sameBrief(a: CityBrief, b: CityBrief): boolean {
 }
 
 /** The ones the address bar carries. Everything else in it belongs to somebody else. */
-const BRIEF_KEYS = ['theme', 'seed', 'blocks', 'places', 'storeys', 'model']
+const BRIEF_KEYS = ['theme', 'seed', 'blocks', 'places', 'storeys']
 
 /**
  * The address bar, which is how a city is shared by seed and how the same one is
@@ -128,7 +125,6 @@ export function briefFromQuery(query: URLSearchParams): CityBrief | undefined {
     blocks: Number(query.get('blocks') ?? DEFAULTS.blocks),
     ...(query.has('places') ? { places: Number(query.get('places')) } : {}),
     ...(query.has('storeys') ? { storeys: Number(query.get('storeys')) } : {}),
-    model: query.has('model') && query.get('model') !== '0',
   })
 }
 
@@ -145,7 +141,6 @@ export function briefToQuery(brief: CityBrief | undefined, carry?: URLSearchPara
     query.set('theme', brief.theme)
     query.set('seed', brief.seed)
     query.set('blocks', String(brief.blocks))
-    if (brief.model) query.set('model', '1')
   }
   for (const [key, value] of carry ?? []) if (!BRIEF_KEYS.includes(key) && key !== 'bundle') query.append(key, value)
   const written = query.toString()

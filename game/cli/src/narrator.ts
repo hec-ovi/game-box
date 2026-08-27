@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { OfflineNarrator, type History, type Narrator } from '@gb/forge'
+import { OfflineNarrator, type History, type Narrator, type Written } from '@gb/forge'
 import { Scribe } from '@gb/scribe'
 
 /** Who writes a city: the local model when asked for, the offline narrator otherwise. */
@@ -49,8 +49,8 @@ class HistoryNarrator implements Narrator {
     if (base.namePlaces) this.namePlaces = base.namePlaces.bind(base)
   }
 
-  async writePremise(): Promise<History> {
-    return this.#history
+  async writePremise(): Promise<Written<History>> {
+    return { ok: true, value: this.#history }
   }
 }
 

@@ -1,5 +1,6 @@
+import { ok } from '@gb/kit'
 import type { Charter } from '@gb/world'
-import { Forge, OfflineNarrator, type History, type Narrator } from '../src/index.ts'
+import { Forge, OfflineNarrator, type History, type Narrator, type Written } from '../src/index.ts'
 
 /**
  * Histories a narrator might write, for the tests to build towns against:
@@ -83,8 +84,8 @@ export class Told implements Narrator {
     this.#offline = new OfflineNarrator(seed)
     this.#history = history
   }
-  async writePremise(): Promise<History> {
-    return this.#history as History
+  async writePremise(): Promise<Written<History>> {
+    return ok(this.#history as History)
   }
   nameCity = (input: Parameters<Narrator['nameCity']>[0]) => this.#offline.nameCity(input)
   namePlace = (input: Parameters<Narrator['namePlace']>[0]) => this.#offline.namePlace(input)

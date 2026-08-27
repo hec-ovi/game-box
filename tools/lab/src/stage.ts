@@ -8,8 +8,10 @@
  * sandbox underneath runs that one stage and shows the request and the reply as
  * they were.
  */
+import type { Narrator, Unwritten } from '@gb/forge'
 import { add, chips, clear, el, fold, json, panel, pre, table } from './dom.ts'
 import { markdown } from './markdown.ts'
+import { problemsOf, stopOf } from './pipeline.ts'
 import type { Author, Captured, Exchange, Form, Recorder } from './pipeline.ts'
 import { schemaTable, type Json } from './schema.ts'
 import { promptFile, type Site } from './source.ts'
@@ -234,6 +236,12 @@ export interface Run {
   readonly root: HTMLElement
   readonly out: HTMLElement
   say(text: string, kind?: 'good' | 'bad' | 'work'): void
+  /**
+   * A stage that would not write: the stage, the call and the sentence, drawn
+   * under whatever has already gone out, so the request and the reply that led
+   * to it are still on the page.
+   */
+  stopped(error: Unwritten): void
 }
 
 /**
@@ -252,6 +260,22 @@ export function sandbox(
     status.className = kind ? `status ${kind}` : 'status'
     status.textContent = text
   }
+  let halted = false
+  const run: Run = {
+    root: out,
+    out,
+    say,
+    stopped(error) {
+      halted = true
+      const stop = stopOf(error)
+      add(out, [
+        el('h3', {}, 'The stage would not write'),
+        table(['Stage', 'The call', 'Why'], [[stop.stage, stop.at, stop.code]], () => 'f'),
+        el('p', { class: 'stopped' }, stop.message),
+        el('p', { class: 'hint' }, 'Nothing is composed in its place: a build that hits this has no city.'),
+      ])
+    },
+  }
   const button = el('button', { class: 'go' }, 'Run')
   const stop = el('button', { disabled: true }, 'Stop')
   let controller: AbortController | undefined
@@ -261,12 +285,16 @@ export function sandbox(
     controller = new AbortController()
     button.disabled = true
     stop.disabled = false
+    halted = false
     clear(out)
     lab.recorder.clear()
     say(`running against the ${lab.author} author`, 'work')
     const started = performance.now()
-    void go({ root: out, out, say }, controller.signal)
-      .then(() => say(`done in ${Math.round(performance.now() - started)} ms`, 'good'))
+    void go(run, controller.signal)
+      .then(() => {
+        const ms = Math.round(performance.now() - started)
+        say(halted ? `stopped after ${ms} ms` : `done in ${ms} ms`, halted ? 'bad' : 'good')
+      })
       .catch((cause: unknown) => {
         say(String(cause), 'bad')
         out.appendChild(pre(String((cause as Error)?.stack ?? cause)))
@@ -285,6 +313,13 @@ export function sandbox(
   body.appendChild(left)
   body.appendChild(right)
   return body
+}
+
+/** Every call that failed on the way, the ones a later attempt got right included. */
+export function showProblems(run: Run, author: Narrator): void {
+  const problems = problemsOf(author)
+  if (!problems.length) return
+  add(run.out, [el('h3', {}, `Rejected along the way (${problems.length})`), json(problems, true)])
 }
 
 /** Every call of a run, exactly as it went out and came back. */

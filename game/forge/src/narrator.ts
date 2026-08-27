@@ -1,3 +1,4 @@
+import type { Result } from '@gb/kit'
 import type { Asks, Charter, ItemArchetype, MachineProgram, Npc, NpcRole, Premise, RoomKind, Word, WorkKind } from '@gb/world'
 import type { Bearing } from './layout/districts.ts'
 import type { History } from './premise/shape.ts'
@@ -56,13 +57,39 @@ export interface InstanceBrief {
   readonly forSale?: number
 }
 
+/** What one person in a place is there for, because a quest asks the player to find them there. */
+export type CastPart = 'giver' | 'talk-to' | 'deliver-to' | 'walk-with'
+
+/**
+ * A person the town's work needs standing at this post.
+ *
+ * The quests are written before anybody is, against the posts the plan cut, so
+ * this is the whole reason some of the people in a place exist. Whoever is
+ * written into `postId` is the person that quest names: get them wrong and the
+ * job sends the player to a room with five strangers in it.
+ */
+export interface InstanceCasting {
+  /** The post they stand at: one of this request's own `posts`. */
+  readonly postId: string
+  readonly part: CastPart
+  readonly questId: string
+  readonly questTitle: string
+  readonly questKind: 'main' | 'side'
+  /** The line of the quest they are named on, as the player reads it. */
+  readonly line: string
+}
+
 /** One building's own shell: everything a narrator is shown to write the place whole. */
 export interface InstanceRequest extends PlaceRequest {
+  /** What the place is called. It was named before this call, out of the town's story and the work in it. */
+  readonly name: string
   readonly rooms: readonly RoomKind[]
   readonly posts: readonly InstancePost[]
   /** The stock to name. Keys, cards and deeds are not in it: they are named here off what they open or own. */
   readonly things: readonly InstanceStock[]
   readonly has: InstanceBrief
+  /** The people the town's work already needs standing in here, and what each of them is for. */
+  readonly cast: readonly InstanceCasting[]
 }
 
 export interface InstancePerson extends NpcProfile {
@@ -104,10 +131,17 @@ export interface PlaceRequest {
   readonly street?: string
   /** What the city is about, in the few lines `premiseLines` renders it as. Absent when nobody wrote one. */
   readonly premise?: string
+  /** What the town's work does here, a line per job, because a place is named for what happens in it. Empty where nothing does. */
+  readonly work?: readonly string[]
 }
 
-/** A place written whole: what it is called, what it is, who is in it and what is lying about. */
+/** A place written whole: what it is, who is in it and what is lying about. */
 export interface Instance {
+  /**
+   * What the place is called. It was settled in the naming pass and handed in
+   * on the request, so nothing is read back off this. Going: it comes out of
+   * the answer once every narrator has stopped writing it.
+   */
   readonly name: string
   /** What the place is and what has been going on there. Empty when nobody wrote any. */
   readonly character: string
@@ -139,7 +173,15 @@ export interface SummaryMachine {
   readonly roomId: string
 }
 
-/** The abstract world a quest writer sees: who is where, what is lying about, what is locked and what runs on the screens. */
+/**
+ * The abstract world a quest writer sees: who is where, what is lying about,
+ * what is locked and what runs on the screens.
+ *
+ * Every id in it is the id the finished city will carry. Every name in it is a
+ * placeholder (`Instance 7`, `Person 3`), because the town is named after its
+ * work is written; a line that names one is bound to the written name once
+ * there is one.
+ */
 export interface WorldSummary {
   readonly cityName: string
   readonly theme: string
@@ -179,26 +221,54 @@ export interface WorldSummary {
   }>
 }
 
+/** The four stages of the writing, in the order a build runs them. */
+export type WritingStage = 'history' | 'city' | 'places' | 'quests'
+
+/**
+ * A stage of the writing that could not be done.
+ *
+ * A city somebody asked a story of is written by whoever they asked, or the
+ * build stops and says why. Nothing is composed in its place, because a town
+ * half of somebody's and half of nobody's is the thing this exists to prevent.
+ */
+export interface Unwritten {
+  /** Which stage stopped. */
+  readonly stage: WritingStage
+  /** One sentence to show whoever asked: what could not be written, and why. */
+  readonly message: string
+}
+
+/** What every narrator call answers: what was written, or the stage that stopped. */
+export type Written<T> = Result<T, Unwritten>
+
 /**
  * Everything about a world that is invention rather than geometry: the city's
  * history, names, personalities, what people know, and the quests that string
  * them together. The generator never asks a narrator for coordinates.
  *
- * `writePremise` is the first call and the one everything else is written
- * against: it comes back before a plot is placed, so the town's history is what
- * decides the mix of buildings, which doors open, what each place is written
- * as, and what the main line is about. It may declare kinds of place of its own
- * beside the presets, as `charters`.
+ * Every call answers `Written<T>`: what it wrote, or the stage that stopped and
+ * one sentence saying why. A stage that stops stops the build, and nothing is
+ * composed in its place.
  *
- * `namePlaces` is the signs over the doors that do not open, and
- * `nameDistricts` the names of the parts of the city, each asked for
- * together; a narrator without either gets them written here.
+ * The calls come in a fixed order, and the order is the point:
  *
- * `writeInstances` is the one call the generator makes about the places that
- * open: every one of them goes out together, and the answers come back one per
- * request in request order. `namePlace`, `describeNpc` and `describeItem` are
- * the single-place shapes it is the plural of; a narrator that offers no plural
- * is asked those three, one place at a time, for the same city.
+ * 1. `writePremise`, before a plot is placed. The town's history decides the
+ *    mix of buildings, which doors open and what the main line is about, and it
+ *    may declare kinds of place of its own beside the presets, as `charters`.
+ * 2. `writeQuests`, against the bare architecture. The summary it is handed
+ *    carries real ids and placeholder names (`Instance 7`, `Person 3`), because
+ *    nothing has been named yet. What the quests name is what the town then has
+ *    to hold.
+ * 3. `nameCity`, `nameDistricts` and `namePlaces`, all asked once the work is
+ *    written: the city, every part of it and every door in it are named out of
+ *    the story and out of what the quests do there. A narrator without the
+ *    plurals gets them composed here.
+ * 4. `writeInstances`, last. Every place that opens goes out together, each one
+ *    told its name and the `cast` the quests already need standing in it, and
+ *    the answers come back one per request in request order. `describeNpc` and
+ *    `describeItem` are the single-place shapes it is the plural of; a narrator
+ *    that offers no plural is asked those two, one place at a time, for the
+ *    same city.
  */
 export interface Narrator {
   /**
@@ -208,19 +278,28 @@ export interface Narrator {
    * own words and choices, when they gave any. A narrator without one gets a
    * town with no story, built from the presets.
    */
-  writePremise?(input: { theme: string; seed: string; brief?: string; asks?: Asks }): Promise<History>
-  nameCity(input: { theme: string; seed: string; premise?: Premise }): Promise<string>
+  writePremise?(input: { theme: string; seed: string; brief?: string; asks?: Asks }): Promise<Written<History>>
+  nameCity(input: { theme: string; seed: string; premise?: Premise }): Promise<Written<string>>
   /** A sign for one place: `street` is the one its door is on, `premise` the town's story as `premiseLines` renders it, when it has one. */
-  namePlace(input: { kind: Word; charter: Charter; theme: string; index: number; street?: string; premise?: string }): Promise<string>
-  /** The signs over every door that does not open, one per request in request order. */
-  namePlaces?(requests: readonly PlaceRequest[]): Promise<readonly string[]>
+  namePlace(input: { kind: Word; charter: Charter; theme: string; index: number; street?: string; premise?: string; work?: readonly string[] }): Promise<Written<string>>
+  /**
+   * The sign over every door in the town, open or shut, one per request in
+   * request order. It is asked once the quests are written, so a request for a
+   * place the work touches carries `work`. A blank keeps the sign composed
+   * here, and a narrator without this gets every door named that way.
+   */
+  namePlaces?(requests: readonly PlaceRequest[]): Promise<Written<readonly string[]>>
   /**
    * What the parts of the city are called, all asked for together, one per
    * request in request order. A blank keeps the name the box composed, and a
    * narrator without this gets every district named that way.
    */
-  nameDistricts?(requests: readonly DistrictRequest[]): Promise<readonly string[]>
-  /** One person for one post. `premise` is the town's story as `premiseLines` renders it, when it has one. */
+  nameDistricts?(requests: readonly DistrictRequest[]): Promise<Written<readonly string[]>>
+  /**
+   * One person for one post. `premise` is the town's story as `premiseLines`
+   * renders it, when it has one, and `part` is what the town's work needs them
+   * for, when a quest already names this post.
+   */
   describeNpc(input: {
     role: NpcRole
     placeKind: Word
@@ -229,20 +308,25 @@ export interface Narrator {
     theme: string
     index: number
     premise?: string
-  }): Promise<NpcProfile>
-  describeItem(input: { archetype: ItemArchetype; theme: string; index: number }): Promise<ItemProfile>
+    cast?: readonly InstanceCasting[]
+  }): Promise<Written<NpcProfile>>
+  describeItem(input: { archetype: ItemArchetype; theme: string; index: number }): Promise<Written<ItemProfile>>
   /**
-   * Every place that opens, asked for at once. One answer per request, in
-   * request order; inside an answer, people carry the `postId` and things the
-   * `thingId` they were asked about, so the caller matches by id and never by
-   * position.
+   * Every place that opens, asked for at once, after the town is named and its
+   * work is written. One answer per request, in request order; inside an
+   * answer, people carry the `postId` and things the `thingId` they were asked
+   * about, so the caller matches by id and never by position. A post named in
+   * the request's `cast` has to come back written as the person that quest
+   * needs, because the quest already sends the player to this door for them.
    */
-  writeInstances?(requests: readonly InstanceRequest[]): Promise<readonly Instance[]>
+  writeInstances?(requests: readonly InstanceRequest[]): Promise<Written<readonly Instance[]>>
   /**
-   * Raw quest documents. The generator validates them and drops the ones that
-   * do not hold up. `from` is how many quests the city already hands out, so a
-   * growth's work carries on from the last id rather than colliding with it;
-   * absent is a city being written for the first time.
+   * Raw quest documents, written against the bare architecture: real ids,
+   * placeholder names. The generator validates them and drops the ones that do
+   * not hold up, then names the town and writes the people the quests asked
+   * for. `from` is how many quests the city already hands out, so a growth's
+   * work carries on from the last id rather than colliding with it; absent is a
+   * city being written for the first time.
    */
-  writeQuests(input: { summary: WorldSummary; sideQuests: number; from?: number }): Promise<unknown[]>
+  writeQuests(input: { summary: WorldSummary; sideQuests: number; from?: number }): Promise<Written<readonly unknown[]>>
 }

@@ -35,6 +35,8 @@ export interface Standing {
 
 /** A post inside a building that somebody is going to be written into. */
 export interface PlannedPost {
+  /** Minted here, because the work is written against the people before anybody has written them. */
+  readonly npcId: string
   readonly anchor: Anchor
   readonly role: NpcRole
   /** Where this person falls in the town's own count of people. */
@@ -56,8 +58,10 @@ export interface PlannedThing {
   /** Where this thing falls in the town's own count of things. */
   readonly index: number
   readonly value: number
-  /** Minted at plan time, because a door already names it. */
-  readonly itemId?: string
+  /** Minted here, because a door names it and the work is written against it. */
+  readonly itemId: string
+  /** Whose it is: whoever carries it, else whoever is behind the counter of the place it lies in. */
+  readonly ownerNpcId?: string
   /** What a key or a card opens. */
   readonly opens?: Access
   /** The room a key is the key to. */

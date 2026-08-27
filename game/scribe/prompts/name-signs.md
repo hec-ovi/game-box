@@ -25,7 +25,9 @@ let the trade, the street and the town's own story decide which fits:
 
 The square brackets are slots for your own words. Use the town's trades, its
 streets, its weather and its argument, so the signs sound like they were painted
-here and nowhere else. Do not put the kind of building in the name unless that
+here and nowhere else. A first name or a family name in a slot is an ordinary
+one, the kind real people carry and a signwriter can paint without asking how it
+is spelled; every other word is an everyday word, nothing invented. Do not put the kind of building in the name unless that
 is really how such places are named around here.
 
 No word may head two signs in this city. The head is the first word after any

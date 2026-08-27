@@ -138,6 +138,23 @@ describe('the schema the model is handed', () => {
     expect(expandSchema(compactSchema(pinned))).toEqual(pinned)
   })
 
+  it('never leaves an id open, whatever the corner is short of', () => {
+    // measured against the local model: a call whose ids were plain strings came
+    // back naming a person the city did not have. An id the grammar cannot write
+    // is a mistake the model cannot make, so a list the corner cannot fill takes
+    // the step kind with it rather than leaving the field open. Every corner has
+    // somebody to ask, something to fetch and somewhere to go (`Neighbourhood`
+    // guarantees it); everything else it may be short of
+    const lists = ['plots', 'interiors', 'doors', 'screens', 'games', 'counters', 'codes', 'homes'] as const
+    const patterns = /\^npc_|\^item_|\^plot_|\^door_|\^interior_/
+    for (const list of lists) {
+      const text = JSON.stringify(pinToCorner(narrowToSummary(full()), { ...CORNER, [list]: [] }))
+      expect(text, `a corner with no ${list} leaves an id open`).not.toMatch(patterns)
+    }
+    const bare = { ...CORNER, ...(Object.fromEntries(lists.map((list) => [list, []])) as unknown as CornerIds), bench: false }
+    expect(JSON.stringify(pinToCorner(narrowToSummary(full()), bare))).not.toMatch(patterns)
+  })
+
   it('offers no step the corner cannot serve', () => {
     const pinned = pinToCorner(narrowToSummary(full()), PLAIN)
     expect(kinds(pinned)).toEqual(kinds(narrowToSummary(full())).filter((kind) => !['unlock', 'hack', 'beat-game', 'buy'].includes(kind as string)))

@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { Bundle, type OpenedBundle } from '@gb/bundle'
-import { districtCount } from '@gb/forge'
+import { districtCount, type Narrator } from '@gb/forge'
 import { CityNav } from '@gb/nav'
 import { PlayerState } from '@gb/play'
 import { QuestLog } from '@gb/quest'
 import type { Notice } from '@gb/hud'
+import type { ScribeProblem } from '@gb/scribe'
 import { Sidecar, type SidecarOptions } from '@gb/sidecar'
 import { Conversation } from '@gb/talk'
 import { screen, waitFor, within } from '@testing-library/dom'
@@ -14,7 +15,7 @@ import { resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { BLOCKS, DEFAULTS, STOREYS, STYLE, briefFromQuery, briefToQuery, clampBlocks, sameBrief, tidy, type CityBrief } from '../src/boot/brief.ts'
 import { Boot, type LoadArt, type Start } from '../src/boot/boot.ts'
-import { CityMaker } from '../src/boot/city-maker.ts'
+import { CityMaker, type Writer } from '../src/boot/city-maker.ts'
 import { download, exportName } from '../src/boot/export.ts'
 import { Library, MemoryShelf, keyOf, type Shelved } from '../src/boot/library.ts'
 import { Packs } from '../src/boot/packs.ts'
@@ -25,6 +26,7 @@ import type { Catalogue } from '@gb/prefab'
 import type { GameOptions } from '../src/game.ts'
 import { Session, type SaveStore } from '../src/session.ts'
 import { Street } from '../src/street.ts'
+import { FixtureMaker, fixtureMaker, fixturePacks } from './support/fixture-city.ts'
 
 /** Wherever this box is being run from: its own folder, or the workspace root. */
 const PAGE = ['index.html', 'game/app/index.html'].map((path) => resolve(process.cwd(), path)).find(existsSync)!
@@ -141,7 +143,6 @@ describe('the panel', () => {
         seed: 'harbour',
         blocks: 4,
         storeys: 30,
-        model: false,
         brief: 'a town living off the smuggling run, with the customs house half bought',
         asks: { mainQuest: 'who owns the customs house', tone: 'grim', style: { wear: 'run-down' } },
       },
@@ -155,7 +156,6 @@ describe('the panel', () => {
       seed: 'ore',
       blocks: 3,
       storeys: 8,
-      model: true,
       brief: 'the seam ran out',
       asks: { sideQuests: 'odd jobs for the miners', style: { neon: 'dark', density: 'sparse' } },
     }
@@ -193,7 +193,7 @@ describe('the panel', () => {
     expect(front.brief.storeys).toBe(STOREYS.max)
 
     // and it reaches the generator: a ceiling of one builds a town of bungalows
-    const made = new CityMaker(new Sidecar(DOWN))
+    const made = fixtureMaker()
     const city = await made.build({ ...DEFAULTS, seed: 'flat', blocks: 2, storeys: STOREYS.min }, QUIET)
     expect(city.ok).toBe(true)
     if (!city.ok) return
@@ -296,7 +296,6 @@ describe('the panel', () => {
       theme: 'quiet coastal town',
       seed: key,
       blocks: 2,
-      model: false,
       brief: `Everything ${name} is about`,
       hash: key,
       source: 'made',
@@ -431,9 +430,6 @@ describe('having the model write a field of the brief', () => {
     expect(front.brief.theme).toBe(DEFAULTS.theme)
     expect(front.brief.asks?.mainQuest).toBe('who owns the customs house')
     expect(screen.getByRole('status').textContent).toMatch(/wrote what the city is about/i)
-    // pressing it is the ask: nothing on another step had to be switched on
-    // first, and the switch that decides who writes the city has not moved
-    expect(front.brief.model).toBe(false)
 
     // and it really was one forced call to the model, carrying what was already typed
     expect(sent).toHaveLength(1)
@@ -562,14 +558,14 @@ describe('what the form says it is about to build', () => {
     expect(dialog.textContent).not.toMatch(/\d+ buildings|\d+ npcs|\d+ (traffic )?(cars|vehicles)|district zones/i)
 
     await user.click(within(dialog).getByRole('button', { name: /^build it$/i }))
-    expect(asked.map((one) => ({ ...one, seed: DEFAULTS.seed }))).toEqual([{ theme: DEFAULTS.theme, seed: DEFAULTS.seed, blocks: 8, places: 5, storeys: 12, model: false }])
+    expect(asked.map((one) => ({ ...one, seed: DEFAULTS.seed }))).toEqual([{ theme: DEFAULTS.theme, seed: DEFAULTS.seed, blocks: 8, places: 5, storeys: 12 }])
   })
 })
 
 describe('the address bar', () => {
   it('reads a city out of it and writes the same one back', () => {
     const brief = briefFromQuery(new URLSearchParams('?seed=harbour&theme=dusty%20mining%20town&blocks=3'))
-    expect(brief).toEqual({ theme: 'dusty mining town', seed: 'harbour', blocks: 3, model: false })
+    expect(brief).toEqual({ theme: 'dusty mining town', seed: 'harbour', blocks: 3 })
     expect(briefFromQuery(new URLSearchParams(briefToQuery(brief!)))).toEqual(brief)
   })
 
@@ -600,8 +596,8 @@ describe('the address bar', () => {
     expect(clampBlocks(0)).toBe(BLOCKS.min)
     expect(clampBlocks(999)).toBe(BLOCKS.max)
     expect(clampBlocks(Number.NaN)).toBe(DEFAULTS.blocks)
-    expect(tidy({ theme: '  ', seed: '', blocks: DEFAULTS.blocks, model: false })).toEqual(DEFAULTS)
-    expect(tidy({ theme: 'x'.repeat(200), seed: 'a', blocks: 1, model: false }).theme).toHaveLength(60)
+    expect(tidy({ theme: '  ', seed: '', blocks: DEFAULTS.blocks })).toEqual(DEFAULTS)
+    expect(tidy({ theme: 'x'.repeat(200), seed: 'a', blocks: 1 }).theme).toHaveLength(60)
   })
 
   it('reads a blank field as no ask at all, and a style outside the catalogue as none', () => {
@@ -616,7 +612,7 @@ describe('the address bar', () => {
 
 describe('the shelf', () => {
   async function city(seed: string) {
-    const made = await new CityMaker(new Sidecar(DOWN)).build({ ...DEFAULTS, blocks: 1, seed }, QUIET)
+    const made = await fixtureMaker().build({ ...DEFAULTS, blocks: 1, seed }, QUIET)
     if (!made.ok) throw new Error(made.message)
     return made.value
   }
@@ -660,7 +656,7 @@ describe('the shelf', () => {
 })
 
 describe('generating a city in the browser', () => {
-  const maker = new CityMaker(new Sidecar(DOWN))
+  const maker = fixtureMaker()
   const brief = (over: Partial<CityBrief> = {}): CityBrief => ({ ...DEFAULTS, blocks: 1, ...over })
 
   it('gives the same city back for the same seed, and a different one for a different seed', async () => {
@@ -708,27 +704,46 @@ describe('generating a city in the browser', () => {
     expect(made).toEqual({ ok: false, message: 'Stopped.' })
   }, 30_000)
 
-  it('says what it is doing while it does it, stage by stage when the model is writing', async () => {
-    const steps: string[] = []
-    await maker.build(brief(), { signal: NEVER, step: (text) => void steps.push(text) })
-    expect(steps.length).toBeGreaterThan(1)
-    expect(steps.join(' ')).toMatch(/city/i)
+  it('stops the build and says what the writing said, when the writing gives up', async () => {
+    // `@gb/scribe` stops a build it cannot make good, and the sentence it stops
+    // with is the one the player is owed: a generic line here would throw away
+    // the only thing that says what to do about it
+    const gaveUp = new Error('the town could not be written: the model at 127.0.0.1:8976 did not answer')
+    class GivesUp extends FixtureMaker {
+      protected override writer(): Writer {
+        // whatever it is asked, it answers the way a writing that has given up answers
+        const narrator = new Proxy({} as Narrator, { get: () => () => Promise.reject(gaveUp) })
+        return { narrator, problems: () => [] }
+      }
+    }
+    const made = await new GivesUp(new Sidecar(DOWN)).build(brief({ seed: 'gaveup' }), QUIET)
+    expect(made.ok).toBe(false)
+    if (made.ok) return
+    expect(made.message).toContain(gaveUp.message)
+  }, 60_000)
 
-    // with the model on, the scribe says how far it has got; with nothing
-    // listening the offline writer covers every call, and the stages still run
-    const stages: string[] = []
-    const written = await maker.build(brief({ model: true }), { ...QUIET, progress: (event) => void stages.push(event.stage) })
-    if (!written.ok) throw new Error(written.message)
-    expect([...new Set(stages)]).toEqual(['history', 'city', 'places', 'quests'])
-    // and every call the model did not answer is one fault to tell the player, never one per call
-    expect(written.value.notes.filter((note) => note.kind === 'error')).toHaveLength(1)
-    expect(written.value.notes[0]).toMatchObject({ kind: 'error', text: expect.stringMatching(/failed \d+ of its calls \(unreachable\)/) })
+  it('asks the model to write the city, which is the only thing that writes one', async () => {
+    // a build is a run of forced calls to the model, and the first of them
+    // asks for the town's own history
+    const asked: string[] = []
+    const spy: SidecarOptions = {
+      fetch: (_input, init) => {
+        const call = JSON.parse(String(init?.body)) as { tools?: { function: { name: string } }[] }
+        for (const tool of call.tools ?? []) asked.push(tool.function.name)
+        return Promise.reject(new Error('nothing listening'))
+      },
+    }
+    const steps: string[] = []
+    await new CityMaker(new Sidecar(spy)).build(brief({ seed: 'asked' }), { signal: NEVER, step: (text) => void steps.push(text) })
+
+    expect(asked[0]).toBe('write_premise')
+    expect(steps.join(' ')).toMatch(/asking the model/i)
   }, 60_000)
 })
 
 describe('exporting a city', () => {
   it('writes out a document that opens again as a bundle', async () => {
-    const made = await new CityMaker(new Sidecar(DOWN)).build({ ...DEFAULTS, blocks: 1 }, QUIET)
+    const made = await fixtureMaker().build({ ...DEFAULTS, blocks: 1 }, QUIET)
     if (!made.ok) throw new Error(made.message)
 
     const written = JSON.parse(JSON.stringify(made.value.document))
@@ -789,7 +804,7 @@ describe('coming back to a playthrough', () => {
   })
 
   async function city(seed = 'town') {
-    const made = await new CityMaker(new Sidecar(DOWN)).build({ ...DEFAULTS, blocks: 1, seed }, QUIET)
+    const made = await fixtureMaker().build({ ...DEFAULTS, blocks: 1, seed }, QUIET)
     if (!made.ok) throw new Error(made.message)
     return made.value.bundle
   }
@@ -870,12 +885,31 @@ describe('the front door end to end', () => {
     }
   }
 
-  function open(sidecar: SidecarOptions = DOWN, shelf = new MemoryShelf()): { boot: Boot; panel: Panel; shelf: MemoryShelf } {
+  /**
+   * The front door with the real wiring behind it, and one thing swapped: the
+   * city is written by `@gb/forge`'s own narrator rather than by a model, which
+   * is how a test gets a town with nothing listening on the sidecar.
+   */
+  function open(sidecar: SidecarOptions = DOWN, shelf = new MemoryShelf()): { boot: Boot; panel: Panel; shelf: MemoryShelf; maker: FixtureMaker } {
+    const maker = fixtureMaker()
+    return { ...front(sidecar, shelf, { maker, packs: fixturePacks() }), maker }
+  }
+
+  /** The same front door with the real writing behind it, for what only a model call can show. */
+  function withModel(sidecar: SidecarOptions, shelf = new MemoryShelf()): { boot: Boot; panel: Panel; shelf: MemoryShelf } {
+    return front(sidecar, shelf, {})
+  }
+
+  function front(
+    sidecar: SidecarOptions,
+    shelf: MemoryShelf,
+    writing: { maker?: CityMaker; packs?: Packs },
+  ): { boot: Boot; panel: Panel; shelf: MemoryShelf } {
     servePage()
     const panel = new Panel(document.querySelector<HTMLElement>('#boot')!)
     const library = new Library(shelf)
     return {
-      boot: new Boot({ mount: document.querySelector('#game')!, panel, library, sidecar, start, art: (theme) => art(theme) }),
+      boot: new Boot({ mount: document.querySelector('#game')!, panel, library, sidecar, start, art: (theme) => art(theme), ...writing }),
       panel,
       shelf,
     }
@@ -1051,7 +1085,7 @@ describe('the front door end to end', () => {
     // document under that key is swapped for another city's, and that is the
     // city that comes back when the address bar names the same brief, which is
     // what a refresh of a city being played is
-    const other = await new CityMaker(new Sidecar(DOWN)).build({ ...DEFAULTS, blocks: 1, seed: 'swapped' }, QUIET)
+    const other = await fixtureMaker().build({ ...DEFAULTS, blocks: 1, seed: 'swapped' }, QUIET)
     if (!other.ok) throw new Error(other.message)
     await shelf.put(entry!, other.value.document)
     started.length = 0
@@ -1091,13 +1125,13 @@ describe('the front door end to end', () => {
 
   it('opens a pack onto the city it was cut from, and refuses one cut from another', async () => {
     const brief = { ...DEFAULTS, blocks: 2, seed: 'applied' }
-    const made = await new CityMaker(new Sidecar(DOWN)).build(brief, QUIET)
+    const made = await fixtureMaker().build(brief, QUIET)
     if (!made.ok) throw new Error(made.message)
-    const grown = await new Packs(new Sidecar(DOWN)).grow(made.value, QUIET)
+    const grown = await fixturePacks().grow(made.value, QUIET)
     if (!grown.ok) throw new Error(grown.message)
-    const elsewhere = await new CityMaker(new Sidecar(DOWN)).build({ ...DEFAULTS, blocks: 2, seed: 'elsewhere' }, QUIET)
+    const elsewhere = await fixtureMaker().build({ ...DEFAULTS, blocks: 2, seed: 'elsewhere' }, QUIET)
     if (!elsewhere.ok) throw new Error(elsewhere.message)
-    const other = await new Packs(new Sidecar(DOWN)).grow(elsewhere.value, QUIET)
+    const other = await fixturePacks().grow(elsewhere.value, QUIET)
     if (!other.ok) throw new Error(other.message)
 
     const shelf = new MemoryShelf()
@@ -1169,7 +1203,7 @@ describe('the front door end to end', () => {
   }, 60_000)
 
   it('opens a city out of a file when the address bar names one', async () => {
-    const made = await new CityMaker(new Sidecar(DOWN)).build({ ...DEFAULTS, blocks: 1, seed: 'fromfile' }, QUIET)
+    const made = await fixtureMaker().build({ ...DEFAULTS, blocks: 1, seed: 'fromfile' }, QUIET)
     if (!made.ok) throw new Error(made.message)
     const real = window.fetch
     window.fetch = (async () => new Response(JSON.stringify(made.value.document))) as typeof fetch
@@ -1183,7 +1217,7 @@ describe('the front door end to end', () => {
   }, 30_000)
 
   it('plays a city file the player picked, exactly as Export wrote it, and shelves it', async () => {
-    const made = await new CityMaker(new Sidecar(DOWN)).build({ ...DEFAULTS, blocks: 1, seed: 'shared' }, QUIET)
+    const made = await fixtureMaker().build({ ...DEFAULTS, blocks: 1, seed: 'shared' }, QUIET)
     if (!made.ok) throw new Error(made.message)
 
     // the bytes Export hands the browser, taken straight back in: a world
@@ -1245,28 +1279,23 @@ describe('the front door end to end', () => {
     expect(screen.getByRole<HTMLButtonElement>('button', { name: /export/i }).disabled).toBe(false)
   }, 30_000)
 
-  it('covers the wait with the loader, naming the town as soon as the model does, and takes it down for the game', async () => {
+  it('covers the wait with the loader, naming the town as soon as the writing does, and takes it down for the game', async () => {
     // what a player waiting can actually use is the name of the town being
     // written, and nothing else: the stages the build runs through are the
     // machine's own vocabulary and none of it is something they can act on
-    const seen: string[] = []
+    let shown = ''
     let stood = false
-    const sidecar: SidecarOptions = {
-      fetch: () => {
-        const loader = document.querySelector('.gb-loader')
-        if (loader) {
-          seen.push(`${loader.querySelector('.gb-loader-word')?.textContent}/${loader.querySelector('h2')?.textContent}`)
-          stood = document.querySelector<HTMLElement>('#boot')!.dataset.aside === 'true'
-        }
-        return Promise.reject(new Error('nothing listening'))
-      },
+    const { boot, maker } = open()
+    maker.problems = [{ task: 'write_premise', at: 'premise', error: { code: 'unreachable' } } as ScribeProblem]
+    maker.watch = () => {
+      const loader = document.querySelector('.gb-loader')!
+      shown = `${loader.querySelector('.gb-loader-word')?.textContent}/${loader.querySelector('h2')?.textContent}`
+      stood = document.querySelector<HTMLElement>('#boot')!.dataset.aside === 'true'
     }
-    const { boot } = open(sidecar)
-    await boot.start(new URLSearchParams('?seed=loader&theme=quiet%20coastal%20town&blocks=1&model=1'))
+    await boot.start(new URLSearchParams('?seed=loader&theme=quiet%20coastal%20town&blocks=1'))
 
-    expect(seen.length).toBeGreaterThan(0)
-    // one word, and what is being waited for under it. No stage list.
-    for (const shown of seen) expect(shown).toMatch(/^Loading\//)
+    // one word, and the town being written under it, the moment it is named. No stage list.
+    expect(shown).toBe(`Loading/${started[0]}`)
     expect(document.querySelectorAll('.gb-stage')).toHaveLength(0)
     // the panel stood aside for it, and offered the way to stop
     expect(stood).toBe(true)
@@ -1274,13 +1303,13 @@ describe('the front door end to end', () => {
     expect(started).toHaveLength(1)
     expect(document.querySelector('.gb-loader')).toBeNull()
     expect(document.querySelector<HTMLElement>('#boot')!.dataset.aside).toBe('false')
-    // and what the model did not write is said once, as a fault, on the game
+    // and what the writing could not answer is said once, as a fault, on the game
     expect(announced.filter((notice) => notice.kind === 'error')).toHaveLength(1)
   }, 60_000)
 
-  it('announces a busy model as a wait, never as a failure, and never retries it itself', async () => {
+  it('announces a busy model as a wait while a city is being written', async () => {
     // a rate limited sidecar: the client waits it out and asks again, and what
-    // the player sees meanwhile is the wait counting down on whatever is up
+    // the player sees meanwhile is the wait counting down on the loader
     let calls = 0
     const waits: string[] = []
     const sidecar: SidecarOptions = {
@@ -1292,16 +1321,29 @@ describe('the front door end to end', () => {
         return Promise.resolve(new Response('{"error":{"code":"model-busy"}}', { status: 429 }))
       },
     }
-    const { boot } = open(sidecar)
-    await boot.start(new URLSearchParams('?seed=busy&theme=quiet%20coastal%20town&blocks=1&model=1'))
+    const { boot } = withModel(sidecar)
+    await boot.start(new URLSearchParams('?seed=busy&theme=quiet%20coastal%20town&blocks=1'))
 
-    expect(started).toHaveLength(1)
     // every call was sent twice, once and once after the wait, by the sidecar
+    expect(calls).toBeGreaterThan(0)
     expect(calls % 2).toBe(0)
     expect(waits.length).toBeGreaterThan(0)
     expect(waits[0]).toMatch(/model is busy/i)
-    // and once the game is up the same wait lands on it rather than on nothing:
-    // a conversation goes through the same client, and the player is told
+    // nothing here retries anything and nothing here calls a wait a failure:
+    // the box that owns the call asks again
+    expect(announced.filter((notice) => notice.kind === 'error')).toEqual([])
+  }, 60_000)
+
+  it('announces a busy model on the game, so a wait is a wait wherever the player is', async () => {
+    const sidecar: SidecarOptions = {
+      backoff: { attempts: 2, baseMs: 20, capMs: 100, jitter: 0 },
+      fetch: () => Promise.resolve(new Response('{"error":{"code":"model-busy"}}', { status: 429 })),
+    }
+    const { boot } = open(sidecar)
+    await boot.start(new URLSearchParams('?seed=busy&theme=quiet%20coastal%20town&blocks=1'))
+    expect(started).toHaveLength(1)
+
+    // a conversation goes through the page's one client, and the player is told
     const world = built[0]!.world
     const player = PlayerState.create(world.id)
     const opened = Conversation.open({ world, log: QuestLog.create([], player), player, sidecar: options[0]!.sidecar!, npcId: world.npcs()[0]!.id })
@@ -1338,7 +1380,7 @@ describe('the people on the street', () => {
   const nobody = () => ({ placeAt: () => {}, faceTo: () => {}, play: () => {}, release: () => {} })
 
   it('are the city\'s own, so whoever the player passes can be named and talked to', async () => {
-    const made = await new CityMaker(new Sidecar(DOWN)).build({ ...DEFAULTS, blocks: 2 }, QUIET)
+    const made = await fixtureMaker().build({ ...DEFAULTS, blocks: 2 }, QUIET)
     if (!made.ok) throw new Error(made.message)
     const world = made.value.bundle.world
 
@@ -1381,7 +1423,7 @@ describe('the people on the street', () => {
   }, 40_000)
 
   it('leaves every post staffed, so a building the player walks into is not empty', async () => {
-    const made = await new CityMaker(new Sidecar(DOWN)).build({ ...DEFAULTS, blocks: 2 }, QUIET)
+    const made = await fixtureMaker().build({ ...DEFAULTS, blocks: 2 }, QUIET)
     if (!made.ok) throw new Error(made.message)
     const world = made.value.bundle.world
 

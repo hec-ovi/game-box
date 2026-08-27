@@ -133,9 +133,7 @@ function sentences(brief: CityBrief): string[] {
     brief.asks?.mainQuest ? `The story: ${brief.asks.mainQuest}` : 'The story is left to the generator.',
     brief.asks?.sideQuests ? `The side jobs: ${brief.asks.sideQuests}` : 'The side jobs are left to the generator.',
     brief.asks?.tone ? `How people talk: ${brief.asks.tone}` : 'How people talk is left to the generator.',
-    brief.model
-      ? 'The model writes the history, the places and the quests.'
-      : 'It is written offline, with no model, from the seed alone.',
+    'The model writes the history, the places and the quests.',
     'How many buildings go up, who lives in them and what work they hand out are settled while it is built.',
   ]
 }

@@ -1,3 +1,4 @@
+import { floorFor, moneyMeans } from '../reward-bands.ts'
 import { eachChild, type JsonSchema } from './compact.ts'
 
 /** Every id a quest set in one corner of the city may name, by what it is. */
@@ -25,6 +26,19 @@ export interface CornerIds {
 /** The fields of a corner that are lists of ids. */
 type IdList = { [K in keyof CornerIds]: CornerIds[K] extends readonly string[] ? K : never }[keyof CornerIds]
 
+/** What each step kind needs the corner to hold before it may be offered at all. */
+const NEEDS: Readonly<Record<string, readonly IdList[]>> = {
+  talk: ['npcs'],
+  goto: ['plots'],
+  collect: ['items'],
+  deliver: ['items', 'npcs'],
+  escort: ['npcs', 'plots'],
+  unlock: ['doors'],
+  hack: ['screens'],
+  'beat-game': ['games'],
+  buy: ['counters'],
+}
+
 /** The id patterns the contract writes, and the list of the corner each one becomes. */
 const ID_LISTS: readonly (readonly [RegExp, IdList])[] = [
   [/^\^npc_/, 'npcs'],
@@ -47,6 +61,9 @@ const ID_LISTS: readonly (readonly [RegExp, IdList])[] = [
  * code the corner has, a `deed` a place for sale and a `car` a corner with a
  * bench in it, and a step kind the corner cannot serve is not offered at all.
  * Everything this still allows, the full draft contract accepts.
+ *
+ * Measured on the tool as it goes out: 115 id fields on a corner with one of
+ * everything, and every one of them an enum.
  */
 export function pinToCorner(schema: JsonSchema, ids: CornerIds): JsonSchema {
   const root = structuredClone(schema)
@@ -67,20 +84,13 @@ function kindOf(variant: JsonSchema): string {
   return typeof kind === 'string' ? kind : ''
 }
 
-/** Whether the corner holds what this step kind needs. */
+/**
+ * Whether the corner holds what this step kind needs. A kind whose target list
+ * is empty is not offered at all, because the alternative is an id field the
+ * grammar leaves open, and an open id field is one the model fills in itself.
+ */
 function serves(step: JsonSchema, ids: CornerIds): boolean {
-  switch (kindOf(step)) {
-    case 'unlock':
-      return ids.doors.length > 0
-    case 'hack':
-      return ids.screens.length > 0
-    case 'beat-game':
-      return ids.games.length > 0
-    case 'buy':
-      return ids.counters.length > 0
-    default:
-      return true
-  }
+  return (NEEDS[kindOf(step)] ?? []).every((list) => ids[list].length > 0)
 }
 
 function pinStep(step: JsonSchema, ids: CornerIds): JsonSchema {
@@ -106,11 +116,23 @@ function pinStep(step: JsonSchema, ids: CornerIds): JsonSchema {
   return step
 }
 
-/** An access names a door of the corner or the street door of a place that opens, a deed a place for sale, a car a bench somebody works at. None of the three is offered where the corner has none. */
+/**
+ * An access names a door of the corner or the street door of a place that
+ * opens, a deed a place for sale, a car a bench somebody works at. None of the
+ * three is offered where the corner has none.
+ *
+ * The pay band goes on the fields that decide it: what the tiers are on
+ * `money`, and what handing over a car or a home commits the pay to on those
+ * two, since that is where the decision is made and the prompt's table is a
+ * page away by then.
+ */
 function pinReward(reward: JsonSchema, ids: CornerIds): void {
   const properties = reward['properties'] as Record<string, JsonSchema>
-  if (ids.homes.length) properties['deed'] = oneOf(ids.homes)
+  const money = properties['money']
+  if (money) money['description'] = moneyMeans()
+  if (ids.homes.length) properties['deed'] = { ...oneOf(ids.homes), description: `The place whose deed this job hands over.${floorFor('deed')}` }
   else delete properties['deed']
+  if (ids.bench && properties['car']) properties['car'] = { ...properties['car'], description: `${String(properties['car']['description'] ?? 'The car this job hands over.')}${floorFor('car')}` }
   if (!ids.bench) delete properties['car']
 
   const access = properties['access']

@@ -1,9 +1,10 @@
-import { Forge, type WorldSummary } from '@gb/forge'
+import { Forge, OfflineNarrator, type WorldSummary } from '@gb/forge'
 import { Sidecar } from '@gb/sidecar'
 import { describe, expect, it } from 'vitest'
 import { Scribe } from '../src/index.ts'
 import { fakeModel } from './fake-model.ts'
 import { JAIL, charterOf } from './places.ts'
+import { stopped, wrote } from './wrote.ts'
 
 const CITY: WorldSummary = {
   cityName: 'Cold Harbour',
@@ -39,12 +40,21 @@ const PREMISE = {
   build: { moreOf: ['warehouse'], fewerOf: [], mustHave: ['jail'] },
 }
 
+/** A sidecar with nothing behind it: every call comes back `unreachable`. */
+const deadSidecar = (): Sidecar =>
+  new Sidecar({
+    base: 'http://127.0.0.1:1',
+    fetch: (async () => {
+      throw new Error('connection refused')
+    }) as unknown as typeof globalThis.fetch,
+  })
+
 describe('Scribe', () => {
   it('asks with a forced tool whose parameters are the contract, and uses the answer', async () => {
     const { sent, sidecar } = fakeModel([{ name: 'Cold Harbour' }])
     const scribe = new Scribe({ sidecar })
 
-    expect(await scribe.nameCity({ theme: 'rain-soaked port', seed: 's' })).toBe('Cold Harbour')
+    expect(await wrote(scribe.nameCity({ theme: 'rain-soaked port', seed: 's' }))).toBe('Cold Harbour')
     expect(sent[0]!.toolName).toBe('name_city')
     expect(sent[0]!.parameters).toMatchObject({ type: 'object', properties: { name: { type: 'string' } } })
     expect(sent[0]!.description.length).toBeGreaterThan(0)
@@ -59,19 +69,20 @@ describe('Scribe', () => {
     ])
     const scribe = new Scribe({ sidecar })
 
-    expect(await scribe.nameCity({ theme: 'marsh town', seed: 's' })).toBe('Saltmarsh Bend')
+    expect(await wrote(scribe.nameCity({ theme: 'marsh town', seed: 's' }))).toBe('Saltmarsh Bend')
     expect(sent).toHaveLength(2)
     expect(sent[1]!.user).toContain('rejected')
     expect(sent[1]!.user).toContain('name')
     expect(scribe.problems().map((problem) => problem.error.code)).toEqual(['invalid-arguments'])
   })
 
-  it('falls back to the offline narrator when the model will not produce valid data', async () => {
+  it('stops the stage when the model will not produce valid data, rather than composing a name', async () => {
     const { sidecar } = fakeModel([{ name: '' }])
-    const scribe = new Scribe({ sidecar, seed: 'fallback' })
+    const scribe = new Scribe({ sidecar, seed: 'refused' })
 
-    const name = await scribe.nameCity({ theme: 'anywhere', seed: 's' })
-    expect(name.length).toBeGreaterThan(3)
+    const failure = await stopped(scribe.nameCity({ theme: 'anywhere', seed: 's' }))
+    expect(failure).toMatchObject({ stage: 'city', at: 'city-name', code: 'invalid-arguments' })
+    expect(failure.message).toContain("the city's name could not be written")
     expect(scribe.problems().length).toBeGreaterThan(0)
   })
 
@@ -79,7 +90,7 @@ describe('Scribe', () => {
     const { sent, sidecar } = fakeModel(['no-call', { name: 'Saltmere' }])
     const scribe = new Scribe({ sidecar })
 
-    expect(await scribe.nameCity({ theme: 'port', seed: 's' })).toBe('Saltmere')
+    expect(await wrote(scribe.nameCity({ theme: 'port', seed: 's' }))).toBe('Saltmere')
     expect(sent).toHaveLength(2)
     expect(scribe.problems().map((problem) => problem.error.code)).toEqual(['no-tool-call'])
   })
@@ -95,16 +106,34 @@ describe('Scribe', () => {
     await scribeB.nameCity({ theme: 't', seed: 's' })
     expect(scribeB.problems()[0]!.error.code).toBe('no-tool-call')
 
-    const dead = new Sidecar({
-      base: 'http://127.0.0.1:1',
-      fetch: (async () => {
-        throw new Error('connection refused')
-      }) as unknown as typeof globalThis.fetch,
-    })
-    const scribeC = new Scribe({ sidecar: dead, attempts: 1 })
-    const name = await scribeC.nameCity({ theme: 't', seed: 's' })
-    expect(name.length).toBeGreaterThan(3)
+    const scribeC = new Scribe({ sidecar: deadSidecar(), attempts: 1 })
+    await stopped(scribeC.nameCity({ theme: 't', seed: 's' }))
     expect(scribeC.problems()[0]!.error.code).toBe('unreachable')
+  })
+
+  it('comes back as a failure naming the stage and the engine when nothing answers', async () => {
+    const scribe = new Scribe({ sidecar: deadSidecar(), seed: 'harbour', attempts: 1 })
+
+    const failure = await stopped(scribe.writePremise({ theme: 'rain-soaked port', seed: 'harbour' }))
+
+    expect(failure).toEqual({
+      stage: 'history',
+      at: 'premise',
+      code: 'unreachable',
+      message: 'the history could not be written: the model at 127.0.0.1:1 did not answer',
+    })
+  })
+
+  it('takes the answer from a stand-in a caller hands in, which nothing in the game does', async () => {
+    const scribe = new Scribe({ sidecar: deadSidecar(), seed: 'harbour', attempts: 1, standIn: new OfflineNarrator('harbour') })
+
+    const history = await wrote(scribe.writePremise({ theme: 'rain-soaked port', seed: 'harbour' }))
+    const name = await wrote(scribe.nameCity({ theme: 'rain-soaked port', seed: 'harbour' }))
+
+    expect(history.livesOn.length).toBeGreaterThan(3)
+    expect(name.length).toBeGreaterThan(3)
+    // the calls still failed and are still on the record
+    expect(scribe.problems().map((problem) => problem.error.code)).toEqual(['unreachable', 'unreachable'])
   })
 
   it('tells every call the city it is writing into and the names already spent', async () => {
@@ -117,8 +146,8 @@ describe('Scribe', () => {
     )
     const scribe = new Scribe({ sidecar })
 
-    await scribe.nameCity({ theme: 'port', seed: 's' })
-    await scribe.namePlace({ kind: 'bar', charter: charterOf('bar'), theme: 'port', index: 0 })
+    await wrote(scribe.nameCity({ theme: 'port', seed: 's' }))
+    await wrote(scribe.namePlace({ kind: 'bar', charter: charterOf('bar'), theme: 'port', index: 0 }))
     await scribe.describeNpc({ role: 'bartender', placeKind: 'bar', place: charterOf('bar'), placeName: 'The Anchor', theme: 'port', index: 0 })
 
     expect(sent[1]!.user).toContain('City: Cold Harbour')
@@ -140,7 +169,7 @@ describe('Scribe', () => {
         const body = JSON.parse(String(init.body))
         pins.push({ seed: body.seed, temperature: body.temperature })
         const tool = body.tools[0].function
-        const reply = tool.name === 'name_city' ? { name: 'x' } : { name: 'Saltmere' }
+        const reply = tool.name === 'name_city' ? { name: 'x' } : { name: `Sign${pins.length} Row` }
         return Response.json({
           choices: [{ message: { role: 'assistant', tool_calls: [{ id: 'call_1', type: 'function', function: { name: tool.name, arguments: JSON.stringify(reply) } }] } }],
         })
@@ -149,6 +178,7 @@ describe('Scribe', () => {
       await scribe.nameCity({ theme: 'port', seed })
       await scribe.namePlace({ kind: 'bar', charter: charterOf('bar'), theme: 'port', index: 3 })
       await scribe.namePlace({ kind: 'bar', charter: charterOf('bar'), theme: 'port', index: 4 })
+
       return pins
     }
 
@@ -171,6 +201,7 @@ describe('Scribe', () => {
     const answers = (...codes: string[]) => {
       const left = codes.slice()
       return {
+        base: 'http://127.0.0.1:8976',
         ask: async () => {
           const code = left.shift()
           return code
@@ -181,24 +212,26 @@ describe('Scribe', () => {
     }
 
     const late = new Scribe({ sidecar: answers('timeout') })
-    expect(await late.nameCity({ theme: 'port', seed: 's' })).toBe('Saltmere')
+    expect(await wrote(late.nameCity({ theme: 'port', seed: 's' }))).toBe('Saltmere')
     expect(late.problems().map((problem) => problem.error.code)).toEqual(['timeout'])
 
     const cut = new Scribe({ sidecar: answers('broken') })
-    expect(await cut.nameCity({ theme: 'port', seed: 's' })).toBe('Saltmere')
+    expect(await wrote(cut.nameCity({ theme: 'port', seed: 's' }))).toBe('Saltmere')
     expect(cut.problems().map((problem) => problem.error.code)).toEqual(['broken'])
 
-    const stopped = new Scribe({ sidecar: answers('aborted'), seed: 'stopped' })
-    const name = await stopped.nameCity({ theme: 'port', seed: 's' })
-    expect(name).not.toBe('Saltmere')
-    expect(stopped.problems().map((problem) => problem.error.code)).toEqual(['aborted'])
+    const cancelled = new Scribe({ sidecar: answers('aborted'), seed: 'stopped' })
+    const failure = await stopped(cancelled.nameCity({ theme: 'port', seed: 's' }))
+    expect(failure).toMatchObject({ code: 'aborted', message: "the city's name could not be written: the writing was stopped" })
+    expect(cancelled.problems().map((problem) => problem.error.code)).toEqual(['aborted'])
   })
 
   it('tells every call what work it is, so the service can route it to the model that job is on', async () => {
     const { sent, sidecar } = fakeModel((call) =>
       call.toolName === 'write_premise' ? PREMISE : call.toolName === 'write_charter' ? JAIL : { name: 'Cold Harbour' },
     )
-    const scribe = new Scribe({ sidecar, seed: 'city', attempts: 1 })
+    // this fake answers one blob to every tool, so the stand-in covers the calls
+    // it cannot answer and the build gets far enough to make all of them
+    const scribe = new Scribe({ sidecar, seed: 'city', attempts: 1, standIn: new OfflineNarrator('city') })
 
     const built = await new Forge(scribe).build({ theme: 'rain-soaked port', seed: 'scribe-city', blocksX: 1, blocksY: 1, blockCells: 16 })
     expect(built.ok).toBe(true)
@@ -207,6 +240,7 @@ describe('Scribe', () => {
     await scribe.describeNpc({ role: 'bartender', placeKind: 'bar', place: charterOf('bar'), placeName: 'The Anchor', theme: 'port', index: 0 })
     await scribe.describeItem({ archetype: 'ledger', theme: 'port', index: 0 })
     await scribe.writeBrief({ want: ['theme'], seed: 's' })
+
 
     // read off every request that went out: an untagged one shows up here as its own line
     expect([...new Set(sent.map((call) => `${call.toolName} -> ${call.job}`))].sort()).toEqual([
@@ -234,7 +268,7 @@ describe('Scribe', () => {
         // every tool takes what it needs from this and ignores the rest
       },
     ])
-    const scribe = new Scribe({ sidecar, seed: 'city' })
+    const scribe = new Scribe({ sidecar, seed: 'city', standIn: new OfflineNarrator('city') })
 
     const built = await new Forge(scribe).build({
       theme: 'rain-soaked port',

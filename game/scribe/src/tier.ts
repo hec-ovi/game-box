@@ -8,11 +8,11 @@ type Reward = QuestDraft['reward']
  *
  * A small model asked for a tier and a pay inside its band gets one of them
  * wrong: measured, five of ten live drafts paid outside the band they named.
- * So the model is asked for the pay alone and the tier follows, the way the
- * offline writer reads it off the work: the lowest tier that allows what the
- * reward carries (a car, a home, that many things and doors) and holds its
- * money and its standing. A reward no tier holds whole takes the lowest tier
- * that allows what it carries, so the validator's message names the money.
+ * So the model is asked for the pay alone and the tier follows off the work:
+ * the lowest tier that allows what the reward carries (a car, a home, that
+ * many things and doors) and holds its money and its standing. `@gb/quest`
+ * settles the pay into that tier's band when the model writes it outside, so
+ * what the city carries is the settled document, never the draft that went in.
  */
 export function tierFor(reward: Reward): Difficulty {
   const carries = (tier: Difficulty): boolean => {

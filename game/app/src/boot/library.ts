@@ -10,7 +10,6 @@ export interface Shelved {
   readonly theme: string
   readonly seed: string
   readonly blocks: number
-  readonly model: boolean
   readonly brief?: string
   readonly asks?: Asks
   /** The sealed document's hash, so a city made again from the same brief is known to have moved. */
@@ -124,7 +123,7 @@ export class Library {
   /** A city that came in as a file. Its key is the file's own hash. */
   async opened(city: { bundle: OpenedBundle; document: unknown }): Promise<Shelved> {
     const world = city.bundle.world
-    const brief: CityBrief = { theme: world.theme, seed: world.seed, blocks: 0, model: false }
+    const brief: CityBrief = { theme: world.theme, seed: world.seed, blocks: 0 }
     return this.#file(city.bundle.contentHash, brief, 'opened', city)
   }
 
@@ -161,7 +160,6 @@ export class Library {
       theme: brief.theme,
       seed: brief.seed,
       blocks: brief.blocks,
-      model: brief.model,
       ...(brief.brief ? { brief: brief.brief } : {}),
       ...(brief.asks ? { asks: brief.asks } : {}),
       hash: city.bundle.contentHash,
@@ -222,7 +220,6 @@ export function briefOf(entry: Shelved): CityBrief {
     theme: entry.theme,
     seed: entry.seed,
     blocks: entry.blocks,
-    model: entry.model,
     ...(entry.brief ? { brief: entry.brief } : {}),
     ...(entry.asks ? { asks: entry.asks } : {}),
   })

@@ -27,8 +27,10 @@ building and no other.
 
 Then give it its name, the way its owner would have named it. A bar and an
 office are named very differently: one is a sign hung over a door, the other is
-a family name and a trade. Do not put the kind of building in the name unless
-that is really how such places are named around here. No word may head two
+a family name and a trade. It is a name a signwriter would actually paint:
+everyday words and ordinary names, nothing invented or fanciful. Do not put the
+kind of building in the name unless that is really how such places are named
+around here. No word may head two
 signs in this city, the head being the first word after any "The".
 
 ## The people
@@ -42,6 +44,10 @@ other: who has been here longest, who covers for whom, who is owed something,
 what they argue about when it is quiet. Give each of them the one habit somebody
 would notice from the doorway, and what they could have picked up from where
 they stand: who owes what, who was in last night, what is late, what is broken.
+
+Their names are ordinary ones: a first name and a family name of the kind real
+people have, that another person can spell and say after hearing it once.
+Nothing invented, no coined syllables, no spelling chosen to look unusual.
 
 Every family name in this building starts with one of these letters:
 {{letters}}. No two people here share a family name.

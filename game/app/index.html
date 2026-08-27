@@ -2012,11 +2012,6 @@
       .gb-boot-row:focus-within .gb-boot-tile > span {
         color: var(--gb-accent);
       }
-      .gb-boot-label {
-        color: var(--gb-ink);
-        min-width: 0;
-        font-weight: 500;
-      }
       .gb-boot-control {
         display: flex;
         align-items: center;
@@ -2109,55 +2104,6 @@
       .gb-boot input[type='file']::file-selector-button:hover {
         background: var(--gb-edge-lit);
         color: var(--gb-ink);
-      }
-
-      /* the two-state toggle */
-      .gb-boot-toggle {
-        display: flex;
-        align-items: center;
-        gap: var(--gb-s2);
-        cursor: pointer;
-      }
-      .gb-boot-toggle input {
-        position: absolute;
-        opacity: 0;
-        pointer-events: none;
-      }
-      .gb-boot-switch {
-        display: block;
-        position: relative;
-        width: 44px;
-        height: 22px;
-        background: var(--gb-well);
-        border: 1px solid var(--gb-edge);
-        transition: all var(--gb-t-state) var(--gb-in);
-      }
-      .gb-boot .gb-boot-switch > span::after {
-        content: '';
-        position: absolute;
-        top: 2px;
-        left: 2px;
-        width: 16px;
-        height: 16px;
-        background: var(--gb-off);
-        transition: transform var(--gb-t-state) var(--gb-in), background-color var(--gb-t-state) var(--gb-in);
-      }
-      .gb-boot-toggle input:checked + .gb-boot-switch {
-        background: rgba(47, 217, 230, 0.15);
-        border-color: var(--gb-accent);
-      }
-      .gb-boot .gb-boot-toggle input:checked + .gb-boot-switch > span::after {
-        background: var(--gb-accent);
-        box-shadow: 0 0 8px var(--gb-accent);
-        transform: translateX(22px);
-      }
-      .gb-boot-toggle input:focus-visible + .gb-boot-switch {
-        box-shadow: 0 0 10px var(--gb-accent);
-      }
-      .gb-boot-state {
-        color: var(--gb-dim);
-        min-width: 3.5em;
-        font-size: 12px;
       }
 
       /* ------------------------------------------------------------------
@@ -3508,15 +3454,9 @@
                           </div>
                           <div class="gb-review-item-card">
                             <span class="gb-arch-sum-lbl"><span class="gb-i gb-i-14" data-icon="screen"></span>THE MODEL</span>
-                            <label class="gb-boot-toggle">
-                              <input id="boot-model" data-boot="model" type="checkbox" />
-                              <span class="gb-boot-switch"><span></span></span>
-                              <span class="gb-boot-label">Write the city with the model</span>
-                              <span class="gb-boot-state" data-boot="model-state">Off</span>
-                            </label>
+                            <span class="gb-arch-sum-val">The model writes the history, the places and the quests</span>
                             <span class="gb-arch-sum-sub">
-                              On, the model writes the history, the places and the quests. Off, the city is written from the seed alone. Either way, the
-                              Generate with AI buttons on this form ask the model for that one field.
+                              The Generate with AI buttons on this form ask it for one field at a time; building the city asks it for the whole town.
                             </span>
                           </div>
                         </div>
@@ -3585,7 +3525,7 @@
                   <span class="gb-chevron-num">02</span>
                   <span class="gb-chevron-label">THE WRITING</span>
                 </button>
-                <button type="button" class="gb-step-chevron gb-step-compile" data-step-target="3" aria-current="false" data-hint="Step 3: read the brief back, choose whether the model writes it, and build the city.">
+                <button type="button" class="gb-step-chevron gb-step-compile" data-step-target="3" aria-current="false" data-hint="Step 3: read the brief back and build the city.">
                   <span class="gb-chevron-mark"><span class="gb-i" data-icon="chevron-right"></span></span>
                   <span class="gb-chevron-num">03</span>
                   <span class="gb-chevron-label">BUILD IT</span>

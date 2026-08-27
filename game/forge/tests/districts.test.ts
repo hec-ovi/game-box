@@ -1,3 +1,4 @@
+import { ok } from '@gb/kit'
 import type { District, Rect, World } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { Forge, OfflineNarrator, type DistrictRequest } from '../src/index.ts'
@@ -139,7 +140,7 @@ describe('the parts a city is cut into', () => {
       nameDistricts: async (requests) => {
         asked = requests
         // one name for the lot: the second is left blank and the rest repeat the first
-        return requests.map((_, at) => (at === 1 ? '' : 'Kiln Bay'))
+        return ok(requests.map((_, at) => (at === 1 ? '' : 'Kiln Bay')))
       },
     })
     const built = await forge.build({ theme: 'quiet coastal town', seed: 'districts-4', blocksX: 16, blocksY: 16 })

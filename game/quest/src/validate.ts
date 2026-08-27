@@ -1,5 +1,5 @@
 import { err, ok, type Result, type SchemaViolation } from '@gb/kit'
-import { checkReward, difficultyOf, type Difficulty } from './balance.ts'
+import { checkReward, difficultyOf, settle, type Difficulty } from './balance.ts'
 import { checkEdges, checkShape } from './flow.ts'
 import { Flow } from './graph.ts'
 import type { QuestProblem } from './problem.ts'
@@ -26,11 +26,14 @@ export function validateQuest(value: unknown, world: WorldView): Result<QuestDoc
   const problems = checkFlow(parsed.value, world)
   if (problems.length) return err({ code: 'broken-flow', problems })
 
-  const unbalanced = checkReward(parsed.value)
+  // the pay is settled into its band rather than argued with: a number in the
+  // wrong place is not a reason to throw a playable job away
+  const quest = settle(parsed.value)
+  const unbalanced = checkReward(quest)
   if (unbalanced.length) {
-    return err({ code: 'unbalanced-reward', difficulty: difficultyOf(parsed.value), violations: unbalanced })
+    return err({ code: 'unbalanced-reward', difficulty: difficultyOf(quest), violations: unbalanced })
   }
-  return ok(parsed.value)
+  return ok(quest)
 }
 
 /** Every reason this quest could not be played, not just the first. */

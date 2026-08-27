@@ -1,12 +1,15 @@
 import type { Instance, InstancePerson, InstancePost, InstanceRequest, InstanceThing, Narrator } from '@gb/forge'
+import { ok, type Result } from '@gb/kit'
 import type { Asker, Violation } from './asker.ts'
 import { briefLines } from './brief-lines.ts'
 import { charterLines } from './charter-lines.ts'
 import { FamilyClaims } from './claim.ts'
+import type { ScribeFailure } from './failure.ts'
 import { personProblems, profileOf } from './person.ts'
 import type { Progress } from './progress.ts'
 import { bullets, prompt } from './prompts.ts'
 import type { NameRegistry } from './registry.ts'
+import { answered } from './stand-in.ts'
 import { instanceTool, type WrittenPlace } from './tools.ts'
 import { UniqueNames, type Pass } from './unique.ts'
 import type { Waves } from './waves.ts'
@@ -14,15 +17,16 @@ import type { Waves } from './waves.ts'
 export interface InstanceWriterOptions {
   readonly asker: Asker
   readonly waves: Waves
-  readonly fallback: Narrator
   readonly registry: NameRegistry
   readonly progress: Progress
   readonly claims: FamilyClaims
+  /** Only where a caller handed one in. Nothing in the game does. */
+  readonly standIn?: Narrator | undefined
 }
 
 /**
  * How many times a name is asked for again before the city takes what it is
- * given. It doubles as the spacing between two places' fallback streams, so no
+ * given. It doubles as the spacing between two places' stand-in streams, so no
  * two of them draw the same spare name.
  */
 const ATTEMPTS = 40
@@ -39,30 +43,30 @@ const ATTEMPTS = 40
  */
 export class InstanceWriter implements Pass<InstanceRequest, Instance> {
   #asker: Asker
-  #fallback: Narrator
   #registry: NameRegistry
   #progress: Progress
   #claims: FamilyClaims
+  #standIn: Narrator | undefined
   #unique: UniqueNames<InstanceRequest, Instance>
   #counted = new Set<number>()
 
   constructor(options: InstanceWriterOptions) {
     this.#asker = options.asker
-    this.#fallback = options.fallback
     this.#registry = options.registry
     this.#progress = options.progress
     this.#claims = options.claims
+    this.#standIn = options.standIn
     this.#unique = new UniqueNames(options.waves, options.registry, this)
   }
 
   /** Every place, several at a time, back in the order they were asked for. */
-  async write(requests: readonly InstanceRequest[]): Promise<Instance[]> {
+  async write(requests: readonly InstanceRequest[]): Promise<Result<Instance[], ScribeFailure>> {
     this.#counted.clear()
     this.#progress.open('places', requests.length, `${requests.length} places`)
     return this.#unique.write(requests)
   }
 
-  async ask(request: InstanceRequest, index: number, taken: readonly string[]): Promise<Instance | undefined> {
+  async ask(request: InstanceRequest, index: number, taken: readonly string[]): Promise<Result<Instance, ScribeFailure>> {
     const shell = {
       postIds: request.posts.map((post) => post.postId),
       thingIds: request.things.map((thing) => thing.thingId),
@@ -89,13 +93,13 @@ export class InstanceWriter implements Pass<InstanceRequest, Instance> {
         ),
         usedNames: bullets(taken, 'None yet.'),
       }),
-      `place:${request.index}`,
+      callFor(request),
       (value) => problemsWith(value, shell),
     )
-    if (!answer) return undefined
-    const instance = made(request, answer)
+    if (!answer.ok) return answer
+    const instance = made(request, answer.value)
     this.#count(index, instance.name, request.charter.label)
-    return instance
+    return ok(instance)
   }
 
   namesIn(instance: Instance): readonly string[] {
@@ -106,26 +110,44 @@ export class InstanceWriter implements Pass<InstanceRequest, Instance> {
     return [instance.name]
   }
 
-  /** Every name the city has already spent is written again by the fallback narrator. */
-  async repair(request: InstanceRequest, index: number, answer: Instance | undefined): Promise<Instance> {
-    const name = answer !== undefined && !this.#registry.signTaken(answer.name) ? answer.name : await this.#spareName(request)
+  /** Which name the model spent twice, so the caller is told what stopped the place rather than just that it stopped. */
+  clash(request: InstanceRequest, _index: number, answer: Instance): ScribeFailure {
+    const spent =
+      [answer.name].find((sign) => this.#registry.signTaken(sign)) ??
+      answer.people.map((person) => person.name).find((name) => this.#registry.taken(name)) ??
+      answer.name
+    return this.#asker.unusable(callFor(request), `${spent} is already spent somewhere else in this city and the model wrote it again`)
+  }
+
+  /**
+   * Every spent name written again by the stand-in a caller handed in. Nothing
+   * in the game hands one in, and a stand-in that will not write either leaves
+   * the place unmended, which stops the stage.
+   */
+  async mend(request: InstanceRequest, index: number, answer: Instance | undefined): Promise<Instance | undefined> {
+    const standIn = this.#standIn
+    if (!standIn) return undefined
+    const name = answer !== undefined && !this.#registry.signTaken(answer.name) ? answer.name : await this.#spareName(standIn, request)
+    if (name === undefined) return undefined
     this.#registry.hang(name)
 
     const people: InstancePerson[] = []
     for (const post of request.posts) {
       const written = answer?.people.find((person) => person.postId === post.postId)
-      const person = written !== undefined && !this.#registry.taken(written.name) ? written : await this.#sparePerson(request, post, name)
+      const person = written !== undefined && !this.#registry.taken(written.name) ? written : await this.#sparePerson(standIn, request, post, name)
+      if (person === undefined) return undefined
       this.#registry.add(person.name)
       people.push(person)
     }
 
-    const things = answer?.things.length ? answer.things : await this.#stock(request)
+    const things = answer?.things.length ? answer.things : await this.#stock(standIn, request)
+    if (things === undefined) return undefined
     this.#count(index, name, request.charter.label)
     return { name, character: answer?.character ?? '', people, things }
   }
 
-  /** Keeps asking the fallback narrator for one more sign until the city has not already hung its head word. */
-  async #spareName(request: InstanceRequest): Promise<string> {
+  /** Keeps asking the stand-in for one more sign until the city has not already hung its head word. */
+  async #spareName(standIn: Narrator, request: InstanceRequest): Promise<string | undefined> {
     const at = (attempt: number) => ({
       kind: request.kind,
       charter: request.charter,
@@ -133,14 +155,14 @@ export class InstanceWriter implements Pass<InstanceRequest, Instance> {
       index: request.index * ATTEMPTS + attempt,
       ...(request.premise === undefined ? {} : { premise: request.premise }),
     })
-    let name = await this.#fallback.namePlace(at(0))
-    for (let attempt = 1; attempt <= ATTEMPTS && this.#registry.signTaken(name); attempt++) {
-      name = await this.#fallback.namePlace(at(attempt))
+    let name = answered(await standIn.namePlace(at(0)))
+    for (let attempt = 1; attempt <= ATTEMPTS && name !== undefined && this.#registry.signTaken(name); attempt++) {
+      name = answered(await standIn.namePlace(at(attempt)))
     }
     return name
   }
 
-  async #sparePerson(request: InstanceRequest, post: InstancePost, placeName: string): Promise<InstancePerson> {
+  async #sparePerson(standIn: Narrator, request: InstanceRequest, post: InstancePost, placeName: string): Promise<InstancePerson | undefined> {
     const at = (attempt: number) => ({
       role: post.role,
       placeKind: request.kind,
@@ -150,21 +172,18 @@ export class InstanceWriter implements Pass<InstanceRequest, Instance> {
       index: post.index * ATTEMPTS + attempt,
       ...(request.premise === undefined ? {} : { premise: request.premise }),
     })
-    let profile = await this.#fallback.describeNpc(at(0))
-    for (let attempt = 1; attempt <= ATTEMPTS && this.#registry.taken(profile.name); attempt++) {
-      profile = await this.#fallback.describeNpc(at(attempt))
+    let profile = answered(await standIn.describeNpc(at(0)))
+    for (let attempt = 1; attempt <= ATTEMPTS && profile !== undefined && this.#registry.taken(profile.name); attempt++) {
+      profile = answered(await standIn.describeNpc(at(attempt)))
     }
-    return { ...profile, postId: post.postId, role: post.role }
+    return profile && { ...profile, postId: post.postId, role: post.role }
   }
 
-  async #stock(request: InstanceRequest): Promise<InstanceThing[]> {
+  async #stock(standIn: Narrator, request: InstanceRequest): Promise<InstanceThing[] | undefined> {
     const things: InstanceThing[] = []
     for (const thing of request.things) {
-      const written = await this.#fallback.describeItem({
-        archetype: thing.archetype,
-        theme: request.theme,
-        index: thing.index,
-      })
+      const written = answered(await standIn.describeItem({ archetype: thing.archetype, theme: request.theme, index: thing.index }))
+      if (written === undefined) return undefined
       things.push({ thingId: thing.thingId, ...written })
     }
     return things
@@ -177,6 +196,12 @@ export class InstanceWriter implements Pass<InstanceRequest, Instance> {
     this.#progress.finished(`${name}, a ${label}`)
   }
 }
+
+/** Where this place sits in the build, and what it is in the words a failure is read in. */
+const callFor = (request: InstanceRequest): { at: string; what: string } => ({
+  at: `place:${request.index}`,
+  what: `the ${request.charter.label} and the people in it`,
+})
 
 /** The answer, put back together against the shell it was written for. */
 function made(request: InstanceRequest, answer: WrittenPlace): Instance {
