@@ -18,7 +18,8 @@ import { Avenues } from './layout/avenues.ts'
 import { cutDistricts, districtAt } from './layout/districts.ts'
 import { streetLines } from './layout/lines.ts'
 import { planStreets, type StreetPlan } from './layout/plan.ts'
-import { nearnessIn, sitesInBlock, storeysFor, type PlotSite } from './layout/plots.ts'
+import { nearnessIn, sitesInBlock, type PlotSite } from './layout/plots.ts'
+import { Skyline } from './layout/skyline.ts'
 import { layRoads } from './layout/roads.ts'
 import { spreadSites, stationsWanted } from './layout/stations.ts'
 import { paintStreets } from './layout/streets.ts'
@@ -86,11 +87,11 @@ interface LaidOut {
 const GENERATOR_VERSION = '0.1.0'
 
 /**
- * How tall `extend` builds into a gap, and how built up it counts the gap as.
- * A growth fills the holes in a town that is already standing, so it puts up
- * frontage rather than dropping a tower into a back yard.
+ * How tall `extend` builds into a gap. A growth fills the holes in a town that
+ * is already standing, so it puts up frontage rather than dropping a tower into
+ * a back yard.
  */
-const EXTEND = { maxStoreys: 2, density: 1 } as const
+const EXTEND = new Skyline({ maxStoreys: 2, density: 1 })
 
 /**
  * Builds a city from a brief: streets and plots by arithmetic, names and people
@@ -369,6 +370,7 @@ export class Forge {
       for (const site of spreadSites(sites, stationsWanted(span), new Set(staples.keys()), mix.fork('stations'))) staples.set(site, subway.word)
     }
     const byWord = new Map(charters.map((charter) => [charter.word, charter]))
+    const skyline = new Skyline(brief)
 
     const chosen: Chosen[] = []
     for (const [index, site] of sites.entries()) {
@@ -381,7 +383,7 @@ export class Forge {
       const onAvenue = avenues.has(site.entrance)
       const spot = { onAvenue, nearness: nearnessIn(streets.size, site.entrance) }
       const district = inDistrict[index]
-      chosen.push({ site, charter, onAvenue, ...(district ? { district } : {}), storeys: storeysFor(charter, brief, siteRng, spot), rng: siteRng })
+      chosen.push({ site, charter, onAvenue, ...(district ? { district } : {}), storeys: skyline.storeysFor(charter, spot, siteRng), rng: siteRng })
     }
     return chosen
   }
@@ -432,7 +434,7 @@ export class Forge {
         charter,
         onAvenue: false,
         ...(district ? { district: district.id } : {}),
-        storeys: storeysFor(charter, EXTEND, siteRng, { onAvenue: false, nearness: 0 }),
+        storeys: EXTEND.storeysFor(charter, { onAvenue: false, nearness: 0 }, siteRng),
         rng: siteRng,
       })
     }

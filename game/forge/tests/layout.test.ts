@@ -313,18 +313,29 @@ describe('the avenues', () => {
     }
     const towers = town.filter((one) => one.storeys > PLOT_BAND.storeys.max)
 
-    // a skyline, not a plateau: most of the town is the street it always was
-    expect(towers.length / town.length).toBeGreaterThan(0.002)
-    expect(towers.length / town.length).toBeLessThan(0.06)
+    // a skyline, not a plateau: a quarter of a dense town stacks, the rest is
+    // the street it always was
+    expect(towers.length / town.length).toBeGreaterThan(0.1)
+    expect(towers.length / town.length).toBeLessThan(0.35)
     // and real height on the ones that are raised, with a spread rather than one number
     expect(Math.max(...towers.map((one) => one.storeys))).toBeGreaterThan(12)
     expect(new Set(towers.map((one) => one.storeys)).size).toBeGreaterThan(6)
 
-    // they stand where a town puts its height: on the spine, and towards the middle
-    const onSpine = (list: Standing[]) => list.filter((one) => one.onSpine).length / list.length
-    expect(onSpine(towers)).toBeGreaterThan(onSpine(town) * 2)
+    // they stand where a town puts its height: towards the middle, and along
+    // the avenues, which carry both the extra storey inside the band and the
+    // spine's share of the field over it
     const out = (list: Standing[]) => list.reduce((sum, one) => sum + one.fromMiddle, 0) / list.length
     expect(out(towers)).toBeLessThan(out(town) * 0.95)
+    const mean = (list: Standing[]) => list.reduce((sum, one) => sum + one.storeys, 0) / list.length
+    const spine = town.filter((one) => one.onSpine)
+    expect(mean(spine)).toBeGreaterThan(mean(town.filter((one) => !one.onSpine)) * 1.15)
+
+    // the height is a downtown rather than a field: the third of town nearest
+    // the middle stacks many times more often than the third out at the rim
+    const byMiddle = [...town].sort((a, b) => a.fromMiddle - b.fromMiddle)
+    const third = Math.floor(byMiddle.length / 3)
+    const raised = (list: Standing[]) => list.filter((one) => one.storeys > PLOT_BAND.storeys.max).length / list.length
+    expect(raised(byMiddle.slice(0, third))).toBeGreaterThan(raised(byMiddle.slice(-third)) * 3)
   })
 
   it('takes the height the brief allows and changes nothing else about the town', async () => {
