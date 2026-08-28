@@ -1781,7 +1781,7 @@ describe('the stations on the map', () => {
 
     // At a station, the others can be ridden to; this one says it is here.
     hud.show({ map: { ...CITY, boarding: 'p10' } })
-    expect(within(list).getByText('Walk up to a station entrance to ride.').hidden).toBe(true)
+    expect(within(list).queryByText('Walk up to a station entrance to ride.')).toBeNull()
     within(within(list).getByText('Dock Street').closest('li') as HTMLElement).getByText('Here')
     await user.click(within(list).getByRole('button', { name: 'Travel to Northgate' }))
     expect(intents).toContainEqual({ kind: 'travel', stationId: 'p9' })
@@ -1797,6 +1797,19 @@ describe('the stations on the map', () => {
     // A town with no stations says so rather than leaving an empty heading.
     hud.show({ window: 'map', map: { ...CITY, stations: [] } })
     within(list).getByText('This town has no stations.')
+  })
+
+  it('says there is nowhere to ride when the player stands at the only station in town', () => {
+    const { hud, screen } = mount()
+    hud.show({
+      window: 'map',
+      map: { ...CITY, stations: [{ id: 'p10', name: 'Dock Street', x: 5, y: 5 }], boarding: 'p10' },
+    })
+    const panel = getByRole(screen, 'dialog', { name: 'Map' })
+    const list = within(panel).getByText('Stations').closest('.gb-map-section') as HTMLElement
+
+    within(list).getByText('This is the only station in town, so there is nowhere to ride.')
+    expect(within(list).queryByRole('button', { name: /^Travel/ })).toBeNull()
   })
 })
 

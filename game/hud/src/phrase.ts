@@ -231,6 +231,7 @@ export const STATIONS = {
   travel: 'Travel',
   here: 'Here',
   walk: 'Walk up to a station entrance to ride.',
+  alone: 'This is the only station in town, so there is nowhere to ride.',
 } as const
 
 /** What a screen says: the lock, the reader, and the two games. */
