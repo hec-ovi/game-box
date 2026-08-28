@@ -282,8 +282,10 @@ agreement moves into the request instead.
   so a narrator asked one person at a time gets the same guarantee.
 - **Places and everything else.** Names are spent in index order once the wave
   has landed, never while it is in the air. The lower index keeps the name and
-  the higher one is asked again with the taken names quoted at it; a second
-  repeat stops the pass rather than costing a third call.
+  the higher one is asked again with the taken names quoted at it; a name
+  written twice even then is kept as it stands, because two doors under one
+  word is a blemish on a street and not worth a city. Only a call that never
+  answered stops the pass.
   A place's sign is spent by its head word as well as its name, the way a
   batch's are. So which of two answers keeps a name is decided by the index it
   was asked at, and the same seed builds the same city whatever order the

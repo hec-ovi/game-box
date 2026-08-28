@@ -18,8 +18,6 @@ export interface Pass<Request, Answer> {
    * game hands one in, so this is normally nothing and the clash is a failure.
    */
   mend(request: Request, index: number, answer: Answer | undefined): Promise<Answer | undefined>
-  /** Why an answer the model wrote twice over cannot stand. */
-  clash(request: Request, index: number, answer: Answer): ScribeFailure
 }
 
 /**
@@ -34,6 +32,9 @@ export interface Pass<Request, Answer> {
  * never quietly gets a name nobody asked the model for. Which answer is re-asked
  * is a function of the indices alone, and so is what it is told, which is what
  * keeps the same seed building the same city however many calls were in flight.
+ *
+ * A name the model spends twice even after that retry is kept anyway: two
+ * doors with one word on them is worth a retry and not worth a city.
  */
 export class UniqueNames<Request, Answer> {
   #waves: Waves
@@ -74,9 +75,18 @@ export class UniqueNames<Request, Answer> {
       }
       const last = retried.get(index) ?? first[index]!
       const mended = await this.#pass.mend(request, index, last.ok ? last.value : undefined)
-      if (mended === undefined) return err(last.ok ? this.#pass.clash(request, index, last.value) : last.error)
-      this.#spend(mended)
-      out.push(mended)
+      if (mended !== undefined) {
+        this.#spend(mended)
+        out.push(mended)
+        continue
+      }
+      // A name over two doors is a blemish on a street. The retry above is
+      // what the rule is worth; the city is not. So an answer that still
+      // repeats a name is taken as it stands, and only a call that never
+      // answered stops the pass.
+      if (!last.ok) return err(last.error)
+      this.#spend(last.value)
+      out.push(last.value)
     }
     return ok(out)
   }

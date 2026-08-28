@@ -220,14 +220,16 @@ describe('writing a place and its people in one call', () => {
     expect(sent[2]!.user).toContain('- The Anchor')
   })
 
-  it('stops the places stage when the model heads two signs with one word twice over', async () => {
+  it('hangs a sign whose word is already over another door, rather than losing the city over it', async () => {
+    // the retry is what the rule is worth: a word on two doors is a blemish on
+    // a street, and the owner would rather have the town than the rule
     const { sidecar } = fakeModel((call) => answer(call, { name: call.user.includes('- The Anchor') ? 'Anchor Supply' : 'The Anchor' }))
     const scribe = new Scribe({ sidecar, seed: 'harbour', concurrency: 2 })
 
-    const failure = await stopped(scribe.writeInstances(places(2)))
+    const written = await wrote(scribe.writeInstances(places(2)))
 
-    expect(failure).toMatchObject({ stage: 'places', at: 'place:1', code: 'unusable' })
-    expect(failure.message).toContain('Anchor Supply is already spent somewhere else in this city')
+    expect(written).toHaveLength(2)
+    expect(written.map((place) => place.name)).toEqual(['The Anchor', 'Anchor Supply'])
   })
 
   it('writes the same city on the same seed, whatever order the answers landed in', async () => {

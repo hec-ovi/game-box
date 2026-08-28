@@ -110,15 +110,6 @@ export class InstanceWriter implements Pass<InstanceRequest, Instance> {
     return [instance.name]
   }
 
-  /** Which name the model spent twice, so the caller is told what stopped the place rather than just that it stopped. */
-  clash(request: InstanceRequest, _index: number, answer: Instance): ScribeFailure {
-    const spent =
-      [answer.name].find((sign) => this.#registry.signTaken(sign)) ??
-      answer.people.map((person) => person.name).find((name) => this.#registry.taken(name)) ??
-      answer.name
-    return this.#asker.unusable(callFor(request), `${spent} is already spent somewhere else in this city and the model wrote it again`)
-  }
-
   /**
    * Every spent name written again by the stand-in a caller handed in. Nothing
    * in the game hands one in, and a stand-in that will not write either leaves
