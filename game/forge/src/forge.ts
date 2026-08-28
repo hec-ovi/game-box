@@ -429,13 +429,19 @@ export class Forge {
     const wanted = stapleKinds(flavour, mix, charters, premise?.build.mustHave)
     const spots = mix.shuffle(sites.map((_, index) => index)).slice(0, wanted.length)
     const staples = new Map(spots.map((site, order) => [site, wanted[order]!]))
-    // somewhere to board every five hundred metres, spread over the town: the mix never rolls the kind that boards
+    const byWord = new Map(charters.map((charter) => [charter.word, charter]))
+    // Somewhere to board every five hundred metres, spread over the town. The
+    // mix never rolls the kind that boards, but a history's `mustHave` demands
+    // it like any other kind, so whatever the staples already put up is counted
+    // here: a town boards nowhere or boards at least twice, because a lone
+    // entrance is a ride with nowhere to go
     const subway = charters.find((charter) => charter.transit === 'subway')
     if (subway) {
       const span = Math.max(streets.size.width, streets.size.height) * world.cellSize
-      for (const site of spreadSites(sites, stationsWanted(span), new Set(staples.keys()), mix.fork('stations'))) staples.set(site, subway.word)
+      const standing = [...staples].filter(([, word]) => byWord.get(word)?.transit === 'subway').map(([site]) => site)
+      const spread = { sites, count: stationsWanted(span, standing.length), taken: new Set(staples.keys()), standing, rng: mix.fork('stations') }
+      for (const site of spreadSites(spread)) staples.set(site, subway.word)
     }
-    const byWord = new Map(charters.map((charter) => [charter.word, charter]))
     const skyline = new Skyline(brief)
 
     const chosen: Chosen[] = []

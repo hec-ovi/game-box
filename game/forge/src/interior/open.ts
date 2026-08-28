@@ -138,12 +138,16 @@ export function openDoors(frontages: readonly Frontage[], rng: Rng, town: Town):
     }
   }
 
-  // Where the trains board goes first and is not ranked against shops. A subway
-  // entrance has almost nothing to offer a ranking scored on floor and trade,
-  // so it lost every time: a city put one on the map and left it shut, which
-  // is a painted door where the fast travel is. There is at most one every five
-  // hundred metres, so this can never eat a town's budget.
-  while (picker.room(owed())) if (!picker.take((frontage) => frontage.charter.transit !== undefined)) break
+  // Where the trains board goes before the ranking and is not scored against
+  // shops: a subway entrance has almost nothing to offer a ranking scored on
+  // floor and trade, so it loses every pass and a concourse nobody can walk
+  // into is a painted door on the busiest corner in town. What it never takes
+  // is a door the town needs: the keystones it has not opened yet and the home
+  // are kept back, so a hamlet that boards still opens its counter and its bar.
+  // Boarding is a plot rather than a door (`@gb/world`'s `stations()`), so a
+  // station kept shut is still a station the player rides from.
+  const needed = (): number => owed() + KEYSTONES.filter(([, met]) => !picker.holds(met)).length
+  while (picker.room(needed())) if (!picker.take((frontage) => frontage.charter.transit === 'subway')) break
 
   answer(KEYSTONES)
   // a kind of place the town's history is about: the door the story means the

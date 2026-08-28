@@ -76,6 +76,22 @@ export const LOCKUP: History = {
   charters: [JAIL, VILLA],
 }
 
+/**
+ * A town the line runs under: its history demands a station, in a town so small
+ * that the five hundred metre spacing asks for none.
+ */
+export const UNDERGROUND: History = {
+  livesOn: 'the line that runs under it and the freight it still carries',
+  happened: 'the trains stopped calling and the platforms were left standing',
+  stake: 'whether anything stops here again',
+  sides: [
+    { name: 'the commuters', wants: 'the line reopened and the trains calling' },
+    { name: 'the operator', wants: 'the tunnels sold off before the winter' },
+  ],
+  common: ['the escalators still run at night with nobody on them'],
+  build: { moreOf: ['office'], fewerOf: ['hotel'], mustHave: ['station'] },
+}
+
 /** A narrator told the town's history, offline in every other respect. */
 export class Told implements Narrator {
   #offline: OfflineNarrator

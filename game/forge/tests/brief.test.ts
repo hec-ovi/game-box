@@ -6,7 +6,7 @@ import { Forge, OfflineNarrator, summarise, type InstanceRequest } from '../src/
 import { GAMES } from '../src/interior/machines.ts'
 import { stationsWanted } from '../src/layout/stations.ts'
 import { City } from './city.ts'
-import { buildTold, LOCKUP } from './histories.ts'
+import { buildTold, LOCKUP, UNDERGROUND } from './histories.ts'
 import { Player } from './player.ts'
 import { meeting, openLog } from './playable.ts'
 import { buildTown } from './support.ts'
@@ -229,20 +229,28 @@ describe('a home for the player, and somewhere to board', () => {
     expect(homes.filter((interior) => interior.forSale === undefined && interior.owner !== undefined).length).toBeGreaterThan(0)
   })
 
-  it('boards fast travel every five hundred metres and never rolls a station in the mix', async () => {
+  it('boards fast travel every five hundred metres, and never in exactly one place', async () => {
     // a share of the plots put 26 entrances in an eight-block town and 157 in a twenty
-    expect(stationsWanted(200)).toBe(0)
-    expect(stationsWanted(500)).toBe(1)
-    expect(stationsWanted(2500)).toBe(5)
-    const [hamlet, city] = await Promise.all([buildTown('stations-2', { blocksX: 2, blocksY: 2 }), buildTown('stations-20', { blocksX: 20, blocksY: 20 })])
+    expect(stationsWanted(200, 0)).toBe(0)
+    expect(stationsWanted(2500, 0)).toBe(5)
+    const [hamlet, city, told] = await Promise.all([
+      buildTown('stations-2', { blocksX: 2, blocksY: 2 }),
+      buildTown('stations-20', { blocksX: 20, blocksY: 20 }),
+      buildTold('stations-told', UNDERGROUND, { blocksX: 3, blocksY: 3 }),
+    ])
     expect(hamlet.world.stations().length, 'a town you cross in two minutes has a subway').toBe(0)
     const span = Math.max(city.world.grid.width, city.world.grid.height) * city.world.cellSize
     const stations = city.world.stations()
-    expect(stations.length, `${Math.round(span)} m of city`).toBe(stationsWanted(span))
+    expect(stations.length, `${Math.round(span)} m of city`).toBe(stationsWanted(span, 0))
     expect(stations.length).toBeGreaterThan(1)
     const apart = Math.min(...stations.flatMap((a, at) => stations.slice(at + 1).map((b) => Math.hypot(a.entrance.cell.x - b.entrance.cell.x, a.entrance.cell.y - b.entrance.cell.y))))
     expect(apart * city.world.cellSize, 'the stations are on one corner').toBeGreaterThan(300)
     for (const station of stations) expect(city.world.charter(station.kind)?.transit).toBe('subway')
+    // a history that says the town has a station gets one, and a second, because
+    // a lone entrance is a travel panel with nowhere to ride to
+    const small = Math.max(told.world.grid.width, told.world.grid.height) * told.world.cellSize
+    expect(stationsWanted(small, 0), `${Math.round(small)} m of town: the spacing asks for none`).toBe(0)
+    expect(told.world.stations().length, 'a demanded station is a station you can ride from').toBe(2)
   })
 })
 
