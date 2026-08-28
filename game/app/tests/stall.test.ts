@@ -54,4 +54,30 @@ describe('the watch on a slow frame', () => {
     }
     expect(said).toHaveLength(2)
   })
+
+  it('keeps the worst frames for reading back, and empties the list on the reading', () => {
+    // the stall is over long before the player can reach the console, so what
+    // it saw has to still be there when they ask
+    const said: string[] = []
+    let clock = 0
+    const stall = new Stall({ over: 100, say: (line) => void said.push(line), now: () => clock })
+    const frame = (ms: number, dressing: number) => {
+      stall.begin()
+      clock += dressing
+      stall.at('city')
+      clock += ms - dressing
+      stall.end()
+    }
+
+    frame(300, 250)
+    frame(150, 120)
+    frame(10, 5)
+
+    const report = stall.report()
+    expect(report).toHaveLength(2)
+    expect(report[0]).toContain('300 ms')
+    expect(report[0]).toContain('city 250')
+    expect(report[1]).toContain('150 ms')
+    expect(stall.report()).toEqual(['no frame over the last reading was slow enough to keep'])
+  })
 })

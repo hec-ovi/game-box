@@ -19,6 +19,15 @@ const SLOW_MS = 120
 /** No more than one line every this many milliseconds, so a bad stretch cannot flood the console. */
 const QUIET_MS = 2_000
 
+/** How many bad frames are kept for the owner to read back on demand. */
+const KEPT = 10
+
+/** A frame slow enough to keep, and where its time went. */
+export interface SlowFrame {
+  readonly ms: number
+  readonly segments: readonly { readonly name: string; readonly ms: number }[]
+}
+
 export interface StallOptions {
   /** How slow a frame has to be before it is worth a line. */
   readonly over?: number
@@ -36,6 +45,7 @@ export class Stall {
   #last = 0
   #said = Number.NEGATIVE_INFINITY
   #segments: { name: string; ms: number }[] = []
+  #worst: SlowFrame[] = []
 
   constructor(options: StallOptions = {}) {
     this.#over = options.over ?? SLOW_MS
@@ -66,6 +76,7 @@ export class Stall {
     this.at('draw')
     const total = this.#last - this.#began
     if (total < this.#over) return
+    this.#keep(total)
     if (this.#last - this.#said < QUIET_MS) return
     this.#said = this.#last
     const worst = this.#segments
@@ -74,5 +85,37 @@ export class Stall {
       .map((segment) => `${segment.name} ${Math.round(segment.ms)}`)
       .join(', ')
     this.#say(`slow frame ${Math.round(total)} ms: ${worst}`)
+  }
+
+  /**
+   * The worst frames since the last time they were read, worst first, and the
+   * list is emptied by the reading. A stall the player felt is gone from the
+   * console by the time they alt-tab to it, so it is kept here for them to ask
+   * for after they have walked the street that stuttered.
+   */
+  worst(): readonly SlowFrame[] {
+    const kept = this.#worst
+    this.#worst = []
+    return kept
+  }
+
+  /** Every kept frame as one line each, worst first. */
+  report(): readonly string[] {
+    const kept = this.worst()
+    if (!kept.length) return ['no frame over the last reading was slow enough to keep']
+    return kept.map((frame) => {
+      const where = frame.segments
+        .filter((segment) => segment.ms >= 1)
+        .sort((one, other) => other.ms - one.ms)
+        .map((segment) => `${segment.name} ${Math.round(segment.ms)}`)
+        .join(', ')
+      return `${Math.round(frame.ms)} ms: ${where || 'nothing over a millisecond'}`
+    })
+  }
+
+  #keep(ms: number): void {
+    this.#worst.push({ ms, segments: [...this.#segments] })
+    this.#worst.sort((one, other) => other.ms - one.ms)
+    if (this.#worst.length > KEPT) this.#worst.length = KEPT
   }
 }

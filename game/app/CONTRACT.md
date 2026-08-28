@@ -190,6 +190,15 @@ None at the boundary. A city that will not build and a file that will not open a
 - Half a game never sits on the page. A city that will not draw takes its stage and its interface back off before the panel says so, and the city itself can still be exported.
 - The look belongs to `@gb/hud`. The panel is the one surface this box draws, because it has to be up before the hud exists; it is written from the hud's own tokens and holds no colour of its own.
 
+## Reading a stall back
+
+A frame over 120 ms says on the console where it went, worst part first, at most
+one line every two seconds. The ten worst are also kept, and **F2** prints them
+and empties the list, because a stall is over before anybody can reach the
+console: walk the street that stuttered, then ask. It costs two clock reads a
+part and says nothing on a frame that was fine, so it stays on in the running
+game.
+
 ## What a frame costs
 
 Measured in Chrome on this machine's WebGL2 fallback (`WebGPURenderer` reports

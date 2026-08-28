@@ -149,6 +149,9 @@ export async function createStage(mount: HTMLElement): Promise<Stage> {
     start(frame) {
       const timer = new THREE.Timer()
       const stall = new Stall()
+      // F2 reads the worst frames back. A stall is over before the player can
+      // reach the console, so they walk the street that stuttered and then ask
+      watchFrames(stall)
       renderer.setAnimationLoop(() => {
         timer.update()
         stall.begin()
@@ -195,4 +198,18 @@ function aspect(mount: HTMLElement): number {
   const width = mount.clientWidth || window.innerWidth
   const height = mount.clientHeight || window.innerHeight
   return width / Math.max(1, height)
+}
+
+/**
+ * Says where the worst frames went, when F2 is pressed. It reads what `Stall`
+ * kept, so nothing is measured that was not already being measured, and the
+ * list empties each time so two readings are two stretches of walking.
+ */
+function watchFrames(stall: Stall): void {
+  if (typeof window === 'undefined') return
+  window.addEventListener('keydown', (event) => {
+    if (event.key !== 'F2') return
+    event.preventDefault()
+    for (const line of stall.report()) console.warn(`worst frames  ${line}`)
+  })
 }
