@@ -169,6 +169,35 @@ The sidecar, in `host/`: `api`, `llm`, `stt`, `tts`, `models`. Node with one dep
 
 Opening a city against art you do not have, or a newer version of it, is not refused. The file opens and says which packs disagree.
 
+## Where your cities are kept
+
+Everything you make in the browser stays in that browser, on that machine. There
+is no account and no server: nothing you generate is uploaded anywhere.
+
+Two stores, both per browser and per site:
+
+| What | Where | Key |
+|---|---|---|
+| The cities on your shelf | IndexedDB | database `game-box`, stores `worlds` and `documents` |
+| The playthrough of each city | localStorage | `game-box.save.<key>` |
+| Your settings and any saved draft | localStorage | `game-box.settings`, `game-box.draft` |
+
+So a city you built in Chrome is not on your shelf in Firefox, and neither is
+its playthrough. The same is true across browser profiles, across machines, and
+across a different port on localhost, because the browser keys both stores by
+origin.
+
+A private window keeps nothing. Both stores fail closed rather than breaking the
+game: the shelf comes up empty and the game still starts, because a game that
+will not run because it cannot remember is worse than one that forgets.
+
+To move a city, take the file. Download on the landing screen writes the whole
+city out, and `gb build --out city.json` does the same from the terminal. Open
+it in the other browser and you get the same streets, the same people and the
+same jobs. Your progress through it does not travel with it.
+
+Clearing site data for `localhost:5180` erases every city and every save.
+
 ## The art
 
 Models and animations are Quaternius and KayKit. Surfaces are generated: `docs/textures/IMAGES.md` holds every prompt, where each file lands, and what was rejected and why. `assets/registry/sources.json` records every source with the licence its own file states, and `node tools/inspect-glb.mjs` prints that licence beside what a model would cost.
