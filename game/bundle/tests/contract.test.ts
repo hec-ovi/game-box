@@ -1,30 +1,30 @@
-import { Forge, OfflineNarrator } from '@gb/forge'
 import { PlayerState } from '@gb/play'
 import { QuestLog } from '@gb/quest'
 import { describe, expect, it } from 'vitest'
 import { Bundle } from '../src/index.ts'
+import { errand, grow, laidOut } from './town.ts'
 
+/** A town laid out, with one place open in it and a job to do there, sealed as a file. */
 async function packedTown() {
-  const forge = new Forge(new OfflineNarrator('bundle-test'))
-  const built = await forge.build({ theme: 'harbour town', seed: 'bundle-test', blocksX: 2, blocksY: 2, blockCells: 14 })
-  if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 400))
-  const doc = await Bundle.pack(built.value.world, built.value.quests, {
+  const world = laidOut('bundle-test')
+  const [place] = grow(world, 1, { anchors: 2, people: 1, things: 2 })
+  const doc = await Bundle.pack(world, [errand('quest_0001', 'The thing on the shelf', place!)], {
     requires: [{ pack: 'kenney-city', version: '1.0.0' }],
   })
-  return { built: built.value, doc }
+  return { world, place: place!, doc }
 }
 
 describe('Bundle', () => {
   it('packs a city and opens it back as the same city', async () => {
-    const { built, doc } = await packedTown()
+    const { world, doc } = await packedTown()
 
     const opened = await Bundle.open(JSON.parse(JSON.stringify(doc)))
     expect(opened.ok).toBe(true)
     if (!opened.ok) return
 
-    expect(opened.value.world.name).toBe(built.world.name)
-    expect(opened.value.world.plots().length).toBe(built.world.plots().length)
-    expect(opened.value.quests.length).toBe(built.quests.length)
+    expect(opened.value.world.name).toBe(world.name)
+    expect(opened.value.world.plots().length).toBe(world.plots().length)
+    expect(opened.value.quests.map((quest) => quest.id)).toEqual(['quest_0001'])
     expect(opened.value.requires[0]?.pack).toBe('kenney-city')
     expect(opened.value.contentHash).toMatch(/^[a-f0-9]{64}$/)
   })
@@ -40,12 +40,8 @@ describe('Bundle', () => {
   })
 
   it('refuses a bundle carrying a quest that cannot be played', async () => {
-    const { built } = await packedTown()
-    const fetching = built.quests.find((quest) => quest.steps.some((step) => step.kind === 'collect'))
-    expect(fetching, 'the town wrote nothing to break').toBeDefined()
-    const broken = structuredClone(fetching!)
-    broken.steps = broken.steps.map((s) => (s.kind === 'collect' ? { ...s, itemId: 'item_9999' } : s))
-    const doc = await Bundle.pack(built.world, [broken])
+    const { world, place } = await packedTown()
+    const doc = await Bundle.pack(world, [errand('quest_0001', 'Fetch what is not there', place, 'item_9999')])
 
     const opened = await Bundle.open(doc)
     expect(opened.ok).toBe(false)

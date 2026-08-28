@@ -1,20 +1,16 @@
-import { mkdtempSync, readFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { Bundle } from '@gb/bundle'
-import { Forge, OfflineNarrator } from '@gb/forge'
 import { Catalogue, PACK_MANIFEST, designFor, heightOf } from '@gb/prefab'
 import type { AssetPackRef, Plot, World } from '@gb/world'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { run } from '../src/index.ts'
 import { pinDesigns } from '../src/pins.ts'
+import { city, laidOut } from './city.ts'
 
 const dir = mkdtempSync(join(tmpdir(), 'gb-pins-'))
-
-function silent() {
-  return { out: () => {}, err: () => {} }
-}
 
 /**
  * The size `@gb/scene` hands the dressing, worked out here rather than taken
@@ -46,33 +42,34 @@ async function grown(): Promise<Catalogue> {
 }
 
 let pack: Catalogue
-let city: { world: World; requires: readonly AssetPackRef[]; asBuilt: boolean }
+let town: { world: World; requires: readonly AssetPackRef[]; asBuilt: boolean }
 
-// one city, built by the command and opened the way the game opens it
+// one city, pinned and sealed the way a build seals one, then opened the way
+// the game opens it
 beforeAll(async () => {
   pack = await Catalogue.read(await readFile(PACK_MANIFEST))
   const file = join(dir, 'pinned.json')
-  expect(await run(['build', '--seed', 'pack', '--blocks', '2x2', '--out', file], silent())).toBe(0)
+  await city(file, { seed: 'pack', blocksX: 2, blocksY: 2 })
   const opened = await Bundle.open(JSON.parse(readFileSync(file, 'utf8')), [pack.identity])
-  if (!opened.ok) throw new Error(`the built city will not open: ${opened.error.code}`)
-  city = { world: opened.value.world, requires: opened.value.requires, asBuilt: opened.value.packs.asBuilt }
+  if (!opened.ok) throw new Error(`the sealed city will not open: ${opened.error.code}`)
+  town = { world: opened.value.world, requires: opened.value.requires, asBuilt: opened.value.packs.asBuilt }
 })
 
-describe('a city gb built', () => {
+describe('a pinned city', () => {
   it('names the pack it was drawn from and pins the buildings it drew', () => {
-    expect(city.requires).toEqual([pack.identity])
-    expect(city.asBuilt).toBe(true)
+    expect(town.requires).toEqual([pack.identity])
+    expect(town.asBuilt).toBe(true)
 
-    const pinned = city.world.plots().filter((plot) => plot.design)
+    const pinned = town.world.plots().filter((plot) => plot.design)
     expect(pinned.length).toBeGreaterThan(0)
-    expect(city.world.catalogues()).toEqual([pack.identity])
+    expect(town.world.catalogues()).toEqual([pack.identity])
     expect(pinned.every((plot) => plot.design?.pack === pack.pack)).toBe(true)
   })
 
   it('pins each plot to the model its charter would be drawn with', () => {
     // the pin is the pick made against the plot's own charter: any other
     // suits, or any other size, names a building the plot is not drawn with
-    const { world } = city
+    const world = town.world
     for (const plot of world.plots().filter((plot) => plot.design)) {
       expect(plot.design?.model).toBe(pack.design(plot, sizeOf(plot, world), suitsOf(plot, world))?.model)
     }
@@ -82,7 +79,7 @@ describe('a city gb built', () => {
     // the whole point of a pack: add to a city later and every building that
     // was already there stays the building it was
     const later = await grown()
-    const { world } = city
+    const world = town.world
     const plots = world.plots()
 
     const moved = plots.filter(
@@ -106,17 +103,7 @@ describe('a city gb built', () => {
 it('pins nothing at all when the pack cannot be read', async () => {
   // half a truth is the worst outcome here: a city naming a catalogue with no
   // plot pinned to it reads as pinned and is not
-  const built = await new Forge(new OfflineNarrator('pack')).build({
-    theme: 'quiet coastal town',
-    seed: 'pack',
-    blocksX: 1,
-    blocksY: 1,
-    density: 0.8,
-    maxStoreys: 3,
-    exits: 1,
-  })
-  if (!built.ok) throw new Error(built.error.code)
-  const world = built.value.world
+  const world = laidOut({ seed: 'pack', blocksX: 1, blocksY: 1 })
 
   const pins = await pinDesigns(
     world,
@@ -127,4 +114,22 @@ it('pins nothing at all when the pack cannot be read', async () => {
   expect(pins.state).toBe('unpinned')
   expect(world.catalogues()).toEqual([])
   expect(world.plots().some((plot) => plot.design)).toBe(false)
+})
+
+it('refuses a city drawn against another version of the pack', async () => {
+  // a pin to art the city does not name buys nothing, and a second version of
+  // one pack is not an extension, so the city is left alone and the refusal
+  // names both packs
+  const world = laidOut({ seed: 'older', blocksX: 1, blocksY: 1 })
+  const manifest = JSON.parse(readFileSync(PACK_MANIFEST, 'utf8')) as { version: string }
+  const older = join(dir, 'older-pack.json')
+  writeFileSync(older, JSON.stringify({ ...manifest, version: '0.9.0' }))
+  const ids = world.plots().map((plot) => plot.id)
+
+  expect((await pinDesigns(world, ids, pathToFileURL(older))).state).toBe('pinned')
+  const again = await pinDesigns(world, ids)
+
+  expect(again.state).toBe('refused')
+  expect(again.state === 'refused' && again.why).toContain('drawn against gb-buildings 0.9.0')
+  expect(again.state === 'refused' && again.why).toContain('this build has gb-buildings')
 })

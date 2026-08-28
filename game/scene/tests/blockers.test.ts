@@ -49,8 +49,8 @@ function clearFraction(built: InteriorBuild, size: { w: number; h: number }): nu
 }
 
 describe('what the player walks into', () => {
-  it('stops them at a piece of furniture and lets them cross the open floor', async () => {
-    const world = await town()
+  it('stops them at a piece of furniture and lets them cross the open floor', () => {
+    const world = town()
     const interior = world.interiors().find((i) => i.furniture.length > 0)!
     const built = buildInterior(world, interior, new Greybox())
     const footprint = built.blockers[0]!
@@ -70,8 +70,8 @@ describe('what the player walks into', () => {
     expect(clearFraction(built, interior.size)).toBeGreaterThan(0.5)
   })
 
-  it('measures every rectangle off the object that was drawn', async () => {
-    const world = await town()
+  it('measures every rectangle off the object that was drawn', () => {
+    const world = town()
     const interior = world.interiors().find((i) => i.furniture.length > 4)!
     const built = buildInterior(world, interior, new Greybox())
     expect(built.blockers.length).toBeGreaterThan(0)

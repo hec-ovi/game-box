@@ -48,7 +48,7 @@ function slow(ms: number): Dressing & { asked: string[] } {
 
 /** A city standing in the middle of the big town, with the rings full of work and the first frame already taken. */
 async function arrived(ms: number): Promise<{ city: CityBuild; dressing: Dressing & { asked: string[] }; at: { x: number; z: number } }> {
-  const world = await bigTown()
+  const world = bigTown()
   const dressing = slow(ms)
   const city = buildCity(world, dressing, RINGS)
   const at = { x: (world.grid.width * world.cellSize) / 2, z: (world.grid.height * world.cellSize) / 2 }

@@ -23,6 +23,10 @@ import { eachChild, type JsonSchema } from './compact.ts'
  *   hold.** The contract takes a long run because `keys.ts` adds the
  *   conversations a lock implies before it compiles; the model is asked for
  *   `MOST_BEATS` and a short road, which is the shape of an errand.
+ * - **The line says what the beat points at.** The rule `wording.ts` holds a
+ *   draft to goes on the field it is written in, because a rule that lives only
+ *   in the prompt is a rule the decoder never reads. It costs one string: the
+ *   objective is the same subschema in every beat, so it is hoisted once.
  */
 export function narrowToSummary(schema: JsonSchema): JsonSchema {
   const root = structuredClone(schema)
@@ -36,7 +40,7 @@ export function narrowToSummary(schema: JsonSchema): JsonSchema {
     if (!items || !Array.isArray(variants)) return
     items['oneOf'] = variants
       .filter((variant) => kindOf(variant as JsonSchema) !== 'stash')
-      .map((variant) => plotsOnly(variant as JsonSchema))
+      .map((variant) => sayWhere(plotsOnly(variant as JsonSchema)))
   })
   delete properties['difficulty']
   delete properties['requires']
@@ -77,6 +81,17 @@ function mustPay(reward: JsonSchema | undefined): void {
   delete money['default']
   const required: string[] = Array.isArray(reward!['required']) ? reward!['required'] : []
   if (!required.includes('money')) reward!['required'] = [...required, 'money']
+}
+
+/** What the line a beat carries has to be about, said where the line is written. */
+const OBJECTIVE =
+  'The line the player reads while this is the beat to do. Call every person and place in it by the name the city listing gives it, never one of your own. Name only the place this beat happens in and the people standing there. A beat that walks the player somewhere says which building.'
+
+/** Puts that rule on the beat's own `objective`. */
+function sayWhere(variant: JsonSchema): JsonSchema {
+  const objective = (variant['properties'] as Record<string, JsonSchema> | undefined)?.['objective']
+  if (objective) objective['description'] = OBJECTIVE
+  return variant
 }
 
 export function kindOf(variant: JsonSchema): string | undefined {

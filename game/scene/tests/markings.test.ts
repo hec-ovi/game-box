@@ -87,8 +87,8 @@ function meshes(city: { root: THREE.Group }): THREE.InstancedMesh[] {
 }
 
 describe('street markings', () => {
-  it('lays every marking on the roadway and nowhere else', async () => {
-    const world = await town()
+  it('lays every marking on the roadway and nowhere else', () => {
+    const world = town()
     const city = buildCity(world, new Greybox())
     const off = new Set<string>()
 
@@ -199,9 +199,9 @@ describe('street markings', () => {
     }
   })
 
-  it('costs one draw for each paint, however many streets the city has', async () => {
+  it('costs one draw for each paint, however many streets the city has', () => {
     const small = buildCity(street(), new Greybox())
-    const city = buildCity(await town(), new Greybox())
+    const city = buildCity(town(), new Greybox())
 
     for (const built of [small, city]) {
       expect(meshes(built).map((mesh) => mesh.name)).toEqual(['markings:white', 'markings:yellow'])

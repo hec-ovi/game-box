@@ -50,6 +50,6 @@ const MOST_JOBS = 60
 export function questDemand(summary: WorldSummary, rng: Rng): number {
   const cast = new CityCast(summary)
   const busy = BUSY[flavourOf(summary.theme)]
-  const wanted = Math.round(cast.people.length * PER_PERSON * busy * rng.range(1 - SWING, 1 + SWING))
+  const wanted = Math.round(cast.people * PER_PERSON * busy * rng.range(1 - SWING, 1 + SWING))
   return Math.max(FEWEST, Math.min(cast.capacity, MOST_JOBS, wanted))
 }

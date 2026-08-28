@@ -13,10 +13,8 @@ import {
   furnishKit,
   pictureAt,
   screenAverage,
-  screenSlot,
   screeningOf,
 } from '../src/index.ts'
-import { dressingIn, interiorsAcrossTowns, meshesOf, town } from './support.ts'
 
 /**
  * A screen that plays something, and the two things that can quietly go wrong
@@ -54,12 +52,10 @@ function glass(geometry: THREE.BufferGeometry) {
 }
 
 describe('the glass attribute', () => {
-  it('is on every buffer in the box, so one of them cannot fall out of the batch', async () => {
-    const interior = [...(await town()).interiors()][0]!
+  it('is on every buffer in the box, so one of them cannot fall out of the batch', () => {
     const buffers: THREE.BufferGeometry[] = []
     for (const style of FURNISH_STYLES) {
       for (const prop of FURNITURE_PROPS) buffers.push(kit.geometry(prop, style))
-      buffers.push(...meshesOf(dressingIn(style).room(interior).decor).map((mesh) => mesh.geometry))
     }
     for (const archetype of ITEM_ARCHETYPES) {
       for (let cast = 0; cast < ITEM_CASTS; cast++) buffers.push(kit.itemGeometry(archetype, cast))
@@ -119,11 +115,6 @@ describe('what a screen is tuned to', () => {
 
     expect([...same]).toEqual([...first])
     expect([...same]).not.toEqual([...other])
-  })
-
-  it('is not the same in every room of a town', async () => {
-    const drawn = new Set((await interiorsAcrossTowns()).map((interior) => screenSlot('furnish', interior.id)))
-    expect(drawn.size).toBeGreaterThan(2)
   })
 })
 

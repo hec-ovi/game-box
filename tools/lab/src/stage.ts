@@ -12,7 +12,7 @@ import type { Narrator, Unwritten } from '@gb/forge'
 import { add, chips, clear, el, fold, json, panel, pre, table } from './dom.ts'
 import { markdown } from './markdown.ts'
 import { problemsOf, stopOf } from './pipeline.ts'
-import type { Author, Captured, Exchange, Form, Recorder } from './pipeline.ts'
+import type { Captured, Exchange, Form, Recorder } from './pipeline.ts'
 import { schemaTable, type Json } from './schema.ts'
 import { promptFile, type Site } from './source.ts'
 import { SPEC_PATH, specSays, stageSpec } from './spec.ts'
@@ -56,7 +56,6 @@ export interface Call {
 
 export interface Lab {
   form: Form
-  author: Author
   base: string
   readonly captured: Captured
   readonly recorder: Recorder
@@ -288,7 +287,7 @@ export function sandbox(
     halted = false
     clear(out)
     lab.recorder.clear()
-    say(`running against the ${lab.author} author`, 'work')
+    say('running against the model', 'work')
     const started = performance.now()
     void go(run, controller.signal)
       .then(() => {
@@ -325,7 +324,7 @@ export function showProblems(run: Run, author: Narrator): void {
 /** Every call of a run, exactly as it went out and came back. */
 export function exchangeViews(exchanges: readonly Exchange[]): HTMLElement {
   if (!exchanges.length) {
-    return el('p', { class: 'hint' }, 'No call went out. The offline author writes from the seed, with no model behind it.')
+    return el('p', { class: 'hint' }, 'No call went out: this run stopped before anything reached the sidecar.')
   }
   const box = el('div')
   for (const one of exchanges) {

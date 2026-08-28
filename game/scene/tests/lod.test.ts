@@ -63,8 +63,8 @@ function farCorner(world: World): { x: number; z: number } {
 }
 
 describe('level of detail', () => {
-  it('holds the skyline for the whole town and asks the dressing only for what is near', async () => {
-    const world = await bigTown()
+  it('holds the skyline for the whole town and asks the dressing only for what is near', () => {
+    const world = bigTown()
     const dressing = new Counting()
     const city = buildCity(world, dressing, RINGS)
     const drawn = steps(city)
@@ -87,8 +87,8 @@ describe('level of detail', () => {
     expect(steps(buildCity(world, new Greybox()))).toEqual(expected(world, city.spawn.x, city.spawn.z, { detail: DETAIL_RADIUS, shell: SHELL_RADIUS }))
   })
 
-  it('stands the whole skyline in one batch, each plot the box it occupies in its charter colour', async () => {
-    const world = await bigTown()
+  it('stands the whole skyline in one batch, each plot the box it occupies in its charter colour', () => {
+    const world = bigTown()
     const city = buildCity(world, new Greybox(), RINGS)
     const skyline = city.root.children.find((child) => child.name === 'city:massing') as THREE.BatchedMesh
 
@@ -125,8 +125,8 @@ describe('level of detail', () => {
     }
   })
 
-  it('moves the shells and the detail with the player, and draws the same town from the same cell', async () => {
-    const world = await bigTown()
+  it('moves the shells and the detail with the player, and draws the same town from the same cell', () => {
+    const world = bigTown()
     const dressing = new Counting()
     const city = buildCity(world, dressing, RINGS)
     const atSpawn = steps(city)
@@ -156,8 +156,8 @@ describe('level of detail', () => {
     expect(dressing.details).toBe(built + there.get('detail')!.size + atSpawn.get('detail')!.size)
   })
 
-  it('draws a building one way at a time, out of the batch its step belongs to, and a ray still names the plot', async () => {
-    const world = await bigTown()
+  it('draws a building one way at a time, out of the batch its step belongs to, and a ray still names the plot', () => {
+    const world = bigTown()
     const city = buildCity(world, new Greybox(), RINGS)
     const raycaster = new THREE.Raycaster()
     const drawn = steps(city)
@@ -177,8 +177,8 @@ describe('level of detail', () => {
     }
   })
 
-  it('draws the whole building down the street for a dressing with no shell, and its massing beyond', async () => {
-    const world = await bigTown()
+  it('draws the whole building down the street for a dressing with no shell, and its massing beyond', () => {
+    const world = bigTown()
     const grey = new Greybox()
     const whole: Dressing = {
       building: (plot, size, charter) => grey.building(plot, size, charter),
@@ -221,8 +221,8 @@ describe('level of detail', () => {
     expect(city.buildings.get(first.value.id)!.step).toBe('massing')
   })
 
-  it('builds a room on first entry, keeps it while the player is near, and lets it go when they are far', async () => {
-    const world = await bigTown()
+  it('builds a room on first entry, keeps it while the player is near, and lets it go when they are far', () => {
+    const world = bigTown()
     const city = buildCity(world, new Greybox())
     const interior = world.interiors()[0]!
     const plot = world.plot(interior.plotId)!

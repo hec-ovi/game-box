@@ -1,5 +1,5 @@
 import type { Rng } from '@gb/kit'
-import { METRICS, type Premise, type ResolvedCharter, type Word, type World } from '@gb/world'
+import { METRICS, type Premise, type Word, type World } from '@gb/world'
 import { openDoors, type Frontage } from '../interior/open.ts'
 import { planInterior } from '../interior/plan.ts'
 import { nearnessIn } from '../layout/plots.ts'

@@ -1,44 +1,11 @@
-import { Forge, OfflineNarrator, type WorldSummary } from '@gb/forge'
+import { Forge } from '@gb/forge'
 import { Sidecar } from '@gb/sidecar'
 import { describe, expect, it } from 'vitest'
 import { Scribe } from '../src/index.ts'
 import { fakeModel } from './fake-model.ts'
-import { JAIL, charterOf } from './places.ts'
+import { charterOf } from './places.ts'
+import { townModel } from './town.ts'
 import { stopped, wrote } from './wrote.ts'
-
-const CITY: WorldSummary = {
-  cityName: 'Cold Harbour',
-  theme: 'port',
-  places: [
-    {
-      plotId: 'plot_0001',
-      kind: 'bar',
-      name: 'The Anchor',
-      npcs: [{ npcId: 'npc_0001', name: 'Mara', role: 'bartender' }],
-      items: [],
-    },
-    {
-      plotId: 'plot_0002',
-      kind: 'shop',
-      name: 'Dunn Supply',
-      npcs: [{ npcId: 'npc_0002', name: 'Bez', role: 'clerk' }],
-      items: [{ itemId: 'item_0001', name: 'Ledger' }],
-    },
-  ],
-}
-
-/** A history that invents a kind of place no preset is, so the build asks for its charter too. */
-const PREMISE = {
-  livesOn: 'Container freight off the elevated line.',
-  happened: 'The line shut last winter.',
-  stake: 'Who gets the freight contract.',
-  sides: [
-    { name: 'the Vance yards', wants: 'the contract back' },
-    { name: 'the Dockhands Local', wants: 'the yards broken up' },
-  ],
-  common: ['Nothing has moved since November.'],
-  build: { moreOf: ['warehouse'], fewerOf: [], mustHave: ['jail'] },
-}
 
 /** A sidecar with nothing behind it: every call comes back `unreachable`. */
 const deadSidecar = (): Sidecar =>
@@ -122,18 +89,6 @@ describe('Scribe', () => {
       code: 'unreachable',
       message: 'the history could not be written: the model at 127.0.0.1:1 did not answer',
     })
-  })
-
-  it('takes the answer from a stand-in a caller hands in, which nothing in the game does', async () => {
-    const scribe = new Scribe({ sidecar: deadSidecar(), seed: 'harbour', attempts: 1, standIn: new OfflineNarrator('harbour') })
-
-    const history = await wrote(scribe.writePremise({ theme: 'rain-soaked port', seed: 'harbour' }))
-    const name = await wrote(scribe.nameCity({ theme: 'rain-soaked port', seed: 'harbour' }))
-
-    expect(history.livesOn.length).toBeGreaterThan(3)
-    expect(name.length).toBeGreaterThan(3)
-    // the calls still failed and are still on the record
-    expect(scribe.problems().map((problem) => problem.error.code)).toEqual(['unreachable', 'unreachable'])
   })
 
   it('tells every call the city it is writing into and the names already spent', async () => {
@@ -226,12 +181,8 @@ describe('Scribe', () => {
   })
 
   it('tells every call what work it is, so the service can route it to the model that job is on', async () => {
-    const { sent, sidecar } = fakeModel((call) =>
-      call.toolName === 'write_premise' ? PREMISE : call.toolName === 'write_charter' ? JAIL : { name: 'Cold Harbour' },
-    )
-    // this fake answers one blob to every tool, so the stand-in covers the calls
-    // it cannot answer and the build gets far enough to make all of them
-    const scribe = new Scribe({ sidecar, seed: 'city', attempts: 1, standIn: new OfflineNarrator('city') })
+    const { sent, sidecar } = townModel()
+    const scribe = new Scribe({ sidecar, seed: 'city' })
 
     const built = await new Forge(scribe).build({ theme: 'rain-soaked port', seed: 'scribe-city', blocksX: 1, blocksY: 1, blockCells: 16 })
     expect(built.ok).toBe(true)
@@ -240,7 +191,6 @@ describe('Scribe', () => {
     await scribe.describeNpc({ role: 'bartender', placeKind: 'bar', place: charterOf('bar'), placeName: 'The Anchor', theme: 'port', index: 0 })
     await scribe.describeItem({ archetype: 'ledger', theme: 'port', index: 0 })
     await scribe.writeBrief({ want: ['theme'], seed: 's' })
-
 
     // read off every request that went out: an untagged one shows up here as its own line
     expect([...new Set(sent.map((call) => `${call.toolName} -> ${call.job}`))].sort()).toEqual([
@@ -259,16 +209,8 @@ describe('Scribe', () => {
   })
 
   it('builds a whole city with the model as its narrator, quests included', async () => {
-    const { sent, sidecar } = fakeModel([
-      {
-        name: 'Cold Harbour',
-        personality: 'Watches the door more than the glasses.',
-        knowledge: ['The tide takes the low road twice a day.', 'Nobody has seen Rook since Tuesday.'],
-        description: 'Salt-stained and heavier than it looks.',
-        // every tool takes what it needs from this and ignores the rest
-      },
-    ])
-    const scribe = new Scribe({ sidecar, seed: 'city', standIn: new OfflineNarrator('city') })
+    const { sent, sidecar } = townModel()
+    const scribe = new Scribe({ sidecar, seed: 'city' })
 
     const built = await new Forge(scribe).build({
       theme: 'rain-soaked port',
@@ -289,5 +231,8 @@ describe('Scribe', () => {
     // the measured failure this box shipped: a city with no quests in it, reported as a success
     expect(built.value.quests.length).toBeGreaterThan(0)
     expect(built.value.rejected).toEqual([])
+    // and every word of it came from the model: nothing was asked twice and nothing was dropped
+    expect(scribe.problems()).toEqual([])
+    expect(scribe.dropped()).toEqual([])
   })
 })

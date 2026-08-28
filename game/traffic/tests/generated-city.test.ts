@@ -1,4 +1,4 @@
-import { Forge, OfflineNarrator } from '@gb/forge'
+import { Forge } from '@gb/forge'
 import { expect, it } from 'vitest'
 import { SPEED_LIMIT } from '../src/settings.ts'
 import { Traffic } from '../src/index.ts'
@@ -10,11 +10,10 @@ import { Traffic } from '../src/index.ts'
  * junction approach in a generated city has pavement cells in the middle of it,
  * and it allows a car to be off the grid altogether once it is on the road out.
  */
-it('drives a city straight out of the generator', async () => {
-  const forge = new Forge(new OfflineNarrator('traffic'))
-  const built = await forge.build({ theme: 'harbour town', seed: 'traffic', blocksX: 3, blocksY: 3, blockCells: 14 })
-  if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 400))
-  const world = built.value.world
+it('drives a city straight out of the generator', () => {
+  const planned = Forge.plan({ theme: 'harbour town', seed: 'traffic', blocksX: 3, blocksY: 3, blockCells: 14 })
+  if (!planned.ok) throw new Error(JSON.stringify(planned.error).slice(0, 400))
+  const world = planned.value
 
   const made = Traffic.fromWorld(world, { maxCars: 30 })
   expect(made.ok).toBe(true)

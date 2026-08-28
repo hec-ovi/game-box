@@ -1,4 +1,4 @@
-import { Forge, OfflineNarrator } from '@gb/forge'
+import { Forge } from '@gb/forge'
 import { storeyHeight } from '@gb/scene'
 import { PLOT_BAND, SHIPPED_CHARTERS, inPlotBand, plotShape } from '@gb/world'
 import { createHash } from 'node:crypto'
@@ -393,18 +393,20 @@ describe('the shipped pack', () => {
     expect(catalogue.covers(everyBucket())).toEqual({ ok: true })
   })
 
-  it('has a building for every plot the forge cuts inside the band, and none for the towers over it', async () => {
+  it('has a building for every plot the forge cuts inside the band, and none for the towers over it', () => {
     const shapes = new Set<string>()
     const raised: number[] = []
     for (const seed of ['metro', 'kite', 'orbit']) {
       // the brief's own default, which raises towers, and the two heights inside the band
       for (const maxStoreys of [undefined, 3, 4]) {
-        const forge = new Forge(new OfflineNarrator(seed))
-        const built = await forge.build({ theme: 'a neon port city', seed, blocksX: 8, blocksY: 8, density: 1, ...(maxStoreys ? { maxStoreys } : {}) })
-        expect(built.ok).toBe(true)
-        if (!built.ok) continue
-        for (const plot of built.value.world.plots()) {
-          const size = { width: plot.rect.w * built.value.world.cellSize, depth: plot.rect.h * built.value.world.cellSize }
+        // what a plot is cut to is arithmetic, so the shapes a town asks the
+        // pack for are the plan's, drawn before anybody writes a word of it
+        const plan = Forge.plan({ theme: 'a neon port city', seed, blocksX: 8, blocksY: 8, density: 1, ...(maxStoreys ? { maxStoreys } : {}) })
+        expect(plan.ok).toBe(true)
+        if (!plan.ok) continue
+        const world = plan.value
+        for (const plot of world.plots()) {
+          const size = { width: plot.rect.w * world.cellSize, depth: plot.rect.h * world.cellSize }
           const key = bucketKey(bucketOf(plot, size))
           if (inPlotBand(plotShape(plot))) shapes.add(key)
           else raised.push(plot.storeys)

@@ -1,17 +1,13 @@
 /**
- * Prints what a furnished room costs against the greybox it replaces: draws,
- * triangles and materials, per room of a generated town, each in the language
- * its building's finish gives it, with and without its decor: the bays its
- * walls are made of, its screens' prints and any dance floor. Also the build time and the memory of the catalog itself, furniture and
- * carried things. The numbers in CONTRACT.md come from here.
+ * Prints what the catalog costs: every piece of furniture in both languages, in
+ * every screening it can carry, and every thing a player picks up in every cast,
+ * counting a buffer two of them share only once. The triangle and byte figures
+ * in CONTRACT.md come from here.
  *
  * Run: node game/furnish/tools/print-cost.ts
  */
 import { FURNITURE_PROPS, ITEM_ARCHETYPES } from '@gb/world'
-import { Forge, OfflineNarrator } from '@gb/forge'
-import { buildInterior, Greybox, type Dressing } from '@gb/scene'
-import * as THREE from 'three'
-import { FURNISH_STYLES, FurnishDressing, ITEM_CASTS, furnishKit } from '../src/index.ts'
+import { FURNISH_STYLES, ITEM_CASTS, furnishKit } from '../src/index.ts'
 
 const started = performance.now()
 const kit = furnishKit()
@@ -56,55 +52,3 @@ console.log(
     `${itemTriangles} triangles, ${(itemBytes / 1e3).toFixed(0)} KB`,
 )
 console.log(`both built in ${build.toFixed(0)} ms\n`)
-
-const built = await new Forge(new OfflineNarrator('furnish')).build({
-  theme: 'old harbour town',
-  seed: 'furnish',
-  blocksX: 3,
-  blocksY: 3,
-  blockCells: 14,
-  // the places are the brief's own number, so a town has to be asked for a
-  // spread of them: three opens no bar and no home and prints a third of a table
-  openPlaces: 12,
-})
-if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 400))
-const world = built.value.world
-
-const furnished = new FurnishDressing(kit)
-const greybox = new Greybox()
-
-const placedIn = new Map<string, number>()
-for (const placement of world.toJSON().placements) {
-  if (placement.at === 'anchor') placedIn.set(placement.interiorId, (placedIn.get(placement.interiorId) ?? 0) + 1)
-}
-
-console.log('a whole room, shell included. Every piece of furniture in it is one mesh on one material,')
-console.log('every thing lying on it is another, and the decor of the interior (its bays, its screens, its dance floor) is one more.\n')
-console.log(
-  `${'room'.padEnd(12)}${'finish'.padEnd(11)}${'language'.padEnd(9)}${'pieces'.padStart(6)}${'items'.padStart(6)}${'bays'.padStart(6)}   ` +
-    `${'furnished'.padEnd(30)}${'furnished + decor'.padEnd(30)}greybox`,
-)
-for (const interior of [...world.interiors()].sort((a, b) => b.furniture.length - a.furniture.length)) {
-  const room = furnished.room(interior, world.charter(interior.kind))
-  console.log(
-    `${interior.kind.padEnd(12)}${room.finish.padEnd(11)}${room.style.padEnd(9)}${String(interior.furniture.length).padStart(4)}` +
-      `${String(placedIn.get(interior.id) ?? 0).padStart(6)}${String(room.bays.length).padStart(6)}   ` +
-      `${cost(interior.id, furnished, false).padEnd(30)}${cost(interior.id, furnished, true).padEnd(30)}` +
-      `${cost(interior.id, greybox, false)}`,
-  )
-}
-
-function cost(id: string, dressing: Dressing, walls: boolean): string {
-  const interior = world.interior(id)!
-  const room = dressing instanceof FurnishDressing ? dressing.room(interior, world.charter(interior.kind)) : undefined
-  const shell = buildInterior(world, interior, room?.dressing ?? dressing)
-  if (walls && room) shell.root.add(room.decor)
-
-  const meshes: THREE.Mesh[] = []
-  shell.root.traverse((child) => {
-    if (child instanceof THREE.Mesh) meshes.push(child)
-  })
-  const tris = meshes.reduce((total, mesh) => total + (mesh.geometry.getIndex()?.count ?? 0) / 3, 0)
-  const materials = new Set(meshes.map((mesh) => mesh.material)).size
-  return `${meshes.length} draws, ${tris} tris, ${materials} mats`
-}

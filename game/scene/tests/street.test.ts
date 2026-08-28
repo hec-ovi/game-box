@@ -48,8 +48,8 @@ function cellsOf(world: World, kind: string): Array<{ x: number; z: number }> {
 }
 
 describe('what is lying on the street', () => {
-  it('never lands on a doorstep, a crossing or the middle of a road', async () => {
-    const world = await bigTown()
+  it('never lands on a doorstep, a crossing or the middle of a road', () => {
+    const world = bigTown()
     const city = buildCity(world, new Greybox())
     const onPaint: string[] = []
     const onDoorstep: string[] = []
@@ -79,8 +79,8 @@ describe('what is lying on the street', () => {
     expect(onDoorstep).toEqual([])
   })
 
-  it('leaves the middle of every pavement walkable', async () => {
-    const world = await bigTown()
+  it('leaves the middle of every pavement walkable', () => {
+    const world = bigTown()
     const city = buildCity(world, new Greybox())
     const tight: string[] = []
 
@@ -95,8 +95,8 @@ describe('what is lying on the street', () => {
     expect(tight).toEqual([])
   })
 
-  it('puts rubbish against the building line as well as in the gutter', async () => {
-    const world = await bigTown()
+  it('puts rubbish against the building line as well as in the gutter', () => {
+    const world = bigTown()
     const city = buildCity(world, new Greybox())
     const against = { building: 0, street: 0, neither: 0 }
 
@@ -122,8 +122,8 @@ describe('what is lying on the street', () => {
     expect(against.neither).toBeLessThan(against.building / 4)
   })
 
-  it('keeps everything that would stop you off the roadway', async () => {
-    const world = await bigTown()
+  it('keeps everything that would stop you off the roadway', () => {
+    const world = bigTown()
     const city = buildCity(world, new Greybox())
     const wrong: string[] = []
 
@@ -136,8 +136,8 @@ describe('what is lying on the street', () => {
     expect(wrong).toEqual([])
   })
 
-  it('stands everything on the ground the grid says, clear of the wet film under it', async () => {
-    const world = await town()
+  it('stands everything on the ground the grid says, clear of the wet film under it', () => {
+    const world = town()
     const city = buildCity(world, new Greybox())
     const bases = new Set<number>()
     for (const piece of city.clutter) {
@@ -181,8 +181,8 @@ describe('what is lying on the street', () => {
     expect(furthest.sidewalk).toBeLessThan(3)
   })
 
-  it('builds the same street twice from the same seed, and a different one from another', async () => {
-    const world = await town()
+  it('builds the same street twice from the same seed, and a different one from another', () => {
+    const world = town()
     const build = (seed?: string) => buildCity(world, new Greybox(), seed ? { seed } : {})
     const skin = (city: ReturnType<typeof build>) =>
       Array.from(((city.root.children.find((c) => c.name === 'street:skin') as THREE.Mesh).geometry.getAttribute('position') as THREE.BufferAttribute).array)
@@ -197,8 +197,8 @@ describe('what is lying on the street', () => {
     expect(other.clutter).not.toEqual(once.clutter)
   })
 
-  it('is drawn at the size it publishes, measured off the model rather than declared', async () => {
-    const world = await town()
+  it('is drawn at the size it publishes, measured off the model rather than declared', () => {
+    const world = town()
     const city = buildCity(world, new Greybox())
     const batch = city.root.children.find((child) => child.name === 'clutter') as THREE.BatchedMesh
     const box = new THREE.Box3()
@@ -224,8 +224,8 @@ describe('what is lying on the street', () => {
 })
 
 describe('the wet street', () => {
-  it('lays one surface over the roadway and the pavement, under the paint and well under the kerb', async () => {
-    const world = await town()
+  it('lays one surface over the roadway and the pavement, under the paint and well under the kerb', () => {
+    const world = town()
     const city = buildCity(world, new Greybox())
     const skin = city.root.children.filter((child) => child.name === 'street:skin')
     expect(skin).toHaveLength(1)
@@ -244,8 +244,8 @@ describe('the wet street', () => {
     expect(MARKING.lift).toBeLessThan(KERB / 2)
   })
 
-  it('follows the weather rather than being wet all the time', async () => {
-    const world = await town()
+  it('follows the weather rather than being wet all the time', () => {
+    const world = town()
     const city = buildCity(world, new Greybox())
 
     // a city is built dry: the weather has not said anything yet
@@ -264,13 +264,13 @@ describe('the wet street', () => {
     expect(city.wetness).toBe(0)
   })
 
-  it('starts at the wetness it was built with', async () => {
-    const world = await town()
+  it('starts at the wetness it was built with', () => {
+    const world = town()
     expect(buildCity(world, new Greybox(), { wetness: 0.8 }).wetness).toBe(0.8)
   })
 
-  it('gives the neon back only after dark, and takes that from the clock as well', async () => {
-    const world = await town()
+  it('gives the neon back only after dark, and takes that from the clock as well', () => {
+    const world = town()
     const city = buildCity(world, new Greybox())
 
     // a city is built for the hour the references are set at
@@ -284,9 +284,9 @@ describe('the wet street', () => {
     expect(buildCity(world, new Greybox(), { night: 0 }).night).toBe(0)
   })
 
-  it('costs one draw for the whole city, however big the city is', async () => {
-    const small = buildCity(await town(), new Greybox())
-    const large = buildCity(await bigTown(), new Greybox())
+  it('costs one draw for the whole city, however big the city is', () => {
+    const small = buildCity(town(), new Greybox())
+    const large = buildCity(bigTown(), new Greybox())
     const skins = (root: THREE.Object3D) => root.children.filter((child) => child.name === 'street:skin')
 
     expect(skins(small.root)).toHaveLength(1)

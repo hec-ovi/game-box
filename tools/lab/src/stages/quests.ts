@@ -57,7 +57,7 @@ export const QUESTS: Stage = {
         run.out.appendChild(el('h3', {}, 'The summary the writer is handed'))
         run.out.appendChild(json({ ...summary, places: summary.places }, true))
 
-        const author = narratorFor(lab.author, lab.form, lab.recorder, lab.base, signal)
+        const author = narratorFor(lab.form, lab.recorder, lab.base, signal)
         const written = await author.writeQuests({ summary, sideQuests })
         run.out.appendChild(el('h3', {}, `The calls (${lab.recorder.exchanges.length})`))
         run.out.appendChild(exchangeViews(lab.recorder.exchanges))

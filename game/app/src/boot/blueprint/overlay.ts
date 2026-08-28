@@ -1,7 +1,7 @@
 import { icon } from '../chrome.ts'
 import type { Plan } from '../../blueprint/plan.ts'
 
-/** Something with a name written over it in the view: where it stands, in metres. */
+/** Something with a label written over it in the view: where it stands, in metres. */
 export interface Anchor {
   readonly id: string
   readonly x: number
@@ -9,7 +9,7 @@ export interface Anchor {
   readonly z: number
 }
 
-/** Where a name landed on the glass, and whether it is in front of the camera at all. */
+/** Where a label landed on the glass, and whether it is in front of the camera at all. */
 export interface Placed {
   readonly x: number
   readonly y: number
@@ -23,9 +23,14 @@ interface Handlers {
 }
 
 /**
- * Everything read over the drawing: what city this is and the way back, the
- * parts of town as a list you can pick one out of, their names written across
+ * Everything read over the drawing: what is on screen and the way back, the
+ * parts of town as a list you can pick one out of, their labels written across
  * the view where the map writes them, and what the plan came out as.
+ *
+ * Nothing here is named, because a plan is the architecture and every name in
+ * a city is written by the model with the build. So a part of town reads as
+ * whatever the plan calls it and a station reads as a station, and nothing on
+ * the glass reads as a name somebody wrote.
  *
  * The look is the panel's, so this holds no colour of its own: the classes are
  * styled beside the rest of the front door in `index.html`.
@@ -45,11 +50,11 @@ export class Overlay {
     this.glass.className = 'gb-bp-glass'
     this.#names.className = 'gb-bp-names'
     this.#names.setAttribute('aria-hidden', 'true')
-    this.root.append(this.glass, this.#names, this.#crown(input.plan), this.#zones(input.plan), this.#foot(input.plan))
-    this.#name(input.plan)
+    this.root.append(this.glass, this.#names, this.#crown(), this.#zones(input.plan), this.#foot(input.plan))
+    this.#labelAll(input.plan)
   }
 
-  /** Where each name goes on the glass this frame. */
+  /** Where each label goes on the glass this frame. */
   place(id: string, at: Placed): void {
     const label = this.#labels.get(id)
     if (!label) return
@@ -57,7 +62,7 @@ export class Overlay {
     if (at.ahead) label.style.transform = `translate3d(${Math.round(at.x)}px, ${Math.round(at.y)}px, 0) translate(-50%, -50%)`
   }
 
-  /** Which part of town is being read: its row and its name light, the rest step back. */
+  /** Which part of town is being read: its row and its label light, the rest step back. */
   read(zoneId: string | undefined): void {
     for (const [id, row] of this.#rows) row.dataset.read = String(id === zoneId)
     for (const [id, label] of this.#labels) label.dataset.read = String(zoneId === undefined || id === zoneId)
@@ -70,7 +75,7 @@ export class Overlay {
     this.#rows.clear()
   }
 
-  #crown(plan: Plan): HTMLElement {
+  #crown(): HTMLElement {
     const crown = document.createElement('header')
     crown.className = 'gb-bp-crown'
 
@@ -79,9 +84,11 @@ export class Overlay {
     const eyebrow = document.createElement('span')
     eyebrow.className = 'gb-t1 gb-bp-eyebrow'
     eyebrow.append(icon('city', 14), text('span', '', 'The architecture, before anything is written into it'))
+    // the town has no name here: naming is the writing, and the writing is the
+    // model's, so the heading says what is on screen and nothing more
     const title = document.createElement('h2')
     title.className = 'gb-t6 gb-bp-title'
-    title.textContent = plan.name
+    title.textContent = 'City'
     headings.append(title, eyebrow)
 
     crown.append(headings, this.#leave())
@@ -175,19 +182,23 @@ export class Overlay {
     return foot
   }
 
-  /** A name over every part of town and every station, the way the map writes them. */
-  #name(plan: Plan): void {
+  /**
+   * A label over every part of town and every station, the way the map writes
+   * them: a part of town under whatever the plan calls it, and a station under
+   * what it is, because a plan has no sign over any door.
+   */
+  #labelAll(plan: Plan): void {
     for (const zone of plan.zones) this.#label(zone.id, 'zone', zone.name, { x: zone.heart.x, y: zone.top, z: zone.heart.z })
     for (const station of plan.stations) {
-      this.#label(station.id, 'station', station.name, { x: station.x + station.w / 2, y: station.top, z: station.z + station.d / 2 })
+      this.#label(station.id, 'station', 'Station', { x: station.x + station.w / 2, y: station.top, z: station.z + station.d / 2 })
     }
   }
 
-  #label(id: string, kind: 'zone' | 'station', name: string, at: { x: number; y: number; z: number }): void {
+  #label(id: string, kind: 'zone' | 'station', words: string, at: { x: number; y: number; z: number }): void {
     const label = document.createElement('span')
     label.className = `gb-bp-name gb-bp-name-${kind} gb-t1`
     label.dataset.read = 'true'
-    label.textContent = name
+    label.textContent = words
     this.#names.append(label)
     this.#labels.set(id, label)
     this.anchors.push({ id, ...at })

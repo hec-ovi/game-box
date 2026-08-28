@@ -72,7 +72,7 @@ export const PEOPLE: Stage = {
         run.out.appendChild(el('h3', {}, 'The input'))
         run.out.appendChild(json(input))
 
-        const author = narratorFor(lab.author, lab.form, lab.recorder, lab.base, signal)
+        const author = narratorFor(lab.form, lab.recorder, lab.base, signal)
         const written = await author.describeNpc(input)
         run.out.appendChild(el('h3', {}, `The call (${lab.recorder.exchanges.length})`))
         run.out.appendChild(exchangeViews(lab.recorder.exchanges))

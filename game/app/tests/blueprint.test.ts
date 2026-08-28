@@ -10,6 +10,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { patchesOf } from '../src/blueprint/cells.ts'
 import { Orbit } from '../src/blueprint/orbit.ts'
 import { planOf } from '../src/blueprint/plan.ts'
+import { Overlay } from '../src/boot/blueprint/overlay.ts'
 import { Boot, type Show, type Start } from '../src/boot/boot.ts'
 import { DEFAULTS } from '../src/boot/brief.ts'
 import { Library, MemoryShelf } from '../src/boot/library.ts'
@@ -187,7 +188,7 @@ describe('what the blueprint draws', () => {
 
   it('carries every building at the height the game builds it, the streets and the stations', async () => {
     const { boot } = front()
-    await boot.layOut({ ...DEFAULTS, seed: 'blueprint', blocks: 2 })
+    await boot.layOut({ ...DEFAULTS, seed: 'blueprint', blocks: 8 })
     const world = boot.laid!
     const plan = planOf(world)
 
@@ -198,8 +199,30 @@ describe('what the blueprint draws', () => {
       expect([built.w, built.d]).toEqual([plot.rect.w * world.cellSize, plot.rect.h * world.cellSize])
     }
     expect(plan.zones.map((zone) => zone.name)).toEqual(world.districts().map((district) => district.name))
-    expect(plan.stations.map((station) => station.name)).toEqual(world.stations().map((plot) => plot.name))
+    expect(plan.stations.map((station) => station.id)).toEqual(world.stations().map((plot) => plot.id))
+    expect(plan.stations.length).toBeGreaterThan(0)
     expect(plan.roadway.length).toBeGreaterThan(0)
+  }, 30_000)
+
+  it('writes bare labels over it, because every name in a city is written and none is written yet', async () => {
+    const { boot } = front()
+    await boot.layOut({ ...DEFAULTS, seed: 'blueprint', blocks: 8 })
+    const plan = planOf(boot.laid!)
+    const overlay = new Overlay({ plan, handlers: { leave: () => {}, fit: () => {}, read: () => {} } })
+
+    // the heading says what is on screen rather than naming a town nobody has named
+    expect(overlay.root.querySelector('.gb-bp-title')!.textContent).toBe('City')
+
+    // the parts of town read as the plan's own labels, which is what they are
+    // called until the model writes over them
+    const rows = [...overlay.root.querySelectorAll('.gb-bp-zone-name')].map((row) => row.textContent)
+    expect(rows).toEqual(plan.zones.map((zone) => zone.name))
+    expect(rows.every((row) => /^Zone \d+$/.test(row ?? ''))).toBe(true)
+
+    // and a station is marked as a station: there is no sign over any door yet
+    const marks = [...overlay.root.querySelectorAll('.gb-bp-name-station')].map((mark) => mark.textContent)
+    expect(marks).toHaveLength(plan.stations.length)
+    expect(new Set(marks)).toEqual(new Set(['Station']))
   }, 30_000)
 
   it('loses no street to the merge that makes the roadway a few hundred rectangles', async () => {

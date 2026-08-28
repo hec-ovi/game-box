@@ -124,8 +124,8 @@ describe('the ground', () => {
     expect([...drops].sort()).toEqual(['park -> empty', 'sidewalk -> building', 'sidewalk -> empty', 'sidewalk -> street'])
   })
 
-  it('meets the valley wall flush: no kerb where a pavement runs into a mountain cell', async () => {
-    for (const world of [street(), await town()]) {
+  it('meets the valley wall flush: no kerb where a pavement runs into a mountain cell', () => {
+    for (const world of [street(), town()]) {
       const city = buildCity(world, new Greybox())
       const cell = world.cellSize
       const kerbs = groundTriangles(city).filter((triangle) => Math.abs(triangle.normal.y) < 1e-6)

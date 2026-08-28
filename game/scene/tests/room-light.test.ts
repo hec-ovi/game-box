@@ -198,8 +198,8 @@ describe('what a room is lit by', () => {
     expect(bright).toBeLessThan(floor)
   })
 
-  it('costs about one more pass over the room per caster, which is what two of them were budgeted at', async () => {
-    const worlds = [await town(), await bigTown()]
+  it('costs about one more pass over the room per caster, which is what two of them were budgeted at', () => {
+    const worlds = [town(), bigTown()]
     let dearest = 0
     let rooms = 0
 

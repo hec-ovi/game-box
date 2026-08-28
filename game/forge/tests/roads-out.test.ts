@@ -1,7 +1,7 @@
 import { cellRows, type GridField, type World } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { BANDS, MOUNTAIN_CELLS } from '../src/index.ts'
-import { buildTown, digest } from './support.ts'
+import { digest, planned } from './support.ts'
 
 interface Cell {
   x: number
@@ -24,7 +24,7 @@ const HALF = BANDS.exit.halfRoadway
 /** And its pavement runs from the first cell past the kerb to the last. */
 const KERB = [HALF + 1, HALF + BANDS.exit.pavement]
 
-const town = (overrides: Record<string, unknown> = {}) => buildTown('town', overrides)
+const town = (overrides: Record<string, unknown> = {}) => planned('town', overrides)
 
 interface CityDoc extends Record<string, unknown> {
   grid: GridField
@@ -75,8 +75,8 @@ function walkableFrom(world: World, start: Cell): Set<string> {
 }
 
 describe('the roads out of the valley', () => {
-  it('carries every road out in the graph, joined to the street grid and marked as the way out', async () => {
-    const { world } = await town({ exits: 4 })
+  it('carries every road out in the graph, joined to the street grid and marked as the way out', () => {
+    const world = town({ exits: 4 })
     const roads = roadsOut(world)
     const { width, height } = world.grid
 
@@ -95,8 +95,8 @@ describe('the roads out of the valley', () => {
     expect(new Set(roads.map((r) => `${Math.sign(r.edge.x - r.junction.x)},${Math.sign(r.edge.y - r.junction.y)}`)).size).toBe(4)
   })
 
-  it('is a road, not a strip: roadway the whole way, pavement each side, and no pavement left across it', async () => {
-    const { world } = await town({ exits: 4 })
+  it('is a road, not a strip: roadway the whole way, pavement each side, and no pavement left across it', () => {
+    const world = town({ exits: 4 })
     const roads = roadsOut(world)
     expect(roads).toHaveLength(4)
 
@@ -125,8 +125,8 @@ describe('the roads out of the valley', () => {
     }
   })
 
-  it('can be walked out of town, pavement all the way to the last cell of it', async () => {
-    const { world } = await town({ exits: 4 })
+  it('can be walked out of town, pavement all the way to the last cell of it', () => {
+    const world = town({ exits: 4 })
     const centre = { x: Math.floor(world.grid.width / 2), y: Math.floor(world.grid.height / 2) }
     const reached = walkableFrom(world, centre)
     const roads = roadsOut(world)
@@ -142,17 +142,12 @@ describe('the roads out of the valley', () => {
     }
   })
 
-  it('leaves the rest of the city exactly where it was when more roads out are asked for', async () => {
-    const one = await town({ exits: 1 })
-    const four = await town({ exits: 4 })
-    const before = one.world.toJSON() as unknown as CityDoc
-    const after = four.world.toJSON() as unknown as CityDoc
+  it('leaves the rest of the city exactly where it was when more roads out are asked for', () => {
+    const before = town({ exits: 1 }).toJSON() as unknown as CityDoc
+    const after = town({ exits: 4 }).toJSON() as unknown as CityDoc
 
-    // the town is the town: buildings, people and quests do not move when a road is added
-    for (const part of ['plots', 'interiors', 'npcs', 'items', 'placements'] as const) {
-      expect(digest(after[part]), part).toBe(digest(before[part]))
-    }
-    expect(digest(four.quests), 'quests').toBe(digest(one.quests))
+    // the town is the town: not a building moves when a road is added
+    expect(digest(after.plots), 'plots').toBe(digest(before.plots))
 
     // ids did not shift: only the graph's own counters moved on
     for (const [kind, count] of Object.entries(before.idCounters)) {

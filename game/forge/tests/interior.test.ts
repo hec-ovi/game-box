@@ -1,12 +1,10 @@
 import { Rng } from '@gb/kit'
 import { SHIPPED_CHARTERS, type Anchor, type Charter, type Furniture, type FurnitureProp, type Interior, type Room, type Word } from '@gb/world'
 import { describe, expect, it } from 'vitest'
-import { DOORSTEP } from '../src/interior/doors.ts'
 import { boxAt, dirOf, headingTo, holds, inBox, inward, overlaps, SIDES, type Box, type Side, type Vec } from '../src/interior/geometry.ts'
 import { planInterior, type InteriorPlan } from '../src/interior/plan.ts'
 import { footprintOf, SEAT_SPECS, seatSpecOf, specOf, topOf } from '../src/interior/props.ts'
 import { AT_DESK, IN_FRONT, LEAN_BODY, stanceOf, type Stance } from '../src/interior/stance.ts'
-import { buildTown } from './support.ts'
 
 /** The floor a doorway keeps to itself: the opening, and a metre either side of the wall. */
 const DOOR_ZONE = { w: 1.2, d: 2 }
@@ -533,58 +531,5 @@ describe('interior plans', () => {
         for (const anchor of want.anchors) expect([...anchors], `${kind}/${seed} has no ${anchor}`).toContain(anchor)
       }
     }
-  })
-
-  it('holds all of that up in a city the forge actually built', async () => {
-    // a batch of towns rather than one: a room sealed by its own furniture is a
-    // few interiors in a hundred, and one town is not enough of them to notice
-    // a city opens three doors, so the towns here are briefed to open as many as
-    // a brief may ask for: it is the only way to walk a hundred rooms
-    const towns = await Promise.all([
-      buildTown('interiors', { theme: 'harbour town', blocksX: 6, blocksY: 6, openPlaces: 24 }),
-      buildTown('walkable', { theme: 'dense neon port city', blocksX: 5, blocksY: 5, openPlaces: 24 }),
-      buildTown('aisles', { theme: 'alpine ski village', blocksX: 5, blocksY: 5, openPlaces: 24 }),
-    ])
-    let rooms = 0
-
-    for (const { world } of towns) {
-      for (const interior of world.interiors()) {
-        rooms++
-        const made: InteriorPlan = {
-          rooms: [...interior.rooms],
-          doors: [...interior.doors],
-          furniture: [...interior.furniture],
-          anchors: [...interior.anchors],
-          keys: [],
-          shut: [],
-        }
-        const walk = new Walk(made, interior.size)
-        const where = `${world.name} ${interior.kind}`
-        for (const anchor of made.anchors) {
-          expect(walk.reaches(standsOn(made, anchor), reachOf(made, anchor)), `${where} cannot reach ${anchor.kind}`).toBe(true)
-        }
-        // and the floor somebody walking in off the street is put down on is floor
-        const street = made.doors.find((door) => door.from === 'outside')!
-        for (let into = 0.6; into <= DOORSTEP - RADIUS + 1e-6; into += 0.2) {
-          const spot = step(street.pos, street.rot + 180, into)
-          expect(walk.reaches(spot, CELL), `${where}: ${into.toFixed(1)} m inside the door is not floor`).toBe(true)
-        }
-        for (const { anchor, piece, stance, gap } of standoffs(made)) {
-          const at = `${where} ${anchor.kind} at a ${piece.prop}: ${gap.toFixed(2)} m off its face`
-          expect(gap, at).toBeGreaterThanOrEqual(stance.near - 1e-6)
-          expect(gap, at).toBeLessThanOrEqual(stance.far + 1e-6)
-        }
-        for (const door of made.doors) {
-          for (const piece of made.furniture) {
-            expect(overlaps(doorZone(door), footprintOf(piece)), `${where}: ${piece.prop} blocks a door`).toBe(false)
-          }
-        }
-        for (const npc of world.npcs()) {
-          if (npc.station?.interiorId !== interior.id) continue
-          expect(made.anchors.some((anchor) => anchor.id === npc.station!.anchorId)).toBe(true)
-        }
-      }
-    }
-    expect(rooms, 'not enough interiors to catch a room in a hundred').toBeGreaterThan(60)
   })
 })

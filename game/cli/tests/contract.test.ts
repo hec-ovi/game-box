@@ -2,8 +2,11 @@ import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import type { Narrator } from '@gb/forge'
 import { describe, expect, it } from 'vitest'
 import { run } from '../src/index.ts'
+import { narratorFor, storied } from '../src/narrator.ts'
+import { city } from './city.ts'
 
 function capture() {
   const out: string[] = []
@@ -14,93 +17,55 @@ function capture() {
 const dir = mkdtempSync(join(tmpdir(), 'gb-cli-'))
 const fixtures = new URL('./fixtures/', import.meta.url)
 
-async function buildTown(name = 'town.json', extra: string[] = []) {
+/** A city on disk for the commands that read one. What writes one is a model, so no test here builds one. */
+async function town(name: string) {
   const file = join(dir, name)
-  const io = capture()
-  const code = await run(['build', '--seed', 'cli', '--blocks', '1x1', '--cells', '12', '--out', file, ...extra], io.io)
-  return { file, code, ...io }
+  await city(file, { seed: 'cli', blocksX: 1, blocksY: 1, blockCells: 12 })
+  return file
 }
 
 describe('gb', () => {
-  it('builds a city and writes it as a bundle', async () => {
-    const { file, code, out } = await buildTown()
-    expect(code).toBe(0)
-
-    const text = out.join('\n')
-    expect(text).toMatch(/buildings, \d+ people/)
-    expect(text).toContain(file)
-
-    const bundle = JSON.parse(readFileSync(file, 'utf8'))
-    expect(bundle.format).toBe('game-box.bundle')
-    expect(bundle.contentHash).toMatch(/^[a-f0-9]{64}$/)
-    expect(bundle.world.plots.length).toBeGreaterThan(0)
-  })
-
   it('checks a bundle, including that every building can be walked to', async () => {
-    const { file } = await buildTown('checkable.json')
+    const file = await town('checkable.json')
     const io = capture()
 
     expect(await run(['check', file], io.io)).toBe(0)
     expect(io.out.join('\n')).toContain('every building can be walked to')
   })
 
-  it('does not write a bundle it cannot open again', async () => {
-    // the read-back is the promise: a file nobody can load is a worse outcome
-    // than no file
-    const { file, code } = await buildTown('readable.json')
-    expect(code).toBe(0)
+  it('takes a history from a file as the answer to writePremise', async () => {
+    // `--history <file>` is a story somebody wrote by hand standing in for the
+    // one the model would write, and nothing else about the build changes
+    const file = fileURLToPath(new URL('history.json', fixtures))
+    const written = storied(narratorFor('cli').narrator, file)
+    expect(typeof written).toBe('object')
 
-    const io = capture()
-    expect(await run(['check', file], io.io)).toBe(0)
-  })
-
-  it('builds to a history you wrote, and says which kinds of place it declared were dropped', async () => {
-    // a charter the city would not take must never go quietly: the file has no
-    // place for it, so the report is the one place it is said
-    const history = fileURLToPath(new URL('history.json', fixtures))
-    const { file, code, out } = await buildTown('storied.json', ['--history', history])
-    expect(code).toBe(0)
-
-    const text = out.join('\n')
-    expect(text).toContain('1 kinds of place the history declared were dropped')
-    expect(text).toMatch(/lighthouse: .*sprawl/)
-
-    const world = JSON.parse(readFileSync(file, 'utf8')).world
-    expect(world.premise.build.mustHave).toEqual(['customs'])
-    expect(world.plots.some((plot: { kind: string }) => plot.kind === 'customs')).toBe(true)
-    expect(world.charters.some((charter: { word: string }) => charter.word === 'lighthouse')).toBe(false)
+    const answer = await (written as Narrator).writePremise!({ theme: 'quiet coastal town', seed: 'cli' })
+    expect(answer.ok).toBe(true)
+    if (!answer.ok) return
+    expect(answer.value.build.mustHave).toEqual(['customs'])
+    expect(answer.value.charters?.map((charter) => charter.word)).toContain('lighthouse')
   })
 
   it('refuses a history file it cannot read', async () => {
-    const { code, err } = await buildTown('unstoried.json', ['--history', join(dir, 'no-such-history.json')])
+    const io = capture()
+    const code = await run(['build', '--history', join(dir, 'no-such-history.json'), '--out', join(dir, 'unstoried.json')], io.io)
+
     expect(code).toBe(1)
-    expect(err.join('\n')).toContain('no-such-history.json cannot be read')
+    expect(io.err.join('\n')).toContain('no-such-history.json cannot be read')
   })
 
   it('refuses a city too big for a world to hold', async () => {
     const io = capture()
-    const code = await run(['build', '--blocks', '60x1', '--cells', '40', '--out', join(dir, 'huge.json'), ...[]], io.io)
+    const code = await run(['build', '--blocks', '60x1', '--cells', '40', '--out', join(dir, 'huge.json')], io.io)
 
     expect(code).toBe(1)
     expect(io.err.join('\n')).not.toBe('')
     expect(existsSync(join(dir, 'huge.json'))).toBe(false)
   })
 
-  it('takes how many roads lead out of town', async () => {
-    const one = await buildTown('one-way.json', ['--exits', '1'])
-    const four = await buildTown('four-ways.json', ['--exits', '4'])
-
-    expect(one.code).toBe(0)
-    expect(four.code).toBe(0)
-    const roadsOut = (file: string) =>
-      JSON.parse(readFileSync(file, 'utf8')).world.roads.segments.filter((r: { kind: string }) => r.kind === 'exit')
-        .length
-    expect(roadsOut(one.file)).toBe(1)
-    expect(roadsOut(four.file)).toBe(4)
-  })
-
   it('prints the grid, the places and the quests', async () => {
-    const { file } = await buildTown('printable.json')
+    const file = await town('printable.json')
     const io = capture()
 
     expect(await run(['inspect', file], io.io)).toBe(0)
@@ -121,7 +86,7 @@ describe('gb', () => {
   })
 
   it('refuses a bundle that was edited after it was sealed', async () => {
-    const { file } = await buildTown('tampered.json')
+    const file = await town('tampered.json')
     const bundle = JSON.parse(readFileSync(file, 'utf8'))
     bundle.world.name = 'Somewhere Else'
     writeFileSync(file, JSON.stringify(bundle))

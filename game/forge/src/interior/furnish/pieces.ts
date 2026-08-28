@@ -1,5 +1,5 @@
 import type { AnchorKind, FurnitureProp } from '@gb/world'
-import { alongWall, boxAt, faceReach, headingTo, inward, onWall, outward, step, wallBand, wallOf, type Side } from '../geometry.ts'
+import { alongWall, boxAt, faceReach, inward, onWall, outward, step, wallBand, wallOf, type Side } from '../geometry.ts'
 import { specOf } from '../props.ts'
 import type { Placed, RoomPlan } from '../room-plan.ts'
 import { seatRoot, standoff } from '../stance.ts'

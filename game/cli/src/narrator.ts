@@ -1,16 +1,16 @@
 import { readFileSync } from 'node:fs'
-import { OfflineNarrator, type History, type Narrator, type Written } from '@gb/forge'
+import type { History, Narrator, Written } from '@gb/forge'
 import { Scribe } from '@gb/scribe'
 
-/** Who writes a city: the local model when asked for, the offline narrator otherwise. */
+/** Who writes a city. A model writes every word of one, so there is only ever this. */
 export interface Writers {
   narrator: Narrator
-  scribe: Scribe | undefined
+  scribe: Scribe
 }
 
-export function narratorFor(seed: string, model: boolean): Writers {
-  const scribe = model ? new Scribe({ seed }) : undefined
-  return { narrator: scribe ?? new OfflineNarrator(seed), scribe }
+export function narratorFor(seed: string): Writers {
+  const scribe = new Scribe({ seed })
+  return { narrator: scribe, scribe }
 }
 
 /** The same writer answering the history from a file, or one line saying why the file is not one. */

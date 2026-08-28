@@ -1,8 +1,8 @@
-import { FURNITURE_PROPS, METRICS, PROP_SPECS, footprintOf, type AnchorKind, type FurnitureProp } from '@gb/world'
+import { FURNITURE_PROPS, METRICS, PROP_SPECS, footprintOf, type FurnitureProp } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { FURNISH_STYLES } from '../src/index.ts'
-import { boundsOf, contactOf, dressingIn, interiorsAcrossTowns, plates } from './support.ts'
+import { boundsOf, contactOf, dressingIn, plates } from './support.ts'
 
 /**
  * The height promise, and the reason furniture is generated at all.
@@ -15,62 +15,10 @@ import { boundsOf, contactOf, dressingIn, interiorsAcrossTowns, plates } from '.
  * the measurement catch it.
  */
 
-/** Anchor kinds where a body touches the furniture rather than standing near it. */
-const TOUCHING: readonly AnchorKind[] = ['sit', 'sit-drink', 'serve', 'cook', 'work-desk', 'sleep', 'lean']
-
-/**
- * Every prop a real town puts a body against, and what it puts them there to
- * do. The exact set, not a floor under it: a count says nothing when one prop
- * loses its body and another gains one, and a floor is a number somebody
- * lowers.
- *
- * A drinker sits on a bar stool (`@gb/cast`'s stool clips carry their own
- * height) and a chair is for sitting. `lean` is absent because a leaning body
- * is stationed at a spot on the floor and names no prop at all.
- */
-const TOUCHED: Partial<Record<FurnitureProp, readonly AnchorKind[]>> = {
-  'bar-counter': ['serve'],
-  'bar-stool': ['sit-drink'],
-  bed: ['sleep'],
-  chair: ['sit'],
-  counter: ['serve'],
-  'office-chair': ['work-desk'],
-  sofa: ['sit'],
-  stove: ['cook'],
-}
-
 /** Ten microns: float32's own precision at these sizes, not a tolerance. */
 const EXACT = 5
 
-/** Every prop some anchor in a real town puts a body against, and what it puts them there to do. */
-async function touched(): Promise<Map<FurnitureProp, Set<AnchorKind>>> {
-  const found = new Map<FurnitureProp, Set<AnchorKind>>()
-  for (const interior of await interiorsAcrossTowns()) {
-    const props = new Map(interior.furniture.map((piece) => [piece.id, piece.prop]))
-    for (const anchor of interior.anchors) {
-      const prop = anchor.propId === undefined ? undefined : props.get(anchor.propId)
-      if (!prop || !TOUCHING.includes(anchor.kind)) continue
-      found.set(prop, (found.get(prop) ?? new Set()).add(anchor.kind))
-    }
-  }
-  return found
-}
-
-/** One readable line per prop, sorted, so a failure names what moved. */
-function listed(pairs: Iterable<[string, Iterable<AnchorKind>]>): string[] {
-  return [...pairs].map(([prop, kinds]) => `${prop}: ${[...kinds].sort().join(', ')}`).sort()
-}
-
 describe('the height a body meets', () => {
-  it('is declared for every prop a real town sits, sleeps, serves or works at', async () => {
-    const used = await touched()
-    expect(listed(used)).toEqual(listed(Object.entries(TOUCHED)))
-
-    for (const [prop, kinds] of used) {
-      expect(PROP_SPECS[prop].contact, `${prop}, where somebody ${[...kinds].join(' and ')}s`).toBeDefined()
-    }
-  })
-
   it('is exactly the contract height on the drawn triangles, in both languages', () => {
     for (const style of FURNISH_STYLES) {
       const dressing = dressingIn(style)

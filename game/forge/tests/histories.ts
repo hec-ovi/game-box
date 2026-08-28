@@ -1,9 +1,8 @@
-import { ok } from '@gb/kit'
 import type { Charter } from '@gb/world'
-import { Forge, OfflineNarrator, type History, type Narrator, type Written } from '../src/index.ts'
+import type { History } from '../src/index.ts'
 
 /**
- * Histories a narrator might write, for the tests to build towns against:
+ * Histories a narrator might write, for the tests to lay towns out against:
  * kinds of place the engine has no word for, written the way a history writes
  * them, one of them admitting people only so far and one private.
  */
@@ -90,31 +89,4 @@ export const UNDERGROUND: History = {
   ],
   common: ['the escalators still run at night with nobody on them'],
   build: { moreOf: ['office'], fewerOf: ['hotel'], mustHave: ['station'] },
-}
-
-/** A narrator told the town's history, offline in every other respect. */
-export class Told implements Narrator {
-  #offline: OfflineNarrator
-  #history: unknown
-  constructor(seed: string, history: unknown) {
-    this.#offline = new OfflineNarrator(seed)
-    this.#history = history
-  }
-  async writePremise(): Promise<Written<History>> {
-    return ok(this.#history as History)
-  }
-  nameCity = (input: Parameters<Narrator['nameCity']>[0]) => this.#offline.nameCity(input)
-  namePlace = (input: Parameters<Narrator['namePlace']>[0]) => this.#offline.namePlace(input)
-  describeNpc = (input: Parameters<Narrator['describeNpc']>[0]) => this.#offline.describeNpc(input)
-  describeItem = (input: Parameters<Narrator['describeItem']>[0]) => this.#offline.describeItem(input)
-  writeQuests = (input: Parameters<Narrator['writeQuests']>[0]) => this.#offline.writeQuests(input)
-  writeInstances = (requests: Parameters<NonNullable<Narrator['writeInstances']>>[0]) => this.#offline.writeInstances(requests)
-}
-
-/** Builds a town against a history somebody wrote, and says why if it will not build. */
-export async function buildTold(seed: string, history: unknown, overrides: Record<string, unknown> = {}) {
-  // a town's first doors go to its keystones, so a history's own kind needs room beside them
-  const built = await new Forge(new Told(seed, history)).build({ theme: 'quiet market town', seed, blocksX: 3, blocksY: 3, openPlaces: 6, ...overrides })
-  if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 800))
-  return built.value
 }

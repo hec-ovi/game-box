@@ -32,7 +32,6 @@ const STAGES: readonly Stage[] = [CITY, INSTANCES, PEOPLE, QUESTS]
 const captured: Captured = {}
 const lab: Lab = {
   form: defaultForm(),
-  author: 'model',
   base: DEFAULT_BASE,
   captured,
   recorder: new Recorder(),
@@ -94,14 +93,6 @@ function briefPanel(): HTMLElement {
 }
 
 function runPanel(): HTMLElement {
-  const author = el('select') as HTMLSelectElement
-  author.appendChild(el('option', { value: 'model' }, 'the model, through the sidecar'))
-  author.appendChild(el('option', { value: 'offline' }, 'the offline author, no model at all'))
-  author.value = lab.author
-  author.addEventListener('change', () => {
-    lab.author = author.value === 'offline' ? 'offline' : 'model'
-  })
-
   const base = el('input', { type: 'text', value: lab.base }) as HTMLInputElement
   base.addEventListener('input', () => {
     lab.base = base.value.replace(/\/$/, '')
@@ -109,22 +100,34 @@ function runPanel(): HTMLElement {
   })
 
   const status = el('span', { class: 'status' }, 'nothing captured yet')
-  const build = el('button', {}, 'Build this city offline')
+  const build = el('button', {}, 'Write this city')
+  const halt = el('button', { disabled: true }, 'Stop')
+  let controller: AbortController | undefined
   build.addEventListener('click', () => {
+    if (controller) return
+    controller = new AbortController()
     build.disabled = true
+    halt.disabled = false
     status.className = 'status work'
-    status.textContent = lab.captured.history ? 'building on the history from stage 1' : 'building'
-    void buildCity(lab.form, narratorFor('offline', lab.form, lab.recorder, lab.base), lab.captured.history)
+    status.textContent = lab.captured.history ? 'writing on the history from stage 1' : 'writing'
+    void buildCity(lab.form, narratorFor(lab.form, lab.recorder, lab.base, controller.signal), lab.captured.history)
       .then((outcome) => {
         Object.assign(lab.captured, outcome.captured)
         status.className = outcome.error ? 'status bad' : 'status good'
-        status.textContent = outcome.error ?? `built in ${outcome.ms} ms`
+        status.textContent = outcome.error ?? `written in ${outcome.ms} ms`
         sayWhatIsInHand()
       })
+      .catch((cause: unknown) => {
+        status.className = 'status bad'
+        status.textContent = String(cause)
+      })
       .finally(() => {
+        controller = undefined
         build.disabled = false
+        halt.disabled = true
       })
   })
+  halt.addEventListener('click', () => controller?.abort())
 
   const file = el('input', { type: 'file' }) as HTMLInputElement
   file.addEventListener('change', () => {
@@ -153,12 +156,13 @@ function runPanel(): HTMLElement {
   })
 
   return panel(
-    'Who writes, and what is in hand',
-    undefined,
-    el('div', { class: 'form' }, field('The author every sandbox runs against', author), field('The sidecar', base)),
-    el('p', { class: 'hint' }, 'A build through the offline author is the real Forge.build, watched at the narrator port. It is what gives stages 2, 3 and 4 a true input without waiting hours for a model to write a whole town.'),
-    el('div', { class: 'row' }, build, status),
+    'The sidecar, and what is in hand',
+    'the model writes every word of a city, so it is the only author here',
+    el('div', { class: 'form' }, field('The sidecar every sandbox runs against', base)),
+    el('p', { class: 'hint' }, 'Writing a city is the real Forge.build, watched at the narrator port: the model writes the history, the work, the names and every place that opens. The room plans, the posts and the locks it makes on the way are what stages 2 and 3 are handed, and nothing else makes them, so there is no cheaper way to fill those two.'),
+    el('div', { class: 'row' }, build, halt, status),
     field('Or open a world file from disk', file, true),
+    el('p', { class: 'hint' }, 'A world file off disk is the free path to stage 4: it gives the quest writer its summary and the city the drafts are checked against, with no call at all.'),
   )
 }
 

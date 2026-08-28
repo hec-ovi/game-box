@@ -1,4 +1,4 @@
-import { Forge, OfflineNarrator } from '@gb/forge'
+import { Forge } from '@gb/forge'
 import { CityNight, DOORLAMP, KitDressing, SIGN, placeholderKit, signsFor, type Sign } from '@gb/kitbash'
 import { Greybox, storeyHeight } from '@gb/scene'
 import { readFileSync } from 'node:fs'
@@ -17,7 +17,7 @@ import { middleOf, seatedSigns, signPoints, type SeatedSign } from '../tools/sig
 
 /**
  * A prefab building drawn on the shipped pack, dressed with the signage the kit
- * writes for its plot, over a forged town.
+ * writes for its plot, over a planned town.
  *
  * The kit writes a fixture against the plot: a door snapped to its own 2 m
  * module, its own door's width and head, and a wall plane on the plot boundary.
@@ -37,9 +37,12 @@ const library = Library.of({ catalogue, scenes: gltf.scenes, atlas, night: new C
 const kit = new KitDressing(placeholderKit('a neon port city'), new Greybox())
 const dressing = new PrefabDressing(library, kit)
 
-const built = await new Forge(new OfflineNarrator('fixtures')).build({ theme: 'a neon port city', seed: 'fixtures', blocksX: 4, blocksY: 4, density: 1, maxStoreys: 4, openPlaces: 12 })
-if (!built.ok) throw new Error(`the forge refused: ${JSON.stringify(built.error)}`)
-const world = built.value.world
+// Where a fixture lands is arithmetic on both sides, the plot's and the model's,
+// so the town under it is the plan: every plot the build would raise, on the
+// same footprint at the same height, with nothing written into it.
+const plan = Forge.plan({ theme: 'a neon port city', seed: 'fixtures', blocksX: 4, blocksY: 4, density: 1, maxStoreys: 4 })
+if (!plan.ok) throw new Error(`the forge refused the brief: ${JSON.stringify(plan.error)}`)
+const world = plan.value
 
 interface Dressed {
   readonly id: string

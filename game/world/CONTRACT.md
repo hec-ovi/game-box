@@ -291,7 +291,7 @@ this loads, checks and hashes exactly as it did.
 
 ## What the owner asked for
 
-`theme` is the short keyword hint (60 characters) the offline author reads.
+`theme` is the city in a few words (60 characters), as the owner asked for it.
 Everything longer the owner has to say goes in two other fields, written at
 `found` and read back by whoever opens the file, so a shared city says what it
 was asked to be and a later growth keeps to it.

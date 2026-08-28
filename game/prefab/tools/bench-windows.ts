@@ -1,6 +1,6 @@
 /**
  * What a window costs, measured rather than argued: the shader the wall
- * material really compiles to, and how many of a forged town's windows take
+ * material really compiles to, and how many of a planned town's windows take
  * each path through it.
  *
  *   node tools/bench-windows.ts [--seed metro] [--blocks 8] [--dump shader.wgsl]
@@ -10,10 +10,11 @@
  * decision are counted where they are emitted, so the numbers are the shipped
  * shader's rather than a reading of the source. The census walks the committed
  * geometry every plot is actually drawn with and asks `boxedAt`, which is the
- * same answer the shader gets.
+ * same answer the shader gets. Which model a plot wears is its footprint and
+ * its charter, so the town it walks is a plan.
  */
 import { writeFileSync } from 'node:fs'
-import { Forge, OfflineNarrator } from '@gb/forge'
+import { Forge } from '@gb/forge'
 import { CityNight } from '@gb/kitbash'
 import { storeyHeight } from '@gb/scene'
 import * as THREE from 'three'
@@ -63,9 +64,9 @@ console.log(
 console.log(`  five unique faces a room would be ${rooms * 5 + panels} layers, one folded picture a room would be ${rooms + panels}`)
 
 // what a town takes
-const built = await new Forge(new OfflineNarrator(seed)).build({ theme: 'a neon port city', seed, blocksX: blocks, blocksY: blocks, density: 1 })
-if (!built.ok) throw new Error(`the forge refused: ${JSON.stringify(built.error)}`)
-const world = built.value.world
+const plan = Forge.plan({ theme: 'a neon port city', seed, blocksX: blocks, blocksY: blocks, density: 1 })
+if (!plan.ok) throw new Error(`the forge refused the brief: ${JSON.stringify(plan.error)}`)
+const world = plan.value
 
 const tally = { bays: 0, boxed: 0, street: 0, glass: 0, boxedGlass: 0 }
 let plots = 0

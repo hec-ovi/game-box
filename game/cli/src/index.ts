@@ -23,13 +23,11 @@ const USAGE = `gb - build, grow and inspect game-box cities
     --density <0..1>        how much of each block gets built on (default: 0.8)
     --storeys <n>           tallest building allowed, 1 to 40 (default: ${STOREYS_DEFAULT}); over 4 the city grows a skyline
     --exits <1..4>          how many roads lead out of town (default: 1)
-    --model                 write the city with the local model: the history, the names, the places and the quests
     --history <file>        build to a history you wrote (JSON: the premise and the charters it declares)
     --out <file>            where to write it (default: city.json)
 
   gb extend <base> [options]         grow a finished city into a new bundle, the base untouched
     --count <n>             how many buildings to add (default: 10)
-    --model                 use the local model for the new places, not the offline narrator
     --out <file>            where to write the grown city (default: extended.json)
 
   gb pack <base> <extended> [--out <file>]   cut what the growth added into a pack (default: pack.json)

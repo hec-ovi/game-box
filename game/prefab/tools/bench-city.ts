@@ -1,6 +1,6 @@
 /**
  * What a city costs to open, with the shell path and without it, measured
- * headless in Node on a forged town: `@gb/prefab` over `@gb/kitbash`, which is
+ * headless in Node on a planned town: `@gb/prefab` over `@gb/kitbash`, which is
  * how the game dresses one, or the kit alone, which is what the town falls back
  * to for a plot the pack has no shape for.
  *
@@ -12,8 +12,13 @@
  * cost before the skyline carried the far field.
  *
  * It prints what the town holds, what a camera standing in the street submits
- * of it, what walking costs and what walking up to a door and through it costs,
- * so a change here can be read as a number.
+ * of it, what walking costs and what arriving somewhere new costs, so a change
+ * here can be read as a number.
+ *
+ * A city opens round the spawn `@gb/scene` picks, which on a town nobody has
+ * written is its first plot and so a corner. Everything measured after the open
+ * is measured in the middle of town instead, where a city is dense enough to
+ * cost what it costs.
  *
  * A slow frame says what it was doing: the ten dearest of the walk carry the
  * plots they dressed, how tall each is, how many triangles it answered with,
@@ -26,7 +31,7 @@
  *
  * Reads: pack/ here, and assets/dist/downtown-kit.glb (GB_ASSETS_DIST overrides).
  */
-import { Forge, OfflineNarrator } from '@gb/forge'
+import { Forge } from '@gb/forge'
 import { KitDressing, loadKit } from '@gb/kitbash'
 import { buildCity, SHELL_RADIUS, type CityBuild, type Dressing } from '@gb/scene'
 import { inPlotBand, plotShape, type Plot } from '@gb/world'
@@ -74,6 +79,14 @@ class Tally {
 
   constructor(step: 'shell' | 'detail') {
     this.#step = step
+  }
+
+  /** Forgets what has been counted so far, so one phase can be read without the one before it. */
+  reset(): void {
+    this.triangles = 0
+    this.meshes = 0
+    this.calls = 0
+    this.ms = 0
   }
 
   /** Times one call and reads what it answered. */
@@ -129,14 +142,49 @@ const library = await readPack(kit.night)
 const behind = new KitDressing(kit)
 const dressing: Streaming = dressed === 'kit' ? behind : new PrefabDressing(library, behind)
 
-// the brief's own default unless asked otherwise, so the town measured is the town the game builds, skyline and all
-const built = await new Forge(new OfflineNarrator(seed)).build({ theme: 'a neon port city', seed, blocksX: blocks, blocksY: blocks, density: 1, ...(storeys ? { maxStoreys: Number(storeys) } : {}) })
-if (!built.ok) throw new Error(`the forge refused: ${JSON.stringify(built.error)}`)
-const world = built.value.world
+// The brief's own default unless asked otherwise, so the town measured is the
+// town the game builds, skyline and all. It is the plan rather than the whole
+// build: what a city costs to stand up is its plots, their footprints and their
+// heights, which the plan draws exactly as the build raises them.
+const plan = Forge.plan({ theme: 'a neon port city', seed, blocksX: blocks, blocksY: blocks, density: 1, ...(storeys ? { maxStoreys: Number(storeys) } : {}) })
+if (!plan.ok) throw new Error(`the forge refused the brief: ${JSON.stringify(plan.error)}`)
+const world = plan.value
 
 const at = performance.now()
 const city = buildCity(world, counted(dressing, mode === 'lod'), { shell })
 const open = performance.now() - at
+
+/** The doorstep nearest the middle of the town, which is where a city is dense enough to cost what it costs. */
+function middleOfTown(built: CityBuild): THREE.Vector3 {
+  const middle = { x: (world.grid.width * world.cellSize) / 2, z: (world.grid.height * world.cellSize) / 2 }
+  let nearest = Number.POSITIVE_INFINITY
+  let best = new THREE.Vector3(middle.x, 0, middle.z)
+  for (const door of built.doorsteps.values()) {
+    const away = (door.x - middle.x) ** 2 + (door.z - middle.z) ** 2
+    if (away >= nearest) continue
+    nearest = away
+    best = door
+  }
+  return best
+}
+
+// `@gb/scene` opens a city round its own spawn, which on a town nobody has
+// written is its first plot and so a corner, where three quarters of the ring
+// is off the map.
+// What a neighbourhood costs is measured where a town is dense: stand in the
+// middle and settle, which takes the whole backlog on one call the way opening
+// a city does. The corner's rings are let go on that same call, so the tallies
+// are reset first and what they hold afterwards is the neighbourhood alone.
+const standing = middleOfTown(city)
+/** What one phase of the streaming asked the dressing for, read before the next phase starts. */
+const asked = (tally: Tally) => ({ calls: tally.calls, triangles: tally.triangles, ms: tally.ms })
+const atOpen = { shells: asked(shells), buildings: asked(buildings) }
+shells.reset()
+buildings.reset()
+const stood = performance.now()
+city.follow(standing.x, standing.z)
+city.settle()
+const settled = performance.now() - stood
 
 /** The batches the buildings are drawn out of, as against the rubbish, which is charged to the streets. */
 const isBuilding = (name: string) => name.startsWith('city:') || name.startsWith('detail:')
@@ -218,8 +266,8 @@ function collected(began: number, ended: number): number {
 }
 
 /**
- * What `follow` costs along a walk from the spawn, frame by frame, the way the
- * game calls it: told the frame's own elapsed time, so the rings take their
+ * What `follow` costs along a walk across the middle of town, frame by frame,
+ * the way the game calls it: told the frame's own elapsed time, so the rings take their
  * backlog a few buildings at a time.
  *
  * Every frame carries the calls the dressing took on it, so a slow one can say
@@ -230,9 +278,9 @@ function collected(began: number, ended: number): number {
 function walked(built: CityBuild): { median: number; ninetyNinth: number; worst: number; frames: Frame[]; crossings: number } {
   const frames: Frame[] = []
   let crossings = 0
-  let last = Math.floor(built.spawn.x / world.cellSize)
+  let last = Math.floor(standing.x / world.cellSize)
   for (let metres = 0.25; metres <= 120; metres += 0.25) {
-    const x = built.spawn.x + metres
+    const x = standing.x + metres
     const now = Math.floor(x / world.cellSize)
     const crossed = now !== last
     if (crossed) crossings++
@@ -240,7 +288,7 @@ function walked(built: CityBuild): { median: number; ninetyNinth: number; worst:
     const calls: Call[] = []
     frame = calls
     const began = performance.now()
-    built.follow(x, built.spawn.z, 1 / 60)
+    built.follow(x, standing.z, 1 / 60)
     const ended = performance.now()
     frame = undefined
     frames.push({ metres, ms: ended - began, crossed, calls, gc: collected(began, ended) })
@@ -268,25 +316,32 @@ function why(one: Frame): string {
   return `${one.ms.toFixed(2)} ms at ${one.metres.toFixed(2)} m${one.crossed ? ' (a new cell)' : ''}: ${what}; ${dressed.toFixed(2)} ms dressing, ${(one.ms - dressed - one.gc).toFixed(2)} ms batching and the rest, ${one.gc.toFixed(2)} ms collecting${each ? `\n        ${each}` : ''}`
 }
 
+/** Doorsteps taken evenly across the town's own list of plots, so every arrival lands in a different neighbourhood. */
+function doorstepsAcross(built: CityBuild, wanted: number): THREE.Vector3[] {
+  const plots = [...world.plots()]
+  const out: THREE.Vector3[] = []
+  for (let at = 0; at < Math.min(wanted, plots.length); at++) {
+    const door = built.doorsteps.get(plots[Math.floor((at * plots.length) / wanted)]!.id)
+    if (door) out.push(door)
+  }
+  return out
+}
+
 /**
- * What a door costs: arriving at one, then walking through it.
+ * What arriving costs: standing on a doorstep across town and letting the
+ * neighbourhood come up around you.
  *
  * Arriving somewhere new is the dearest thing the streaming does, because a
  * whole ring comes in at once, and it is what a train, a load and a walk into
  * a dense block all look like. The frames are budgeted the way the game
  * budgets them, so what is measured is the worst single frame of the arrival
- * and then the one call that builds the room.
+ * and how long the whole ring takes to stand up.
  */
-function entered(built: CityBuild): { arrival: number[]; settle: number[]; room: number[]; frames: Frame[] } {
+function arrivals(built: CityBuild): { arrival: number[]; settle: number[]; frames: Frame[] } {
   const arrival: number[] = []
   const settle: number[] = []
-  const room: number[] = []
   const frames: Frame[] = []
-  for (const interior of world.interiors().slice(0, 24)) {
-    const plot = world.plot(interior.plotId)
-    if (!plot) continue
-    const door = built.doorsteps.get(plot.id)
-    if (!door) continue
+  for (const door of doorstepsAcross(built, 24)) {
     let worst: Frame = { metres: 0, ms: 0, crossed: false, calls: [], gc: 0 }
     let spent = 0
     // stand on the doorstep and let the rings catch up a frame at a time, the
@@ -305,11 +360,8 @@ function entered(built: CityBuild): { arrival: number[]; settle: number[]; room:
     arrival.push(worst.ms)
     settle.push(spent)
     frames.push(worst)
-    const began = performance.now()
-    built.interior(interior.id)
-    room.push(performance.now() - began)
   }
-  return { arrival, settle, room, frames }
+  return { arrival, settle, frames }
 }
 
 const batches = city.root.children.filter((child) => child.name.startsWith('city:') || child.name.startsWith('detail:'))
@@ -319,26 +371,25 @@ const rounded = (value: number) => Math.round(value).toLocaleString('en-GB')
 const plots = [...world.plots()]
 const towers = plots.filter((plot) => !inPlotBand(plotShape(plot)))
 console.log(`${blocks} by ${blocks} blocks (${world.grid.width} by ${world.grid.height} cells), ${dressed} ${mode}, shells to ${reach ?? SHELL_RADIUS} m: ${plots.length} plots, ${towers.length} over the band (tallest ${Math.max(...plots.map((plot) => plot.storeys))} storeys), pack ${library.catalogue.version}`)
-console.log(`  open ${rounded(open)} ms, of it ${rounded(shells.ms + buildings.ms)} ms in the dressing, rss ${rounded(process.memoryUsage().rss / 1e6)} MB`)
+console.log(`  open ${rounded(open)} ms, of it ${rounded(atOpen.shells.ms + atOpen.buildings.ms)} ms in the dressing, rss ${rounded(process.memoryUsage().rss / 1e6)} MB`)
+console.log(`    the ring round the city's own spawn, which stands in a corner: ${rounded(atOpen.shells.calls)} shells, ${rounded(atOpen.buildings.calls)} buildings`)
+console.log(`  standing in the middle of town: ${rounded(settled)} ms, of it ${rounded(shells.ms + buildings.ms)} ms in the dressing`)
 console.log(`  shells: ${rounded(shells.calls)} built, ${rounded(shells.triangles)} triangles, ${rounded(shells.meshes)} meshes`)
 console.log(`  buildings: ${rounded(buildings.calls)} built, ${rounded(buildings.triangles)} triangles, ${rounded(buildings.meshes)} meshes`)
 console.log(`  ${materials.size} materials: ${[...materials].join(', ')}`)
 console.log(`  ${batches.length} building draws: ${batches.map((batch) => batch.name).join(', ')}`)
 
-const eye = { x: city.spawn.x, z: city.spawn.z }
-const headings = [city.spawn.heading + Math.PI / 2, 0, Math.PI / 2, Math.PI, -Math.PI / 2]
-const views = headings.map((yaw) => submitted(city, eye.x, eye.z, yaw))
+const views = [0, Math.PI / 2, Math.PI, -Math.PI / 2].map((yaw) => submitted(city, standing.x, standing.z, yaw))
 const worst = views.reduce((a, b) => (b.triangles > a.triangles ? b : a))
 const holding = heldBy(city)
 console.log(`  buildings held ${rounded(holding.buildings)} triangles, of it ${rounded(plots.length * 12)} of skyline; rubbish ${rounded(holding.rubbish)}`)
-console.log(`  standing at the spawn, far plane ${rounded(far)} m: ${rounded(views[0]!.triangles)} triangles of buildings facing the door, ${worst.draws} draws`)
-console.log(`  turning on the spot from there: ${views.slice(1).map((one) => rounded(one.triangles)).join(' | ')}, and ${rounded(worst.rubbish)} of rubbish whichever way`)
+console.log(`  turning on the spot there, far plane ${rounded(far)} m: ${views.map((one) => rounded(one.triangles)).join(' | ')} triangles of buildings, ${worst.draws} draws, and ${rounded(worst.rubbish)} of rubbish whichever way`)
 const walk = walked(city)
 const FRAME = 1000 / 60
 const missed = walk.frames.filter((one) => one.ms > FRAME)
 const spent = walk.frames.reduce((sum, one) => sum + one.ms, 0)
 console.log(
-  `  follow over a 120 m walk (${walk.frames.length} frames, ${walk.crossings} of them a new cell): median ${(walk.median * 1000).toFixed(0)} us, 99th ${walk.ninetyNinth.toFixed(2)} ms, worst ${walk.worst.toFixed(2)} ms`,
+  `  follow over a 120 m walk from there (${walk.frames.length} frames, ${walk.crossings} of them a new cell): median ${(walk.median * 1000).toFixed(0)} us, 99th ${walk.ninetyNinth.toFixed(2)} ms, worst ${walk.worst.toFixed(2)} ms`,
 )
 console.log(
   `    ${missed.length} frames over 16.7 ms, ${rounded(missed.reduce((sum, one) => sum + one.ms - FRAME, 0))} ms of them over; ${rounded(spent)} ms of streaming over the whole walk`,
@@ -351,9 +402,9 @@ console.log(
 const slowest = [...walk.frames].sort((a, b) => b.ms - a.ms).slice(0, 10)
 for (const [at, one] of slowest.entries()) console.log(`    ${String(at + 1).padStart(2)}. ${why(one)}`)
 
-const doors = entered(city)
+const doors = arrivals(city)
 const middle = (list: readonly number[]) => [...list].sort((a, b) => a - b)[Math.floor(list.length / 2)] ?? 0
 for (const one of [...doors.frames].sort((a, b) => b.ms - a.ms).slice(0, 3)) console.log(`    arrival: ${why(one)}`)
 console.log(
-  `  walking up to ${doors.arrival.length} doors and through them: arriving costs a worst frame of ${middle(doors.arrival).toFixed(2)} ms median, ${Math.max(...doors.arrival).toFixed(2)} ms worst, over ${rounded(middle(doors.settle))} ms median of streaming (${rounded(Math.max(...doors.settle))} ms worst) before the neighbourhood is up; the room build ${middle(doors.room).toFixed(2)} ms median, ${Math.max(...doors.room).toFixed(2)} ms worst`,
+  `  walking up to ${doors.arrival.length} doors across the town: arriving costs a worst frame of ${middle(doors.arrival).toFixed(2)} ms median, ${Math.max(...doors.arrival).toFixed(2)} ms worst, over ${rounded(middle(doors.settle))} ms median of streaming (${rounded(Math.max(...doors.settle))} ms worst) before the neighbourhood is up`,
 )

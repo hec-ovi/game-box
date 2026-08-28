@@ -5,27 +5,8 @@ import { Scribe } from '../src/index.ts'
 import { fakeModel, type Sent } from './fake-model.ts'
 import { backgroundOf, lifeOf, shellOf } from './people.ts'
 import { PLAIN, charterOf } from './places.ts'
+import { writtenPlace } from './town.ts'
 import { stopped, wrote } from './wrote.ts'
-
-/** A model that writes whatever the shell asked for, with the family names it is allowed. */
-function answer(call: Sent, options: { name?: string; given?: string; stages?: readonly string[] } = {}) {
-  const shell = shellOf(call)
-  return {
-    name: options.name ?? `The ${shell.letters} House`,
-    character: 'A low room that smells of wet rope, with the radio left on.',
-    // written back to front, so a caller that zips by position rather than by id gets it wrong
-    people: shell.posts.map((postId, i) => ({
-      postId,
-      given: options.given ?? `Given${i}`,
-      family: `${shell.letters[i % shell.letters.length]}orne`,
-      personality: 'Watches the door more than the glasses.',
-      knowledge: ['The tide is late again.', 'Nobody has paid for the crates.'],
-      life: lifeOf(`Given${i}`),
-      background: backgroundOf(`Given${i}`).map((fact, k) => (options.stages ? { ...fact, unlockedBy: options.stages[k % options.stages.length]! } : fact)),
-    })).reverse(),
-    things: shell.things.map((thingId) => ({ thingId, name: `Thing ${thingId}`, description: 'Worn and heavy.' })),
-  }
-}
 
 const bar: InstanceRequest = {
   index: 0,
@@ -67,14 +48,14 @@ function places(count: number): InstanceRequest[] {
 function backwards(total: number) {
   return fakeModel(async (call, index) => {
     await new Promise((resolve) => setTimeout(resolve, (total - index) * 4))
-    return answer(call)
+    return writtenPlace(call)
   })
 }
 
 describe('writing a place and its people in one call', () => {
   it('asks once per place and puts the answer back on the posts the shell named', async () => {
     const { sent, sidecar } = fakeModel((call) =>
-      call.toolName === 'write_instance' ? answer(call) : { name: 'Cold Harbour' },
+      call.toolName === 'write_instance' ? writtenPlace(call) : { name: 'Cold Harbour' },
     )
     const scribe = new Scribe({ sidecar, seed: 'harbour' })
     await wrote(scribe.nameCity({ theme: 'rain-soaked port', seed: 'harbour' }))
@@ -108,7 +89,7 @@ describe('writing a place and its people in one call', () => {
   })
 
   it('tells the place what the plan put in it: the locks, the screens, the camera and the sale', async () => {
-    const { sent, sidecar } = fakeModel((call) => answer(call))
+    const { sent, sidecar } = fakeModel((call) => writtenPlace(call))
     const office: InstanceRequest = {
       ...bar,
       has: {
@@ -130,7 +111,7 @@ describe('writing a place and its people in one call', () => {
   })
 
   it('writes every life and codex through the world\'s own schema, and hands them back on the person', async () => {
-    const { sent, sidecar } = fakeModel((call) => answer(call))
+    const { sent, sidecar } = fakeModel((call) => writtenPlace(call))
     const scribe = new Scribe({ sidecar, seed: 'harbour' })
 
     const [written] = await wrote(scribe.writeInstances([bar]))
@@ -150,7 +131,7 @@ describe('writing a place and its people in one call', () => {
 
   it('sends a codex with a stage nothing is behind back with the stage named', async () => {
     const { sent, sidecar } = fakeModel((call, index) =>
-      answer(call, index === 0 ? { stages: ['met', 'talked'] } : {}),
+      writtenPlace(call, index === 0 ? { stages: ['met', 'talked'] } : {}),
     )
     const scribe = new Scribe({ sidecar, seed: 'harbour' })
 
@@ -175,7 +156,7 @@ describe('writing a place and its people in one call', () => {
       things: [{ thingId: 'item_9999', archetype: 'medkit', index: 1 }],
       has: PLAIN,
     }
-    const { sent, sidecar } = fakeModel((call) => answer(call))
+    const { sent, sidecar } = fakeModel((call) => writtenPlace(call))
     const scribe = new Scribe({ sidecar, seed: 'harbour', concurrency: 2 })
 
     const written = await wrote(scribe.writeInstances([bar, clinic]))
@@ -193,7 +174,7 @@ describe('writing a place and its people in one call', () => {
 
   it('gives every person in the city a name of their own, however many places are written at once', async () => {
     // a model with one favourite first name, which is what a blind agent does
-    const { sent, sidecar } = fakeModel((call) => answer(call, { given: 'Mara' }))
+    const { sent, sidecar } = fakeModel((call) => writtenPlace(call, { given: 'Mara' }))
     const scribe = new Scribe({ sidecar, seed: 'harbour', concurrency: 6 })
 
     const written = await wrote(scribe.writeInstances(places(6)))
@@ -209,7 +190,7 @@ describe('writing a place and its people in one call', () => {
 
   it('gives a sign two places both wanted to the one asked for first, and asks the other again', async () => {
     const { sent, sidecar } = fakeModel((call) =>
-      answer(call, { name: call.user.includes('- The Anchor') ? 'The Second Mate' : 'The Anchor' }),
+      writtenPlace(call, { name: call.user.includes('- The Anchor') ? 'The Second Mate' : 'The Anchor' }),
     )
     const scribe = new Scribe({ sidecar, seed: 'harbour', concurrency: 2 })
 
@@ -223,7 +204,7 @@ describe('writing a place and its people in one call', () => {
   it('hangs a sign whose word is already over another door, rather than losing the city over it', async () => {
     // the retry is what the rule is worth: a word on two doors is a blemish on
     // a street, and the owner would rather have the town than the rule
-    const { sidecar } = fakeModel((call) => answer(call, { name: call.user.includes('- The Anchor') ? 'Anchor Supply' : 'The Anchor' }))
+    const { sidecar } = fakeModel((call) => writtenPlace(call, { name: call.user.includes('- The Anchor') ? 'Anchor Supply' : 'The Anchor' }))
     const scribe = new Scribe({ sidecar, seed: 'harbour', concurrency: 2 })
 
     const written = await wrote(scribe.writeInstances(places(2)))
@@ -249,7 +230,7 @@ describe('writing a place and its people in one call', () => {
     // every place and everybody in it named after its own post, so nothing
     // here is ever asked twice and the list is the only thing that grows
     const { sent, sidecar } = fakeModel((call) =>
-      answer(call, { name: `${shellOf(call).posts[0]} House`, given: shellOf(call).posts[0]! }),
+      writtenPlace(call, { name: `${shellOf(call).posts[0]} House`, given: shellOf(call).posts[0]! }),
     )
     await wrote(new Scribe({ sidecar, seed: 'harbour', concurrency: 4 }).writeInstances(places(60)))
 

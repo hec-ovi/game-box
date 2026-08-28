@@ -1,9 +1,9 @@
 /** @gb/forge: builds a city from a brief, then checks what it built. See CONTRACT.md. */
-export { Forge, type ForgeError, type ForgeResult, type Growth, type GrownQuests } from './forge.ts'
+export { Forge, type ForgeResult, type Growth, type GrownQuests } from './forge.ts'
+export type { ForgeError } from './errors.ts'
 export { summarise } from './summary.ts'
 export { BLOCKS_MAX, STOREYS_DEFAULT, briefContract, type Brief } from './brief.ts'
 export { MOST_PLACES, OPEN_PLACES } from './interior/budget.ts'
-export { OfflineNarrator } from './offline-narrator.ts'
 export { premiseLines } from './premise/render.ts'
 export { questTargets } from './quests/targets.ts'
 /** The history's own shape is `@gb/world`'s. Passed through here while `@gb/scribe` still reads it off this box. */

@@ -1,5 +1,5 @@
 /**
- * The live wiring: the real forge, the real narrators, and every byte that
+ * The live wiring: the real forge, the real narrator, and every byte that
  * passes between them.
  *
  * Nothing here re-implements a stage. A stage's input is whatever `@gb/forge`
@@ -10,7 +10,6 @@
  */
 import {
   Forge,
-  OfflineNarrator,
   STOREYS_DEFAULT,
   summarise,
   type ForgeError,
@@ -150,9 +149,6 @@ export function premiseInputOf(form: Form): { theme: string; seed: string; brief
   }
 }
 
-/** The two authors a stage can be run against. */
-export type Author = 'model' | 'offline'
-
 /** A stage that would not write, in the words the page shows. */
 export interface Stop {
   readonly stage: string
@@ -175,12 +171,11 @@ export function stopOf(error: Unwritten): Stop {
 }
 
 /**
- * The narrator a sandbox runs against. `OfflineNarrator` is a stand-in this page
- * asks for by name, the way the tests and the quest harness do; nothing in the
- * game selects it, and no stage falls back to it.
+ * The narrator every sandbox runs against: the model, through the sidecar. A
+ * city is written by a model or it is not written, so this is the only author
+ * the page has and no stage falls back to another.
  */
-export function narratorFor(author: Author, form: Form, recorder: Recorder, base: string, signal?: AbortSignal): Narrator {
-  if (author === 'offline') return new OfflineNarrator(form.seed)
+export function narratorFor(form: Form, recorder: Recorder, base: string, signal?: AbortSignal): Narrator {
   const sidecar = new Sidecar({ base, fetch: recorder.fetch })
   return new Scribe({ sidecar, seed: form.seed, concurrency: 1, ...(signal ? { signal } : {}) })
 }
@@ -201,11 +196,10 @@ export interface Captured {
 /**
  * The narrator wrapped so the page can see what each stage was handed.
  *
- * It forwards every member the inner narrator has and adds none it does not: an
- * offline narrator has no `namePlaces`, so a build through this one still hangs
- * its signs inside the forge, exactly as it does without the page watching. A
- * stage that would not write is passed straight on, so the build stops here
- * exactly where it stops without the page watching.
+ * It forwards every member the inner narrator has and adds none it does not, so
+ * a build through this one asks exactly the questions it asks unwatched. A stage
+ * that would not write is passed straight on, so the build stops here exactly
+ * where it stops without the page watching.
  */
 export function capturing(inner: Narrator, into: Captured, history?: History): Narrator {
   const narrator: Narrator = {
@@ -283,6 +277,28 @@ export async function buildCity(form: Form, author: Narrator, history?: History)
   }
   captured.world = result.value.world
   return { captured, ms }
+}
+
+export interface PlanOutcome {
+  readonly world?: World
+  /** Why the plan refused: its code and what it carried. */
+  readonly error?: string
+  readonly ms: number
+}
+
+/**
+ * The arithmetic half of a town, drawn with no narrator in the room:
+ * `Forge.plan` is the code a build lays a town out with, stopped before the
+ * writing, so this is the town the brief gives rather than a second guess at it.
+ * Nothing in it is named and no door opens, which is the whole of what a page
+ * can show for free.
+ */
+export function planCity(form: Form, history?: History): PlanOutcome {
+  const started = performance.now()
+  const result = Forge.plan(briefOf(form), history)
+  const ms = Math.round(performance.now() - started)
+  if (!result.ok) return { error: `${result.error.code}\n${refusalOf(result.error)}`, ms }
+  return { world: result.value, ms }
 }
 
 /** Why a build refused, in the words of whichever refusal it was. */

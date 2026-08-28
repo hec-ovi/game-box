@@ -107,9 +107,9 @@ const RINGS: ReadonlyArray<CityOptions> = [{}, { detail: 16, shell: 48 }]
 
 describe('streaming a city round the player', () => {
   for (const chain of CHAINS) {
-    it(`draws every building a camera reaches, and lights only the ones it draws, when the dressing ${chain.how}`, async () => {
+    it(`draws every building a camera reaches, and lights only the ones it draws, when the dressing ${chain.how}`, () => {
       const stood = new Set<string>()
-      for (const [world, rings] of [await town(), await otherTown()].flatMap((one) => RINGS.map((how) => [one, how] as const))) {
+      for (const [world, rings] of [town(), otherTown()].flatMap((one) => RINGS.map((how) => [one, how] as const))) {
         const city = buildCity(world, chain.dressing(), { clutter: false, ...rings })
         expect(world.plots().length).toBeGreaterThan(0)
 
@@ -140,8 +140,8 @@ describe('streaming a city round the player', () => {
     })
   }
 
-  it('never swaps the buffers a batch is drawn through without telling the renderer', async () => {
-    const world = await otherTown()
+  it('never swaps the buffers a batch is drawn through without telling the renderer', () => {
+    const world = otherTown()
     const city = buildCity(world, new Kit(), { clutter: false, detail: 16, shell: 48 })
     new THREE.Scene().add(city.root)
 

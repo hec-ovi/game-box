@@ -288,7 +288,7 @@ export class Boot {
    * played from it: it is the city before anybody writes it.
    */
   async layOut(brief: CityBrief): Promise<Planned> {
-    const laid = await this.#maker.plan(brief)
+    const laid = this.#maker.plan(brief)
     if (!laid.ok) return { ok: false, message: laid.message }
     this.#laid = laid.value
     const zones = laid.value.districts().length

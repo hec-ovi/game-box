@@ -1,14 +1,7 @@
-import { Forge, OfflineNarrator } from '@gb/forge'
-import type { Interior, World } from '@gb/world'
+import { Forge } from '@gb/forge'
+import type { World } from '@gb/world'
 import * as THREE from 'three'
-import {
-  FurnishDressing,
-  FurnishLibrary,
-  SURFACE_TEXTURE_IDS,
-  SurfaceLibrary,
-  furnishKit,
-  type FurnishStyle,
-} from '../src/index.ts'
+import { FurnishDressing, furnishKit, type FurnishStyle } from '../src/index.ts'
 
 export function meshesOf(object: THREE.Object3D): THREE.Mesh[] {
   const found: THREE.Mesh[] = []
@@ -35,20 +28,6 @@ const kit = furnishKit()
 
 export function dressingIn(style: FurnishStyle): FurnishDressing {
   return new FurnishDressing(kit, undefined, style)
-}
-
-/**
- * The same catalog with a pack's worth of surfaces behind it. What is in the
- * images makes no difference to which one a room is given, which is what the
- * tests that use this measure.
- */
-const surfaced = new FurnishLibrary(
-  'surfaces',
-  new SurfaceLibrary(new Map(SURFACE_TEXTURE_IDS.map((id) => [id, { map: new THREE.Texture(), normal: undefined }]))),
-)
-
-export function surfacedDressing(style: FurnishStyle): FurnishDressing {
-  return new FurnishDressing(surfaced, undefined, style)
 }
 
 /**
@@ -83,52 +62,22 @@ export function backwardsMass(object: THREE.Object3D): number {
 }
 
 /**
- * How many places a town is asked to open. `@gb/forge` opens an absolute
- * number, the brief's, whatever the size of the city, and it ranks which ones
- * on what a place holds and how near the middle it stands. Three, the default,
- * is a playthrough's worth and not a catalog's: measured over the seeds below,
- * three opens no bar in any of them, so nobody serves at a bar counter or sits
- * on a bar stool and a sample of a real town misses what the box draws for one.
- * At twelve each of those towns puts a body on all eight props on its own, so
- * the sample stands however the ranking picks next.
+ * A town laid out: the grid, the plots and the charter behind each one, which
+ * is what a test needs to ask this box for a building's far look or for the
+ * language a kind of place is dressed in. Nothing is written and nothing here
+ * is open: a laid-out town has no insides.
  */
-const PLACES = 12
+const planned = new Map<string, World>()
 
-/** A town built the way the game builds one, opening the places these tests have to see inside. */
-async function built(theme: string, seed: string): Promise<World> {
-  const made = await new Forge(new OfflineNarrator(seed)).build({
-    theme,
-    seed,
-    blocksX: 3,
-    blocksY: 3,
-    blockCells: 14,
-    openPlaces: PLACES,
-  })
-  if (!made.ok) throw new Error(JSON.stringify(made.error).slice(0, 400))
-  return made.value.world
-}
-
-/** A town of the ordinary trades: shops, flats, offices, a bar, the places the catalog was drawn for. */
-export async function town(seed = 'furnish'): Promise<World> {
-  return built('old harbour town', seed)
-}
-
-/**
- * The town whose story calls for dancing: the offline neon trade "the clubs"
- * declares a disco, with a dance floor, a gate of bars on its cellar and a
- * camera over its door. The one town with each of those in it.
- */
-export async function clubTown(): Promise<World> {
-  return built('dense neon port city', 'club-1')
-}
-
-/** Seeds a test that has to see the catalog exercised samples over, rather than one town. */
-const TOWN_SEEDS = ['furnish', 'furnish-2', 'furnish-3'] as const
-
-/** Every interior of several towns: what a coverage test reads, so one seed's mix cannot pass for the game's. */
-export async function interiorsAcrossTowns(): Promise<Interior[]> {
-  const worlds = await Promise.all(TOWN_SEEDS.map((seed) => town(seed)))
-  return worlds.flatMap((world) => [...world.interiors()])
+export function town(seed = 'furnish'): World {
+  let made = planned.get(seed)
+  if (!made) {
+    const out = Forge.plan({ theme: 'old harbour town', seed, blocksX: 3, blocksY: 3, blockCells: 14 })
+    if (!out.ok) throw new Error(JSON.stringify(out.error).slice(0, 400))
+    made = out.value
+    planned.set(seed, made)
+  }
+  return made
 }
 
 /** One level upward-looking surface of a built prop: how high it is and how much of it there is. */

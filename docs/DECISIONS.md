@@ -92,7 +92,7 @@ Everything is cut into boxes with a CONTRACT.md, a published JSON Schema and a c
 
 Streets, plot footprints, entrances, rooms, furniture and anchors are arithmetic from a seeded stream. Names, personalities, what people know and quest logic come from the model. A narrator is never asked for a coordinate.
 
-Every answer from the model is a **forced tool call** whose parameters are the JSON Schema of the contract that will validate it, so the thing that defines the shape and the thing that checks it are the same object. A rejected call is retried once with the exact violations quoted back, then falls through to a deterministic offline narrator, so generation always finishes. Quests are written one call at a time.
+Every answer from the model is a **forced tool call** whose parameters are the JSON Schema of the contract that will validate it, so the thing that defines the shape and the thing that checks it are the same object. A rejected call is retried once with the exact violations quoted back, and a stage that still will not come back usable stops the build and names itself, because a model writes every word of a city and nothing stands in for one. Quests are written one call at a time.
 
 Nothing generated is trusted: a quest is refused unless every path ends, every reference resolves, and every item is guaranteed to be in hand before the player is asked for it.
 

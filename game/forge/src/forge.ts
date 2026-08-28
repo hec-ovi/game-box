@@ -1,27 +1,25 @@
-import { err, ok, Rng, type Result, type SchemaViolation } from '@gb/kit'
+import { err, ok, Rng, type Result } from '@gb/kit'
 import { validateQuest, type QuestDoc, type QuestProblem } from '@gb/quest'
-import { questView, World, type IntegrityProblem, type Premise, type Rect, type WorldError } from '@gb/world'
-import { briefContract, type Brief } from './brief.ts'
+import { questView, World, type Premise, type Rect } from '@gb/world'
+import { layOut, planTown, raiseSetup } from './blueprint.ts'
+import { briefContract } from './brief.ts'
 import type { Dropped } from './charters/resolve.ts'
+import { stopped, type ForgeError } from './errors.ts'
 import { openPlacesFor, placesOnNewLand } from './interior/budget.ts'
 import { Avenues } from './layout/avenues.ts'
-import { cutDistricts, districtAt } from './layout/districts.ts'
+import { districtAt } from './layout/districts.ts'
 import { streetLines } from './layout/lines.ts'
-import { planStreets, type StreetPlan } from './layout/plan.ts'
-import { nearnessIn, sitesInBlock, type PlotSite } from './layout/plots.ts'
+import type { PlotSite } from './layout/plots.ts'
 import { Skyline } from './layout/skyline.ts'
-import { layRoads } from './layout/roads.ts'
-import { spreadSites, stationsWanted } from './layout/stations.ts'
-import { paintStreets } from './layout/streets.ts'
-import { askCityName, askSigns, askZoneNames, type Asking, type Zone } from './naming/ask.ts'
+import { askCityName, askSigns, askZoneNames, type Asking } from './naming/ask.ts'
 import { bindings, bindNames } from './naming/bind.ts'
-import { instanceName, PLACEHOLDER_CITY, zoneName } from './naming/placeholders.ts'
+import { instanceName } from './naming/placeholders.ts'
 import { writeNames, type WrittenNames } from './naming/write.ts'
-import type { Instance, InstanceCasting, Narrator, Unwritten, Written, WritingStage } from './narrator.ts'
+import type { Instance, InstanceCasting, Narrator, Written } from './narrator.ts'
 import { writeEachPlace } from './narrator/one-at-a-time.ts'
 import { Signs } from './narrator/signs.ts'
 import { StreetNames } from './narrator/streets.ts'
-import { readHistory, type Founding } from './premise/history.ts'
+import { readHistory } from './premise/history.ts'
 import { castOf, type Casting } from './quests/casting.ts'
 import { questDemand } from './quests/demand.ts'
 import { assemble, dress, PlaceNames, raiseShell } from './raise/assemble.ts'
@@ -29,13 +27,7 @@ import { hangSigns, instanceRequests, nameRequests, planRaise, wantsName, type R
 import type { Chosen, PlannedSite } from './raise/planned.ts'
 import { planSummary, summarise } from './summary.ts'
 import { flavourOf } from './theme/flavour.ts'
-import { kindWeights, stapleKinds } from './theme/plot-mix.ts'
-
-export type ForgeError =
-  | { readonly code: 'invalid-brief'; readonly violations: readonly SchemaViolation[] }
-  | { readonly code: 'unsound-world'; readonly problems: readonly IntegrityProblem[] }
-  /** A stage of the writing stopped. `message` is the sentence to show whoever asked for the city. */
-  | { readonly code: 'unwritten'; readonly stage: WritingStage; readonly message: string }
+import { kindWeights } from './theme/plot-mix.ts'
 
 export interface ForgeResult {
   readonly world: World
@@ -68,15 +60,6 @@ export interface GrownQuests {
   readonly rejected: ForgeResult['rejected']
 }
 
-/** A town laid out: the world with its streets, roads and parts in it, every site a building goes up on, and the parts waiting to be named. */
-interface LaidOut {
-  readonly world: World
-  readonly sites: readonly Chosen[]
-  readonly zones: readonly Zone[]
-}
-
-const GENERATOR_VERSION = '0.1.0'
-
 /**
  * How tall `extend` builds into a gap. A growth fills the holes in a town that
  * is already standing, so it puts up frontage rather than dropping a tower into
@@ -90,8 +73,9 @@ const EXTEND = new Skyline({ maxStoreys: 2, density: 1 })
  * result before handing it over. Geometry is never left to the narrator, and
  * nothing invented is trusted without validation.
  *
- * `plan` is the arithmetic half on its own: the town a brief lays out, with
- * nothing written into it and nobody asked anything.
+ * `Forge.plan` is the arithmetic half on its own, and it is static because it
+ * needs no narrator: a plan is drawn from the brief and the seed, and there is
+ * nobody to ask.
  */
 export class Forge {
   #narrator: Narrator
@@ -141,10 +125,10 @@ export class Forge {
     const premise = history.premise
 
     // 2. the architecture, under placeholder names
-    const laid = this.#layOut(brief, rng, history)
+    const laid = layOut(brief, rng, history)
     if (!laid.ok) return err(laid.error)
     const { world, sites, zones } = laid.value
-    const setup = this.#building(brief, premise, world, rng, brief.openPlaces ?? openPlacesFor(sites.length))
+    const setup = raiseSetup(brief, premise, world, rng, brief.openPlaces ?? openPlacesFor(sites.length))
     const bare = planRaise(world, sites, setup)
     const plots = raiseShell(world, bare, new PlaceNames(bare, (one) => instanceName(one.index)))
 
@@ -195,90 +179,12 @@ export class Forge {
   }
 
   /**
-   * The architecture of a city, with nothing written into it: the street grid,
-   * the roads and the roads out, the parts of town, every building with
-   * its footprint, its height and the part it stands in, and where the trains
-   * board. No interiors, so nobody is standing anywhere, nothing is lying about
-   * and there is no work: this is what a brief gives, before anybody writes it.
-   *
-   * It is the same plan `build` raises, drawn from the same seed by the same
-   * code, so a plot on a plan is the plot the build puts up: same place, same
-   * height, same part of town. What a build adds is the writing, names
-   * included: here the city is `City`, its parts are `Zone 1` and `Zone 2` and
-   * its buildings `Instance 1` and `Instance 2`, which is the architecture
-   * saying what it is rather than a gap where a name goes.
-   *
-   * `history` is what a narrator already wrote, and the plan is drawn against
-   * it exactly as a build would be. Without one nothing is asked of anybody and
-   * no model is involved: the town is planned off the presets and the seed.
+   * The architecture of a city, with nothing written into it. See
+   * `src/blueprint.ts`: it is static and takes no narrator, because a plan is
+   * arithmetic and there is nobody to ask.
    */
-  async plan(input: unknown, history?: unknown): Promise<Result<World, ForgeError>> {
-    const parsed = briefContract.parse(input)
-    if (!parsed.ok) return err({ code: 'invalid-brief', violations: parsed.error })
-    const brief = parsed.value
-    const rng = new Rng(brief.seed)
-    const founding = readHistory(history)
-
-    const laid = this.#layOut(brief, rng, founding)
-    if (!laid.ok) return err(laid.error)
-    const { world, sites } = laid.value
-    // no door opens, so nothing is asked of a narrator: every building on a plan
-    // is the frontage it is on the street, under the number it was laid out with
-    const planned = planRaise(world, sites, this.#building(brief, founding.premise, world, rng, 0))
-    raiseShell(world, planned, new PlaceNames(planned, (one) => instanceName(one.index)))
-
-    const problems = world.check()
-    if (problems.length) return err({ code: 'unsound-world', problems })
-    return ok(world)
-  }
-
-  /**
-   * Everything about a town that is arithmetic: the grid founded and painted,
-   * the roads laid, the parts of the city cut, and every site a building goes
-   * up on. Nobody is asked anything here, and nothing is named: the city is
-   * `City` and its parts are `Zone 1` upwards until the story says otherwise.
-   */
-  #layOut(brief: Brief, rng: Rng, history: Founding): Result<LaidOut, ForgeError> {
-    const streets = planStreets(brief, rng.fork('streets'))
-    const { brief: owner, asks } = brief
-    const found = World.found({
-      name: PLACEHOLDER_CITY,
-      theme: brief.theme,
-      seed: brief.seed,
-      width: streets.size.width,
-      height: streets.size.height,
-      // the history and the kinds of place go into the file, so a city somebody
-      // is sent still knows what it is about and what each place is, and
-      // growing it later grows it against the same story
-      ...(history.premise ? { premise: history.premise } : {}),
-      charters: history.charters,
-      ...(owner ? { brief: owner } : {}),
-      ...(asks ? { asks } : {}),
-      generator: { name: 'forge', version: GENERATOR_VERSION },
-    })
-    if (!found.ok) return err({ code: 'invalid-brief', violations: violationsOf(found.error) })
-    const world = found.value
-    paintStreets(world, streets)
-    layRoads(world, streets.crossings, streets.exits)
-    // the town is cut into its parts before a plot is placed, so every plot can
-    // say which one it stands in as it goes up
-    const cut = this.#cut(world, streets, rng.fork('districts'))
-    // the sites are chosen before the doors are counted, because how many open
-    // follows how many buildings there are and not how far the town spreads
-    return ok({ world, sites: this.#townSites(brief, streets, rng, history.premise, world, cut.byBlock), zones: cut.zones })
-  }
-
-  /** What a whole city is raised against: its theme, its story, its signs, its streets and its door stream. */
-  #building(brief: Brief, premise: Premise | undefined, world: World, rng: Rng, places: number): RaiseSetup {
-    return {
-      theme: brief.theme,
-      ...(premise ? { premise } : {}),
-      places,
-      signs: new Signs(brief.seed),
-      streets: StreetNames.of(world),
-      doors: rng.fork('doors'),
-      people: rng,
-    }
+  static plan(input: unknown, history?: unknown): Result<World, ForgeError> {
+    return planTown(input, history)
   }
 
   /**
@@ -375,89 +281,6 @@ export class Forge {
     const requests = instanceRequests(planned, setup, cast ? (one) => cast.at(one) : undefined)
     if (!requests.length) return ok([])
     return this.#narrator.writeInstances?.(requests) ?? writeEachPlace(this.#narrator, requests)
-  }
-
-  /**
-   * Cuts the town into its parts and writes them into the world under
-   * placeholder names.
-   *
-   * The shapes are arithmetic, like everything else here: the cut is the
-   * seed's. What each part is called comes later, out of the story and the work
-   * in it, so what goes in now is `Zone 1` upwards and the naming pass writes
-   * over it.
-   */
-  #cut(world: World, streets: StreetPlan, rng: Rng): { byBlock: ReadonlyMap<number, string>; zones: Zone[] } {
-    // parks and plazas are cut in with the built blocks: a district is a part
-    // of the town rather than a set of buildings, so the map fills and a green
-    // square belongs to the quarter it stands in. The built blocks come first,
-    // so a block's number here is its number in the plan
-    const ground = [...streets.blocks, ...streets.open.map((one) => one.rect)]
-    const cut = cutDistricts(ground, rng)
-    if (!cut.length) return { byBlock: new Map(), zones: [] }
-    const districts = cut.map((one, index) => ({
-      id: world.mintId('district'),
-      name: zoneName(index),
-      blocks: one.blocks.map((block) => ground[block]!),
-    }))
-    if (!world.recordDistricts(districts).ok) return { byBlock: new Map(), zones: [] }
-    return {
-      byBlock: new Map(cut.flatMap((one, index) => one.blocks.map((block) => [block, districts[index]!.id] as const))),
-      zones: cut.map((one, index) => ({ id: districts[index]!.id, bearing: one.bearing, blocks: one.blocks.length })),
-    }
-  }
-
-  /**
-   * What a whole town is built out of. What kind of town it is decides the mix,
-   * its own history pushes that further, the seed moves it around, and the few
-   * places the town is known for, the ones the history demands included, are
-   * dropped on seeded sites before the rest is rolled.
-   */
-  #townSites(brief: Brief, streets: StreetPlan, rng: Rng, premise: Premise | undefined, world: World, districts: ReadonlyMap<number, string>): Chosen[] {
-    const charters = world.charters()
-    const sites: PlotSite[] = []
-    const inDistrict: (string | undefined)[] = []
-    streets.blocks.forEach((block, index) => {
-      for (const site of sitesInBlock(block, rng.fork(`block/${index}`))) {
-        sites.push(site)
-        inDistrict.push(districts.get(index))
-      }
-    })
-    const avenues = Avenues.from(streets.columns, streets.rows)
-    const mix = rng.fork('plots')
-    const flavour = flavourOf(brief.theme)
-    const weights = kindWeights(flavour, mix, charters, premise?.build)
-    const wanted = stapleKinds(flavour, mix, charters, premise?.build.mustHave)
-    const spots = mix.shuffle(sites.map((_, index) => index)).slice(0, wanted.length)
-    const staples = new Map(spots.map((site, order) => [site, wanted[order]!]))
-    const byWord = new Map(charters.map((charter) => [charter.word, charter]))
-    // Somewhere to board every five hundred metres, spread over the town. The
-    // mix never rolls the kind that boards, but a history's `mustHave` demands
-    // it like any other kind, so whatever the staples already put up is counted
-    // here: a town boards nowhere or boards at least twice, because a lone
-    // entrance is a ride with nowhere to go
-    const subway = charters.find((charter) => charter.transit === 'subway')
-    if (subway) {
-      const span = Math.max(streets.size.width, streets.size.height) * world.cellSize
-      const standing = [...staples].filter(([, word]) => byWord.get(word)?.transit === 'subway').map(([site]) => site)
-      const spread = { sites, count: stationsWanted(span, standing.length), taken: new Set(staples.keys()), standing, rng: mix.fork('stations') }
-      for (const site of spreadSites(spread)) staples.set(site, subway.word)
-    }
-    const skyline = new Skyline(brief)
-
-    const chosen: Chosen[] = []
-    for (const [index, site] of sites.entries()) {
-      const siteRng = rng.fork(`site/${index}`)
-      // both draws happen either way, so whether a site is a staple cannot shift the rest
-      const built = siteRng.chance(brief.density)
-      const rolled = siteRng.weighted(weights)
-      const charter = byWord.get(staples.get(index) ?? (built ? rolled : ''))
-      if (!charter) continue
-      const onAvenue = avenues.has(site.entrance)
-      const spot = { onAvenue, nearness: nearnessIn(streets.size, site.entrance) }
-      const district = inDistrict[index]
-      chosen.push({ site, charter, onAvenue, ...(district ? { district } : {}), storeys: skyline.storeysFor(charter, spot, siteRng), rng: siteRng })
-    }
-    return chosen
   }
 
   /**
@@ -559,17 +382,7 @@ export class Forge {
   }
 }
 
-/** A stage that stopped, as the error a caller reads: the sentence goes on `message`, where the launcher looks for it. */
-const stopped = (failure: Unwritten): ForgeError => ({ code: 'unwritten', stage: failure.stage, message: failure.message })
-
 const overlaps = (a: Rect, b: Rect): boolean => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
-
-/** The world refusing a spec means the brief asked for a city that cannot exist. */
-function violationsOf(error: WorldError): readonly SchemaViolation[] {
-  if (error.code === 'invalid-document') return error.violations
-  if (error.code === 'inconsistent-world') return error.problems.map((p) => ({ path: p.where, message: p.message }))
-  return [{ path: '(root)', message: error.message }]
-}
 
 /**
  * The people the town's work needs, by the building they have to be standing

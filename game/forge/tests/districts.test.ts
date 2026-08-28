@@ -1,8 +1,6 @@
-import { ok } from '@gb/kit'
 import type { District, Rect, World } from '@gb/world'
 import { describe, expect, it } from 'vitest'
-import { Forge, OfflineNarrator, type DistrictRequest } from '../src/index.ts'
-import { buildTown } from './support.ts'
+import { planned } from './support.ts'
 
 /**
  * The parts a city is cut into.
@@ -72,8 +70,8 @@ class Lattice {
 const allBlocks = (world: World): Rect[] => world.districts().flatMap((district) => district.blocks)
 
 describe('the parts a city is cut into', () => {
-  it('holds every block of the town in exactly one district, each of them one piece you can walk across', async () => {
-    const { world } = await buildTown('districts-1', { blocksX: 20, blocksY: 20 })
+  it('holds every block of the town in exactly one district, each of them one piece you can walk across', () => {
+    const world = planned('districts-1', { blocksX: 20, blocksY: 20 })
     const districts = world.districts()
     expect(districts.length).toBeGreaterThan(1)
 
@@ -97,66 +95,19 @@ describe('the parts a city is cut into', () => {
     }
   })
 
-  it('cuts shapes that are not rectangles', async () => {
-    const { world } = await buildTown('districts-1', { blocksX: 20, blocksY: 20 })
+  it('cuts shapes that are not rectangles', () => {
+    const world = planned('districts-1', { blocksX: 20, blocksY: 20 })
     const lattice = new Lattice(allBlocks(world))
     const ragged = world.districts().filter((district) => !lattice.rectangle(district))
     expect(ragged.length, 'every district came out a rectangle').toBeGreaterThan(0)
   })
 
-  it('stands every plot in a district the city has cut, and grows new land into the part of town it lands in', async () => {
-    const { forge, world } = await buildTown('districts-2', { blocksX: 8, blocksY: 8 })
+  it('stands every plot in a district the city has cut, and can say which one off a plot id', () => {
+    const world = planned('districts-2', { blocksX: 8, blocksY: 8 })
     const ids = new Set(world.districts().map((district) => district.id))
+
     expect(world.plots().every((plot) => plot.district && ids.has(plot.district))).toBe(true)
     expect(world.district(world.plots()[0]!.id)?.name).toBe(world.districts().find((one) => one.id === world.plots()[0]!.district)?.name)
-
-    const grown = await forge.extend(world, 6)
-    expect(grown.ok).toBe(true)
-    if (!grown.ok) return
-    expect(grown.value.length).toBeGreaterThan(0)
-    expect(grown.value.every((plotId) => ids.has(world.plot(plotId)!.district ?? ''))).toBe(true)
-    expect(world.check()).toEqual([])
-  })
-
-  it('names every district, and no two of them the same', async () => {
-    const { world } = await buildTown('districts-3', { blocksX: 16, blocksY: 16 })
-    const names = world.districts().map((district) => district.name)
-    expect(names.length).toBeGreaterThan(1)
-    expect(names.every((name) => name.length > 2)).toBe(true)
-    expect(new Set(names.map((name) => name.toLowerCase())).size).toBe(names.length)
-  })
-
-  it('takes the names a narrator writes, and composes one for anything it will not write', async () => {
-    let asked: readonly DistrictRequest[] = []
-    const offline = new OfflineNarrator('districts-4')
-    const forge = new Forge({
-      writePremise: (input) => offline.writePremise(input),
-      nameCity: (input) => offline.nameCity(input),
-      namePlace: (input) => offline.namePlace(input),
-      describeNpc: (input) => offline.describeNpc(input),
-      describeItem: (input) => offline.describeItem(input),
-      writeInstances: (requests) => offline.writeInstances(requests),
-      writeQuests: (input) => offline.writeQuests(input),
-      nameDistricts: async (requests) => {
-        asked = requests
-        // one name for the lot: the second is left blank and the rest repeat the first
-        return ok(requests.map((_, at) => (at === 1 ? '' : 'Kiln Bay')))
-      },
-    })
-    const built = await forge.build({ theme: 'quiet coastal town', seed: 'districts-4', blocksX: 16, blocksY: 16 })
-    expect(built.ok).toBe(true)
-    if (!built.ok) return
-
-    // it is shown how much of the town each part holds and which way it lies, and no metre
-    expect(asked.length).toBe(built.value.world.districts().length)
-    expect(asked[0]!.blocks).toBeGreaterThan(0)
-    expect(asked.map((request) => request.bearing).every((bearing) => bearing.length > 0)).toBe(true)
-    expect(JSON.stringify(asked)).not.toContain('rect')
-
-    const names = built.value.world.districts().map((district) => district.name)
-    expect(names[0]).toBe('Kiln Bay')
-    expect(names[1]).not.toBe('')
-    expect(new Set(names.map((name) => name.toLowerCase())).size).toBe(names.length)
   })
 })
 

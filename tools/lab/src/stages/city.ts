@@ -7,10 +7,10 @@
  * about.
  */
 import { MOUNTAIN_CELLS } from '@gb/forge'
-import { CELL, METRICS, SHIPPED_CHARTERS, type Word } from '@gb/world'
+import { CELL, METRICS, SHIPPED_CHARTERS, type Word, type World } from '@gb/world'
 import { charterTool, NAME_CITY, signsTool, WRITE_PREMISE } from '../../../../game/scribe/src/tools.ts'
 import { el, field, json, pre } from '../dom.ts'
-import { buildCity, narratorFor, premiseInputOf } from '../pipeline.ts'
+import { buildCity, narratorFor, planCity, premiseInputOf } from '../pipeline.ts'
 import type { Json } from '../schema.ts'
 import { exchangeViews, sandbox, showProblems, type Call, type Fact, type Lab, type Stage } from '../stage.ts'
 import { site } from '../source.ts'
@@ -37,18 +37,17 @@ export const CITY: Stage = {
 
   sandbox(lab) {
     const alsoBuild = el('input', { type: 'checkbox' }) as HTMLInputElement
-    alsoBuild.checked = true
     return sandbox(
       lab,
       'write the history',
       [
-        el('p', { class: 'hint' }, 'Runs writePremise with the brief in the header, then every charter the answer calls for. The city name and the signs follow in the same build.'),
-        field('Then build the city offline on this history, to capture the input of stages 2, 3 and 4', alsoBuild),
-        el('p', { class: 'hint' }, 'The offline build is the real Forge.build: the room plans, the posts, the locks and the quest summary it makes are what the next stages are handed.'),
+        el('p', { class: 'hint' }, 'Runs writePremise with the brief in the header, then every charter the answer calls for. The town that history plans is drawn straight after it, off Forge.plan, which is arithmetic and asks nobody anything.'),
+        field('Then write the whole city on this history, to capture the input of stages 2, 3 and 4', alsoBuild),
+        el('p', { class: 'hint' }, 'That is the real Forge.build: the work, the city name, every sign in the town and every place that opens, all written by the model. The room plans, the posts, the locks and the quest summary the next stages are handed are made on the way there and exist nowhere before it, so a whole town of calls is what they cost.'),
       ],
       async (run, signal) => {
-        const author = narratorFor(lab.author, lab.form, lab.recorder, lab.base, signal)
-        if (!author.writePremise) throw new Error('this author has no writePremise')
+        const author = narratorFor(lab.form, lab.recorder, lab.base, signal)
+        if (!author.writePremise) throw new Error('the scribe offers no writePremise')
         const input = premiseInputOf(lab.form)
         run.out.appendChild(el('h3', {}, 'The input the forge hands it'))
         run.out.appendChild(json(input))
@@ -68,33 +67,53 @@ export const CITY: Stage = {
         run.out.appendChild(el('h3', {}, 'The validated history'))
         run.out.appendChild(json(history, true))
 
-        if (alsoBuild.checked) {
-          run.say('building the city offline on that history', 'work')
-          const offline = narratorFor('offline', lab.form, lab.recorder, lab.base)
-          const outcome = await buildCity(lab.form, offline, history)
-          Object.assign(lab.captured, outcome.captured)
-          lab.refresh()
-          run.out.appendChild(el('h3', {}, `The city, built offline in ${outcome.ms} ms`))
-          if (outcome.stopped) {
-            run.stopped(outcome.stopped)
-            return
-          }
-          run.out.appendChild(
-            pre(
-              outcome.error ??
-                [
-                  `city: ${outcome.captured.cityName ?? '?'}`,
-                  `plots: ${outcome.captured.world?.plots().length ?? 0}`,
-                  `places that open: ${outcome.captured.instanceRequests?.length ?? 0}`,
-                  `people: ${outcome.captured.world?.npcs().length ?? 0}`,
-                  `quests: ${outcome.captured.quests?.length ?? 0}`,
-                ].join('\n'),
-            ),
-          )
+        const planned = planCity(lab.form, history)
+        run.out.appendChild(el('h3', {}, `The town it plans, laid out in ${planned.ms} ms and no call`))
+        run.out.appendChild(pre(planned.world ? planLines(planned.world).join('\n') : (planned.error ?? 'nothing came back')))
+
+        if (!alsoBuild.checked) return
+        run.say('writing the city on that history', 'work')
+        const already = lab.recorder.exchanges.length
+        const builder = narratorFor(lab.form, lab.recorder, lab.base, signal)
+        const outcome = await buildCity(lab.form, builder, history)
+        Object.assign(lab.captured, outcome.captured)
+        lab.refresh()
+        const calls = lab.recorder.exchanges.slice(already)
+        run.out.appendChild(el('h3', {}, `The calls the build made (${calls.length})`))
+        run.out.appendChild(exchangeViews(calls))
+        showProblems(run, builder)
+        run.out.appendChild(el('h3', {}, `The city, written in ${outcome.ms} ms`))
+        if (outcome.stopped) {
+          run.stopped(outcome.stopped)
+          return
         }
+        run.out.appendChild(
+          pre(
+            outcome.error ??
+              [
+                `city: ${outcome.captured.cityName ?? '?'}`,
+                `plots: ${outcome.captured.world?.plots().length ?? 0}`,
+                `places that open: ${outcome.captured.instanceRequests?.length ?? 0}`,
+                `people: ${outcome.captured.world?.npcs().length ?? 0}`,
+                `quests: ${outcome.captured.quests?.length ?? 0}`,
+              ].join('\n'),
+          ),
+        )
       },
     )
   },
+}
+
+/** What a plan settles, which is everything about a town that is not somebody's writing. */
+function planLines(world: World): readonly string[] {
+  const plots = world.plots()
+  return [
+    `plots: ${plots.length}`,
+    `parts of the city: ${world.districts().length}`,
+    `where the trains board: ${world.stations().length}`,
+    `tallest: ${plots.reduce((high, plot) => Math.max(high, plot.storeys), 0)} storeys`,
+    `doors that open: ${world.interiors().length}, because a plan stops before the writing and the writing is what opens one`,
+  ]
 }
 
 function premiseCall(): Call {
@@ -144,7 +163,7 @@ function charterCall(word: Word): Call {
     returns: [
       { field: 'label', marks: ['file', 'prompt'], note: 'what a person calls such a place. Every later prompt about one of these buildings is shown it.' },
       { field: 'blade', marks: ['file', 'screen'], note: 'the word spelled down the blade sign on the front of the building, and on a subway entrance.' },
-      { field: 'names[]', marks: ['file'], note: 'the templates `{family}`, `{adjective}` and `{noun}` that `OfflineNarrator` fills, which is what the tests and the quest harness get. A build hangs its signs with `name_signs`.' },
+      { field: 'names[]', marks: ['file'], note: 'the templates `{family}`, `{adjective}` and `{noun}` a sign is composed from when a narrator offers no `name_signs`, filled off the town\'s own word pool. A build through the model hangs every sign with `name_signs` instead.' },
       { field: 'rumours[]', marks: ['prompt'], note: 'rendered into prompts by `charter-lines.ts` and read by nothing else in the repository. No person in the game ever says one.' },
       { field: 'share, prominence, residential, size, street, access, transit, service, work, holding, finish, rooms', marks: ['file', 'shape'], note: 'every one is a routine the engine already runs: the mix weight, the facade, whether the door opens to you, which rooms are cut, what stands in them, whether a room is shut and whether a screen goes on the desk.' },
     ],

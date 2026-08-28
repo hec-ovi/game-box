@@ -1,32 +1,35 @@
-import { Forge, OfflineNarrator } from '@gb/forge'
 import { cellRows, World } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { Bundle, Pack, stableJson, type OpenedBundle, type PackDoc } from '../src/index.ts'
+import { errand, grow, laidOut, type Raised } from './town.ts'
 
 const ART = [{ pack: 'kenney-city', version: '1.0.0' }]
 
-/** A loosely built town, so `extend` has ground to build on and opens a few of what it builds. */
-async function build(seed: string) {
-  const forge = new Forge(new OfflineNarrator(seed))
-  const built = await forge.build({ theme: 'harbour town', seed, blocksX: 3, blocksY: 3, blockCells: 14, density: 0.5 })
-  if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 300))
-  const opened = await Bundle.open(await Bundle.pack(built.value.world, built.value.quests, { requires: ART }), ART)
+/** A town with one place open in it and a job to do there, sealed and opened as the file anybody would hold. */
+async function based(seed: string, world = laidOut(seed)) {
+  const [place] = grow(world, 1, { anchors: 2, people: 1, things: 2 })
+  const quests = [errand('quest_0001', 'The thing on the shelf', place!)]
+  const opened = await Bundle.open(await Bundle.pack(world, quests, { requires: ART }), ART)
   if (!opened.ok) throw new Error(JSON.stringify(opened.error).slice(0, 300))
-  return { forge, built: built.value, base: opened.value }
+  return { base: opened.value, place: place! }
 }
 
 /**
- * The base city, and the same city grown by `Forge.extend` with one more quest
- * written for it. The quest is a base quest under the next id, so it names the
- * base's people and places, which is what a pack's quests are allowed to do.
+ * The base city, and the same city with one more building on it and one more
+ * quest over it. The growth is written onto a world loaded from the base's own
+ * document, so the base opened on its own is never the object that was grown,
+ * which is the shape a caller who grew a city is left in.
+ *
+ * The new quest sends the player to the base's own place with what the growth
+ * put up, because a pack's quests are validated against the whole city and may
+ * name what the base already had.
  */
-async function grown() {
-  const { forge, built, base } = await build('pack-test')
-  const extension = await forge.extend(built.world, 30)
-  if (!extension.ok) throw new Error(JSON.stringify(extension.error).slice(0, 300))
-  const quest = { ...structuredClone(built.quests[0]!), id: `quest_${String(built.quests.length + 1).padStart(4, '0')}`, title: 'The same errand, asked again' }
-  const extended = { world: built.world, quests: [...built.quests, quest] }
-  return { base, extended, added: extension.value, quest }
+async function grown(base: OpenedBundle, at: Raised) {
+  const loaded = World.load(base.world.toJSON())
+  if (!loaded.ok) throw new Error(JSON.stringify(loaded.error).slice(0, 300))
+  const [added] = grow(loaded.value, 1, { anchors: 3, people: 2, things: 3 })
+  const quest = errand('quest_0002', 'The new thing, stowed in the old place', at, added!.itemIds[0]!)
+  return { extended: { world: loaded.value, quests: [...base.quests, quest] }, added: added!, quest }
 }
 
 async function cut(base: OpenedBundle, extended: { world: World; quests: OpenedBundle['quests'] }): Promise<PackDoc> {
@@ -37,17 +40,17 @@ async function cut(base: OpenedBundle, extended: { world: World; quests: OpenedB
 
 describe('Pack', () => {
   it('holds only what the extension added, and applies back to the extended city byte for byte, twice', async () => {
-    const { base, extended, added, quest } = await grown()
+    const { base, place } = await based('pack-test')
+    const { extended, added, quest } = await grown(base, place)
     const baseDoc = JSON.stringify(base.world.toJSON())
     const pack = await cut(base, extended)
     const extendedDoc = extended.world.toJSON()
 
     expect(pack.base).toEqual({ worldId: base.world.id, contentHash: base.contentHash })
-    expect(pack.world.plots.map((plot) => plot.id)).toEqual(added)
-    expect(pack.world.interiors.length).toBe(extendedDoc.interiors.length - base.world.toJSON().interiors.length)
-    expect(pack.world.interiors.length, 'the extension opened nothing, so the pack proves less than it should').toBeGreaterThan(0)
-    expect(pack.world.npcs.length).toBeGreaterThan(0)
-    expect(pack.world.items.length).toBeGreaterThan(0)
+    expect(pack.world.plots.map((plot) => plot.id)).toEqual([added.plotId])
+    expect(pack.world.interiors.map((interior) => interior.id)).toEqual([added.interiorId])
+    expect(pack.world.npcs.map((npc) => npc.id)).toEqual(added.npcIds)
+    expect(pack.world.items.map((item) => item.id)).toEqual(added.itemIds)
     expect(pack.world.cells.every((cell) => cell.kind === 'building')).toBe(true)
     expect(pack.world.idCounters).toEqual(extendedDoc.idCounters)
     expect(pack.world.idCounters.plot).toBeGreaterThan(base.world.toJSON().idCounters.plot!)
@@ -80,30 +83,25 @@ describe('Pack', () => {
     // a file shared before the grid could be run length encoded carries rows,
     // and applying a pack to it must not rewrite the picture into runs: the
     // hash every other pack names it by is over those bytes
-    const { forge, built } = await build('rows-town')
-    const doc = built.world.toJSON()
-    const old = World.load({ ...doc, grid: { width: doc.grid.width, height: doc.grid.height, rows: cellRows(doc.grid) } })
-    if (!old.ok) throw new Error(JSON.stringify(old.error).slice(0, 300))
-    const opened = await Bundle.open(await Bundle.pack(old.value, built.quests, { requires: ART }), ART)
-    if (!opened.ok) throw new Error(JSON.stringify(opened.error).slice(0, 300))
+    const doc = laidOut('rows-town').toJSON()
+    const rows = World.load({ ...doc, grid: { width: doc.grid.width, height: doc.grid.height, rows: cellRows(doc.grid) } })
+    if (!rows.ok) throw new Error(JSON.stringify(rows.error).slice(0, 300))
+    const { base, place } = await based('rows-town', rows.value)
+    const { extended } = await grown(base, place)
 
-    const extension = await forge.extend(old.value, 30)
-    if (!extension.ok) throw new Error(JSON.stringify(extension.error).slice(0, 300))
-    const pack = await cut(opened.value, { world: old.value, quests: built.quests })
-
-    const applied = await Pack.apply(opened.value, JSON.parse(JSON.stringify(pack)), ART)
+    const applied = await Pack.apply(base, JSON.parse(JSON.stringify(await cut(base, extended))), ART)
     expect(applied.ok, JSON.stringify('error' in applied ? applied.error : '').slice(0, 300)).toBe(true)
     if (!applied.ok) return
     const grid = applied.value.world.toJSON().grid
     expect(grid.rows, 'the pack rewrote the base picture into runs').toBeDefined()
     expect(grid.runs).toBeUndefined()
-    expect(stableJson(applied.value.world.toJSON())).toBe(stableJson(old.value.toJSON()))
+    expect(stableJson(applied.value.world.toJSON())).toBe(stableJson(extended.world.toJSON()))
   })
 
   it('refuses a pack cut from another city, one edited after it was sealed, and one that is not a pack', async () => {
-    const { base, extended } = await grown()
-    const pack = await cut(base, extended)
-    const other = (await build('another-town')).base
+    const { base, place } = await based('pack-test')
+    const pack = await cut(base, (await grown(base, place)).extended)
+    const other = (await based('another-town')).base
 
     const elsewhere = await Pack.apply(other, pack)
     expect(elsewhere.ok).toBe(false)
@@ -121,7 +119,8 @@ describe('Pack', () => {
   })
 
   it('refuses to cut a pack from a city that changed or dropped what the base had, naming each', async () => {
-    const { base, extended } = await grown()
+    const { base, place } = await based('pack-test')
+    const { extended } = await grown(base, place)
     const doc = extended.world.toJSON()
     const renamed = World.load({ ...doc, plots: doc.plots.map((plot, index) => (index === 0 ? { ...plot, name: 'Renamed' } : plot)) })
     if (!renamed.ok) throw new Error('the renamed town did not load')

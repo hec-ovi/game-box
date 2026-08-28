@@ -9,8 +9,8 @@ function boundsOf(object: THREE.Object3D): THREE.Box3 {
 }
 
 describe('buildCity', () => {
-  it('puts every building where the grid says, at the size the plot says', async () => {
-    const world = await town()
+  it('puts every building where the grid says, at the size the plot says', () => {
+    const world = town()
     const city = buildCity(world, new Greybox())
 
     expect(city.buildings.size).toBe(world.plots().length)
@@ -26,8 +26,8 @@ describe('buildCity', () => {
     }
   })
 
-  it('gives every building a doorstep on the pavement in front of it', async () => {
-    const world = await town()
+  it('gives every building a doorstep on the pavement in front of it', () => {
+    const world = town()
     const city = buildCity(world, new Greybox())
 
     for (const plot of world.plots()) {
@@ -43,8 +43,8 @@ describe('buildCity', () => {
     }
   })
 
-  it('says which building a ray hit, though they are all in one batch', async () => {
-    const world = await town()
+  it('says which building a ray hit, though they are all in one batch', () => {
+    const world = town()
     const city = buildCity(world, new Greybox())
     const raycaster = new THREE.Raycaster()
 
@@ -59,8 +59,8 @@ describe('buildCity', () => {
     }
   })
 
-  it('lays the ground once per surface instead of once per cell', async () => {
-    const world = await town()
+  it('lays the ground once per surface instead of once per cell', () => {
+    const world = town()
     const city = buildCity(world, new Greybox())
 
     const ground = city.root.children.filter((child) => child.name.startsWith('ground:'))
@@ -76,8 +76,8 @@ describe('buildCity', () => {
     expect(sidewalk.min.y).toBeCloseTo(0, 3)
   })
 
-  it('rings the valley in mountains, as one instanced block per cell', async () => {
-    const world = await town()
+  it('rings the valley in mountains, as one instanced block per cell', () => {
+    const world = town()
     const city = buildCity(world, new Greybox())
 
     const mountains = city.root.getObjectByName('mountains') as THREE.InstancedMesh
@@ -88,8 +88,8 @@ describe('buildCity', () => {
 })
 
 describe('buildInterior', () => {
-  it('builds a room you can stand in, with the furniture and the anchors where the plan puts them', async () => {
-    const world = await town()
+  it('builds a room you can stand in, with the furniture and the anchors where the plan puts them', () => {
+    const world = town()
     const interior = world.interiors().find((i) => i.anchors.length > 0 && i.furniture.length > 0)!
     const build = buildInterior(world, interior, new Greybox())
 
@@ -117,8 +117,8 @@ describe('buildInterior', () => {
     expect(boundsOf(build.root).max.y).toBeCloseTo(METRICS.building.groundFloorHeight, 1)
   })
 
-  it('leaves a gap in the wall where a door is', async () => {
-    const world = await town()
+  it('leaves a gap in the wall where a door is', () => {
+    const world = town()
     const interior = world.interiors()[0]!
     const build = buildInterior(world, interior, new Greybox())
     const door = interior.doors.find((d) => d.from === 'outside')!
@@ -134,8 +134,8 @@ describe('buildInterior', () => {
 })
 
 describe('spawn', () => {
-  it('starts the player on the pavement at the first door that opens, looking at it', async () => {
-    const world = await town()
+  it('starts the player on the pavement at the first door that opens, looking at it', () => {
+    const world = town()
     const city = buildCity(world, new Greybox())
     // most of a city is shut: the first door on the street is usually not one you can go through
     const shut = world.plots().filter((plot) => !plot.interiorId).length
@@ -184,8 +184,8 @@ describe('spawn', () => {
 })
 
 describe('coming in', () => {
-  it('faces into the room, from a door on the street side of it', async () => {
-    const world = await town()
+  it('faces into the room, from a door on the street side of it', () => {
+    const world = town()
     for (const interior of world.interiors()) {
       const build = buildInterior(world, interior, new Greybox())
       const inside = {

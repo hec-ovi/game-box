@@ -50,7 +50,7 @@ export const INSTANCES: Stage = {
           site('game/scribe/src/brief-lines.ts', 'export function briefLines', 'how that brief is worded to the model'),
         ],
         returns: [
-          { field: 'name', marks: ['dropped'], note: 'still in the tool, and the building keeps the sign that went up over it before this call. Measured on a 2x2 offline town: three places written under names of their own, three plots still carrying the names the sign call hung.' },
+          { field: 'name', marks: ['dropped'], note: 'still in the tool, and nothing reads it. The sign hung before this call is what the building keeps: `assemble.ts` builds its `PlaceNames` off `one.sign` and never looks at what came back here.' },
           { field: 'character', marks: ['file', 'screen'], note: 'what the place is. Written to `@gb/world`\'s `Interior.description` by `assemble.ts`, so it is in the file and under the place\'s name in the codex. The one-place-at-a-time path writes none, and the interior carries no field at all.' },
           { field: 'people[].postId', marks: ['shape'], note: 'the caller\'s own anchor id, handed out and handed back, so a person is zipped onto a post by id and never by position.' },
           { field: 'people[].given, people[].family', marks: ['file', 'screen'], note: 'joined into `npc.name`. The family name can only start with the four letters this place was dealt, because the schema will not decode anything else.' },
@@ -95,8 +95,8 @@ export const INSTANCES: Stage = {
         run.out.appendChild(el('h3', {}, 'The request the forge hands the narrator'))
         run.out.appendChild(json(request, true))
 
-        const author = narratorFor(lab.author, lab.form, lab.recorder, lab.base, signal)
-        if (!author.writeInstances) throw new Error('this author writes places one question at a time; it has no writeInstances')
+        const author = narratorFor(lab.form, lab.recorder, lab.base, signal)
+        if (!author.writeInstances) throw new Error('the scribe offers no writeInstances, so a place is written one question at a time')
         const written = await author.writeInstances([request])
         run.out.appendChild(el('h3', {}, `The call (${lab.recorder.exchanges.length})`))
         run.out.appendChild(exchangeViews(lab.recorder.exchanges))

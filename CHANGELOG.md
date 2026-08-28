@@ -27,7 +27,7 @@ a model name in a request is a word out of an HTTP service's catalogue: the game
 asks a server of its own for `default`, and handing that to an agent on this
 machine exits 1 with nothing on stderr. Measured on an 8 by 8 city written
 through `agy` on `gemini-3.7-flash-low`: 562 buildings, 90 people, 52 quests and
-no call at all falling back to the offline author, in 468 seconds. The same
+no call refused, in 468 seconds. The same
 build before this was 21 refusals in 24 calls.
 
 **A city has a downtown.** How tall a plot builds is read off how near the

@@ -1137,8 +1137,8 @@ describe('answering yes or no', () => {
     expect(decided.findIndex((e) => e.kind === 'answered')).toBeLessThan(decided.findIndex((e) => e.kind === 'did'))
 
     // the same words with nothing running at all
-    const offline = setup({ fail: true })
-    const heard = await collect(offline.conversation.say('give me the job'))
+    const deaf = setup({ fail: true })
+    const heard = await collect(deaf.conversation.say('give me the job'))
     expect(heard).toContainEqual({ kind: 'answered', answer: 'yes' })
     expect(heard).toContainEqual({ kind: 'did', action: 'give_quest', detail: 'quest_0001' })
 
@@ -1158,8 +1158,8 @@ describe('answering yes or no', () => {
     expect(refused.some((e) => e.kind === 'did')).toBe(false)
 
     // with nothing running, being asked for what they have not got is the no
-    const offline = setup({ fail: true }, { carries: true })
-    const lost = await collect(offline.conversation.say('give me a drink'))
+    const deaf = setup({ fail: true }, { carries: true })
+    const lost = await collect(deaf.conversation.say('give me a drink'))
     expect(lost).toContainEqual({ kind: 'answered', answer: 'no' })
     expect(said(lost)).toBe("You've lost me. Say it plain.")
     expect(lost.some((e) => e.kind === 'did')).toBe(false)
@@ -1179,8 +1179,8 @@ describe('answering yes or no', () => {
     )
 
     // the player turning the work down is the player's answer, and hers is neither
-    const offline = setup({ fail: true })
-    const declined = await collect(offline.conversation.say('maybe later'))
+    const deaf = setup({ fail: true })
+    const declined = await collect(deaf.conversation.say('maybe later'))
     expect(said(declined)).toBe('Suit yourself. The offer stands.')
     expect(declined).not.toContainEqual(expect.objectContaining({ kind: 'answered' }))
   })

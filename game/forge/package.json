@@ -8,13 +8,9 @@
   },
   "scripts": {
     "test": "vitest run",
-    "preview": "node --experimental-strip-types tools/preview.ts",
-    "plans": "node --experimental-strip-types tools/floorplan.ts",
-    "measure": "node --experimental-strip-types tools/measure.ts",
-    "reach": "node --experimental-strip-types tools/reach.ts",
-    "playable": "node --experimental-strip-types tools/playable.ts",
-    "generate": "node --experimental-strip-types tools/bundle-wording.ts && node --experimental-strip-types tools/emit-schema.ts",
-    "golden": "node --experimental-strip-types tools/golden.ts"
+    "generate": "node --experimental-strip-types tools/emit-schema.ts",
+    "skyline": "node --experimental-strip-types tools/skyline.ts",
+    "measure": "node --experimental-strip-types tools/measure.ts"
   },
   "dependencies": {
     "@gb/kit": "workspace:*",

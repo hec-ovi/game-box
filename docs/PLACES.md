@@ -204,7 +204,7 @@ Exteriors are the safest part: `Plot.design` already pins the prefab model and `
 
 `@gb/bundle` upgrades a v1 file on import: it writes the resolved presets into `world.charters`, stamps `Room.use`, and leaves `plot.kind` exactly as it is, because the old enum values are already valid words. The city stops depending on a table in anybody's build and becomes self-describing, which is the property this whole design is for. `schemaVersion` goes to 2 (`schema.ts:153` is `z.literal(1)` today and there is no upgrade machinery, so this is real work, budgeted in stage 4). A v2 file opened by an old build fails at the `@gb/world` boundary rather than half-loading, which is the existing fail-closed rule.
 
-The gate is a golden test in `@gb/forge`: fixed seeds crossed with fixed premises, world hashes compared before and after. Same bytes, or the presets are wrong. That test also protects the offline path, which is the same code with no model in it. It is a refactor check with a fixed point, not a promise, which is why it can be a gate rather than something that gets weakened in week two.
+The gate is a golden test in `@gb/forge`: fixed seeds crossed with fixed premises, world hashes compared before and after. Same bytes, or the presets are wrong. That test also protects the path, which is the same code with no model in it. It is a refactor check with a fixed point, not a promise, which is why it can be a gate rather than something that gets weakened in week two.
 
 The one thing that is allowed to move: nothing. Invariant 3 exists specifically so the fork-per-word change does not reshuffle existing seeds. If a preset transcription is wrong, the golden test fails and the transcription gets fixed; the seed does not get to move.
 

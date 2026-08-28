@@ -61,8 +61,8 @@ describe('where a visitor may stand', () => {
     expect(distances).toEqual([...distances].sort((a, b) => a - b))
   })
 
-  it('finds standing room in every room of a generated town', async () => {
-    const world = await town()
+  it('finds standing room in every room of a whole town', () => {
+    const world = town()
     for (const interior of world.interiors()) {
       const built = buildInterior(world, interior, new Greybox())
       expect(built.visitorCells.length, interior.id).toBeGreaterThan(0)

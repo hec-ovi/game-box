@@ -6,9 +6,9 @@ type Singular = Pick<Narrator, 'describeNpc' | 'describeItem'>
 
 /**
  * A place written whole out of the two single-place calls: one per post and one
- * per thing. It is what an offline narrator does, and it is what a narrator
- * with no plural of its own gets asked instead, so the city comes out the same
- * either way and only the number of round trips changes.
+ * per thing. It is what a narrator with no plural of its own gets asked
+ * instead, so the city comes out the same either way and only the number of
+ * round trips changes.
  *
  * The place is already named: the naming pass settled that before anybody was
  * written into it, and the name comes in on the request.

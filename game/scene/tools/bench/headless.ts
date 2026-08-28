@@ -1,7 +1,7 @@
-import { Forge, OfflineNarrator } from '@gb/forge'
 import type { Plot, ResolvedCharter } from '@gb/world'
 import * as THREE from 'three'
 import { buildCity, Greybox, type BuildingSize, type BuildingStep, type CityBuild, type CityOptions, type Dressing, type LightEmitter } from '../../src/index.ts'
+import { plannedTown } from '../../tests/town.ts'
 
 /**
  * What a city costs with no browser: how long it takes to open, how many
@@ -103,9 +103,7 @@ function whole(dressing: Greybox): Dressing {
   }
 }
 
-const result = await new Forge(new OfflineNarrator('bench')).build({ theme: 'quiet coastal town', seed: 'bench', blocksX: blocks, blocksY: blocks })
-if (!result.ok) throw new Error(JSON.stringify(result.error).slice(0, 400))
-const world = result.value.world
+const world = plannedTown('bench', blocks)
 
 /** What one object would cost on screen, and what it holds. */
 function submitted(object: THREE.Object3D, frustum: THREE.Frustum): { draws: number; triangles: number; held: number } {

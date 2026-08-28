@@ -1,4 +1,4 @@
-import { Forge, OfflineNarrator } from '@gb/forge'
+import { Forge } from '@gb/forge'
 import { Greybox } from '@gb/scene'
 import { SHIPPED_CHARTERS, type Plot, type World } from '@gb/world'
 import { readFileSync } from 'node:fs'
@@ -48,9 +48,13 @@ function grownByOneLook(): Catalogue {
   })
 }
 
-/** A whole city, dressed and written down, the way a packing site does it. */
-async function pinnedCity(): Promise<World> {
-  const built = await new Forge(new OfflineNarrator('metro')).build({
+/**
+ * A whole city pinned to the catalogue it was dressed against, the way a packing
+ * site does it. The plan is enough: a pin is the plot's footprint, its charter
+ * and the pack, and none of that is written by anybody.
+ */
+function pinnedCity(): World {
+  const plan = Forge.plan({
     theme: 'a neon port city',
     seed: 'metro',
     blocksX: 4,
@@ -58,10 +62,10 @@ async function pinnedCity(): Promise<World> {
     density: 0.7,
     maxStoreys: 4,
   })
-  expect(built.ok).toBe(true)
-  if (!built.ok) throw new Error('the city did not build')
+  expect(plan.ok).toBe(true)
+  if (!plan.ok) throw new Error('the forge refused the brief')
 
-  const world = built.value.world
+  const world = plan.value
   expect(world.recordCatalogues([shipped.identity]).ok).toBe(true)
   for (const plot of world.plots()) {
     const design = shipped.design(plot, sizeOf(world, plot), suitsOf(world, plot))
@@ -71,8 +75,8 @@ async function pinnedCity(): Promise<World> {
 }
 
 describe('a city pinned to the catalogue it was dressed against', () => {
-  it('draws the same buildings after the catalogue grows, when picking again would not', async () => {
-    const world = await pinnedCity()
+  it('draws the same buildings after the catalogue grows, when picking again would not', () => {
+    const world = pinnedCity()
     const grown = grownByOneLook()
 
     let repicked = 0

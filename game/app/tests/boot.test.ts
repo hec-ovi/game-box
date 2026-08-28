@@ -18,7 +18,6 @@ import { Boot, type LoadArt, type Start } from '../src/boot/boot.ts'
 import { CityMaker, type Writer } from '../src/boot/city-maker.ts'
 import { download, exportName } from '../src/boot/export.ts'
 import { Library, MemoryShelf, keyOf, type Shelved } from '../src/boot/library.ts'
-import { Packs } from '../src/boot/packs.ts'
 import { Panel, type PanelHandlers } from '../src/boot/panel.ts'
 import { Conditions } from '../src/conditions.ts'
 import { Greybox } from '@gb/scene'
@@ -26,7 +25,7 @@ import type { Catalogue } from '@gb/prefab'
 import type { GameOptions } from '../src/game.ts'
 import { Session, type SaveStore } from '../src/session.ts'
 import { Street } from '../src/street.ts'
-import { FixtureMaker, fixtureMaker, fixturePacks } from './support/fixture-city.ts'
+import { FixtureMaker, fixtureMaker, fixturePack } from './support/fixture-city.ts'
 
 /** Wherever this box is being run from: its own folder, or the workspace root. */
 const PAGE = ['index.html', 'game/app/index.html'].map((path) => resolve(process.cwd(), path)).find(existsSync)!
@@ -58,7 +57,7 @@ const QUIET_HANDLERS: PanelHandlers = {
   settings: () => {},
 }
 
-/** A sidecar nothing is listening on: every call fails at once and the offline writer covers. */
+/** A sidecar nothing is listening on: every call to the model fails at once. */
 const DOWN: SidecarOptions = { fetch: () => Promise.reject(new Error('nothing listening')) }
 
 describe('the panel is up before anything loads', () => {
@@ -669,7 +668,9 @@ describe('generating a city in the browser', () => {
 
     expect(once.value.bundle.contentHash).toBe(twice.value.bundle.contentHash)
     expect(once.value.bundle.contentHash).not.toBe(other.value.bundle.contentHash)
-    expect(once.value.bundle.world.name).not.toBe(other.value.bundle.world.name)
+    // and it is another town rather than the same one sealed twice: the seed
+    // decides the streets, so a different seed stands different buildings
+    expect(other.value.bundle.world.plots().length).not.toBe(once.value.bundle.world.plots().length)
   }, 30_000)
 
   it('writes the form\'s answers into the world file, so a shared city says what it was asked for', async () => {
@@ -709,7 +710,7 @@ describe('generating a city in the browser', () => {
     // with is the one the player is owed: a generic line here would throw away
     // the only thing that says what to do about it
     const gaveUp = new Error('the town could not be written: the model at 127.0.0.1:8976 did not answer')
-    class GivesUp extends FixtureMaker {
+    class GivesUp extends CityMaker {
       protected override writer(): Writer {
         // whatever it is asked, it answers the way a writing that has given up answers
         const narrator = new Proxy({} as Narrator, { get: () => () => Promise.reject(gaveUp) })
@@ -887,12 +888,13 @@ describe('the front door end to end', () => {
 
   /**
    * The front door with the real wiring behind it, and one thing swapped: the
-   * city is written by `@gb/forge`'s own narrator rather than by a model, which
-   * is how a test gets a town with nothing listening on the sidecar.
+   * city is laid out and filled in by the fixture rather than written by a
+   * model, which is how a test gets a town with nothing listening on the
+   * sidecar.
    */
   function open(sidecar: SidecarOptions = DOWN, shelf = new MemoryShelf()): { boot: Boot; panel: Panel; shelf: MemoryShelf; maker: FixtureMaker } {
     const maker = fixtureMaker()
-    return { ...front(sidecar, shelf, { maker, packs: fixturePacks() }), maker }
+    return { ...front(sidecar, shelf, { maker }), maker }
   }
 
   /** The same front door with the real writing behind it, for what only a model call can show. */
@@ -903,7 +905,7 @@ describe('the front door end to end', () => {
   function front(
     sidecar: SidecarOptions,
     shelf: MemoryShelf,
-    writing: { maker?: CityMaker; packs?: Packs },
+    writing: { maker?: CityMaker },
   ): { boot: Boot; panel: Panel; shelf: MemoryShelf } {
     servePage()
     const panel = new Panel(document.querySelector<HTMLElement>('#boot')!)
@@ -1090,7 +1092,7 @@ describe('the front door end to end', () => {
     await shelf.put(entry!, other.value.document)
     started.length = 0
     await open(DOWN, shelf).boot.start(new URLSearchParams('?seed=comeback&theme=quiet%20coastal%20town&blocks=1'))
-    expect(started).toEqual([other.value.bundle.world.name])
+    expect(built.at(-1)!.contentHash).toBe(other.value.bundle.contentHash)
 
     // and picking it off the landing screen opens the same document
     started.length = 0
@@ -1098,41 +1100,32 @@ describe('the front door end to end', () => {
     await again.boot.start(new URLSearchParams(''))
     expect(started).toEqual([])
     await again.boot.pick(entry!.key)
-    expect(started).toEqual([other.value.bundle.world.name])
+    expect(built.at(-1)!.contentHash).toBe(other.value.bundle.contentHash)
   }, 60_000)
 
-  it('grows the city on the shelf and hands back the pack for what went up', async () => {
+  it('says the model would not write what goes up, rather than growing nothing and saying nothing', async () => {
+    // the model writes what a growth puts up, so with nothing listening there
+    // is no growth: what the player gets is the sentence and the city they were
+    // already standing in
     const shelf = new MemoryShelf()
     const { boot } = open(DOWN, shelf)
     await boot.start(new URLSearchParams('?seed=grow&theme=quiet%20coastal%20town&blocks=2'))
-    const before = built[0]!.world.plots().length
-    const [filed] = await shelf.list()
 
     await boot.grow()
-    if (built.length < 2) throw new Error(`grow said: ${document.querySelector('[data-boot="status"]')?.textContent}`)
 
-    // the city the player is standing in is the grown one, and it is the one on
-    // the shelf: the same row, so the playthrough carries into it
-    expect(built).toHaveLength(2)
-    expect(built[1]!.world.plots().length).toBeGreaterThan(before)
-    const rows = await shelf.list()
-    expect(rows).toHaveLength(1)
-    expect(rows[0]!.key).toBe(filed!.key)
-    expect(rows[0]!.hash).toBe(built[1]!.contentHash)
-    // and they are told what went up
-    expect(announced.some((note) => note.kind === 'note' && /^The pack added \d+ building/.test(note.text))).toBe(true)
+    expect(built).toHaveLength(1)
+    expect(document.querySelector('[data-boot="status"]')!.textContent).toMatch(/would not grow/i)
+    expect((await shelf.list())[0]!.hash).toBe(built[0]!.contentHash)
   }, 60_000)
 
   it('opens a pack onto the city it was cut from, and refuses one cut from another', async () => {
     const brief = { ...DEFAULTS, blocks: 2, seed: 'applied' }
     const made = await fixtureMaker().build(brief, QUIET)
     if (!made.ok) throw new Error(made.message)
-    const grown = await fixturePacks().grow(made.value, QUIET)
-    if (!grown.ok) throw new Error(grown.message)
+    const pack = await fixturePack(made.value)
     const elsewhere = await fixtureMaker().build({ ...DEFAULTS, blocks: 2, seed: 'elsewhere' }, QUIET)
     if (!elsewhere.ok) throw new Error(elsewhere.message)
-    const other = await fixturePacks().grow(elsewhere.value, QUIET)
-    if (!other.ok) throw new Error(other.message)
+    const other = await fixturePack(elsewhere.value)
 
     const shelf = new MemoryShelf()
     const { boot } = open(DOWN, shelf)
@@ -1141,14 +1134,13 @@ describe('the front door end to end', () => {
 
     // a pack names the city it was cut from by world id and content hash, so
     // one cut from another city goes nowhere and says so
-    await boot.applyPack(new File([JSON.stringify(other.pack)], 'elsewhere.gbpack.json', { type: 'application/json' }))
+    await boot.applyPack(new File([JSON.stringify(other)], 'elsewhere.gbpack.json', { type: 'application/json' }))
     expect(built).toHaveLength(1)
     expect(document.querySelector('[data-boot="status"]')!.textContent).toMatch(/another city/i)
 
-    await boot.applyPack(new File([JSON.stringify(grown.pack)], 'applied.gbpack.json', { type: 'application/json' }))
+    await boot.applyPack(new File([JSON.stringify(pack)], 'applied.gbpack.json', { type: 'application/json' }))
     expect(built).toHaveLength(2)
     expect(built[1]!.world.plots().length).toBeGreaterThan(before)
-    expect(built[1]!.contentHash).toBe(grown.value.bundle.contentHash)
     expect(announced.some((note) => note.kind === 'note' && note.text.startsWith('The pack added'))).toBe(true)
   }, 90_000)
 
@@ -1212,7 +1204,7 @@ describe('the front door end to end', () => {
     await boot.start(new URLSearchParams('?bundle=/city.json'))
     window.fetch = real
 
-    expect(started).toEqual([made.value.bundle.world.name])
+    expect(built.at(-1)!.contentHash).toBe(made.value.bundle.contentHash)
     expect(panel.open).toBe(false)
   }, 30_000)
 
@@ -1234,7 +1226,8 @@ describe('the front door end to end', () => {
 
     await userEvent.setup().upload(screen.getByLabelText(/city somebody sent you/i), new File([written[0]!], name))
 
-    await waitFor(() => expect(started).toEqual([made.value.bundle.world.name]), { timeout: 20_000 })
+    await waitFor(() => expect(started).toHaveLength(1), { timeout: 20_000 })
+    expect(built.at(-1)!.contentHash).toBe(made.value.bundle.contentHash)
     expect(panel.open).toBe(false)
     expect((await shelf.list()).map((entry) => [entry.source, entry.key])).toEqual([['opened', made.value.bundle.contentHash]])
     // a file names no brief, so the address bar names none either

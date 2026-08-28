@@ -229,26 +229,11 @@ The fixtures cost neither. A room of 80 bays publishes about 38 emitters, which 
 
 Screens cost bytes and nothing else. Against the same catalog without them: no triangle and no draw anywhere moved, and the buffers went 1.70 MB to 1.81 MB and 1.70 MB to 1.80 MB, +220 KB in all, +6.5%. That is the four byte attribute on every vertex in the box (206 KB) plus the six screenings of the television (14 KB).
 
-Measured headless in Node on a generated town of nine blocks with its twelve places open, whole rooms, shell and pickups included, each room in the language its finish gives it, the decor column carrying the walls, the screens' prints and any dance floor:
+**One draw for the decor, whatever is in it**: 39 bays and 106 bays, printed screens or none, a dance floor or not, all cost the same one mesh, and a finer rhythm or a bigger vocabulary buys triangles, never draws. Home walls cost more than corpo because every corner of every bay is moulded, about 190 triangles a bay against 80, and a civic wall is the cheapest of the lot at 58 because its taste runs to bare stretches.
 
-| room | finish | language | pieces | items | bays | furnished | furnished + decor | greybox |
-|---|---|---|---|---|---|---|---|---|
-| bar | corporate | corpo | 26 | 5 | 84 | 56 draws, 14,572 tris, 11 mats | 57 draws, 21,084 tris | 56 draws, 2,368 tris, 12 mats |
-| restaurant | corporate | corpo | 24 | 6 | 106 | 66 draws, 12,800 tris, 9 mats | 67 draws, 20,744 tris | 66 draws, 2,488 tris, 10 mats |
-| office | corporate | corpo | 22 | 6 | 69 | 56 draws, 12,606 tris, 11 mats | 57 draws, 18,790 tris | 56 draws, 2,164 tris, 12 mats |
-| cafe | corporate | corpo | 21 | 7 | 77 | 49 draws, 11,434 tris, 9 mats | 50 draws, 17,594 tris | 49 draws, 2,080 tris, 10 mats |
-| workshop | industrial | corpo | 17 | 5 | 75 | 49 draws, 10,078 tris, 10 mats | 50 draws, 17,438 tris | 49 draws, 1,876 tris, 11 mats |
-| hotel | domestic | home | 13 | 4 | 69 | 41 draws, 9,822 tris, 8 mats | 42 draws, 23,662 tris | 41 draws, 1,372 tris, 9 mats |
-| clinic | civic | corpo | 13 | 6 | 59 | 47 draws, 8,222 tris, 10 mats | 48 draws, 11,670 tris | 47 draws, 2,056 tris, 11 mats |
-| house | domestic | home | 13 | 2 | 67 | 49 draws, 12,752 tris, 7 mats | 50 draws, 25,696 tris | 49 draws, 1,060 tris, 8 mats |
-| shop | corporate | corpo | 11 | 2 | 60 | 31 draws, 7,216 tris, 7 mats | 32 draws, 11,872 tris | 31 draws, 1,048 tris, 8 mats |
-| warehouse | industrial | corpo | 11 | 1 | 39 | 21 draws, 6,516 tris, 6 mats | 22 draws, 10,244 tris | 21 draws, 520 tris, 7 mats |
-| apartment | domestic | home | 10 | 3 | 78 | 24 draws, 7,258 tris, 4 mats | 25 draws, 20,714 tris | 24 draws, 352 tris, 5 mats |
-| restaurant | corporate | corpo | 10 | 2 | 65 | 34 draws, 4,752 tris, 7 mats | 35 draws, 9,120 tris | 34 draws, 880 tris, 8 mats |
+The things lying on the furniture draw with the furniture's material rather than the layer behind, so a room pays them an object each and no material of their own.
 
-`node game/furnish/tools/print-cost.ts` prints the table. **One draw for the decor, whatever is in it**: 39 bays and 106 bays, printed screens or none, a dance floor or not, all cost the same one mesh, and a finer rhythm or a bigger vocabulary buys triangles, never draws. Home walls cost more than corpo because every corner of every bay is moulded, about 190 triangles a bay against 80, and a civic wall is the cheapest of the lot at 58 because its taste runs to bare stretches.
-
-Giving the items shapes cost a room **no draw and one material fewer**: they were already an object each, they now draw with the furniture's material instead of the layer behind, so every room in the table lost a material.
+`node game/furnish/tools/print-cost.ts` prints what the catalog costs: the furniture and the pickups, their triangles and their buffer bytes, and how long both take to build.
 
 In Chrome on the WebGL2 fallback, standing in a 9.6 by 15.6 m corpo workshop of 88 bays at 1516 by 784:
 

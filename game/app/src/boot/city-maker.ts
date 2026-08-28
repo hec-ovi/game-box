@@ -1,5 +1,5 @@
 import { Bundle, type OpenedBundle } from '@gb/bundle'
-import { Forge, OfflineNarrator, type ForgeResult, type Narrator } from '@gb/forge'
+import { Forge, type ForgeResult, type Narrator } from '@gb/forge'
 import type { Notice } from '@gb/hud'
 import type { Catalogue } from '@gb/prefab'
 import { Scribe, type ScribeProblem, type ScribeProgress } from '@gb/scribe'
@@ -41,9 +41,13 @@ export type Plan = { ok: true; value: World } | { ok: false; message: string }
 export type Progress = (step: string) => void | Promise<void>
 
 /**
- * Makes a city: writes one from a brief, or opens one somebody exported. Every
- * failure comes back as a sentence the player can read, because there is
- * nowhere for a thrown error to go on the way in.
+ * Makes a city: writes one from a brief, or opens one somebody exported.
+ *
+ * A model writes every word of a city, and nothing here writes one in its
+ * place: the history, the names, the people and the work are all the writer's,
+ * and a call that cannot be made good stops the build. Every failure comes
+ * back as a sentence the player can read, because there is nowhere for a
+ * thrown error to go on the way in.
  */
 export class CityMaker {
   #sidecar: Sidecar
@@ -87,7 +91,7 @@ export class CityMaker {
       generator: 'browser',
       requires: pinned.requires,
     })
-    return this.#open(document, [...leftOut(built.value), ...failed(writer)])
+    return this.#open(document, [...leftOut(built.value), ...failed(writer.problems())])
   }
 
   /**
@@ -106,12 +110,16 @@ export class CityMaker {
 
   /**
    * The architecture the brief lays out, with nothing written into it: the
-   * grid, the roads, the named parts of town, every building and where the
-   * trains board. No door opens and nothing is written, so `@gb/forge` asks
-   * its narrator nothing and this runs on a press rather than behind a loader.
+   * grid, the roads, the parts of town, every building and where the trains
+   * board. It is arithmetic and there is nobody to ask, so it answers on the
+   * press rather than behind a loader.
+   *
+   * Nothing in it is named. The parts of town are `Zone 1` upwards and the
+   * buildings `Instance 1` upwards, the labels `@gb/forge` lays a town out
+   * under, because a name is written and the writing comes with the build.
    */
-  async plan(brief: CityBrief): Promise<Plan> {
-    const laid = await new Forge(new OfflineNarrator(brief.seed)).plan(asked(brief))
+  plan(brief: CityBrief): Plan {
+    const laid = Forge.plan(asked(brief))
     return laid.ok ? { ok: true, value: laid.value } : { ok: false, message: refused(laid.error) }
   }
 
@@ -189,8 +197,7 @@ function leftOut(built: ForgeResult): Notice[] {
  * rather than one per call. A call the sidecar gave up waiting on is a busy
  * model, said as the wait it was; the calls that came back wrong are a fault.
  */
-function failed(writer: Writer): Notice[] {
-  const problems = writer.problems()
+export function failed(problems: readonly ScribeProblem[]): Notice[] {
   const busy = problems.filter((problem) => problem.error.code === 'busy').length
   const broken = problems.filter((problem) => problem.error.code !== 'busy')
   const notes: Notice[] = []

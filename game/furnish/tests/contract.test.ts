@@ -2,13 +2,10 @@ import { Greybox, type BuildingSize, type Dressing, type SurfacePart } from '@gb
 import {
   FURNITURE_PROPS,
   METRICS,
-  roomUseOf,
-  type AnchorKind,
   type CellKind,
   type FurnitureProp,
   type Item,
   type ItemArchetype,
-  type Npc,
   type Plot,
   type ResolvedCharter,
 } from '@gb/world'
@@ -36,11 +33,6 @@ class Behind extends Greybox {
   override building(plot: Plot, size: BuildingSize, charter: ResolvedCharter): THREE.Object3D {
     this.asked.push(`building:${plot.id}`)
     return super.building(plot, size, charter)
-  }
-
-  override character(npc: Npc, doing: AnchorKind): THREE.Object3D {
-    this.asked.push(`character:${npc.id}`)
-    return super.character(npc, doing)
   }
 
   override pickup(item: Item): THREE.Object3D {
@@ -138,64 +130,6 @@ describe('the height a piece is lifted to', () => {
   })
 })
 
-describe('the room a building gets', () => {
-  it('is dressed in the language its finish asks for: a flat is a home, a bar is corpo', async () => {
-    const world = await town()
-    const interiors = [...world.interiors()]
-    const flat = interiors.find((interior) => interior.finish === 'domestic')
-    const bar = interiors.find((interior) => interior.finish === 'corporate')
-    expect(flat, 'a home in town').toBeDefined()
-    expect(bar, 'a corpo place in town').toBeDefined()
-
-    // whichever language the dressing was made in, the room follows the finish
-    for (const style of FURNISH_STYLES) {
-      const dressing = dressingIn(style)
-      const home = dressing.room(flat!)
-      const corpo = dressing.room(bar!)
-      expect(home.style).toBe('home')
-      expect(home.finish).toBe('domestic')
-      expect(corpo.style).toBe('corpo')
-      expect(corpo.finish).toBe('corporate')
-      expect((home.dressing.prop('chair') as THREE.Mesh).geometry).toBe((dressingIn('home').prop('chair') as THREE.Mesh).geometry)
-      expect((corpo.dressing.prop('chair') as THREE.Mesh).geometry).toBe((dressingIn('corpo').prop('chair') as THREE.Mesh).geometry)
-    }
-  })
-
-  it('reads a file from before finishes and uses off its charter, and builds the same walls', async () => {
-    const world = await town()
-    for (const interior of world.interiors()) {
-      const charter = world.charter(interior.kind)!
-      expect(interior.finish, interior.kind).toBe(charter.finish)
-
-      // the same interior written both ways: every room stamped, and none of them
-      const { finish: _, ...older } = interior
-      const stamped = { ...interior, rooms: interior.rooms.map((room) => ({ ...room, use: roomUseOf(room, charter) })) }
-      const bare = { ...older, rooms: interior.rooms.map(({ use, ...room }) => room) }
-      expect(stamped.rooms.every((room) => room.use), interior.kind).toBe(true)
-
-      const today = dressingIn('corpo').room(stamped)
-      const before = dressingIn('corpo').room(bare, charter)
-      expect(before.finish, interior.kind).toBe(today.finish)
-      expect(before.bays.map((bay) => bay.kind), interior.kind).toEqual(today.bays.map((bay) => bay.kind))
-      expect([...(before.decor.geometry.getAttribute('position').array as Float32Array)]).toEqual([
-        ...(today.decor.geometry.getAttribute('position').array as Float32Array),
-      ])
-    }
-  })
-
-  it('stays in the dressing\'s own language for an interior that names no finish and brings no charter', async () => {
-    const world = await town()
-    const { finish, ...bare } = [...world.interiors()][0]!
-    expect(finish).toBeDefined()
-
-    for (const style of FURNISH_STYLES) {
-      const room = dressingIn(style).room(bare)
-      expect(room.style, style).toBe(style)
-      expect(room.finish, style).toBe(style === 'home' ? 'domestic' : 'corporate')
-    }
-  })
-})
-
 describe('what it refuses', () => {
   it('names a prop or a thing it has no shape for, rather than drawing it flat', () => {
     const kit = furnishKit()
@@ -223,19 +157,17 @@ describe('surface', () => {
 })
 
 describe('the rest of the dressing', () => {
-  it('goes straight through: this box answers for the inside of a building and nothing else', async () => {
-    const world = await town()
+  it('goes straight through: this box answers for the inside of a building and nothing else', () => {
+    const world = town()
     const plot = world.plots()[0]!
-    const npc = world.npcs()[0]!
-    const item = world.items()[0]!
+    const item: Item = { id: 'item_0001', name: 'a cup', description: 'a cup', archetype: 'cup', value: 1, bulk: 'pocket' }
     const behind = new Behind()
     const furnished = new FurnishDressing(furnishKit(), behind)
 
     furnished.building(plot, { width: 6, depth: 6, height: 4 }, world.charter(plot.kind)!)
-    furnished.character(npc, 'stand')
     furnished.ground('street')
 
-    expect(behind.asked).toEqual([`building:${plot.id}`, `character:${npc.id}`, 'ground:street'])
+    expect(behind.asked).toEqual([`building:${plot.id}`, 'ground:street'])
 
     // what is lying on the furniture is the inside of a building too, so it is
     // answered here and never handed on
@@ -243,8 +175,8 @@ describe('the rest of the dressing', () => {
     expect(behind.asked).not.toContain(`pickup:${item.id}`)
   })
 
-  it('carries the far look, the light, the paint and the rubbish the dressing behind publishes', async () => {
-    const world = await town()
+  it('carries the far look, the light, the paint and the rubbish the dressing behind publishes', () => {
+    const world = town()
     const plot = world.plots()[0]!
     const charter = world.charter(plot.kind)!
     const size = { width: 6, depth: 6, height: 4 }

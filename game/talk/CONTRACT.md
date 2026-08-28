@@ -82,7 +82,7 @@ Measured on 2026-08-27 on a filled brief, a bartender with two jobs in play, a r
 
 The weather is one labelled line the model may draw on. It is not seeded into anything the character says.
 
-Measured on 2026-08-25 through the sidecar on an offline 3x3 city (seed `talk-wave`), Carys Marek, receptionist, four things on her counter: "what do you sell?" answered "A medkit, a book, a keycard, or a deed if you've the credits for it. You looking for something specific?" in 4.7 s and the decider picked `show_wares` at 7.6 s; "how much is the medkit?" answered "Thirty-seven credits", the file's own price; "can I come round to your place sometime?" to somebody with no home answered "I don't have a place of my own in this town" and nothing was decided.
+Measured on 2026-08-25 through the sidecar on a 3x3 city (seed `talk-wave`), Carys Marek, receptionist, four things on her counter: "what do you sell?" answered "A medkit, a book, a keycard, or a deed if you've the credits for it. You looking for something specific?" in 4.7 s and the decider picked `show_wares` at 7.6 s; "how much is the medkit?" answered "Thirty-seven credits", the file's own price; "can I come round to your place sometime?" to somebody with no home answered "I don't have a place of my own in this town" and nothing was decided.
 
 Measured against the two exchanges the owner reported, on a generated city with the model up, 2026-08-25: "Mina Okoro? how are you" answered "That's me. I'm fine." with `does` "taps a rhythm on the desk with a heavy brass paperweight"; "do you need help?" answered "I've a job that needs doing, if you're looking for work. There's a crate over at Vane's Refractives that I need someone to fetch for me. Just take it without any fuss and I'll see you're looked after."
 

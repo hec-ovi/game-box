@@ -33,8 +33,8 @@ function cost(root: THREE.Object3D, only: (name: string) => boolean = () => true
 }
 
 describe('what a city costs', () => {
-  it('draws a town of any size in one mesh per material, not one per building', async () => {
-    const world = await bigTown()
+  it('draws a town of any size in one mesh per material, not one per building', () => {
+    const world = bigTown()
     const root = buildCity(world, new Greybox()).root
     const { meshes, materials } = cost(root)
     const detail = cost(root, (name) => name.startsWith('detail:')).meshes
@@ -51,8 +51,8 @@ describe('what a city costs', () => {
     expect(meshes - detail).toBeLessThan(world.plots().length / 4)
   })
 
-  it('draws every piece of rubbish in the city in one mesh', async () => {
-    const world = await bigTown()
+  it('draws every piece of rubbish in the city in one mesh', () => {
+    const world = bigTown()
     const city = buildCity(world, new Greybox())
     const rubbish = city.root.children.filter((child) => child.name === 'clutter')
 
@@ -62,9 +62,9 @@ describe('what a city costs', () => {
     expect(buildCity(world, new Greybox(), { clutter: false }).root.children.some((c) => c.name === 'clutter')).toBe(false)
   })
 
-  it('costs no more draws for twenty times the town', async () => {
-    const small = await town()
-    const big = await bigTown()
+  it('costs no more draws for twenty times the town', () => {
+    const small = town()
+    const big = bigTown()
     const shells = (name: string) => !name.startsWith('detail:')
     const cheap = cost(buildCity(small, new Greybox()).root, shells)
     const dear = cost(buildCity(big, new Greybox()).root, shells)
@@ -75,8 +75,8 @@ describe('what a city costs', () => {
     expect(dear.meshes - cheap.meshes).toBeLessThanOrEqual(dear.materials - cheap.materials + 1)
   })
 
-  it('keeps the triangles under the budget they were measured at', async () => {
-    const world = await bigTown()
+  it('keeps the triangles under the budget they were measured at', () => {
+    const world = bigTown()
     const root = buildCity(world, new Greybox()).root
     const { triangles } = cost(root)
     // the stand-in ring is a block per verge cell, so it is charged to the
@@ -97,8 +97,8 @@ describe('what a city costs', () => {
     expect(town.triangles / world.plots().length).toBeLessThan(400)
   })
 
-  it('costs the skyline for the far field, whatever a building costs to draw', async () => {
-    const world = await bigTown()
+  it('costs the skyline for the far field, whatever a building costs to draw', () => {
+    const world = bigTown()
     const heavy = new THREE.MeshStandardMaterial({ color: 0x808080 })
     // a 32 by 24 sphere is 1,472 triangles: a hundred times what a plot costs
     // in the skyline, and what a real kit's shell is nearer to
@@ -154,8 +154,8 @@ describe('what a city costs', () => {
     expect(building.bounds.min.x).toBeCloseTo(10 * world.cellSize, 5)
   })
 
-  it('still culls each building on its own, and lets one be taken out of the city', async () => {
-    const world = await bigTown()
+  it('still culls each building on its own, and lets one be taken out of the city', () => {
+    const world = bigTown()
     const city = buildCity(world, new Greybox())
     const all = city.root.children.filter((child) => (child as THREE.BatchedMesh).isBatchedMesh) as THREE.BatchedMesh[]
     const batches = all.filter((batch) => batch.name.startsWith('city:'))

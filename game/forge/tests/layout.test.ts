@@ -1,12 +1,12 @@
 import { Rng } from '@gb/kit'
 import { MAX_GRID_SIDE, PLOT_BAND, TALLEST_STOREYS, World, inPlotBand, plotShape, type CellKind } from '@gb/world'
 import { describe, expect, it } from 'vitest'
-import { BANDS, BLOCKS_MAX, briefContract, Forge, MOUNTAIN_CELLS, OfflineNarrator } from '../src/index.ts'
+import { BANDS, BLOCKS_MAX, briefContract, Forge, MOUNTAIN_CELLS } from '../src/index.ts'
 import { avenueCount, Avenues } from '../src/layout/avenues.ts'
 import { streetLines } from '../src/layout/lines.ts'
 import { MAX_BLOCK, MIN_BLOCK, planStreets, widestGrid } from '../src/layout/plan.ts'
 import { cutsFourWays } from '../src/layout/plots.ts'
-import { buildTown, digest } from './support.ts'
+import { digest, planned } from './support.ts'
 
 
 interface Cell {
@@ -64,8 +64,8 @@ function hasSquare(world: World, side: number): boolean {
 }
 
 describe('the street plan', () => {
-  it('paints junctions like junctions: roadway right through, pavement only on the corners', async () => {
-    const { world } = await buildTown('junctions', { exits: 4 })
+  it('paints junctions like junctions: roadway right through, pavement only on the corners', () => {
+    const world = planned('junctions', { exits: 4 })
     const { centres, cells } = roadway(world)
     const kindsAt = (list: Cell[]) => new Set<CellKind | undefined>(list.map((cell) => world.grid.at(cell.x, cell.y)))
 
@@ -103,7 +103,7 @@ describe('the street plan', () => {
     }
   })
 
-  it('plans the town off the streets stream alone, and paints exactly what it planned', async () => {
+  it('plans the town off the streets stream alone, and paints exactly what it planned', () => {
     // the plan is the only place a street number comes from: read it here with
     // nothing but the seed, and the town the forge paints has to agree with it,
     // twice over. A draw added before the fork, or a second stream drawing the
@@ -113,7 +113,7 @@ describe('the street plan', () => {
       const plan = planStreets(brief, new Rng(seed).fork('streets'))
       expect(digest(plan), seed).toBe(digest(planStreets(brief, new Rng(seed).fork('streets'))))
 
-      const { world } = await buildTown(seed, brief)
+      const world = planned(seed, brief)
       expect([world.grid.width, world.grid.height], seed).toEqual([plan.size.width, plan.size.height])
       // and the bands read back off the road graph are the ones the plan laid, roads out left aside
       expect(streetLines(world), seed).toEqual({ columns: plan.columns, rows: plan.rows })
@@ -134,7 +134,7 @@ describe('the street plan', () => {
     }
   })
 
-  it('cuts blocks so buildings face all four ways', async () => {
+  it('cuts blocks so buildings face all four ways', () => {
     // whatever size the seed picks, a block is deep enough for doors on its east and west sides
     for (const seed of ['facings', 'ash', 'birch', 'cedar']) {
       const plan = planStreets({ blocksX: 3, blocksY: 3 }, new Rng(seed).fork('streets'))
@@ -143,27 +143,27 @@ describe('the street plan', () => {
       }
     }
 
-    const { world } = await buildTown('facings')
+    const world = planned('facings')
     const facing = (which: string) => world.plots().filter((plot) => plot.entrance.facing === which).length
     for (const which of ['north', 'south', 'east', 'west']) {
       expect(facing(which), `${which}-facing doors`).toBeGreaterThan(0)
     }
   })
 
-  it('reads as a different town for a different seed', async () => {
+  it('reads as a different town for a different seed', () => {
     const seeds = ['ash', 'birch', 'cedar', 'dune', 'elm', 'fir']
-    const towns = await Promise.all(seeds.map((seed) => buildTown(seed)))
+    const towns = seeds.map((seed) => planned(seed))
 
-    expect(new Set(towns.map((town) => skeleton(town.world))).size).toBe(seeds.length)
-    expect(new Set(towns.map((town) => digest(town.world.toJSON().roads))).size).toBe(seeds.length)
+    expect(new Set(towns.map(skeleton)).size).toBe(seeds.length)
+    expect(new Set(towns.map((town) => digest(town.toJSON().roads))).size).toBe(seeds.length)
     // block sizes differ, so the towns are not one grid at different scales
-    expect(new Set(towns.map((town) => `${town.world.grid.width}x${town.world.grid.height}`)).size).toBeGreaterThan(3)
+    expect(new Set(towns.map((town) => `${town.grid.width}x${town.grid.height}`)).size).toBeGreaterThan(3)
     // and some of them leave a block open as a square or a green
-    expect(towns.some((town) => hasSquare(town.world, MIN_BLOCK))).toBe(true)
+    expect(towns.some((town) => hasSquare(town, MIN_BLOCK))).toBe(true)
   })
 
-  it('lays the blocks the brief asked for when it asks', async () => {
-    const { world } = await buildTown('pinned', { blocksX: 1, blocksY: 1, blockCells: 30 })
+  it('lays the blocks the brief asked for when it asks', () => {
+    const world = planned('pinned', { blocksX: 1, blocksY: 1, blockCells: 30 })
     // one block has two street bands round it and no avenue: a town needs an inner street for a spine
     const around = (cells: number) => MOUNTAIN_CELLS * 2 + BANDS.street.width * 2 + cells
 
@@ -195,7 +195,7 @@ describe('the street plan', () => {
     }
   })
 
-  it('refuses a brief that asks for more city than a world can hold', async () => {
+  it('refuses a brief that asks for more city than a world can hold', () => {
     // the ceiling is the world's, read from it, so raising the world raises this
     const over = { theme: 'sprawl', seed: 'too-big', blocksX: 42, blocksY: 1, blockCells: MAX_BLOCK }
     // the brief says no on its own, before a single cell is allocated
@@ -208,9 +208,9 @@ describe('the street plan', () => {
     if (!wordy.ok) expect(wordy.error[0]!.path).toBe('theme')
 
     // and the forge hands it back as an error instead of throwing out of a world constructor
-    const built = await new Forge(new OfflineNarrator('too-big')).build(over)
-    expect(built.ok).toBe(false)
-    if (!built.ok) expect(built.error.code).toBe('invalid-brief')
+    const laid = Forge.plan(over)
+    expect(laid.ok).toBe(false)
+    if (!laid.ok) expect(laid.error.code).toBe('invalid-brief')
   })
 
   it('takes the fifty-block city the owner asked for', () => {
@@ -251,8 +251,8 @@ describe('the avenues', () => {
     }
   })
 
-  it('lays an avenue wider than the streets it crosses, and says so in the graph', async () => {
-    const { world } = await buildTown('spines', { blocksX: 6, blocksY: 6 })
+  it('lays an avenue wider than the streets it crosses, and says so in the graph', () => {
+    const world = planned('spines', { blocksX: 6, blocksY: 6 })
     const { nodes, segments } = world.toJSON().roads
     const cellOf = (id: string) => nodes.find((node) => node.id === id)!.cell
     expect(new Set(segments.map((segment) => segment.kind))).toContain('avenue')
@@ -286,7 +286,7 @@ describe('the avenues', () => {
     }
   })
 
-  it('gives the city a skyline: a few towers where a town stacks, low buildings everywhere else', async () => {
+  it('gives the city a skyline: a few towers where a town stacks, low buildings everywhere else', () => {
     // pooled over seeds, because a ten block town raises a dozen towers and one
     // town's dozen says nothing about where a rule puts them
     interface Standing {
@@ -296,7 +296,7 @@ describe('the avenues', () => {
     }
     const town: Standing[] = []
     for (const seed of ['skyline', 'metro', 'harbour', 'kite']) {
-      const { world } = await buildTown(seed, { theme: 'a neon port city', blocksX: 10, blocksY: 10, density: 1 })
+      const world = planned(seed, { theme: 'a neon port city', blocksX: 10, blocksY: 10, density: 1 })
       const lines = streetLines(world)
       const avenues = Avenues.from(lines.columns, lines.rows)
       const middle = { x: world.grid.width / 2, y: world.grid.height / 2 }
@@ -338,11 +338,11 @@ describe('the avenues', () => {
     expect(raised(byMiddle.slice(0, third))).toBeGreaterThan(raised(byMiddle.slice(-third)) * 3)
   })
 
-  it('takes the height the brief allows and changes nothing else about the town', async () => {
+  it('takes the height the brief allows and changes nothing else about the town', () => {
     const brief = { theme: 'a neon port city', blocksX: 6, blocksY: 6, density: 1 }
-    const cut = async (maxStoreys: number) => (await buildTown('ceiling', { ...brief, maxStoreys })).world.plots()
-    const flat = await cut(PLOT_BAND.storeys.max)
-    const tall = await cut(TALLEST_STOREYS)
+    const cut = (maxStoreys: number) => planned('ceiling', { ...brief, maxStoreys }).plots()
+    const flat = cut(PLOT_BAND.storeys.max)
+    const tall = cut(TALLEST_STOREYS)
 
     // a brief inside the band cannot raise a thing, and one over it reaches for it
     expect(Math.max(...flat.map((plot) => plot.storeys))).toBe(PLOT_BAND.storeys.max)
@@ -362,19 +362,19 @@ describe('the avenues', () => {
     for (const plot of raised) expect(plot.storeys, plot.id).toBeGreaterThan(PLOT_BAND.storeys.max)
   })
 
-  it('stacks a dense town and spreads a sparse one', async () => {
+  it('stacks a dense town and spreads a sparse one', () => {
     const brief = { theme: 'a neon port city', blocksX: 10, blocksY: 10 }
-    const towers = async (density: number) =>
-      (await buildTown('density', { ...brief, density })).world.plots().filter((plot) => plot.storeys > PLOT_BAND.storeys.max).length
+    const towers = (density: number) =>
+      planned('density', { ...brief, density }).plots().filter((plot) => plot.storeys > PLOT_BAND.storeys.max).length
 
-    expect(await towers(1)).toBeGreaterThan(await towers(0.2))
+    expect(towers(1)).toBeGreaterThan(towers(0.2))
   })
 
-  it('builds taller on the avenue than on the street behind it', async () => {
+  it('builds taller on the avenue than on the street behind it', () => {
     const brief = { blocksX: 6, blocksY: 6, maxStoreys: 6 }
     const plan = planStreets(brief, new Rng('spines').fork('streets'))
     const avenues = Avenues.from(plan.columns, plan.rows)
-    const { world } = await buildTown('spines', brief)
+    const world = planned('spines', brief)
 
     const height = (plots: ReturnType<typeof world.plots>) => plots.reduce((sum, plot) => sum + plot.storeys, 0) / plots.length
     const on = world.plots().filter((plot) => avenues.has(plot.entrance.cell))

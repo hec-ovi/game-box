@@ -119,7 +119,7 @@ OPENROUTER_API_KEY=sk-or-...
 
 A free model is rate-limited often. The sidecar answers that as `429` with a `Retry-After`, and the game waits it out and asks again rather than treating the model as gone.
 
-`gb build` takes `--model` to write a city from the terminal through the same endpoint.
+`gb build` writes a city from the terminal through the same endpoint.
 
 `GAME_BOX_PORT` moves the sidecar off 8976, and `?sidecar=` in the URL points the game at a different one.
 

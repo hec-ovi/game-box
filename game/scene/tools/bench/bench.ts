@@ -1,8 +1,7 @@
-import { Forge, OfflineNarrator } from '@gb/forge'
-import type { World } from '@gb/world'
 import * as THREE from 'three'
 import { WebGPURenderer } from 'three/webgpu'
 import { buildCity, buildInterior, CEILING_HEIGHT, Greybox, LIVE_LIGHTS, ROOM_SHADOWS, type Dressing, type SurfacePart } from '../../src/index.ts'
+import { plannedTown } from '../../tests/town.ts'
 
 /**
  * Two measurements, chosen by `?view=`:
@@ -35,12 +34,6 @@ class CorpoLid extends Greybox {
   override surface(part: SurfacePart): THREE.Material {
     return part === 'ceiling' ? this.#lid : part === 'wall' ? this.#wall : super.surface(part)
   }
-}
-
-async function city(blocks: number): Promise<World> {
-  const result = await new Forge(new OfflineNarrator('bench')).build({ theme: 'quiet coastal town', seed: 'bench', blocksX: blocks, blocksY: blocks })
-  if (!result.ok) throw new Error(JSON.stringify(result.error).slice(0, 400))
-  return result.value.world
 }
 
 /** The renderer the game uses; `?gl=1` holds it to its WebGL2 backend, which is what a browser with no WebGPU runs. */
@@ -84,7 +77,7 @@ function whole(grey: Greybox): Dressing {
 async function street(): Promise<void> {
   const blocks = Number(query.get('blocks') ?? 2)
   const budget = Number(query.get('lights') ?? LIVE_LIGHTS)
-  const world = await city(blocks)
+  const world = plannedTown('bench', blocks)
   const dressing = query.get('whole') === '1' ? whole(new Greybox()) : new Greybox()
   const reach = query.get('shell')
   const opened = performance.now()
@@ -155,7 +148,7 @@ async function street(): Promise<void> {
 
 async function room(): Promise<void> {
   const casters = Number(query.get('casters') ?? ROOM_SHADOWS.casters)
-  const world = await city(1)
+  const world = plannedTown('bench', 1)
   const interior = world.interiors()[0]!
   const built = buildInterior(world, interior, new CorpoLid())
   for (const [at, light] of built.lights.lights.entries()) light.castShadow = at < casters

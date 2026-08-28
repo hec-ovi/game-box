@@ -1,13 +1,11 @@
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
 import { Bundle } from '@gb/bundle'
-import { Forge, OfflineNarrator } from '@gb/forge'
-import { PACK_MANIFEST } from '@gb/prefab'
 import { beforeAll, describe, expect, it } from 'vitest'
+import { GROWTH } from '../src/extend.ts'
 import { run } from '../src/index.ts'
-import { pinDesigns } from '../src/pins.ts'
+import { city, growPlots, seal } from './city.ts'
 
 function capture() {
   const out: string[] = []
@@ -25,31 +23,20 @@ async function gb(...argv: string[]) {
   return { code, out: io.out.join('\n'), err: io.err.join('\n') }
 }
 
-// one base, grown once, cut once, applied twice: the whole pipeline through the command
+// one base, grown once, cut once, applied twice: the whole pipeline through the
+// command. The two cities and the growth are laid out rather than written,
+// because a pack is cut from records and a record is arithmetic
 beforeAll(async () => {
-  expect((await gb('build', '--seed', 'pack', '--blocks', '3x3', '--density', '0.5', '--out', at('base.json'))).code).toBe(0)
-  expect((await gb('build', '--seed', 'elsewhere', '--blocks', '1x1', '--out', at('other.json'))).code).toBe(0)
+  await city(at('base.json'), { seed: 'pack', blocksX: 3, blocksY: 3, density: 0.5 })
+  await city(at('other.json'), { seed: 'elsewhere', blocksX: 1, blocksY: 1 })
+
+  const opened = await Bundle.open(JSON.parse(bytes('base.json')))
+  if (!opened.ok) throw new Error(`the base will not open: ${opened.error.code}`)
+  const { world, requires } = opened.value
+  await seal(at('grown.json'), world, growPlots(world, 30), { generator: GROWTH, requires })
 })
 
-describe('gb extend, pack and apply', () => {
-  it('grows a city into a new file and leaves the base as it was', async () => {
-    const before = bytes('base.json')
-    const { code, out } = await gb('extend', at('base.json'), '--count', '30', '--out', at('grown.json'))
-
-    expect(code).toBe(0)
-    expect(bytes('base.json')).toBe(before)
-
-    const base = JSON.parse(before)
-    const grown = JSON.parse(bytes('grown.json'))
-    const added = grown.world.plots.length - base.world.plots.length
-    expect(added).toBeGreaterThan(0)
-    expect(grown.world.npcs.length).toBeGreaterThan(base.world.npcs.length)
-    expect(out).toContain(`${added} buildings added`)
-    expect(out).toContain(`${added} of ${added} added buildings pinned`)
-    expect(grown.world.plots.slice(0, base.world.plots.length)).toEqual(base.world.plots)
-    expect(grown.world.plots.slice(base.world.plots.length).every((plot: { design?: unknown }) => plot.design)).toBe(true)
-  })
-
+describe('gb pack and apply', () => {
   it('cuts what the growth added into a pack that names its base', async () => {
     const { code, out } = await gb('pack', at('base.json'), at('grown.json'), '--out', at('pack.json'))
 
@@ -60,7 +47,6 @@ describe('gb extend, pack and apply', () => {
     expect(pack.base).toEqual({ worldId: base.world.id, contentHash: base.contentHash })
     const grown = JSON.parse(bytes('grown.json'))
     expect(pack.world.plots.length).toBe(grown.world.plots.length - base.world.plots.length)
-    expect(pack.world.npcs.length).toBe(grown.world.npcs.length - base.world.npcs.length)
     expect(out).toContain(`a pack for ${base.world.id} at ${base.contentHash.slice(0, 12)}`)
     expect(out).toContain(`${pack.world.plots.length} buildings, ${pack.world.interiors.length} interiors, ${pack.world.npcs.length} people`)
   })
@@ -115,38 +101,6 @@ describe('gb extend, pack and apply', () => {
     expect(code).toBe(1)
     expect(err).toContain('not-an-extension')
     expect(err).toMatch(/^ {2}\S+: .+/m)
-  })
-
-  it('refuses to grow a city drawn against another version of the pack', async () => {
-    // a growth pinned to art the base does not name is a pin that buys
-    // nothing, and a second version of one pack is not an extension, so the
-    // city is left alone and the report names both
-    const built = await new Forge(new OfflineNarrator('older')).build({
-      theme: 'quiet coastal town',
-      seed: 'older',
-      blocksX: 1,
-      blocksY: 1,
-      density: 0.8,
-      maxStoreys: 3,
-      exits: 1,
-    })
-    if (!built.ok) throw new Error(built.error.code)
-    const manifest = JSON.parse(readFileSync(PACK_MANIFEST, 'utf8')) as { version: string }
-    writeFileSync(at('older-pack.json'), JSON.stringify({ ...manifest, version: '0.9.0' }))
-    const { world, quests } = built.value
-    const pins = await pinDesigns(
-      world,
-      world.plots().map((plot) => plot.id),
-      pathToFileURL(at('older-pack.json')),
-    )
-    if (pins.state !== 'pinned') throw new Error(`the older pack did not pin: ${pins.why}`)
-    const bundle = await Bundle.pack(world, quests, { generator: 'gb build', requires: [pins.pack] })
-    writeFileSync(at('older.json'), JSON.stringify(bundle))
-
-    const { code, err } = await gb('extend', at('older.json'), '--out', at('never.json'))
-    expect(code).toBe(1)
-    expect(err).toContain('drawn against gb-buildings 0.9.0')
-    expect(err).toContain('this build has gb-buildings')
   })
 
   it('says what each command needs', async () => {

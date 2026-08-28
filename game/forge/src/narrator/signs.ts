@@ -13,9 +13,9 @@ import { placeName, type Standing } from './places.ts'
  * open. Those are written here rather than asked for: a sign is the same kind
  * of fact as a building's style, one string the player reads off the street,
  * and asking a language model for each one costs four calls in five of a build
- * for a door with nothing behind it. The places that do open are written whole
- * by a narrator instead, sign included, and the offline narrator writes theirs
- * off this same pool by the same plot number, so the two never share a head.
+ * for a door with nothing behind it. Every sign, written here or answered for,
+ * takes its head word off the same pool by the same plot number, so no two
+ * doors in a town share one.
  */
 export class Signs {
   #rng: Rng

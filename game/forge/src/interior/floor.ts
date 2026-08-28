@@ -13,14 +13,6 @@ export const REACH = 0.8
 /** How wide a walking body is: the walk grid stays this far off anything solid. */
 export const BODY_RADIUS = METRICS.player.radius
 
-/**
- * Slack on top of the body before a gap counts as a way through. A path found
- * on a 0.1 m grid can be a rounding, and an aisle you have to be a rounding
- * wide to walk down is not an aisle: one row of tables would seal a room in
- * half and the plan would call it connected.
- */
-const AISLE = 0.1
-
 interface Solid {
   readonly box: Box
   readonly blocks: boolean

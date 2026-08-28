@@ -1,4 +1,4 @@
-import { Forge, OfflineNarrator } from '@gb/forge'
+import { Forge } from '@gb/forge'
 import { Greybox, storeyHeight } from '@gb/scene'
 import type { Plot, ResolvedCharter } from '@gb/world'
 import * as THREE from 'three'
@@ -10,11 +10,14 @@ import { readPack } from '../tools/headless.ts'
 const library = await readPack()
 const dressing = new PrefabDressing(library, new Greybox())
 
-const built = await new Forge(new OfflineNarrator('shells')).build({ theme: 'a neon port city', seed: 'shells', blocksX: 2, blocksY: 2, density: 1, maxStoreys: 4 })
-if (!built.ok) throw new Error(`the forge refused: ${JSON.stringify(built.error)}`)
-const world = built.value.world
+// A shell is geometry, so the town under it is the plan: the same grid, the
+// same plots at the same heights the build would raise, drawn from the brief
+// and the seed with nothing written into it.
+const plan = Forge.plan({ theme: 'a neon port city', seed: 'shells', blocksX: 2, blocksY: 2, density: 1, maxStoreys: 4 })
+if (!plan.ok) throw new Error(`the forge refused the brief: ${JSON.stringify(plan.error)}`)
+const world = plan.value
 
-/** Every plot of the forged town, with what the dressing is handed for it. */
+/** Every plot of the planned town, with what the dressing is handed for it. */
 const town: Array<{ plot: Plot; size: BuildingSize; charter: ResolvedCharter }> = [...world.plots()].map((plot) => ({
   plot,
   size: { width: plot.rect.w * world.cellSize, depth: plot.rect.h * world.cellSize, height: storeyHeight(plot.storeys) },
@@ -32,7 +35,7 @@ function on(object: THREE.Object3D, material: string): THREE.Mesh {
   return found[0]!
 }
 
-describe('the shell of a forged town', () => {
+describe('the shell of a planned town', () => {
   it('stands where the building stands, so the town keeps its shape as you walk up to it', () => {
     expect(town.length).toBeGreaterThan(40)
     for (const { plot, size, charter } of town) {

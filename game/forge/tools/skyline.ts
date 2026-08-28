@@ -3,12 +3,12 @@
  * many of them clear the band the catalogue is drawn for, and how the heights
  * fall from the middle of town out to the edge. The numbers in CONTRACT.md come
  * from here. It plans the cities rather than building them, which is the same
- * architecture and asks a narrator nothing.
+ * architecture and needs no narrator.
  *
  *   node game/forge/tools/skyline.ts [--blocks 20] [--density 0.8] [--storeys 24] [--seeds metro,harbour,kite]
  */
 import { PLOT_BAND, plotShape, type World } from '@gb/world'
-import { Forge, type Narrator } from '../src/index.ts'
+import { Forge } from '../src/index.ts'
 import { nearnessIn } from '../src/layout/plots.ts'
 
 const args = process.argv.slice(2)
@@ -20,12 +20,6 @@ const blocks = Number(flag('--blocks') ?? 20)
 const density = flag('--density')
 const maxStoreys = flag('--storeys')
 const seeds = (flag('--seeds') ?? 'metro,harbour,kite').split(',')
-
-/** A plan asks nobody anything, so nobody needs to answer. */
-const asked = (): never => {
-  throw new Error('a plan asked a narrator a question')
-}
-const silent = new Proxy({}, { get: () => asked }) as Narrator
 
 /** The three rings the height field is built out of, by how near the middle of town a plot stands. */
 const RINGS = [
@@ -69,7 +63,7 @@ function histogram(plots: readonly { storeys: number }[]): string {
 }
 
 for (const seed of seeds) {
-  const planned = await new Forge(silent).plan({
+  const planned = Forge.plan({
     theme: 'a neon port city',
     seed,
     blocksX: blocks,

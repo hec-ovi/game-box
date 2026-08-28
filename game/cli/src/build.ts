@@ -10,7 +10,7 @@ import { label, pinDesigns } from './pins.ts'
 /** Generate a city and write it out as one bundle file. */
 export async function build(args: BuildArgs, io: Io): Promise<number> {
   const [across, down] = args.blocks.split('x').map((n) => Number.parseInt(n, 10))
-  const { scribe, narrator: writer } = narratorFor(args.seed, args.model)
+  const { scribe, narrator: writer } = narratorFor(args.seed)
   const narrator = args.history ? storied(writer, args.history) : writer
   if (typeof narrator === 'string') {
     io.err(`cannot build: ${narrator}`)
@@ -79,7 +79,7 @@ export async function build(args: BuildArgs, io: Io): Promise<number> {
       ? `  designed against ${label(pins.pack)}, ${pins.plots} of ${world.plots().length} buildings pinned`
       : `  no buildings pinned, so the file names no art: ${pins.why}`,
   )
-  if (scribe?.problems().length) {
+  if (scribe.problems().length) {
     const problems = scribe.problems()
     io.out(`  ${problems.length} model calls had to be asked again`)
     // the count alone cannot be acted on: 115 fallbacks with no reason is a

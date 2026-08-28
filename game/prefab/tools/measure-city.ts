@@ -1,11 +1,15 @@
 /**
- * What a forged town costs on the shipped pack, measured headless in Node:
- * the batches `@gb/scene` draws the buildings in (one draw each) and the
- * triangles a prefab building carries on each of its materials.
+ * What a town costs on the shipped pack, measured headless in Node: the batches
+ * `@gb/scene` draws the buildings in (one draw each) and the triangles a prefab
+ * building carries on each of its materials.
+ *
+ * The town is a plan, which is the arithmetic half of a city: the same plots on
+ * the same footprints at the same heights the build raises, and what a building
+ * costs is decided by those and by the pack.
  *
  *   node tools/measure-city.ts [--seed metro] [--blocks 4]
  */
-import { Forge, OfflineNarrator } from '@gb/forge'
+import { Forge } from '@gb/forge'
 import { Greybox, buildCity, storeyHeight } from '@gb/scene'
 import * as THREE from 'three'
 import { PrefabDressing } from '../src/dressing.ts'
@@ -21,9 +25,9 @@ const library = await readPack()
 const catalogue = library.catalogue
 const dressing = new PrefabDressing(library, new Greybox())
 
-const built = await new Forge(new OfflineNarrator(seed)).build({ theme: 'a neon port city', seed, blocksX: blocks, blocksY: blocks, density: 1, maxStoreys: 4 })
-if (!built.ok) throw new Error(`the forge refused: ${JSON.stringify(built.error)}`)
-const world = built.value.world
+const plan = Forge.plan({ theme: 'a neon port city', seed, blocksX: blocks, blocksY: blocks, density: 1, maxStoreys: 4 })
+if (!plan.ok) throw new Error(`the forge refused the brief: ${JSON.stringify(plan.error)}`)
+const world = plan.value
 const city = buildCity(world, dressing)
 
 const triangles = new Map<string, number>()

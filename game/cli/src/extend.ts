@@ -32,7 +32,7 @@ export async function extend(args: ExtendArgs, io: Io): Promise<number> {
   const before = { plots: world.plots().length, interiors: world.interiors().length, npcs: world.npcs().length, items: world.items().length }
 
   const started = Date.now()
-  const { scribe, narrator } = narratorFor(world.seed, args.model)
+  const { scribe, narrator } = narratorFor(world.seed)
   const grown = await new Forge(narrator).extend(world, count)
   if (!grown.ok) {
     io.err(`cannot extend: ${grown.error.code}`)
@@ -69,7 +69,7 @@ export async function extend(args: ExtendArgs, io: Io): Promise<number> {
       ? `  designed against ${label(pins.pack)}, ${pins.plots} of ${grown.value.length} added buildings pinned`
       : `  no added building pinned, so the growth names no art: ${pins.why}`,
   )
-  if (scribe?.problems().length) {
+  if (scribe.problems().length) {
     io.out(`  ${scribe.problems().length} model calls had to be asked again`)
   }
   io.out(`  written to ${args.out} in ${seconds}s (${bundle.contentHash.slice(0, 12)})`)

@@ -44,8 +44,8 @@ function onePlot(): { world: World; plot: Plot } {
 }
 
 describe('the light the buildings throw', () => {
-  it('keeps every emitter of the buildings drawn in detail and makes only the budget of them lights', async () => {
-    const world = await bigTown()
+  it('keeps every emitter of the buildings drawn in detail and makes only the budget of them lights', () => {
+    const world = bigTown()
     const city = buildCity(world, new Signed())
     const detailed = [...city.buildings.values()].filter((building) => building.detailed)
 
@@ -83,8 +83,8 @@ describe('the light the buildings throw', () => {
     expect(light!.intensity).toBe(emitter!.intensity)
   })
 
-  it('gives the lights to the emitters nearest the camera, and moves them when it moves', async () => {
-    const world = await bigTown()
+  it('gives the lights to the emitters nearest the camera, and moves them when it moves', () => {
+    const world = bigTown()
     const city = buildCity(world, new Signed())
     const nearest = (x: number, z: number) =>
       [...city.lights.emitters].sort((a, b) => Math.hypot(a.position[0] - x, a.position[2] - z) - Math.hypot(b.position[0] - x, b.position[2] - z)).slice(0, LIVE_LIGHTS)
@@ -105,8 +105,8 @@ describe('the light the buildings throw', () => {
     expect(there.some((light) => atSpawn.some((was) => was.x === light.x && was.z === light.z))).toBe(false)
   })
 
-  it('fades a light in and out over the frames rather than switching it on', async () => {
-    const world = await bigTown()
+  it('fades a light in and out over the frames rather than switching it on', () => {
+    const world = bigTown()
     const city = buildCity(world, new Signed(), { night: 1 })
     const candela = (light: THREE.PointLight) => (light.userData['emitter'] as { intensity: number }).intensity
     const lit = () => lightsIn(city).filter((one) => one.visible)

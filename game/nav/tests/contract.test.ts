@@ -1,13 +1,17 @@
-import { Forge, OfflineNarrator } from '@gb/forge'
+import { Forge } from '@gb/forge'
 import { World } from '@gb/world'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { CityNav, type Cell } from '../src/index.ts'
 
-async function town() {
-  const forge = new Forge(new OfflineNarrator('nav'))
-  const built = await forge.build({ theme: 'river town', seed: 'nav', blocksX: 2, blocksY: 2, blockCells: 14 })
-  if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 400))
-  return built.value.world
+/**
+ * A town laid out by arithmetic: the grid, the roads, the parks and every
+ * building standing on them. A walk is the grid and nothing else, so nothing in
+ * here is written and nothing in here needs to be.
+ */
+function town(): World {
+  const planned = Forge.plan({ theme: 'river town', seed: 'nav', blocksX: 2, blocksY: 2, blockCells: 14 })
+  if (!planned.ok) throw new Error(JSON.stringify(planned.error).slice(0, 400))
+  return planned.value
 }
 
 /** A hundred door-to-door questions, always the same hundred. */
@@ -19,11 +23,7 @@ function questions(doors: readonly Cell[]): Array<[Cell, Cell]> {
   return pairs
 }
 
-let world: Awaited<ReturnType<typeof town>>
-
-beforeAll(async () => {
-  world = await town()
-})
+const world = town()
 
 describe('CityNav', () => {
   it('walks from one doorstep to another across the city', () => {
@@ -261,46 +261,80 @@ function key(w: World, cell: Cell): string {
   return `${cell.y * w.grid.width + cell.x}`
 }
 
-describe('CityNav locks', () => {
-  /** The town with its second interior door locked, and a key on the pavement that opens it. */
-  function lockedTown() {
-    const doc = world.toJSON() as { interiors: Array<{ id: string; doors: Array<{ id: string; from: string; to: string; locked: boolean }>; rooms: Array<{ id: string }> }>; items: unknown[]; placements: unknown[] }
-    const interior = doc.interiors.find((i) => i.doors.length >= 3 && i.rooms.length >= 3)!
-    const inner = interior.doors[1]!
-    inner.locked = true
-    const street = world.plots()[0]!.entrance.cell
-    doc.items.push({ id: 'item_9001', name: 'Back-room key', description: 'Opens one door.', archetype: 'key', opens: { doorId: inner.id } })
-    doc.placements.push({ at: 'ground', itemId: 'item_9001', cell: street })
-    const loaded = World.load(doc)
-    if (!loaded.ok) throw new Error(JSON.stringify(loaded.error).slice(0, 400))
-    return { locked: loaded.value, interior, inner, street }
-  }
+/**
+ * Three rooms in a line behind one street door, the middle one locked: a hall
+ * off the pavement, a room through it, and a back room only reachable through
+ * the lock. The door graph is made of doors, so the house is built here out of
+ * `@gb/world` rather than hunted for in a town: three doors in a row is the
+ * whole of the rule, and a fixture says which room is behind which lock.
+ */
+function lockedHouse() {
+  const home = World.create({ name: 'Locked', theme: 'test', seed: 'locked', width: 16, height: 16 })
+  home.paint({ x: 0, y: 0, w: 16, h: 16 }, 'sidewalk')
+  const footprint = { x: 5, y: 5, w: 5, h: 5 }
+  home.paint(footprint, 'empty')
+  const built = home.addPlot({
+    kind: 'house',
+    name: 'Locked house',
+    rect: footprint,
+    storeys: 1,
+    entrance: { cell: { x: 7, y: 10 }, facing: 'south' },
+    style: 'test',
+  })
+  if (!built.ok) throw new Error(JSON.stringify(built.error))
 
+  const rooms = (['hall', 'main', 'backroom'] as const).map((kind, at) => ({
+    id: home.mintId('room'),
+    kind,
+    name: `Room ${at + 1}`,
+    rect: { x: at * 3, y: 0, w: 3, h: 3 },
+  }))
+  const doors = [
+    { id: home.mintId('door'), from: 'outside' as const, to: rooms[0]!.id, pos: { x: 1.5, y: 3 }, rot: 0, locked: false },
+    { id: home.mintId('door'), from: rooms[0]!.id, to: rooms[1]!.id, pos: { x: 3, y: 1.5 }, rot: 90, locked: true },
+    { id: home.mintId('door'), from: rooms[1]!.id, to: rooms[2]!.id, pos: { x: 6, y: 1.5 }, rot: 90, locked: false },
+  ]
+  const opened = home.addInterior({
+    id: home.mintId('interior'),
+    plotId: built.value.id,
+    kind: 'house',
+    size: { w: 9, h: 3 },
+    rooms,
+    doors,
+    furniture: [],
+    anchors: [],
+  })
+  if (!opened.ok) throw new Error(JSON.stringify(opened.error))
+
+  return { home, interior: opened.value, inner: doors[1]!, front: rooms[0]!, behind: rooms[2]!, street: built.value.entrance.cell }
+}
+
+describe('CityNav locks', () => {
   it('a room behind a locked door is unreachable until the door is unlocked', () => {
-    const { locked, interior, inner, street } = lockedTown()
-    const nav = CityNav.from(locked)
-    const front = interior.doors[0]!.to
-    const behind = interior.doors[interior.doors.length - 1]!.to
+    const { home, interior, inner, front, behind, street } = lockedHouse()
+    const nav = CityNav.from(home)
 
     expect(nav.locked(inner.id)).toBe(true)
-    expect(nav.reachableRoom(locked, street, interior.id, front)).toBe(true)
-    expect(nav.reachableRoom(locked, street, interior.id, behind)).toBe(false)
+    expect(nav.reachableRoom(home, street, interior.id, front.id)).toBe(true)
+    expect(nav.reachableRoom(home, street, interior.id, behind.id)).toBe(false)
 
     nav.setLocked(inner.id, false)
     expect(nav.locked(inner.id)).toBe(false)
-    expect(nav.reachableRoom(locked, street, interior.id, behind)).toBe(true)
+    expect(nav.reachableRoom(home, street, interior.id, behind.id)).toBe(true)
 
     nav.setLocked(inner.id, true)
-    expect(nav.reachableRoom(locked, street, interior.id, behind)).toBe(false)
+    expect(nav.reachableRoom(home, street, interior.id, behind.id)).toBe(false)
   })
 
   it('answers unknown doors and rooms without throwing', () => {
-    const nav = CityNav.from(world)
-    const street = world.plots()[0]!.entrance.cell
+    const { home, interior, front, street } = lockedHouse()
+    const nav = CityNav.from(home)
+
     expect(nav.locked('door_9999')).toBeUndefined()
     nav.setLocked('door_9999', true)
-    expect(nav.reachableRoom(world, street, 'interior_9999', 'room_0001')).toBe(false)
-    expect(nav.reachableRoom(world, street, world.interiors()[0]!.id, 'room_9999')).toBe(false)
-    expect(nav.reachableRoom(world, { x: 0, y: 0 }, world.interiors()[0]!.id, world.interiors()[0]!.rooms[0]!.id)).toBe(false)
+    expect(nav.reachableRoom(home, street, 'interior_9999', 'room_0001')).toBe(false)
+    expect(nav.reachableRoom(home, street, interior.id, 'room_9999')).toBe(false)
+    // a start nobody can stand on reaches no room at all
+    expect(nav.reachableRoom(home, { x: 7, y: 7 }, interior.id, front.id)).toBe(false)
   })
 })

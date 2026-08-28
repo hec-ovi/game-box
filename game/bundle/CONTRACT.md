@@ -139,20 +139,21 @@ the bytes they were sent.
 
 **What a pack costs.** The pack is the ground the growth built on, not the
 grid, so its size follows the growth and the grid only moves what reading the
-picture costs. Measured on a 30-plot growth of a loose town
+picture costs. Measured on a town laid out by `@gb/forge`'s `plan` and grown by
+the same twenty opened buildings at every size
 (`pnpm --filter @gb/bundle run measure [blocks] [blockCells]`):
 
 | city | grid | world file | picture | as runs | pack cells | pack | cut | apply |
 |---|---|---|---|---|---|---|---|---|
-| 3x3 of 14 cells | 89x85 | 103 KB | 8 KB | 2 KB | 485 | 62 KB | 4 ms | 11 ms |
-| 20x20 | 567x551 | 556 KB | 307 KB | 86 KB | 900 | 84 KB | 28 ms | 37 ms |
-| 57x57 of 6 cells | 922x921 | 1,547 KB | 832 KB | 289 KB | 900 | 91 KB | 84 ms | 121 ms |
-| 116x116 of 6 cells | 1,868x1,861 | 5,208 KB | 3,400 KB | 981 KB | 900 | 72 KB | 425 ms | 365 ms |
+| 3x3 of 14 cells | 89x85 | 28 KB | 8 KB | 2 KB | 400 | 53 KB | 3 ms | 13 ms |
+| 20x20 | 567x551 | 515 KB | 307 KB | 86 KB | 400 | 53 KB | 33 ms | 43 ms |
+| 116x116 of 6 cells | 1,868x1,861 | 5,698 KB | 3,400 KB | 981 KB | 400 | 53 KB | 443 ms | 406 ms |
 
-At the widest grid a world holds, a pack is still under 100 KB: 900 cells is
-what 30 plots stand on wherever they stand. Cutting and applying do read the
-whole picture twice over to prove the base was not moved, which is the 425 ms
-and the 365 ms in the last row.
+The same growth gives the same 400 cells and the same 53 KB whether the town is
+89 cells a side or at the widest grid a world holds, because a pack is what the
+growth stands on and nothing else. Cutting and applying do read the whole
+picture twice over to prove the base was not moved, which is the 443 ms and the
+406 ms in the last row.
 
 **Determinism.** The pack is a diff in the base's terms and the world reads a
 document to the same bytes at both doors, so the same base and the same pack
@@ -273,5 +274,12 @@ the art it was designed against.
 `schemaVersion` 2 is what `pack` writes; 1 is read and brought up to 2 on open (`src/self-describing.ts`). Adding a field to the envelope changes every hash, so it needs `schemaVersion: 3` and a step that can still open 1 and 2. The pack file is `schemaVersion` 1 (`src/pack/`): its record schemas are read off `@gb/world`'s, so a field the world adds reaches the pack without a line here moving. A field with a default anywhere in the world, quest or play schema changes the hash of every file written without it, so new fields there go on as optional; `tests/sealed.test.ts` is what notices. Regenerate `schema/` (`pnpm --filter @gb/bundle run generate`) and run `pnpm --filter @gb/bundle test`.
 
 A change in `@gb/world`, `@gb/quest` or `@gb/play` also changes what this box publishes, without a line here moving. Run `pnpm --filter @gb/bundle run generate` and commit the result in the same change; the drift test will fail until you do.
+
+The cities the tests run on are `tests/town.ts`: a town laid out by
+`@gb/forge`'s `plan`, which is arithmetic and asks nobody anything, grown by
+hand with the records a growth appends (plots, interiors, people, things, ground
+turned into building) and given errands `@gb/quest` accepts. What this box
+promises is about the shape of a document, so a city here is data end to end and
+nothing in the tests writes a word of one.
 
 `tests/fixtures/sealed-bundle.json` is a `schemaVersion` 1 city sealed by this packer before charters and kept as it was shared. It is never regenerated: it is the only proof that a file somebody already has still opens under the hash it was shared with, still plays every quest in it, and comes out carrying the presets it was drawn with and nothing else changed.

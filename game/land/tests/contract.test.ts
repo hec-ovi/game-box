@@ -1,22 +1,24 @@
-import { Forge, OfflineNarrator } from '@gb/forge'
+import { Forge } from '@gb/forge'
 import { METRICS, World, type CellKind } from '@gb/world'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { buildLand, matchTheme, SHADOW_LAYER, THEMES, type Land } from '../src/index.ts'
 
-const towns = new Map<string, Promise<World>>()
+const towns = new Map<string, World>()
 
-/** Forging a city is slow, so each one is built once and read many times. */
-function town(theme = 'quiet valley town', seed = 'land'): Promise<World> {
+/**
+ * A town laid out by arithmetic: the grid the ground is drawn over, the streets
+ * the water keeps off and the mountains the terrain rises into. The sky and the
+ * land read the grid and the theme, so a laid-out town is the whole of what
+ * this box is given. Each one is laid out once and read many times.
+ */
+function town(theme = 'quiet valley town', seed = 'land'): World {
   const key = `${theme}/${seed}`
   let made = towns.get(key)
   if (!made) {
-    made = new Forge(new OfflineNarrator(seed))
-      .build({ theme, seed, blocksX: 1, blocksY: 1, blockCells: 14 })
-      .then((built) => {
-        if (!built.ok) throw new Error(JSON.stringify(built.error).slice(0, 400))
-        return built.value.world
-      })
+    const planned = Forge.plan({ theme, seed, blocksX: 1, blocksY: 1, blockCells: 14 })
+    if (!planned.ok) throw new Error(JSON.stringify(planned.error).slice(0, 400))
+    made = planned.value
     towns.set(key, made)
   }
   return made
@@ -78,8 +80,8 @@ function shape(land: Land): string {
 }
 
 describe('the open ground', () => {
-  it('rises from the edge of the map and stays low ground for a kilometre', async () => {
-    const world = await town()
+  it('rises from the edge of the map and stays low ground for a kilometre', () => {
+    const world = town()
     const land = landOf(world)
     const middle = middleOf(world)
     const { bank, bankRun } = land.theme.relief
@@ -99,8 +101,8 @@ describe('the open ground', () => {
     expect(Math.max(...heights) - Math.min(...heights)).toBeGreaterThan(25)
   })
 
-  it('can be walked, all the way out', async () => {
-    const world = await town()
+  it('can be walked, all the way out', () => {
+    const world = town()
     const land = landOf(world)
 
     let walkable = 0
@@ -114,8 +116,8 @@ describe('the open ground', () => {
     expect(walkable / total).toBeGreaterThan(0.95)
   })
 
-  it('keeps the high ground kilometres away, where you would not walk to it', async () => {
-    const world = await town()
+  it('keeps the high ground kilometres away, where you would not walk to it', () => {
+    const world = town()
     const land = landOf(world)
 
     const mean = (radius: number): number => {
@@ -132,8 +134,8 @@ describe('the open ground', () => {
 })
 
 describe('terrain', () => {
-  it('covers the verge the grid marks and never lies over the town', async () => {
-    const world = await town()
+  it('covers the verge the grid marks and never lies over the town', () => {
+    const world = town()
     const land = landOf(world)
     const position = land.terrain.geometry.getAttribute('position')
     const index = land.terrain.geometry.getIndex()!
@@ -156,8 +158,8 @@ describe('terrain', () => {
     expect(covered.size).toBe(world.grid.count('mountain'))
   })
 
-  it('meets the pavement at its top and the road at its surface, so nothing shows under either', async () => {
-    const world = await town()
+  it('meets the pavement at its top and the road at its surface, so nothing shows under either', () => {
+    const world = town()
     const land = landOf(world)
     const position = land.terrain.geometry.getAttribute('position')
     const cell = world.cellSize
@@ -215,8 +217,8 @@ describe('terrain', () => {
     expect(steepest).toBeLessThan(0.35)
   })
 
-  it('is one welded mesh, wound to be seen from above', async () => {
-    const world = await town()
+  it('is one welded mesh, wound to be seen from above', () => {
+    const world = town()
     const land = landOf(world)
     const position = land.terrain.geometry.getAttribute('position')
     const index = land.terrain.geometry.getIndex()!
@@ -240,8 +242,8 @@ describe('terrain', () => {
     expect(facingDown).toBe(0)
   })
 
-  it('answers the height query with the very ground it draws', async () => {
-    const world = await town()
+  it('answers the height query with the very ground it draws', () => {
+    const world = town()
     const land = landOf(world)
     const caster = new THREE.Raycaster()
     caster.far = 6000
@@ -266,8 +268,8 @@ describe('terrain', () => {
 })
 
 describe('the road out', () => {
-  it('leaves town at ground level and stays walkable into the open', async () => {
-    const world = await town()
+  it('leaves town at ground level and stays walkable into the open', () => {
+    const world = town()
     const land = landOf(world)
     const cell = world.cellSize
     const { width, height } = world.grid
@@ -301,8 +303,8 @@ describe('the road out', () => {
 })
 
 describe('water', () => {
-  it('sits in the ground it is surrounded by, and never in the town', async () => {
-    const world = await town()
+  it('sits in the ground it is surrounded by, and never in the town', () => {
+    const world = town()
     const land = landOf(world)
     expect(land.water).toBeDefined()
 
@@ -346,8 +348,8 @@ describe('water', () => {
 })
 
 describe('trees', () => {
-  it('grow on the land and nowhere near the town, the road or the water', async () => {
-    const world = await town()
+  it('grow on the land and nowhere near the town, the road or the water', () => {
+    const world = town()
     const land = landOf(world)
     expect(land.trees.length).toBeGreaterThan(0)
     expect(land.cost.trees).toBeGreaterThan(500)
@@ -364,8 +366,8 @@ describe('trees', () => {
     }
   })
 
-  it('spread out across the open ground instead of hugging the town', async () => {
-    const world = await town()
+  it('spread out across the open ground instead of hugging the town', () => {
+    const world = town()
     const land = landOf(world)
     const middle = middleOf(world)
 
@@ -380,16 +382,16 @@ describe('trees', () => {
 })
 
 describe('the same seed', () => {
-  it('builds the same land, and another seed builds another', async () => {
-    const world = await town()
+  it('builds the same land, and another seed builds another', () => {
+    const world = town()
     expect(shape(landOf(world))).toBe(shape(landOf(world)))
     expect(shape(landOf(world))).not.toBe(shape(landOf(world, { seed: 'somewhere else' })))
   })
 })
 
 describe('themes', () => {
-  it('are read from the world and change the land', async () => {
-    const world = await town()
+  it('are read from the world and change the land', () => {
+    const world = town()
     const wet = landOf(world, { theme: 'maritime' })
     const dry = landOf(world, { theme: 'arid' })
 
@@ -406,8 +408,8 @@ describe('themes', () => {
     expect(THEMES.map((theme) => theme.id)).toContain(matchTheme('a town of glass towers').id)
   })
 
-  it('refuse a name nobody registered', async () => {
-    const built = buildLand(await town(), { theme: 'lunar' })
+  it('refuse a name nobody registered', () => {
+    const built = buildLand(town(), { theme: 'lunar' })
     expect(built.ok).toBe(false)
     if (!built.ok) expect(built.error.code).toBe('unknown-theme')
   })
@@ -425,8 +427,8 @@ describe('a map with no town on it', () => {
 })
 
 describe('cost', () => {
-  it('buys kilometres with a handful of draws', async () => {
-    const land = landOf(await town('rain-soaked port'))
+  it('buys kilometres with a handful of draws', () => {
+    const land = landOf(town('rain-soaked port'))
 
     expect(land.cost.draws).toBeLessThanOrEqual(6)
     // the shadow pass redraws the woods and nothing else of the landscape
@@ -437,8 +439,8 @@ describe('cost', () => {
     expect(land.root.children.filter((child) => child instanceof THREE.Mesh).length).toBeLessThanOrEqual(6)
   })
 
-  it('drops to a quarter of the geometry when asked for less', async () => {
-    const world = await town()
+  it('drops to a quarter of the geometry when asked for less', () => {
+    const world = town()
     const full = landOf(world)
     const thin = landOf(world, { detail: 'low' })
 
@@ -451,8 +453,8 @@ describe('cost', () => {
 })
 
 describe('the sky', () => {
-  it('carries a sun, hangs behind everything and hazes to its own colour', async () => {
-    const land = landOf(await town())
+  it('carries a sun, hangs behind everything and hazes to its own colour', () => {
+    const land = landOf(town())
 
     expect(land.sky.renderOrder).toBeLessThan(0)
     expect(land.sun.position.y).toBeGreaterThan(0)
@@ -460,8 +462,8 @@ describe('the sky', () => {
     expect(land.fog.density).toBeGreaterThan(0)
   })
 
-  it('hangs the stars and the moon in the depth buffer, not over the frame', async () => {
-    const land = landOf(await town(), { time: 1 })
+  it('hangs the stars and the moon in the depth buffer, not over the frame', () => {
+    const land = landOf(town(), { time: 1 })
     const moon = land.root.getObjectByName('land:moon-disc')!
 
     expect(paintsOverEverything(land.stars)).toBe(false)
@@ -482,8 +484,8 @@ describe('the sky', () => {
     expect(moon.renderOrder).toBeGreaterThan(land.stars.renderOrder)
   })
 
-  it('gives the moon a face: maria, a limb and a phase, painted from the seed', async () => {
-    const world = await town()
+  it('gives the moon a face: maria, a limb and a phase, painted from the seed', () => {
+    const world = town()
     const moon = landOf(world, { time: 1 }).root.getObjectByName('land:moon-disc') as THREE.Sprite
     const map = moon.material.map as THREE.DataTexture
     const side = map.image.width
@@ -543,8 +545,8 @@ describe('the sky rides with the camera', () => {
     return Math.exp(-((land.theme.light.density * metres) ** 2))
   }
 
-  it('keeps the whole dome, the stars and the moon inside the far plane, in town and kilometres out', async () => {
-    const world = await town()
+  it('keeps the whole dome, the stars and the moon inside the far plane, in town and kilometres out', () => {
+    const world = town()
     const land = landOf(world, { time: 1 })
     const middle = middleOf(world)
     const moon = land.root.getObjectByName('land:moon-disc')!
@@ -573,8 +575,8 @@ describe('the sky rides with the camera', () => {
     }
   })
 
-  it('leaves the constellations and the moon exactly where they were when the player walks and climbs', async () => {
-    const world = await town()
+  it('leaves the constellations and the moon exactly where they were when the player walks and climbs', () => {
+    const world = town()
     const land = landOf(world, { time: 1 })
     const middle = middleOf(world)
     const moon = land.root.getObjectByName('land:moon-disc')!
@@ -597,8 +599,8 @@ describe('the sky rides with the camera', () => {
     expect(away.distanceTo(moon.position)).toBeCloseTo(moonWas, 6)
   })
 
-  it('still shows every hill the haze has not taken', async () => {
-    const world = await town()
+  it('still shows every hill the haze has not taken', () => {
+    const world = town()
     const land = landOf(world)
     const middle = middleOf(world)
 
@@ -628,8 +630,8 @@ describe('the sky rides with the camera', () => {
 })
 
 describe('time of day', () => {
-  it('puts the sun up at noon and down at midnight, with the moon opposite it', async () => {
-    const land = landOf(await town())
+  it('puts the sun up at noon and down at midnight, with the moon opposite it', () => {
+    const land = landOf(town())
 
     land.setTime(12)
     expect(land.sun.position.y).toBeGreaterThan(0)
@@ -650,8 +652,8 @@ describe('time of day', () => {
     expect(land.sun.position.x).toBeGreaterThan(land.moon.position.x)
   })
 
-  it('keeps the day short and low, warm in the morning and cold by evening', async () => {
-    const world = await town()
+  it('keeps the day short and low, warm in the morning and cold by evening', () => {
+    const world = town()
     for (const theme of THEMES) {
       const land = landOf(world, { theme: theme.id })
       const light = land.light
@@ -679,8 +681,8 @@ describe('time of day', () => {
     }
   })
 
-  it('publishes what a caller needs to carry a prefiltered sky between filters', async () => {
-    const land = landOf(await town())
+  it('publishes what a caller needs to carry a prefiltered sky between filters', () => {
+    const land = landOf(town())
     const light = land.light
 
     land.setTime(12)
@@ -700,16 +702,16 @@ describe('time of day', () => {
     expect(light.sunYaw).toBeCloseTo(Math.atan2(light.sunward.x, light.sunward.z), 9)
   })
 
-  it('runs off the end of the clock and wraps', async () => {
-    const land = landOf(await town())
+  it('runs off the end of the clock and wraps', () => {
+    const land = landOf(town())
     land.setTime(30)
     expect(land.time).toBe(6)
     land.setTime(-3)
     expect(land.time).toBe(21)
   })
 
-  it('makes night about five times dimmer than noon, and never black', async () => {
-    const land = landOf(await town())
+  it('makes night about five times dimmer than noon, and never black', () => {
+    const land = landOf(town())
     const lit = (): number => land.sun.intensity + land.moon.intensity + land.skyLight.intensity
 
     land.setTime(12)
@@ -724,8 +726,8 @@ describe('time of day', () => {
     expect(land.moon.intensity).toBeGreaterThan(0.2)
   })
 
-  it('brings the stars and the moon out at night and takes them away by day', async () => {
-    const land = landOf(await town())
+  it('brings the stars and the moon out at night and takes them away by day', () => {
+    const land = landOf(town())
     const moonDisc = land.root.getObjectByName('land:moon-disc')!
 
     land.setTime(1)
@@ -738,8 +740,8 @@ describe('time of day', () => {
     expect(moonDisc.visible).toBe(false)
   })
 
-  it('moves the light without rebuilding a single vertex of the land', async () => {
-    const land = landOf(await town())
+  it('moves the light without rebuilding a single vertex of the land', () => {
+    const land = landOf(town())
     const geometry = land.terrain.geometry
     const position = geometry.getAttribute('position') as THREE.BufferAttribute
     const version = position.version
@@ -755,8 +757,8 @@ describe('time of day', () => {
     expect(land.trees.map((wood) => wood.geometry)).toEqual(trees)
   })
 
-  it('moves without a single step you could see, all the way round the clock', async () => {
-    const land = landOf(await town())
+  it('moves without a single step you could see, all the way round the clock', () => {
+    const land = landOf(town())
     const sunward = new THREE.Vector3()
     const moonward = new THREE.Vector3()
     const disc = land.root.getObjectByName('land:moon-disc')!
@@ -823,8 +825,8 @@ describe('time of day', () => {
 })
 
 describe('weather', () => {
-  it('moves the light and the haze the way each one says', async () => {
-    const land = landOf(await town())
+  it('moves the light and the haze the way each one says', () => {
+    const land = landOf(town())
     land.setTime(12)
 
     const look = (): { sun: number; ambient: number; density: number; haze: number; wet: number } => ({
@@ -854,8 +856,8 @@ describe('weather', () => {
     expect(wet.wet).toBeGreaterThan(overcast.wet)
   })
 
-  it('rains inside a volume around the viewer and nowhere else', async () => {
-    const land = landOf(await town())
+  it('rains inside a volume around the viewer and nowhere else', () => {
+    const land = landOf(town())
     const rain = land.rain as THREE.LineSegments
     const drawn = (): number => rain.geometry.drawRange.count
 
@@ -920,8 +922,8 @@ function shell(centre: THREE.Vector3, radius: number, steps = 12): THREE.Vector3
 }
 
 describe('the sun casts a shadow', () => {
-  it('on a map fine enough for a person and a door to read', async () => {
-    const land = landOf(await town())
+  it('on a map fine enough for a person and a door to read', () => {
+    const land = landOf(town())
 
     expect(land.sun.castShadow).toBe(true)
     expect(land.sun.shadow.mapSize.width).toBe(land.shadow.spec.mapSize)
@@ -932,10 +934,10 @@ describe('the sun casts a shadow', () => {
     expect(2.1 / land.shadow.texel).toBeGreaterThan(14)
   })
 
-  it('over the near field round the viewer, wherever the viewer is', async () => {
-    const land = landOf(await town())
+  it('over the near field round the viewer, wherever the viewer is', () => {
+    const land = landOf(town())
     land.setTime(9)
-    const middle = middleOf(await town())
+    const middle = middleOf(town())
     const reach = land.shadow.spec.radius - 0.5
 
     for (const viewer of [
@@ -951,10 +953,10 @@ describe('the sun casts a shadow', () => {
     }
   })
 
-  it('on a map that moves in whole texels, so the edges cannot crawl', async () => {
-    const land = landOf(await town())
+  it('on a map that moves in whole texels, so the edges cannot crawl', () => {
+    const land = landOf(town())
     land.setTime(10)
-    const middle = middleOf(await town())
+    const middle = middleOf(town())
     const texel = land.shadow.texel
     const seen: THREE.Vector3[] = []
 
@@ -975,8 +977,8 @@ describe('the sun casts a shadow', () => {
     }
   })
 
-  it('without turning the sun: the light is a direction, the map is a place', async () => {
-    const land = landOf(await town())
+  it('without turning the sun: the light is a direction, the map is a place', () => {
+    const land = landOf(town())
     land.setTime(14)
     const heading = (): THREE.Vector3 =>
       land.sun.position.clone().sub(land.sun.target.position).normalize()
@@ -988,8 +990,8 @@ describe('the sun casts a shadow', () => {
     }
   })
 
-  it('that dissolves as the sun reaches the horizon, and is gone before the sun is', async () => {
-    const land = landOf(await town())
+  it('that dissolves as the sun reaches the horizon, and is gone before the sun is', () => {
+    const land = landOf(town())
     const strength = (hours: number): number => {
       land.setTime(hours)
       return land.sun.shadow.intensity
@@ -1009,8 +1011,8 @@ describe('the sun casts a shadow', () => {
     expect(strength(0)).toBe(0)
   })
 
-  it('and the moon casts none: a hard shadow at 0.3 lux is a smudge, not a shadow', async () => {
-    const land = landOf(await town(), { time: 0 })
+  it('and the moon casts none: a hard shadow at 0.3 lux is a smudge, not a shadow', () => {
+    const land = landOf(town(), { time: 0 })
 
     expect(land.moon.castShadow).toBe(false)
     expect(land.moon.intensity).toBeGreaterThan(0)
@@ -1018,8 +1020,8 @@ describe('the sun casts a shadow', () => {
     expect(land.sun.visible).toBe(false)
   })
 
-  it('from the woods but not from the ground, which shadows itself into stripes', async () => {
-    const land = landOf(await town())
+  it('from the woods but not from the ground, which shadows itself into stripes', () => {
+    const land = landOf(town())
 
     for (const wood of land.trees) {
       expect(wood.castShadow).toBe(true)
@@ -1031,8 +1033,8 @@ describe('the sun casts a shadow', () => {
     expect(land.sky.castShadow).toBe(false)
   })
 
-  it('and lets a box hand it one merged stand-in instead of four meshes', async () => {
-    const land = landOf(await town())
+  it('and lets a box hand it one merged stand-in instead of four meshes', () => {
+    const land = landOf(town())
     const proxy = new THREE.Object3D()
     proxy.layers.set(SHADOW_LAYER)
 

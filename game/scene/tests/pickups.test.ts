@@ -6,8 +6,8 @@ import { bar } from './bar.ts'
 import { bigTown, town } from './town.ts'
 
 /**
- * Where a thing you can pick up ends up, whether the generator left it there or
- * the player did. Every one of them used to be put down at the same 0.9 m
+ * Where a thing you can pick up ends up, whether the room was built with it
+ * there or the player put it down. Every one of them used to be put down at the same 0.9 m
  * whatever it was standing on, which sank a glass into a bar counter and
  * floated a bottle over a stool, and 60 of 88 of them were not over the piece
  * they belonged to at all. Then a thing put down after the room was built was
@@ -21,13 +21,13 @@ const EXACT = 5
 /** The same ten microns, as a margin on a rectangle. */
 const HAIR = 1e-5
 
-/** Every room of two generated towns, so the rule is tested on the class and not on one room. */
-async function rooms(): Promise<Array<{ world: World; interior: Interior }>> {
-  const worlds = [await town(), await bigTown()]
+/** Every room of two towns, so the rule is tested on the class and not on one room. */
+function rooms(): Array<{ world: World; interior: Interior }> {
+  const worlds = [town(), bigTown()]
   return worlds.flatMap((world) => [...world.interiors()].map((interior) => ({ world, interior })))
 }
 
-/** What the generator left lying about in that room. */
+/** What was lying about in that room before it was built. */
 function leftIn(world: World, interior: Interior): Array<{ itemId: string; anchorId: string }> {
   const found: Array<{ itemId: string; anchorId: string }> = []
   for (const placement of world.placements()) {
@@ -128,10 +128,10 @@ function expectSamePlace(box: THREE.Box3, was: THREE.Box3, where: string): void 
 }
 
 describe('a thing left in a room', () => {
-  it('stands on the drawn top of whatever it is left on, over every room in two towns', async () => {
+  it('stands on the drawn top of whatever it is left on, over every room in two towns', () => {
     let placed = 0
 
-    for (const { world, interior } of await rooms()) {
+    for (const { world, interior } of rooms()) {
       const built = buildInterior(world, interior, new Greybox())
       for (const { itemId, anchorId } of leftIn(world, interior)) {
         const anchor = interior.anchors.find((one) => one.id === anchorId)!
@@ -144,11 +144,11 @@ describe('a thing left in a room', () => {
     expect(placed, 'no town item stands on furniture').toBeGreaterThan(0)
   })
 
-  it('lands the same way when the game puts it down as when the room was built with it there', async () => {
+  it('lands the same way when the game puts it down as when the room was built with it there', () => {
     let anchoredOnFurniture = 0
     let anchoredOnTheFloor = 0
 
-    for (const { world, interior } of await rooms()) {
+    for (const { world, interior } of rooms()) {
       const built = buildInterior(world, interior, new Greybox())
       const left = leftIn(world, interior)
       if (left.length === 0) continue
@@ -156,7 +156,7 @@ describe('a thing left in a room', () => {
       const before = cost(built)
 
       // the whole room is somewhere a thing can be put down, not only the
-      // anchors the generator happened to use
+      // anchors the room was laid out with something on
       const carried = left[0]!.itemId
       for (const anchor of interior.anchors) {
         built.pickups.get(carried)!.removeFromParent()

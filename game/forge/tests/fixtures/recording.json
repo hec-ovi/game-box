@@ -1,0 +1,1997 @@
+{
+ "brief": {
+  "theme": "quiet coastal town",
+  "seed": "recorded",
+  "blocksX": 3,
+  "blocksY": 3
+ },
+ "calls": [
+  {
+   "method": "writePremise",
+   "key": "183b86c1d66c5125ef95687b7d9298d3",
+   "output": {
+    "ok": true,
+    "value": {
+     "livesOn": "The town lives on data cooling. The ocean here is warm, but the current runs deep and cold, three miles out. The big firms pipe it up through black iron stacks that hiss day and night. The water goes in, the servers go in, they get hot, the cold water takes the heat away, and the warm water goes back into the sea where the jellyfish thrive. It is a clean trade. No smoke. Just the hum of the pumps.",
+     "happened": "Six months ago, the main intake pipe burst. Not a crack, a burst. The pressure was too high because the new cooling units were too efficient, too tight. They blew the gasket in the old sector. For three days, the servers overheated. The big firm, Aetheris, shut down the grid to save the hardware. The town went dark, hot, and silent. When the power came back, the air smelled of ozone and dead fish.",
+     "stake": "The ownership of the old intake sector. Aetheris says they own the land under the pipes because they pay the lease. The local union, The Keepers, says they own the rights to the water flow and the land because their grandfathers laid the first pipes before Aetheris was a name. If Aetheris gets the sector, they can build a second plant on top of the old residential blocks. If The Keepers keep it, A",
+     "sides": [
+      {
+       "name": "Aetheris",
+       "wants": "To demolish the old sector and build the Expansion. They say it is progress, that the old pipes are inefficient, that the land is wasted. They want the contracts to be ironclad so no local can claim a share of the cooling revenue."
+      },
+      {
+       "name": "The Keepers",
+       "wants": "To keep the sector as a protected zone. They say the old pipes are still working, that they have maintained them for generations, and that Aetheris is trying to buy the town by buying the water. They want the lease renegotiated so the town gets a cut of the efficiency savings."
+      }
+     ],
+     "common": [
+      "The smell of ozone lingers even in the rain.",
+      "Aetheris is buying up apartments, one by one, to push the locals out.",
+      "The pumps never stop. If you listen closely, you can hear the heartbeat of the town in the floorboards.",
+      "The water is warmer than it used to be. The jellyfish are getting bigger."
+     ],
+     "build": {
+      "moreOf": [
+       "warehouse",
+       "apartment",
+       "clinic"
+      ],
+      "fewerOf": [
+       "shop",
+       "chapel"
+      ],
+      "mustHave": [
+       "office",
+       "bar",
+       "clinic",
+       "warehouse"
+      ]
+     }
+    }
+   }
+  },
+  {
+   "method": "writeQuests",
+   "key": "64ba5bec5eda3b0d3c6c3f02e6bb7e0a",
+   "output": {
+    "ok": true,
+    "value": [
+     {
+      "format": "game-box.quest",
+      "schemaVersion": 1,
+      "id": "quest_0001",
+      "kind": "main",
+      "title": "The Gasket in the Old Sector",
+      "summary": "Aetheris is locking down the old intake sector. I need you to get the original lease from the bar's safe before they wipe the records. It's the only proof the Keepers have.",
+      "giverNpcId": "npc_0012",
+      "difficulty": "small",
+      "startStepId": "step_0001",
+      "steps": [
+       {
+        "id": "step_0001",
+        "objective": "Talk to the receptionist at Instance 46 about the lease dispute.",
+        "next": [
+         "step_0002"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0012"
+       },
+       {
+        "id": "step_0002",
+        "objective": "Walk to Instance 39.",
+        "next": [
+         "step_0003"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0039"
+        }
+       },
+       {
+        "id": "step_0003",
+        "objective": "Ask the bartender at Instance 39 for the safe code.",
+        "next": [
+         "step_0004"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0004"
+       },
+       {
+        "id": "step_0004",
+        "objective": "Get the screen code out of Person 1 at Instance 28.",
+        "next": [
+         "step_0005"
+        ],
+        "requires": [],
+        "effects": [
+         {
+          "kind": "give-password",
+          "password": "kestrel-81"
+         }
+        ],
+        "kind": "talk",
+        "npcId": "npc_0001"
+       },
+       {
+        "id": "step_0005",
+        "objective": "Hack the screen at Instance 28 to get the deed.",
+        "next": [
+         "step_0006"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "hack",
+        "machineId": "machine_0001"
+       },
+       {
+        "id": "step_0006",
+        "objective": "Walk to Instance 28 to check the deed on the counter.",
+        "next": [
+         "step_0007"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0028"
+        }
+       },
+       {
+        "id": "step_0007",
+        "objective": "Pick up the deed from the counter at Instance 28.",
+        "next": [
+         "step_0008"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "collect",
+        "itemId": "item_0001",
+        "allowSteal": false
+       },
+       {
+        "id": "step_0008",
+        "objective": "Walk back to Instance 46.",
+        "next": [
+         "step_0009"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0046"
+        }
+       },
+       {
+        "id": "step_0009",
+        "objective": "Hand the deed to the receptionist at Instance 46.",
+        "next": [
+         "step_0010"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "deliver",
+        "itemId": "item_0001",
+        "toNpcId": "npc_0012"
+       },
+       {
+        "id": "step_0010",
+        "objective": "The job is done.",
+        "next": [],
+        "requires": [],
+        "effects": [],
+        "kind": "complete"
+       }
+      ],
+      "reward": {
+       "money": 50,
+       "reputation": 0,
+       "faction": "town",
+       "items": [
+        "item_0009"
+       ]
+      }
+     },
+     {
+      "format": "game-box.quest",
+      "schemaVersion": 1,
+      "id": "quest_0002",
+      "kind": "side",
+      "title": "The Kestrel Code",
+      "summary": "I need a favour. Old Man Halloway is stuck in his own house because he forgot the code to his mail box. He says it starts with a bird. Go to the office next door, hack the terminal there, find the master log, and read it back to me. I'll tell you what to do with it.",
+      "giverNpcId": "npc_0004",
+      "difficulty": "small",
+      "startStepId": "step_0001",
+      "steps": [
+       {
+        "id": "step_0001",
+        "objective": "Talk to Silas at the bar",
+        "next": [
+         "step_0002"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0004"
+       },
+       {
+        "id": "step_0002",
+        "objective": "Walk to the office, Instance 46",
+        "next": [
+         "step_0003"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0046"
+        }
+       },
+       {
+        "id": "step_0003",
+        "objective": "Get the screen code out of Person 12 at Instance 46.",
+        "next": [
+         "step_0004"
+        ],
+        "requires": [],
+        "effects": [
+         {
+          "kind": "give-password",
+          "password": "gable-21"
+         }
+        ],
+        "kind": "talk",
+        "npcId": "npc_0012"
+       },
+       {
+        "id": "step_0004",
+        "objective": "Hack the ledger screen in the office",
+        "next": [
+         "step_0005"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "hack",
+        "machineId": "machine_0003"
+       },
+       {
+        "id": "step_0005",
+        "objective": "Tell Silas about the code",
+        "next": [
+         "step_0006"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0004"
+       },
+       {
+        "id": "step_0006",
+        "objective": "Walk to the house, Instance 28",
+        "next": [
+         "step_0007"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0028"
+        }
+       },
+       {
+        "id": "step_0007",
+        "objective": "Get the screen code out of Person 1 at Instance 28.",
+        "next": [
+         "step_0008"
+        ],
+        "requires": [],
+        "effects": [
+         {
+          "kind": "give-password",
+          "password": "kestrel-81"
+         }
+        ],
+        "kind": "talk",
+        "npcId": "npc_0001"
+       },
+       {
+        "id": "step_0008",
+        "objective": "Unlock the mail box at Instance 28 with the code 'kestrel-81'",
+        "next": [
+         "step_0009"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "hack",
+        "machineId": "machine_0001"
+       },
+       {
+        "id": "step_0009",
+        "objective": "Take the letter from the mail box",
+        "next": [
+         "step_0010"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "collect",
+        "itemId": "item_0002",
+        "allowSteal": false
+       },
+       {
+        "id": "step_0010",
+        "objective": "Return to the bar, Instance 39",
+        "next": [
+         "step_0011"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0039"
+        }
+       },
+       {
+        "id": "step_0011",
+        "objective": "Give the letter to Silas",
+        "next": [
+         "step_0012"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "deliver",
+        "itemId": "item_0002",
+        "toNpcId": "npc_0004"
+       },
+       {
+        "id": "step_0012",
+        "objective": "The job is done.",
+        "next": [],
+        "requires": [],
+        "effects": [],
+        "kind": "complete"
+       }
+      ],
+      "reward": {
+       "money": 85,
+       "reputation": 0,
+       "faction": "town",
+       "items": [
+        "item_0004"
+       ]
+      }
+     },
+     {
+      "format": "game-box.quest",
+      "schemaVersion": 1,
+      "id": "quest_0003",
+      "kind": "side",
+      "title": "The Kestrel Code",
+      "summary": "My mail is stuck in the box at 28. The code is kestrel-81. Go get it. It\u2019s not much, but it keeps the lights on in here.",
+      "giverNpcId": "npc_0001",
+      "difficulty": "small",
+      "startStepId": "step_0001",
+      "steps": [
+       {
+        "id": "step_0001",
+        "objective": "Talk to Person 1 about the mail at Instance 28.",
+        "next": [
+         "step_0002"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0001"
+       },
+       {
+        "id": "step_0002",
+        "objective": "Get the screen code out of Person 1 at Instance 28.",
+        "next": [
+         "step_0003"
+        ],
+        "requires": [],
+        "effects": [
+         {
+          "kind": "give-password",
+          "password": "kestrel-81"
+         }
+        ],
+        "kind": "talk",
+        "npcId": "npc_0001"
+       },
+       {
+        "id": "step_0003",
+        "objective": "Hack the mail machine at Instance 28 using the code kestrel-81.",
+        "next": [
+         "step_0004"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "hack",
+        "machineId": "machine_0001"
+       },
+       {
+        "id": "step_0004",
+        "objective": "Collect the letter from the mail machine.",
+        "next": [
+         "step_0005"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "collect",
+        "itemId": "item_0001",
+        "allowSteal": false
+       },
+       {
+        "id": "step_0005",
+        "objective": "Walk 110 metres to Instance 39.",
+        "next": [
+         "step_0006"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0039"
+        }
+       },
+       {
+        "id": "step_0006",
+        "objective": "Give the letter to Person 4 at Instance 39.",
+        "next": [
+         "step_0007"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "deliver",
+        "itemId": "item_0001",
+        "toNpcId": "npc_0004"
+       },
+       {
+        "id": "step_0007",
+        "objective": "The job is done.",
+        "next": [],
+        "requires": [],
+        "effects": [],
+        "kind": "complete"
+       }
+      ],
+      "reward": {
+       "money": 40,
+       "reputation": 0,
+       "faction": "town",
+       "items": [],
+       "access": []
+      }
+     },
+     {
+      "format": "game-box.quest",
+      "schemaVersion": 1,
+      "id": "quest_0004",
+      "kind": "side",
+      "title": "The Ledger Code",
+      "summary": "My boss at the office needs me to verify a payment. I don't know the code to the ledger, and the bartender here knows the numbers better than the accountants. If you can get me into that machine, I'll settle up.",
+      "giverNpcId": "npc_0004",
+      "difficulty": "small",
+      "startStepId": "step_0001",
+      "steps": [
+       {
+        "id": "step_0001",
+        "objective": "Talk to the bartender at Instance 39 about the ledger.",
+        "next": [
+         "step_0002"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0004"
+       },
+       {
+        "id": "step_0002",
+        "objective": "Walk to Instance 46.",
+        "next": [
+         "step_0003"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0046"
+        }
+       },
+       {
+        "id": "step_0003",
+        "objective": "Get the screen code out of Person 12 at Instance 46.",
+        "next": [
+         "step_0004"
+        ],
+        "requires": [],
+        "effects": [
+         {
+          "kind": "give-password",
+          "password": "gable-21"
+         }
+        ],
+        "kind": "talk",
+        "npcId": "npc_0012"
+       },
+       {
+        "id": "step_0004",
+        "objective": "Hack the ledger screen at Instance 46.",
+        "next": [
+         "step_0005"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "hack",
+        "machineId": "machine_0003"
+       },
+       {
+        "id": "step_0005",
+        "objective": "Talk to the receptionist at Instance 46 to confirm the entry.",
+        "next": [
+         "step_0006"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0012"
+       },
+       {
+        "id": "step_0006",
+        "objective": "Walk back to Instance 39.",
+        "next": [
+         "step_0007"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0039"
+        }
+       },
+       {
+        "id": "step_0007",
+        "objective": "Report back to the bartender at Instance 39.",
+        "next": [
+         "step_0008"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0004"
+       },
+       {
+        "id": "step_0008",
+        "objective": "The job is done.",
+        "next": [],
+        "requires": [],
+        "effects": [],
+        "kind": "complete"
+       }
+      ],
+      "reward": {
+       "money": 45,
+       "reputation": 0,
+       "faction": "town",
+       "items": []
+      }
+     },
+     {
+      "format": "game-box.quest",
+      "schemaVersion": 1,
+      "id": "quest_0005",
+      "kind": "side",
+      "title": "The Aetheris Lease",
+      "summary": "I need you to take a copy of the old lease from the bar's ledger to the Aetheris office. It\u2019s the only proof the Keepers have that we laid the first pipes. They\u2019re trying to buy us out and they don\u2019t want us reminding them of our rights.",
+      "giverNpcId": "npc_0004",
+      "difficulty": "small",
+      "startStepId": "step_0001",
+      "steps": [
+       {
+        "id": "step_0001",
+        "objective": "Talk to Person 4 at the bar.",
+        "next": [
+         "step_0002"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0004"
+       },
+       {
+        "id": "step_0002",
+        "objective": "Take the document from the bar counter.",
+        "next": [
+         "step_0003"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "collect",
+        "itemId": "item_0006",
+        "allowSteal": false
+       },
+       {
+        "id": "step_0003",
+        "objective": "Walk to Instance 46.",
+        "next": [
+         "step_0004"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0046"
+        }
+       },
+       {
+        "id": "step_0004",
+        "objective": "Give the document to Person 12 at Instance 46.",
+        "next": [
+         "step_0005"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "deliver",
+        "itemId": "item_0006",
+        "toNpcId": "npc_0012"
+       },
+       {
+        "id": "step_0005",
+        "objective": "The job is done.",
+        "next": [],
+        "requires": [],
+        "effects": [],
+        "kind": "complete"
+       }
+      ],
+      "reward": {
+       "money": 45,
+       "reputation": 0,
+       "faction": "town",
+       "items": [
+        "item_0009"
+       ]
+      }
+     },
+     {
+      "format": "game-box.quest",
+      "schemaVersion": 1,
+      "id": "quest_0006",
+      "kind": "side",
+      "title": "The Keepers' Seal",
+      "summary": "The union rep needs a physical copy of the old lease amendment. Aetheris is digitizing everything and they think the paper trail is gone. It\u2019s not. It\u2019s in the office safe, but the code is different now. Get it, take it to the bar for the witness, then bring the witness to the house where the deed is kept so we can file it before Aetheris locks the sector.",
+      "giverNpcId": "npc_0016",
+      "difficulty": "small",
+      "startStepId": "step_0001",
+      "steps": [
+       {
+        "id": "step_0001",
+        "objective": "Talk to the worker at Instance 46 about the missing lease.",
+        "next": [
+         "step_0002"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0016"
+       },
+       {
+        "id": "step_0002",
+        "objective": "Get the screen code out of Person 12 at Instance 46.",
+        "next": [
+         "step_0003"
+        ],
+        "requires": [],
+        "effects": [
+         {
+          "kind": "give-password",
+          "password": "gable-21"
+         }
+        ],
+        "kind": "talk",
+        "npcId": "npc_0012"
+       },
+       {
+        "id": "step_0003",
+        "objective": "Hack the ledger screen at Instance 46 to find the new safe code.",
+        "next": [
+         "step_0004"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "hack",
+        "machineId": "machine_0003"
+       },
+       {
+        "id": "step_0004",
+        "objective": "Take the sealed envelope from the office safe at Instance 46.",
+        "next": [
+         "step_0005"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "collect",
+        "itemId": "item_0009",
+        "allowSteal": false
+       },
+       {
+        "id": "step_0005",
+        "objective": "Walk 50 metres to Instance 39.",
+        "next": [
+         "step_0006"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0039"
+        }
+       },
+       {
+        "id": "step_0006",
+        "objective": "Show the envelope to the bartender at Instance 39 and get his signature.",
+        "next": [
+         "step_0007"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0004"
+       },
+       {
+        "id": "step_0007",
+        "objective": "Walk 90 metres to Instance 28.",
+        "next": [
+         "step_0008"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0028"
+        }
+       },
+       {
+        "id": "step_0008",
+        "objective": "Hand the signed envelope to the resident at Instance 28.",
+        "next": [
+         "step_0009"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0001"
+       },
+       {
+        "id": "step_0009",
+        "objective": "The job is done.",
+        "next": [],
+        "requires": [],
+        "effects": [],
+        "kind": "complete"
+       }
+      ],
+      "reward": {
+       "money": 75,
+       "reputation": 0,
+       "faction": "The Keepers",
+       "items": [
+        "item_0014"
+       ]
+      }
+     },
+     {
+      "format": "game-box.quest",
+      "schemaVersion": 1,
+      "id": "quest_0007",
+      "kind": "side",
+      "title": "The Gasket in the Old Sector",
+      "summary": "The pumps are hissing wrong. I need someone to check the intake pressure at the old sector without waking the Aetheris managers. Bring me the reading.",
+      "giverNpcId": "npc_0016",
+      "difficulty": "standard",
+      "failWhen": [],
+      "startStepId": "step_0001",
+      "steps": [
+       {
+        "id": "step_0001",
+        "objective": "Talk to Person 16 at Instance 46",
+        "next": [
+         "step_0002"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0016"
+       },
+       {
+        "id": "step_0002",
+        "objective": "Walk to Instance 39",
+        "next": [
+         "step_0003"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0039"
+        }
+       },
+       {
+        "id": "step_0003",
+        "objective": "Get the screen code out of Person 12 at Instance 46.",
+        "next": [
+         "step_0004"
+        ],
+        "requires": [],
+        "effects": [
+         {
+          "kind": "give-password",
+          "password": "gable-21"
+         }
+        ],
+        "kind": "talk",
+        "npcId": "npc_0012"
+       },
+       {
+        "id": "step_0004",
+        "objective": "Hack the ledger at Instance 46",
+        "next": [
+         "step_0005"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "hack",
+        "machineId": "machine_0003"
+       },
+       {
+        "id": "step_0005",
+        "objective": "Take Thing 10 from Instance 46",
+        "next": [
+         "step_0006"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "collect",
+        "itemId": "item_0010",
+        "allowSteal": false
+       },
+       {
+        "id": "step_0006",
+        "objective": "Walk to Instance 28",
+        "next": [
+         "step_0007"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0028"
+        }
+       },
+       {
+        "id": "step_0007",
+        "objective": "Give Thing 10 to Person 1 at Instance 28",
+        "next": [
+         "step_0008"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "deliver",
+        "itemId": "item_0010",
+        "toNpcId": "npc_0001"
+       },
+       {
+        "id": "step_0008",
+        "objective": "Talk to Person 1 at Instance 28",
+        "next": [
+         "step_0009"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0001"
+       },
+       {
+        "id": "step_0009",
+        "objective": "Walk to Instance 46",
+        "next": [
+         "step_0010"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0046"
+        }
+       },
+       {
+        "id": "step_0010",
+        "objective": "Get your hands on it first.",
+        "hint": "Give Thing 10 to Person 16 at Instance 46",
+        "next": [
+         "step_0011"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "collect",
+        "itemId": "item_0010",
+        "allowSteal": false
+       },
+       {
+        "id": "step_0011",
+        "objective": "Give Thing 10 to Person 16 at Instance 46",
+        "next": [
+         "step_0012"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "deliver",
+        "itemId": "item_0010",
+        "toNpcId": "npc_0016"
+       },
+       {
+        "id": "step_0012",
+        "objective": "Talk to Person 16 at Instance 46",
+        "next": [
+         "step_0013"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0016"
+       },
+       {
+        "id": "step_0013",
+        "objective": "The job is done.",
+        "next": [],
+        "requires": [],
+        "effects": [],
+        "kind": "complete"
+       }
+      ],
+      "reward": {
+       "money": 120,
+       "reputation": 0,
+       "faction": "town",
+       "items": [
+        "item_0011"
+       ]
+      }
+     },
+     {
+      "format": "game-box.quest",
+      "schemaVersion": 1,
+      "id": "quest_0008",
+      "kind": "side",
+      "title": "The Ledger Code",
+      "summary": "Aetheris is buying the old sector out from under us, and they\u2019re hiding the leverage in the ledger at their office. I need you to get in, grab the code from the screen, and get out. Don\u2019t make a noise.",
+      "giverNpcId": "npc_0004",
+      "difficulty": "small",
+      "failWhen": [],
+      "startStepId": "step_0001",
+      "steps": [
+       {
+        "id": "step_0001",
+        "objective": "Talk to Elara at the bar about the Aetheris office.",
+        "next": [
+         "step_0002"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0004"
+       },
+       {
+        "id": "step_0002",
+        "objective": "Walk to Instance 46, the Aetheris office.",
+        "next": [
+         "step_0003"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0046"
+        }
+       },
+       {
+        "id": "step_0003",
+        "objective": "Get the screen code out of Person 12 at Instance 46.",
+        "next": [
+         "step_0004"
+        ],
+        "requires": [],
+        "effects": [
+         {
+          "kind": "give-password",
+          "password": "gable-21"
+         }
+        ],
+        "kind": "talk",
+        "npcId": "npc_0012"
+       },
+       {
+        "id": "step_0004",
+        "objective": "Hack the ledger screen at Instance 46 to find the access code.",
+        "next": [
+         "step_0005"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "hack",
+        "machineId": "machine_0003"
+       },
+       {
+        "id": "step_0005",
+        "objective": "Give the code to Elara at the bar.",
+        "next": [
+         "step_0006"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0004"
+       },
+       {
+        "id": "step_0006",
+        "objective": "The job is done.",
+        "next": [],
+        "requires": [],
+        "effects": [],
+        "kind": "complete"
+       }
+      ],
+      "reward": {
+       "money": 45,
+       "reputation": 0,
+       "faction": "The Keepers",
+       "items": []
+      }
+     },
+     {
+      "format": "game-box.quest",
+      "schemaVersion": 1,
+      "id": "quest_0009",
+      "kind": "side",
+      "title": "The Last Proof",
+      "summary": "Aetheris has the contract, but they don't have the history. I need the original intake map from the bar's old screen to prove the Keepers laid the first pipe. It's a game of Tetris, and the high score is the only key that works.",
+      "giverNpcId": "npc_0001",
+      "difficulty": "standard",
+      "startStepId": "step_0001",
+      "steps": [
+       {
+        "id": "step_0001",
+        "objective": "Talk to Person 1 about the old sector dispute",
+        "next": [
+         "step_0002"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0001"
+       },
+       {
+        "id": "step_0002",
+        "objective": "Walk to Instance 39, the bar, to find the machine running Tetris",
+        "next": [
+         "step_0003"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0039"
+        }
+       },
+       {
+        "id": "step_0003",
+        "objective": "Get the screen code out of Person 12 at Instance 46.",
+        "next": [
+         "step_0004"
+        ],
+        "requires": [],
+        "effects": [
+         {
+          "kind": "give-password",
+          "password": "gable-21"
+         }
+        ],
+        "kind": "talk",
+        "npcId": "npc_0012"
+       },
+       {
+        "id": "step_0004",
+        "objective": "Hack the ledger screen in the office at Instance 46 to get the code for the Tetris machine",
+        "next": [
+         "step_0005"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "hack",
+        "machineId": "machine_0003"
+       },
+       {
+        "id": "step_0005",
+        "objective": "Play Tetris on the screen at Instance 39 until you reach a score of 8500",
+        "next": [
+         "step_0006"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "beat-game",
+        "machineId": "machine_0002",
+        "score": 8500
+       },
+       {
+        "id": "step_0006",
+        "objective": "Take the printed map from the slot at Instance 39",
+        "next": [
+         "step_0007"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "collect",
+        "itemId": "item_0007",
+        "allowSteal": false
+       },
+       {
+        "id": "step_0007",
+        "objective": "Walk back to Instance 28 to return the map",
+        "next": [
+         "step_0008"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0028"
+        }
+       },
+       {
+        "id": "step_0008",
+        "objective": "Give the map to Person 1 at Instance 28",
+        "next": [
+         "step_0009"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "deliver",
+        "itemId": "item_0007",
+        "toNpcId": "npc_0001"
+       },
+       {
+        "id": "step_0009",
+        "objective": "The job is done.",
+        "next": [],
+        "requires": [],
+        "effects": [],
+        "kind": "complete"
+       }
+      ],
+      "reward": {
+       "money": 150,
+       "reputation": 0,
+       "faction": "town",
+       "items": [
+        "item_0007"
+       ],
+       "access": [
+        {
+         "interiorId": "interior_0002"
+        }
+       ]
+      }
+     }
+    ]
+   }
+  },
+  {
+   "method": "nameCity",
+   "key": "8a97c1725496d29ca4e7cd764dccfeda",
+   "output": {
+    "ok": true,
+    "value": "Coolwater"
+   }
+  },
+  {
+   "method": "nameDistricts",
+   "key": "f199d2f4fb4176e97bb6c4187e4d9dd3",
+   "output": {
+    "ok": true,
+    "value": [
+     "The Hum"
+    ]
+   }
+  },
+  {
+   "method": "namePlaces",
+   "key": "71d4908b3ba52ee54d118b34506f3725",
+   "output": {
+    "ok": true,
+    "value": [
+     "Marnie's Coffee",
+     "The Miller House",
+     "Cold Storage",
+     "Vance House",
+     "Holloway Pumps",
+     "Deep Current Logistics",
+     "Elias Repair",
+     "The Hiss Cafe",
+     "Rook Residence",
+     "Aetheris Archive",
+     "Saltwater Social",
+     "The Keepers Pub",
+     "The Iron Flats",
+     "Old Sector Depot",
+     "The Gasket Block",
+     "Ozone & Ale",
+     "The Driftwood Bar",
+     "Coin Street Provisions",
+     "Tobin Gaskets",
+     "The Last Byte Shop",
+     "Maeve's Drying Racks",
+     "The Halloway Place",
+     "St. Osmund's",
+     "Silt & Stout",
+     "Kestrel Cold Storage",
+     "Piper's Gaskets",
+     "Tomas's Valve Repair",
+     "The Barnstable House",
+     "Gantry Works",
+     "Vane & Son",
+     "The Leaking Pipe",
+     "Harrow's Pump Yard",
+     "Dune Welding",
+     "Keeper's Archive",
+     "Tide & Gear",
+     "The Miller House",
+     "The Rusty Flange",
+     "Bishop's Fittings",
+     "The Warm Tide",
+     "Intake No. 4",
+     "Elara's Clinic",
+     "The Stillwater Inn",
+     "Milo's Clinic",
+     "Coolwater Storage",
+     "Market of Tides",
+     "Harrow's Office",
+     "Deepstack Storage",
+     "The Coldwater Inn",
+     "Sallow Apartments",
+     "The Anchor House",
+     "The Current Inn",
+     "Pike Flats",
+     "The Leaky Pipe",
+     "14 Nail Avenue",
+     "Coldfront Warehouse",
+     "Jellyfish Jar",
+     "Nurse Hattie's Clinic",
+     "The Black Pipe Warehouse",
+     "The Hissing Steam",
+     "Gaunt Avenue Meds",
+     "Maren's"
+    ]
+   }
+  },
+  {
+   "method": "writeInstances",
+   "key": "7fa0bbfc95e43129d036e76e84f0101e",
+   "output": {
+    "ok": true,
+    "value": [
+     {
+      "name": "The Salt House",
+      "character": "The house is empty but for the hum. It sits on the edge of the old sector, where the black iron stacks loom like tombstones. The paint is peeling, not from age, but from the salt spray that the new, hotter effluent sends further inland. Inside, the air is still and smells faintly of the ozone that never quite left the town. A single screen in the living room flickers with the municipal mail, casting a pale blue light on the dust motes. It is for sale, but the price is high enough that only an investor or a desperate Keeper would look twice. The floorboards creak in a rhythm that matches the distant pumps. It feels less like a home and more like a waiting room for a verdict.",
+      "people": [
+       {
+        "name": "Mara Ives",
+        "personality": "She stands in the entrance hall, back against the doorframe, watching the street. She does not blink when you enter. She checks her watch every three minutes. She keeps her hands in her pockets, gripping a small, smooth stone.",
+        "knowledge": [
+         "The landlord is Aetheris, and they are stalling the sale to drive the price up.",
+         "The previous tenant left in the night because the noise from the pumps got too loud.",
+         "The lock on the bedroom is broken; it sticks if you don't jiggle it left.",
+         "Milo's Valve Repair has been here twice, looking for the gasket specs."
+        ],
+        "life": {
+         "history": "I was a gasket inspector for The Keepers for twenty years. When the burst happened, I was the one who signed off on the pressure readings. I was wrong. I lost my job, and then I lost my apartment to the buyouts. Now I just watch these empty houses, waiting to see which one breaks next.",
+         "interests": "The sound of the pipes. If you listen to the walls, you can tell which block is overheating.",
+         "manner": "Short answers. She speaks in a flat, tired voice, looking at you only when necessary.",
+         "cares": "Accuracy. She hates it when people guess about the infrastructure.",
+         "avoids": "Pity. If you mention the burst with a sad face, she turns away.",
+         "reason": "I'm here to make sure the house is still standing while the paperwork drags on.",
+         "errand": "I need to check the pressure gauge on the secondary line behind the old bakery. It\u2019s been hissing since Tuesday."
+        },
+        "background": [
+         {
+          "fact": "Mara Ives used to inspect the pipes.",
+          "unlockedBy": "met"
+         },
+         {
+          "fact": "She blames herself for the burst, not because she made the mistake, but because she didn't fight hard enough to have it fixed.",
+          "unlockedBy": "talked"
+         },
+         {
+          "fact": "She has the spare key to the bedroom, but she refuses to give it up until the sale is final.",
+          "unlockedBy": "quest"
+         },
+         {
+          "fact": "Her husband left after the burst because he couldn't sleep through the hum anymore.",
+          "unlockedBy": "told"
+         }
+        ],
+        "postId": "anchor_0001",
+        "role": "resident"
+       },
+       {
+        "name": "Jonas Jarett",
+        "personality": "He sits in the living room armchair, which is slightly too big for him. He reads the same page of a newspaper over and over. He wears a clean, white shirt despite the heat. He taps his foot in time with the pumps.",
+        "knowledge": [
+         "The mail on the screen is mostly eviction notices for the neighbors.",
+         "The previous owner kept a ledger in the kitchen drawer.",
+         "The bathroom mirror is cracked in the shape of a lightning bolt.",
+         "Aetheris bought the building next door and is already measuring the wall."
+        ],
+        "life": {
+         "history": "I work in the mail sorting center. I see every letter that comes to this street. I know who is selling, who is crying, and who is packing boxes. I come here because it\u2019s quiet, and because I know the keys are kept here, and I need to know who comes through that door.",
+         "interests": "The names on the envelopes. He likes to know who is talking to whom.",
+         "manner": "Soft-spoken, but persistent. He asks the same question twice to make sure you heard it the first time.",
+         "cares": "Privacy. He hates it when you look at the screen.",
+         "avoids": "The ocean. He finds the jellyfish unsettling.",
+         "reason": "I'm keeping an eye on the mail. The screen is on, and someone needs to see it.",
+         "errand": "I need to return a library book to the archive. The clerk is difficult, and I don't want to be late."
+        },
+        "background": [
+         {
+          "fact": "Jonas Jarett works in the mail sorting center.",
+          "unlockedBy": "met"
+         },
+         {
+          "fact": "He knows who is buying up the apartments because he delivers the contracts.",
+          "unlockedBy": "talked"
+         },
+         {
+          "fact": "He has been waiting for a letter from his sister in the capital for six months.",
+          "unlockedBy": "quest"
+         },
+         {
+          "fact": "He sleeps in this house sometimes when the heat in his own apartment is too much.",
+          "unlockedBy": "told"
+         }
+        ],
+        "postId": "anchor_0002",
+        "role": "resident"
+       },
+       {
+        "name": "Una Upton",
+        "personality": "She is in the kitchen, chopping vegetables with rhythmic precision. She does not look up when you enter, but she smells you. She wears an apron that has seen better days. She is always hungry, but she eats last.",
+        "knowledge": [
+         "The stove works, but the pilot light is temperamental.",
+         "Mara Ives keeps her stone in her pocket because it\u2019s the first thing she touched when she lost her job.",
+         "Jonas Jarett reads the same page of the newspaper because he doesn't want to see today's date.",
+         "The fridge is empty except for a jar of pickled jellyfish eggs."
+        ],
+        "life": {
+         "history": "I cook for the union hall. When the lights went out, I cooked over a campfire for three days. I know how to keep people warm when the world gets cold. I come here because the house is for sale, and if someone buys it, they need to know if the kitchen is worth keeping.",
+         "interests": "Heat. She talks about temperatures as if they were moods.",
+         "manner": "Direct and practical. She uses her hands to explain things.",
+         "cares": "Food. She will feed you if you have nothing.",
+         "avoids": "The dark. She keeps the kitchen lights on even during the day.",
+         "reason": "I'm making sure the kitchen is ready for whoever buys the place.",
+         "errand": "I need to find more salt. The local supply is running low, and the Aetheris stock is too expensive."
+        },
+        "background": [
+         {
+          "fact": "Una Upton is the union cook.",
+          "unlockedBy": "met"
+         },
+         {
+          "fact": "She cooked for the entire street during the blackout.",
+          "unlockedBy": "talked"
+         },
+         {
+          "fact": "She believes the old pipes are better than the new ones, because they run cooler.",
+          "unlockedBy": "quest"
+         },
+         {
+          "fact": "She has a daughter who works at Aetheris and doesn't speak to her about it.",
+          "unlockedBy": "told"
+         }
+        ],
+        "postId": "anchor_0003",
+        "role": "cook"
+       }
+      ],
+      "things": [
+       {
+        "thingId": "interior_0001/thing/0",
+        "name": "The Ledger",
+        "description": "A leather-bound book on the kitchen counter. It is filled with the names of every house in the old sector and the date each one was sold to Aetheris. The ink is faded in some places, fresh in others. It is written in Mara Ives' hand, but she claims she didn't write the last entry. The last entry is "
+       },
+       {
+        "thingId": "interior_0001/thing/1",
+        "name": "The Glass Orchid",
+        "description": "A small, blue glass flower on the windowsill in the bedroom. It is not real, but it is fragile. It was given to Jonas Jarett by his sister. He keeps it there because it catches the light from the screen, and for a moment, the room looks less like a waiting room and more like a home."
+       },
+       {
+        "thingId": "interior_0001/thing/2",
+        "name": "The Static Box",
+        "description": "A old radio on the shelf in the living room. It doesn't play music. It just plays the hum of the pumps, amplified. When the pumps are working well, the sound is a low, steady drone. When there is a leak, the sound becomes a shriek. Una Upton listens to it to know when to start dinner."
+       }
+      ]
+     },
+     {
+      "name": "The Rusty Flange",
+      "character": "It is a bar that sells cheap beer and expensive secrets. The air smells of salt, stale beer, and the faint, metallic tang of ozone that never quite leaves Coolwater. The owner, Mara, runs the place with a quiet efficiency, her eyes always half-open, watching who comes in and who leaves. The Tetris game on the screen is always stuck on the same level, a silent monument to the town's stalled progress. The cellar door sticks, requiring a specific lift-and-pull motion known only to those who work here. It is a place where the Keepers and Aetheris employees sit at opposite ends of the bar, not speaking, but aware of each other.",
+      "people": [
+       {
+        "name": "Mara Quesada",
+        "personality": "She does not look up unless you speak first. She wipes the counter with a rag that is never quite clean, her movements rhythmic and tired. She listens more than she speaks, absorbing the room like a sponge. If you ask for a drink, she hands it over without comment. If you ask about the town, she points to the screen or the door.",
+        "knowledge": [
+         "Who holds the keys to the cellar.",
+         "The Tetris code is reset every Sunday at 4 PM.",
+         "Aetheris bought the apartment above the bar, so the floor shakes when they move furniture."
+        ],
+        "life": {
+         "history": "She was a pipe fitter's daughter. Her father worked on the old intake lines. She remembers the burst, the heat, the smell of dead fish. She kept the bar open during the blackout, selling warm water and canned beans at triple price. She stayed because the rent is low and the views of the stack are good.",
+         "interests": "The price of ice. The sound of the pumps. Who is sleeping with whom.",
+         "manner": "Low voice. Direct eye contact. No wasted movement.",
+         "cares": "The integrity of the cellar. The loyalty of her regulars.",
+         "avoids": "Talk of expansion. The word 'efficiency'.",
+         "reason": "I'm here because I own the place and nobody else wants to deal with the landlord.",
+         "errand": "I need to go down to the cellar and check the seals on the kegs."
+        },
+        "background": [
+         {
+          "fact": "She knows which regulars are lying about why they are there.",
+          "unlockedBy": "talked"
+         },
+         {
+          "fact": "She has a spare key for the cellar, but she only gives it to people she trusts.",
+          "unlockedBy": "met"
+         },
+         {
+          "fact": "She lost her brother in the burst accident, but she never talks about it.",
+          "unlockedBy": "quest"
+         },
+         {
+          "fact": "She is secretly saving money to buy out her lease from Aetheris.",
+          "unlockedBy": "told"
+         }
+        ],
+        "postId": "anchor_0004",
+        "role": "bartender"
+       },
+       {
+        "name": "Elias Kane",
+        "personality": "He sits in the corner, nursing a single beer for three hours. He stares at the Tetris screen as if it holds the secrets of the universe. He flinches when the pumps change pitch. He does not speak unless spoken to, and even then, his answers are monosyllabic.",
+        "knowledge": [
+         "The water is warmer than it was last year.",
+         "The jellyfish are nesting under the intake grate.",
+         "Aetheris is hiding something in the ledger."
+        ],
+        "life": {
+         "history": "He worked on the intake line for twenty years. He was there when the gasket blew. He saw the steam, the chaos, the fear. He quit the next day. He comes to the bar every day to remember what silence feels like.",
+         "interests": "The temperature of the water. The depth of the current. The sound of jellyfish.",
+         "manner": "Quiet. Observant. Still.",
+         "cares": "The past. The truth.",
+         "avoids": "Future plans. New technology.",
+         "reason": "I'm here because it's the only place where the noise feels familiar.",
+         "errand": "I need to go down to the shore and check the water temperature."
+        },
+        "background": [
+         {
+          "fact": "He has a scar on his arm from the burst.",
+          "unlockedBy": "met"
+         },
+         {
+          "fact": "He knows the exact pressure reading when the pipe burst.",
+          "unlockedBy": "talked"
+         },
+         {
+          "fact": "He blames himself for not sounding the alarm sooner.",
+          "unlockedBy": "quest"
+         },
+         {
+          "fact": "He is writing a memoir, but he won't show it to anyone.",
+          "unlockedBy": "told"
+         }
+        ],
+        "postId": "anchor_0005",
+        "role": "patron"
+       },
+       {
+        "name": "Lena Frost",
+        "personality": "She is loud, laughing, and always moving. She leans over the bar, invading your space, demanding to know your story. She drinks fast, pays fast, and leaves fast. She wears her anger like a perfume, sweet and sharp.",
+        "knowledge": [
+         "Who owes who money.",
+         "Which apartments are for sale.",
+         "The Keepers are meeting in the cellar tonight."
+        ],
+        "life": {
+         "history": "She is a Keeper. Her grandfather laid the first pipes. She lost her apartment to Aetheris last month. She is angry, but she masks it with charm and speed. She comes to the bar to drink away the shame of being pushed out.",
+         "interests": "Revenge. The price of beer. The Keepers' next move.",
+         "manner": "Fast talk. Big gestures. Intense eye contact.",
+         "cares": "Her family. The town's ownership.",
+         "avoids": "Aetheris. Quiet moments.",
+         "reason": "I'm here because I can't go home yet.",
+         "errand": "I need to go to the union hall and sign the petition."
+        },
+        "background": [
+         {
+          "fact": "She lost her apartment to Aetheris.",
+          "unlockedBy": "met"
+         },
+         {
+          "fact": "She knows the Keepers' secret meeting spot.",
+          "unlockedBy": "talked"
+         },
+         {
+          "fact": "She is willing to do anything to get her home back.",
+          "unlockedBy": "quest"
+         },
+         {
+          "fact": "She has a secret crush on the bartender.",
+          "unlockedBy": "told"
+         }
+        ],
+        "postId": "anchor_0006",
+        "role": "patron"
+       },
+       {
+        "name": "Thomas Baker",
+        "personality": "He is a quiet man, wearing a grey suit that is slightly too big. He sits by the window, reading a newspaper from the city. He looks like an outsider, but he drinks the local beer and knows the names of the regulars. He is polite, but distant.",
+        "knowledge": [
+         "The official Aetheris stance on the lease.",
+         "The price of cooling contracts.",
+         "Who is on Aetheris's payroll."
+        ],
+        "life": {
+         "history": "He is an Aetheris middle-manager. He was sent here to negotiate the lease renewal. He is not evil, just efficient. He likes the town, but he loves his job more. He comes to the bar to observe the locals, to understand the resistance.",
+         "interests": "Data. Efficiency. The lease terms.",
+         "manner": "Polite. Measured. Professional.",
+         "cares": "His career. The deal.",
+         "avoids": "Emotional appeals. Memories.",
+         "reason": "I'm here to watch the locals and drink a beer.",
+         "errand": "I need to go to the office and file the quarterly report."
+        },
+        "background": [
+         {
+          "fact": "He works for Aetheris.",
+          "unlockedBy": "met"
+         },
+         {
+          "fact": "He knows the exact wording of the lease proposal.",
+          "unlockedBy": "talked"
+         },
+         {
+          "fact": "He is lonely, but he won't admit it.",
+          "unlockedBy": "quest"
+         },
+         {
+          "fact": "He plans to leave the town in six months.",
+          "unlockedBy": "told"
+         }
+        ],
+        "postId": "anchor_0007",
+        "role": "patron"
+       },
+       {
+        "name": "Sarah Quinn",
+        "personality": "She walks in and out, never staying long. She carries a bag full of jellyfish samples. She is curious, energetic, and a bit crazy. She talks to the bartender, the patrons, and the Tetris screen. She is always looking for something.",
+        "knowledge": [
+         "The jellyfish are changing.",
+         "The water temperature is rising.",
+         "Aetheris is dumping waste in the deep current."
+        ],
+        "life": {
+         "history": "She is a marine biologist. She came to Coolwater to study the effects of the cooling water on the local ecosystem. She found something strange, something big. She is obsessed with finding it. She comes to the bar to rest her feet and gather gossip.",
+         "interests": "Jellyfish. The current. Aetheris's waste.",
+         "manner": "Excitable. Inquisitive. Distracted.",
+         "cares": "Science. The truth.",
+         "avoids": "Bureaucracy. Silence.",
+         "reason": "I'm here because I need a break from the lab.",
+         "errand": "I need to go to the shore and collect more samples."
+        },
+        "background": [
+         {
+          "fact": "She is studying the jellyfish.",
+          "unlockedBy": "met"
+         },
+         {
+          "fact": "She knows Aetheris is dumping waste.",
+          "unlockedBy": "talked"
+         },
+         {
+          "fact": "She believes the jellyfish are intelligent.",
+          "unlockedBy": "quest"
+         },
+         {
+          "fact": "She is afraid of the dark water.",
+          "unlockedBy": "told"
+         }
+        ],
+        "postId": "anchor_0008",
+        "role": "wanderer"
+       },
+       {
+        "name": "John Finn",
+        "personality": "He is a big man, with a beard and a limp. He sits in the back, drinking whiskey. He does not talk to anyone. He just watches the door. He is a ex-union leader, but he is done with fighting. He is tired.",
+        "knowledge": [
+         "The Keepers are divided.",
+         "Aetheris is offering bribes.",
+         "The old pipes are still working."
+        ],
+        "life": {
+         "history": "He led the union for ten years. He fought for the water rights. He lost. He is tired of fighting. He comes to the bar to drink and forget. He still cares, but he has no energy left.",
+         "interests": "Whiskey. The past. The union.",
+         "manner": "Grumpy. Tired. Watchful.",
+         "cares": "The union. His pride.",
+         "avoids": "Hope. Optimism.",
+         "reason": "I'm here to drink and forget.",
+         "errand": "I need to go home and sleep."
+        },
+        "background": [
+         {
+          "fact": "He used to lead the union.",
+          "unlockedBy": "met"
+         },
+         {
+          "fact": "He knows the union is divided.",
+          "unlockedBy": "talked"
+         },
+         {
+          "fact": "He blames himself for losing.",
+          "unlockedBy": "quest"
+         },
+         {
+          "fact": "He has a secret stash of union funds.",
+          "unlockedBy": "told"
+         }
+        ],
+        "postId": "anchor_0009",
+        "role": "wanderer"
+       },
+       {
+        "name": "Maggie Boyle",
+        "personality": "She is the bartender's friend, but not an employee. She sits at the bar, drinking coffee and reading books. She is smart, witty, and opinionated. She debates with the patrons, especially Thomas. She knows everyone's business.",
+        "knowledge": [
+         "Who is sleeping with whom.",
+         "The local gossip.",
+         "The history of the town."
+        ],
+        "life": {
+         "history": "She is a teacher. She has lived in Coolwater all her life. She remembers the town before Aetheris. She is worried about the future. She comes to the bar to read and argue.",
+         "interests": "Books. History. Gossip.",
+         "manner": "Chatty. Opinionated. Witty.",
+         "cares": "Education. The town's future.",
+         "avoids": "Ignorance. Apathy.",
+         "reason": "I'm here to read and argue.",
+         "errand": "I need to go to the school and grade papers."
+        },
+        "background": [
+         {
+          "fact": "She is a teacher.",
+          "unlockedBy": "met"
+         },
+         {
+          "fact": "She knows the town's history.",
+          "unlockedBy": "talked"
+         },
+         {
+          "fact": "She is worried about the future.",
+          "unlockedBy": "quest"
+         },
+         {
+          "fact": "She has a secret passion for poetry.",
+          "unlockedBy": "told"
+         }
+        ],
+        "postId": "anchor_0010",
+        "role": "patron"
+       },
+       {
+        "name": "Leo Kraft",
+        "personality": "He is young, energetic, and always on his phone. He stands by the Tetris screen, playing it when no one else is. He is an Aetheris intern, but he is curious about the town. He is friendly, but naive.",
+        "knowledge": [
+         "The new cooling units.",
+         "The tech jargon.",
+         "What the bosses think."
+        ],
+        "life": {
+         "history": "He is an intern at Aetheris. He was sent here to learn about the cooling process. He is fascinated by the town, even though he works for the company pushing it out. He comes to the bar to play Tetris and talk to the locals.",
+         "interests": "Tech. Games. The locals.",
+         "manner": "Enthusiastic. Naive. Friendly.",
+         "cares": "His internship. The tech.",
+         "avoids": "Complex politics. Boredom.",
+         "reason": "I'm here to play Tetris and learn about the town.",
+         "errand": "I need to go to the lab and check the servers."
+        },
+        "background": [
+         {
+          "fact": "He is an Aetheris intern.",
+          "unlockedBy": "met"
+         },
+         {
+          "fact": "He knows the tech jargon.",
+          "unlockedBy": "talked"
+         },
+         {
+          "fact": "He likes the locals more than his bosses.",
+          "unlockedBy": "quest"
+         },
+         {
+          "fact": "He wants to stay in Coolwater.",
+          "unlockedBy": "told"
+         }
+        ],
+        "postId": "anchor_0011",
+        "role": "worker"
+       }
+      ],
+      "things": [
+       {
+        "thingId": "interior_0002/thing/0",
+        "name": "A waterlogged novel",
+        "description": "A paperback copy of 'The Great Gatsby', swollen and peeling from the humidity in the cellar. The pages are stuck together. It was left by a patron years ago and never reclaimed."
+       },
+       {
+        "thingId": "interior_0002/thing/1",
+        "name": "A shard of blue glass",
+        "description": "A piece of blue glass, possibly from a bottle, found in the sand outside the bar. It catches the light and looks like a gem. Mara keeps it on the bar as a paperweight."
+       },
+       {
+        "thingId": "interior_0002/thing/2",
+        "name": "A leather-bound ledger",
+        "description": "A thick, leather-bound book with the Aetheris logo on the cover. It contains the financial records of the bar's sales for the last five years. Thomas has seen it and knows it is important."
+       },
+       {
+        "thingId": "interior_0002/thing/3",
+        "name": "A bottle of whiskey",
+        "description": "A half-empty bottle of cheap whiskey, sitting on the counter. It is for John. He drinks from it every day. The label is faded."
+       },
+       {
+        "thingId": "interior_0002/thing/4",
+        "name": "A painting of the sea",
+        "description": "A painting of the sea, hanging behind the bar. It shows the intake stack, but the water is blue and calm. It was painted by a tourist years ago. Maggie likes to critique it."
+       }
+      ]
+     },
+     {
+      "name": "The Gantry Office",
+      "character": "The air here smells of warm plastic and old dust, distinct from the salty ozone outside. The ledger screen on the reception desk scrolls through the daily pump flow rates, a rhythmic green crawl that never pauses. Behind the glass partition, the manager's office is sealed, containing the physical contracts that Aetheris claims are missing from the digital cloud. The open office is empty save for one desk, covered in blueprints of the old sector, waiting for a surveyor who hasn't arrived. The building lives off the dispute: it is the administrative front for The Keepers' claim to the old intake sector.",
+      "people": [
+       {
+        "name": "Elias Grove",
+        "personality": "He sits behind the glass, watching the door and the screen with equal suspicion. He does not look up unless spoken to, and when he does, he checks the time on his wristwatch before answering. He treats visitors as potential threats to the schedule.",
+        "knowledge": [
+         "The manager, Mr. Dorn, is in the sealed office drafting the appeal to the city council.",
+         "The phone in the manager's office has been dead since the burst three days ago.",
+         "Aetheris representatives visited yesterday and demanded the key to the archive room.",
+         "The green ledger on the screen shows the flow rates are stable, but the pressure logs are red."
+        ],
+        "life": {
+         "history": "My grandfather laid the rivets on the first pipe here, before Aetheris was a spreadsheet. I stayed when they bought the land, because someone had to watch the numbers. Now they say the numbers don't matter, only the ink.",
+         "interests": "Pump maintenance, the stability of the current, the cost of gaskets.",
+         "manner": "Short sentences. He looks at your hands to see if you are carrying anything.",
+         "cares": "The integrity of the physical records.",
+         "avoids": "Talk of 'progress' or 'efficiency' unless it is in the context of the pump failure.",
+         "reason": "I am the gate. If the manager isn't ready, you don't get in. I check the list.",
+         "errand": "I am going to the fish market to buy the lunch that usually comes, since the delivery driver hasn't been here today."
+        },
+        "background": [
+         {
+          "fact": "Elias sits behind the glass partition, his eyes fixed on the green scrolling ledger.",
+          "unlockedBy": "met"
+         },
+         {
+          "fact": "He speaks of the old pipes with the precision of an engineer, not a sentimentalist.",
+          "unlockedBy": "talked"
+         },
+         {
+          "fact": "He is afraid that the digital records are being edited while no one is looking.",
+          "unlockedBy": "quest"
+         },
+         {
+          "fact": "He is the only one who knows the manager has a heart condition, which is why he hasn't left the office.",
+          "unlockedBy": "told"
+         }
+        ],
+        "postId": "anchor_0012",
+        "role": "receptionist"
+       },
+       {
+        "name": "Sarah Wren",
+        "personality": "She leans against the back wall of the open office, arms crossed, watching the dust motes dance in the light from the street. She is bored but alert, waiting for something to break so she can fix it.",
+        "knowledge": [
+         "The surveyor from the city is late by two hours.",
+         "The empty desk in the open office belongs to a temp who quit yesterday.",
+         "The phone in the manager's office is broken because the line was pulled.",
+         "Sarah has been reading the same page of the lease for an hour."
+        ],
+        "life": {
+         "history": "I worked the intake valve for five years. When the burst happened, I was the one who had to shut the manual override. My hands still shake when I hear a hiss.",
+         "interests": "The taste of the water, the size of the jellyfish, the silence of the town.",
+         "manner": "She speaks slowly, as if testing the weight of each word.",
+         "cares": "The people who live in the old sector.",
+         "avoids": "The manager's decisions.",
+         "reason": "I am keeping watch. If the Aetheris men come back, I want to know before Elias sees them.",
+         "errand": "I am going to the shore to check the intake vents for debris."
+        },
+        "background": [
+         {
+          "fact": "Sarah stands by the window, watching the street with a quiet intensity.",
+          "unlockedBy": "met"
+         },
+         {
+          "fact": "She remembers the smell of the ozone from the day the power went out.",
+          "unlockedBy": "talked"
+         },
+         {
+          "fact": "She believes the Aetheris expansion will raise the water temperature further.",
+          "unlockedBy": "quest"
+         },
+         {
+          "fact": "Her brother is one of the tenants being pushed out of the old sector.",
+          "unlockedBy": "told"
+         }
+        ],
+        "postId": "anchor_0013",
+        "role": "patron"
+       },
+       {
+        "name": "Tom Dale",
+        "personality": "He paces the small space between the desks, tapping his foot. He is anxious, constantly checking his pocket for a phone that isn't his, and glancing at the sealed office door.",
+        "knowledge": [
+         "The manager is hiding in the office because he is afraid to sign the temporary waiver.",
+         "The envelope in the lobby is from the bank, and it is overdue.",
+         "Tom has not slept properly since the burst.",
+         "The surveyor is not coming; the contract was cancelled."
+        ],
+        "life": {
+         "history": "I am the clerk. I file the papers that decide who eats. When the burst happened, the papers disappeared. I have been looking for them ever since.",
+         "interests": "Paperwork, signatures, deadlines, the sound of the printer.",
+         "manner": "He talks fast, interrupting himself to correct his own grammar.",
+         "cares": "The accuracy of the documents.",
+         "avoids": "The physical pipes.",
+         "reason": "I am waiting for the manager to come out so I can file the day's logs.",
+         "errand": "I am going to the post office to return a letter I wrote to the mayor."
+        },
+        "background": [
+         {
+          "fact": "Tom paces the room, his eyes darting between the door and the desk.",
+          "unlockedBy": "met"
+         },
+         {
+          "fact": "He is obsessed with the difference between a draft and a final copy.",
+          "unlockedBy": "talked"
+         },
+         {
+          "fact": "He believes the manager is keeping the envelope secret on purpose.",
+          "unlockedBy": "quest"
+         },
+         {
+          "fact": "Tom owes money to the local union for a loan he took to fix his house after the storm.",
+          "unlockedBy": "told"
+         }
+        ],
+        "postId": "anchor_0014",
+        "role": "patron"
+       },
+       {
+        "name": "Lena Chase",
+        "personality": "She sits at the front desk, not behind the glass, but in the lobby, cleaning her glasses with a handkerchief. She is calm, observing the interaction between Elias and the others with a detached curiosity.",
+        "knowledge": [
+         "Lena is not an employee, but a resident of the building who uses the lobby as a living room.",
+         "She knows who is in the office because she listens to the floorboards.",
+         "The envelope on the table is addressed to her neighbor.",
+         "Lena has seen the Aetheris lawyers visit three times this week."
+        ],
+        "life": {
+         "history": "I lived here before the office was built. When they took the ground floor, they let me stay in the back rooms. I watch the people come and go. They think I am invisible.",
+         "interests": "The moods of the tenants, the weather, the sound of the pumps.",
+         "manner": "She speaks softly, never raising her voice above a murmur.",
+         "cares": "The quiet of the town.",
+         "avoids": "Arguments.",
+         "reason": "I am waiting for the rain to stop so I can go to the market.",
+         "errand": "I am going to the pharmacy to pick up my prescription."
+        },
+        "background": [
+         {
+          "fact": "Lena sits in the lobby, polishing her glasses with slow, deliberate strokes.",
+          "unlockedBy": "met"
+         },
+         {
+          "fact": "She knows the history of the building better than the manager does.",
+          "unlockedBy": "talked"
+         },
+         {
+          "fact": "She is worried that the Aetheris expansion will bring too much noise.",
+          "unlockedBy": "quest"
+         },
+         {
+          "fact": "She is the manager's aunt, and she is the only one he tells the truth to.",
+          "unlockedBy": "told"
+         }
+        ],
+        "postId": "anchor_0015",
+        "role": "patron"
+       },
+       {
+        "name": "Arthur Cobb",
+        "personality": "He is the manager, locked in the back office. His voice can be heard through the door, arguing with himself or the phone. He is stressed, authoritative, and tired.",
+        "knowledge": [
+         "Arthur has the master key to the archive room.",
+         "He is hiding the fact that the pressure logs from the burst day were altered.",
+         "He is trying to decide whether to sell out to Aetheris or fight.",
+         "The flower in his office is wilting because he forgets to water it."
+        ],
+        "life": {
+         "history": "I took over this office when my father died. I signed the lease with Aetheris. I thought I could manage them. I was wrong. Now I have to decide if I will let them win or burn the town down to save it.",
+         "interests": "The lease, the pressure, the cost of legal fees.",
+         "manner": "His voice is strained, often cracking.",
+         "cares": "His legacy.",
+         "avoids": "The lobby.",
+         "reason": "I am deciding whether to sign the waiver. If I sign, we get money. If I don't, we get war.",
+         "errand": "I need to go to the bank to check our balance, but I cannot leave the office."
+        },
+        "background": [
+         {
+          "fact": "Arthur is locked in the manager's office, his voice raised in argument.",
+          "unlockedBy": "met"
+         },
+         {
+          "fact": "He is afraid that his father made a mistake in the original contract.",
+          "unlockedBy": "talked"
+         },
+         {
+          "fact": "He has been eating dinner in his office for a week.",
+          "unlockedBy": "quest"
+         },
+         {
+          "fact": "Arthur is secretly in love with Sarah Wren, but he never said anything.",
+          "unlockedBy": "told"
+         }
+        ],
+        "postId": "anchor_0016",
+        "role": "worker"
+       }
+      ],
+      "things": [
+       {
+        "thingId": "interior_0003/thing/0",
+        "name": "the ledger",
+        "description": "A large, bound book with green covers. The pages are filled with handwritten numbers in neat, small script. The ink is fading in places where the sun hits the page directly."
+       },
+       {
+        "thingId": "interior_0003/thing/1",
+        "name": "the phone",
+        "description": "A black rotary phone sitting on the manager's desk. The cord is frayed. It has no dial tone, only a faint hiss that matches the sound of the pumps outside."
+       },
+       {
+        "thingId": "interior_0003/thing/2",
+        "name": "the flower",
+        "description": "A single, wilting daisy in a chipped mug. It is brown at the edges and leaning heavily to the left. It smells faintly of dust."
+       },
+       {
+        "thingId": "interior_0003/thing/3",
+        "name": "the briefcase",
+        "description": "A leather briefcase sitting on the floor by the door. It is locked. The leather is cracked and worn. It smells of old paper and sweat."
+       },
+       {
+        "thingId": "interior_0003/thing/4",
+        "name": "the envelope",
+        "description": "A white envelope on the reception desk. It is sealed with wax. The wax has a crest on it, but it is scratched and unrecognizable. It is addressed to 'The Keeper of the Sector'."
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}

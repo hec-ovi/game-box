@@ -216,7 +216,7 @@ export const WorldSchema = z.object({
   schemaVersion: z.literal(1),
   id: id('world'),
   name: z.string().min(1).max(80),
-  /** The short keyword hint the offline author reads. */
+  /** The city in a few words, as the owner asked for it. */
   theme: z.string().min(1).max(60),
   /** What the city is about, in the owner's own words. Absent means they gave only the theme. */
   brief: BriefSchema.optional(),

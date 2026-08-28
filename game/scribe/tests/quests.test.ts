@@ -481,3 +481,105 @@ describe('writing quests through locks, screens and counters', () => {
     expect(scribe.problems().map((problem) => problem.error.code)).toEqual(['invalid-arguments'])
   })
 })
+
+/**
+ * A town as it stands when the work is written: laid out, numbered, and named
+ * by nobody yet. Every name in it is the placeholder the city was planned
+ * under, which is what a line has to say for binding to find it later.
+ */
+const LAID_OUT: WorldSummary = {
+  cityName: 'City',
+  theme: 'port',
+  districts: [
+    { districtId: 'district_0001', name: 'Zone 1' },
+    { districtId: 'district_0002', name: 'Zone 2' },
+  ],
+  places: [
+    {
+      plotId: 'plot_0001',
+      interiorId: 'interior_0001',
+      kind: 'bar',
+      name: 'Instance 1',
+      districtId: 'district_0001',
+      door: { x: 0, z: 0 },
+      npcs: [{ npcId: 'npc_0001', name: 'Person 1', role: 'bartender' }],
+      items: [{ itemId: 'item_0001', name: 'Thing 1' }],
+    },
+    {
+      plotId: 'plot_0002',
+      interiorId: 'interior_0002',
+      kind: 'shop',
+      name: 'Instance 2',
+      districtId: 'district_0002',
+      door: { x: 60, z: 0 },
+      npcs: [{ npcId: 'npc_0002', name: 'Person 2', role: 'clerk' }],
+      items: [{ itemId: 'item_0002', name: 'Thing 2' }],
+    },
+  ],
+}
+
+/** The errand as it should be told: every line naming what its own beat points at. */
+const TOLD_STRAIGHT = [
+  { kind: 'goto', where: { plotId: 'plot_0002' }, objective: 'Walk over to Instance 2 in Zone 2.' },
+  { kind: 'talk', npcId: 'npc_0002', objective: 'Ask her what she knows.' },
+  { kind: 'collect', itemId: 'item_0002', objective: 'Take Thing 2 from Instance 2.' },
+  { kind: 'deliver', itemId: 'item_0002', toNpcId: 'npc_0001', objective: 'Give Person 1 the parcel at Instance 1.' },
+]
+
+function laidOutSheet(beats: unknown[]) {
+  return {
+    id: 'quest_0001',
+    kind: 'main' as const,
+    title: 'The parcel',
+    summary: 'Somebody wants it brought over.',
+    giverNpcId: 'npc_0001',
+    beats,
+    reward: { money: 45, reputation: 3, faction: 'town', items: [] },
+  }
+}
+
+describe('the words a quest is written in', () => {
+  it('takes a draft whose every line names what its own beat points at', async () => {
+    const { sent, sidecar } = fakeModel(() => laidOutSheet(TOLD_STRAIGHT))
+    const scribe = new Scribe({ sidecar, concurrency: 1 })
+
+    const quests = await wrote(scribe.writeQuests({ summary: LAID_OUT, sideQuests: 0 }))
+
+    expect(sent).toHaveLength(1)
+    expect(scribe.problems()).toEqual([])
+    expect(quests).toHaveLength(1)
+  })
+
+  it('refuses a line that calls a building something the town has not got', async () => {
+    // measured on a live city: a beat pointed at a plot and its line read "the
+    // old customs house", a building nobody built. Binding swaps placeholders,
+    // so an invented name goes straight to the player with the marker pointing
+    // somewhere else
+    const invented = [{ kind: 'goto', where: { plotId: 'plot_0002' }, objective: 'Head out to the old customs house.' }, ...TOLD_STRAIGHT.slice(1)]
+    const { sent, sidecar } = fakeModel([laidOutSheet(invented), laidOutSheet(TOLD_STRAIGHT)])
+    const scribe = new Scribe({ sidecar, concurrency: 1 })
+
+    const quests = await wrote(scribe.writeQuests({ summary: LAID_OUT, sideQuests: 0 }))
+
+    expect(sent).toHaveLength(2)
+    expect(sent[1]!.user).toContain('beats.0.objective: this beat sends the player to plot_0002, which this town calls Instance 2')
+    expect(quests).toHaveLength(1)
+    expect(scribe.problems().map((problem) => problem.error.code)).toEqual(['invalid-arguments'])
+  })
+
+  it('refuses a line that names somebody standing in another building', async () => {
+    const wrongPerson = [
+      TOLD_STRAIGHT[0]!,
+      { kind: 'talk', npcId: 'npc_0002', objective: 'Ask Person 1 what she knows.' },
+      ...TOLD_STRAIGHT.slice(2),
+    ]
+    const { sent, sidecar } = fakeModel([laidOutSheet(wrongPerson), laidOutSheet(TOLD_STRAIGHT)])
+    const scribe = new Scribe({ sidecar, concurrency: 1 })
+
+    const quests = await wrote(scribe.writeQuests({ summary: LAID_OUT, sideQuests: 0 }))
+
+    expect(sent).toHaveLength(2)
+    expect(sent[1]!.user).toContain('beats.1.objective: Person 1 is not at Instance 2, where this beat happens: name only the people standing there (Person 2)')
+    expect(quests).toHaveLength(1)
+  })
+})

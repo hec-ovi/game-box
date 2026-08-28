@@ -10,7 +10,6 @@ export interface BuildArgs {
   density: string
   storeys: string
   exits: string
-  model: boolean
   history?: string
   out: string
 }
@@ -18,7 +17,6 @@ export interface BuildArgs {
 export interface ExtendArgs {
   base: string | undefined
   count: string
-  model: boolean
   out: string
 }
 
@@ -50,7 +48,6 @@ export function parseBuild(argv: readonly string[]): BuildArgs {
       density: { type: 'string', default: '0.8' },
       storeys: { type: 'string', default: String(STOREYS_DEFAULT) },
       exits: { type: 'string', default: '1' },
-      model: { type: 'boolean', default: false },
       history: { type: 'string' },
       out: { type: 'string', default: 'city.json' },
     },
@@ -64,7 +61,6 @@ export function parseExtend(argv: readonly string[]): ExtendArgs {
     args: [...argv],
     options: {
       count: { type: 'string', default: '10' },
-      model: { type: 'boolean', default: false },
       out: { type: 'string', default: 'extended.json' },
     },
     allowPositionals: true,

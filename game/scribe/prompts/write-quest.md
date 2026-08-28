@@ -144,6 +144,23 @@ player and name the person and the place, in the shape of "Take the [thing] from
 the corner above. `title` is what the journal calls this quest. `summary` is the
 giver's own reason for asking, in their voice.
 
+Everything in this city is already named, and the list above is where the names
+are. Call a building, a part of town or a person by exactly the name it is given
+there, and invent none of your own: a line that calls a building anything else
+sends the player to a door with another name over it, and the marker still goes
+where the id says.
+
+Two rules follow from that, and a line that breaks either comes back to you:
+
+- **A beat that walks the player somewhere says where**, by that building's own
+  name off the list.
+- **A beat names only where it happens.** The place it is set in, the part of
+  town that place is in, and the people standing in that place. Somebody who
+  works in another building does not belong there, and an errand that needs them
+  wants a beat of its own.
+
+A line that names nobody and nowhere is fine where that is what the beat wants.
+
 Titles already used in this city, which this one must not repeat:
 
 {{usedTitles}}

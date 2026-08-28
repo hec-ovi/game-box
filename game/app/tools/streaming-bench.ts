@@ -6,12 +6,12 @@
  * `DETAIL_RADIUS`, and it lights the street off what the dressing says each
  * building throws. The shell and the lights ride on the seam, so a link in the
  * chain that drops them costs the neighbourhood the whole town's detail. This
- * builds one city twice, once through a chain with them dropped and once
+ * opens one city twice, once through a chain with them dropped and once
  * through the chain `src/pack.ts` composes, and prints what each is worth.
  *
  * `node game/app/tools/streaming-bench.ts [blocks]`
  */
-import { Forge, OfflineNarrator } from '@gb/forge'
+import { Forge } from '@gb/forge'
 import { buildCity, Greybox, type Dressing } from '@gb/scene'
 import type { BuildingSize, Plot, ResolvedCharter, World } from '@gb/world'
 import * as THREE from 'three'
@@ -65,9 +65,10 @@ function count(root: THREE.Object3D): { meshes: number; triangles: number } {
  * take their backlog in one go behind the veil.
  */
 function ride(world: World, city: ReturnType<typeof buildCity>): void {
-  const stops = world.stations().flatMap((plot) => {
+  const stops = world.stations().flatMap((plot, index) => {
     const at = city.doorsteps.get(plot.id)
-    return at ? [{ name: plot.name, at }] : []
+    // a plan has no signs over its doors, so a stop is numbered rather than named
+    return at ? [{ name: `station ${index + 1}`, at }] : []
   })
   if (stops.length < 2) return console.log('no two stations to ride between')
   let far = { from: stops[0]!, to: stops[1]!, gap: 0 }
@@ -111,10 +112,13 @@ function open(world: World, dressing: Dressing, label: string): { city: ReturnTy
 }
 
 const blocks = Number(process.argv[2] ?? 20)
-const built = await new Forge(new OfflineNarrator('bench')).build({ theme: 'neon', seed: 'bench', blocksX: blocks, blocksY: blocks })
-if (!built.ok) throw new Error(JSON.stringify(built.error))
-const world = built.value.world
-console.log(`${blocks}x${blocks} blocks, ${world.plots().length} plots, ${world.interiors().length} interiors`)
+// the architecture alone: what the seam carries is the town's shells, its
+// lights and its ground, and every one of those is arithmetic, so the bench
+// runs on a plan and asks nobody anything
+const laid = Forge.plan({ theme: 'neon', seed: 'bench', blocksX: blocks, blocksY: blocks })
+if (!laid.ok) throw new Error(JSON.stringify(laid.error))
+const world = laid.value
+console.log(`${blocks}x${blocks} blocks, ${world.plots().length} plots, ${world.stations().length} stations`)
 
 const dressed = new Dressed()
 const plain = new Greybox()

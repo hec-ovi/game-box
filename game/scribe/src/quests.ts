@@ -15,6 +15,7 @@ import { answered } from './stand-in.ts'
 import { CitySummary, type QuestSummary } from './summary.ts'
 import { questTool, type QuestSheet } from './tools.ts'
 import type { Waves } from './waves.ts'
+import { CornerWords, wordingProblems } from './wording.ts'
 
 /** How much of the city one quest is shown. Enough to write about, short enough to send on every call. */
 const PLACES_PER_QUEST = 8
@@ -95,6 +96,9 @@ export class QuestWriter {
     const written = await this.#waves.run<number, Result<Written, ScribeFailure>>(slots, async (_, index, earlier) => {
       const id = questId(index)
       const slice = corners.for(index, PLACES_PER_QUEST)
+      // what this corner is called, which is what the lines the model writes
+      // about it are held to
+      const words = new CornerWords(slice.places, city.districts)
       // the compiled quest, which is the flow built out of the beats with its
       // pay settled into the band its tier allows: that is the quest the city
       // gets, never the sheet this box happened to send
@@ -104,7 +108,7 @@ export class QuestWriter {
         this.#brief(city, slice, index, total, earlier),
         { at: `quest:${index}`, what: index === 0 ? 'the main line' : `side job ${index}` },
         (value) => {
-          const outcome = compiled(value, id, city)
+          const outcome = compiled(value, id, city, words)
           if (outcome.quest) accepted = outcome.quest
           return outcome.problems
         },
@@ -193,8 +197,11 @@ function fieldOf(quest: unknown, name: 'id' | 'title'): string {
  * rather than the writer's: the way past every lock the beats walk into, and
  * the money for what the job buys.
  */
-function compiled(answer: QuestSheet, id: string, city: CitySummary): { problems: Violation[]; quest?: unknown } {
-  const problems: Violation[] = []
+function compiled(answer: QuestSheet, id: string, city: CitySummary, words: CornerWords): { problems: Violation[]; quest?: unknown } {
+  // the words first, against the beats as the model wrote them: every one of
+  // these complaints is already pointed at a beat of the writer's own, so none
+  // of them goes through `told`
+  const problems: Violation[] = wordingProblems(answer.beats, words)
   if (answer.id !== id) problems.push({ path: 'id', message: `this quest's id is ${id}` })
 
   const opened = openTheWay(answer.beats, city.locks)
