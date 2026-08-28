@@ -3,7 +3,10 @@ import type { Access } from './reward.ts'
 import type { Condition, QuestDoc, Step } from './schema.ts'
 import type { WorldView } from './world-view.ts'
 
-/** Every person, place, thing, door and machine a quest names has to be in the world it is played in. */
+/**
+ * Every person, place, thing, door and machine a quest names has to be in the
+ * world it is played in, and a place has to be one the player can get into.
+ */
 export function checkReferences(quest: QuestDoc, world: WorldView, report: Report): void {
   if (!world.hasNpc(quest.giverNpcId)) report(quest.id, `giver ${quest.giverNpcId} is not in the world`)
   for (const itemId of quest.reward.items) {
@@ -21,7 +24,13 @@ export function checkReferences(quest: QuestDoc, world: WorldView, report: Repor
 
 function checkStep(step: Step, world: WorldView, report: Report): void {
   const place = 'place' in step ? step.place : undefined
-  if (place && 'plotId' in place && !world.hasPlot(place.plotId)) report(step.id, `plot ${place.plotId} is not in the world`)
+  if (place && 'plotId' in place) {
+    // Every plot in a city exists; only a handful of them open. A step that sends
+    // the player to a solid one sends them to a wall, which is not a step anybody
+    // can finish, so a place naming a plot has to name one with a way in.
+    if (!world.hasPlot(place.plotId)) report(step.id, `plot ${place.plotId} is not in the world`)
+    else if (!world.opens(place.plotId)) report(step.id, `plot ${place.plotId} does not open: there is nothing there the player can walk into`)
+  }
   if (place && 'interiorId' in place && !world.hasInterior(place.interiorId)) {
     report(step.id, `interior ${place.interiorId} is not in the world`)
   }

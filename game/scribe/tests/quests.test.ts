@@ -57,6 +57,7 @@ const STREET: WorldSummary = {
   })),
 }
 
+/** `CITY` as `@gb/quest` reads it: two plots, neither of them carrying an interior, so neither of them opens. */
 const VIEW = {
   hasNpc: (id: string) => id === 'npc_0001' || id === 'npc_0002',
   hasPlot: (id: string) => id === 'plot_0001' || id === 'plot_0002',
@@ -65,6 +66,7 @@ const VIEW = {
   hasAnchor: () => false,
   hasDoor: () => false,
   hasMachine: () => false,
+  opens: () => false,
 }
 
 /** A quest as a writer tells it: hear Bez out, take the ledger, hand it to Mara. */

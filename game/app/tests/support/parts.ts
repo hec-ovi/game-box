@@ -20,6 +20,7 @@ export const anyWorld: WorldView = {
   hasAnchor: () => true,
   hasDoor: () => true,
   hasMachine: () => true,
+  opens: () => true,
 }
 
 /** The locks of a city, over its own room graph, the way the game builds them. */

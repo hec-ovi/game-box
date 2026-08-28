@@ -64,7 +64,7 @@ Every stage answers `@gb/kit`'s `Result<T, ScribeFailure>`, and nothing throws. 
 - `@gb/kit` contract: contracts, results, the deterministic rng the per-call seeds are drawn with.
 - `@gb/sidecar` contract (game/sidecar/CONTRACT.md): the client that makes the call and carries the seed, the temperature and the job.
 - `@gb/forge` contract: the `Narrator` interface it implements, `Unwritten` (which `ScribeFailure` satisfies), the `History` it answers, the instance shapes and `premiseLines`.
-- `@gb/quest` contract: the quest sheet a writer fills in with beats, the compiler that builds the flow out of them against the seven questions of its `WorldView`, and the reward table the prompt is written from.
+- `@gb/quest` contract: the quest sheet a writer fills in with beats, the compiler that builds the flow out of them against the eight questions of its `WorldView`, and the reward table the prompt is written from.
 - `@gb/world` contract: the closed vocabularies a narrator must choose from, the premise contract the city's history is written against, the charter contract a kind of place is written against and `SHIPPED_CHARTERS` (the kinds every town has), `Life` and `BackgroundFact` for a person, `MachineProgram` for what a screen runs, and `Asks` for what the owner typed.
 
 ## Invariants
@@ -375,10 +375,14 @@ to what the harness holds a player to.
   (`src/reward-bands.ts`), so retuning the table retunes what the model is
   told. Measured on a live 3x3 city: a side job handed over a home and paid
   150.
-- **The view answers the seven questions.** `CitySummary.view()` answers
+- **The view answers the eight questions.** `CitySummary.view()` answers
   `hasDoor` off the locks, `hasMachine` off the screens, `hasInterior` off the
-  places that open (what an access or a deed reward names), and `hasItem` for
-  a key a lock names even though it lies in a pocket and not on a shelf.
+  places that open (what an access or a deed reward names), `hasItem` for
+  a key a lock names even though it lies in a pocket and not on a shelf, and
+  `opens` for a plot whose place has an interior, so a `goto` or an `escort`
+  never sends the player to a wall. The corners a quest is written about are
+  cut from the places somebody or something is in, and only a place that opens
+  has either, so what the tool offers is what the view accepts.
 - **A compiled quest is walked the way the harness walks it.** `@gb/quest`
   proves a flow is playable; the harness then opens a door only with its key in
   hand or its code known, reaches nothing behind a locked door until it is

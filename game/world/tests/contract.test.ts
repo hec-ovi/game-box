@@ -280,7 +280,7 @@ describe('road widths', () => {
 })
 
 describe('questView', () => {
-  it('answers the five questions the quest layer asks, and only about things that exist', () => {
+  it('answers the questions the quest layer asks, and only about things that exist', () => {
     const { world, plot, interior, bartender, bottle } = hamlet()
     const view = questView(world)
 
@@ -305,6 +305,26 @@ describe('questView', () => {
     expect(view.hasDoor(interior.doors[0]!.id)).toBe(true)
     expect(view.hasDoor('door_9999')).toBe(false)
     expect(view.hasMachine('machine_0001')).toBe(false)
+  })
+
+  it('tells a plot the player can walk into from one that is solid', () => {
+    // the bar was opened; the warehouse beside it never was, and a step sending
+    // the player inside it would send them to a wall
+    const { world, plot } = hamlet()
+    const solid = world.addPlot({
+      kind: 'warehouse',
+      name: 'Gulch Freight',
+      rect: { x: 8, y: 1, w: 4, h: 4 },
+      entrance: { cell: { x: 9, y: 5 }, facing: 'south' },
+      storeys: 1,
+      style: 'western-timber',
+    })
+    if (!solid.ok) throw new Error(JSON.stringify(solid.error))
+
+    const view = questView(world)
+    expect(view.opens(plot.id)).toBe(true)
+    expect(view.opens(solid.value.id)).toBe(false)
+    expect(view.opens('plot_9999')).toBe(false)
   })
 })
 

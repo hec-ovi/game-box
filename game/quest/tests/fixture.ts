@@ -10,19 +10,22 @@ export const LEDGER = 'item_0006'
 /** The warehouse's locked back door and the terminal on its desk. */
 export const BACK_DOOR = 'door_0001'
 export const TERMINAL = 'machine_0001'
+/** The lot across the street: a real plot of the city, solid, with no door on it. */
+export const SOLID_LOT = 'plot_0002'
 
 const NPCS = new Set([MARA, HOLLIS, WITNESS])
 const ITEMS = new Set<string>([...CRATES, LEDGER])
 
-/** A warehouse with a locked back door and a terminal, three people, five crates and a ledger. */
+/** A warehouse with a locked back door and a terminal, three people, five crates and a ledger, and a solid lot beside it. */
 export const world: WorldView = {
   hasNpc: (id) => NPCS.has(id),
-  hasPlot: (id) => id === 'plot_0001',
+  hasPlot: (id) => id === 'plot_0001' || id === SOLID_LOT,
   hasInterior: (id) => id === 'interior_0001',
   hasItem: (id) => ITEMS.has(id),
   hasAnchor: (interiorId, anchorId) => interiorId === 'interior_0001' && anchorId === 'anchor_0001',
   hasDoor: (id) => id === BACK_DOOR,
   hasMachine: (id) => id === TERMINAL,
+  opens: (id) => id === 'plot_0001',
 }
 
 /** A quest as an author writes it: the envelope is not theirs to fill in. */

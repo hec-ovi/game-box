@@ -15,6 +15,11 @@ export interface QuestView {
   hasDoor(doorId: string): boolean
   /** A machine a hack or a password may name. */
   hasMachine(machineId: string): boolean
+  /**
+   * Whether that plot has an interior the player can walk into. Most of a city
+   * is solid, so a step sending somebody inside asks this and not `hasPlot`.
+   */
+  opens(plotId: string): boolean
 }
 
 /** A world seen through that port. Pass the result to `@gb/quest`. */
@@ -27,5 +32,8 @@ export function questView(world: World): QuestView {
     hasAnchor: (interiorId, anchorId) => world.interior(interiorId)?.anchors.some((a) => a.id === anchorId) ?? false,
     hasDoor: (doorId) => world.hasDoor(doorId),
     hasMachine: (machineId) => world.hasMachine(machineId),
+    // `plot.interiorId` is the whole answer: it is written when the plot is
+    // opened, and a plot that was never opened has no way in.
+    opens: (plotId) => world.plot(plotId)?.interiorId !== undefined,
   }
 }

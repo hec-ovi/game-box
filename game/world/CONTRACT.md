@@ -1,6 +1,6 @@
 # @gb/world contract
 
-contractVersion: 0.17.0
+contractVersion: 0.18.0
 
 ## Purpose
 
@@ -61,7 +61,7 @@ take. A refusal writes nothing: no id, no ground, no record.
 | `World.brief()`, `World.asks()` | a string or nothing; `Asks` or nothing | what the owner asked for, in their words, as it was typed. Nothing means they gave only the theme |
 | `PROP_SPECS`, `PROP_CELL`, `footprintOf(prop)` | `Record<FurnitureProp, PropSpec>`, `0.1`, `{ width, depth }` in metres | one entry per `FURNITURE_PROPS` value: the floor it claims and the height a body meets it at |
 | `PLOT_BAND`, `TALLEST_STOREYS`, `plotShape(plot)`, `inPlotBand(shape)` | cell ranges; 40; `{ frontage, depth, storeys }` in cells read in the door's frame; boolean | how a city is cut, and the tallest a plot may stand, see below |
-| `questView(world)` | `QuestView` | the seven questions `@gb/quest` asks of a world: `hasNpc`, `hasPlot`, `hasInterior`, `hasItem`, `hasAnchor(interiorId, anchorId)`, `hasDoor(doorId)`, `hasMachine(machineId)` |
+| `questView(world)` | `QuestView` | the eight questions `@gb/quest` asks of a world: `hasNpc`, `hasPlot`, `hasInterior`, `hasItem`, `hasAnchor(interiorId, anchorId)`, `hasDoor(doorId)`, `hasMachine(machineId)`, `opens(plotId)` (whether that plot has an interior to walk into) |
 
 ## What a city was designed against
 
@@ -254,7 +254,10 @@ closed lists only: credits are a number; an item is an item id; access is an
 car is a `CarModel` from `CAR_MODELS`, the seven cars `cars.glb` ships.
 `questView` answers `hasDoor` and `hasMachine` beside the five older questions
 so a lock, a hack or an access reward validates against the city like a
-person or a thing does.
+person or a thing does. `opens(plotId)` is the eighth: `hasPlot` says yes to
+every plot in the city, most of which are solid, so a step that sends the
+player inside asks `opens` instead and a quest cannot name a building with no
+door.
 
 ## The history a city was built against
 
@@ -444,7 +447,7 @@ draws the city draws no kerb against it, and whoever routes never crosses it.
 - Ids are minted once and never reused; a document loaded and saved keeps every id it had.
 - **A city's history is a fact about the file.** It is written at founding and nothing here rewrites it, so growing a city later grows it against the story it started from, and a shared file says what its town is about without the generator that built it.
 - **A plot's design is a fact about the file, never re-derived.** Nothing here chooses a model, and nothing rewrites one that is written down, so the same file is the same city on every machine and in every version of the art.
-- **`plot.interiorId` is exactly the set of doors that open.** A plot with an interior can be walked into and a plot without one cannot, and the two directions are checked: an interior whose plot does not point back at it is refused. There is no second field saying the same thing.
+- **`plot.interiorId` is exactly the set of doors that open.** A plot with an interior can be walked into and a plot without one cannot, and the two directions are checked: an interior whose plot does not point back at it is refused. There is no second field saying the same thing, and `questView(world).opens(plotId)` is that one field read back.
 - The grid is the single source of truth for what occupies a cell, which is what makes "add three more houses later" a lookup rather than a regeneration. It is written into the document once, when the document is asked for, in the form the file it came from was written in.
 - Vocabularies (`CELL_KINDS`, `ROOM_KINDS`, `ROOM_USES`, `ANCHOR_KINDS`, `NPC_ROLES`, `ITEM_ARCHETYPES`, `FURNITURE_PROPS`, `MACHINE_PROGRAMS`, `CAR_MODELS`, `BODY_KINDS`, `FACINGS`, `ROAD_KINDS`, `KIT_PIECES`, `BACKGROUND_UNLOCKS`, `NEON_LEVELS`, `DENSITY_LEVELS`, `WEAR_LEVELS`, and the thirteen charter axes) are closed: every value names a routine the engine runs or a thing it ships. What a place is, is closed by the world document instead, in its charters. `BODY_KINDS` is the two bodies of the shipped pack, `male` and `female`: its two files are one mesh per sex, each with a light and a dark skin sheet, both on the canonical 65-joint skeleton, and a heavier build would be a name for the same mesh until a pack ships one. `dance` is an anchor kind because a dance clip ships.
 - **Which doors open is a fact about the file, not a list of kinds.** `plot.interiorId` is the whole answer, and what makes a door worth opening is what the place turns out to hold, which nothing here can know. There is no vocabulary of enterable kinds.

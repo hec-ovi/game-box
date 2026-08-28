@@ -11,6 +11,7 @@ const world: WorldView = {
   hasAnchor: (interiorId, anchorId) => interiorId === 'interior_0001' && anchorId === 'anchor_0001',
   hasDoor: () => false,
   hasMachine: () => false,
+  opens: (id) => id === 'plot_0001',
 }
 
 const MARA = 'npc_0001'

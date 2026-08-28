@@ -20,12 +20,15 @@ export type QuestSummary = WorldSummary & { readonly asks?: Asks | undefined }
  * accepts. An interior is known by the place that opens on it, which is what an
  * access or a deed reward names. A key named by a lock is a thing the city
  * holds even though it lies in a pocket rather than on a shelf, so it answers
- * yes to those.
+ * yes to those. A plot opens where the place standing on it has an interior:
+ * the rest of a city is frontage, and an errand that ends at a wall is one the
+ * player cannot finish.
  */
 export class CitySummary {
   #summary: QuestSummary
   #npcIds: Set<string>
   #plotIds: Set<string>
+  #openPlotIds: Set<string>
   #itemIds: Set<string>
   #interiorIds: Set<string>
   #locks: CityLocks
@@ -33,6 +36,7 @@ export class CitySummary {
   constructor(summary: QuestSummary) {
     this.#summary = summary
     this.#plotIds = new Set(summary.places.map((place) => place.plotId))
+    this.#openPlotIds = new Set(summary.places.flatMap((place) => (place.interiorId ? [place.plotId] : [])))
     this.#npcIds = new Set(summary.places.flatMap((place) => place.npcs.map((npc) => npc.npcId)))
     this.#interiorIds = new Set(summary.places.flatMap((place) => (place.interiorId ? [place.interiorId] : [])))
     this.#locks = new CityLocks(summary.places)
@@ -78,6 +82,7 @@ export class CitySummary {
       hasAnchor: () => false,
       hasDoor: (id) => this.#locks.door(id) !== undefined,
       hasMachine: (id) => this.#locks.screen(id) !== undefined,
+      opens: (id) => this.#openPlotIds.has(id),
     }
   }
 

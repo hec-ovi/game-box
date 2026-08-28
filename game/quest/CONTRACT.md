@@ -1,6 +1,6 @@
 # @gb/quest contract
 
-contractVersion: 0.10.0
+contractVersion: 0.11.0
 
 ## Purpose
 
@@ -11,7 +11,7 @@ Quests as flows: a checked graph of steps ("talk to her, get through the back do
 | Param | Schema | Preconditions |
 |---|---|---|
 | `compileQuest(value, world)` | [schema/quest-sheet.json](schema/quest-sheet.json) | same `world` as `validateQuest`; the sheet is untrusted JSON |
-| `validateQuest(value, world)` | [schema/quest.json](schema/quest.json) | `world` answers `hasNpc`, `hasPlot`, `hasInterior`, `hasItem`, `hasAnchor`, `hasDoor`, `hasMachine` (`@gb/world`'s `questView(world)` does) |
+| `validateQuest(value, world)` | [schema/quest.json](schema/quest.json) | `world` answers `hasNpc`, `hasPlot`, `hasInterior`, `hasItem`, `hasAnchor`, `hasDoor`, `hasMachine`, `opens` (`@gb/world`'s `questView(world)` does) |
 | `checkFlow(quest, world)` | a parsed `QuestDoc` | same `world`; returns the problems without the reward check |
 | `rewardFor(difficulty, faction?)` | one of `DIFFICULTIES` | none |
 | `tierFor(reward)` | a parsed `Reward` | none |
@@ -248,7 +248,7 @@ Every id is checked against the world with the rest of the quest: an access to a
 - `invalid-sheet`: from `compileQuest`. The beats failed the sheet's JSON Schema. Carries the offending paths.
 - `unwritable-beat`: from `compileQuest`. The beats are a sheet, and they still do not make a quest that plays. Carries one problem per beat, each `where` pointing at `beats.3`, `beats.3.options.0.beats.1`, `giverNpcId` or a reward field, and each `message` the same plain sentence `validateQuest` would have given.
 - `invalid-quest`: failed the JSON Schema. Carries the offending paths.
-- `broken-flow`: schema-valid but unplayable. Carries every problem: dangling reference (a person, thing, place, door or machine the world has not got, a reward's access or deed included), unreachable step, dead end, loop, no completion, a count larger than its pool, a secret nothing reveals, required work hanging off optional work, or an item asked for before the player can have it.
+- `broken-flow`: schema-valid but unplayable. Carries every problem: dangling reference (a person, thing, place, door or machine the world has not got, a reward's access or deed included), a place that does not open (a plot the city holds but nobody can get into: `plot_0042 does not open: there is nothing there the player can walk into`), unreachable step, dead end, loop, no completion, a count larger than its pool, a secret nothing reveals, required work hanging off optional work, or an item asked for before the player can have it.
 - `unbalanced-reward`: playable, but it hands over something the tier does not: too many items or doors, a car, a home, or steps that charge more than the tier may cost. Carries the difficulty and one violation per offending field. Money and standing never land here, because they are settled first.
 - `invalid-event`: the reported event is not one of the known shapes. Nothing moves.
 - `invalid-progress`: the save is not quest progress.
@@ -279,6 +279,7 @@ Every id is checked against the world with the rest of the quest: an access to a
 - Effects are the only way a quest changes the player: nothing is applied implicitly by an event, and neither is giving up.
 - A step is credited only by the event in "What credits a step", which reports the thing having happened; no step is credited off a flag, a companion record, a password known or a menu state. `requires` gates read the record; credits never do.
 - What a quest names in the city is checked against the city before play, doors, machines, access and deeds included, so the runtime never points at a lock or a screen that is not there.
+- Where a quest sends the player is somewhere they can get into: a `place` naming a plot names one whose door opens, and one naming an interior is a room by definition. Most plots in a city are solid, so existing is not enough; a step that would end at a wall is refused.
 - A quest that ended stays in the journal with its status and, when it failed, its reason. Only giving up removes a page.
 - A timer is game seconds off the `clock` event and nothing else: no wall clock, no `Date`, so a paused game holds every countdown.
 - Being a quest item is a binding from a live quest, not a property of the thing, so the same ledger can be untouchable in one playthrough and ordinary loot in another. Shipped RPGs bind it the same way, per quest rather than per item.
