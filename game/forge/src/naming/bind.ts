@@ -33,7 +33,7 @@ const CAPS: Readonly<Record<string, number>> = {
  * back in lower case, because that is the sentence it was written into.
  */
 export function bindNames<T>(value: T, written: ReadonlyMap<string, string>, field?: string): T {
-  if (typeof value === 'string') return clip(swap(value, written), field) as T
+  if (typeof value === 'string') return clip(swap(value, written, field), field) as T
   if (Array.isArray(value)) return value.map((one) => bindNames(one, written, field)) as T
   if (value && typeof value === 'object') {
     return Object.fromEntries(Object.entries(value).map(([key, one]) => [key, bindNames(one, written, key)])) as T
@@ -41,12 +41,34 @@ export function bindNames<T>(value: T, written: ReadonlyMap<string, string>, fie
   return value
 }
 
-function swap(text: string, written: ReadonlyMap<string, string>): string {
-  return text.replace(PLACEHOLDERS, (found) => {
+function swap(text: string, written: ReadonlyMap<string, string>, field: string | undefined): string {
+  const named = text.replace(PLACEHOLDERS, (found) => {
     const name = written.get(capitalised(found))
     if (!name) return found
     return found === found.toLowerCase() ? name.toLowerCase() : name
   })
+  // only the words the player reads: an id is what the game runs on, and a
+  // step whose npcId was swapped for a name points at nobody
+  if (field === undefined || !(field in CAPS)) return named
+  return named.replace(IDS, (found, kind: string) => written.get(found) ?? PLAINLY[kind] ?? found)
+}
+
+/**
+ * An id the model wrote into a sentence. It is asked to name things and it
+ * mostly does, but a line like "Find her in the house on plot_0031" reaches the
+ * player as it was written, and nobody plays a game that talks in ids.
+ */
+const IDS = /\b(plot|interior|npc|item|anchor|door|machine)_\d{3,}\b/g
+
+/** What an id stands for when the town has no name for that one. */
+const PLAINLY: Readonly<Record<string, string>> = {
+  plot: 'the building',
+  interior: 'inside',
+  npc: 'them',
+  item: 'it',
+  anchor: 'the spot',
+  door: 'the door',
+  machine: 'the screen',
 }
 
 /** A placeholder as it is minted: one leading capital, whatever case the sentence put it in. */
@@ -68,6 +90,10 @@ function clip(text: string, field: string | undefined): string {
  */
 export function bindings(planned: readonly PlannedSite[], zones: ReadonlyMap<string, string>, wrote: Wrote): Map<string, string> {
   const book = new Map<string, string>()
+  // the same names again under the ids they belong to, because a line the model
+  // wrote as "the house on plot_0031" has to reach the player as a house
+  for (const [id, name] of wrote.people) book.set(id, name)
+  for (const [id, name] of wrote.things) book.set(id, name)
   for (const [at, name] of [...zones.values()].entries()) book.set(zoneName(at), name)
   for (const one of planned) {
     book.set(instanceName(one.index), one.standing?.name ?? one.sign)

@@ -178,6 +178,15 @@ export class Forge {
 
     // 6. the work bound to the names that landed, then checked against the city it names
     const book = bindings(planned, zoneNames.value, wrote)
+    // and the buildings under their own ids, so a line the model wrote as "the
+    // house on plot_0031" reaches the player as the house it is
+    for (const plot of town.plots()) {
+      if (plot.name) book.set(plot.id, plot.name)
+    }
+    for (const interior of town.interiors()) {
+      const name = town.plot(interior.plotId)?.name
+      if (name) book.set(interior.id, name)
+    }
     const { quests, rejected } = this.#read(town, drafts.map((draft) => bindNames(draft, book)))
 
     const problems = town.check()

@@ -24,7 +24,7 @@ The terminal surface: generate a city, to a history of your own if you wrote one
 
 | Command | Result |
 |---|---|
-| `build` | a bundle file, plus a summary: size, counts, every kind of place the history declared that the city would not take with why (`Forge.build`'s `dropped`, one line each, never left out), whether nothing of a `--history` file could be read as a history, quests written and quests rejected, the pack the city was designed against and how many buildings are pinned to it, how many model calls fell back, the content hash |
+| `build` | a bundle file, plus a summary: size, counts, every kind of place the history declared that the city would not take with why (`Forge.build`'s `dropped`, one line each, never left out), whether nothing of a `--history` file could be read as a history, quests written and quests rejected, the pack the city was designed against and how many buildings are pinned to it, how many model calls had to be asked again and why, the content hash |
 | `extend` | a bundle file of the grown city, the base file untouched, plus a summary: what was added (buildings, how many of them open, people, things, and how many were asked for when the land ran out), the city's counts in all, the pack the growth was designed against and how many of the added buildings are pinned to it, the content hash |
 | `pack` | a pack file, plus a summary: the base it names by world id and content hash, what it adds (buildings, interiors, people, things, quests), the size of the city it applies to with that city's hash, the pack's own hash |
 | `apply` | a bundle file of the grown city under the hash `Pack.apply` gave it, plus a summary: counts, how many buildings came from the pack, the hash |
@@ -140,7 +140,7 @@ throwaway local one, and there is no way to turn it off.
 - `build`, `extend`, `pack` and `apply` never half-write: what goes to disk was sealed first and read back through the door everyone else uses (`Bundle.open`, or `Pack.apply` for a pack), and the pins are written before it is packed, so the content hash covers them.
 - Pins are all or nothing. A world that has taken a catalogue cannot give it back, so a design the world refuses fails the command with nothing written rather than leaving a city part pinned.
 - A base is read and never written. `extend` opens it into a new file, `pack` and `apply` read it beside a second file.
-- The offline narrator is the default. `--model` is opt-in, and a model that will not answer degrades to the offline narrator rather than failing the build.
+- The offline narrator is the default, and it is a developer's city: templates, fast and deterministic, with no story in it. `--model` is the real thing, and under it a model that will not answer stops the build and says which stage and why, because a city somebody asked a story of is written by the model or it is not written. What is retried, dropped or settled rather than fatal is `@gb/scribe`'s to say: a side errand it cannot write is dropped and reported, a name it repeats is kept, and pay outside its band is settled.
 
 ## How to modify this blackbox safely
 

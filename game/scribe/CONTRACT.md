@@ -406,14 +406,19 @@ to what the harness holds a player to.
   call is 2,359 prompt tokens and 343 back in 9 s, a charter 3,337 and 210 in
   11 s, a batch of signs 1,607 and 219 in 34 s, a place 2,618 and 1,244 in 93
   s.
-- **Measured on the quest stage of a live 562-place city** (90 people, 70
-  things, 5 quests one call at a time, 392 s, 78 s a quest): 5 of 5 came back
-  on the first attempt, 0 rejected, 0 dropped, and 5 of 5 played against the
+- **Measured on a live 3x3 build** (`gb build --blocks 3x3 --model`, 63
+  buildings, 16 people, 8 quests, 1,758 s): the main line and all seven side
+  jobs were written, and not one quest call fell back or was dropped. Of the
+  nine calls that did fall back, none was a quest: five signs, one batch of
+  signs, and three places. Three of the eight quests went through a screen,
+  and every one of those carried the talk `keys.ts` put in front of the
+  `hack` ("Get the screen code out of Elise Zane at HydroCorp Regional.").
+- **Measured on the quest stage alone of a live 562-place city** (90 people,
+  70 things, 5 quests one call at a time, 392 s, 78 s a quest): 5 of 5 came
+  back on the first attempt, 0 rejected, 0 dropped, 5 of 5 played against the
   real city. The compiler put a pick-up in front of a hand-over the model had
-  written with nothing to hand over, `keys.ts` put the talk that gets a screen
-  code in front of a `hack`, and one quest carried a fork whose two roads ran
-  their own deliveries and came back together. Both of those were the two
-  failures that had stopped a whole 3x3 build the same night.
+  written with nothing to hand over, and one quest carried a fork whose two
+  roads ran their own deliveries and came back together.
 
 ### Determinism, with more than one call in flight
 

@@ -354,6 +354,21 @@ describe('the people a quest names', () => {
       }
     }
   })
+
+  it('says nothing to the player in ids, whatever the writer wrote them in', () => {
+    // "Find her in the house on plot_0031" is what the model writes when it is
+    // handed ids, and nobody plays a game that talks in ids. The fields the
+    // game runs on keep theirs
+    const READ = ['title', 'summary', 'objective', 'hint', 'markerLabel', 'prompt', 'label', 'topic'] as const
+    for (const town of towns) {
+      for (const quest of town.quests) {
+        for (const [field, text] of prose(quest)) {
+          if (!READ.includes(field as (typeof READ)[number])) continue
+          expect(text, `${quest.title}: ${field} reads "${text}"`).not.toMatch(/\b(plot|interior|npc|item|anchor|door|machine)_\d{3,}\b/)
+        }
+      }
+    }
+  })
 })
 
 /** A marker is capped shorter than a place name, so a long sign is clipped where it is bound. */
@@ -385,4 +400,12 @@ function resolves(world: World, id: string): boolean {
     default:
       return false
   }
+}
+
+/** Every written line in a quest, with the field it was written in. */
+function prose(value: unknown, field = '', out: [string, string][] = []): [string, string][] {
+  if (typeof value === 'string') out.push([field, value])
+  else if (Array.isArray(value)) for (const one of value) prose(one, field, out)
+  else if (value && typeof value === 'object') for (const [key, one] of Object.entries(value)) prose(one, key, out)
+  return out
 }

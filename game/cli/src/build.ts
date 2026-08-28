@@ -81,7 +81,7 @@ export async function build(args: BuildArgs, io: Io): Promise<number> {
   )
   if (scribe?.problems().length) {
     const problems = scribe.problems()
-    io.out(`  ${problems.length} model calls fell back to the offline narrator`)
+    io.out(`  ${problems.length} model calls had to be asked again`)
     // the count alone cannot be acted on: 115 fallbacks with no reason is a
     // build that looks like it worked. Group them, worst first, so one line
     // says whether the model is refusing, timing out or writing the wrong shape

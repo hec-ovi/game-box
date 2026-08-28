@@ -25,10 +25,19 @@ import { Waves } from './waves.ts'
 
 /**
  * A quest is the longest call there is: one was measured at 100 s on its own, and
- * several run at once, which makes each of them slower. Every other call runs on
- * the sidecar's own clock.
+ * several run at once, which makes each of them slower.
  */
 const QUEST_MS = 900_000
+
+/**
+ * A place is the second longest: one call writes the building, everybody in it
+ * and what they keep, and on a small local model it is minutes rather than
+ * seconds. Measured on 2026-08-27: a 3 by 3 town on the sidecar's own clock
+ * lost its build to "the workshop and the people in it could not be written:
+ * the model ran out of time". A stage that is only slow must not read as a
+ * stage that refused. Every other call runs on the sidecar's own clock.
+ */
+const PLACE_MS = 600_000
 
 /**
  * How far the engine strays from its likeliest token, sent on every call. A
@@ -113,7 +122,7 @@ export class Scribe implements Narrator {
     this.#askers = {
       history: asker('history'),
       city: asker('city'),
-      places: asker('places'),
+      places: asker('places', PLACE_MS),
       quests: asker('quests', QUEST_MS),
     }
     this.#standIn = options.standIn

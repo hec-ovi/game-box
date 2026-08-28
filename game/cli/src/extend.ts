@@ -70,7 +70,7 @@ export async function extend(args: ExtendArgs, io: Io): Promise<number> {
       : `  no added building pinned, so the growth names no art: ${pins.why}`,
   )
   if (scribe?.problems().length) {
-    io.out(`  ${scribe.problems().length} model calls fell back to the offline narrator`)
+    io.out(`  ${scribe.problems().length} model calls had to be asked again`)
   }
   io.out(`  written to ${args.out} in ${seconds}s (${bundle.contentHash.slice(0, 12)})`)
   return 0
