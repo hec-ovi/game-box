@@ -8,6 +8,7 @@ import { StreetFace } from './face.ts'
 import { Fixtures } from './fixtures.ts'
 import type { Library } from './library.ts'
 import { BuildingLights, type LightEmitter } from './lights.ts'
+import { Massing } from './massing.ts'
 import { orient, turnsFor } from './orient.ts'
 import { designFor } from './pin.ts'
 
@@ -73,6 +74,8 @@ export class PrefabDressing implements Dressing {
   readonly #rest: Dressing & Signage
   readonly #entrances: Entrances
   readonly #lights: BuildingLights
+  /** The boxes plots the pack has no model for stand as from far off, one per shape and finish. */
+  readonly #massings = new Massing()
   /** Plots the dressing behind hung signs on, so their lights are published with them. */
   readonly #signed = new Set<string>()
 
@@ -105,14 +108,40 @@ export class PrefabDressing implements Dressing {
     return building
   }
 
-  /** The same building from far off: its walls on the shell material, and nothing else. */
+  /**
+   * The same building from far off: its walls on the shell material, and
+   * nothing else. A plot the pack has no model for wears its massing on the
+   * same material, painted with the wall its look wears, rather than the
+   * dressing behind's whole stack of pieces: from past the detail radius a
+   * building is a silhouette with lit windows in it, and both of those are
+   * arithmetic the shell material already does over a box.
+   */
   shell(plot: Plot, size: BuildingSize, charter: ResolvedCharter): THREE.Object3D {
     const drawn = this.#drawn(plot, size, charter)
-    if (!drawn) return this.#rest.shell ? this.#rest.shell(plot, size, charter) : this.#rest.building(plot, size, charter)
+    if (drawn) {
+      const building = new THREE.Group()
+      building.name = plot.id
+      building.add(this.#walls(plot, drawn.model, drawn.turned, this.#library.shell))
+      return building
+    }
 
+    const massing = this.#massing(plot, size, charter)
+    if (massing) return massing
+    return this.#rest.shell ? this.#rest.shell(plot, size, charter) : this.#rest.building(plot, size, charter)
+  }
+
+  /** The box this plot occupies on the pack's own wall, for a shape the catalogue has no model at. */
+  #massing(plot: Plot, size: BuildingSize, charter: ResolvedCharter): THREE.Object3D | undefined {
+    const look = this.#library.catalogue.look(plot, charter.suits)
+    const finish = look ? this.#library.walls(look) : undefined
+    if (!finish) return undefined
     const building = new THREE.Group()
     building.name = plot.id
-    building.add(this.#walls(plot, drawn.model, drawn.turned, this.#library.shell))
+    const mesh = new THREE.Mesh(this.#massings.of(size, finish), this.#library.shell)
+    mesh.name = `${plot.id}:massing`
+    mesh.castShadow = true
+    mesh.receiveShadow = true
+    building.add(mesh)
     return building
   }
 

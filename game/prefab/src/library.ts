@@ -5,9 +5,11 @@ import { Doorway } from './doorway.ts'
 import { glassMaterial } from './glass.ts'
 import { screenTints, type ScreenTint } from './lights.ts'
 import { prefabMaterial, type PrefabAtlas } from './material.ts'
+import type { FinishPair } from './massing.ts'
 import { LAYER_ATTRIBUTE } from './pack.ts'
 import { Panes } from './panes.ts'
 import { shellMaterial } from './shell.ts'
+import { baseFinish, WALL } from './wall.ts'
 
 export class LibraryIncomplete extends Error {
   readonly code = 'library-incomplete'
@@ -46,6 +48,7 @@ export class Library {
   readonly tints: readonly ScreenTint[]
   readonly #geometries: ReadonlyMap<string, THREE.BufferGeometry>
   readonly #panes: ReadonlyMap<string, THREE.BufferGeometry>
+  readonly #walls: ReadonlyMap<string, FinishPair>
 
   private constructor(
     catalogue: Catalogue,
@@ -53,6 +56,7 @@ export class Library {
     tints: readonly ScreenTint[],
     geometries: Map<string, THREE.BufferGeometry>,
     panes: Map<string, THREE.BufferGeometry>,
+    walls: Map<string, FinishPair>,
   ) {
     this.catalogue = catalogue
     this.material = materials.material
@@ -61,6 +65,7 @@ export class Library {
     this.tints = tints
     this.#geometries = geometries
     this.#panes = panes
+    this.#walls = walls
   }
 
   static of(spec: LibrarySpec): Library {
@@ -94,7 +99,7 @@ export class Library {
       glass: glassMaterial(spec.atlas.finishes, spec.night),
       shell: shellMaterial(spec.atlas, spec.night, tints),
     }
-    return new Library(spec.catalogue, materials, tints, geometries, glass)
+    return new Library(spec.catalogue, materials, tints, geometries, glass, wallsPerLook(spec.catalogue, geometries, spec.atlas.finishes))
   }
 
   /** The model's own geometry, in its own frame, door on the south wall. */
@@ -106,6 +111,51 @@ export class Library {
   panes(id: string): THREE.BufferGeometry | undefined {
     return this.#panes.get(id)
   }
+
+  /** The wall and base a look is painted with, for a plot the pack has no model at. Nothing for a look this pack does not bake. */
+  walls(look: string): FinishPair | undefined {
+    return this.#walls.get(look)
+  }
+}
+
+/**
+ * What each look is painted, read off the models themselves rather than off a
+ * table: the wall finish the most of a look's faces wear, and the base of the
+ * same picture beside it. The manifest names a look but not its picture, and
+ * the geometry knows, so a pack that renames its finishes needs no code here.
+ */
+function wallsPerLook(catalogue: Catalogue, geometries: ReadonlyMap<string, THREE.BufferGeometry>, finishes: readonly string[]): Map<string, FinishPair> {
+  const walls = new Map<string, FinishPair>()
+  for (const model of catalogue.models) {
+    if (walls.has(model.look)) continue
+    const geometry = geometries.get(model.id)
+    if (!geometry) continue
+    const wall = commonest(geometry, (layer) => finishes[layer]?.startsWith(WALL) === true)
+    if (wall === undefined) continue
+    const base = finishes.indexOf(baseFinish(finishes[wall]!.slice(WALL.length)))
+    walls.set(model.look, { wall, base: base >= 0 ? base : wall })
+  }
+  return walls
+}
+
+/** The layer the most vertices of one model wear, of the ones that answer. */
+function commonest(geometry: THREE.BufferGeometry, wanted: (layer: number) => boolean): number | undefined {
+  const attribute = geometry.getAttribute(LAYER_ATTRIBUTE)
+  const counts = new Map<number, number>()
+  for (let i = 0; i < attribute.count; i++) {
+    const layer = Math.round(attribute.getX(i))
+    if (wanted(layer)) counts.set(layer, (counts.get(layer) ?? 0) + 1)
+  }
+  let best: number | undefined
+  let most = 0
+  // by count, then by layer, so the same pack answers the same on every run
+  for (const [layer, count] of [...counts].sort((a, b) => a[0] - b[0])) {
+    if (count > most) {
+      most = count
+      best = layer
+    }
+  }
+  return best
 }
 
 /**

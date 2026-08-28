@@ -140,6 +140,9 @@ describe('level of detail', () => {
     // across town, the buildings there are dressed and the ones at the spawn are back to their massing
     const far = farCorner(world)
     city.follow(far.x, far.z)
+    // what each plot stands at is a function of the cell, so the rings are let
+    // finish rather than left a frame's worth in
+    city.settle()
     const there = steps(city)
     expect(there).toEqual(expected(world, far.x, far.z))
     expect([...there.get('detail')!].some((id) => atSpawn.get('detail')!.has(id))).toBe(false)
@@ -147,6 +150,7 @@ describe('level of detail', () => {
 
     // and back at the spawn it is the town that was there at open, built again
     city.follow(city.spawn.x, city.spawn.z)
+    city.settle()
     expect(steps(city)).toEqual(atSpawn)
     expect(new Set(city.lights.emitters.map((one) => one.plotId))).toEqual(atSpawn.get('detail'))
     expect(dressing.details).toBe(built + there.get('detail')!.size + atSpawn.get('detail')!.size)

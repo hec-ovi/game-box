@@ -5,6 +5,7 @@ import type { BuildingStep, CityBuilding } from '../batch/building.ts'
 import type { CityLights } from '../lights/city-lights.ts'
 import type { LightEmitter } from '../lights/emitter.ts'
 import { offerTo } from '../seam.ts'
+import { WHOLE, type Budget } from './budget.ts'
 import { isNear, type Cell } from './near.ts'
 
 /** One plot dressed at one step: the object, what it throws light from, and where it stands. */
@@ -16,27 +17,16 @@ export interface Dressed {
 }
 
 /**
- * How many buildings a ring dresses on a frame that was told its own elapsed
- * time. Building a tall one out of the shipped kit and copying it into a batch
- * is tens of milliseconds, and a step across a cell brings several of them into
- * a wide ring, so one a frame is as low as the ceiling goes. It is well ahead of
- * the demand either way: on the town the game builds, a 256 m ring takes about a
- * thirtieth of a building a frame at walking pace and about half at 20 m/s.
- */
-export const STREAM_BUILDS = 1
-
-/**
  * One ring of buildings round the player: the plots within `radius` of their
  * cell, dressed at one step and batched together.
  *
  * Which plots the ring wants is a pure function of the cell and nothing else.
  * As the cell changes, plots that went out are taken out at once with the
  * light they threw, and plots that came in are queued in the order the world
- * lists its plots; `catchUp` builds them, all of them on a frame that was not
- * told its own elapsed time and `STREAM_BUILDS` of them on one that was. A
- * plot waiting its turn is still standing in the city as its massing, so the
- * queue only ever means a building is drawn more coarsely for a few frames,
- * never that there is a hole where it should be.
+ * lists its plots; `catchUp` builds as many of them as the frame's budget
+ * affords. A plot waiting its turn is still standing in the city as its
+ * massing, so the queue only ever means a building is drawn more coarsely for
+ * a few frames, never that there is a hole where it should be.
  */
 export class CityRing {
   readonly #world: World
@@ -49,6 +39,8 @@ export class CityRing {
   readonly #held = new Set<string>()
   /** What the ring wants and has not built yet, in the order the world lists its plots. */
   #queue: Plot[] = []
+  /** How far down the queue the building has got, so a frame's share costs no shifting. */
+  #at = 0
 
   constructor(input: {
     world: World
@@ -74,6 +66,7 @@ export class CityRing {
   /** Brings the ring to that cell: what went out is let go now, what came in is queued. */
   follow(cell: Cell): void {
     this.#queue = []
+    this.#at = 0
     for (const plot of this.#world.plots()) {
       const near = this.isNear(plot, cell)
       const held = this.#held.has(plot.id)
@@ -82,17 +75,32 @@ export class CityRing {
     }
   }
 
-  /** Builds up to that many of the queued plots. Whatever is left waits for the next frame. */
-  catchUp(builds: number): void {
-    if (this.#queue.length === 0) return
-    for (const plot of this.#queue.splice(0, builds)) this.#build(plot)
-    this.#batcher.settle()
+  /**
+   * Builds as much of the queue as the frame can pay for, and charges each
+   * build to it. Whatever is left waits for the next frame; a build already
+   * started is finished, because a half-built plot is a hole in the street, and
+   * what it went over by is the budget's to carry.
+   */
+  catchUp(budget: Budget): void {
+    let built = false
+    while (this.#at < this.#queue.length && budget.spends) {
+      const plot = this.#queue[this.#at++]!
+      const at = performance.now()
+      this.#build(plot)
+      budget.spend(performance.now() - at)
+      built = true
+    }
+    if (this.#at >= this.#queue.length) {
+      this.#queue = []
+      this.#at = 0
+    }
+    if (built) this.#batcher.settle()
   }
 
   /** Every plot in the ring from that cell, built now: what a city standing up does. */
   open(cell: Cell): void {
     this.follow(cell)
-    this.catchUp(Number.POSITIVE_INFINITY)
+    this.catchUp(WHOLE)
   }
 
   /** Builds one plot into the ring and hangs its lights, whether or not the batches are sealed yet. */

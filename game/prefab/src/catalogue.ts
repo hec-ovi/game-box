@@ -251,6 +251,19 @@ export class Catalogue {
     }
   }
 
+  /**
+   * The look this plot wears whatever its shape, for a plot the pack has no
+   * model at: the same rule `design` picks a model by, over the looks a
+   * charter's `suits` claim rather than over one bucket. Undefined for an empty
+   * catalogue only, so a plot outside the band still knows what it is made of.
+   */
+  look(plot: Plot, suits: Suits): string | undefined {
+    const suited = [...new Set(this.models.filter((model) => claims(model, suits)).map((model) => model.look))].sort()
+    const looks = suited.length > 0 ? suited : [...new Set(this.models.map((model) => model.look))].sort()
+    if (looks.length === 0) return undefined
+    return new Rng(`prefab/${plot.id}/${plot.kind}/${plot.style}`).fork('look').pick(looks)
+  }
+
   /** Whether every shape asked for is in the catalogue. */
   covers(demand: Iterable<Bucket>): { ok: true } | Uncovered {
     const missing: Bucket[] = []

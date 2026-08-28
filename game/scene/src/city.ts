@@ -8,9 +8,10 @@ import type { BuildingSize, Dressing } from './dressing.ts'
 import { GROUND_KINDS, groundMesh, mountainMesh } from './ground.ts'
 import type { InteriorBuild } from './interior.ts'
 import { CityLights, LIVE_LIGHTS } from './lights/city-lights.ts'
+import { StreamBudget, WHOLE } from './lod/budget.ts'
 import { CityMassing, type Site } from './lod/massing.ts'
 import { cellOf, DETAIL_RADIUS, sameCell, SHELL_RADIUS, type Cell } from './lod/near.ts'
-import { CityRing, STREAM_BUILDS, type Dressed } from './lod/ring.ts'
+import { CityRing, type Dressed } from './lod/ring.ts'
 import { CityRooms } from './lod/rooms.ts'
 import { markingMeshes } from './marking-mesh.ts'
 import { planMarkings, type Marking } from './markings.ts'
@@ -57,11 +58,23 @@ export interface CityBuild {
    * Where the player is, in metres on the ground, every frame. The lights go
    * to the nearest emitters, fading over `seconds` if the frame's elapsed time
    * is given and arriving at once if it is not; when the cell changes, the
-   * buildings that came near are drawn in detail, the ones that came within the
-   * shell radius wear their shells, the ones that went beyond fall back to
-   * their massing, and far rooms are let go of.
+   * buildings that came near are queued to be drawn in detail, the ones that
+   * came within the shell radius are queued for their shells, the ones that
+   * went beyond fall back to their massing, and far rooms are let go of.
+   *
+   * The queue is worked through over the frames and never on one: a frame
+   * spends `STREAM_BUDGET`, or `STANDING_BUDGET` where the player has not
+   * moved, and hands what it went over by to the frames after it. `settle`
+   * is how a caller asks for the lot.
    */
   follow(x: number, z: number, seconds?: number): void
+  /**
+   * Everything `follow` has queued and not built yet, built now, however long
+   * it takes, and the lights cut again over what it built: what a city opening
+   * behind a loader wants, and what a ride between stations wants behind its
+   * veil. A frame in a running game never calls it.
+   */
+  settle(): void
   /** That interior, built on first entry and kept while the player is near. Nothing for an id the world lacks. */
   interior(interiorId: string): InteriorBuild | undefined
   /** The interiors standing built right now, by id. */
@@ -162,6 +175,8 @@ export function buildCity(world: World, dressing: Dressing, options: CityOptions
 
   const spawn = spawnAt(world, doorsteps)
   let standing: Cell = cellOf(spawn.x, spawn.z, cell)
+  /** Where the player was last seen, so settling can cut the lights over what it just built. */
+  let where = { x: spawn.x, z: spawn.z }
   // live round where the player opens their eyes, until the app says where the camera is
   lights.follow(spawn.x, spawn.z)
 
@@ -190,6 +205,7 @@ export function buildCity(world: World, dressing: Dressing, options: CityOptions
     detailed.sealed(details.seal())
   }
   const rooms = new CityRooms(world, dressing, near)
+  const budget = new StreamBudget()
 
   const clutter = litterOf(world, doorsteps, markings, seed, options.clutter)
   const rubbish = clutterMesh(clutter, seed, dressing)
@@ -221,12 +237,19 @@ export function buildCity(world: World, dressing: Dressing, options: CityOptions
         detailed?.follow(now)
         rooms.follow(now)
       }
-      // a frame that was told its own elapsed time is a frame in a running
-      // game, and it takes as much of the backlog as it can afford; one that
-      // was not is a city opening or a test, and it takes the lot
-      const builds = seconds === undefined ? Number.POSITIVE_INFINITY : STREAM_BUILDS
-      detailed?.catchUp(builds)
-      shelled.catchUp(builds)
+      where = { x, z }
+      // the near ring goes first: a building the player can read beats one
+      // four blocks off
+      budget.open(x, z)
+      detailed?.catchUp(budget)
+      shelled.catchUp(budget)
+    },
+    settle: () => {
+      detailed?.catchUp(WHOLE)
+      shelled.catchUp(WHOLE)
+      // a building hangs its emitters as it is built, so the budget is cut
+      // again over the ones that were not there when the frame opened
+      lights.follow(where.x, where.z)
     },
     interior: (interiorId) => rooms.enter(interiorId),
     get interiors(): ReadonlySet<string> {

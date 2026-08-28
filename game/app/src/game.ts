@@ -631,6 +631,10 @@ export class Game {
     // is not held for it: every room built after it plays gets it, and the one
     // they are standing in when it does gets it there and then
     if (screens) void screens.open().then((playing) => void (playing && game && game.#buildings.dressScreens()))
+    // the neighbourhood the player opens their eyes in is built whole, before
+    // the loader lifts: a frame budget is right while they walk and wrong for
+    // the first second, when the street would stand as bare shells
+    game.#city.settle()
     stage.start((seconds, stall) => game!.frame(seconds, stall))
     return game
   }

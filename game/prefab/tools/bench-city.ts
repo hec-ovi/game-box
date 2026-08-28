@@ -12,7 +12,15 @@
  * cost before the skyline carried the far field.
  *
  * It prints what the town holds, what a camera standing in the street submits
- * of it, and what walking costs, so a change here can be read as a number.
+ * of it, what walking costs and what walking up to a door and through it costs,
+ * so a change here can be read as a number.
+ *
+ * A slow frame says what it was doing: the ten dearest of the walk carry the
+ * plots they dressed, how tall each is, how many triangles it answered with,
+ * how long the dressing took, how long the rest of the frame took and how much
+ * of it the runtime spent collecting. That last column is why the frames are
+ * read together rather than one at a time: a major collection lands wherever it
+ * lands, and without it a cheap build looks like a stall.
  *
  *   node tools/bench-city.ts [--seed metro] [--blocks 20] [--storeys 24] [--mode lod|whole] [--dressing prefab|kit] [--shell 256|all] [--far 4000]
  *
@@ -21,8 +29,9 @@
 import { Forge, OfflineNarrator } from '@gb/forge'
 import { KitDressing, loadKit } from '@gb/kitbash'
 import { buildCity, SHELL_RADIUS, type CityBuild, type Dressing } from '@gb/scene'
-import { inPlotBand, plotShape } from '@gb/world'
+import { inPlotBand, plotShape, type Plot } from '@gb/world'
 import * as THREE from 'three'
+import { PerformanceObserver } from 'node:perf_hooks'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { PrefabDressing } from '../src/dressing.ts'
@@ -42,33 +51,54 @@ const shell = reach === 'all' ? Number.POSITIVE_INFINITY : Number(reach ?? SHELL
 /** The far plane the game gives the camera comes off the air, and it is kilometres: the whole town is inside it. */
 const far = Number(flag(args, '--far') ?? 4000)
 
+/** One call to the dressing, as the frame it landed on saw it. */
+interface Call {
+  readonly step: 'shell' | 'detail'
+  readonly plotId: string
+  readonly storeys: number
+  readonly triangles: number
+  readonly ms: number
+}
+
+/** The calls the frame under measurement has taken so far. Nothing while the city is opening. */
+let frame: Call[] | undefined
+
 /** What one call to the dressing landed in the city, and what it cost. */
 class Tally {
+  readonly #step: 'shell' | 'detail'
   triangles = 0
   meshes = 0
   calls = 0
   ms = 0
   readonly materials = new Set<string>()
 
+  constructor(step: 'shell' | 'detail') {
+    this.#step = step
+  }
+
   /** Times one call and reads what it answered. */
-  of(build: () => THREE.Object3D): THREE.Object3D {
+  of(plot: Plot, build: () => THREE.Object3D): THREE.Object3D {
     const at = performance.now()
     const object = build()
-    this.ms += performance.now() - at
+    const took = performance.now() - at
+    this.ms += took
     this.calls++
+    let triangles = 0
     object.traverse((child) => {
       const mesh = child as THREE.Mesh
       if (!mesh.isMesh) return
       this.meshes++
-      this.triangles += (mesh.geometry.getIndex()?.count ?? mesh.geometry.getAttribute('position').count) / 3
+      triangles += (mesh.geometry.getIndex()?.count ?? mesh.geometry.getAttribute('position').count) / 3
       this.materials.add((mesh.material as THREE.Material).name)
     })
+    this.triangles += triangles
+    frame?.push({ step: this.#step, plotId: plot.id, storeys: plot.storeys, triangles, ms: took })
     return object
   }
 }
 
-const shells = new Tally()
-const buildings = new Tally()
+const shells = new Tally('shell')
+const buildings = new Tally('detail')
 
 /** A dressing with a shell on it, which is both of the ones measured here. */
 type Streaming = Required<Pick<Dressing, 'shell' | 'lights'>> & Dressing
@@ -76,7 +106,7 @@ type Streaming = Required<Pick<Dressing, 'shell' | 'lights'>> & Dressing
 /** The dressing under measurement, counted, with its shell hidden when the mode says so. */
 function counted(inner: Streaming, lod: boolean): Dressing {
   const dressing: Dressing = {
-    building: (plot, size, charter) => buildings.of(() => inner.building(plot, size, charter)),
+    building: (plot, size, charter) => buildings.of(plot, () => inner.building(plot, size, charter)),
     lights: (plot, size, charter) => inner.lights(plot, size, charter),
     prop: (prop) => inner.prop(prop),
     character: (npc, doing) => inner.character(npc, doing),
@@ -85,7 +115,7 @@ function counted(inner: Streaming, lod: boolean): Dressing {
     surface: (part, size) => inner.surface(part, size),
   }
   if (!lod) return dressing
-  return { ...dressing, shell: (plot, size, charter) => shells.of(() => inner.shell(plot, size, charter)) }
+  return { ...dressing, shell: (plot, size, charter) => shells.of(plot, () => inner.shell(plot, size, charter)) }
 }
 
 // three reaches for browser globals while decoding the kit's textures; the geometry does not need them
@@ -164,32 +194,122 @@ function heldBy(built: CityBuild): { buildings: number; rubbish: number } {
   return total
 }
 
+/** One frame of the walk: what it cost and what it was doing. */
+interface Frame {
+  readonly metres: number
+  readonly ms: number
+  readonly crossed: boolean
+  readonly calls: readonly Call[]
+  /** Milliseconds of it the runtime spent collecting rather than building. */
+  readonly gc: number
+}
+
+/** Every collection since the process opened, so a slow frame can say whether it was work or a sweep. */
+const collections: Array<{ at: number; ms: number }> = []
+new PerformanceObserver((list) => {
+  for (const entry of list.getEntries()) collections.push({ at: entry.startTime, ms: entry.duration })
+}).observe({ entryTypes: ['gc'] })
+
+/** What the runtime collected inside one frame. */
+function collected(began: number, ended: number): number {
+  let ms = 0
+  for (const one of collections) if (one.at >= began && one.at <= ended) ms += one.ms
+  return ms
+}
+
 /**
  * What `follow` costs along a walk from the spawn, frame by frame, the way the
  * game calls it: told the frame's own elapsed time, so the rings take their
  * backlog a few buildings at a time.
+ *
+ * Every frame carries the calls the dressing took on it, so a slow one can say
+ * whether it went on drawing a building or on copying it into a batch: the ms
+ * the calls add up to is the dressing, and the rest of the frame is the batch,
+ * the lights and the sweep over the plots.
  */
-function walked(built: CityBuild): { median: number; ninetyNinth: number; worst: number; frames: number; crossings: number } {
-  const took: number[] = []
+function walked(built: CityBuild): { median: number; ninetyNinth: number; worst: number; frames: Frame[]; crossings: number } {
+  const frames: Frame[] = []
   let crossings = 0
   let last = Math.floor(built.spawn.x / world.cellSize)
   for (let metres = 0.25; metres <= 120; metres += 0.25) {
     const x = built.spawn.x + metres
     const now = Math.floor(x / world.cellSize)
-    if (now !== last) crossings++
+    const crossed = now !== last
+    if (crossed) crossings++
     last = now
+    const calls: Call[] = []
+    frame = calls
     const began = performance.now()
     built.follow(x, built.spawn.z, 1 / 60)
-    took.push(performance.now() - began)
+    const ended = performance.now()
+    frame = undefined
+    frames.push({ metres, ms: ended - began, crossed, calls, gc: collected(began, ended) })
   }
-  const sorted = [...took].sort((a, b) => a - b)
+  const sorted = frames.map((one) => one.ms).sort((a, b) => a - b)
   return {
     median: sorted[Math.floor(sorted.length / 2)] ?? 0,
     ninetyNinth: sorted[Math.floor(sorted.length * 0.99)] ?? 0,
     worst: sorted.at(-1) ?? 0,
-    frames: took.length,
+    frames,
     crossings,
   }
+}
+
+/** One line saying what a frame did: what it dressed, how big it was, and where the time went. */
+function why(one: Frame): string {
+  const dressed = one.calls.reduce((sum, call) => sum + call.ms, 0)
+  const triangles = one.calls.reduce((sum, call) => sum + call.triangles, 0)
+  const shellCalls = one.calls.filter((call) => call.step === 'shell').length
+  const tallest = one.calls.reduce((most, call) => Math.max(most, call.storeys), 0)
+  const what = one.calls.length === 0
+    ? one.crossed ? 'no build, the cell changed' : 'no build'
+    : `${one.calls.length} built (${shellCalls} shell, ${one.calls.length - shellCalls} detail), tallest ${tallest} storeys, ${rounded(triangles)} triangles`
+  const each = one.calls.map((call) => `${call.step} ${call.plotId} ${call.storeys}st ${rounded(call.triangles)}tri ${call.ms.toFixed(1)}ms`).join(' | ')
+  return `${one.ms.toFixed(2)} ms at ${one.metres.toFixed(2)} m${one.crossed ? ' (a new cell)' : ''}: ${what}; ${dressed.toFixed(2)} ms dressing, ${(one.ms - dressed - one.gc).toFixed(2)} ms batching and the rest, ${one.gc.toFixed(2)} ms collecting${each ? `\n        ${each}` : ''}`
+}
+
+/**
+ * What a door costs: arriving at one, then walking through it.
+ *
+ * Arriving somewhere new is the dearest thing the streaming does, because a
+ * whole ring comes in at once, and it is what a train, a load and a walk into
+ * a dense block all look like. The frames are budgeted the way the game
+ * budgets them, so what is measured is the worst single frame of the arrival
+ * and then the one call that builds the room.
+ */
+function entered(built: CityBuild): { arrival: number[]; settle: number[]; room: number[]; frames: Frame[] } {
+  const arrival: number[] = []
+  const settle: number[] = []
+  const room: number[] = []
+  const frames: Frame[] = []
+  for (const interior of world.interiors().slice(0, 24)) {
+    const plot = world.plot(interior.plotId)
+    if (!plot) continue
+    const door = built.doorsteps.get(plot.id)
+    if (!door) continue
+    let worst: Frame = { metres: 0, ms: 0, crossed: false, calls: [], gc: 0 }
+    let spent = 0
+    // stand on the doorstep and let the rings catch up a frame at a time, the
+    // way a player who has just arrived does
+    for (let at = 0; at < 240; at++) {
+      const calls: Call[] = []
+      frame = calls
+      const began = performance.now()
+      built.follow(door.x, door.z, 1 / 60)
+      const ended = performance.now()
+      const ms = ended - began
+      frame = undefined
+      spent += ms
+      if (ms > worst.ms) worst = { metres: at, ms, crossed: at === 0, calls, gc: collected(began, ended) }
+    }
+    arrival.push(worst.ms)
+    settle.push(spent)
+    frames.push(worst)
+    const began = performance.now()
+    built.interior(interior.id)
+    room.push(performance.now() - began)
+  }
+  return { arrival, settle, room, frames }
 }
 
 const batches = city.root.children.filter((child) => child.name.startsWith('city:') || child.name.startsWith('detail:'))
@@ -214,6 +334,26 @@ console.log(`  buildings held ${rounded(holding.buildings)} triangles, of it ${r
 console.log(`  standing at the spawn, far plane ${rounded(far)} m: ${rounded(views[0]!.triangles)} triangles of buildings facing the door, ${worst.draws} draws`)
 console.log(`  turning on the spot from there: ${views.slice(1).map((one) => rounded(one.triangles)).join(' | ')}, and ${rounded(worst.rubbish)} of rubbish whichever way`)
 const walk = walked(city)
+const FRAME = 1000 / 60
+const missed = walk.frames.filter((one) => one.ms > FRAME)
+const spent = walk.frames.reduce((sum, one) => sum + one.ms, 0)
 console.log(
-  `  follow over a 120 m walk (${walk.frames} frames, ${walk.crossings} of them a new cell): median ${(walk.median * 1000).toFixed(0)} us, 99th ${walk.ninetyNinth.toFixed(2)} ms, worst ${walk.worst.toFixed(2)} ms`,
+  `  follow over a 120 m walk (${walk.frames.length} frames, ${walk.crossings} of them a new cell): median ${(walk.median * 1000).toFixed(0)} us, 99th ${walk.ninetyNinth.toFixed(2)} ms, worst ${walk.worst.toFixed(2)} ms`,
+)
+console.log(
+  `    ${missed.length} frames over 16.7 ms, ${rounded(missed.reduce((sum, one) => sum + one.ms - FRAME, 0))} ms of them over; ${rounded(spent)} ms of streaming over the whole walk`,
+)
+const bare = walk.frames.filter((one) => one.crossed && one.calls.length === 0).map((one) => one.ms).sort((a, b) => a - b)
+const still = walk.frames.filter((one) => !one.crossed && one.calls.length === 0).map((one) => one.ms).sort((a, b) => a - b)
+console.log(
+  `    a crossing that built nothing: ${bare.length} frames, median ${((bare[Math.floor(bare.length / 2)] ?? 0) * 1000).toFixed(0)} us, worst ${(bare.at(-1) ?? 0).toFixed(2)} ms; a frame that did neither: median ${((still[Math.floor(still.length / 2)] ?? 0) * 1000).toFixed(0)} us`,
+)
+const slowest = [...walk.frames].sort((a, b) => b.ms - a.ms).slice(0, 10)
+for (const [at, one] of slowest.entries()) console.log(`    ${String(at + 1).padStart(2)}. ${why(one)}`)
+
+const doors = entered(city)
+const middle = (list: readonly number[]) => [...list].sort((a, b) => a - b)[Math.floor(list.length / 2)] ?? 0
+for (const one of [...doors.frames].sort((a, b) => b.ms - a.ms).slice(0, 3)) console.log(`    arrival: ${why(one)}`)
+console.log(
+  `  walking up to ${doors.arrival.length} doors and through them: arriving costs a worst frame of ${middle(doors.arrival).toFixed(2)} ms median, ${Math.max(...doors.arrival).toFixed(2)} ms worst, over ${rounded(middle(doors.settle))} ms median of streaming (${rounded(Math.max(...doors.settle))} ms worst) before the neighbourhood is up; the room build ${middle(doors.room).toFixed(2)} ms median, ${Math.max(...doors.room).toFixed(2)} ms worst`,
 )

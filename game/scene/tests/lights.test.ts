@@ -97,6 +97,9 @@ describe('the light the buildings throw', () => {
     // walked to the far corner of town, they are the ones there
     const far = { x: world.grid.width * world.cellSize * 0.8, z: world.grid.height * world.cellSize * 0.8 }
     city.follow(far.x, far.z)
+    // a building hangs its emitters as it is built, so the neighbourhood is let
+    // finish before the budget is read
+    city.settle()
     const there = lightsIn(city).map(litFrom)
     for (const light of there) expect(Math.hypot(light.x - far.x, light.z - far.z)).toBeLessThanOrEqual(farthest(far.x, far.z) + 1e-6)
     expect(there.some((light) => atSpawn.some((was) => was.x === light.x && was.z === light.z))).toBe(false)

@@ -32,6 +32,7 @@ interface Station {
 export class Travel {
   #hud: Hud
   #body: Player
+  #city: CityBuild
   #companions: Companions
   #stations: readonly Station[]
   #landing: Station | undefined
@@ -40,6 +41,7 @@ export class Travel {
   constructor(input: { world: World; hud: Hud; city: CityBuild; body: Player; companions: Companions }) {
     this.#hud = input.hud
     this.#body = input.body
+    this.#city = input.city
     this.#companions = input.companions
     this.#stations = input.world.stations().flatMap((plot) => {
       const at = input.city.doorsteps.get(plot.id)
@@ -84,6 +86,11 @@ export class Travel {
       this.#body.placeAt(x, z, heading)
       // and whoever was walking with them got on the same train
       this.#companions.regroup({ x, z })
+      // the frame budget is for walking: a neighbourhood the city has never
+      // drawn is built whole here, under the veil, rather than assembling
+      // itself in front of somebody who just stepped off a train
+      this.#city.follow(x, z)
+      this.#city.settle()
       return
     }
     if (!this.#veiled) return
