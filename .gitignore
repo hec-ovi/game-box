@@ -1,11 +1,3 @@
-# local-only raw idea and requirement docs (persistent, never published)
-docs/IDEA.md
-docs/REQUIREMENTS.md
-docs/donotread.md
-
-# reference images he drops in for a box to work from
-docs/buildingstop/
-
 # research store (may contain proprietary insights, default private)
 .research/
 

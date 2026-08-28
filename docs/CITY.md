@@ -1,6 +1,6 @@
 # The city, and what its size means
 
-Status: decided 2026-08-25, from the owner's own words in `docs/REQUIREMENTS.md`.
+Status: decided 2026-08-25.
 Supersedes the scaling assumptions in `docs/PLACES.md` section 6 (the plot mix)
 and everything that reads a count off the number of plots.
 

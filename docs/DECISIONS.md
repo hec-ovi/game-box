@@ -172,4 +172,4 @@ Four rules, in the order they bite:
 3. **Done is measured at the end of the path.** Anything visible is proven with a frame from the running game. Anything behavioural is proven through the outermost box's real entry point. A box's own suite is necessary and never sufficient.
 4. **A wrapper is total.** Anything that wraps a seam forwards every member it does not implement itself. Seams decide behaviour by asking whether a member is there, so a dropped one is a silent feature loss. When a seam gains an optional member, every wrapper of that seam moves in the same change.
 
-Alongside the rules, the repo keeps a record per box of claims that failed verification (`docs/CLAIMS.md`). It is not a score on an agent, which has no memory to punish: it is what the next agent scoped to that box is handed, and it raises the bar there to proof rather than assertion.
+Alongside the rules, a box's own CONTRACT.md is what the next agent scoped to it is handed, which keeps the bar at proof rather than assertion.

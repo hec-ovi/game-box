@@ -10,7 +10,7 @@ city, so the ground is near black with a teal cast and the accent is the city's
 cyan. It never uses the street's magenta or its neon reds, so a sign burning
 behind the glass is never mistaken for a control.
 
-The shapes and the rhythm come from `docs/look-refs/`: cut corners, thin
+The shapes and the rhythm are cut corners, thin
 luminous edges, corner readouts, an icon on every row, chips, keyed options,
 monospaced numbers. Their fiction, their logos, their currencies and their XP
 badges stay there.

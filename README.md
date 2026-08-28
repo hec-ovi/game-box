@@ -33,7 +33,7 @@ launch. If the console says `No available adapters` and
 
 - **Node 22 or newer, and pnpm.** That is the whole requirement to play.
 - **A browser.** No native build, no compile step, no server unless you want the model.
-- **A model endpoint, optional.** Anything that speaks the OpenAI chat shape. Without one the city is written by an offline author built into the game, and everything is playable: the same streets, the same interiors, the same quest kinds, named and described from the seed instead of by a model.
+- **A model endpoint.** Anything that speaks the OpenAI chat shape, reached through the sidecar. Every word of a city comes from it: the history, the names, the people and the work. Without one a city cannot be written.
 
 ## Playing it
 
@@ -44,13 +44,13 @@ pnpm --filter @gb/app run dev        # http://localhost:5180
 
 Click to take the mouse, WASD to walk, shift to run, hold the right button to look closer, E to act on whatever is in front of you, Escape to leave a conversation.
 
-By default the city is generated in the browser from the seed in the URL, so nothing else has to be running:
+A seed and a theme in the address builds that city:
 
 ```
 http://localhost:5180/?seed=gulch&theme=dusty+western+town
 ```
 
-Add `&model` to have a local model write the names, the people and the quests instead of the offline author. That needs the sidecar (below).
+The sidecar has to be running, because the model writes the city. See below.
 
 ## Building a city from the terminal
 
@@ -75,13 +75,13 @@ A city built this way is checked before it ships: every generated quest is drive
 
 ## The model
 
-Four ways to run, and the game is playable in all four.
+The model writes every word of a city. The streets, the plots and the shape of
+the town are arithmetic from the seed, and everything a player reads is written:
+the history, the name of the city, the name over each door, who is inside, what
+they know, and the work they hand out. There is one way to write a city and this
+is it.
 
-**Nothing running.** The default. The city is written by the offline author in the browser.
-
-```
-http://localhost:5180/?seed=gulch&theme=dusty+western+town
-```
+Three ways to run it.
 
 **The sidecar, answering from a stand-in.** A small Node service on `127.0.0.1:8976` that speaks the OpenAI chat shape. With no upstream set it answers from a built-in stand-in, which is how the model path gets exercised without a model.
 
@@ -119,11 +119,11 @@ OPENROUTER_API_KEY=sk-or-...
 
 A free model is rate-limited often. The sidecar answers that as `429` with a `Retry-After`, and the game waits it out and asks again rather than treating the model as gone.
 
-Then add `&model` to the URL, or `--model` to `gb build`, and the names, the history, the people and the quests come from the endpoint instead of the offline author.
+`gb build` takes `--model` to write a city from the terminal through the same endpoint.
 
 `GAME_BOX_PORT` moves the sidecar off 8976, and `?sidecar=` in the URL points the game at a different one.
 
-Everything generated comes back as a **tool call whose parameters are the JSON Schema of the contract that will validate it**, so the thing that defines the shape and the thing that checks it are the same object. Nothing a model writes is trusted: a quest is refused unless every path ends, every person and thing it names exists, and every item is in the player's hands before they are asked for it. A malformed answer is dropped and the offline author fills in, so a bad reply costs some flavour rather than the city.
+Everything generated comes back as a **tool call whose parameters are the JSON Schema of the contract that will validate it**, so the thing that defines the shape and the thing that checks it are the same object. Nothing a model writes is trusted: a quest is refused unless every path ends, every person and thing it names exists, and every item is in the player's hands before they are asked for it. A stage that cannot be written stops the build and says which one it was, rather than substituting something nobody asked for.
 
 One thing to know before relying on a model for a shared world. A request pins its answer with `temperature: 0` and a `seed`, and both reach the endpoint, but repeating is the endpoint's own property rather than a promise this project can make. Measured on 2026-08-27 through OpenRouter on `google/gemma-4-31b-it:free`, one request at a time: the same pinned question came back identical byte for byte, 3 of 3. A local llama-server holds a seed only while nothing else shares the engine, because a batch it is computed in changes the answer. A command-line agent takes neither: `agy` accepts no temperature and no seed, so
 a request's pins reach nothing on that path. Measured on 2026-08-27, the same
@@ -134,8 +134,7 @@ actually start it.
 Line 7 above says a city travels: send the file and somebody walks the same
 city. That is the file, not the recipe. The JSON carries the whole town, so it
 is identical wherever it is opened. Rebuilding it from the same theme and seed
-is only identical when the engine that wrote it repeats itself, and the offline
-author is the only writer here that always does.
+is only identical when the engine that wrote it repeats itself.
 
 ## Layout
 
