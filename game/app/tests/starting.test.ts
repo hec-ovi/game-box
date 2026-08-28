@@ -337,27 +337,52 @@ describe('what the interface is handed', () => {
   })
 
   it('hands the live lights to the buildings round the player as they walk', async () => {
-    const { game, bench } = await playPlain()
+    const bundle = await city()
+    const { game, bench } = await playPlain({ bundle })
     const lamps = bench.showing!.getObjectByName('lights')!
     const at = () => game.look().at as { x: number; z: number }
     const lit = () => lamps.children.filter((lamp) => lamp.visible).map((lamp) => lamp.getWorldPosition(new THREE.Vector3()))
     const nearest = () => Math.min(...lit().map((lamp) => Math.hypot(lamp.x - at().x, lamp.z - at().z)))
+
+    // every doorstep in town, because the greybox hangs one lamp over each: the
+    // walk is aimed at the middle of them and the nearest one is what the
+    // nearest light has to be standing on
+    const size = bundle.world.cellSize
+    const doors = bundle.world
+      .plots()
+      .flatMap((plot) => (plot.entrance ? [{ x: (plot.entrance.cell.x + 0.5) * size, z: (plot.entrance.cell.y + 0.5) * size }] : []))
+    const middle = {
+      x: doors.reduce((sum, door) => sum + door.x, 0) / doors.length,
+      z: doors.reduce((sum, door) => sum + door.z, 0) / doors.length,
+    }
+    const nearestDoor = () => Math.min(...doors.map((door) => Math.hypot(door.x - at().x, door.z - at().z)))
+
     game.frame(1 / 60)
     const start = at()
     const atTheSpawn = lit().map((lamp) => `${lamp.x.toFixed(1)},${lamp.z.toFixed(1)}`)
     expect(atTheSpawn.length).toBeGreaterThan(0)
 
-    // ten seconds along the pavement, the way the player leaves the spawn
-    for (const code of ['KeyD', 'ShiftLeft']) document.dispatchEvent(new KeyboardEvent('keydown', { code }))
+    // ten seconds along the pavement, headed into town rather than out of it.
+    // The spawn is a step off the first door in town that opens, so which way
+    // it faces and which edge of the grid it sits on move with the city: a walk
+    // on a fixed key is as likely to leave the built area, where there is
+    // nothing left to hand a light to. So the strafe that carries them towards
+    // the middle of the doorsteps is the one that is held
+    const heading = game.look().heading as number
+    const forward = { x: -Math.sin(heading), z: -Math.cos(heading) }
+    const right = { x: -forward.z, z: forward.x }
+    const inwards = (middle.x - start.x) * right.x + (middle.z - start.z) * right.z > 0 ? 'KeyD' : 'KeyA'
+    for (const code of [inwards, 'ShiftLeft']) document.dispatchEvent(new KeyboardEvent('keydown', { code }))
     for (let step = 0; step < 600; step++) game.frame(1 / 60)
-    for (const code of ['KeyD', 'ShiftLeft']) document.dispatchEvent(new KeyboardEvent('keyup', { code }))
+    for (const code of [inwards, 'ShiftLeft']) document.dispatchEvent(new KeyboardEvent('keyup', { code }))
     expect(Math.hypot(at().x - start.x, at().z - start.z)).toBeGreaterThan(25)
 
     // the lights were handed on as they went: some stand where none stood at
-    // the spawn, and the nearest is at the door beside them, not back at the spawn
+    // the spawn, and the nearest of them is on the doorstep nearest the player
+    // rather than back at the spawn, wherever the walk ended up
     const handedOn = lit().filter((lamp) => !atTheSpawn.includes(`${lamp.x.toFixed(1)},${lamp.z.toFixed(1)}`))
     expect(handedOn.length).toBeGreaterThan(0)
-    expect(nearest()).toBeLessThan(10)
+    expect(nearest()).toBeLessThan(nearestDoor() + 2)
   })
 
   it('rides between stations under a veil, and lands the player a step off the other doorstep', async () => {

@@ -28,6 +28,7 @@ import { DAY, darkness, INDOORS, lookOf, NIGHT } from '../src/night.ts'
 import { doorsOf, marked, offered, type Marked } from '../src/places.ts'
 import { Companions } from '../src/companions.ts'
 import { Playthrough } from '../src/playthrough.ts'
+import { Route } from '../src/route.ts'
 import { Reporting } from '../src/reporting.ts'
 import { atAnOpenDoor } from '../src/spawn.ts'
 import { Stashing } from '../src/stashing.ts'
@@ -1200,7 +1201,12 @@ describe('what the interface is pushed', () => {
 })
 
 describe('the compass', () => {
-  function strip(input: { outdoors?: boolean; way?: ReturnType<Guide['way']> } = {}) {
+  /** North a hundred metres, then east forty: one corner to walk past. */
+  function elbow() {
+    return new Route({ label: 'The Copper Wheel', line: 'main', corners: [{ x: 0, z: 0 }, { x: 0, z: -100 }, { x: 40, z: -100 }] })
+  }
+
+  function strip(input: { outdoors?: boolean; way?: Route } = {}) {
     const { pushed, hud } = screenful()
     let heading = 0
     let outdoors = input.outdoors ?? true
@@ -1234,28 +1240,39 @@ describe('the compass', () => {
   })
 
   it('carries the tracked goal off the walk the guide measured, and marks the story apart from an errand', () => {
-    // due north, 100 m to the corner and 40 m of route past it
-    const way = { label: 'The Copper Wheel', corner: { x: 0, z: -100 }, beyond: 40, distance: 140, line: 'main' as const }
-    const { pushed, compass } = strip({ way })
+    const { pushed, compass } = strip({ way: elbow() })
     compass.update(1 / 60)
     expect(pushed.at(-1)!.compass).toEqual({ facing: 0, goal: { label: 'The Copper Wheel', bearing: 0, distance: 140, line: 'main' } })
   })
 
-  it('points at the goal from where the player is standing, between one measuring of the walk and the next', () => {
-    // the walk is asked of the streets once a second; pointing at it is
-    // arithmetic, and a marker that lags a stride behind is what the owner sees
-    const way = { label: 'The Copper Wheel', corner: { x: 0, z: -100 }, beyond: 40, distance: 140, line: 'main' as const }
-    const { pushed, compass, walkTo } = strip({ way })
+  it('points at the corner still ahead once the player has walked past one, never back at the one behind them', () => {
+    const { pushed, compass, walkTo } = strip({ way: elbow() })
     compass.update(1 / 60)
-    expect(pushed.at(-1)!.compass!.goal!.distance).toBe(140)
+    // due north, up the first stretch
+    expect(pushed.at(-1)!.compass!.goal!.bearing).toBeCloseTo(0, 6)
 
-    // four strides east, well inside the second before the walk is measured again
-    walkTo(60, 0)
+    // round the corner and ten metres along the second stretch, well inside the
+    // second before the streets are asked again
+    walkTo(10, -100)
     compass.update(1 / 60)
     const goal = pushed.at(-1)!.compass!.goal!
-    // north-up and clockwise, in one turn: the corner is now behind and to the left
-    expect(goal.bearing).toBeCloseTo(Math.atan2(-60, 100) + Math.PI * 2, 6)
-    expect(goal.distance).toBeCloseTo(Math.hypot(60, 100) + 40, 6)
+    // due east, at the goal ahead, rather than south-west at the corner behind
+    expect(goal.bearing).toBeCloseTo(Math.PI / 2, 6)
+    expect(goal.distance).toBeCloseTo(30, 6)
+  })
+
+  it('counts the walk down as the player walks it, corner and all', () => {
+    const { pushed, compass, walkTo } = strip({ way: elbow() })
+    const metres: number[] = []
+    for (let step = 0; step <= 14; step++) {
+      const walked = step * 10
+      walkTo(Math.max(0, walked - 100), -Math.min(100, walked))
+      compass.update(1 / 60)
+      metres.push(pushed.at(-1)!.compass!.goal!.distance)
+    }
+    expect(metres[0]).toBeCloseTo(140, 6)
+    expect(metres.at(-1)).toBeCloseTo(0, 6)
+    for (let i = 1; i < metres.length; i++) expect(metres[i]!).toBeLessThan(metres[i - 1]!)
   })
 
   it('takes the strip away indoors, where the route is measured from the door', () => {
