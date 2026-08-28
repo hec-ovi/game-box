@@ -24,96 +24,85 @@ shouting distance of each other, so an errand that sends the player a few
 hundred metres is a walk across town: say so in the objective, and let the
 pay carry it.
 
-## How a quest is put together
+## How a quest is told
 
-A quest is a chain of steps the player works through. Every step has its own id
-(`step_0001`, `step_0002`, and on), an `objective` line written to the player,
-and `next`, naming the step or steps that follow.
+You tell the story as `beats`: what happens, in the order it happens. One beat
+is one thing the player does. The game builds the flow out of them, so there is
+nothing here about steps, ids or what leads where. Write the errand the way you
+would tell it to somebody: first this, then that, then this.
 
-`startStepId` names the first step. Exactly one path has to end in a `complete`
-step.
+Each beat says what kind of thing it is, the people, places and things it
+involves by id, and the `objective` line the player reads while they are on it.
 
-Every step names its next step. Only `complete` and `fail` end a chain, and only
-`choice` routes through its own options instead. Anything else that leads
-nowhere is a dead end, and a dead end throws the quest away.
+A run of four to eight beats is an errand. Keep the order true: if the player
+carries something to somebody, the beat that picks it up comes before the beat
+that hands it over.
 
-## The step kinds, and what each one makes the player do
+## The beats, and what each one makes the player do
 
 | kind | fields it needs | what the player does |
 |---|---|---|
-| `talk` | `npcId`, optional `topic` | finds that person and talks to them |
-| `goto` | `place: {"plotId": "..."}` | walks to that building |
+| `talk` | `npcId`, optional `topic`, optional `hands` | finds that person and talks to them |
+| `goto` | `where: {"plotId": "..."}` | walks to that building |
 | `collect` | `itemId`, optional `count`, `alternates`, `allowSteal` | picks the thing up and carries it |
 | `deliver` | `itemId`, `toNpcId`, optional `count`, `alternates` | hands what they are carrying to that person |
-| `escort` | `npcId`, `place: {"plotId": "..."}` | walks to that building with that person alongside |
+| `escort` | `npcId`, `where: {"plotId": "..."}` | walks to that building with that person alongside |
 | `unlock` | `doorId` | opens that locked door, with its key in hand or its code known |
 | `hack` | `machineId` | opens that locked screen, with its code known |
 | `beat-game` | `machineId`, `score` | plays the game on that screen until it reaches that score |
 | `buy` | `itemId`, optional `count`, `alternates` | pays for the thing over its counter and carries it |
-| `choice` | `prompt`, `options` (each an `id`, a `label` and its own `next`) | is offered a fork and picks one |
-| `join` | `waitFor` | waits until every branch listed there has finished |
-| `any-of` | `oneOf` | whichever branch listed there finishes first wins, the rest are dropped |
-| `complete` | | the quest ends well |
-| `fail` | | the quest ends badly |
+| `choice` | `prompt`, `options` (each a `label` and its own `beats`) | is offered a fork and picks one |
 
 **Taking a thing is `collect`. Handing it over is `deliver`.** If an objective
 line says the player takes, fetches, lifts, fishes out or picks something up,
-there is a `collect` step for that exact `itemId`. If it says they bring, give,
-hand over, return or drop something off, there is a `deliver` step naming that
-`itemId` and the `toNpcId` who receives it, and a `collect` for it earlier on the
-same path. Talking to somebody is not collecting from them, and walking to a
-building is not picking anything up.
+there is a `collect` beat for that exact `itemId`. If it says they bring, give,
+hand over, return or drop something off, there is a `deliver` beat naming that
+`itemId` and the `toNpcId` who receives it, and a `collect` for it earlier.
+Talking to somebody is not collecting from them, and walking to a building is
+not picking anything up.
 
-Writing an objective that promises something the steps do not do is the worst
+Writing an objective that promises something the beats do not do is the worst
 mistake available here: the player reads the line, goes looking for the ledger,
 and the game never lets them touch it. Read your own objective lines back and
-check each verb against the step it sits on.
+check each verb against the beat it sits on.
 
 `count` is how "three of the crates" is written: put the same `count` on the
 `collect` and on the `deliver`, over the pool made of `itemId` plus anything in
 `alternates`. Never ask for more of a thing than the list above holds.
 
-An `escort` step is somebody walking with the player, so the person has to be
-somebody who would leave their post, and the step after it should be worth the
+An `escort` beat is somebody walking with the player, so the person has to be
+somebody who would leave their post, and the beat after it should be worth the
 walk.
+
+## Forks
+
+A `choice` beat is where the player decides something: `prompt` is the question
+in the giver's words, and each option is a `label` (the words on the button) and
+its own short run of `beats`. Whichever road they take, the quest carries on
+with the beat after the fork. Use one where the errand really does turn on a
+decision: who ends up with the thing, whose side the player takes.
 
 ## Locks, screens and counters
 
 The corner above says which doors are locked, what opens each, which screens
-are on and what opens those, and what each thing over a counter sells for. A
-job through one of them is written like this:
+are on and what opens those, and what each thing over a counter sells for.
 
-- Anything marked as behind a locked door (a person, a thing, a screen) cannot
-  be named by a step until an `unlock` step for that door has run earlier on
-  the same path. The giver is never somebody behind a lock.
-- An `unlock` opens only with the key in hand or the code known. Before it,
-  put a `talk` step with whoever carries the key and a `give-item` effect
-  naming that key on it, or a `talk` step with somebody who would know the
-  code and a `give-password` effect with the door's own code. An `unlock`
-  with neither before it is a door the player stands in front of and cannot
-  open.
-- A `hack` opens a locked screen only with its code known: a `give-password`
-  effect with the screen's own code on an earlier `talk` step. A screen that
-  is open to anybody is nothing to hack.
+- A person, a thing or a screen marked as behind a locked door is reached by
+  writing an `unlock` beat for that door first. Getting hold of the key or the
+  code is not your problem: the game puts the conversation in, with whoever
+  carries it. The giver is never somebody behind a lock.
+- A `hack` names a locked screen. A screen that is open to anybody is nothing
+  to hack.
 - A `beat-game` names a screen that runs snake or tetris and the score to
   reach. It is somebody's bet, so let the giver say what beating it is worth.
-- A `buy` names a thing with a price and a seller. The player pays the price,
-  so put `money-at-least` for the whole bill in the quest's own `requires`,
-  and let the reward cover what they spent.
-
-## What gates a step, and what a step changes
-
-`requires` gates a step: `has-item`, `flag`, `money-at-least`,
-`reputation-at-least`, `reputation-below`, `has-companion`.
-
-`effects` are the only way a quest changes the player: `give-item`, `take-item`,
-`charge`, `reputation`, `set-flag`, `companion-join`, `companion-leave`,
-`give-password` (the player learns that word). The `reward` is the pay: no
-step pays on its own.
+- A `buy` names a thing with a price and a seller. The player pays the price out
+  of their own pocket, and the reward should cover what they spent.
+- Where the story wants somebody to hand something over in front of the player,
+  put it in that talk beat's `hands`.
 
 ## Ending badly
 
-`failWhen` ends the quest badly without the player reaching a `fail` step:
+`failWhen` ends the quest badly:
 
 - `time-limit`, in seconds from the moment the quest is taken.
 - `npc-lost`, when that person dies or leaves.
@@ -124,7 +113,7 @@ one person or one object. Most errands have none.
 
 ## Pay
 
-Pay what the work is worth: the walk, the steps, whether it is a theft or
+Pay what the work is worth: the walk, the beats, whether it is a theft or
 against the clock. The tier follows from the pay, and the tier decides what
 else the reward may carry:
 
@@ -145,7 +134,7 @@ the run of that door.
 ## Stealing
 
 If an item has an owner, taking it is stealing: set `allowSteal: true` on the
-`collect` step, and let the pay and the standing reflect what you are asking for.
+`collect` beat, and let the pay and the standing reflect what you are asking for.
 
 ## The writing
 

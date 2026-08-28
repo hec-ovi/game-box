@@ -1,6 +1,7 @@
 import type { InstanceRequest, WorldSummary } from '@gb/forge'
 import { describe, expect, it } from 'vitest'
 import { Scribe, type PlaceRequest, type ScribeProgress } from '../src/index.ts'
+import { sheet } from './errand.ts'
 import { fakeModel, type Sent } from './fake-model.ts'
 import { backgroundOf, lifeOf, shellOf } from './people.ts'
 import { JAIL, PLAIN, charterOf } from './places.ts'
@@ -73,21 +74,7 @@ function model(call: Sent) {
       things: [],
     }
   }
-  const id = /quest_\d{4}/.exec(call.user)![0]
-  return {
-    id,
-    kind: 'main',
-    title: `Errand ${id}`,
-    summary: 'Somebody wants something moved.',
-    giverNpcId: 'npc_0001',
-    difficulty: 'small',
-    startStepId: 'step_0001',
-    steps: [
-      { id: 'step_0001', kind: 'collect', itemId: 'item_0001', objective: 'Take it', next: ['step_0002'] },
-      { id: 'step_0002', kind: 'complete', objective: 'Done' },
-    ],
-    reward: { money: 45, reputation: 3, faction: 'town', items: [] },
-  }
+  return sheet(/quest_\d{4}/.exec(call.user)![0]!, [{ kind: 'collect', itemId: 'item_0001', objective: 'Take it' }])
 }
 
 /** A whole build, the way the forge runs one: history, name, signs, places, quests. */

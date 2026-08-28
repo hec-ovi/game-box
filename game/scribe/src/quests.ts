@@ -1,18 +1,19 @@
 import type { Narrator } from '@gb/forge'
 import { err, ok, type Result } from '@gb/kit'
-import { sealQuest, validateQuest } from '@gb/quest'
+import { compileQuest } from '@gb/quest'
 import { askedLines } from './asked.ts'
 import type { Asker, Violation } from './asker.ts'
 import type { ScribeFailure } from './failure.ts'
+import { openTheWay, toldPath } from './keys.ts'
 import { describeSlice, idsOf, Neighbourhood, type Slice } from './neighbourhood.ts'
 import type { Progress } from './progress.ts'
 import { bullets, lastFew, prompt } from './prompts.ts'
 import { reachProblems } from './reach.ts'
 import { rewardBands } from './reward-bands.ts'
+import { billFor } from './spend.ts'
 import { answered } from './stand-in.ts'
 import { CitySummary, type QuestSummary } from './summary.ts'
-import { tierFor } from './tier.ts'
-import { questTool, type QuestDraft } from './tools.ts'
+import { questTool, type QuestSheet } from './tools.ts'
 import type { Waves } from './waves.ts'
 
 /** How much of the city one quest is shown. Enough to write about, short enough to send on every call. */
@@ -94,28 +95,28 @@ export class QuestWriter {
     const written = await this.#waves.run<number, Result<Written, ScribeFailure>>(slots, async (_, index, earlier) => {
       const id = questId(index)
       const slice = corners.for(index, PLACES_PER_QUEST)
-      // what the validator accepted, which is the draft with its pay settled
-      // into the band its tier allows: that is the quest the city gets, never
-      // the unsettled one this box happened to send
+      // the compiled quest, which is the flow built out of the beats with its
+      // pay settled into the band its tier allows: that is the quest the city
+      // gets, never the sheet this box happened to send
       let accepted: unknown
-      const draft = await this.#asker.ask(
+      const sheet = await this.#asker.ask(
         questTool(idsOf(slice)),
         this.#brief(city, slice, index, total, earlier),
         { at: `quest:${index}`, what: index === 0 ? 'the main line' : `side job ${index}` },
         (value) => {
-          const outcome = checked(banded(value), id, city)
+          const outcome = compiled(value, id, city)
           if (outcome.quest) accepted = outcome.quest
           return outcome.problems
         },
       )
-      if (draft.ok) {
-        this.#progress.finished(draft.value.title)
-        return ok({ quest: accepted ?? sealQuest(banded(draft.value)), title: draft.value.title })
+      if (sheet.ok) {
+        this.#progress.finished(sheet.value.title)
+        return ok({ quest: accepted, title: sheet.value.title })
       }
 
       const spare = (await this.#spareQuests(input)).find((quest) => fieldOf(quest, 'id') === id)
       this.#progress.finished(spare ? fieldOf(spare, 'title') : 'nothing this time')
-      return spare ? ok({ quest: spare, title: fieldOf(spare, 'title') }) : err(draft.error)
+      return spare ? ok({ quest: spare, title: fieldOf(spare, 'title') }) : err(sheet.error)
     })
 
     // the main line first: a city without its spine is not the city that was
@@ -172,11 +173,6 @@ export class QuestWriter {
   }
 }
 
-/** The draft with its tier read off what it pays, since the model is asked for the pay alone. */
-function banded(draft: QuestDraft): QuestDraft {
-  return { ...draft, difficulty: tierFor(draft.reward) }
-}
-
 function questId(index: number): string {
   return `quest_${String(index + 1).padStart(4, '0')}`
 }
@@ -187,27 +183,36 @@ function fieldOf(quest: unknown, name: 'id' | 'title'): string {
 }
 
 /**
- * A draft as `@gb/quest` accepts it, or everything wrong with it in the words
- * the model gets back: first what the quest contract refuses, then, on a flow
- * it accepts, what the harness would refuse at a lock, a screen or a counter.
+ * The beats compiled into a quest `@gb/quest` accepts, or everything wrong with
+ * them in the words the model gets back: first the beat the compiler could not
+ * honour, then, on a flow it built, what the harness would refuse at a lock, a
+ * screen or a counter. Every complaint points at the beat the writer wrote,
+ * never at one this box put in.
  *
- * The accepted document comes back rather than the draft that went in, because
- * the validator settles the pay into the band its tier allows and the city
- * should carry the settled one.
+ * Two things go on before compiling, because both are the city's arithmetic
+ * rather than the writer's: the way past every lock the beats walk into, and
+ * the money for what the job buys.
  */
-function checked(draft: QuestDraft, id: string, city: CitySummary): { problems: Violation[]; quest?: unknown } {
+function compiled(answer: QuestSheet, id: string, city: CitySummary): { problems: Violation[]; quest?: unknown } {
   const problems: Violation[] = []
-  if (draft.id !== id) problems.push({ path: 'id', message: `this quest's id is ${id}` })
+  if (answer.id !== id) problems.push({ path: 'id', message: `this quest's id is ${id}` })
 
-  const validated = validateQuest(sealQuest(draft), city.view())
-  if (validated.ok) {
-    const walk = reachProblems(draft, city.locks)
-    return walk.length || problems.length ? { problems: [...problems, ...walk] } : { problems, quest: validated.value }
+  const opened = openTheWay(answer.beats, city.locks)
+  const bill = billFor(opened.beats, city.locks)
+  const sheet = {
+    ...answer,
+    beats: opened.beats,
+    ...(bill > 0 ? { requires: [{ kind: 'money-at-least' as const, amount: bill }] } : {}),
   }
-  const error = validated.error
-  if ('violations' in error) problems.push(...error.violations)
-  if ('problems' in error) {
-    problems.push(...error.problems.map((entry) => ({ path: entry.where, message: entry.message })))
+  const told = (violation: Violation): Violation => ({ ...violation, path: toldPath(violation.path, opened.toldAt) })
+
+  const built = compileQuest(sheet, city.view())
+  if (!built.ok) {
+    const error = built.error
+    const found = error.code === 'invalid-sheet' ? error.violations : error.problems.map((one) => ({ path: one.where, message: one.message }))
+    return { problems: [...problems, ...found.map(told)] }
   }
-  return { problems }
+
+  const walk = reachProblems(built.value.quest, city.locks, built.value.beatOf).map(told)
+  return walk.length || problems.length ? { problems: [...problems, ...walk] } : { problems, quest: built.value.quest }
 }

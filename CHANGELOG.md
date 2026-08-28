@@ -4,6 +4,23 @@ What the project does now. Each entry is the present state, not a diff.
 
 ## 2026-08-27
 
+**The model writes the story, the engine builds the flow.** A quest comes back
+from the model as beats: what happens, who it involves, where, and what thing,
+in the order it happens. `@gb/quest`'s compiler turns that into the flow, and
+that is where the step ids, the edges, the fork and its roads coming back
+together, the pick-up in front of the hand-over that needs it and the ending
+come from. A beat naming somebody the city has not got is a refusal quoting
+that id, never a repair. The tool the model decodes against went from 12,942
+characters of step graph to 7,140 of story.
+
+**A lock is opened by the city, not by the writer.** Getting the key out of the
+keeper's pocket before the door, or the code out of somebody on the floor
+before the screen, is put into the run of beats before it is compiled, with the
+conversation written to that person at that place. A lock with nobody in the
+place to ask is left shut and the writer hears about it. The bill for what a
+job buys is added up from the counters' own prices and goes on the quest as the
+money it takes to be offered it.
+
 **A locally installed agent writes the whole city.** A command-line agent runs
 the model its own provider names and never the one the request carries, because
 a model name in a request is a word out of an HTTP service's catalogue: the game

@@ -3,8 +3,9 @@ import type { WorldSummary } from '@gb/forge'
 /**
  * A town with every second-wave thing in it: a disco with a cellar behind a
  * lock, a guard behind it and a game screen on its bar, an office with a locked
- * screen and a priced thing on its counter, a house for sale, and a garage with
- * a bench, which is where a car reward comes from.
+ * screen and a priced thing on its counter, a house for sale, a garage with a
+ * bench, which is where a car reward comes from, and a depot whose strongroom
+ * takes a code nobody in it can be asked for.
  */
 export const LOCKED: WorldSummary = {
   cityName: 'Cold Harbour',
@@ -62,48 +63,55 @@ export const LOCKED: WorldSummary = {
       locks: [],
       machines: [],
     },
+    {
+      plotId: 'plot_0005',
+      interiorId: 'interior_0005',
+      kind: 'depot',
+      name: 'Halloran Depot',
+      door: { x: 240, z: 0 },
+      npcs: [],
+      items: [{ itemId: 'item_0005', name: 'Sealed crate', roomId: 'room_0008' }],
+      locks: [
+        { doorId: 'door_0004', room: 'Strongroom', roomId: 'room_0008', street: false, password: 'quill-12', behind: ['item_0005'] },
+      ],
+      machines: [],
+    },
   ],
 }
 
-/** The whole of a draft that is not the steps: the office's receptionist hands it out. */
-export function lockedDraft(steps: unknown[], extra: Record<string, unknown> = {}) {
+/** The whole of a sheet that is not the beats: the office's receptionist hands it out. */
+export function lockedSheet(beats: unknown[], extra: Record<string, unknown> = {}) {
   return {
     id: 'quest_0001',
     kind: 'main' as const,
     title: 'Behind the door at The Pulse',
     summary: 'Vidya wants the glass from the cellar.',
     giverNpcId: 'npc_0004',
-    difficulty: 'small' as const,
-    startStepId: 'step_0001',
-    steps,
+    beats,
     reward: { money: 45, reputation: 3, faction: 'town', items: [] },
     ...extra,
   }
 }
 
 export const KEY_RUN = [
-  { id: 'step_0001', kind: 'talk', npcId: 'npc_0002', objective: 'Get the cellar key off Neve', effects: [{ kind: 'give-item', itemId: 'item_0001' }], next: ['step_0002'] },
-  { id: 'step_0002', kind: 'unlock', doorId: 'door_0003', objective: 'Open the cellar door', next: ['step_0003'] },
-  { id: 'step_0003', kind: 'collect', itemId: 'item_0002', objective: 'Take the glass from the cellar', allowSteal: true, next: ['step_0004'] },
-  { id: 'step_0004', kind: 'deliver', itemId: 'item_0002', toNpcId: 'npc_0004', objective: 'Bring Vidya the glass', next: ['step_0005'] },
-  { id: 'step_0005', kind: 'complete', objective: 'Done' },
+  { kind: 'talk', npcId: 'npc_0002', hands: [{ kind: 'give-item', itemId: 'item_0001' }], objective: 'Get the cellar key off Neve' },
+  { kind: 'unlock', doorId: 'door_0003', objective: 'Open the cellar door' },
+  { kind: 'collect', itemId: 'item_0002', allowSteal: true, objective: 'Take the glass from the cellar' },
+  { kind: 'deliver', itemId: 'item_0002', toNpcId: 'npc_0004', objective: 'Bring Vidya the glass' },
 ]
 
 export const HACK_JOB = [
-  { id: 'step_0001', kind: 'talk', npcId: 'npc_0002', objective: 'Get the code off Neve', effects: [{ kind: 'give-password', password: 'bramble-80' }], next: ['step_0002'] },
-  { id: 'step_0002', kind: 'hack', machineId: 'machine_0002', objective: 'Read the mail at Zhen Group', next: ['step_0003'] },
-  { id: 'step_0003', kind: 'talk', npcId: 'npc_0004', objective: 'Tell Vidya what it said', next: ['step_0004'] },
-  { id: 'step_0004', kind: 'complete', objective: 'Done' },
+  { kind: 'talk', npcId: 'npc_0002', hands: [{ kind: 'give-password', password: 'bramble-80' }], objective: 'Get the code off Neve' },
+  { kind: 'hack', machineId: 'machine_0002', objective: 'Read the mail at Zhen Group' },
+  { kind: 'talk', npcId: 'npc_0004', objective: 'Tell Vidya what it said' },
 ]
 
 export const HIGH_SCORE = [
-  { id: 'step_0001', kind: 'beat-game', machineId: 'machine_0001', score: 40, objective: 'Beat 40 at snake on the bar screen', next: ['step_0002'] },
-  { id: 'step_0002', kind: 'talk', npcId: 'npc_0004', objective: 'Collect from Vidya', next: ['step_0003'] },
-  { id: 'step_0003', kind: 'complete', objective: 'Done' },
+  { kind: 'beat-game', machineId: 'machine_0001', score: 40, objective: 'Beat 40 at snake on the bar screen' },
+  { kind: 'talk', npcId: 'npc_0004', objective: 'Collect from Vidya' },
 ]
 
 export const SHOPPING = [
-  { id: 'step_0001', kind: 'buy', itemId: 'item_0003', objective: 'Buy the ledger over the counter at Zhen Group', next: ['step_0002'] },
-  { id: 'step_0002', kind: 'deliver', itemId: 'item_0003', toNpcId: 'npc_0002', objective: 'Bring Neve the ledger', next: ['step_0003'] },
-  { id: 'step_0003', kind: 'complete', objective: 'Done' },
+  { kind: 'buy', itemId: 'item_0003', objective: 'Buy the ledger over the counter at Zhen Group' },
+  { kind: 'deliver', itemId: 'item_0003', toNpcId: 'npc_0002', objective: 'Bring Neve the ledger' },
 ]

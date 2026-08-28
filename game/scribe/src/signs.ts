@@ -63,7 +63,23 @@ export class OneSign {
 
   /** The model's sign for this building, hung, or why it could not be written. */
   async write(request: PlaceRequest): Promise<Result<string, ScribeFailure>> {
-    const answer = await this.#asker.ask(
+    const answer = await this.#ask(request, (value) => headProblem(value.name, this.#registry))
+    if (answer.ok) return ok(this.#hang(answer.value.name))
+
+    const spare = await this.spare(request)
+    if (spare !== undefined) return ok(this.#hang(spare))
+
+    // A head word already over another door is a blemish on a street, not a
+    // reason to lose the city: the rule is worth the retries above and it is
+    // not worth a build. One more call with the rule lifted, and a sign that
+    // repeats a word is hung rather than refused. An engine that will not
+    // answer at all still fails here, which is the failure worth having.
+    const anything = await this.#ask(request, () => [])
+    return anything.ok ? ok(this.#hang(anything.value.name)) : err(answer.error)
+  }
+
+  #ask(request: PlaceRequest, check: (value: { name: string }) => readonly Violation[]) {
+    return this.#asker.ask(
       NAME_PLACE,
       prompt('name-place', {
         theme: request.theme,
@@ -74,12 +90,8 @@ export class OneSign {
         usedNames: bullets(this.#registry.names(), 'None yet.'),
       }),
       { at: `sign:${request.index}`, what: `the sign over a ${request.charter.label}` },
-      (value) => headProblem(value.name, this.#registry),
+      check,
     )
-    if (answer.ok) return ok(this.#hang(answer.value.name))
-
-    const spare = await this.spare(request)
-    return spare === undefined ? err(answer.error) : ok(this.#hang(spare))
   }
 
   /** A sign from the stand-in a caller handed in, asked again until its head is free. Nothing in the game passes one. */

@@ -1,8 +1,8 @@
-import { questDraftContract } from '@gb/quest'
+import { questSheetContract } from '@gb/quest'
 import { describe, expect, it } from 'vitest'
 import { compactSchema, expandSchema, type JsonSchema } from '../src/schema/compact.ts'
 import { pinToCorner, type CornerIds } from '../src/schema/corner.ts'
-import { narrowToSummary } from '../src/schema/narrow.ts'
+import { beatArrays, beatLists, narrowToSummary } from '../src/schema/narrow.ts'
 import { questToolSchema } from '../src/tools.ts'
 
 /** A corner with one of everything a job can be written through. */
@@ -23,11 +23,12 @@ const CORNER: CornerIds = {
 /** A corner with nothing locked, no screen, nothing priced and nothing for sale. */
 const PLAIN: CornerIds = { ...CORNER, doors: [], screens: [], games: [], counters: [], codes: [], homes: [], bench: false }
 
-const full = () => questDraftContract.jsonSchema() as JsonSchema
-const stepVariants = (schema: JsonSchema) =>
-  ((schema['properties'] as Record<string, JsonSchema>)['steps']!['items'] as JsonSchema)['oneOf'] as JsonSchema[]
-const kinds = (schema: JsonSchema) =>
-  stepVariants(schema).map((variant) => (variant['properties'] as Record<string, JsonSchema>)['kind']!['const'])
+const full = () => questSheetContract.jsonSchema() as JsonSchema
+/** The beats the main line may write. A fork's roads carry their own list, narrowed and pinned with this one. */
+const beatVariants = (schema: JsonSchema) => beatLists(schema)[0]!['oneOf'] as JsonSchema[]
+const kinds = (schema: JsonSchema) => beatVariants(schema).map((variant) => (variant['properties'] as Record<string, JsonSchema>)['kind']!['const'])
+const beat = (schema: JsonSchema, kind: string) =>
+  beatVariants(schema).find((variant) => (variant['properties'] as Record<string, JsonSchema>)['kind']!['const'] === kind)!
 
 describe('the schema the model is handed', () => {
   it('says exactly what the contract says, written without the repeats', () => {
@@ -38,98 +39,70 @@ describe('the schema the model is handed', () => {
   it('is a fraction of the contract it came from', () => {
     const before = JSON.stringify(full()).length
     const after = JSON.stringify(questToolSchema(CORNER)).length
-    expect(before).toBeGreaterThan(40_000)
-    expect(after).toBeLessThan(before / 3)
+    expect(after).toBeLessThan(before / 1.5)
   })
 
-  it('drops only the steps a summary cannot name: stash, and going into an interior', () => {
+  it('asks for an errand, not for as long a run as the box can hold', () => {
+    // the contract takes a long run because `keys.ts` puts the conversations a
+    // lock implies into it before it is compiled; what the model is asked for
+    // is the shape of an errand
+    const [main, road] = beatArrays(narrowToSummary(full()))
+    expect(main!['maxItems']).toBe(14)
+    expect(road!['maxItems']).toBe(4)
+    expect((full()['properties'] as Record<string, JsonSchema>)['beats']!['maxItems']).toBeGreaterThan(14)
+  })
+
+  it('drops only the beats a summary cannot name: stash, and going into an interior', () => {
     const narrowed = narrowToSummary(full())
     expect(kinds(full())).toContain('stash')
     expect(kinds(narrowed)).toEqual(kinds(full()).filter((kind) => kind !== 'stash'))
 
-    const goto = stepVariants(narrowed).find(
-      (variant) => (variant['properties'] as Record<string, JsonSchema>)['kind']!['const'] === 'goto',
-    )!
-    const place = (goto['properties'] as Record<string, JsonSchema>)['place']!
-    expect(place['anyOf']).toBeUndefined()
-    expect(JSON.stringify(place)).toContain('plotId')
+    const where = (beat(narrowed, 'goto')['properties'] as Record<string, JsonSchema>)['where']!
+    expect(where['anyOf']).toBeUndefined()
+    expect(JSON.stringify(where)).toContain('plotId')
     const handed = JSON.stringify(questToolSchema(CORNER))
     expect(handed).not.toContain('anchorId')
     expect(handed).not.toContain('"stash"')
-    // a step never goes indoors, but a reward may open a place's street door or hand over its deed
-    expect(JSON.stringify(stepVariants(questToolSchema(CORNER)))).not.toContain('interiorId')
+    // a beat never goes indoors, but a reward may open a place's street door or hand over its deed
+    expect(JSON.stringify(beatVariants(questToolSchema(CORNER)))).not.toContain('interiorId')
     expect(handed).toContain('"deed"')
   })
 
-  it('makes a step in the middle of the flow say where the flow goes next', () => {
+  it('asks for the pay alone and for no gate of its own', () => {
     const narrowed = narrowToSummary(full())
-    const requiredOn = (kind: string) =>
-      (stepVariants(narrowed).find(
-        (variant) => (variant['properties'] as Record<string, JsonSchema>)['kind']!['const'] === kind,
-      )!['required'] as string[]) ?? []
-
-    // measured: six drafts out of six left it off, because the contract lets them
-    expect(requiredOn('collect')).toContain('next')
-    expect(requiredOn('talk')).toContain('next')
-    expect(requiredOn('deliver')).toContain('next')
-    for (const kind of ['unlock', 'hack', 'beat-game', 'buy']) expect(requiredOn(kind)).toContain('next')
-    // choice routes through its own options instead
-    expect(requiredOn('choice')).not.toContain('next')
-    // and the two that end a quest cannot carry one at all
-    for (const kind of ['complete', 'fail']) {
-      const variant = stepVariants(narrowed).find(
-        (candidate) => (candidate['properties'] as Record<string, JsonSchema>)['kind']!['const'] === kind,
-      )!
-      expect(Object.keys(variant['properties'] as object)).not.toContain('next')
-    }
-  })
-
-  it('puts what a step is before what it says, so the sentence follows the mechanic', () => {
-    for (const variant of stepVariants(narrowToSummary(full()))) {
-      const order = Object.keys(variant['properties'] as object)
-      expect(order.slice(0, 3)).toEqual(['kind', 'id', 'objective'])
-      const next = order.indexOf('next')
-      if (next >= 0) expect(next).toBeGreaterThan(order.indexOf('objective'))
-    }
-  })
-
-  it('asks for the pay alone and offers no secret and no pay effect: the tier is read off the reward', () => {
-    const narrowed = narrowToSummary(full())
-    expect(Object.keys(narrowed['properties'] as object)).not.toContain('difficulty')
-    for (const variant of stepVariants(narrowed)) {
-      const properties = variant['properties'] as Record<string, JsonSchema>
-      expect(Object.keys(properties)).not.toContain('hidden')
-      const effects = ((properties['effects']!['items'] as JsonSchema)['oneOf'] as JsonSchema[]).map(
-        (effect) => (effect['properties'] as Record<string, JsonSchema>)['kind']!['const'],
-      )
-      expect(effects).not.toContain('reveal')
-      expect(effects).not.toContain('pay')
-      const kind = properties['kind']!['const']
-      // a code given at the door or the screen lands after it was tried
-      if (kind === 'unlock' || kind === 'hack') expect(effects).not.toContain('give-password')
-      else expect(effects).toContain('give-password')
-      // and no step is optional: a side trip the model cannot rejoin is a quest with no path to its ending
-      expect(Object.keys(properties)).not.toContain('optional')
-    }
+    const properties = Object.keys(narrowed['properties'] as object)
+    // the tier is read off what the reward hands over, and the bill for a buy is the city's to add up
+    expect(properties).not.toContain('difficulty')
+    expect(properties).not.toContain('requires')
     // and the pay is written, never nothing: a reward of 0 sits under the floor of any tier that carries a thing
     const reward = (narrowed['properties'] as Record<string, JsonSchema>)['reward']!
     expect(reward['required']).toEqual(['money'])
     expect((reward['properties'] as Record<string, JsonSchema>)['money']).toMatchObject({ minimum: 1 })
   })
 
+  it('puts what a beat is before what it says, so the sentence follows the mechanic', () => {
+    // measured with the fields the other way round: a beat that wrote its line
+    // first had already skipped a required field by the time it named its kind
+    for (const variant of beatVariants(full())) {
+      const properties = variant['properties'] as Record<string, JsonSchema>
+      const order = Object.keys(properties)
+      expect(order[0]).toBe('kind')
+      // the line is written once the beat knows who and what it is about; a fork's roads come after it
+      expect(order.at(-1)).toBe(properties['kind']!['const'] === 'choice' ? 'options' : 'objective')
+    }
+  })
+
   it('pins every id to the corner, so an id the city has not got cannot be written', () => {
     const pinned = pinToCorner(narrowToSummary(full()), CORNER)
     const text = JSON.stringify(pinned)
     expect(text).not.toMatch(/\^npc_|\^item_|\^plot_|\^door_|\^interior_/)
-    const step = (kind: string) =>
-      stepVariants(pinned).find((variant) => (variant['properties'] as Record<string, JsonSchema>)['kind']!['const'] === kind)!
     const enumOf = (variant: JsonSchema, field: string) => (variant['properties'] as Record<string, JsonSchema>)[field]!['enum']
-    expect(enumOf(step('talk'), 'npcId')).toEqual(['npc_0001', 'npc_0002'])
-    expect(enumOf(step('unlock'), 'doorId')).toEqual(['door_0003'])
-    expect(enumOf(step('hack'), 'machineId')).toEqual(['machine_0002'])
-    expect(enumOf(step('beat-game'), 'machineId')).toEqual(['machine_0001'])
-    expect(enumOf(step('buy'), 'itemId')).toEqual(['item_0002'])
-    expect(enumOf(step('collect'), 'itemId')).toEqual(['item_0001', 'item_0002'])
+    expect(enumOf(beat(pinned, 'talk'), 'npcId')).toEqual(['npc_0001', 'npc_0002'])
+    expect(enumOf(beat(pinned, 'unlock'), 'doorId')).toEqual(['door_0003'])
+    expect(enumOf(beat(pinned, 'hack'), 'machineId')).toEqual(['machine_0002'])
+    expect(enumOf(beat(pinned, 'beat-game'), 'machineId')).toEqual(['machine_0001'])
+    expect(enumOf(beat(pinned, 'buy'), 'itemId')).toEqual(['item_0002'])
+    expect(enumOf(beat(pinned, 'collect'), 'itemId')).toEqual(['item_0001', 'item_0002'])
     expect(text).toContain('"enum":["bramble-80"]')
     const reward = (pinned['properties'] as Record<string, JsonSchema>)['reward']!['properties'] as Record<string, JsonSchema>
     expect(reward['deed']!['enum']).toEqual(['interior_0001'])
@@ -138,11 +111,24 @@ describe('the schema the model is handed', () => {
     expect(expandSchema(compactSchema(pinned))).toEqual(pinned)
   })
 
+  it('holds a fork\'s roads to the same beats as the main line', () => {
+    const pinned = pinToCorner(narrowToSummary(full()), PLAIN)
+    const [main, road] = beatLists(pinned)
+    expect(road).toBeDefined()
+    // a road runs its own beats and every one of them but the fork itself
+    const inRoad = (road!['oneOf'] as JsonSchema[]).map((variant) => (variant['properties'] as Record<string, JsonSchema>)['kind']!['const'])
+    expect(inRoad).toEqual(
+      (main!['oneOf'] as JsonSchema[])
+        .map((variant) => (variant['properties'] as Record<string, JsonSchema>)['kind']!['const'])
+        .filter((kind) => kind !== 'choice'),
+    )
+  })
+
   it('never leaves an id open, whatever the corner is short of', () => {
     // measured against the local model: a call whose ids were plain strings came
     // back naming a person the city did not have. An id the grammar cannot write
     // is a mistake the model cannot make, so a list the corner cannot fill takes
-    // the step kind with it rather than leaving the field open. Every corner has
+    // the beat with it rather than leaving the field open. Every corner has
     // somebody to ask, something to fetch and somewhere to go (`Neighbourhood`
     // guarantees it); everything else it may be short of
     const lists = ['plots', 'interiors', 'doors', 'screens', 'games', 'counters', 'codes', 'homes'] as const
@@ -155,7 +141,7 @@ describe('the schema the model is handed', () => {
     expect(JSON.stringify(pinToCorner(narrowToSummary(full()), bare))).not.toMatch(patterns)
   })
 
-  it('offers no step the corner cannot serve', () => {
+  it('offers no beat the corner cannot serve', () => {
     const pinned = pinToCorner(narrowToSummary(full()), PLAIN)
     expect(kinds(pinned)).toEqual(kinds(narrowToSummary(full())).filter((kind) => !['unlock', 'hack', 'beat-game', 'buy'].includes(kind as string)))
     const text = JSON.stringify(pinned)

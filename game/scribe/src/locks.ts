@@ -43,6 +43,9 @@ export class CityLocks {
   #screens = new Map<string, Screen>()
   #counters = new Map<string, Counter>()
   #between = new Map<string, readonly string[]>()
+  #names = new Map<string, string>()
+  #where = new Map<string, string>()
+  #ask = new Map<string, string>()
 
   constructor(places: readonly Place[]) {
     for (const place of places) this.#read(place)
@@ -70,6 +73,25 @@ export class CityLocks {
     return [...this.#doors.values()].flatMap((door) => (door.keyItemId ? [door.keyItemId] : []))
   }
 
+  /** What the city calls this person or thing. */
+  nameOf(id: string): string | undefined {
+    return this.#names.get(id)
+  }
+
+  /** The place this id stands in, by its sign. */
+  placeOf(id: string): string | undefined {
+    return this.#where.get(id)
+  }
+
+  /**
+   * Somebody standing where this id is whom the player can walk straight up to,
+   * which is who a job asks for a code. A place the street door shuts has
+   * nobody to ask.
+   */
+  askAbout(id: string): string | undefined {
+    return this.#ask.get(id)
+  }
+
   #read(place: Place): void {
     const locks = place.locks ?? []
     const street = locks.filter((lock) => lock.street).map((lock) => lock.doorId)
@@ -92,9 +114,14 @@ export class CityLocks {
       })
       if (!lock.street) this.#between.set(lock.doorId, street)
     }
-    for (const npc of place.npcs) this.#between.set(npc.npcId, guarding(npc.roomId))
+    for (const npc of place.npcs) {
+      this.#between.set(npc.npcId, guarding(npc.roomId))
+      this.#names.set(npc.npcId, npc.name)
+    }
+    const open = place.npcs.filter((npc) => guarding(npc.roomId).length === 0)
     for (const item of place.items) {
       this.#between.set(item.itemId, guarding(item.roomId, item.itemId))
+      this.#names.set(item.itemId, item.name)
       if (item.value !== undefined && item.ownerNpcId !== undefined) {
         this.#counters.set(item.itemId, { itemId: item.itemId, value: item.value, ownerNpcId: item.ownerNpcId })
       }
@@ -107,6 +134,12 @@ export class CityLocks {
         password: machine.password,
       })
       this.#between.set(machine.machineId, guarding(machine.roomId))
+    }
+
+    const asker = open[0]?.npcId
+    for (const id of [...place.npcs.map((npc) => npc.npcId), ...place.items.map((item) => item.itemId), ...locks.map((lock) => lock.doorId), ...(place.machines ?? []).map((machine) => machine.machineId)]) {
+      this.#where.set(id, place.name)
+      if (asker) this.#ask.set(id, asker)
     }
   }
 }

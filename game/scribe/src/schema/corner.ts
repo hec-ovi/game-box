@@ -1,5 +1,6 @@
 import { floorFor, moneyMeans } from '../reward-bands.ts'
 import { eachChild, type JsonSchema } from './compact.ts'
+import { beatLists, kindOf } from './narrow.ts'
 
 /** Every id a quest set in one corner of the city may name, by what it is. */
 export interface CornerIds {
@@ -26,7 +27,7 @@ export interface CornerIds {
 /** The fields of a corner that are lists of ids. */
 type IdList = { [K in keyof CornerIds]: CornerIds[K] extends readonly string[] ? K : never }[keyof CornerIds]
 
-/** What each step kind needs the corner to hold before it may be offered at all. */
+/** What each beat needs the corner to hold before it may be offered at all. */
 const NEEDS: Readonly<Record<string, readonly IdList[]>> = {
   talk: ['npcs'],
   goto: ['plots'],
@@ -49,71 +50,68 @@ const ID_LISTS: readonly (readonly [RegExp, IdList])[] = [
 ]
 
 /**
- * Pins the quest schema to one corner of the city, so the only ids the model
- * can decode are the ones it was shown.
+ * Pins the quest sheet schema to one corner of the city, so the only ids the
+ * model can decode are the ones it was shown.
  *
  * Measured on ten live drafts: one named a door the city did not have, and
  * the retry on a new seed rewrote the whole quest rather than the one id. An
  * id the grammar cannot produce is a mistake the model cannot make, which is
  * how the place tool already holds its post ids. So every id pattern becomes
  * the corner's own list, a `hack` may only name a locked screen, a `beat-game`
- * a screen running a game, a `buy` a thing with a price, a `give-password` a
+ * a screen running a game, a `buy` a thing with a price, a handed-over code a
  * code the corner has, a `deed` a place for sale and a `car` a corner with a
- * bench in it, and a step kind the corner cannot serve is not offered at all.
- * Everything this still allows, the full draft contract accepts.
- *
- * Measured on the tool as it goes out: 115 id fields on a corner with one of
- * everything, and every one of them an enum.
+ * bench in it, and a beat the corner cannot serve is not offered at all. A
+ * fork's roads are pinned with the main line, so a road cannot name what the
+ * beats around it may not. Everything this still allows, the full sheet
+ * contract accepts.
  */
 export function pinToCorner(schema: JsonSchema, ids: CornerIds): JsonSchema {
   const root = structuredClone(schema)
   const properties = root['properties'] as Record<string, JsonSchema>
-  const steps = (properties['steps']!['items'] as JsonSchema)['oneOf'] as JsonSchema[]
 
-  properties['steps']!['items'] = {
-    ...(properties['steps']!['items'] as JsonSchema),
-    oneOf: steps.filter((step) => serves(step, ids)).map((step) => pinStep(step, ids)),
+  for (const list of beatLists(root)) {
+    const variants = list['oneOf'] as JsonSchema[]
+    list['oneOf'] = variants.filter((variant) => serves(variant, ids)).map((variant) => pinBeat(variant, ids))
   }
   pinReward(properties['reward']!, ids)
   pinPatterns(root, ids)
   return root
 }
 
-function kindOf(variant: JsonSchema): string {
-  const kind = ((variant['properties'] as Record<string, JsonSchema> | undefined)?.['kind'] as JsonSchema | undefined)?.['const']
-  return typeof kind === 'string' ? kind : ''
-}
-
 /**
- * Whether the corner holds what this step kind needs. A kind whose target list
- * is empty is not offered at all, because the alternative is an id field the
+ * Whether the corner holds what this beat needs. A beat whose target list is
+ * empty is not offered at all, because the alternative is an id field the
  * grammar leaves open, and an open id field is one the model fills in itself.
  */
-function serves(step: JsonSchema, ids: CornerIds): boolean {
-  return (NEEDS[kindOf(step)] ?? []).every((list) => ids[list].length > 0)
+function serves(beat: JsonSchema, ids: CornerIds): boolean {
+  return (NEEDS[kindOf(beat) ?? ''] ?? []).every((list) => ids[list].length > 0)
 }
 
-function pinStep(step: JsonSchema, ids: CornerIds): JsonSchema {
-  const properties = step['properties'] as Record<string, JsonSchema>
-  const kind = kindOf(step)
+function pinBeat(beat: JsonSchema, ids: CornerIds): JsonSchema {
+  const properties = beat['properties'] as Record<string, JsonSchema>
+  const kind = kindOf(beat)
   if (kind === 'hack') properties['machineId'] = oneOf(ids.screens)
   if (kind === 'beat-game') properties['machineId'] = oneOf(ids.games)
   if (kind === 'buy') {
     properties['itemId'] = oneOf(ids.counters)
     if (properties['alternates']) properties['alternates'] = { ...properties['alternates'], items: oneOf(ids.counters) }
   }
-  const effects = properties['effects']?.['items'] as JsonSchema | undefined
-  const variants = effects?.['oneOf']
-  if (effects && Array.isArray(variants)) {
-    effects['oneOf'] = variants.flatMap((effect) => {
-      if (kindOf(effect as JsonSchema) !== 'give-password') return [effect]
-      if (ids.codes.length === 0) return []
-      const own = structuredClone(effect as JsonSchema)
-      ;(own['properties'] as Record<string, JsonSchema>)['password'] = oneOf(ids.codes)
-      return [own]
-    })
-  }
-  return step
+  pinHandovers(properties['hands'], ids)
+  return beat
+}
+
+/** What somebody hands over on a talk beat: a thing of the corner, or a code one of its locks takes. */
+function pinHandovers(hands: JsonSchema | undefined, ids: CornerIds): void {
+  const handed = hands?.['items'] as JsonSchema | undefined
+  const variants = handed?.['oneOf']
+  if (!handed || !Array.isArray(variants)) return
+  handed['oneOf'] = variants.flatMap((handover) => {
+    if (kindOf(handover as JsonSchema) !== 'give-password') return [handover]
+    if (ids.codes.length === 0) return []
+    const own = structuredClone(handover as JsonSchema)
+    ;(own['properties'] as Record<string, JsonSchema>)['password'] = oneOf(ids.codes)
+    return [own]
+  })
 }
 
 /**

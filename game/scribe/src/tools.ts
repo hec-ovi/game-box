@@ -1,5 +1,5 @@
 import { contract, type Contract } from '@gb/kit'
-import { questDraftContract } from '@gb/quest'
+import { questSheetContract } from '@gb/quest'
 import { CharterSchema, premiseContract, type Charter, type Premise, type Word } from '@gb/world'
 import { z } from 'zod'
 import { briefDraftContract, type BriefDraft } from './brief.ts'
@@ -27,7 +27,7 @@ export interface Thing {
   readonly name: string
   readonly description: string
 }
-export type QuestDraft = typeof questDraftContract extends Contract<infer T> ? T : never
+export type QuestSheet = typeof questSheetContract extends Contract<infer T> ? T : never
 
 /**
  * The brief itself, which is the one call that happens before there is a city
@@ -204,15 +204,15 @@ function exactly<T>(item: z.ZodType<T>, count: number): z.ZodType<T[]> {
   return count === 0 ? z.array(item).max(0) : z.array(item).length(count)
 }
 
-/** The quest tool's parameters: the draft contract, cut to what a summary can name, pinned to the corner's own ids, and written without repeats. */
+/** The quest tool's parameters: the sheet contract, cut to what a summary can name, pinned to the corner's own ids, and written without repeats. */
 export const questToolSchema = (corner: CornerIds): JsonSchema =>
-  compactSchema(pinToCorner(narrowToSummary(questDraftContract.jsonSchema() as JsonSchema), corner))
+  compactSchema(pinToCorner(narrowToSummary(questSheetContract.jsonSchema() as JsonSchema), corner))
 
-/** One quest, written about one corner of the city: the only ids it can decode are that corner's. */
-export function questTool(corner: CornerIds): Tool<QuestDraft> {
+/** One quest as a run of beats, told about one corner of the city: the only ids it can decode are that corner's. */
+export function questTool(corner: CornerIds): Tool<QuestSheet> {
   return {
     name: 'write_quest',
     description: prompt('tool-write-quest'),
-    contract: new ToolContract(questDraftContract, questToolSchema(corner)),
+    contract: new ToolContract(questSheetContract, questToolSchema(corner)),
   }
 }

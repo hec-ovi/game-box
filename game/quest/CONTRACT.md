@@ -1,18 +1,20 @@
 # @gb/quest contract
 
-contractVersion: 0.9.0
+contractVersion: 0.10.0
 
 ## Purpose
 
-Quests as flows: a checked graph of steps ("talk to her, get through the back door, open the terminal, buy three of those, bring them back") that is refused unless it can actually be played and pays what the work is worth (credits, things, access, a car, a home), then run from the events the game reports.
+Quests as flows: a checked graph of steps ("talk to her, get through the back door, open the terminal, buy three of those, bring them back") that is refused unless it can actually be played and pays what the work is worth (credits, things, access, a car, a home), then run from the events the game reports. A writer hands in the story as beats and the compiler here builds the flow out of them.
 
 ## Inputs
 
 | Param | Schema | Preconditions |
 |---|---|---|
+| `compileQuest(value, world)` | [schema/quest-sheet.json](schema/quest-sheet.json) | same `world` as `validateQuest`; the sheet is untrusted JSON |
 | `validateQuest(value, world)` | [schema/quest.json](schema/quest.json) | `world` answers `hasNpc`, `hasPlot`, `hasInterior`, `hasItem`, `hasAnchor`, `hasDoor`, `hasMachine` (`@gb/world`'s `questView(world)` does) |
 | `checkFlow(quest, world)` | a parsed `QuestDoc` | same `world`; returns the problems without the reward check |
 | `rewardFor(difficulty, faction?)` | one of `DIFFICULTIES` | none |
+| `tierFor(reward)` | a parsed `Reward` | none |
 | `checkReward(quest)` | a parsed `QuestDoc` | none |
 | `QuestLog.create(quests, player)` | validated quests, a `@gb/play` `PlayerState` | quests came back `ok` from `validateQuest` |
 | `QuestLog.load(value, quests, player)` | [schema/quest-progress.json](schema/quest-progress.json) | same quest set the save was made with |
@@ -24,9 +26,11 @@ Quests as flows: a checked graph of steps ("talk to her, get through the back do
 
 | Param | Schema | Postconditions |
 |---|---|---|
+| `compileQuest` | `{ quest, beatOf }`: the `QuestDoc` and which beat each step came from | the quest passes `validateQuest` against that world; `beatOf` maps a step id to `beats.3` or `beats.3.options.0.beats.1` |
 | `validateQuest` | a `QuestDoc` | every step reachable, every path ends, every reference exists, every item in hand before it is asked for, and the pay settled into the band it belongs in |
 | `checkReward` | `SchemaViolation[]` | empty means the pay fits the difficulty; each entry names the field to fix |
 | `rewardFor` | a `Reward` | inside the band for that difficulty |
+| `tierFor` | a `Difficulty` | the lowest tier that allows what the reward hands over and holds its money and standing |
 | `QuestLog.handle` / `start` / `abandon` | `Change[]` | `quest-started`, `step-opened`, `step-revealed`, `step-progress`, `step-done`, `step-abandoned`, `quest-abandoned`, `quest-complete` (carrying the whole `Reward`), `quest-failed`; empty when nothing moved |
 | `QuestLog.objectives()` | `Objective[]` | one line per open step the player can see: `questId`, `questTitle` and the step line below |
 | `QuestLog.journal()` | `JournalEntry[]` | one page per quest the player has taken, failed ones included: `questId`, `questTitle`, `kind` (`main` or `side`), `status`, `failReason` while it is `failed`, `timer` (`{remaining, total}` in game seconds) while a timed quest is being played, and the steps they do, in the order the quest was written, each a step line plus its `state` |
@@ -157,9 +161,43 @@ Only a key the step published moves it. A `chose` naming anything else changes n
 
 `abandon(questId)` takes a live quest off the board: every open step comes back as `step-abandoned`, then `quest-abandoned`. The quest is unstarted again, so its giver offers it once more and a second run starts from nothing, timer included. What the player already collected or was paid stays with them and their standing does not move, because effects are the only way a quest touches the player and giving up runs none. Whatever it had bound as a quest item goes back to being ordinary loot.
 
-## Writing a quest
+## Writing a quest as beats
 
-`questDraftContract` is what an author fills in: a quest without the envelope, which `sealQuest` puts back on. The door is stricter than the document schema in one place, `next`: a step in the middle of a flow has to lead somewhere. A `complete` or a `fail` ends the quest, a `choice` routes through its options, and side work is allowed to trail off, so those four leave `next` out legitimately; everything else without it is the dead end the flow check refuses. Refusing it at the door is what puts the mistake in front of the author while they can still fix it: the violation names `steps.<n>.next`, which is what a generator quotes back to a model on the retry.
+A writer who is good at a story and bad at a directed graph tells the errand as **beats**: what happens, in the order it happens. `compileQuest` builds the flow. There are no step ids in a sheet, no `next`, no preconditions and no tier.
+
+```ts
+{
+  id: 'quest_0004', kind: 'main',
+  title: 'The Cellar at The Pulse',
+  summary: "Vidya wants the glass Neve keeps locked away.",
+  giverNpcId: 'npc_0004',
+  beats: [
+    { kind: 'talk',    npcId: 'npc_0002', hands: [{ kind: 'give-item', itemId: 'item_0001' }], objective: 'Get the cellar key off Neve' },
+    { kind: 'unlock',  doorId: 'door_0003', objective: 'Open the cellar door' },
+    { kind: 'collect', itemId: 'item_0002', allowSteal: true, objective: 'Take the glass from the cellar' },
+    { kind: 'choice',  prompt: 'Hollis is offering more than Vidya did.', objective: 'Decide who gets the glass',
+      options: [
+        { label: 'Keep your word to Vidya', beats: [{ kind: 'deliver', itemId: 'item_0002', toNpcId: 'npc_0004', objective: 'Bring Vidya the glass' }] },
+        { label: 'Sell it to Hollis',       beats: [{ kind: 'deliver', itemId: 'item_0002', toNpcId: 'npc_0003', objective: 'Sell Hollis the glass' }] },
+      ] },
+  ],
+  reward: { money: 45, reputation: 3, faction: 'town', items: [] },
+}
+```
+
+**The beats.** `talk` (`npcId`, `topic?`, `hands?`), `goto` (`where`), `collect` (`itemId`, `count?`, `alternates?`, `allowSteal?`), `buy` (`itemId`, `count?`, `alternates?`), `deliver` (`itemId`, `toNpcId`, `count?`, `alternates?`), `stash` (`itemId`, `interiorId`, `anchorId`, `count?`, `alternates?`), `escort` (`npcId`, `where`), `unlock` (`doorId`), `hack` (`machineId`), `beat-game` (`machineId`, `score`), and `choice` (`prompt`, `options`). Every beat carries the `objective` line the player reads; `where` is a `{ plotId }` or `{ interiorId }`. `hands` is what somebody gives the player while you are with them: an item, or the word a lock takes. The sheet itself carries `title`, `summary`, `giverNpcId`, `reward`, and optionally `difficulty`, `requires` and `failWhen`.
+
+**Forks.** A `choice` beat's `options` are the roads: a label and a short run of beats each. Every road leads on to the beat after the fork, or to the ending when the fork is last. A road runs plain beats, so a fork does not nest inside a fork; several forks in one quest do the same job.
+
+**What the compiler puts in.** The step ids and every edge; the pick-up in front of a hand-over the flow cannot otherwise satisfy (a beat that picks the thing up later is moved in front of the one that needs it, keeping its own line; only where nothing picks it up at all is a `collect` written, with the hand-over's line as its hint); a `talk` that brings a companion along in front of an `escort` nobody agreed to; the `complete` step; and the tier, read off what the reward hands over, after which the pay is settled into that band.
+
+**What it never puts in.** People, places and things. A beat naming an id the world has not got comes back as a refusal carrying that id, pointed at the beat: `beats.3: npc npc_9999 is not in the world`. So does a flow that still will not hold up. Nothing is repaired by inventing.
+
+`hidden`, `reveal`, `join`, `any-of`, `fail`, `optional` and the rest of the conditions and effects are the document's, not the sheet's: an author writing a `QuestDoc` by hand still has all of them, and the compiler mints none of them.
+
+## Writing a quest as a document
+
+`questDraftContract` is what an author who is building the graph themselves fills in: a quest without the envelope, which `sealQuest` puts back on. The door is stricter than the document schema in one place, `next`: a step in the middle of a flow has to lead somewhere. A `complete` or a `fail` ends the quest, a `choice` routes through its options, and side work is allowed to trail off, so those four leave `next` out legitimately; everything else without it is the dead end the flow check refuses. Refusing it at the door is what puts the mistake in front of the author while they can still fix it: the violation names `steps.<n>.next`, which is what a generator quotes back on the retry.
 
 ## Step kinds (closed set)
 
@@ -207,6 +245,8 @@ Every id is checked against the world with the rest of the quest: an access to a
 
 ## Errors (closed set)
 
+- `invalid-sheet`: from `compileQuest`. The beats failed the sheet's JSON Schema. Carries the offending paths.
+- `unwritable-beat`: from `compileQuest`. The beats are a sheet, and they still do not make a quest that plays. Carries one problem per beat, each `where` pointing at `beats.3`, `beats.3.options.0.beats.1`, `giverNpcId` or a reward field, and each `message` the same plain sentence `validateQuest` would have given.
 - `invalid-quest`: failed the JSON Schema. Carries the offending paths.
 - `broken-flow`: schema-valid but unplayable. Carries every problem: dangling reference (a person, thing, place, door or machine the world has not got, a reward's access or deed included), unreachable step, dead end, loop, no completion, a count larger than its pool, a secret nothing reveals, required work hanging off optional work, or an item asked for before the player can have it.
 - `unbalanced-reward`: playable, but it hands over something the tier does not: too many items or doors, a car, a home, or steps that charge more than the tier may cost. Carries the difficulty and one violation per offending field. Money and standing never land here, because they are settled first.
@@ -224,6 +264,8 @@ Every id is checked against the world with the rest of the quest: an access to a
 ## Invariants
 
 - A quest is only ever run after `validateQuest` accepted it, so the runtime never has to handle a broken flow.
+- What `compileQuest` hands back has already passed `validateQuest` against the world it was compiled for, so a caller never has to check it again.
+- Compiling invents no person, place or thing: every id in a compiled quest was written on a beat.
 - Solvability is proved before play: walking the flow forward, every `deliver`, `stash`, `has-item` and `escort` is guaranteed to be satisfiable on every path that reaches it. A `join` keeps what its branches gathered; every other merge, `any-of` included, keeps only what all of them guarantee.
 - Counting is over item instances, so a pool of five crates satisfies a count of three and the same crate never counts twice.
 - A flow runs forward only: cycles are rejected, so a quest cannot trap the player.
@@ -242,5 +284,7 @@ Every id is checked against the world with the rest of the quest: an access to a
 - Being a quest item is a binding from a live quest, not a property of the thing, so the same ledger can be untouchable in one playthrough and ordinary loot in another. Shipped RPGs bind it the same way, per quest rather than per item.
 
 ## How to modify this blackbox safely
+
+A new beat is a variant in `beats.ts` (kind first, `objective` last, since that is the order a constrained model writes properties in), a case in `stepFor`, and whatever the flow needs in front of it in `compile.ts`. A step kind with no beat stays writable as a document.
 
 New step kinds, conditions, effects and failure rules are additive: extend the union, teach `checkReferences` what it names in the world (widening `WorldView` when the world has to answer something new), teach `checkEdges`/`checkShape` what they promise, teach `checkSolvability` what they guarantee, teach `targetOf` what the new kind points at (the switch there is exhaustive, so it will not compile until you do), teach `matchStep` which event credits it and add that event to "What credits a step", add it to `resolvesItself` if it needs no player, bump the minor contractVersion. A new reward field goes on `reward.ts`, lands through one `@gb/play` call in `payReward`, and gets a column in `REWARD_TABLE`. New fields go on as optional, because exported worlds contain quests written without them. Never change what an existing kind means. Regenerate `schema/` (`pnpm --filter @gb/quest run generate`) and run `pnpm --filter @gb/quest test` in the same change.

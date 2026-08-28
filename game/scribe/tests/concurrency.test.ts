@@ -1,7 +1,8 @@
 import type { WorldSummary } from '@gb/forge'
 import { describe, expect, it } from 'vitest'
 import { Scribe } from '../src/index.ts'
-import { fakeModel, type Sent } from './fake-model.ts'
+import { fetchAndCarry } from './errand.ts'
+import { fakeModel } from './fake-model.ts'
 import { wrote } from './wrote.ts'
 
 const CITY: WorldSummary = {
@@ -16,27 +17,6 @@ const CITY: WorldSummary = {
   })),
 }
 
-function draft(call: Sent) {
-  const id = /quest_\d{4}/.exec(call.user)![0]
-  const npc = /npc_\d{4}/.exec(call.user)![0]
-  const item = /item_\d{4}/.exec(call.user)![0]
-  return {
-    id,
-    kind: id === 'quest_0001' ? 'main' : 'side',
-    title: `Errand ${id}`,
-    summary: 'Somebody wants something moved.',
-    giverNpcId: npc,
-    difficulty: 'small',
-    startStepId: 'step_0001',
-    steps: [
-      { id: 'step_0001', kind: 'collect', itemId: item, objective: 'Take it', next: ['step_0002'] },
-      { id: 'step_0002', kind: 'deliver', itemId: item, toNpcId: npc, objective: 'Hand it over', next: ['step_0003'] },
-      { id: 'step_0003', kind: 'complete', objective: 'Done', next: [] },
-    ],
-    reward: { money: 45, reputation: 3, faction: 'town', items: [] },
-  }
-}
-
 /** Answers land back to front, so arrival order is never the order the calls went out in. */
 function backwards(total: number) {
   let live = 0
@@ -46,7 +26,7 @@ function backwards(total: number) {
     peak = Math.max(peak, live)
     await new Promise((resolve) => setTimeout(resolve, (total - index) * 4))
     live--
-    return draft(call)
+    return fetchAndCarry(call)
   })
   return { ...model, peak: () => peak }
 }

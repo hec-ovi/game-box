@@ -1,2 +1,2 @@
-Record one quest: its title, its giver, the chain of steps the player works
-through, and what it pays.
+Record one quest: its title, its giver, what happens in the order it happens,
+and what it pays.

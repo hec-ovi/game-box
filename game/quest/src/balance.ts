@@ -50,6 +50,33 @@ export function rewardFor(difficulty: Difficulty, faction: string = DEFAULT_FACT
 }
 
 /**
+ * The tier a reward belongs to, read off what it hands over: the lowest one
+ * that allows the car, the home, the things and the doors it carries and holds
+ * its money and its standing.
+ *
+ * A writer asked for a tier and a pay inside its band gets one of them wrong,
+ * so the pay is what is asked for and the tier follows the work. `settle` then
+ * moves a number written outside the band into it.
+ */
+export function tierFor(reward: Reward): Difficulty {
+  const carries = (tier: Difficulty): boolean => {
+    const band = REWARD_TABLE[tier]
+    return (
+      reward.items.length <= band.items &&
+      (reward.access ?? []).length <= band.access &&
+      (reward.car === undefined || band.car) &&
+      (reward.deed === undefined || band.deed)
+    )
+  }
+  const holds = (tier: Difficulty): boolean => {
+    const band = REWARD_TABLE[tier]
+    return reward.money >= band.money.min && reward.money <= band.money.max && Math.abs(reward.reputation) <= band.reputation
+  }
+  const allowed = DIFFICULTIES.filter(carries)
+  return allowed.find(holds) ?? allowed[0] ?? DEFAULT_DIFFICULTY
+}
+
+/**
  * Money is settled, not refused. A quest that pays 150 where its tier pays 600
  * is a number in the wrong place, not a broken quest, and throwing the whole
  * thing away over it costs the player a job they could have played. `settle`

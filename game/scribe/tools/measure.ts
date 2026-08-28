@@ -12,6 +12,7 @@
  * Usage: pnpm --filter @gb/scribe run measure [cities] [blocks] [blockCells] [firstTown]
  */
 import { Forge, summarise } from '@gb/forge'
+import type { QuestDoc } from '@gb/quest'
 import { Sidecar } from '@gb/sidecar'
 import { SHIPPED_CHARTERS } from '@gb/world'
 import { headOf } from '../src/head.ts'
@@ -19,7 +20,9 @@ import { Scribe } from '../src/index.ts'
 import { CityLocks } from '../src/locks.ts'
 import { PROMPTS } from '../src/prompts.generated.ts'
 import { reachProblems } from '../src/reach.ts'
-import type { QuestDraft } from '../src/tools.ts'
+
+/** A shipped quest is a compiled flow, so its steps are what a complaint points at. */
+const NO_BEATS: ReadonlyMap<string, string> = new Map()
 
 const TOWNS = [
   {
@@ -184,10 +187,10 @@ for (let i = 0; i < cities; i++) {
   const summary = summarise(world, world.premise())
   const locks = summary.places.flatMap((place) => place.locks ?? [])
   const screens = summary.places.flatMap((place) => place.machines ?? [])
-  const shipped: readonly QuestDraft[] = built.value.quests
+  const shipped = built.value.quests as readonly QuestDoc[]
   const walk = new CityLocks(summary.places)
   const used = shipped.filter((quest) => quest.steps.some((step) => ['unlock', 'hack', 'beat-game', 'buy'].includes(step.kind)))
-  const walked = shipped.filter((quest) => reachProblems(quest, walk).length === 0)
+  const walked = shipped.filter((quest) => reachProblems(quest, walk, NO_BEATS).length === 0)
   throughLocks += used.length
   walkable += walked.length
 
@@ -230,7 +233,7 @@ for (let i = 0; i < cities; i++) {
   for (const quest of shipped) {
     const kinds = quest.steps.map((step) => step.kind).join(' > ')
     const extras = [quest.reward.access?.length && `access ${quest.reward.access.map((access) => Object.values(access)[0]).join(',')}`, quest.reward.car && `car ${quest.reward.car}`, quest.reward.deed && `deed ${quest.reward.deed}`].filter(Boolean).join(', ')
-    const problems = reachProblems(quest, walk)
+    const problems = reachProblems(quest, walk, NO_BEATS)
     console.log(`  ${quest.id} ${quest.kind} ${quest.difficulty} "${quest.title}": ${kinds}${extras ? `; ${extras}` : ''}${problems.length ? `; SHUT: ${problems.map((problem) => `${problem.path} ${problem.message}`).join(' | ')}` : ''}`)
   }
   console.log(`  ${world.name}: ${allSigns.join(' | ')}`)
