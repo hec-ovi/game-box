@@ -1200,18 +1200,25 @@ describe('what the interface is pushed', () => {
 })
 
 describe('the compass', () => {
-  function strip(input: { outdoors?: boolean; goal?: ReturnType<Guide['resolve']> } = {}) {
+  function strip(input: { outdoors?: boolean; way?: ReturnType<Guide['way']> } = {}) {
     const { pushed, hud } = screenful()
     let heading = 0
     let outdoors = input.outdoors ?? true
+    let at = { x: 0, z: 0 }
     const compass = new Compass({
       hud,
-      guide: { resolve: () => input.goal } as unknown as Guide,
+      guide: { way: () => input.way } as unknown as Guide,
       heading: () => heading,
-      standing: () => ({ x: 0, z: 0 }),
+      standing: () => at,
       outdoors: () => outdoors,
     })
-    return { pushed, compass, turn: (to: number) => void (heading = to), goIn: () => void (outdoors = false) }
+    return {
+      pushed,
+      compass,
+      turn: (to: number) => void (heading = to),
+      walkTo: (x: number, z: number) => void (at = { x, z }),
+      goIn: () => void (outdoors = false),
+    }
   }
 
   it('pushes which way the player faces, clockwise from north, and only when it moves', () => {
@@ -1226,11 +1233,29 @@ describe('the compass', () => {
     expect(pushed.at(-1)!.compass!.facing).toBeCloseTo(Math.PI / 2, 6)
   })
 
-  it('carries the tracked goal as the guide measured it, and marks the story apart from an errand', () => {
-    const goal = { label: 'The Copper Wheel', bearing: 1, distance: 140, line: 'main' as const }
-    const { pushed, compass } = strip({ goal })
+  it('carries the tracked goal off the walk the guide measured, and marks the story apart from an errand', () => {
+    // due north, 100 m to the corner and 40 m of route past it
+    const way = { label: 'The Copper Wheel', corner: { x: 0, z: -100 }, beyond: 40, distance: 140, line: 'main' as const }
+    const { pushed, compass } = strip({ way })
     compass.update(1 / 60)
-    expect(pushed.at(-1)!.compass).toEqual({ facing: 0, goal })
+    expect(pushed.at(-1)!.compass).toEqual({ facing: 0, goal: { label: 'The Copper Wheel', bearing: 0, distance: 140, line: 'main' } })
+  })
+
+  it('points at the goal from where the player is standing, between one measuring of the walk and the next', () => {
+    // the walk is asked of the streets once a second; pointing at it is
+    // arithmetic, and a marker that lags a stride behind is what the owner sees
+    const way = { label: 'The Copper Wheel', corner: { x: 0, z: -100 }, beyond: 40, distance: 140, line: 'main' as const }
+    const { pushed, compass, walkTo } = strip({ way })
+    compass.update(1 / 60)
+    expect(pushed.at(-1)!.compass!.goal!.distance).toBe(140)
+
+    // four strides east, well inside the second before the walk is measured again
+    walkTo(60, 0)
+    compass.update(1 / 60)
+    const goal = pushed.at(-1)!.compass!.goal!
+    // north-up and clockwise, in one turn: the corner is now behind and to the left
+    expect(goal.bearing).toBeCloseTo(Math.atan2(-60, 100) + Math.PI * 2, 6)
+    expect(goal.distance).toBeCloseTo(Math.hypot(60, 100) + 40, 6)
   })
 
   it('takes the strip away indoors, where the route is measured from the door', () => {

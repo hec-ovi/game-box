@@ -1,6 +1,6 @@
 import type { CompassGoal } from '@gb/hud'
 import type { CityNav, Point } from '@gb/nav'
-import type { Objective } from '@gb/quest'
+import type { Objective, QuestKind } from '@gb/quest'
 import type { World } from '@gb/world'
 import type { Marked } from './places.ts'
 import type { Vec2 } from './walk.ts'
@@ -26,6 +26,17 @@ type Point2 = { readonly x: number; readonly y: number }
  * `from` is where the player stands on the city, which indoors is the doorstep
  * of the building they are in rather than their metres across its floor.
  */
+/** A walk kept between measurements: the corner it heads for, and the metres of route past it. */
+export interface Way {
+  readonly label: string
+  readonly corner: Point
+  /** Metres of the route beyond the corner. */
+  readonly beyond: number
+  /** Metres of the whole route when it was measured. */
+  readonly distance: number
+  readonly line?: QuestKind
+}
+
 export class Guide {
   #world: World
   #nav: CityNav
@@ -53,13 +64,33 @@ export class Guide {
    * along it. Nothing when there is no goal or no way there on foot.
    */
   resolve(): CompassGoal | undefined {
+    const way = this.way()
+    if (!way) return undefined
+    return { label: way.label, bearing: bearingOf(this.#from(), way.corner), distance: way.distance, ...(way.line ? { line: way.line } : {}) }
+  }
+
+  /**
+   * The same walk, kept as the corner it heads for and the metres of route
+   * beyond that corner, so the strip can point at it every frame without
+   * asking `@gb/nav` for the walk again. Finding a way through the streets is
+   * the expensive half and it holds while the player walks it; pointing at the
+   * next corner is arithmetic and goes stale in a stride.
+   */
+  way(): Way | undefined {
     const goal = this.#goals()[0]
     if (!goal) return undefined
     const from = this.#from()
     const route = this.#route(from, goal)
     if (!route) return undefined
     const corner = route[1] ?? { x: goal.x, z: goal.z }
-    return { label: goal.label, bearing: bearingOf(from, corner), distance: length(route), line: goal.line }
+    const beyond = length(route.slice(1))
+    return { label: goal.label, corner, beyond, distance: length(route), ...(goal.line ? { line: goal.line } : {}) }
+  }
+
+  /** Where a walk points from wherever the player is standing now. */
+  static pointAt(from: Vec2, way: Way): CompassGoal {
+    const left = Math.hypot(way.corner.x - from.x, way.corner.z - from.z) + way.beyond
+    return { label: way.label, bearing: bearingOf(from, way.corner), distance: left, ...(way.line ? { line: way.line } : {}) }
   }
 
   /**
