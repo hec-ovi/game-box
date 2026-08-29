@@ -85,7 +85,7 @@ export interface InstanceRequest extends WrittenPlace {
   readonly name: string
   readonly rooms: readonly RoomKind[]
   readonly posts: readonly InstancePost[]
-  /** The stock to name. Keys, cards and deeds are not in it: they are named here off what they open or own. */
+  /** The stock to name. What opens a door or owns a home is not in it: those are named here off what they open or own. */
   readonly things: readonly InstanceStock[]
   readonly has: InstanceBrief
   /** The people the town's work already needs standing in here, and what each of them is for. */

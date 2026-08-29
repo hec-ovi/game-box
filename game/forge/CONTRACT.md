@@ -1,6 +1,6 @@
 # @gb/forge contract
 
-contractVersion: 0.39.0
+contractVersion: 0.39.1
 
 ## Purpose
 
@@ -194,7 +194,7 @@ A place's plan says what it contains beyond its people and its stock, so a quest
 - **A camera where a place keeps watch or admits people only so far.** `keepsWatch` in `src/interior/machines.ts`: `work` includes `watch`, or `access` is not `open`. It hangs in the corner of the entry room's back wall, 3.5 m up (`RoomPlan.mount`), `watches` that room, and claims no floor.
 - **A screen wherever somebody sits at a desk or serves at a reception.** Every desk with a chair drawn up to it in a `desk-floor` or `private-office` carries a `terminal` facing the chair (`workstation` in `src/interior/furnish/pieces.ts`); a `waiting-room` or `lobby` counter carries one facing the room; a living room puts a desk in a free corner with the household's `laptop` on it and a resident at it (`work-desk` reads `resident` in a residential charter); every bar counter carries a `monitor` beside the till, the bar's game. Each stands `on` its host at the host's own top, like a till.
 - **What a screen runs is decided once, per place.** `stampMachines`: a screen on a bar counter runs `snake` or `tetris`; the first screen in a watched place shows `camera-feed`; the first at a counter that keeps papers holds the `ledger`; the rest are `mail` or a `blank` desk. Every screen that is not a game is `locked` with a `password`, because people lock their screens and the code is what a quest hands out; a game is open to anybody. Machine ids are minted with the rest.
-- **The narrator is briefed.** `InstanceRequest.has` is what the plan put in the place: `locked` rooms by name with how each opens (`key`, `card` or `code`), `machines` by room and program, `camera`, and `forSale`. Keys, cards and deeds are named here off what they open or own and are not in `things`.
+- **The narrator is briefed.** `InstanceRequest.has` is what the plan put in the place: `locked` rooms by name with how each opens (`key`, `card` or `code`), `machines` by room and program, `camera`, and `forSale`. The keys, the cards and the deed the plan wrote are named here off what they open or own, and are not in `things`. What makes one of those is the field and not the archetype: a card lying on a counter as stock is stock like any other paper, because `@gb/world` takes a card that opens nothing (`opens` is the plan's to write) and refuses a deed that owns nothing.
 
 ### A home for the player
 

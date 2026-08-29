@@ -137,13 +137,11 @@ describe('a city somebody wrote', () => {
     expect(architecture(plan.value)).toEqual(architecture(world))
 
     // what the writing adds over that is what each of those buildings turned
-    // out to be. A plan stands every plot up under the architecture's own word
-    // and boards nowhere; the town written over those same plots says which of
-    // them is a bar and which is a station, and the kit that dresses a plot
-    // follows the word
+    // out to be, and that is not geometry: a plan stands every plot up under
+    // the architecture's own word and boards nowhere, because a station is a
+    // kind of place. The kit that dresses a plot follows the word too
     expect(new Set(plan.value.plots().map((plot) => plot.kind))).toEqual(new Set(['building']))
     expect(plan.value.stations()).toEqual([])
-    expect(new Set(world.plots().map((plot) => plot.kind)).size).toBeGreaterThan(1)
     expect(world.plots().every((plot) => plot.style.endsWith(plot.kind))).toBe(true)
   })
 
@@ -417,7 +415,10 @@ describe('what the narrator is asked', () => {
     // building until this answer's own kind makes it a bakery
     const open = new Set(world.interiors().map((interior) => interior.plotId))
     expect(asked.map((request) => request.kind)).toEqual(world.plots().map((plot) => (open.has(plot.id) ? plot.kind : undefined)))
-    expect(asked.filter((request) => request.kind === undefined).length, 'every door in this town was told what it is before it was named').toBeGreaterThan(0)
+    // and this is where the rest of the town became something: the frontage
+    // stands under the words the answers gave it, not the one it went up under
+    const frontage = world.plots().filter((plot) => !open.has(plot.id))
+    expect(new Set(frontage.map((plot) => plot.kind)).size, 'no door that never opens was made anything').toBeGreaterThan(1)
     for (const request of asked) {
       expect(request.street, `plot ${request.index} is on no street`).toBeTruthy()
       expect(request.premise, `plot ${request.index} was asked for knowing nothing about the town`).toBeTruthy()
