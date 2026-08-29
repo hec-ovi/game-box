@@ -1,28 +1,37 @@
 import { Rng } from '@gb/kit'
 import { RECIPES } from '@gb/kitbash'
-import { SHIPPED_CHARTERS, type Charter, type Premise } from '@gb/world'
+import { SHIPPED_CHARTERS } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { drawOf } from '../src/interior/draw.ts'
 import { planInterior } from '../src/interior/plan.ts'
-import { kindWeights, stapleKinds } from '../src/theme/plot-mix.ts'
 import { JAIL, LOCKUP } from './histories.ts'
 import { planned } from './support.ts'
 
 const town = (seed: string, history: unknown) => planned(seed, { theme: 'quiet market town', blocksX: 3, blocksY: 3 }, history)
 
 describe('a kind of place the history invents', () => {
-  it('puts up plots of that kind, resolved off the kit, and says in the file what it is', () => {
+  it('declares the kind, resolved off the kit, and leaves the placing to the writing', () => {
     const world = town('lockup', LOCKUP)
 
     expect(world.check()).toEqual([])
     expect(world.charter('jail')?.blade).toBe('JAIL')
     // the wall pieces are the kit's own row for how the jail meets the street, so it is drawn as the file says
     expect(world.charter('jail')?.built).toEqual(RECIPES[JAIL.street.frontage][JAIL.street.openness])
-    expect(world.charters().length).toBe(SHIPPED_CHARTERS.length + LOCKUP.charters!.length)
+    // the presets, the architecture's own placeholder, and what the history invented
+    expect(world.charters().length).toBe(SHIPPED_CHARTERS.length + 1 + LOCKUP.charters!.length)
 
-    const jails = world.plotsOfKind('jail')
-    expect(jails.length, 'the town has no jail').toBeGreaterThan(0)
-    for (const jail of jails) expect(jail.storeys).toBeGreaterThanOrEqual(2)
+    // and no plot is one yet: a plan is buildings, and which of them is the jail is the writing's
+    expect(world.plotsOfKind('jail')).toEqual([])
+    expect(world.plotsOfKind('building').length).toBe(world.plots().length)
+  })
+
+  it('refuses a history that claims the word a building stands under', () => {
+    const world = town('claimed', { ...LOCKUP, charters: [{ ...JAIL, word: 'building', blade: 'BUILDING' }] })
+
+    // `building` is what every plot is called until the writing says otherwise,
+    // so a history may not redefine it out from under the architecture
+    expect(world.charter('building')?.label).toBe('building')
+    expect(world.charter('building')?.rooms.main.name).toBe('Room')
   })
 
   it('plans the inside of an invented kind the way it plans a preset', () => {
@@ -57,19 +66,17 @@ describe('a kind of place the history invents', () => {
     expect(world.charter('vault')).toBeUndefined()
     expect(world.premise()?.build).toEqual({ moreOf: [], fewerOf: [], mustHave: ['jail'] })
     expect(world.premise()?.livesOn).toBe(LOCKUP.livesOn)
-    expect(world.plotsOfKind('jail').length).toBeGreaterThan(0)
+    expect(world.charter('jail')).toBeDefined()
   })
 
-  it('draws every other kind the same with one more kind declared', () => {
-    // every per-kind draw is forked on the word, so declaring a jail moves no
-    // house, bar or chapel the seed already rolled
-    const extra: Charter = { ...JAIL, word: 'annexe', prominence: 'background', service: 'none', work: [], residential: true }
-    const build: Premise['build'] = { moreOf: [], fewerOf: ['hotel'], mustHave: [] }
-    for (const seed of ['one', 'two', 'three']) {
-      const alone = kindWeights('plain', new Rng(seed), SHIPPED_CHARTERS, build)
-      const joined = kindWeights('plain', new Rng(seed), [...SHIPPED_CHARTERS, { ...extra, ...SHIPPED_CHARTERS[0]!, ...extra }], build)
-      expect(joined.filter(([word]) => word !== 'annexe')).toEqual(alone)
-      expect(stapleKinds('plain', new Rng(seed), [...SHIPPED_CHARTERS, { ...SHIPPED_CHARTERS[0]!, ...extra }])).toEqual(stapleKinds('plain', new Rng(seed), SHIPPED_CHARTERS))
+  it('weighs a kind of building by what its own interior turns out to hold', () => {
+    // the gate a charter goes through: its rooms have to plan into somewhere
+    // somebody can stand, and nothing about it is read off its word
+    for (const charter of SHIPPED_CHARTERS) {
+      const draw = drawOf(charter)
+      expect(draw.posts, `nobody can stand in a ${charter.word}`).toBeGreaterThan(0)
+      expect(draw.staff + draw.seats + draw.beds + draw.stock, `${charter.word} offers nothing at all`).toBeGreaterThan(0)
+      expect(drawOf(charter), `${charter.word} is weighed differently on a second look`).toEqual(draw)
     }
   })
 

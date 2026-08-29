@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { Bundle, type OpenedBundle } from '@gb/bundle'
-import { World } from '@gb/world'
+import { PlayerState } from '@gb/play'
+import { QuestLog, rewardFor, validateQuest } from '@gb/quest'
+import { questView, World } from '@gb/world'
 import { CastDressing } from '@gb/cast'
 import { Greybox } from '@gb/scene'
 import { Sidecar } from '@gb/sidecar'
@@ -8,6 +10,7 @@ import * as THREE from 'three'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { DEFAULTS } from '../src/boot/brief.ts'
 import { fixtureMaker } from './support/fixture-city.ts'
+import { openDoors } from './support/insides.ts'
 import { Game } from '../src/game.ts'
 import type { SaveStore } from '../src/session.ts'
 import type { Vec2 } from '../src/walk.ts'
@@ -45,13 +48,15 @@ function store(): SaveStore & { writes: number; kept: () => unknown } {
 }
 
 /**
- * A town with two subway entrances a walk apart, so there is somewhere to ride
- * to. How many stations a generated town gets is a roll on its own, so the ride
- * is played on a town that says outright it has two.
+ * A town that boards in as many places as it is asked for: nowhere, one
+ * entrance, or two a walk apart. What a building turns out to be is the
+ * writing's, so a generated town answers any of the three and each is played on
+ * a town that says outright which it is. The player opens their eyes two metres
+ * off the first entrance, which is where a ride is offered or is not.
  */
-async function twoStations(): Promise<OpenedBundle> {
+async function boarding(count: number): Promise<OpenedBundle> {
   const world = World.create({ name: 'Ridebury', theme: 'plain', seed: 'ride', width: 40, height: 20 })
-  for (const [index, x] of [2, 30].entries()) {
+  for (const [index, x] of [2, 30].slice(0, count).entries()) {
     const made = world.addPlot({
       kind: 'station',
       name: `${['Copper', 'Anchor'][index]} Gate`,
@@ -180,19 +185,60 @@ describe('standing a game up', () => {
 })
 
 /**
+ * The keys held down right now, swapped for the ones this frame wants. A walk
+ * is keys going down and coming up on the document, the way the player walks,
+ * rather than a body placed where the test wants it.
+ */
+function keysHeld(): (codes: readonly string[]) => void {
+  const held = new Set<string>()
+  return (codes) => {
+    for (const code of held) if (!codes.includes(code)) document.dispatchEvent(new KeyboardEvent('keyup', { code }))
+    for (const code of codes) if (!held.has(code)) document.dispatchEvent(new KeyboardEvent('keydown', { code }))
+    held.clear()
+    for (const code of codes) held.add(code)
+  }
+}
+
+/** Which keys carry the player towards a spot from where they are standing and looking. Nothing turns the camera. */
+function towards(from: Vec2, heading: number, to: Vec2): string[] {
+  const forward = { x: -Math.sin(heading), z: -Math.cos(heading) }
+  const right = { x: -forward.z, z: forward.x }
+  const ahead = (to.x - from.x) * forward.x + (to.z - from.z) * forward.z
+  const side = (to.x - from.x) * right.x + (to.z - from.z) * right.z
+  return [
+    'ShiftLeft',
+    ...(Math.abs(ahead) > 0.2 ? [ahead > 0 ? 'KeyW' : 'KeyS'] : []),
+    ...(Math.abs(side) > 0.2 ? [side > 0 ? 'KeyD' : 'KeyA'] : []),
+  ]
+}
+
+/**
+ * Walk up to a spot in the street, the same way: a frame at a time on the keys
+ * the game binds, until the player is standing on it.
+ */
+function walkTo(game: Game, to: Vec2, within = 1.5): void {
+  const hold = keysHeld()
+  for (let step = 0; step < 2000; step++) {
+    const me = game.look().at as Vec2
+    if (Math.hypot(me.x - to.x, me.z - to.z) <= within) {
+      hold([])
+      return
+    }
+    hold(towards(me, game.look().heading as number, to))
+    game.frame(1 / 60)
+  }
+  hold([])
+  throw new Error(`the walk to ${to.x}, ${to.z} never got there`)
+}
+
+/**
  * Walk up to whoever is nearest on the pavement, the way the player would: the
  * keys the game binds, a frame at a time, until the crosshair is on somebody.
  * Nobody is placed by hand, so this covers the chain from the crowd through the
  * targeting to the key. Told to avoid somebody, it walks to the next person.
  */
 function walkUpToSomebody(game: Game, crowd: THREE.Object3D, avoid?: { body: THREE.Object3D; prompt: string }): string {
-  const held = new Set<string>()
-  const hold = (codes: readonly string[]) => {
-    for (const code of held) if (!codes.includes(code)) document.dispatchEvent(new KeyboardEvent('keyup', { code }))
-    for (const code of codes) if (!held.has(code)) document.dispatchEvent(new KeyboardEvent('keydown', { code }))
-    held.clear()
-    for (const code of codes) held.add(code)
-  }
+  const hold = keysHeld()
 
   for (let step = 0; step < 4000; step++) {
     const seen = game.look()
@@ -202,10 +248,9 @@ function walkUpToSomebody(game: Game, crowd: THREE.Object3D, avoid?: { body: THR
       return prompt
     }
 
-    const me = seen.at as { x: number; z: number }
+    const me = seen.at as Vec2
     const heading = seen.heading as number
     const forward = { x: -Math.sin(heading), z: -Math.cos(heading) }
-    const right = { x: -forward.z, z: forward.x }
 
     // head for a stride short of the nearest body out here, along the line the
     // player is already looking down, so they end up in front of the crosshair
@@ -216,17 +261,7 @@ function walkUpToSomebody(game: Game, crowd: THREE.Object3D, avoid?: { body: THR
       const gap = Math.hypot(person.position.x - me.x, person.position.z - me.z)
       if (gap < away) [away, nearest] = [gap, person]
     }
-    if (nearest) {
-      const dx = nearest.position.x - forward.x * 1.4 - me.x
-      const dz = nearest.position.z - forward.z * 1.4 - me.z
-      const ahead = dx * forward.x + dz * forward.z
-      const side = dx * right.x + dz * right.z
-      hold([
-        'ShiftLeft',
-        ...(Math.abs(ahead) > 0.2 ? [ahead > 0 ? 'KeyW' : 'KeyS'] : []),
-        ...(Math.abs(side) > 0.2 ? [side > 0 ? 'KeyD' : 'KeyA'] : []),
-      ])
-    }
+    if (nearest) hold(towards(me, heading, { x: nearest.position.x - forward.x * 1.4, z: nearest.position.z - forward.z * 1.4 }))
     game.frame(1 / 60)
   }
   hold([])
@@ -358,7 +393,7 @@ describe('what the interface is handed', () => {
   })
 
   it('rides between stations under a veil, and lands the player a step off the other doorstep', async () => {
-    const bundle = await twoStations()
+    const bundle = await boarding(2)
     const { game, mount } = await playPlain({ bundle })
     game.frame(1 / 60)
 
@@ -404,6 +439,50 @@ describe('what the interface is handed', () => {
     expect(Math.max(...frames.slice(1))).toBeLessThan(100)
   })
 
+  it('offers a ride only where there is one to take, and says which of the three the town is', async () => {
+    const mapOf = (game: Game, mount: HTMLElement): string => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'm', code: 'KeyM' }))
+      game.frame(1 / 60)
+      return windowOn(mount).textContent ?? ''
+    }
+    const clear = (): void => {
+      for (const held of running) held.dispose()
+      running = []
+      document.body.innerHTML = ''
+    }
+
+    // two entrances is a ride, and the crosshair says which one they board at
+    const two = await playPlain({ bundle: await boarding(2) })
+    two.game.frame(1 / 60)
+    expect(two.game.look().target).toBe('Take the subway from Copper Gate')
+    clear()
+
+    // the only station in town boards nobody, so nothing is offered on it: a
+    // prompt reading Take the subway on an entrance whose only train leaves
+    // from where the player is standing is a journey they cannot make
+    const alone = await boarding(1)
+    const one = await playPlain({ bundle: alone })
+    one.game.frame(1 / 60)
+    expect(one.game.look().target).toBeUndefined()
+
+    // and it carries nobody even asked outright
+    const here = one.game.look().at
+    one.game.intent({ kind: 'travel', stationId: alone.world.stations()[0]!.id })
+    one.game.frame(1 / 60)
+    one.game.frame(1 / 60)
+    expect(one.game.look().at).toEqual(here)
+
+    // the plan still marks it, and says which situation the player is in
+    expect(mapOf(one.game, one.mount)).toMatch(/only station in town/i)
+    clear()
+
+    // and a town the writing gave no station at all says that instead
+    const none = await playPlain({ bundle: await boarding(0) })
+    none.game.frame(1 / 60)
+    expect(none.game.look().target).toBeUndefined()
+    expect(mapOf(none.game, none.mount)).toMatch(/no stations/i)
+  }, 30_000)
+
   it('says what a save lost coming back into a city written again since, by name', async () => {
     // a city the model writes is a different city every time, and every city
     // calls itself world_0001: a save under the same key resumes reconciled
@@ -423,11 +502,11 @@ describe('what the interface is handed', () => {
     if (!opened.ok) throw new Error(opened.error.code)
     const { mount } = await playPlain({ save: kept, bundle: opened.value })
     expect(mount.querySelector('.gb-notices')!.textContent).toMatch(/written again since your last visit/)
-  }, 60_000)
+  }, 30_000)
 })
 
 describe('talking to somebody out on the pavement', () => {
-  it('moves the hands of the body they are wearing out here, not one a room drew for them', async () => {
+  it('moves the body they are wearing out here, not one a room drew for them', async () => {
     const { game, bench } = await play()
     // the crowd takes a few seconds to get anybody out on the street at all
     for (let step = 0; step < 400; step++) game.frame(1 / 60)
@@ -440,9 +519,11 @@ describe('talking to somebody out on the pavement', () => {
     game.intent({ kind: 'say', text: 'what have you got for me?' })
 
     // somebody out walking is not also standing behind their own counter, so
-    // the body that talks with its hands is the one on the pavement. Asking the
-    // room's dressing first finds the copy it drew and waves that instead
-    await vi.waitFor(() => expect(moved.map((arms) => arms.clip)).toContain('speaking'))
+    // the body that answers is the one on the pavement. Asking the room's
+    // dressing first finds the copy it drew and moves that instead. Nothing is
+    // listening, so what moves is her answer and not a line she never spoke
+    await vi.waitFor(() => expect(moved.map((arms) => arms.clip)).toContain('Idle_No_Loop'))
+    expect(moved.map((arms) => arms.clip)).not.toContain('speaking')
     expect(moved.every((arms) => arms.object.parent === crowd)).toBe(true)
   }, 30_000)
 
@@ -450,11 +531,14 @@ describe('talking to somebody out on the pavement', () => {
     const { game, bench } = await play()
     for (let step = 0; step < 400; step++) game.frame(1 / 60)
     const crowd = bench.scene.getObjectByName('crowd')!
-    const panel = () => bench.canvas.parentElement!.querySelector('.gb-hud')!.textContent ?? ''
+    // the conversation itself, not the whole interface: a note announcing what
+    // the last person did stands on screen for a few seconds after the panel
+    // has moved on to somebody else, and it is theirs to name
+    const panel = () => bench.canvas.parentElement!.querySelector('.gb-talk')!.textContent ?? ''
 
     const first = walkUpToSomebody(game, crowd)
     document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE' }))
-    game.intent({ kind: 'say', text: 'hello' })
+    game.intent({ kind: 'say', text: 'what have you got for me?' })
     await vi.waitFor(() => expect(moved.length).toBeGreaterThan(0))
     const firstName = first.slice('Talk to '.length)
     const firstBody = moved[0]!.object
@@ -469,7 +553,7 @@ describe('talking to somebody out on the pavement', () => {
     const secondName = second.slice('Talk to '.length)
     expect(secondName).not.toBe(firstName)
     document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE' }))
-    game.intent({ kind: 'say', text: 'hello' })
+    game.intent({ kind: 'say', text: 'what have you got for me?' })
     await vi.waitFor(() => expect(moved.length).toBeGreaterThan(0))
     expect(panel()).toContain(secondName)
     expect(panel()).not.toContain(firstName)
@@ -508,4 +592,102 @@ describe('where the game says to go', () => {
     expect(game.look().place).toBe('interior')
     expect(corner(mount)?.dataset.state).not.toBe('open')
   }, 30_000)
+})
+
+/**
+ * A street with two doors on it and a job that says to walk to the far one,
+ * twice. The town is laid by hand so the walk between them is one straight run
+ * across open ground, and the job is written by hand because a city's words are
+ * the model's and this box has no stand-in for one. Both doors open: the first
+ * is where the player opens their eyes and the second is somewhere to walk to.
+ */
+async function twoDoors(): Promise<{ bundle: OpenedBundle; door: Vec2; lines: readonly string[] }> {
+  const world = World.create({ name: 'Fenwick', theme: 'plain', seed: 'walkup', width: 30, height: 20 })
+  for (const [index, x] of [2, 12].entries()) {
+    const made = world.addPlot({
+      kind: 'shop',
+      name: ['Kell Supply', 'Ferro Works'][index]!,
+      rect: { x, y: 2, w: 4, h: 4 },
+      entrance: { cell: { x: x + 2, y: 6 }, facing: 'south' },
+      storeys: 1,
+      style: 'brick',
+    })
+    if (!made.ok) throw new Error(JSON.stringify(made.error))
+  }
+  // rooms and people behind both, as data: a door with nothing behind it is
+  // not somewhere a quest may send anybody
+  openDoors(world, 2)
+
+  const works = world.plots()[1]!
+  const lines = ['Walk over to Ferro Works', 'Take another look at Ferro Works']
+  const written = validateQuest(
+    {
+      format: 'game-box.quest',
+      schemaVersion: 1,
+      id: 'quest_0001',
+      kind: 'main',
+      title: 'Eyes on the works',
+      summary: 'Somebody wants to know what goes on at the works.',
+      giverNpcId: world.npcs()[0]!.id,
+      difficulty: 'errand',
+      startStepId: 'step_0001',
+      reward: rewardFor('errand'),
+      steps: [
+        { id: 'step_0001', objective: lines[0], kind: 'goto', place: { plotId: works.id }, next: ['step_0002'] },
+        { id: 'step_0002', objective: lines[1], kind: 'goto', place: { plotId: works.id }, next: ['step_0003'] },
+        { id: 'step_0003', objective: 'Done', kind: 'complete' },
+      ],
+    },
+    questView(world),
+  )
+  if (!written.ok) throw new Error(`the job will not hold up: ${JSON.stringify(written.error)}`)
+
+  const opened = await Bundle.open(await Bundle.pack(world, [written.value]))
+  if (!opened.ok) throw new Error(`the town will not open: ${JSON.stringify(opened.error)}`)
+  const size = opened.value.world.cellSize
+  const door = { x: (works.entrance.cell.x + 0.5) * size, z: (works.entrance.cell.y + 0.5) * size }
+  return { bundle: opened.value, door, lines }
+}
+
+/** That town's job already taken, as a save: the board is the giver's and this test is not walking up to him. */
+function jobTaken(bundle: OpenedBundle): SaveStore {
+  const player = PlayerState.create(bundle.world.id)
+  const log = QuestLog.create(bundle.quests, player)
+  log.start(bundle.quests[0]!.id)
+  const kept = store()
+  kept.write(Bundle.save(bundle, player, log))
+  return kept
+}
+
+describe('getting somewhere on foot', () => {
+  it('credits a job that says to go there on the walk up, without going in, once per arrival', async () => {
+    const { bundle, door, lines } = await twoDoors()
+    const { game, mount } = await playPlain({ bundle, save: jobTaken(bundle) })
+    const objectives = () => mount.querySelector('.gb-objectives')!.textContent ?? ''
+    game.frame(1 / 60)
+
+    // the job is on the board and the player is standing at the other door
+    expect(objectives()).toContain(lines[0])
+    const start = game.look().at as Vec2
+    expect(Math.hypot(start.x - door.x, start.z - door.z)).toBeGreaterThan(10)
+
+    walkTo(game, door)
+    game.frame(1 / 60)
+    // standing at it, never through it: the step is done and the next is open
+    expect(game.look().place).toBe('city')
+    expect(objectives()).not.toContain(lines[0])
+    expect(objectives()).toContain(lines[1])
+
+    // and standing there is one arrival however long they stand on it: the
+    // second leg of the job is still waiting after five seconds of frames
+    for (let frame = 0; frame < 300; frame++) game.frame(1 / 60)
+    expect(objectives()).toContain(lines[1])
+
+    // off down the street and back, which is a second arrival and finishes it
+    walkTo(game, { x: door.x - 10, z: door.z })
+    walkTo(game, door)
+    game.frame(1 / 60)
+    expect(game.look().place).toBe('city')
+    expect(objectives()).not.toContain(lines[1])
+  }, 60_000)
 })

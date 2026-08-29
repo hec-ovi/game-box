@@ -2,6 +2,7 @@ import type { Instance, InstancePerson, InstancePost, InstanceRequest, InstanceT
 import { ok, type Result } from '@gb/kit'
 import type { Asker, Violation } from './asker.ts'
 import { briefLines } from './brief-lines.ts'
+import { postLines } from './cast-lines.ts'
 import { charterLines } from './charter-lines.ts'
 import { FamilyClaims } from './claim.ts'
 import type { ScribeFailure } from './failure.ts'
@@ -10,7 +11,7 @@ import type { Progress } from './progress.ts'
 import { bullets, prompt } from './prompts.ts'
 import type { NameRegistry } from './registry.ts'
 import { answered } from './stand-in.ts'
-import { instanceTool, type WrittenPlace } from './tools.ts'
+import { instanceTool, type WrittenInstance } from './tools.ts'
 import { UniqueNames, type Pass } from './unique.ts'
 import type { Waves } from './waves.ts'
 
@@ -25,12 +26,11 @@ export interface InstanceWriterOptions {
 }
 
 /**
- * How many times a name is asked for again before the city takes what it is
- * given. It doubles as the spacing between two places' stand-in streams, so no
- * two of them draw the same spare name.
+ * How many times a person's name is asked for again before the city takes what
+ * it is given. It doubles as the spacing between two posts' stand-in streams,
+ * so no two of them draw the same spare person.
  */
 const ATTEMPTS = 40
-
 
 /**
  * Writes a place and the people in it in one call.
@@ -77,16 +77,14 @@ export class InstanceWriter implements Pass<InstanceRequest, Instance> {
       prompt('write-instance', {
         cityName: this.#registry.cityName,
         theme: request.theme,
+        name: request.name,
         label: request.charter.label,
         charter: charterLines(request.charter),
         premise: request.premise ?? prompt('no-history'),
         rooms: request.rooms.length ? request.rooms.join(', ') : 'one room',
         has: briefLines(request.has),
         letters: shell.letters.split('').join(', '),
-        posts: bullets(
-          request.posts.map((post) => `${post.postId}: the ${post.role}`),
-          'Nobody works here.',
-        ),
+        posts: bullets(postLines(request.posts, request.cast), 'Nobody works here.'),
         things: bullets(
           request.things.map((thing) => `${thing.thingId}: a ${thing.archetype}`),
           'Nothing is lying about in here.',
@@ -106,8 +104,12 @@ export class InstanceWriter implements Pass<InstanceRequest, Instance> {
     return instance.people.map((person) => person.name)
   }
 
-  signsIn(instance: Instance): readonly string[] {
-    return [instance.name]
+  /**
+   * Nothing. The sign over this door was written in the naming pass and handed
+   * in on the request, so this call neither writes a name nor spends one.
+   */
+  signsIn(): readonly string[] {
+    return []
   }
 
   /**
@@ -118,14 +120,11 @@ export class InstanceWriter implements Pass<InstanceRequest, Instance> {
   async mend(request: InstanceRequest, index: number, answer: Instance | undefined): Promise<Instance | undefined> {
     const standIn = this.#standIn
     if (!standIn) return undefined
-    const name = answer !== undefined && !this.#registry.signTaken(answer.name) ? answer.name : await this.#spareName(standIn, request)
-    if (name === undefined) return undefined
-    this.#registry.hang(name)
 
     const people: InstancePerson[] = []
     for (const post of request.posts) {
       const written = answer?.people.find((person) => person.postId === post.postId)
-      const person = written !== undefined && !this.#registry.taken(written.name) ? written : await this.#sparePerson(standIn, request, post, name)
+      const person = written !== undefined && !this.#registry.taken(written.name) ? written : await this.#sparePerson(standIn, request, post)
       if (person === undefined) return undefined
       this.#registry.add(person.name)
       people.push(person)
@@ -133,32 +132,16 @@ export class InstanceWriter implements Pass<InstanceRequest, Instance> {
 
     const things = answer?.things.length ? answer.things : await this.#stock(standIn, request)
     if (things === undefined) return undefined
-    this.#count(index, name, request.charter.label)
-    return { name, character: answer?.character ?? '', people, things }
+    this.#count(index, request.name, request.charter.label)
+    return { name: request.name, character: answer?.character ?? '', people, things }
   }
 
-  /** Keeps asking the stand-in for one more sign until the city has not already hung its head word. */
-  async #spareName(standIn: Narrator, request: InstanceRequest): Promise<string | undefined> {
-    const at = (attempt: number) => ({
-      kind: request.kind,
-      charter: request.charter,
-      theme: request.theme,
-      index: request.index * ATTEMPTS + attempt,
-      ...(request.premise === undefined ? {} : { premise: request.premise }),
-    })
-    let name = answered(await standIn.namePlace(at(0)))
-    for (let attempt = 1; attempt <= ATTEMPTS && name !== undefined && this.#registry.signTaken(name); attempt++) {
-      name = answered(await standIn.namePlace(at(attempt)))
-    }
-    return name
-  }
-
-  async #sparePerson(standIn: Narrator, request: InstanceRequest, post: InstancePost, placeName: string): Promise<InstancePerson | undefined> {
+  async #sparePerson(standIn: Narrator, request: InstanceRequest, post: InstancePost): Promise<InstancePerson | undefined> {
     const at = (attempt: number) => ({
       role: post.role,
       placeKind: request.kind,
       place: request.charter,
-      placeName,
+      placeName: request.name,
       theme: request.theme,
       index: post.index * ATTEMPTS + attempt,
       ...(request.premise === undefined ? {} : { premise: request.premise }),
@@ -194,10 +177,14 @@ const callFor = (request: InstanceRequest): { at: string; what: string } => ({
   what: `the ${request.charter.label} and the people in it`,
 })
 
-/** The answer, put back together against the shell it was written for. */
-function made(request: InstanceRequest, answer: WrittenPlace): Instance {
+/**
+ * The answer, put back together against the shell it was written for. The name
+ * is the request's: the sign over this door was written in the naming pass, and
+ * the caller hands it in rather than reading one back.
+ */
+function made(request: InstanceRequest, answer: WrittenInstance): Instance {
   return {
-    name: answer.name,
+    name: request.name,
     character: answer.character,
     people: request.posts.map((post) => {
       const person = answer.people.find((one) => one.postId === post.postId)!
@@ -211,7 +198,7 @@ function made(request: InstanceRequest, answer: WrittenPlace): Instance {
 }
 
 /** Everything wrong with an answer that the schema alone could not refuse. */
-function problemsWith(answer: WrittenPlace, shell: { postIds: readonly string[]; thingIds: readonly string[] }): Violation[] {
+function problemsWith(answer: WrittenInstance, shell: { postIds: readonly string[]; thingIds: readonly string[] }): Violation[] {
   const problems: Violation[] = []
   const once = (got: readonly string[], wanted: readonly string[], field: string, what: string): void => {
     for (const id of wanted) {

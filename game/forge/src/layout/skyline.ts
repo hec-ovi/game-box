@@ -1,5 +1,5 @@
 import type { Rng } from '@gb/kit'
-import { PLOT_BAND, TALLEST_STOREYS, type Charter } from '@gb/world'
+import { PLOT_BAND, TALLEST_STOREYS } from '@gb/world'
 
 /** What a brief says about height: the tallest it allows, and how built up the town is. */
 export interface StoreyBrief {
@@ -40,14 +40,18 @@ const DOWNTOWN = {
 /**
  * How tall each building in one town stands.
  *
- * Most of a town is the band the building catalogue is drawn for, one to four
- * storeys off the charter's own range. Over that band the kit stacks a storey
- * of wall at a time, and that is what a skyline is made of: near the middle of
- * town, and along the avenues that run out of it, plots reach for the whole of
- * the brief's ceiling; a few streets out they reach for a fraction of it; at
- * the edge of town nothing is raised at all. What a kind reaches for on top of
- * that is its own `size.storeys`, so a chapel is a chapel wherever it stands
- * and an office is a tower only downtown.
+ * How tall a building stands is architecture, so it is settled here with the
+ * footprint and before anybody has said what the building is. Most of a town is
+ * the band the building catalogue is drawn for, one to four storeys, a storey
+ * taller on an avenue. Over that band the kit stacks a storey of wall at a
+ * time, and that is what a skyline is made of: near the middle of town, and
+ * along the avenues that run out of it, plots reach for the whole of the
+ * brief's ceiling; a few streets out they reach for a fraction of it; at the
+ * edge of town nothing is raised at all.
+ *
+ * The height is then a fact the writing is handed: a writer told a building is
+ * twelve storeys on an avenue writes what stands twelve storeys up, rather than
+ * a kind being chosen first and the town built around it.
  */
 export class Skyline {
   /** The tallest the catalogue is drawn for, under this brief's ceiling. */
@@ -70,8 +74,8 @@ export class Skyline {
    * the band: it is a building the catalogue has no shape for rather than a
    * shop that happens to be tall.
    */
-  storeysFor(charter: Charter, spot: StoreySpot, rng: Rng): number {
-    const built = this.#inBand(charter, spot, rng)
+  storeysFor(spot: StoreySpot, rng: Rng): number {
+    const built = this.#inBand(spot, rng)
     if (this.#headroom <= 0) return built
 
     const sky = rng.fork('skyline')
@@ -79,19 +83,17 @@ export class Skyline {
     // the low town, and the low buildings a downtown keeps between its towers
     if (!sky.chance(reach ** DOWNTOWN.slope * this.#density)) return built
 
-    // what this kind reaches for here, in storeys over the band
-    const over = Math.round(this.#headroom * reach * stacksOf(charter))
+    // what the town reaches for here, in storeys over the band
+    const over = Math.round(this.#headroom * reach)
     if (over < 1) return built
     return this.#band + 1 + Math.floor(sky.float() ** DOWNTOWN.spread * over)
   }
 
-  /** The height a kind builds to on its own, inside the band: a storey taller on an avenue, which is where a town puts its frontage. */
-  #inBand(charter: Charter, spot: StoreySpot, rng: Rng): number {
-    const [low, high] = charter.size.storeys
+  /** The height a building takes inside the band: a storey taller on an avenue, which is where a town puts its frontage. */
+  #inBand(spot: StoreySpot, rng: Rng): number {
     const lift = spot.onAvenue ? 1 : 0
-    const floor = Math.min(this.#band, low + lift)
-    const ceiling = Math.max(floor, Math.min(high + lift, this.#band))
-    return Math.max(1, rng.int(floor, ceiling + 1))
+    const floor = Math.min(this.#band, PLOT_BAND.storeys.min + lift)
+    return Math.max(1, rng.int(floor, this.#band + 1))
   }
 
   /** How much of the brief's headroom the town reaches for at a spot: 1 downtown, 0 out in the low town. */
@@ -99,19 +101,6 @@ export class Skyline {
     const near = Math.max(0, spot.nearness) + (spot.onAvenue ? DOWNTOWN.spine : 0)
     return smoothstep(DOWNTOWN.edge, DOWNTOWN.core, near)
   }
-}
-
-/**
- * How much of the town's height a kind takes, off the charter's own numbers: a
- * kind that builds to the top of the band takes all of it, one that tops out
- * lower takes that share of it, and a single storey kind takes none. So a kind
- * of place a history invented stands exactly as tall as it said it was, and no
- * word is read.
- */
-function stacksOf(charter: Charter): number {
-  const reached = charter.size.storeys[1] - PLOT_BAND.storeys.min
-  const band = PLOT_BAND.storeys.max - PLOT_BAND.storeys.min
-  return Math.min(1, Math.max(0, reached / band))
 }
 
 /** 0 under `from`, 1 over `to`, an S between: a field a town has no edge to. */

@@ -245,7 +245,7 @@ function ledgerQuest(mara: string, ledger: string, copy = 'item_9999'): QuestDoc
 }
 
 interface Script {
-  /** What the voice track says. Left out, the model talks its way out of the turn call and the game's data speaks. */
+  /** What the voice track says. Left out, the model talks its way out of the turn call and the person says nothing. */
   readonly text?: string
   /** What the voice track says the body does. */
   readonly does?: string
@@ -628,15 +628,15 @@ describe('Conversation', () => {
     expect(conversation.isOpen).toBe(false)
   })
 
-  it('with no sidecar at all, the job is still offered, taken and delivered', async () => {
+  it('with no sidecar at all, nobody speaks and the job is still taken and delivered', async () => {
     const { conversation, log, player, ledger } = setup({ fail: true })
 
     const hello = await collect(conversation.say('hello'))
-    expect(said(hello)).toContain('The Ledger')
-    expect(said(hello)).toContain('30 credits')
-    expect(hello.some((e) => e.kind === 'over')).toBe(false)
+    expect(hello).toEqual([{ kind: 'silent' }])
+    expect(conversation.isOpen).toBe(true)
 
     const accepted = await collect(conversation.say('yes'))
+    expect(accepted[0]).toEqual({ kind: 'silent' })
     expect(accepted).toContainEqual({ kind: 'did', action: 'give_quest', detail: 'quest_0001' })
     expect(log.status('quest_0001')).toBe('active')
 
@@ -649,20 +649,26 @@ describe('Conversation', () => {
     expect(player.money).toBe(30)
   })
 
-  it('with no sidecar, someone with nothing to give still talks and never says an id', async () => {
+  it('with no model, someone with nothing to give says nothing, and the player can still walk away', async () => {
     const { hollis, world, log, player } = setup({ fail: true })
     const chat = Conversation.open({ world, log, player, sidecar: speaker({ fail: true }).sidecar, npcId: hollis.id })
     if (!chat.ok) throw new Error('did not open')
 
     const first = await collect(chat.value.conversation.say('what do you know?'))
-    expect(said(first)).toContain(hollis.knowledge[0])
-    expect(said(first)).not.toBe(hollis.knowledge[0])
-    expect(said(first)).not.toMatch(/_\d/)
+    expect(first).toEqual([{ kind: 'silent' }])
     expect(chat.value.conversation.isOpen).toBe(true)
 
+    // silence is not a dead end: the words that end it still end it, and so does the button
     const parting = await collect(chat.value.conversation.say('see you later'))
     expect(parting).toContainEqual({ kind: 'did', action: 'end_talk' })
+    expect(parting[parting.length - 1]).toEqual({ kind: 'over' })
     expect(chat.value.conversation.isOpen).toBe(false)
+
+    const clicked = Conversation.open({ world, log, player, sidecar: speaker({ fail: true }).sidecar, npcId: hollis.id })
+    if (!clicked.ok) throw new Error('did not open')
+    const goodbye = clicked.value.conversation.moves().find((move) => move.action === 'end_talk')!
+    expect(await collect(clicked.value.conversation.choose(goodbye.key))).toContainEqual({ kind: 'over' })
+    expect(clicked.value.conversation.isOpen).toBe(false)
   })
 
   it('credits the talk step with the turn that hands the job over, not the turn before it', async () => {
@@ -689,7 +695,6 @@ describe('Conversation', () => {
 
     const events = await collect(conversation.choose(ask.key))
     expect(events).toContainEqual({ kind: 'did', action: 'ask_about', detail: 'the missing shipment' })
-    expect(said(events)).toContain('the missing shipment')
     expect(log.objectives().map((o) => o.text)).toEqual(['Take the ledger'])
   })
 
@@ -912,13 +917,11 @@ describe('Conversation', () => {
     await collect(drink.conversation.say('evening'))
     const refused = await collect(drink.conversation.say('give me a drink'))
     expect(refused.some((e) => e.kind === 'did')).toBe(false)
-    expect(said(refused)).toBe("You've lost me. Say it plain.")
 
     // and nothing she is able to do answers this either
     const lost = setup({ fail: true })
     const shrug = await collect(lost.conversation.say('follow me'))
     expect(shrug.some((e) => e.kind === 'did')).toBe(false)
-    expect(said(shrug)).toBe("You've lost me. Say it plain.")
   })
 
   it('takes a refusal without walking off', async () => {
@@ -929,37 +932,20 @@ describe('Conversation', () => {
     expect(events.some((e) => e.kind === 'did')).toBe(false)
     expect(conversation.isOpen).toBe(true)
     expect(log.status('quest_0001')).toBe('unstarted')
-    expect(said(events)).toBe('Suit yourself. The offer stands.')
   })
 
-  it('says the job in its own words instead of reading the screen text out', async () => {
-    const { conversation, mara } = setup({ fail: true }, { quest: 'heard-out' })
+  it('with no model, nobody puts a word in their mouth, on any turn', async () => {
+    const { conversation } = setup({ fail: true }, { quest: 'heard-out' })
 
-    const offer = said(await collect(conversation.say('evening')))
-    const taken = said(await collect(conversation.say('yes')))
-    expect(offer).not.toContain('Hear Mara Cole out')
-    expect(taken).not.toContain('Hear Mara Cole out')
-    expect(taken).toContain('Take the ledger')
-
-    const chat = said(await collect(conversation.say('quiet night')))
-    expect(chat).toContain(mara.knowledge[0])
-    expect(chat).not.toBe(mara.knowledge[0])
-  })
-
-  it('with no model, the same words give the same conversation every time', async () => {
-    const play = async () => {
-      const { conversation } = setup({ fail: true })
-      const lines: string[] = []
-      for (const turn of ['evening', 'anything going?', 'yes', 'what do you know?', 'and?', 'see you']) {
-        lines.push(said(await collect(conversation.say(turn))))
-      }
-      return lines
+    for (const turn of ['evening', 'anything going?', 'yes', 'what do you know?', 'and?']) {
+      const events = await collect(conversation.say(turn))
+      expect(events.some((e) => e.kind === 'turn'), turn).toBe(false)
+      expect(events[0], turn).toEqual({ kind: 'silent' })
     }
-
-    const first = await play()
-    expect(first).toEqual(await play())
-    // the two facts she has are not passed on the same way twice
-    expect(new Set(first.slice(3, 5)).size).toBe(2)
+    // and the same for a move clicked, which never asks a model for anything
+    const clicked = await collect(conversation.choose('show_wares'))
+    expect(clicked.some((e) => e.kind === 'turn')).toBe(false)
+    expect(clicked).toContainEqual({ kind: 'did', action: 'show_wares' })
   })
 })
 
@@ -989,7 +975,7 @@ describe('every person is their own session', () => {
   })
 
   it('keeps a bounded transcript, newest last', async () => {
-    const { conversation } = setup({ fail: true })
+    const { conversation } = setup({ text: 'Aye.' })
     for (let turn = 0; turn < 12; turn++) await collect(conversation.say(`turn ${turn}`))
     const history = conversation.history()
     expect(history).toHaveLength(16)
@@ -1066,16 +1052,6 @@ describe('what a turn leaves behind', () => {
     expect(model.voice[1]!.system).toContain('2. owes Rook for the bar and will not say how much')
   })
 
-  it('with no model, a fact about themselves is earned the moment it is said', async () => {
-    const { conversation, mara } = setup({ fail: true })
-    await collect(conversation.say('evening'))
-    await collect(conversation.say('what do you know?'))
-    await collect(conversation.say('and?'))
-    const events = await collect(conversation.say('and?'))
-
-    expect(said(events)).toContain('Ran the freight road before the bar.')
-    expect(events).toContainEqual({ kind: 'learned', npcId: mara.id, factId: '1' })
-  })
 })
 
 describe('nobody speaks first', () => {
@@ -1161,7 +1137,7 @@ describe('answering yes or no', () => {
     const deaf = setup({ fail: true }, { carries: true })
     const lost = await collect(deaf.conversation.say('give me a drink'))
     expect(lost).toContainEqual({ kind: 'answered', answer: 'no' })
-    expect(said(lost)).toBe("You've lost me. Say it plain.")
+    expect(lost.some((e) => e.kind === 'turn')).toBe(false)
     expect(lost.some((e) => e.kind === 'did')).toBe(false)
   })
 
@@ -1181,7 +1157,6 @@ describe('answering yes or no', () => {
     // the player turning the work down is the player's answer, and hers is neither
     const deaf = setup({ fail: true })
     const declined = await collect(deaf.conversation.say('maybe later'))
-    expect(said(declined)).toBe('Suit yourself. The offer stands.')
     expect(declined).not.toContainEqual(expect.objectContaining({ kind: 'answered' }))
   })
 
@@ -1208,7 +1183,7 @@ describe('Conversation.moves and choose', () => {
     for (const move of conversation.moves()) expect(move.label).not.toMatch(/[a-z]+_\d{4}/)
   })
 
-  it('carries out the move that was clicked and nothing else, speaking before it acts', async () => {
+  it('carries out the move that was clicked and nothing else, without a word said', async () => {
     const { conversation, log, player, key, flat } = setup({}, { carries: true })
 
     const events = await collect(conversation.choose(`hand_over#${key.id}`))
@@ -1220,9 +1195,7 @@ describe('Conversation.moves and choose', () => {
     expect(player.opens({ interiorId: flat.id })).toBe(true)
     expect(log.status('quest_0001')).toBe('unstarted')
 
-    expect(events[0]).toEqual({ kind: 'turn', says: "Here. Don't lose it." })
-    expect(said(events)).toBe("Here. Don't lose it.")
-    expect(events.findIndex((e) => e.kind === 'turn')).toBeLessThan(events.findIndex((e) => e.kind === 'did'))
+    expect(events.some((e) => e.kind === 'turn')).toBe(false)
   })
 
   it('does nothing at all with a move that has stopped being legal', async () => {
@@ -1257,10 +1230,7 @@ describe('Conversation.moves and choose', () => {
     const { conversation, model } = setup({ text: 'Take your time.' })
 
     await collect(conversation.choose('give_quest#quest_0001'))
-    expect(conversation.history()).toEqual([
-      { role: 'user', content: 'Take the job: The Ledger' },
-      { role: 'assistant', content: "Good. Take the ledger. Come back to me when it's done." },
-    ])
+    expect(conversation.history()).toEqual([{ role: 'user', content: 'Take the job: The Ledger' }])
 
     await collect(conversation.say('where do I start?'))
     expect(model.voice[0]!.user).toContain('Them: "Take the job: The Ledger"')
@@ -1272,7 +1242,6 @@ describe('what they sell', () => {
     const { conversation, player, gin } = setup({ fail: true })
     const events = await collect(conversation.say('what do you sell?'))
     expect(events).toContainEqual({ kind: 'did', action: 'show_wares' })
-    expect(said(events)).toBe("For sale: house gin, 9 credits. Say which and it's yours.")
     expect(player.has(gin.id)).toBe(false)
     expect(player.money).toBe(0)
 
@@ -1287,7 +1256,6 @@ describe('what they sell', () => {
     if (!chat.ok) throw new Error('did not open')
     expect(chat.value.conversation.available()).not.toContain('show_wares')
     const refused = await collect(chat.value.conversation.say('what are you selling?'))
-    expect(said(refused)).toBe("I've nothing to sell you.")
     expect(refused).toContainEqual({ kind: 'answered', answer: 'no' })
     expect(refused.some((e) => e.kind === 'did')).toBe(false)
   })
@@ -1308,7 +1276,7 @@ describe('what they sell', () => {
 })
 
 describe('a word or a key as the payoff', () => {
-  it('gives the word up when the subject is raised, says it, and publishes it', async () => {
+  it('gives the word up when the subject is raised, and publishes it', async () => {
     const { conversation, model, log, player } = setup({ text: 'Rosebud. Do not write it down.', pick: 1 }, { extra: 'password-topic' })
     log.start('quest_0002')
 
@@ -1320,7 +1288,7 @@ describe('a word or a key as the payoff', () => {
     const events = await collect(conversation.choose(ask.key))
     expect(events).toContainEqual({ kind: 'did', action: 'ask_about', detail: 'the back door' })
     expect(events).toContainEqual({ kind: 'granted', password: 'rosebud' })
-    expect(said(events)).toContain("The word you'll need is rosebud.")
+    expect(events.some((e) => e.kind === 'turn')).toBe(false)
     expect(player.knows('rosebud')).toBe(true)
     expect(log.objectives().map((o) => o.text)).toEqual(['Open the door on Quay Steps'])
 
@@ -1364,27 +1332,28 @@ describe('their home', () => {
     expect(model.voice[1]!.system).toContain('Your home is Quay Steps, and they have the run of it already.')
   })
 
-  it('with no model, asking is refused until they warm to the player, and pointed at once the door is open', async () => {
+  it('with no model, asking is refused until they warm to the player, and neither way once the door is open', async () => {
     const { conversation, player, mara, flat, hollis, world, log } = setup({ fail: true })
     const cold = await collect(conversation.say('can I come round to your place?'))
-    expect(said(cold)).toBe("Not a chance. I don't have people round I hardly know.")
     expect(cold).toContainEqual({ kind: 'answered', answer: 'no' })
     expect(player.opens({ interiorId: flat.id })).toBe(false)
 
     player.warm(mara.id)
     const warm = await collect(conversation.say('can I come round to your place?'))
     expect(warm).toContainEqual({ kind: 'did', action: 'invite_home', detail: flat.id })
-    expect(said(warm)).toBe("Come round whenever you like. The door's open to you.")
+    expect(warm).toContainEqual({ kind: 'granted', access: { interiorId: flat.id } })
     expect(player.opens({ interiorId: flat.id })).toBe(true)
 
+    // a door already theirs is not refused, so the turn answers neither way
     const again = await collect(conversation.say('where do you live?'))
-    expect(said(again)).toBe("You've the run of my place already.")
     expect(again).not.toContainEqual(expect.objectContaining({ kind: 'answered' }))
 
-    // somebody with no home of their own has no door to open
+    // somebody with no home of their own has no door to open, and that is the no
     const chat = Conversation.open({ world, log, player, sidecar: speaker({ fail: true }).sidecar, npcId: hollis.id })
     if (!chat.ok) throw new Error('did not open')
-    expect(said(await collect(chat.value.conversation.say('invite me to your place')))).toBe("Not a chance. I don't have people round I hardly know.")
+    const asked = await collect(chat.value.conversation.say('invite me to your place'))
+    expect(asked).toContainEqual({ kind: 'answered', answer: 'no' })
+    expect(asked.some((e) => e.kind === 'did')).toBe(false)
   })
 })
 

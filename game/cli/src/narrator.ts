@@ -31,6 +31,7 @@ class HistoryNarrator implements Narrator {
   readonly describeNpc: Narrator['describeNpc']
   readonly describeItem: Narrator['describeItem']
   readonly writeQuests: Narrator['writeQuests']
+  readonly writePlaces: Narrator['writePlaces']
   readonly writeInstances?: NonNullable<Narrator['writeInstances']>
   readonly namePlaces?: NonNullable<Narrator['namePlaces']>
 
@@ -45,6 +46,7 @@ class HistoryNarrator implements Narrator {
     this.describeNpc = base.describeNpc.bind(base)
     this.describeItem = base.describeItem.bind(base)
     this.writeQuests = base.writeQuests.bind(base)
+    this.writePlaces = base.writePlaces.bind(base)
     if (base.writeInstances) this.writeInstances = base.writeInstances.bind(base)
     if (base.namePlaces) this.namePlaces = base.namePlaces.bind(base)
   }

@@ -1,7 +1,7 @@
 import { inPlotBand, MAX_DISTRICTS, PLOT_BAND, plotShape, type Plot } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { districtCount, Forge } from '../src/index.ts'
-import { stationsWanted } from '../src/layout/stations.ts'
+import { townNeeds } from '../src/interior/needs.ts'
 import { LOCKUP, UNDERGROUND } from './histories.ts'
 import { planned } from './support.ts'
 
@@ -29,6 +29,8 @@ describe('Forge.plan', () => {
     expect(world.name).toBe('City')
     expect(world.districts().map((zone) => zone.name)).toEqual(world.districts().map((_, at) => `Zone ${at + 1}`))
     expect(world.plots().map((plot) => plot.name)).toEqual(world.plots().map((_, at) => `Instance ${at + 1}`))
+    // and nothing is a bar, a hotel or a station: what a building is belongs to the writing
+    expect(new Set(world.plots().map((plot) => plot.kind))).toEqual(new Set(['building']))
     // the heights are the town's own skyline rather than a flat band
     expect(world.plots().some((plot) => plot.storeys > PLOT_BAND.storeys.max)).toBe(true)
   })
@@ -37,6 +39,8 @@ describe('Forge.plan', () => {
     const world = planned('quay-9', brief('quay-9'))
 
     expect(world.check()).toEqual([])
+    // every door on a plan is painted on: what is behind one follows from what
+    // the place turns out to be, and nothing here has turned out to be anything
     expect(world.interiors()).toEqual([])
     expect(world.npcs()).toEqual([])
     expect(world.items()).toEqual([])
@@ -48,47 +52,51 @@ describe('Forge.plan', () => {
     expect(world.districts().length).toBeGreaterThan(0)
     expect(world.plots().every((plot) => plot.district !== undefined)).toBe(true)
     expect(world.plots().every(cutToBand)).toBe(true)
-    expect(world.stations().length).toBeGreaterThan(0)
+    // and it boards nowhere, because a station is a kind of place and no plan has one
+    expect(world.stations()).toEqual([])
   })
 
   it('draws the same town twice from one brief', () => {
     expect(JSON.stringify(planned('quay-9', brief('quay-9')).toJSON())).toBe(JSON.stringify(planned('quay-9', brief('quay-9')).toJSON()))
   })
 
-  it('draws the plan against a history somebody already wrote', () => {
-    const world = planned('assize', brief('assize', { theme: 'quiet market town', blocksX: 4, blocksY: 4 }), LOCKUP)
+  it('carries the history it was drawn against, and puts none of it on a footprint', () => {
+    const town = brief('assize', { theme: 'quiet market town', blocksX: 4, blocksY: 4 })
+    const world = planned('assize', town, LOCKUP)
 
     expect(world.premise()?.stake).toBe(LOCKUP.stake)
     expect(world.charters().map((charter) => charter.word)).toContain('jail')
-    expect(world.plotsOfKind('jail').length, 'the town has no jail').toBeGreaterThan(0)
-    // and a town planned without one is a different town
-    expect(world.plots().map((plot) => plot.kind).join()).not.toBe(planned('assize', brief('assize', { theme: 'quiet market town', blocksX: 4, blocksY: 4 })).plots().map((plot) => plot.kind).join())
+    // the kinds a history invents are the writing's to place, so the architecture
+    // a history was handed is the architecture the same brief lays out without one
+    expect(world.plotsOfKind('jail')).toEqual([])
+    const bare = planned('assize', town)
+    expect(world.plots().map((plot) => `${plot.rect.x},${plot.rect.y},${plot.storeys}`)).toEqual(bare.plots().map((plot) => `${plot.rect.x},${plot.rect.y},${plot.storeys}`))
   })
 
-  it('boards every five hundred metres, and never in exactly one place', () => {
-    // a share of the plots put 26 entrances in an eight-block town and 157 in a twenty
-    expect(stationsWanted(200, 0)).toBe(0)
-    expect(stationsWanted(2500, 0)).toBe(5)
+  it('asks the writing to board every five hundred metres, and never in exactly one place', () => {
+    // where the trains board is a distance, not a share: a share of the plots put
+    // 26 entrances in an eight-block town and 157 in a twenty. Nothing here places
+    // one, because a station is a kind of place and those are the writing's
+    const boards = (world: ReturnType<typeof planned>, premise?: Parameters<typeof townNeeds>[0]['premise']) =>
+      townNeeds({
+        places: 3,
+        span: Math.max(world.grid.width, world.grid.height) * world.cellSize,
+        charters: world.charters(),
+        ...(premise ? { premise } : {}),
+      }).find((need) => need.wants.includes('trains'))?.count ?? 0
 
     const hamlet = planned('stations-2', { blocksX: 2, blocksY: 2 })
-    expect(hamlet.stations().length, 'a town you cross in two minutes has a subway').toBe(0)
+    expect(boards(hamlet), 'a town you cross in two minutes is asked for a subway').toBe(0)
+    expect(hamlet.stations()).toEqual([])
 
     const city = planned('stations-20', { blocksX: 20, blocksY: 20 })
-    const span = Math.max(city.grid.width, city.grid.height) * city.cellSize
-    expect(city.stations().length, `${Math.round(span)} m of city`).toBe(stationsWanted(span, 0))
-    expect(city.stations().length).toBeGreaterThan(1)
-    const apart = Math.min(
-      ...city.stations().flatMap((a, at) => city.stations().slice(at + 1).map((b) => Math.hypot(a.entrance.cell.x - b.entrance.cell.x, a.entrance.cell.y - b.entrance.cell.y))),
-    )
-    expect(apart * city.cellSize, 'the stations are on one corner').toBeGreaterThan(300)
-    for (const station of city.stations()) expect(city.charter(station.kind)?.transit).toBe('subway')
+    expect(boards(city), 'a kilometre of city is asked for one entrance or none').toBeGreaterThan(1)
 
-    // a history that says the town has a station gets one, and a second, because
-    // a lone entrance is a travel panel with nowhere to ride to
+    // a history that says the town has a station asks for one, and a second,
+    // because a lone entrance is a travel panel with nowhere to ride to
     const told = planned('stations-told', { theme: 'quiet market town', blocksX: 3, blocksY: 3 }, UNDERGROUND)
-    const small = Math.max(told.grid.width, told.grid.height) * told.cellSize
-    expect(stationsWanted(small, 0), `${Math.round(small)} m of town: the spacing asks for none`).toBe(0)
-    expect(told.stations().length, 'a demanded station is a station you can ride from').toBe(2)
+    expect(boards(told), 'the spacing asks a town this small for none').toBe(0)
+    expect(boards(told, told.premise()), 'a demanded station is a station you can ride from').toBe(2)
   })
 
   it('refuses a brief no world will hold, before a cell is allocated', () => {

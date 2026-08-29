@@ -68,7 +68,7 @@ export class Targeting {
     driving: Driving
     locks: Locks
     machines: Machines
-    /** Where fast travel boards. A city with no stations offers none. */
+    /** Where fast travel boards. A city with nowhere to ride offers none. */
     travel?: Travel
   }) {
     this.#world = input.world
@@ -111,7 +111,8 @@ export class Targeting {
       return [{ kind: 'talk' as const, id: walker.id, label: `Talk to ${npc.name}`, at: { x: walker.x, z: walker.z } }]
     })
     // and the subway entrances, which open the plan on the stations rather
-    // than going anywhere themselves
+    // than going anywhere themselves. A town with fewer than two of them hands
+    // back none, because there is no ride behind the prompt
     const stations = (this.#travel?.entrances() ?? []).map((station) => ({
       kind: 'station' as const,
       id: station.id,

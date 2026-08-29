@@ -1,87 +1,49 @@
 import { Rng } from '@gb/kit'
-import { SHIPPED_CHARTERS, type ResolvedCharter } from '@gb/world'
+import { SHIPPED_CHARTERS } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { DoorBudget, mostOpen, OPEN_PLACES, openPlacesFor } from '../src/interior/budget.ts'
-import { drawOf, KEYSTONES, pullOf } from '../src/interior/draw.ts'
+import { homesFor, townNeeds } from '../src/interior/needs.ts'
 import { openDoors, type Frontage } from '../src/interior/open.ts'
 import { planned } from './support.ts'
 
 /**
- * Which doors a town opens, and how many. The ranking is arithmetic, so it is
- * measured here on the frontage it actually reads rather than on a written city:
- * a batch of buildings in, a set of doors out.
+ * Which doors a town opens, and how many. The pick is architecture: at the time
+ * it runs nothing in the town is anything, so it is measured here on the
+ * buildings it actually reads rather than on a written city, a batch of
+ * footprints in and a set of doors out. What each of those doors turns out to
+ * be is the writing's, and what the town needs them to be is measured with it.
  */
 
 /** A town nothing has been built in yet, laid out along one 1,600-cell street. */
 const FRESH = { built: 0, open: [], span: 1600, places: OPEN_PLACES }
 
-const preset = (word: string): ResolvedCharter => SHIPPED_CHARTERS.find((charter) => charter.word === word)!
-
-/** A batch of buildings to hand the ranking, one of every kind and then round again. */
+/** A batch of buildings to hand the ranking, each a footprint and a place on the street. */
 const many = (count: number): Frontage[] =>
   Array.from({ length: count }, (_, i) => ({
     id: `plot_${i}`,
-    charter: SHIPPED_CHARTERS[i % SHIPPED_CHARTERS.length]!,
     spot: { x: i * 8, y: 0 },
     floor: 30 + (i % 19),
     nearness: 1 - i / count,
     onAvenue: i % 3 === 0,
-    storied: false,
   }))
 
 describe('which doors a town opens', () => {
-  it('spends its first doors on its keystones: a counter to buy over, and a room to be served in', () => {
-    // three doors is the whole game, so which three is not left to a ranking
-    for (const seed of ['a', 'b', 'c', 'd', 'e']) {
-      const open = [...openDoors(many(200), new Rng(seed), FRESH)]
-      const drawn = open.map((id) => drawOf(many(200).find((one) => one.id === id)!.charter))
-      expect(drawn.some(KEYSTONES[0]![1]), `${seed} opens nowhere to buy anything over a counter`).toBe(true)
-      expect(drawn.some(KEYSTONES[1]![1]), `${seed} opens nowhere to sit down and be served`).toBe(true)
-    }
-  })
-
-  it('opens what a place has to offer rather than what it is called', () => {
-    for (const seed of ['a', 'b', 'c', 'd', 'e']) {
-      const batch = many(200)
-      const open = new Set(openDoors(batch, new Rng(seed), FRESH))
-      const pull = (plots: readonly Frontage[]) => plots.reduce((sum, plot) => sum + pullOf(plot.charter), 0) / Math.max(1, plots.length)
-      const chosen = pull(batch.filter((plot) => open.has(plot.id) && !plot.charter.residential))
-      expect(chosen, `${seed} opens middling doors`).toBeGreaterThan(pull(batch))
-    }
-  })
-
-  it('weighs a kind of building by what its own interior turns out to hold', () => {
-    for (const charter of SHIPPED_CHARTERS) {
-      const draw = drawOf(charter)
-      expect(draw.staff + draw.seats + draw.beds + draw.stock, `${charter.word} offers nothing at all`).toBeGreaterThan(0)
-      expect(drawOf(charter), `${charter.word} is weighed differently on a second look`).toEqual(draw)
-    }
-    // a place with staff and stock outranks one with neither, whatever either is called
-    const rich = SHIPPED_CHARTERS.filter((charter) => drawOf(charter).staff > 0 && drawOf(charter).stock > 0)
-    const bare = SHIPPED_CHARTERS.filter((charter) => drawOf(charter).staff === 0)
-    expect(rich.length).toBeGreaterThan(0)
-    expect(bare.length).toBeGreaterThan(0)
-    for (const kind of rich) for (const other of bare) expect(pullOf(kind)).toBeGreaterThan(pullOf(other))
-  })
-
-  it('opens somewhere to sleep even when nowhere with a bed is worth opening', () => {
-    // fifty shops on the avenue and three flats out at the edge: the ranking
-    // would take the shops and leave the town with nowhere to sleep
-    const frontages: Frontage[] = [
-      ...Array.from({ length: 50 }, (_, i) => ({ id: `shop_${i}`, charter: preset('shop'), spot: { x: i * 8, y: 0 }, floor: 40, nearness: 1, onAvenue: true, storied: false })),
-      ...Array.from({ length: 3 }, (_, i) => ({ id: `flat_${i}`, charter: preset('apartment'), spot: { x: i * 8, y: 120 }, floor: 40, nearness: 0, onAvenue: false, storied: false })),
-    ]
-    for (const seed of ['a', 'b', 'c', 'd', 'e']) {
-      const open = openDoors(frontages, new Rng(seed), FRESH)
-      const beds = [...open].filter((id) => id.startsWith('flat_'))
-      expect(beds.length, `${seed} left the town with nowhere to sleep`).toBeGreaterThan(0)
-    }
-  })
-
   it('opens the number it is told to and no more, and not the same doors twice', () => {
     const picked = ['a', 'b', 'c', 'd'].map((seed) => [...openDoors(many(200), new Rng(seed), FRESH)].sort().join())
     for (const doors of picked) expect(doors.split(',').length).toBe(FRESH.places)
     expect(new Set(picked).size, 'every seed opens the same doors').toBeGreaterThan(1)
+  })
+
+  it('opens the doors with room behind them, on the way to everywhere', () => {
+    // the ranking has nothing else to go on: how much floor is behind the door,
+    // how near the middle of town it stands and whether the traffic goes past it
+    const batch = many(200)
+    const better = (chosen: readonly Frontage[]) =>
+      chosen.reduce((sum, one) => sum + one.floor / 40 + one.nearness + (one.onAvenue ? 1 : 0), 0) / Math.max(1, chosen.length)
+    for (const seed of ['a', 'b', 'c', 'd', 'e']) {
+      const open = new Set(openDoors(batch, new Rng(seed), FRESH))
+      expect(better(batch.filter((one) => open.has(one.id))), `${seed} opens middling doors`).toBeGreaterThan(better(batch))
+    }
   })
 
   it('spreads the doors it opens across the town rather than onto one corner', () => {
@@ -94,15 +56,38 @@ describe('which doors a town opens', () => {
       expect(apart, `${seed} opened three doors ${apart} apart`).toBeGreaterThanOrEqual(FRESH.span / (FRESH.places + 1))
     }
   })
+})
 
-  it('opens as many different kinds of place as a wider brief can manage', () => {
-    // every door of a kind already open charges the next one of that kind, so a
-    // brief that asks for more places spends them across the town
-    const batch = many(200)
-    const open = [...openDoors(batch, new Rng('spread'), { ...FRESH, places: 24 })]
-    const kinds = new Set(open.map((id) => batch.find((one) => one.id === id)!.charter.word))
-    expect(open.length).toBe(24)
-    expect(kinds.size).toBeGreaterThan(5)
+describe('what a town needs its doors to be', () => {
+  it('asks the writing for the rooms a town is met in, and a home', () => {
+    // nothing here can pick a bar out of a row of footprints any more, so what a
+    // town needs behind its doors is said in words and handed to the writing
+    const wants = townNeeds({ places: OPEN_PLACES, span: 200, charters: SHIPPED_CHARTERS }).map((need) => need.wants)
+
+    expect(wants.some((want) => want.includes('over a counter'))).toBe(true)
+    expect(wants.some((want) => want.includes('sit down'))).toBe(true)
+    expect(wants.some((want) => want.includes('home'))).toBe(true)
+    expect(wants.some((want) => want.includes('trains')), 'a two hundred metre town is asked for a subway').toBe(false)
+  })
+
+  it('asks for one home in a small town and more as a city opens more doors', () => {
+    expect(homesFor(2)).toBe(0)
+    expect(homesFor(OPEN_PLACES)).toBe(1)
+    expect(homesFor(89)).toBe(12)
+    const homes = townNeeds({ places: 89, span: 200, charters: SHIPPED_CHARTERS }).find((need) => need.wants.includes('home'))
+    expect(homes?.count).toBe(12)
+  })
+
+  it('asks for every kind of place the town\'s own history says it holds', () => {
+    const premise = {
+      livesOn: 'the assizes',
+      happened: 'the court moved out',
+      stake: 'the empty cells',
+      sides: [{ name: 'the town', wants: 'them filled' }, { name: 'the county', wants: 'them shut' }],
+      common: ['the cells are empty'],
+      build: { moreOf: [], fewerOf: [], mustHave: ['jail'] },
+    }
+    expect(townNeeds({ places: OPEN_PLACES, span: 200, charters: SHIPPED_CHARTERS, premise }).map((need) => need.kind)).toContain('jail')
   })
 })
 

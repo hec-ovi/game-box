@@ -1,6 +1,7 @@
 /**
  * Builds cities through the live sidecar and prints what the model wrote: the
- * kinds of place each history invented and whether the city has them, the locks
+ * kinds of place each history invented and whether the city has them, what it
+ * put behind every door that opens and where the trains board, the locks
  * and screens the city placed and the quests written through them, how many
  * distinct head words and shapes the signs came out in, who got a life and a
  * codex, what each kind of call costs in tokens and seconds, and whether any
@@ -220,6 +221,8 @@ for (let i = 0; i < cities; i++) {
     console.log(`    in the city: ${of.length} plots, ${opened.length} open${of.length ? `: ${of.map((plot) => plot.name).join(' | ')}` : ''}`)
   }
   for (const dropped of built.value.dropped) console.log(`  dropped ${dropped.word}: ${dropped.reason}`)
+  // what the writing put behind the doors the architecture opened, which is the stage that decides a city's locations
+  console.log(`  behind the doors that open: ${open.map((plot) => `${plot.name} (${plot.kind})`).join(', ') || 'nothing'}; the trains board at ${world.stations().length}`)
   console.log(
     `  locks: ${locks.length} (${locks.filter((lock) => lock.street).length} street doors, ${locks.filter((lock) => lock.keyItemId).length} with a key, ${locks.filter((lock) => lock.password).length} with a code); ` +
       `screens: ${screens.length} (${screens.filter((screen) => screen.locked).length} locked; ${[...new Set(screens.map((screen) => screen.program))].map((program) => `${program} ${screens.filter((screen) => screen.program === program).length}`).join(', ')}); ` +

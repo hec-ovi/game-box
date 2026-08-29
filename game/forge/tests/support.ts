@@ -6,7 +6,8 @@ import { Forge } from '../src/index.ts'
  * A town laid out the way the blueprint preview lays one out, and why if it will
  * not lay out. Everything about a city that is arithmetic is here: the grid, the
  * roads, the parts of town, every plot with its kind, its height and the part it
- * stands in, and where the trains board. No model is involved.
+ * stands in. No interiors, so nobody is standing anywhere. No model is
+ * involved.
  */
 export function planned(seed: string, overrides: Record<string, unknown> = {}, history?: unknown): World {
   const out = Forge.plan({ theme: 'dusty western mining town', seed, blocksX: 2, blocksY: 2, ...overrides }, history)

@@ -7,5 +7,5 @@ export { BRIEF_FIELDS, type BriefDraft, type BriefField, type BriefSoFar } from 
 export type { PremiseInput } from './premise.ts'
 export type { QuestInput } from './quests.ts'
 export type { QuestSummary } from './summary.ts'
-export type { PlaceRequest } from './signs.ts'
+export type { PlacesInput } from './places.ts'
 export type { ProgressPort, ScribeProgress, ScribeStage } from './progress.ts'

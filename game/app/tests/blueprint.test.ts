@@ -186,7 +186,7 @@ describe('what the blueprint draws', () => {
     localStorage.clear()
   })
 
-  it('carries every building at the height the game builds it, the streets and the stations', async () => {
+  it('carries every building at the height the game builds it, and the streets, and boards nowhere', async () => {
     const { boot } = front()
     await boot.layOut({ ...DEFAULTS, seed: 'blueprint', blocks: 8 })
     const world = boot.laid!
@@ -199,9 +199,13 @@ describe('what the blueprint draws', () => {
       expect([built.w, built.d]).toEqual([plot.rect.w * world.cellSize, plot.rect.h * world.cellSize])
     }
     expect(plan.zones.map((zone) => zone.name)).toEqual(world.districts().map((district) => district.name))
-    expect(plan.stations.map((station) => station.id)).toEqual(world.stations().map((plot) => plot.id))
-    expect(plan.stations.length).toBeGreaterThan(0)
     expect(plan.roadway.length).toBeGreaterThan(0)
+
+    // what a building turns out to be is the writing's, so a plan has no
+    // station in it and the drawing marks none: the plan reads the town rather
+    // than deciding anything about it
+    expect(world.stations()).toEqual([])
+    expect(plan.stations.map((station) => station.id)).toEqual(world.stations().map((plot) => plot.id))
   }, 30_000)
 
   it('writes bare labels over it, because every name in a city is written and none is written yet', async () => {
@@ -219,10 +223,16 @@ describe('what the blueprint draws', () => {
     expect(rows).toEqual(plan.zones.map((zone) => zone.name))
     expect(rows.every((row) => /^Zone \d+$/.test(row ?? ''))).toBe(true)
 
-    // and a station is marked as a station: there is no sign over any door yet
-    const marks = [...overlay.root.querySelectorAll('.gb-bp-name-station')].map((mark) => mark.textContent)
-    expect(marks).toHaveLength(plan.stations.length)
-    expect(new Set(marks)).toEqual(new Set(['Station']))
+    // and nothing else on the glass carries a label, because a part of town is
+    // the only thing a plan can name at all
+    const labels = [...overlay.root.querySelectorAll('.gb-bp-name')]
+    expect(labels).toHaveLength(plan.zones.length)
+
+    // nor does the summary say what the town has: whether the trains board here
+    // is written rather than laid out, and a readout answering nought would be
+    // the plan claiming a town with no subway before anybody has written one
+    const readouts = [...overlay.root.querySelectorAll('.gb-bp-readout-lbl')].map((cell) => cell.textContent)
+    expect(readouts).toEqual(['Buildings', 'Zones', 'Tallest, storeys', 'Metres across'])
   }, 30_000)
 
   it('loses no street to the merge that makes the roadway a few hundred rectangles', async () => {

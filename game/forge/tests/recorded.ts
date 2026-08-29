@@ -73,6 +73,7 @@ export class Recorded implements Narrator {
   }
 
   writePremise = async (input: Parameters<NonNullable<Narrator['writePremise']>>[0]) => this.#replay.answer<ReturnType<NonNullable<Narrator['writePremise']>>>('writePremise', input)
+  writePlaces = async (input: Parameters<Narrator['writePlaces']>[0]) => this.#replay.answer<Awaited<ReturnType<Narrator['writePlaces']>>>('writePlaces', input)
   nameCity = async (input: Parameters<Narrator['nameCity']>[0]) => this.#replay.answer<Awaited<ReturnType<Narrator['nameCity']>>>('nameCity', input)
   namePlace = async (input: Parameters<Narrator['namePlace']>[0]) => this.#replay.answer<Awaited<ReturnType<Narrator['namePlace']>>>('namePlace', input)
   namePlaces = async (requests: Parameters<NonNullable<Narrator['namePlaces']>>[0]) =>

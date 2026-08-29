@@ -1,33 +1,33 @@
 import { err, ok, Rng, type Result } from '@gb/kit'
 import { validateQuest, type QuestDoc, type QuestProblem } from '@gb/quest'
-import { questView, World, type Premise, type Rect } from '@gb/world'
+import { questView, World, type Premise, type Rect, type ResolvedCharter } from '@gb/world'
 import { layOut, planTown, raiseSetup } from './blueprint.ts'
 import { briefContract } from './brief.ts'
 import type { Dropped } from './charters/resolve.ts'
 import { stopped, type ForgeError } from './errors.ts'
 import { openPlacesFor, placesOnNewLand } from './interior/budget.ts'
+import { townNeeds } from './interior/needs.ts'
 import { Avenues } from './layout/avenues.ts'
 import { districtAt } from './layout/districts.ts'
 import { streetLines } from './layout/lines.ts'
 import type { PlotSite } from './layout/plots.ts'
 import { Skyline } from './layout/skyline.ts'
-import { askCityName, askSigns, askZoneNames, type Asking } from './naming/ask.ts'
+import { askCityName, askKinds, askSigns, askZoneNames, type Asking } from './naming/ask.ts'
 import { bindings, bindNames } from './naming/bind.ts'
-import { instanceName } from './naming/placeholders.ts'
+import { instanceName, PLACEHOLDER_KIND } from './naming/placeholders.ts'
 import { writeNames, type WrittenNames } from './naming/write.ts'
 import type { Instance, InstanceCasting, Narrator, Written } from './narrator.ts'
 import { writeEachPlace } from './narrator/one-at-a-time.ts'
 import { Signs } from './narrator/signs.ts'
 import { StreetNames } from './narrator/streets.ts'
 import { readHistory } from './premise/history.ts'
+import { premiseLines } from './premise/render.ts'
 import { castOf, type Casting } from './quests/casting.ts'
 import { questDemand } from './quests/demand.ts'
 import { assemble, dress, PlaceNames, raiseShell } from './raise/assemble.ts'
-import { hangSigns, instanceRequests, nameRequests, planRaise, wantsName, type RaiseSetup } from './raise/plan.ts'
-import type { Chosen, PlannedSite } from './raise/planned.ts'
+import { hangSigns, instanceRequests, kindRequests, nameRequests, openIn, planRaise, siteBuildings, wantsName, type Decided, type RaiseSetup } from './raise/plan.ts'
+import type { Chosen, PlannedSite, Sited } from './raise/planned.ts'
 import { planSummary, summarise } from './summary.ts'
-import { flavourOf } from './theme/flavour.ts'
-import { kindWeights } from './theme/plot-mix.ts'
 
 export interface ForgeResult {
   readonly world: World
@@ -92,16 +92,19 @@ export class Forge {
    *    about.
    * 2. **The architecture.** Streets, roads, the parts of town and every
    *    building, all arithmetic, all under placeholder names: `Zone 1`,
-   *    `Instance 1`. Nothing is asked of anybody.
-   * 3. **The work.** The quests are written against that bare architecture, so
-   *    what they name is a post the plan cut and a building that stands there.
-   * 4. **The names.** The city, every part of it and every door in it, out of
-   *    the story and out of what the work does where. Written over the
-   *    placeholders in one pass.
-   * 5. **The people and the insides.** Each place that opens is written whole,
+   *    `Instance 1`, every building a `building`. Nothing is a bar or a station
+   *    and nothing is asked of anybody. It also picks which doors open.
+   * 3. **What the places are.** The writing is handed those doors and says what
+   *    each one is, and everything behind them is built to the answer.
+   * 4. **The work.** The quests are written against that architecture, so what
+   *    they name is a post the plan cut and a building that stands there.
+   * 5. **The names.** The city, every part of it and every door in it, out of
+   *    the story and out of what the work does where, and what the buildings
+   *    that never open are. Written over the placeholders in one pass.
+   * 6. **The people and the insides.** Each place that opens is written whole,
    *    told its name and the cast the quests already need standing in it, and
    *    the town is filled in around them.
-   * 6. **The binding.** The lines the quests were written under are bound to the
+   * 7. **The binding.** The lines the quests were written under are bound to the
    *    names that landed, and every draft goes through `@gb/quest` against the
    *    finished city.
    *
@@ -124,22 +127,28 @@ export class Forge {
     const history = readHistory(told?.value)
     const premise = history.premise
 
-    // 2. the architecture, under placeholder names
+    // 2. the architecture: buildings, zones and the doors that open, nothing else
     const laid = layOut(brief, rng, history)
     if (!laid.ok) return err(laid.error)
     const { world, sites, zones } = laid.value
     const setup = raiseSetup(brief, premise, world, rng, brief.openPlaces ?? openPlacesFor(sites.length))
-    const bare = planRaise(world, sites, setup)
+    const sited = siteBuildings(world, sites, setup)
+    const open = openIn(world, sited, setup)
+
+    // 3. what each of those doors is, before anything is built behind it
+    const decided = await this.#decide(world, sited, open, setup)
+    if (!decided.ok) return err(stopped(decided.error))
+    const bare = planRaise(world, sited, setup, decided.value)
     const plots = raiseShell(world, bare, new PlaceNames(bare, (one) => instanceName(one.index)))
 
-    // 3. the work, over the bare architecture
+    // 4. the work, over that architecture
     const summary = planSummary(world, bare, plots, premise)
     const written = await this.#narrator.writeQuests({ summary, sideQuests: questDemand(summary, rng.fork('quests')) })
     if (!written.ok) return err(stopped(written.error))
     const drafts = written.value
     const cast = new Cast(bare, castOf(drafts))
 
-    // 4. the names, out of the story and out of the work
+    // 5. the names, out of the story and out of the work, and what the rest of the town is
     const [city, zoneNames, signs] = await Promise.all([
       askCityName(this.#narrator, { theme: brief.theme, seed: brief.seed, ...(premise ? { premise } : {}) }),
       askZoneNames(this.#narrator, zones, { theme: brief.theme, seed: brief.seed, ...(premise ? { premise } : {}) }),
@@ -148,19 +157,21 @@ export class Forge {
     if (!city.ok) return err(stopped(city.error))
     if (!zoneNames.ok) return err(stopped(zoneNames.error))
     if (!signs.ok) return err(stopped(signs.error))
-    const planned = hangSigns(bare, signs.value)
-    const places = new Map(planned.filter(wantsName).map((one) => [plots.get(one.index)!, one.sign] as const))
+    const planned = hangSigns(bare, signs.value, setup)
+    const places = new Map(
+      planned.filter(wantsName).map((one) => [plots.get(one.index)!, { name: one.sign, kind: one.charter.word, style: one.style }] as const),
+    )
     const names: WrittenNames = { city: city.value, zones: zoneNames.value, places }
     const renamed = writeNames(world, names)
     if (!renamed.ok) return err({ code: 'unsound-world', problems: renamed.problems })
 
-    // 5. the people and the insides, written to the cast
+    // 6. the people and the insides, written to the cast
     const town = renamed.world
-    const inside = await this.#writePlaces(planned, setup, cast)
+    const inside = await this.#writeInsides(planned, setup, cast)
     if (!inside.ok) return err(stopped(inside.error))
     const wrote = dress(town, planned, plots, new PlaceNames(planned, (one) => one.sign), inside.value)
 
-    // 6. the work bound to the names that landed, then checked against the city it names
+    // 7. the work bound to the names that landed, then checked against the city it names
     const book = bindings(planned, zoneNames.value, wrote)
     // and the buildings under their own ids, so a line the model wrote as "the
     // house on plot_0031" reaches the player as the house it is
@@ -179,9 +190,9 @@ export class Forge {
   }
 
   /**
-   * The architecture of a city, with nothing written into it. See
-   * `src/blueprint.ts`: it is static and takes no narrator, because a plan is
-   * arithmetic and there is nobody to ask.
+   * The architecture of a city, with nothing written into it: the streets, the
+   * plots and nothing behind any door. See `src/blueprint.ts`: it is static and
+   * takes no narrator, because a plan is arithmetic and there is nobody to ask.
    */
   static plan(input: unknown, history?: unknown): Result<World, ForgeError> {
     return planTown(input, history)
@@ -210,7 +221,7 @@ export class Forge {
     }
     const grown =
       blocks > 0
-        ? await this.#raise(world, this.#gapSites(world, blocks, rng, premise), this.#growing(world, premise, world.interiors().length + placesOnNewLand(blocks), rng.fork('extend/people')))
+        ? await this.#raise(world, this.#gapSites(world, blocks, rng), this.#growing(world, premise, world.interiors().length + placesOnNewLand(blocks), rng.fork('extend/people')))
         : ok([] as string[])
     if (!grown.ok) return err(grown.error)
     const added = grown.value
@@ -243,6 +254,7 @@ export class Forge {
       theme: world.theme,
       ...(premise ? { premise } : {}),
       places,
+      kinds: world.charters(),
       signs: new Signs(world.seed),
       streets: StreetNames.of(world),
       // the town's own stream: which doors open is a fact about the town, so a
@@ -263,13 +275,53 @@ export class Forge {
    * quests are written between the two.
    */
   async #raise(world: World, chosen: readonly Chosen[], setup: RaiseSetup): Promise<Result<string[], ForgeError>> {
-    const bare = planRaise(world, chosen, setup)
+    const sited = siteBuildings(world, chosen, setup)
+    const open = openIn(world, sited, setup)
+    const decided = await this.#decide(world, sited, open, setup)
+    if (!decided.ok) return err(stopped(decided.error))
+    const bare = planRaise(world, sited, setup, decided.value)
     const signs = await askSigns(this.#narrator, asking(bare, setup))
     if (!signs.ok) return err(stopped(signs.error))
-    const planned = hangSigns(bare, signs.value)
-    const inside = await this.#writePlaces(planned, setup)
+    const planned = hangSigns(bare, signs.value, setup)
+    const inside = await this.#writeInsides(planned, setup)
     if (!inside.ok) return err(stopped(inside.error))
     return ok(assemble(world, planned, inside.value))
+  }
+
+  /**
+   * What each of the doors this pass opens is, asked before anything is built
+   * behind them. This is the stage the whole order exists for: the architecture
+   * put up buildings and nothing else, and until this answers there is no bar,
+   * no station and nobody's home in the town.
+   *
+   * A facade the town already wrote is not asked again: an opened door keeps
+   * what it always was, the way it keeps its sign.
+   */
+  async #decide(world: World, sited: readonly Sited[], open: ReadonlySet<number>, setup: RaiseSetup): Promise<Written<Decided>> {
+    const kinds = new Map<number, ResolvedCharter>()
+    for (const [at, one] of sited.entries()) if (one.standing?.charter) kinds.set(at, one.standing.charter)
+    const asked = new Set(sited.flatMap((_, at) => (open.has(at) && !kinds.has(at) ? [at] : [])))
+    const declared = setup.kinds.filter((one) => one.word !== PLACEHOLDER_KIND)
+    const story = setup.premise ? premiseLines(setup.premise) : undefined
+    const written = await askKinds(
+      this.#narrator,
+      {
+        theme: setup.theme,
+        ...(story ? { premise: story } : {}),
+        kinds: declared,
+        needs: townNeeds({
+          places: setup.places,
+          span: Math.max(world.grid.width, world.grid.height) * world.cellSize,
+          charters: setup.kinds,
+          ...(setup.premise ? { premise: setup.premise } : {}),
+        }),
+        places: kindRequests(sited, asked, setup),
+      },
+      declared,
+    )
+    if (!written.ok) return err(written.error)
+    for (const [at, where] of [...asked].entries()) kinds.set(where, written.value[at]!)
+    return ok({ kinds, open })
   }
 
   /**
@@ -277,7 +329,7 @@ export class Forge {
    * in it and what is lying about. Nothing to ask about is nothing asked, so a
    * growth that only opens doors that were painted on writes no places.
    */
-  async #writePlaces(planned: readonly PlannedSite[], setup: RaiseSetup, cast?: Cast): Promise<Written<readonly Instance[]>> {
+  async #writeInsides(planned: readonly PlannedSite[], setup: RaiseSetup, cast?: Cast): Promise<Written<readonly Instance[]>> {
     const requests = instanceRequests(planned, setup, cast ? (one) => cast.at(one) : undefined)
     if (!requests.length) return ok([])
     return this.#narrator.writeInstances?.(requests) ?? writeEachPlace(this.#narrator, requests)
@@ -285,51 +337,53 @@ export class Forge {
 
   /**
    * The facades a growth may open: every building standing with nothing behind
-   * its door. They go into the ranking exactly as new land does, so a painted-on
-   * door is chosen for what the place holds, the floor behind it, how near the
-   * middle of town it stands and how far it is from the doors already open.
+   * its door that the town has already said something about. They go into the
+   * ranking exactly as new land does, so a painted-on door is chosen for the
+   * floor behind it, how near the middle of town it stands and how far it is
+   * from the doors already open.
+   *
+   * A building nobody ever wrote a word about is not one of them. Opening a
+   * door means knowing what is behind it, and saying what a building is is a
+   * change to the base city rather than a growth: the one field a growth writes
+   * on a record that was already there is the door pointer.
    */
   #facadeSites(world: World, rng: Rng): Chosen[] {
     const lines = streetLines(world)
     const avenues = Avenues.from(lines.columns, lines.rows)
     const chosen: Chosen[] = []
     for (const [index, plot] of world.plots().entries()) {
-      const charter = world.charter(plot.kind)
-      // a door that already opens is never opened again
+      const charter = plot.kind === PLACEHOLDER_KIND ? undefined : world.charter(plot.kind)
+      // a door that already opens is never opened again, and one nobody ever
+      // said anything about is a wall rather than a door
       if (plot.interiorId || !charter) continue
       chosen.push({
         site: { rect: plot.rect, facing: plot.entrance.facing, entrance: plot.entrance.cell },
-        charter,
         storeys: plot.storeys,
         onAvenue: avenues.has(plot.entrance.cell),
         rng: rng.fork(`facade/${plot.id}`),
-        standing: { plotId: plot.id, name: plot.name, index },
+        standing: { plotId: plot.id, name: plot.name, index, charter },
       })
     }
     return chosen
   }
 
   /** What `extend` drops into the gaps: one building at a time, into land nothing has claimed. */
-  #gapSites(world: World, count: number, rng: Rng, premise: Premise | undefined): Chosen[] {
+  #gapSites(world: World, count: number, rng: Rng): Chosen[] {
     const chosen: Chosen[] = []
     const taken: Rect[] = []
-    const charters = world.charters()
     for (let i = 0; i < count; i++) {
       const site = this.#freeSite(world, rng, taken)
       if (!site) break
       taken.push(site.rect)
-      const word = rng.weighted(kindWeights(flavourOf(world.theme), rng.fork(`extend/mix/${i}`), charters, premise?.build))
-      const charter = charters.find((one) => one.word === word)!
       const siteRng = rng.fork(`extend/${i}`)
       // new land stands in the part of town it was dropped into, so a growth
       // never adds a building the map cannot label
       const district = districtAt(world.districts(), site.rect)
       chosen.push({
         site,
-        charter,
         onAvenue: false,
         ...(district ? { district: district.id } : {}),
-        storeys: EXTEND.storeysFor(charter, { onAvenue: false, nearness: 0 }, siteRng),
+        storeys: EXTEND.storeysFor({ onAvenue: false, nearness: 0 }, siteRng),
         rng: siteRng,
       })
     }

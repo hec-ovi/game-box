@@ -1,6 +1,6 @@
 # @gb/quest contract
 
-contractVersion: 0.11.0
+contractVersion: 0.12.0
 
 ## Purpose
 
@@ -10,8 +10,8 @@ Quests as flows: a checked graph of steps ("talk to her, get through the back do
 
 | Param | Schema | Preconditions |
 |---|---|---|
-| `compileQuest(value, world)` | [schema/quest-sheet.json](schema/quest-sheet.json) | same `world` as `validateQuest`; the sheet is untrusted JSON |
-| `validateQuest(value, world)` | [schema/quest.json](schema/quest.json) | `world` answers `hasNpc`, `hasPlot`, `hasInterior`, `hasItem`, `hasAnchor`, `hasDoor`, `hasMachine`, `opens` (`@gb/world`'s `questView(world)` does) |
+| `compileQuest(value, world)` | [schema/quest-sheet.json](schema/quest-sheet.json) | same `world` as `validateQuest`; the sheet is untrusted JSON. `nameOf` is what marker labels are written from |
+| `validateQuest(value, world)` | [schema/quest.json](schema/quest.json) | `world` answers `hasNpc`, `hasPlot`, `hasInterior`, `hasItem`, `hasAnchor`, `hasDoor`, `hasMachine`, `opens`, and `nameOf` where it can name things (`@gb/world`'s `questView(world)` does) |
 | `checkFlow(quest, world)` | a parsed `QuestDoc` | same `world`; returns the problems without the reward check |
 | `rewardFor(difficulty, faction?)` | one of `DIFFICULTIES` | none |
 | `tierFor(reward)` | a parsed `Reward` | none |
@@ -108,6 +108,24 @@ A step names its target in whatever field its kind uses, and the objective carri
 
 A door or a machine is named by id alone; where it stands is the world's to answer (`world.door(doorId)`, `world.machine(machineId)` in `@gb/world`), so the map pins it from there.
 
+## The name on the marker
+
+`markerLabel` is the words beside the marker, and `compileQuest` fills it in from what the step points at. It is the city's own name for that one thing and never a sentence composed here, so a marker never repeats the objective line the panel is already showing.
+
+| The step points at | The marker says |
+|---|---|
+| a place (`goto`, `escort`, `stash`) | the building |
+| a person (`talk`, `deliver`) | the person |
+| a door (`unlock`) or a machine (`hack`, `beat-game`) | what the city calls that door or that screen |
+| a thing (`collect`, `buy`) | the thing |
+| nothing (`choice`, `join`, `any-of`, `complete`, `fail`) | nothing: the field stays off |
+
+A step that points at several at once takes one name, the way a pin stands in one spot: the place first, then whoever is there, then the lock, the screen or the thing. A delivery names the person it goes to, because that is where the player has to walk.
+
+The name is read off the world through `nameOf(id)`, which answers what the city calls a person, a building, a thing, or the building a door or a screen stands in, and nothing when it has no name for that id. Two things follow. A quest compiled against the bare architecture labels a marker `Instance 7`, and `@gb/forge`'s `bindNames` turns that into the building's real name with the rest of the words the quest says, so no name has to be invented twice. And a view that answers `nameOf` not at all compiles quests whose steps carry no marker label: the quest still plays, and the interface falls back to what it already knows about the spot.
+
+A name too long for the field is cut to fit (40 characters, the last one a full stop), the same way `bindNames` cuts one that outgrows the field when the real name lands, so a well named building never costs a quest its compile.
+
 ## What credits a step
 
 A step is credited by the thing happening in the world, never by a record of intent: a flag, a menu state or an agreement is not a step done. Each kind waits for exactly one event, and the game (`@gb/app` in play, `@gb/forge`'s harness when proving a quest) sends that event when the thing has happened. Anything else moves nothing and comes back empty.
@@ -189,7 +207,7 @@ A writer who is good at a story and bad at a directed graph tells the errand as 
 
 **Forks.** A `choice` beat's `options` are the roads: a label and a short run of beats each. Every road leads on to the beat after the fork, or to the ending when the fork is last. A road runs plain beats, so a fork does not nest inside a fork; several forks in one quest do the same job.
 
-**What the compiler puts in.** The step ids and every edge; the pick-up in front of a hand-over the flow cannot otherwise satisfy (a beat that picks the thing up later is moved in front of the one that needs it, keeping its own line; only where nothing picks it up at all is a `collect` written, with the hand-over's line as its hint); a `talk` that brings a companion along in front of an `escort` nobody agreed to; the `complete` step; and the tier, read off what the reward hands over, after which the pay is settled into that band.
+**What the compiler puts in.** The step ids and every edge; the name beside each step's marker, read off the city (above); the pick-up in front of a hand-over the flow cannot otherwise satisfy (a beat that picks the thing up later is moved in front of the one that needs it, keeping its own line; only where nothing picks it up at all is a `collect` written, with the hand-over's line as its hint); a `talk` that brings a companion along in front of an `escort` nobody agreed to; the `complete` step; and the tier, read off what the reward hands over, after which the pay is settled into that band.
 
 **What it never puts in.** People, places and things. A beat naming an id the world has not got comes back as a refusal carrying that id, pointed at the beat: `beats.3: npc npc_9999 is not in the world`. So does a flow that still will not hold up. Nothing is repaired by inventing.
 
@@ -266,6 +284,7 @@ Every id is checked against the world with the rest of the quest: an access to a
 - A quest is only ever run after `validateQuest` accepted it, so the runtime never has to handle a broken flow.
 - What `compileQuest` hands back has already passed `validateQuest` against the world it was compiled for, so a caller never has to check it again.
 - Compiling invents no person, place or thing: every id in a compiled quest was written on a beat.
+- A marker label is a name the city gave, never words written here: it is what `nameOf` answers for the one thing the step points at, cut to what the field takes, and it is left off entirely where the city has no name to give.
 - Solvability is proved before play: walking the flow forward, every `deliver`, `stash`, `has-item` and `escort` is guaranteed to be satisfiable on every path that reaches it. A `join` keeps what its branches gathered; every other merge, `any-of` included, keeps only what all of them guarantee.
 - Counting is over item instances, so a pool of five crates satisfies a count of three and the same crate never counts twice.
 - A flow runs forward only: cycles are rejected, so a quest cannot trap the player.
@@ -288,4 +307,4 @@ Every id is checked against the world with the rest of the quest: an access to a
 
 A new beat is a variant in `beats.ts` (kind first, `objective` last, since that is the order a constrained model writes properties in), a case in `stepFor`, and whatever the flow needs in front of it in `compile.ts`. A step kind with no beat stays writable as a document.
 
-New step kinds, conditions, effects and failure rules are additive: extend the union, teach `checkReferences` what it names in the world (widening `WorldView` when the world has to answer something new), teach `checkEdges`/`checkShape` what they promise, teach `checkSolvability` what they guarantee, teach `targetOf` what the new kind points at (the switch there is exhaustive, so it will not compile until you do), teach `matchStep` which event credits it and add that event to "What credits a step", add it to `resolvesItself` if it needs no player, bump the minor contractVersion. A new reward field goes on `reward.ts`, lands through one `@gb/play` call in `payReward`, and gets a column in `REWARD_TABLE`. New fields go on as optional, because exported worlds contain quests written without them. Never change what an existing kind means. Regenerate `schema/` (`pnpm --filter @gb/quest run generate`) and run `pnpm --filter @gb/quest test` in the same change.
+New step kinds, conditions, effects and failure rules are additive: extend the union, teach `checkReferences` what it names in the world (widening `WorldView` when the world has to answer something new), teach `checkEdges`/`checkShape` what they promise, teach `checkSolvability` what they guarantee, teach `targetOf` what the new kind points at (the switch there is exhaustive, so it will not compile until you do) and `markedId` which of those its marker is named after, teach `matchStep` which event credits it and add that event to "What credits a step", add it to `resolvesItself` if it needs no player, bump the minor contractVersion. A new reward field goes on `reward.ts`, lands through one `@gb/play` call in `payReward`, and gets a column in `REWARD_TABLE`. New fields go on as optional, because exported worlds contain quests written without them. Never change what an existing kind means. Regenerate `schema/` (`pnpm --filter @gb/quest run generate`) and run `pnpm --filter @gb/quest test` in the same change.

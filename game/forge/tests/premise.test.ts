@@ -1,5 +1,6 @@
 import type { Premise, World } from '@gb/world'
 import { describe, expect, it } from 'vitest'
+import { townNeeds } from '../src/interior/needs.ts'
 import { digest, planned } from './support.ts'
 
 /**
@@ -40,46 +41,42 @@ const SIZE = { theme: 'quiet coastal town', blocksX: 5, blocksY: 5 }
 
 const town = (history: unknown, seed = SEED, overrides: Record<string, unknown> = {}) => planned(seed, { ...SIZE, ...overrides }, history)
 
-const counts = (world: World): Map<string, number> => {
-  const held = new Map<string, number>()
-  for (const plot of world.plots()) held.set(plot.kind, (held.get(plot.kind) ?? 0) + 1)
-  return held
-}
+/** The footprints and heights a brief laid out, which is the whole of what an architecture is. */
+const architecture = (world: World): string =>
+  world.plots().map((plot) => `${plot.rect.x},${plot.rect.y},${plot.rect.w}x${plot.rect.h},${plot.storeys}`).join()
 
-const pooled = (worlds: readonly World[]): Map<string, number> => {
-  const held = new Map<string, number>()
-  for (const world of worlds) for (const [kind, n] of counts(world)) held.set(kind, (held.get(kind) ?? 0) + n)
-  return held
-}
-
-describe('a city drawn against a history', () => {
-  it('lays out two different towns from one seed and two histories, and the same town twice from one', () => {
-    // the whole point of the stage: a premise nothing can measure costs a call
-    // and buys a feeling
-    const shipping = town(SHIPPING)
-    expect(digest(town(SHIPPING).toJSON()), 'one history laid out two towns').toBe(digest(shipping.toJSON()))
-    expect(digest(town(CAMPUS).toJSON()), 'two histories laid out one town').not.toBe(digest(shipping.toJSON()))
-
-    // the push is measured over a few seeds: one town's dice can halve a kind on their own
-    const seeds = [SEED, 'two-histories', 'three-histories', 'four-histories', 'five-histories']
-    const port = pooled(seeds.map((seed) => town(SHIPPING, seed)))
-    const college = pooled(seeds.map((seed) => town(CAMPUS, seed)))
-    expect(port.get('warehouse')!, 'the port has no more sheds than the campus town').toBeGreaterThan(college.get('warehouse')! * 2)
-    expect(port.get('market')!, 'the port has no more of a market than the campus town').toBeGreaterThan(college.get('market')! * 2)
-    expect(college.get('cafe')!, 'the campus town has no more cafes than the port').toBeGreaterThan(port.get('cafe')! * 2)
+/** What a town asks the writing for, in the words it asks in. */
+const asked = (world: World) =>
+  townNeeds({
+    places: 3,
+    span: Math.max(world.grid.width, world.grid.height) * world.cellSize,
+    charters: world.charters(),
+    ...(world.premise() ? { premise: world.premise()! } : {}),
   })
 
-  it('puts up what the history demands', () => {
-    // "a hospital, because of the flood" has to be a building, not a sentence
+describe('a city drawn against a history', () => {
+  it('draws one architecture whatever the history, because a footprint is not a kind of place', () => {
+    const shipping = town(SHIPPING)
+    expect(digest(town(SHIPPING).toJSON()), 'one history laid out two towns').toBe(digest(shipping.toJSON()))
+    // what a town holds is the writing's now, so two histories are two towns to
+    // write and one town to lay out: the same blocks, the same doors, the same
+    // heights, and nothing in either of them is a warehouse or an office yet
+    expect(architecture(town(CAMPUS)), 'a history moved a footprint').toBe(architecture(shipping))
+    expect(new Set(shipping.plots().map((plot) => plot.kind))).toEqual(new Set(['building']))
+  })
+
+  it('asks the writing for what the history demands', () => {
+    // "a hospital, because of the flood" has to be a building, not a sentence,
+    // and the only stage that can make one a building is the writing
     for (const [premise, demanded] of [
       [SHIPPING, 'warehouse'],
       [CAMPUS, 'office'],
     ] as const) {
-      for (const seed of ['demand-1', 'demand-2', 'demand-3']) {
-        const world = town(premise, seed, { blocksX: 3, blocksY: 3 })
-        expect(world.plotsOfKind(demanded).length, `${seed} has no ${demanded} at all`).toBeGreaterThan(0)
-      }
+      const world = town(premise, 'demand-1', { blocksX: 3, blocksY: 3 })
+      expect(asked(world).map((need) => need.kind), `${demanded} is not asked for`).toContain(demanded)
     }
+    // and a town with no history asks for nothing in particular
+    expect(asked(town(undefined)).every((need) => need.kind === undefined)).toBe(true)
   })
 
   it('writes the history into the city file, so whoever is sent it can read what the town is about', () => {
@@ -123,7 +120,10 @@ describe('a history that fails the contract in one place', () => {
     expect(premise!.livesOn).toBe(SHIPPING.livesOn)
     expect(premise!.sides).toEqual(SHIPPING.sides)
     expect(premise!.build).toEqual({ moreOf: ['warehouse', 'bar'], fewerOf: ['office'], mustHave: ['warehouse'] })
-    expect(world.plotsOfKind('warehouse').length).toBeGreaterThan(0)
+    // and the word that held up is what the writing is asked for
+    const kinds = asked(world).map((need) => need.kind)
+    expect(kinds).toContain('warehouse')
+    expect(kinds).not.toContain('lighthouse')
   })
 
   it('still drops a history nothing can be salvaged from', () => {

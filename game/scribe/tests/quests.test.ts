@@ -6,7 +6,7 @@ import { Scribe } from '../src/index.ts'
 import { fakeModel, type Sent } from './fake-model.ts'
 import { backgroundOf, lifeOf, shellOf } from './people.ts'
 import { HACK_JOB, HIGH_SCORE, KEY_RUN, LOCKED, SHOPPING, lockedSheet } from './locked-city.ts'
-import { PLAIN, charterOf } from './places.ts'
+import { PLAIN, STANDING, charterOf } from './places.ts'
 import { stopped, wrote } from './wrote.ts'
 
 const CITY: WorldSummary = {
@@ -247,6 +247,7 @@ describe('writing quests', () => {
   it('takes a quest for every slot from a stand-in a caller hands in, which nothing in the game does', async () => {
     const { sidecar } = fakeModel(['no-call'])
     const standIn = {
+      writePlaces: async () => ok([]),
       nameCity: async () => ok('Cold Harbour'),
       namePlace: async () => ok('Somewhere'),
       describeNpc: async () => ok({ name: 'Someone', personality: 'Stands there.', knowledge: ['a', 'b'] }),
@@ -342,7 +343,6 @@ describe('writing quests', () => {
     const { sent, sidecar } = fakeModel((call) =>
       call.toolName === 'write_instance'
         ? {
-            name: 'The Anchor',
             character: 'A bar the harbour crews drink in before the early tide.',
             people: [
               {
@@ -362,7 +362,8 @@ describe('writing quests', () => {
     const scribe = new Scribe({ sidecar, seed: 'harbour', concurrency: 1 })
 
     await wrote(scribe.writeInstances([
-      { index: 0, kind: 'bar', name: 'Place 0', cast: [], charter: charterOf('bar'), theme: 'port', rooms: ['main'], posts: [{ postId: 'anchor_0001', role: 'bartender', index: 0 }], things: [], has: PLAIN },
+      // the two passes are matched on the sign over the door, which the naming pass wrote and this call is handed
+      { index: 0, kind: 'bar', name: 'The Anchor', cast: [], charter: charterOf('bar'), theme: 'port', ...STANDING, rooms: ['main'], posts: [{ postId: 'anchor_0001', role: 'bartender', index: 0 }], things: [], has: PLAIN },
     ]))
     await wrote(scribe.writeQuests({ summary: CITY, sideQuests: 0 }))
 

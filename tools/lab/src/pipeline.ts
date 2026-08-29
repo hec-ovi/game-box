@@ -209,6 +209,8 @@ export function capturing(inner: Narrator, into: Captured, history?: History): N
       return written
     },
     namePlace: (input) => inner.namePlace(input),
+    // what each door turns out to be, asked before the quests are written
+    writePlaces: (input) => inner.writePlaces(input),
     describeNpc: (input) => inner.describeNpc(input),
     describeItem: (input) => inner.describeItem(input),
     async writeQuests(input) {

@@ -1,10 +1,14 @@
-Name these buildings, all at once. None of them opens: each is a door, a sign
-and a frontage the player reads from the street, so the sign is all it is.
+Name these buildings, all at once. What the player gets of each of them is a
+door, a sign and a frontage read from the street.
 
 City: {{cityName}}
 Theme: {{theme}}
 What the town is about:
 {{premise}}
+
+## What these buildings are
+
+{{kinds}}
 
 ## The buildings
 

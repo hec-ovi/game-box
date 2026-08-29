@@ -3,7 +3,8 @@ import { tierFor } from './balance.ts'
 import { beatCount, beatPool, questSheetContract, type Beat, type PlainBeat, type QuestSheet } from './beats.ts'
 import { Held } from './held.ts'
 import { LINES } from './lines.ts'
-import type { QuestDoc } from './schema.ts'
+import { markerLabel } from './marker.ts'
+import type { QuestDoc, Step } from './schema.ts'
 import { validateQuest, type QuestError } from './validate.ts'
 import type { WorldView } from './world-view.ts'
 
@@ -42,7 +43,7 @@ export interface CompiledQuest {
 export function compileQuest(value: unknown, world: WorldView): Result<CompiledQuest, SheetError> {
   const parsed = questSheetContract.parse(value)
   if (!parsed.ok) return err({ code: 'invalid-sheet', violations: parsed.error })
-  return new Compiler(parsed.value).run(world)
+  return new Compiler(parsed.value, world).run()
 }
 
 /** As many steps as a quest document holds, which a run of beats with forks in it can outgrow. */
@@ -65,15 +66,17 @@ type Carrying = Extract<PlainBeat, { kind: 'collect' | 'buy' | 'deliver' | 'stas
 
 class Compiler {
   #sheet: QuestSheet
+  #world: WorldView
   #steps: StepDraft[] = []
   #beatOf = new Map<string, string>()
   #open: Link[] = []
 
-  constructor(sheet: QuestSheet) {
+  constructor(sheet: QuestSheet, world: WorldView) {
     this.#sheet = sheet
+    this.#world = world
   }
 
-  run(world: WorldView): Result<CompiledQuest, SheetError> {
+  run(): Result<CompiledQuest, SheetError> {
     const last = this.#sheet.beats.length - 1
     this.#segment(this.#sheet.beats, Held.empty(), 'beats')
     this.#place({ kind: 'complete', objective: LINES.done }, `beats.${last}`)
@@ -83,7 +86,7 @@ class Compiler {
       return err({ code: 'unwritable-beat', problems: [{ where: 'beats', message }] })
     }
 
-    const validated = validateQuest(this.#document(), world)
+    const validated = validateQuest(this.#document(), this.#world)
     if (!validated.ok) return err({ code: 'unwritable-beat', problems: this.#translate(validated.error) })
     return ok({ quest: validated.value, beatOf: this.#beatOf })
   }
@@ -224,12 +227,23 @@ class Compiler {
 
   /** Puts a step down, wires whatever was waiting into it, and leaves nothing open. */
   #place(body: Record<string, unknown>, where: string): StepDraft {
-    const step = { ...body, id: stepId(this.#steps.length + 1) } as StepDraft
+    const step = { ...body, ...this.#marker(body), id: stepId(this.#steps.length + 1) } as StepDraft
     for (const link of this.#open) link(step.id)
     this.#open = []
     this.#steps.push(step)
     this.#beatOf.set(step.id, where)
     return step
+  }
+
+  /**
+   * The name to write beside this step's marker, read off the city it is being
+   * compiled against. A body carries a step's own fields under a step's own
+   * names, so the exhaustive switch that says what a finished step points at
+   * answers it for one still being built.
+   */
+  #marker(body: Record<string, unknown>): { markerLabel?: string } {
+    const label = markerLabel(body as unknown as Step, this.#world)
+    return label ? { markerLabel: label } : {}
   }
 
   /** What the validator refused, said about the beats it was written from. */

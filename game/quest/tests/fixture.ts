@@ -16,6 +16,23 @@ export const SOLID_LOT = 'plot_0002'
 const NPCS = new Set([MARA, HOLLIS, WITNESS])
 const ITEMS = new Set<string>([...CRATES, LEDGER])
 
+/**
+ * What this city calls each of them. A door and a screen are named by the
+ * building they stand in, because that is the spot a marker for either lands on.
+ */
+const NAMES = new Map<string, string>([
+  [MARA, 'Mara'],
+  [HOLLIS, 'Hollis'],
+  [WITNESS, 'The witness'],
+  [LEDGER, 'The ledger'],
+  ['plot_0001', 'The warehouse'],
+  [SOLID_LOT, 'The lot'],
+  ['interior_0001', 'The warehouse'],
+  [BACK_DOOR, 'The warehouse'],
+  [TERMINAL, 'The warehouse'],
+  ...CRATES.map((itemId, at) => [itemId, `Crate ${at + 1}`] as const),
+])
+
 /** A warehouse with a locked back door and a terminal, three people, five crates and a ledger, and a solid lot beside it. */
 export const world: WorldView = {
   hasNpc: (id) => NPCS.has(id),
@@ -26,6 +43,7 @@ export const world: WorldView = {
   hasDoor: (id) => id === BACK_DOOR,
   hasMachine: (id) => id === TERMINAL,
   opens: (id) => id === 'plot_0001',
+  nameOf: (id) => NAMES.get(id),
 }
 
 /** A quest as an author writes it: the envelope is not theirs to fill in. */

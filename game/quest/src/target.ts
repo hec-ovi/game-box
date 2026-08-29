@@ -61,6 +61,21 @@ export function targetOf(step: Step): ObjectiveTarget {
   }
 }
 
+/**
+ * The one thing a step's marker is named after.
+ *
+ * A step often points at several things at once, and a marker stands in one
+ * spot with room for one name, so this picks the same one a map pin does: the
+ * place first, then whoever is there, then the lock, the screen or the thing
+ * itself. A delivery names the parcel and the person it goes to, and the person
+ * is where the player has to go. Nothing for a step that sends them nowhere.
+ */
+export function markedId(target: ObjectiveTarget): string | undefined {
+  const place = target.place
+  if (place) return 'plotId' in place ? place.plotId : place.interiorId
+  return target.npcId ?? target.doorId ?? target.machineId ?? target.itemId
+}
+
 function things(step: CountedStep): ObjectiveTarget {
   return { itemId: step.itemId, ...(step.alternates?.length ? { alternates: step.alternates } : {}) }
 }

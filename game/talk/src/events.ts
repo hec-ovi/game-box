@@ -17,6 +17,8 @@ export type Grant =
 export type TalkEvent =
   /** One spoken turn: what their body does, if anything, and the words out loud. */
   | { readonly kind: 'turn'; readonly does?: string; readonly says: string }
+  /** The turn reached no model, so the person says nothing. Whatever they do about it still follows. */
+  | { readonly kind: 'silent' }
   | { readonly kind: 'answered'; readonly answer: Answer }
   | { readonly kind: 'did'; readonly action: ActionName; readonly detail?: string }
   /** The player earned one of this person's background facts; the codex holds it now. */

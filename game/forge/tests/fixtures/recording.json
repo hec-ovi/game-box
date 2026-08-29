@@ -1,59 +1,75 @@
 {
  "brief": {
   "theme": "quiet coastal town",
-  "seed": "recorded",
+  "seed": "probe",
   "blocksX": 3,
   "blocksY": 3
  },
  "calls": [
   {
    "method": "writePremise",
-   "key": "183b86c1d66c5125ef95687b7d9298d3",
+   "key": "909be20250d100de9069ebb2cef29b36",
    "output": {
     "ok": true,
     "value": {
-     "livesOn": "The town lives on data cooling. The ocean here is warm, but the current runs deep and cold, three miles out. The big firms pipe it up through black iron stacks that hiss day and night. The water goes in, the servers go in, they get hot, the cold water takes the heat away, and the warm water goes back into the sea where the jellyfish thrive. It is a clean trade. No smoke. Just the hum of the pumps.",
-     "happened": "Six months ago, the main intake pipe burst. Not a crack, a burst. The pressure was too high because the new cooling units were too efficient, too tight. They blew the gasket in the old sector. For three days, the servers overheated. The big firm, Aetheris, shut down the grid to save the hardware. The town went dark, hot, and silent. When the power came back, the air smelled of ozone and dead fish.",
-     "stake": "The ownership of the old intake sector. Aetheris says they own the land under the pipes because they pay the lease. The local union, The Keepers, says they own the rights to the water flow and the land because their grandfathers laid the first pipes before Aetheris was a name. If Aetheris gets the sector, they can build a second plant on top of the old residential blocks. If The Keepers keep it, A",
+     "livesOn": "The town runs on offshore sub-sea survey contracts and deep-water acoustic telemetry. Coreline Instruments owns the deep-water testing buoys and sensor arrays anchored across the shelf, while the local salvage crews and drydock mechanics keep their uncrewed survey vessels, tether lines, and seabed probes running day and night.",
+     "happened": "Three weeks ago an automated deep-trench probe popped back to the surface off the breakers six months early, completely scorched, with its onboard optical telemetry core still transmitting encrypted pings. Coreline's salvage crew locked down the main quay to haul it in, but half the data canisters broke loose in the surf before they could secure the rig.",
+     "stake": "The physical telemetry core from the scorched probe, which is currently wedged in a submerged cable tangle under the old crane pier.",
      "sides": [
       {
-       "name": "Aetheris",
-       "wants": "To demolish the old sector and build the Expansion. They say it is progress, that the old pipes are inefficient, that the land is wasted. They want the contracts to be ironclad so no local can claim a share of the cooling revenue."
+       "name": "Coreline Operations",
+       "wants": "To lock down the entire shoreline, recover every lost telemetry capsule, and keep the probe data sealed away from external auditors."
       },
       {
-       "name": "The Keepers",
-       "wants": "To keep the sector as a protected zone. They say the old pipes are still working, that they have maintained them for generations, and that Aetheris is trying to buy the town by buying the water. They want the lease renegotiated so the town gets a cut of the efficiency savings."
+       "name": "The Basin Salvage Pool",
+       "wants": "To dredge up the telemetry core themselves, crack the survey data, and sell the seabed anomaly coordinates on the open market to clear their dock debts."
       }
      ],
      "common": [
-      "The smell of ozone lingers even in the rain.",
-      "Aetheris is buying up apartments, one by one, to push the locals out.",
-      "The pumps never stop. If you listen closely, you can hear the heartbeat of the town in the floorboards.",
-      "The water is warmer than it used to be. The jellyfish are getting bigger."
+      "The deep sonar array off the north shelf never shuts down, and that hum comes right through the floorboards at low tide.",
+      "Watch your step along the south conduit: the salt mist shorts the outdoor junction boxes every time the wind turns.",
+      "The divers in the red coveralls work for Coreline, and they don't drink on the same side of the pier as the crane operators.",
+      "If you find a sealed telemetry canister washed up in the kelp, don't crack the casing or you'll have four corporate goons on your neck by morning.",
+      "The old boatyard was supposed to be a municipal marina until the telemetry firm bought the lease right out from under the council."
      ],
      "build": {
       "moreOf": [
+       "workshop",
        "warehouse",
-       "apartment",
+       "bar",
        "clinic"
       ],
       "fewerOf": [
+       "hotel",
        "shop",
-       "chapel"
+       "market"
       ],
       "mustHave": [
-       "office",
-       "bar",
+       "warehouse",
+       "workshop",
        "clinic",
-       "warehouse"
+       "bar",
+       "office"
       ]
      }
     }
    }
   },
   {
+   "method": "writePlaces",
+   "key": "f0e4596895db1b2762504c29e64666b4",
+   "output": {
+    "ok": true,
+    "value": [
+     "bar",
+     "warehouse",
+     "house"
+    ]
+   }
+  },
+  {
    "method": "writeQuests",
-   "key": "64ba5bec5eda3b0d3c6c3f02e6bb7e0a",
+   "key": "c479528f65cdcd12aa7ab5a3489b96a4",
    "output": {
     "ok": true,
     "value": [
@@ -62,509 +78,100 @@
       "schemaVersion": 1,
       "id": "quest_0001",
       "kind": "main",
-      "title": "The Gasket in the Old Sector",
-      "summary": "Aetheris is locking down the old intake sector. I need you to get the original lease from the bar's safe before they wipe the records. It's the only proof the Keepers have.",
-      "giverNpcId": "npc_0012",
-      "difficulty": "small",
+      "title": "The Scorched Telemetry",
+      "summary": "We picked up the telemetry broadcast from the scorched deep-trench probe before Coreline could jam the frequency, but the decryption key is fragmented across the dock logs. I need someone to pull the coordinates from my terminal, check with the crew at Instance 9, and retrieve the telemetry canister from Instance 13 before the corporate divers sweep the quay.",
+      "giverNpcId": "npc_0010",
+      "difficulty": "standard",
+      "failWhen": [],
       "startStepId": "step_0001",
       "steps": [
        {
         "id": "step_0001",
-        "objective": "Talk to the receptionist at Instance 46 about the lease dispute.",
+        "objective": "Get the screen code out of Person 10 at Instance 52.",
         "next": [
          "step_0002"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "talk",
-        "npcId": "npc_0012"
-       },
-       {
-        "id": "step_0002",
-        "objective": "Walk to Instance 39.",
-        "next": [
-         "step_0003"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "goto",
-        "place": {
-         "plotId": "plot_0039"
-        }
-       },
-       {
-        "id": "step_0003",
-        "objective": "Ask the bartender at Instance 39 for the safe code.",
-        "next": [
-         "step_0004"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "talk",
-        "npcId": "npc_0004"
-       },
-       {
-        "id": "step_0004",
-        "objective": "Get the screen code out of Person 1 at Instance 28.",
-        "next": [
-         "step_0005"
         ],
         "requires": [],
         "effects": [
          {
           "kind": "give-password",
-          "password": "kestrel-81"
+          "password": "beacon-77"
          }
         ],
         "kind": "talk",
-        "npcId": "npc_0001"
+        "npcId": "npc_0010"
        },
        {
-        "id": "step_0005",
-        "objective": "Hack the screen at Instance 28 to get the deed.",
+        "id": "step_0002",
+        "objective": "Access the locked desk screen at Instance 52 in Zone 1",
         "next": [
-         "step_0006"
+         "step_0003"
         ],
         "requires": [],
         "effects": [],
         "kind": "hack",
-        "machineId": "machine_0001"
+        "machineId": "machine_0002"
        },
        {
-        "id": "step_0006",
-        "objective": "Walk to Instance 28 to check the deed on the counter.",
+        "id": "step_0003",
+        "objective": "Go to Instance 9 in Zone 1",
         "next": [
-         "step_0007"
+         "step_0004"
         ],
         "requires": [],
         "effects": [],
         "kind": "goto",
         "place": {
-         "plotId": "plot_0028"
+         "plotId": "plot_0009"
         }
        },
        {
+        "id": "step_0004",
+        "objective": "Talk to Person 8 at Instance 9 in Zone 1",
+        "next": [
+         "step_0005"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0008"
+       },
+       {
+        "id": "step_0005",
+        "objective": "Go to Instance 13 in Zone 1",
+        "next": [
+         "step_0006"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0013"
+        }
+       },
+       {
+        "id": "step_0006",
+        "objective": "Take Thing 7 from Instance 13 in Zone 1",
+        "next": [
+         "step_0007"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "collect",
+        "itemId": "item_0007",
+        "allowSteal": false
+       },
+       {
         "id": "step_0007",
-        "objective": "Pick up the deed from the counter at Instance 28.",
+        "objective": "Give Thing 7 to Person 10 at Instance 52 in Zone 1",
         "next": [
          "step_0008"
         ],
         "requires": [],
         "effects": [],
-        "kind": "collect",
-        "itemId": "item_0001",
-        "allowSteal": false
-       },
-       {
-        "id": "step_0008",
-        "objective": "Walk back to Instance 46.",
-        "next": [
-         "step_0009"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "goto",
-        "place": {
-         "plotId": "plot_0046"
-        }
-       },
-       {
-        "id": "step_0009",
-        "objective": "Hand the deed to the receptionist at Instance 46.",
-        "next": [
-         "step_0010"
-        ],
-        "requires": [],
-        "effects": [],
         "kind": "deliver",
-        "itemId": "item_0001",
-        "toNpcId": "npc_0012"
-       },
-       {
-        "id": "step_0010",
-        "objective": "The job is done.",
-        "next": [],
-        "requires": [],
-        "effects": [],
-        "kind": "complete"
-       }
-      ],
-      "reward": {
-       "money": 50,
-       "reputation": 0,
-       "faction": "town",
-       "items": [
-        "item_0009"
-       ]
-      }
-     },
-     {
-      "format": "game-box.quest",
-      "schemaVersion": 1,
-      "id": "quest_0002",
-      "kind": "side",
-      "title": "The Kestrel Code",
-      "summary": "I need a favour. Old Man Halloway is stuck in his own house because he forgot the code to his mail box. He says it starts with a bird. Go to the office next door, hack the terminal there, find the master log, and read it back to me. I'll tell you what to do with it.",
-      "giverNpcId": "npc_0004",
-      "difficulty": "small",
-      "startStepId": "step_0001",
-      "steps": [
-       {
-        "id": "step_0001",
-        "objective": "Talk to Silas at the bar",
-        "next": [
-         "step_0002"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "talk",
-        "npcId": "npc_0004"
-       },
-       {
-        "id": "step_0002",
-        "objective": "Walk to the office, Instance 46",
-        "next": [
-         "step_0003"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "goto",
-        "place": {
-         "plotId": "plot_0046"
-        }
-       },
-       {
-        "id": "step_0003",
-        "objective": "Get the screen code out of Person 12 at Instance 46.",
-        "next": [
-         "step_0004"
-        ],
-        "requires": [],
-        "effects": [
-         {
-          "kind": "give-password",
-          "password": "gable-21"
-         }
-        ],
-        "kind": "talk",
-        "npcId": "npc_0012"
-       },
-       {
-        "id": "step_0004",
-        "objective": "Hack the ledger screen in the office",
-        "next": [
-         "step_0005"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "hack",
-        "machineId": "machine_0003"
-       },
-       {
-        "id": "step_0005",
-        "objective": "Tell Silas about the code",
-        "next": [
-         "step_0006"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "talk",
-        "npcId": "npc_0004"
-       },
-       {
-        "id": "step_0006",
-        "objective": "Walk to the house, Instance 28",
-        "next": [
-         "step_0007"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "goto",
-        "place": {
-         "plotId": "plot_0028"
-        }
-       },
-       {
-        "id": "step_0007",
-        "objective": "Get the screen code out of Person 1 at Instance 28.",
-        "next": [
-         "step_0008"
-        ],
-        "requires": [],
-        "effects": [
-         {
-          "kind": "give-password",
-          "password": "kestrel-81"
-         }
-        ],
-        "kind": "talk",
-        "npcId": "npc_0001"
-       },
-       {
-        "id": "step_0008",
-        "objective": "Unlock the mail box at Instance 28 with the code 'kestrel-81'",
-        "next": [
-         "step_0009"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "hack",
-        "machineId": "machine_0001"
-       },
-       {
-        "id": "step_0009",
-        "objective": "Take the letter from the mail box",
-        "next": [
-         "step_0010"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "collect",
-        "itemId": "item_0002",
-        "allowSteal": false
-       },
-       {
-        "id": "step_0010",
-        "objective": "Return to the bar, Instance 39",
-        "next": [
-         "step_0011"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "goto",
-        "place": {
-         "plotId": "plot_0039"
-        }
-       },
-       {
-        "id": "step_0011",
-        "objective": "Give the letter to Silas",
-        "next": [
-         "step_0012"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "deliver",
-        "itemId": "item_0002",
-        "toNpcId": "npc_0004"
-       },
-       {
-        "id": "step_0012",
-        "objective": "The job is done.",
-        "next": [],
-        "requires": [],
-        "effects": [],
-        "kind": "complete"
-       }
-      ],
-      "reward": {
-       "money": 85,
-       "reputation": 0,
-       "faction": "town",
-       "items": [
-        "item_0004"
-       ]
-      }
-     },
-     {
-      "format": "game-box.quest",
-      "schemaVersion": 1,
-      "id": "quest_0003",
-      "kind": "side",
-      "title": "The Kestrel Code",
-      "summary": "My mail is stuck in the box at 28. The code is kestrel-81. Go get it. It\u2019s not much, but it keeps the lights on in here.",
-      "giverNpcId": "npc_0001",
-      "difficulty": "small",
-      "startStepId": "step_0001",
-      "steps": [
-       {
-        "id": "step_0001",
-        "objective": "Talk to Person 1 about the mail at Instance 28.",
-        "next": [
-         "step_0002"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "talk",
-        "npcId": "npc_0001"
-       },
-       {
-        "id": "step_0002",
-        "objective": "Get the screen code out of Person 1 at Instance 28.",
-        "next": [
-         "step_0003"
-        ],
-        "requires": [],
-        "effects": [
-         {
-          "kind": "give-password",
-          "password": "kestrel-81"
-         }
-        ],
-        "kind": "talk",
-        "npcId": "npc_0001"
-       },
-       {
-        "id": "step_0003",
-        "objective": "Hack the mail machine at Instance 28 using the code kestrel-81.",
-        "next": [
-         "step_0004"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "hack",
-        "machineId": "machine_0001"
-       },
-       {
-        "id": "step_0004",
-        "objective": "Collect the letter from the mail machine.",
-        "next": [
-         "step_0005"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "collect",
-        "itemId": "item_0001",
-        "allowSteal": false
-       },
-       {
-        "id": "step_0005",
-        "objective": "Walk 110 metres to Instance 39.",
-        "next": [
-         "step_0006"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "goto",
-        "place": {
-         "plotId": "plot_0039"
-        }
-       },
-       {
-        "id": "step_0006",
-        "objective": "Give the letter to Person 4 at Instance 39.",
-        "next": [
-         "step_0007"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "deliver",
-        "itemId": "item_0001",
-        "toNpcId": "npc_0004"
-       },
-       {
-        "id": "step_0007",
-        "objective": "The job is done.",
-        "next": [],
-        "requires": [],
-        "effects": [],
-        "kind": "complete"
-       }
-      ],
-      "reward": {
-       "money": 40,
-       "reputation": 0,
-       "faction": "town",
-       "items": [],
-       "access": []
-      }
-     },
-     {
-      "format": "game-box.quest",
-      "schemaVersion": 1,
-      "id": "quest_0004",
-      "kind": "side",
-      "title": "The Ledger Code",
-      "summary": "My boss at the office needs me to verify a payment. I don't know the code to the ledger, and the bartender here knows the numbers better than the accountants. If you can get me into that machine, I'll settle up.",
-      "giverNpcId": "npc_0004",
-      "difficulty": "small",
-      "startStepId": "step_0001",
-      "steps": [
-       {
-        "id": "step_0001",
-        "objective": "Talk to the bartender at Instance 39 about the ledger.",
-        "next": [
-         "step_0002"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "talk",
-        "npcId": "npc_0004"
-       },
-       {
-        "id": "step_0002",
-        "objective": "Walk to Instance 46.",
-        "next": [
-         "step_0003"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "goto",
-        "place": {
-         "plotId": "plot_0046"
-        }
-       },
-       {
-        "id": "step_0003",
-        "objective": "Get the screen code out of Person 12 at Instance 46.",
-        "next": [
-         "step_0004"
-        ],
-        "requires": [],
-        "effects": [
-         {
-          "kind": "give-password",
-          "password": "gable-21"
-         }
-        ],
-        "kind": "talk",
-        "npcId": "npc_0012"
-       },
-       {
-        "id": "step_0004",
-        "objective": "Hack the ledger screen at Instance 46.",
-        "next": [
-         "step_0005"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "hack",
-        "machineId": "machine_0003"
-       },
-       {
-        "id": "step_0005",
-        "objective": "Talk to the receptionist at Instance 46 to confirm the entry.",
-        "next": [
-         "step_0006"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "talk",
-        "npcId": "npc_0012"
-       },
-       {
-        "id": "step_0006",
-        "objective": "Walk back to Instance 39.",
-        "next": [
-         "step_0007"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "goto",
-        "place": {
-         "plotId": "plot_0039"
-        }
-       },
-       {
-        "id": "step_0007",
-        "objective": "Report back to the bartender at Instance 39.",
-        "next": [
-         "step_0008"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "talk",
-        "npcId": "npc_0004"
+        "itemId": "item_0007",
+        "toNpcId": "npc_0010"
        },
        {
         "id": "step_0008",
@@ -576,8 +183,8 @@
        }
       ],
       "reward": {
-       "money": 45,
-       "reputation": 0,
+       "money": 180,
+       "reputation": 5,
        "faction": "town",
        "items": []
       }
@@ -585,369 +192,78 @@
      {
       "format": "game-box.quest",
       "schemaVersion": 1,
-      "id": "quest_0005",
+      "id": "quest_0002",
       "kind": "side",
-      "title": "The Aetheris Lease",
-      "summary": "I need you to take a copy of the old lease from the bar's ledger to the Aetheris office. It\u2019s the only proof the Keepers have that we laid the first pipes. They\u2019re trying to buy us out and they don\u2019t want us reminding them of our rights.",
-      "giverNpcId": "npc_0004",
-      "difficulty": "small",
-      "startStepId": "step_0001",
-      "steps": [
-       {
-        "id": "step_0001",
-        "objective": "Talk to Person 4 at the bar.",
-        "next": [
-         "step_0002"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "talk",
-        "npcId": "npc_0004"
-       },
-       {
-        "id": "step_0002",
-        "objective": "Take the document from the bar counter.",
-        "next": [
-         "step_0003"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "collect",
-        "itemId": "item_0006",
-        "allowSteal": false
-       },
-       {
-        "id": "step_0003",
-        "objective": "Walk to Instance 46.",
-        "next": [
-         "step_0004"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "goto",
-        "place": {
-         "plotId": "plot_0046"
-        }
-       },
-       {
-        "id": "step_0004",
-        "objective": "Give the document to Person 12 at Instance 46.",
-        "next": [
-         "step_0005"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "deliver",
-        "itemId": "item_0006",
-        "toNpcId": "npc_0012"
-       },
-       {
-        "id": "step_0005",
-        "objective": "The job is done.",
-        "next": [],
-        "requires": [],
-        "effects": [],
-        "kind": "complete"
-       }
-      ],
-      "reward": {
-       "money": 45,
-       "reputation": 0,
-       "faction": "town",
-       "items": [
-        "item_0009"
-       ]
-      }
-     },
-     {
-      "format": "game-box.quest",
-      "schemaVersion": 1,
-      "id": "quest_0006",
-      "kind": "side",
-      "title": "The Keepers' Seal",
-      "summary": "The union rep needs a physical copy of the old lease amendment. Aetheris is digitizing everything and they think the paper trail is gone. It\u2019s not. It\u2019s in the office safe, but the code is different now. Get it, take it to the bar for the witness, then bring the witness to the house where the deed is kept so we can file it before Aetheris locks the sector.",
-      "giverNpcId": "npc_0016",
-      "difficulty": "small",
-      "startStepId": "step_0001",
-      "steps": [
-       {
-        "id": "step_0001",
-        "objective": "Talk to the worker at Instance 46 about the missing lease.",
-        "next": [
-         "step_0002"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "talk",
-        "npcId": "npc_0016"
-       },
-       {
-        "id": "step_0002",
-        "objective": "Get the screen code out of Person 12 at Instance 46.",
-        "next": [
-         "step_0003"
-        ],
-        "requires": [],
-        "effects": [
-         {
-          "kind": "give-password",
-          "password": "gable-21"
-         }
-        ],
-        "kind": "talk",
-        "npcId": "npc_0012"
-       },
-       {
-        "id": "step_0003",
-        "objective": "Hack the ledger screen at Instance 46 to find the new safe code.",
-        "next": [
-         "step_0004"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "hack",
-        "machineId": "machine_0003"
-       },
-       {
-        "id": "step_0004",
-        "objective": "Take the sealed envelope from the office safe at Instance 46.",
-        "next": [
-         "step_0005"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "collect",
-        "itemId": "item_0009",
-        "allowSteal": false
-       },
-       {
-        "id": "step_0005",
-        "objective": "Walk 50 metres to Instance 39.",
-        "next": [
-         "step_0006"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "goto",
-        "place": {
-         "plotId": "plot_0039"
-        }
-       },
-       {
-        "id": "step_0006",
-        "objective": "Show the envelope to the bartender at Instance 39 and get his signature.",
-        "next": [
-         "step_0007"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "talk",
-        "npcId": "npc_0004"
-       },
-       {
-        "id": "step_0007",
-        "objective": "Walk 90 metres to Instance 28.",
-        "next": [
-         "step_0008"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "goto",
-        "place": {
-         "plotId": "plot_0028"
-        }
-       },
-       {
-        "id": "step_0008",
-        "objective": "Hand the signed envelope to the resident at Instance 28.",
-        "next": [
-         "step_0009"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "talk",
-        "npcId": "npc_0001"
-       },
-       {
-        "id": "step_0009",
-        "objective": "The job is done.",
-        "next": [],
-        "requires": [],
-        "effects": [],
-        "kind": "complete"
-       }
-      ],
-      "reward": {
-       "money": 75,
-       "reputation": 0,
-       "faction": "The Keepers",
-       "items": [
-        "item_0014"
-       ]
-      }
-     },
-     {
-      "format": "game-box.quest",
-      "schemaVersion": 1,
-      "id": "quest_0007",
-      "kind": "side",
-      "title": "The Gasket in the Old Sector",
-      "summary": "The pumps are hissing wrong. I need someone to check the intake pressure at the old sector without waking the Aetheris managers. Bring me the reading.",
-      "giverNpcId": "npc_0016",
+      "title": "Survey Manifest Run",
+      "summary": "I left my survey gear manifest over at the warehouse during the morning unload, and I cannot leave the bar until the tender clears the lock. Go over to Instance 13, clear it with Person 9, and bring Thing 7 back to me.",
+      "giverNpcId": "npc_0008",
       "difficulty": "standard",
       "failWhen": [],
       "startStepId": "step_0001",
       "steps": [
        {
         "id": "step_0001",
-        "objective": "Talk to Person 16 at Instance 46",
+        "objective": "Walk to Instance 13 in Zone 1",
         "next": [
          "step_0002"
         ],
         "requires": [],
         "effects": [],
-        "kind": "talk",
-        "npcId": "npc_0016"
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0013"
+        }
        },
        {
         "id": "step_0002",
-        "objective": "Walk to Instance 39",
+        "objective": "Talk to Person 9 at Instance 13",
         "next": [
          "step_0003"
         ],
         "requires": [],
         "effects": [],
-        "kind": "goto",
-        "place": {
-         "plotId": "plot_0039"
-        }
+        "kind": "talk",
+        "npcId": "npc_0009"
        },
        {
         "id": "step_0003",
-        "objective": "Get the screen code out of Person 12 at Instance 46.",
+        "objective": "Take Thing 7 from Instance 13",
         "next": [
          "step_0004"
         ],
         "requires": [],
-        "effects": [
-         {
-          "kind": "give-password",
-          "password": "gable-21"
-         }
-        ],
-        "kind": "talk",
-        "npcId": "npc_0012"
+        "effects": [],
+        "kind": "collect",
+        "itemId": "item_0007",
+        "allowSteal": false
        },
        {
         "id": "step_0004",
-        "objective": "Hack the ledger at Instance 46",
+        "objective": "Return to Instance 9 in Zone 1",
         "next": [
          "step_0005"
         ],
         "requires": [],
         "effects": [],
-        "kind": "hack",
-        "machineId": "machine_0003"
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0009"
+        }
        },
        {
         "id": "step_0005",
-        "objective": "Take Thing 10 from Instance 46",
+        "objective": "Give Thing 7 to Person 8 at Instance 9",
         "next": [
          "step_0006"
         ],
         "requires": [],
         "effects": [],
-        "kind": "collect",
-        "itemId": "item_0010",
-        "allowSteal": false
+        "kind": "deliver",
+        "itemId": "item_0007",
+        "toNpcId": "npc_0008"
        },
        {
         "id": "step_0006",
-        "objective": "Walk to Instance 28",
-        "next": [
-         "step_0007"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "goto",
-        "place": {
-         "plotId": "plot_0028"
-        }
-       },
-       {
-        "id": "step_0007",
-        "objective": "Give Thing 10 to Person 1 at Instance 28",
-        "next": [
-         "step_0008"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "deliver",
-        "itemId": "item_0010",
-        "toNpcId": "npc_0001"
-       },
-       {
-        "id": "step_0008",
-        "objective": "Talk to Person 1 at Instance 28",
-        "next": [
-         "step_0009"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "talk",
-        "npcId": "npc_0001"
-       },
-       {
-        "id": "step_0009",
-        "objective": "Walk to Instance 46",
-        "next": [
-         "step_0010"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "goto",
-        "place": {
-         "plotId": "plot_0046"
-        }
-       },
-       {
-        "id": "step_0010",
-        "objective": "Get your hands on it first.",
-        "hint": "Give Thing 10 to Person 16 at Instance 46",
-        "next": [
-         "step_0011"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "collect",
-        "itemId": "item_0010",
-        "allowSteal": false
-       },
-       {
-        "id": "step_0011",
-        "objective": "Give Thing 10 to Person 16 at Instance 46",
-        "next": [
-         "step_0012"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "deliver",
-        "itemId": "item_0010",
-        "toNpcId": "npc_0016"
-       },
-       {
-        "id": "step_0012",
-        "objective": "Talk to Person 16 at Instance 46",
-        "next": [
-         "step_0013"
-        ],
-        "requires": [],
-        "effects": [],
-        "kind": "talk",
-        "npcId": "npc_0016"
-       },
-       {
-        "id": "step_0013",
         "objective": "The job is done.",
         "next": [],
         "requires": [],
@@ -957,89 +273,100 @@
       ],
       "reward": {
        "money": 120,
-       "reputation": 0,
+       "reputation": 5,
        "faction": "town",
-       "items": [
-        "item_0011"
-       ]
+       "items": []
       }
      },
      {
       "format": "game-box.quest",
       "schemaVersion": 1,
-      "id": "quest_0008",
+      "id": "quest_0003",
       "kind": "side",
-      "title": "The Ledger Code",
-      "summary": "Aetheris is buying the old sector out from under us, and they\u2019re hiding the leverage in the ledger at their office. I need you to get in, grab the code from the screen, and get out. Don\u2019t make a noise.",
-      "giverNpcId": "npc_0004",
-      "difficulty": "small",
+      "title": "Dampening the Shelf Hum",
+      "summary": "The sub-shelf telemetry hum is vibrating right through our floorboards at low tide. Person 8 over at Instance 9 mentioned an unclaimed acoustic buffer sitting over in Instance 13, but nobody here has the legs to go retrieve it past the dock patrol.",
+      "giverNpcId": "npc_0010",
+      "difficulty": "standard",
       "failWhen": [],
       "startStepId": "step_0001",
       "steps": [
        {
         "id": "step_0001",
-        "objective": "Talk to Elara at the bar about the Aetheris office.",
+        "objective": "Go to Instance 9",
         "next": [
          "step_0002"
         ],
         "requires": [],
         "effects": [],
-        "kind": "talk",
-        "npcId": "npc_0004"
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0009"
+        }
        },
        {
         "id": "step_0002",
-        "objective": "Walk to Instance 46, the Aetheris office.",
+        "objective": "Talk to Person 8 at Instance 9",
         "next": [
          "step_0003"
         ],
         "requires": [],
         "effects": [],
-        "kind": "goto",
-        "place": {
-         "plotId": "plot_0046"
-        }
+        "kind": "talk",
+        "npcId": "npc_0008",
+        "topic": "acoustic filter shipment"
        },
        {
         "id": "step_0003",
-        "objective": "Get the screen code out of Person 12 at Instance 46.",
+        "objective": "Go to Instance 13",
         "next": [
          "step_0004"
         ],
         "requires": [],
-        "effects": [
-         {
-          "kind": "give-password",
-          "password": "gable-21"
-         }
-        ],
-        "kind": "talk",
-        "npcId": "npc_0012"
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0013"
+        }
        },
        {
         "id": "step_0004",
-        "objective": "Hack the ledger screen at Instance 46 to find the access code.",
+        "objective": "Pick up Thing 7 at Instance 13",
         "next": [
          "step_0005"
         ],
         "requires": [],
         "effects": [],
-        "kind": "hack",
-        "machineId": "machine_0003"
+        "kind": "collect",
+        "itemId": "item_0007",
+        "allowSteal": false
        },
        {
         "id": "step_0005",
-        "objective": "Give the code to Elara at the bar.",
+        "objective": "Return to Instance 52",
         "next": [
          "step_0006"
         ],
         "requires": [],
         "effects": [],
-        "kind": "talk",
-        "npcId": "npc_0004"
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0052"
+        }
        },
        {
         "id": "step_0006",
+        "objective": "Deliver Thing 7 to Person 10 at Instance 52",
+        "next": [
+         "step_0007"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "deliver",
+        "itemId": "item_0007",
+        "toNpcId": "npc_0010"
+       },
+       {
+        "id": "step_0007",
         "objective": "The job is done.",
         "next": [],
         "requires": [],
@@ -1048,37 +375,45 @@
        }
       ],
       "reward": {
-       "money": 45,
-       "reputation": 0,
-       "faction": "The Keepers",
+       "money": 120,
+       "reputation": 4,
+       "faction": "town",
        "items": []
       }
      },
      {
       "format": "game-box.quest",
       "schemaVersion": 1,
-      "id": "quest_0009",
+      "id": "quest_0004",
       "kind": "side",
-      "title": "The Last Proof",
-      "summary": "Aetheris has the contract, but they don't have the history. I need the original intake map from the bar's old screen to prove the Keepers laid the first pipe. It's a game of Tetris, and the high score is the only key that works.",
-      "giverNpcId": "npc_0001",
+      "title": "The South Conduit Log",
+      "summary": "The conduit logs from the south pier were locked up in the warehouse before our shift turned over. Person 9 won't hand over the crate without a bottle from the taproom, so get a bottle of Thing 6 from Person 1 at Instance 9, trade it for Thing 7 at Instance 13, and bring it back here.",
+      "giverNpcId": "npc_0010",
       "difficulty": "standard",
+      "requires": [
+       {
+        "kind": "money-at-least",
+        "amount": 57
+       }
+      ],
+      "failWhen": [],
       "startStepId": "step_0001",
       "steps": [
        {
         "id": "step_0001",
-        "objective": "Talk to Person 1 about the old sector dispute",
+        "objective": "Talk to Person 10 at Instance 52 in Zone 1.",
         "next": [
          "step_0002"
         ],
         "requires": [],
         "effects": [],
         "kind": "talk",
-        "npcId": "npc_0001"
+        "npcId": "npc_0010",
+        "topic": "salvage manifest"
        },
        {
         "id": "step_0002",
-        "objective": "Walk to Instance 39, the bar, to find the machine running Tetris",
+        "objective": "Go to Instance 9 in Zone 1.",
         "next": [
          "step_0003"
         ],
@@ -1086,51 +421,48 @@
         "effects": [],
         "kind": "goto",
         "place": {
-         "plotId": "plot_0039"
+         "plotId": "plot_0009"
         }
        },
        {
         "id": "step_0003",
-        "objective": "Get the screen code out of Person 12 at Instance 46.",
+        "objective": "Buy Thing 6 from Person 1 at Instance 9 in Zone 1.",
         "next": [
          "step_0004"
         ],
         "requires": [],
-        "effects": [
-         {
-          "kind": "give-password",
-          "password": "gable-21"
-         }
-        ],
-        "kind": "talk",
-        "npcId": "npc_0012"
+        "effects": [],
+        "kind": "buy",
+        "itemId": "item_0006"
        },
        {
         "id": "step_0004",
-        "objective": "Hack the ledger screen in the office at Instance 46 to get the code for the Tetris machine",
+        "objective": "Go to Instance 13 in Zone 1.",
         "next": [
          "step_0005"
         ],
         "requires": [],
         "effects": [],
-        "kind": "hack",
-        "machineId": "machine_0003"
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0013"
+        }
        },
        {
         "id": "step_0005",
-        "objective": "Play Tetris on the screen at Instance 39 until you reach a score of 8500",
+        "objective": "Give Person 9 Thing 6 at Instance 13 in Zone 1.",
         "next": [
          "step_0006"
         ],
         "requires": [],
         "effects": [],
-        "kind": "beat-game",
-        "machineId": "machine_0002",
-        "score": 8500
+        "kind": "deliver",
+        "itemId": "item_0006",
+        "toNpcId": "npc_0009"
        },
        {
         "id": "step_0006",
-        "objective": "Take the printed map from the slot at Instance 39",
+        "objective": "Take Thing 7 from Instance 13 in Zone 1.",
         "next": [
          "step_0007"
         ],
@@ -1142,7 +474,7 @@
        },
        {
         "id": "step_0007",
-        "objective": "Walk back to Instance 28 to return the map",
+        "objective": "Return to Instance 52 in Zone 1.",
         "next": [
          "step_0008"
         ],
@@ -1150,12 +482,12 @@
         "effects": [],
         "kind": "goto",
         "place": {
-         "plotId": "plot_0028"
+         "plotId": "plot_0052"
         }
        },
        {
         "id": "step_0008",
-        "objective": "Give the map to Person 1 at Instance 28",
+        "objective": "Give Person 10 Thing 7 at Instance 52 in Zone 1.",
         "next": [
          "step_0009"
         ],
@@ -1163,7 +495,247 @@
         "effects": [],
         "kind": "deliver",
         "itemId": "item_0007",
-        "toNpcId": "npc_0001"
+        "toNpcId": "npc_0010"
+       },
+       {
+        "id": "step_0009",
+        "objective": "The job is done.",
+        "next": [],
+        "requires": [],
+        "effects": [],
+        "kind": "complete"
+       }
+      ],
+      "reward": {
+       "money": 160,
+       "reputation": 5,
+       "faction": "town",
+       "items": []
+      }
+     },
+     {
+      "format": "game-box.quest",
+      "schemaVersion": 1,
+      "id": "quest_0005",
+      "kind": "side",
+      "title": "Basin Transducer Run",
+      "summary": "The acoustic pinging from the shelf buoys is rattling the glass right out of my sashes. Person 8 borrowed my spare transducer clamp down at Instance 9, but word is he left it in storage over at Instance 13. Go track down Thing 7 and bring it back so I can bolt the frame down before high tide.",
+      "giverNpcId": "npc_0010",
+      "difficulty": "standard",
+      "failWhen": [],
+      "startStepId": "step_0001",
+      "steps": [
+       {
+        "id": "step_0001",
+        "objective": "Walk 120 metres to Instance 9 in Zone 1.",
+        "next": [
+         "step_0002"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0009"
+        }
+       },
+       {
+        "id": "step_0002",
+        "objective": "Talk to Person 8 at Instance 9.",
+        "next": [
+         "step_0003"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0008"
+       },
+       {
+        "id": "step_0003",
+        "objective": "Go to Instance 13 in Zone 1.",
+        "next": [
+         "step_0004"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0013"
+        }
+       },
+       {
+        "id": "step_0004",
+        "objective": "Talk to Person 9 at Instance 13.",
+        "next": [
+         "step_0005"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0009"
+       },
+       {
+        "id": "step_0005",
+        "objective": "Take Thing 7 from Instance 13.",
+        "next": [
+         "step_0006"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "collect",
+        "itemId": "item_0007",
+        "allowSteal": false
+       },
+       {
+        "id": "step_0006",
+        "objective": "Walk 90 metres back to Instance 52 in Zone 1.",
+        "next": [
+         "step_0007"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0052"
+        }
+       },
+       {
+        "id": "step_0007",
+        "objective": "Give Person 10 Thing 7 at Instance 52.",
+        "next": [
+         "step_0008"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "deliver",
+        "itemId": "item_0007",
+        "toNpcId": "npc_0010"
+       },
+       {
+        "id": "step_0008",
+        "objective": "The job is done.",
+        "next": [],
+        "requires": [],
+        "effects": [],
+        "kind": "complete"
+       }
+      ],
+      "reward": {
+       "money": 140,
+       "reputation": 5,
+       "faction": "town",
+       "items": []
+      }
+     },
+     {
+      "format": "game-box.quest",
+      "schemaVersion": 1,
+      "id": "quest_0006",
+      "kind": "side",
+      "title": "Sub-Sea Acoustic Registry",
+      "summary": "I can't step out onto the lane while Coreline patrol crews are monitoring the junction boxes outside. I need you to unlock my desk terminal, pull the logged telemetry packet, and carry Thing 8 across to Person 9 at Instance 13 before the Basin salvage pool sweeps the dock.",
+      "giverNpcId": "npc_0010",
+      "difficulty": "standard",
+      "failWhen": [],
+      "startStepId": "step_0001",
+      "steps": [
+       {
+        "id": "step_0001",
+        "objective": "Get the screen code out of Person 10 at Instance 52.",
+        "next": [
+         "step_0002"
+        ],
+        "requires": [],
+        "effects": [
+         {
+          "kind": "give-password",
+          "password": "beacon-77"
+         }
+        ],
+        "kind": "talk",
+        "npcId": "npc_0010"
+       },
+       {
+        "id": "step_0002",
+        "objective": "Decrypt the desk screen at Instance 52",
+        "next": [
+         "step_0003"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "hack",
+        "machineId": "machine_0002"
+       },
+       {
+        "id": "step_0003",
+        "objective": "Collect Thing 8 from Instance 52",
+        "next": [
+         "step_0004"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "collect",
+        "itemId": "item_0008",
+        "allowSteal": false
+       },
+       {
+        "id": "step_0004",
+        "objective": "Walk 90 metres to Instance 13 in Zone 1",
+        "next": [
+         "step_0005"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0013"
+        }
+       },
+       {
+        "id": "step_0005",
+        "objective": "Deliver Thing 8 to Person 9 at Instance 13",
+        "next": [
+         "step_0006"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "deliver",
+        "itemId": "item_0008",
+        "toNpcId": "npc_0009"
+       },
+       {
+        "id": "step_0006",
+        "objective": "Talk to Person 9 at Instance 13",
+        "next": [
+         "step_0007"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0009"
+       },
+       {
+        "id": "step_0007",
+        "objective": "Return to Instance 52 in Zone 1",
+        "next": [
+         "step_0008"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0052"
+        }
+       },
+       {
+        "id": "step_0008",
+        "objective": "Report back to Person 10 at Instance 52",
+        "next": [
+         "step_0009"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0010"
        },
        {
         "id": "step_0009",
@@ -1176,329 +748,776 @@
       ],
       "reward": {
        "money": 150,
-       "reputation": 0,
+       "reputation": 6,
        "faction": "town",
-       "items": [
-        "item_0007"
-       ],
-       "access": [
-        {
-         "interiorId": "interior_0002"
+       "items": []
+      }
+     },
+     {
+      "format": "game-box.quest",
+      "schemaVersion": 1,
+      "id": "quest_0007",
+      "kind": "side",
+      "title": "Acoustic Filter Courier",
+      "summary": "I can't leave the warehouse watch while the Coreline canisters are still being sorted, but Person 1 over at the bar is holding onto the diagnostic cable I need. Head across to Instance 9, grab Thing 2, and bring it back to me.",
+      "giverNpcId": "npc_0009",
+      "difficulty": "standard",
+      "failWhen": [],
+      "startStepId": "step_0001",
+      "steps": [
+       {
+        "id": "step_0001",
+        "objective": "Talk to Person 9 at Instance 13 about the telemetry filter.",
+        "next": [
+         "step_0002"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0009",
+        "topic": "telemetry filter"
+       },
+       {
+        "id": "step_0002",
+        "objective": "Go to Instance 9 in Zone 1.",
+        "next": [
+         "step_0003"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0009"
         }
-       ]
+       },
+       {
+        "id": "step_0003",
+        "objective": "Take Thing 2 from Instance 9.",
+        "next": [
+         "step_0004"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "collect",
+        "itemId": "item_0002",
+        "allowSteal": true
+       },
+       {
+        "id": "step_0004",
+        "objective": "Talk to Person 1 at Instance 9 about Thing 2.",
+        "next": [
+         "step_0005"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0001",
+        "topic": "bar tab"
+       },
+       {
+        "id": "step_0005",
+        "objective": "Return to Instance 13 in Zone 1.",
+        "next": [
+         "step_0006"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0013"
+        }
+       },
+       {
+        "id": "step_0006",
+        "objective": "Deliver Thing 2 to Person 9 at Instance 13.",
+        "next": [
+         "step_0007"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "deliver",
+        "itemId": "item_0002",
+        "toNpcId": "npc_0009"
+       },
+       {
+        "id": "step_0007",
+        "objective": "The job is done.",
+        "next": [],
+        "requires": [],
+        "effects": [],
+        "kind": "complete"
+       }
+      ],
+      "reward": {
+       "money": 120,
+       "reputation": 5,
+       "faction": "town",
+       "items": []
+      }
+     },
+     {
+      "format": "game-box.quest",
+      "schemaVersion": 1,
+      "id": "quest_0008",
+      "kind": "side",
+      "title": "Acoustic Gear Drop",
+      "summary": "I can't step away from Instance 9 while the telemetry crew is keeping tabs on everyone off shift. I need someone to head 70 metres over to Instance 13, pick up Thing 7, and get it across to Person 10 at Instance 52 before the dock managers notice it cleared the floor.",
+      "giverNpcId": "npc_0008",
+      "difficulty": "standard",
+      "failWhen": [],
+      "startStepId": "step_0001",
+      "steps": [
+       {
+        "id": "step_0001",
+        "objective": "Speak with Person 8 in Instance 9, Zone 1",
+        "next": [
+         "step_0002"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0008"
+       },
+       {
+        "id": "step_0002",
+        "objective": "Go to Instance 13 in Zone 1",
+        "next": [
+         "step_0003"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0013"
+        }
+       },
+       {
+        "id": "step_0003",
+        "objective": "Collect Thing 7 in Instance 13, Zone 1",
+        "next": [
+         "step_0004"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "collect",
+        "itemId": "item_0007",
+        "allowSteal": false
+       },
+       {
+        "id": "step_0004",
+        "objective": "Go to Instance 52 in Zone 1",
+        "next": [
+         "step_0005"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0052"
+        }
+       },
+       {
+        "id": "step_0005",
+        "objective": "Deliver Thing 7 to Person 10 in Instance 52, Zone 1",
+        "next": [
+         "step_0006"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "deliver",
+        "itemId": "item_0007",
+        "toNpcId": "npc_0010"
+       },
+       {
+        "id": "step_0006",
+        "objective": "Talk to Person 8 in Instance 9, Zone 1",
+        "next": [
+         "step_0007"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0008"
+       },
+       {
+        "id": "step_0007",
+        "objective": "The job is done.",
+        "next": [],
+        "requires": [],
+        "effects": [],
+        "kind": "complete"
+       }
+      ],
+      "reward": {
+       "money": 140,
+       "reputation": 5,
+       "faction": "town",
+       "items": []
+      }
+     },
+     {
+      "format": "game-box.quest",
+      "schemaVersion": 1,
+      "id": "quest_0009",
+      "kind": "side",
+      "title": "Relay Parts Courier",
+      "summary": "Person 9 needs a replacement component brought over from Instance 9 without leaving their post at Instance 13.",
+      "giverNpcId": "npc_0009",
+      "difficulty": "small",
+      "failWhen": [],
+      "startStepId": "step_0001",
+      "steps": [
+       {
+        "id": "step_0001",
+        "objective": "Talk to Person 9 at Instance 13.",
+        "next": [
+         "step_0002"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0009",
+        "topic": "relay parts"
+       },
+       {
+        "id": "step_0002",
+        "objective": "Go to Instance 9.",
+        "next": [
+         "step_0003"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0009"
+        }
+       },
+       {
+        "id": "step_0003",
+        "objective": "Take Thing 2 from Instance 9.",
+        "next": [
+         "step_0004"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "collect",
+        "itemId": "item_0002",
+        "allowSteal": true
+       },
+       {
+        "id": "step_0004",
+        "objective": "Talk to Person 8 at Instance 9.",
+        "next": [
+         "step_0005"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "talk",
+        "npcId": "npc_0008",
+        "topic": "parts delivery"
+       },
+       {
+        "id": "step_0005",
+        "objective": "Go to Instance 13.",
+        "next": [
+         "step_0006"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "goto",
+        "place": {
+         "plotId": "plot_0013"
+        }
+       },
+       {
+        "id": "step_0006",
+        "objective": "Deliver Thing 2 to Person 9 at Instance 13.",
+        "next": [
+         "step_0007"
+        ],
+        "requires": [],
+        "effects": [],
+        "kind": "deliver",
+        "itemId": "item_0002",
+        "toNpcId": "npc_0009"
+       },
+       {
+        "id": "step_0007",
+        "objective": "The job is done.",
+        "next": [],
+        "requires": [],
+        "effects": [],
+        "kind": "complete"
+       }
+      ],
+      "reward": {
+       "money": 75,
+       "reputation": 3,
+       "faction": "town",
+       "items": []
       }
      }
     ]
    }
   },
   {
-   "method": "nameCity",
-   "key": "8a97c1725496d29ca4e7cd764dccfeda",
-   "output": {
-    "ok": true,
-    "value": "Coolwater"
-   }
-  },
-  {
    "method": "nameDistricts",
-   "key": "f199d2f4fb4176e97bb6c4187e4d9dd3",
+   "key": "7ee2ccff6e896a43598a2115c67cb6da",
    "output": {
     "ok": true,
     "value": [
-     "The Hum"
+     "Cable Row"
     ]
    }
   },
   {
+   "method": "nameCity",
+   "key": "904f903a77992822b2d2a7a0039507c3",
+   "output": {
+    "ok": true,
+    "value": "Sound Point"
+   }
+  },
+  {
    "method": "namePlaces",
-   "key": "71d4908b3ba52ee54d118b34506f3725",
+   "key": "5fbd6415ff52fb1447808027fdd1291c",
    "output": {
     "ok": true,
     "value": [
-     "Marnie's Coffee",
-     "The Miller House",
-     "Cold Storage",
-     "Vance House",
-     "Holloway Pumps",
-     "Deep Current Logistics",
-     "Elias Repair",
-     "The Hiss Cafe",
-     "Rook Residence",
-     "Aetheris Archive",
-     "Saltwater Social",
-     "The Keepers Pub",
-     "The Iron Flats",
-     "Old Sector Depot",
-     "The Gasket Block",
-     "Ozone & Ale",
-     "The Driftwood Bar",
-     "Coin Street Provisions",
-     "Tobin Gaskets",
-     "The Last Byte Shop",
-     "Maeve's Drying Racks",
-     "The Halloway Place",
-     "St. Osmund's",
-     "Silt & Stout",
-     "Kestrel Cold Storage",
-     "Piper's Gaskets",
-     "Tomas's Valve Repair",
-     "The Barnstable House",
-     "Gantry Works",
-     "Vane & Son",
-     "The Leaking Pipe",
-     "Harrow's Pump Yard",
-     "Dune Welding",
-     "Keeper's Archive",
-     "Tide & Gear",
-     "The Miller House",
-     "The Rusty Flange",
-     "Bishop's Fittings",
-     "The Warm Tide",
-     "Intake No. 4",
-     "Elara's Clinic",
-     "The Stillwater Inn",
-     "Milo's Clinic",
-     "Coolwater Storage",
-     "Market of Tides",
-     "Harrow's Office",
-     "Deepstack Storage",
-     "The Coldwater Inn",
-     "Sallow Apartments",
-     "The Anchor House",
-     "The Current Inn",
-     "Pike Flats",
-     "The Leaky Pipe",
-     "14 Nail Avenue",
-     "Coldfront Warehouse",
-     "Jellyfish Jar",
-     "Nurse Hattie's Clinic",
-     "The Black Pipe Warehouse",
-     "The Hissing Steam",
-     "Gaunt Avenue Meds",
-     "Maren's"
+     {
+      "name": "14 Marek Lane",
+      "kind": "apartment"
+     },
+     {
+      "name": "Marek Rigging & Cable",
+      "kind": "workshop"
+     },
+     {
+      "name": "The Driftwood Rest",
+      "kind": "hotel"
+     },
+     {
+      "name": "Vance's",
+      "kind": "house"
+     },
+     {
+      "name": "Basin Salvage Pool",
+      "kind": "warehouse"
+     },
+     {
+      "name": "22 Coin Lane",
+      "kind": "apartment"
+     },
+     {
+      "name": "Tanner Chandlery",
+      "kind": "shop"
+     },
+     {
+      "name": "Coreline Operations",
+      "kind": "office"
+     },
+     {
+      "name": "The Copper Buoy"
+     },
+     {
+      "name": "The Rusty Anchor",
+      "kind": "bar"
+     },
+     {
+      "name": "Old Avenue Surgery",
+      "kind": "clinic"
+     },
+     {
+      "name": "Shelf Acoustic Tower",
+      "kind": "office"
+     },
+     {
+      "name": "Crowell Freight"
+     },
+     {
+      "name": "Crow Street Diner",
+      "kind": "cafe"
+     },
+     {
+      "name": "Grand Ubald Hotel",
+      "kind": "hotel"
+     },
+     {
+      "name": "Harbor View Flats",
+      "kind": "apartment"
+     },
+     {
+      "name": "Quay Fish Market",
+      "kind": "market"
+     },
+     {
+      "name": "Keller Sonar Repairs",
+      "kind": "workshop"
+     },
+     {
+      "name": "Net Lane Storage",
+      "kind": "warehouse"
+     },
+     {
+      "name": "The Salted Cod",
+      "kind": "restaurant"
+     },
+     {
+      "name": "Mariners Chapel",
+      "kind": "chapel"
+     },
+     {
+      "name": "Coastal Tramway Station",
+      "kind": "station"
+     },
+     {
+      "name": "Lindsey Machine Works",
+      "kind": "workshop"
+     },
+     {
+      "name": "Orton Cargo",
+      "kind": "warehouse"
+     },
+     {
+      "name": "4 Marek Lane",
+      "kind": "house"
+     },
+     {
+      "name": "Mercer Hardware",
+      "kind": "shop"
+     },
+     {
+      "name": "Hallett Marine Insurance",
+      "kind": "office"
+     },
+     {
+      "name": "The Salt Reach",
+      "kind": "cafe"
+     },
+     {
+      "name": "12 Coin Lane",
+      "kind": "apartment"
+     },
+     {
+      "name": "The Covered Market",
+      "kind": "market"
+     },
+     {
+      "name": "Gifford Dispensary",
+      "kind": "clinic"
+     },
+     {
+      "name": "The Breakwater",
+      "kind": "hotel"
+     },
+     {
+      "name": "Survey Telemetry Logistics",
+      "kind": "office"
+     },
+     {
+      "name": "18 Old Avenue",
+      "kind": "apartment"
+     },
+     {
+      "name": "The North Sound",
+      "kind": "hotel"
+     },
+     {
+      "name": "Ubald Coastal Residences",
+      "kind": "apartment"
+     },
+     {
+      "name": "9 Marlin Lane",
+      "kind": "apartment"
+     },
+     {
+      "name": "The Low Whistle",
+      "kind": "bar"
+     },
+     {
+      "name": "Acoustic Array Monitoring",
+      "kind": "office"
+     },
+     {
+      "name": "Holt Ironworks",
+      "kind": "workshop"
+     },
+     {
+      "name": "Pelican Oyster House",
+      "kind": "restaurant"
+     },
+     {
+      "name": "Seamen's Bethel",
+      "kind": "chapel"
+     },
+     {
+      "name": "Marlin Rigging",
+      "kind": "workshop"
+     },
+     {
+      "name": "Shearwater House",
+      "kind": "apartment"
+     },
+     {
+      "name": "Darrow Transit",
+      "kind": "warehouse"
+     },
+     {
+      "name": "The Fog Bell",
+      "kind": "bar"
+     },
+     {
+      "name": "Hollis Chandlery",
+      "kind": "shop"
+     },
+     {
+      "name": "The Pilot House",
+      "kind": "hotel"
+     },
+     {
+      "name": "Avenue Fishmongers",
+      "kind": "market"
+     },
+     {
+      "name": "Aldridge Marine Registry",
+      "kind": "office"
+     },
+     {
+      "name": "Clara's Coffee",
+      "kind": "cafe"
+     },
+     {
+      "name": "7 Cable Street"
+     },
+     {
+      "name": "Curlew House",
+      "kind": "apartment"
+     },
+     {
+      "name": "Varley Surgery",
+      "kind": "clinic"
+     },
+     {
+      "name": "15 Conduit Street",
+      "kind": "house"
+     },
+     {
+      "name": "Gannet House",
+      "kind": "apartment"
+     },
+     {
+      "name": "The Slipway",
+      "kind": "restaurant"
+     },
+     {
+      "name": "Seafarers Chapel",
+      "kind": "chapel"
+     },
+     {
+      "name": "Pier Transit",
+      "kind": "station"
+     },
+     {
+      "name": "Barton Machine Shop",
+      "kind": "workshop"
+     }
     ]
    }
   },
   {
    "method": "writeInstances",
-   "key": "7fa0bbfc95e43129d036e76e84f0101e",
+   "key": "a1ee54aa468db85acc3ce206b301973b",
    "output": {
     "ok": true,
     "value": [
      {
-      "name": "The Salt House",
-      "character": "The house is empty but for the hum. It sits on the edge of the old sector, where the black iron stacks loom like tombstones. The paint is peeling, not from age, but from the salt spray that the new, hotter effluent sends further inland. Inside, the air is still and smells faintly of the ozone that never quite left the town. A single screen in the living room flickers with the municipal mail, casting a pale blue light on the dust motes. It is for sale, but the price is high enough that only an investor or a desperate Keeper would look twice. The floorboards creak in a rhythm that matches the distant pumps. It feels less like a home and more like a waiting room for a verdict.",
+      "name": "The Copper Buoy",
+      "character": "The Copper Buoy smells of stale stout, wet oilskins, and the brine-heavy fog leaking in from the dockside. A copper-plated mooring buoy hangs over the low timber counter, dented from decades of harbor drift and polished smooth near the tap pulls. In the corner of the taproom, an old monochrome CRT cabinet flickers with a low-volume game of Tetris, its rhythmic bleeps competing with the deep low-frequency drone vibrating up from the seabed telemetry arrays at low tide. Mechanics in grease-stained smocks and crane drivers from the basin huddle along the benches, keeping their voices low whenever red-coveralled Coreline technicians walk through the door.",
       "people": [
        {
-        "name": "Mara Ives",
-        "personality": "She stands in the entrance hall, back against the doorframe, watching the street. She does not blink when you enter. She checks her watch every three minutes. She keeps her hands in her pockets, gripping a small, smooth stone.",
+        "name": "Arthur Fletcher",
+        "personality": "Nods curtly when you walk up, sliding a fresh coaster onto the timber counter before asking what you are drinking.",
         "knowledge": [
-         "The landlord is Aetheris, and they are stalling the sale to drive the price up.",
-         "The previous tenant left in the night because the noise from the pumps got too loud.",
-         "The lock on the bedroom is broken; it sticks if you don't jiggle it left.",
-         "Milo's Valve Repair has been here twice, looking for the gasket specs."
+         "Coreline survey divers drink bottled cider and always sit near the front door to watch who passes the street corner.",
+         "The cellar door latch sticks unless you pull up hard on the iron ring while turning the brass key.",
+         "Two drydock riggers owe twenty credits each on their slate since the crane pier lockdown started."
         ],
         "life": {
-         "history": "I was a gasket inspector for The Keepers for twenty years. When the burst happened, I was the one who signed off on the pressure readings. I was wrong. I lost my job, and then I lost my apartment to the buyouts. Now I just watch these empty houses, waiting to see which one breaks next.",
-         "interests": "The sound of the pipes. If you listen to the walls, you can tell which block is overheating.",
-         "manner": "Short answers. She speaks in a flat, tired voice, looking at you only when necessary.",
-         "cares": "Accuracy. She hates it when people guess about the infrastructure.",
-         "avoids": "Pity. If you mention the burst with a sad face, she turns away.",
-         "reason": "I'm here to make sure the house is still standing while the paperwork drags on.",
-         "errand": "I need to check the pressure gauge on the secondary line behind the old bakery. It\u2019s been hissing since Tuesday."
+         "history": "Born in Sound Point, he spent twenty years working harbor tugs until the offshore survey contracts replaced the local fleet. He bought The Copper Buoy with his redundancy payout and has kept its doors open through every dock strike and corporate buyout. When the scorched probe resurfaced three weeks ago, his taproom became neutral ground for nervous divers and desperate salvage hands.",
+         "interests": "Tide charts, vintage brass bar fittings, and the high scores logged on the taproom arcade screen.",
+         "manner": "Speaks in a dry, even gravel, wiping the counter methodically without breaking eye contact.",
+         "cares": "Keeping the bar licensed, paying his distributor on time, and keeping his regulars from tearing each other apart.",
+         "avoids": "Corporate litigation, inquiries about unrecorded cargo behind the cellar casks, and arguments between crane hands and divers.",
+         "reason": "I am wiping down this counter and keeping the taps flowing so long as there are thirsty dock hands in town.",
+         "errand": "I am walking to the supply shed to pick up a crate of dark ale and a fresh roll of till tape."
         },
         "background": [
          {
-          "fact": "Mara Ives used to inspect the pipes.",
+          "fact": "Tends the bar at The Copper Buoy, drying glasses with a stained linen rag and keeping an eye on the door.",
           "unlockedBy": "met"
          },
          {
-          "fact": "She blames herself for the burst, not because she made the mistake, but because she didn't fight hard enough to have it fixed.",
+          "fact": "Used to run line-handling skiffs for the municipal pier before the telemetry firm bought out the lease and privatized the basin moorings.",
           "unlockedBy": "talked"
          },
          {
-          "fact": "She has the spare key to the bedroom, but she refuses to give it up until the sale is final.",
+          "fact": "Keeps the iron cellar key and back-room ledger locked under the counter to protect the basin salvage operators from corporate audits.",
           "unlockedBy": "quest"
          },
          {
-          "fact": "Her husband left after the burst because he couldn't sleep through the hum anymore.",
+          "fact": "Took a hush-money advance from a Coreline liaison six months ago to ignore late-night canister drops in the taproom alley.",
           "unlockedBy": "told"
          }
         ],
         "postId": "anchor_0001",
-        "role": "resident"
+        "role": "bartender"
        },
        {
-        "name": "Jonas Jarett",
-        "personality": "He sits in the living room armchair, which is slightly too big for him. He reads the same page of a newspaper over and over. He wears a clean, white shirt despite the heat. He taps his foot in time with the pumps.",
+        "name": "Thomas Grover",
+        "personality": "Glances up sharply with narrowed eyes, gripping his glass until he confirms you are not carrying a corporate badge.",
         "knowledge": [
-         "The mail on the screen is mostly eviction notices for the neighbors.",
-         "The previous owner kept a ledger in the kitchen drawer.",
-         "The bathroom mirror is cracked in the shape of a lightning bolt.",
-         "Aetheris bought the building next door and is already measuring the wall."
+         "The north shelf acoustic array is pulsing twice as fast since the probe surfaced three weeks ago.",
+         "The crane pier security guards change shifts every night at ten past nine, leaving the ladder unwatched for five minutes.",
+         "Coreline's salvage crew dropped an underwater torch near the slipway and never went back for it."
         ],
         "life": {
-         "history": "I work in the mail sorting center. I see every letter that comes to this street. I know who is selling, who is crying, and who is packing boxes. I come here because it\u2019s quiet, and because I know the keys are kept here, and I need to know who comes through that door.",
-         "interests": "The names on the envelopes. He likes to know who is talking to whom.",
-         "manner": "Soft-spoken, but persistent. He asks the same question twice to make sure you heard it the first time.",
-         "cares": "Privacy. He hates it when you look at the screen.",
-         "avoids": "The ocean. He finds the jellyfish unsettling.",
-         "reason": "I'm keeping an eye on the mail. The screen is on, and someone needs to see it.",
-         "errand": "I need to return a library book to the archive. The clerk is difficult, and I don't want to be late."
+         "history": "He grew up on the basin mudflats, apprenticing on the steam cranes before the survey boom brought automated winches. When Coreline Instruments locked down the main quay three weeks ago, his salvage crew was locked out without pay, leaving him with three months of overdue dock fees. Now he spends his afternoons watching the pier gate through the pub window, waiting for an opening.",
+         "interests": "Heavy rigging cables, hydraulic winches, and the market price of scrap titanium.",
+         "manner": "Speaks in short, blunt bursts, nervously rolling an iron bolt between his thick fingers.",
+         "cares": "Getting the salvage pool back to work and recovering the telemetry core before the corporate dredgers scrape the seabed clean.",
+         "avoids": "Red-coverall divers, Coreline legal notices, and talking about his mounting dock berth debt.",
+         "reason": "I am waiting for the crane pier patrol to rotate so I can see if the water under the pilings has cleared.",
+         "errand": "I am heading over to the machine shop to borrow a heavy cable cutter and a pair of dry gloves."
         },
         "background": [
          {
-          "fact": "Jonas Jarett works in the mail sorting center.",
+          "fact": "Sits by the window with a half-empty glass of stout, watching the mist gather on the south conduit.",
           "unlockedBy": "met"
          },
          {
-          "fact": "He knows who is buying up the apartments because he delivers the contracts.",
+          "fact": "Works as a crane winch driver for the Basin Salvage Pool, currently laid off due to the dock lockdown.",
           "unlockedBy": "talked"
          },
          {
-          "fact": "He has been waiting for a letter from his sister in the capital for six months.",
+          "fact": "Knows the exact submerged cable tangle under the old crane pier where the probe core got wedged during the storm.",
           "unlockedBy": "quest"
          },
          {
-          "fact": "He sleeps in this house sometimes when the heat in his own apartment is too much.",
+          "fact": "Nearly drowned three years ago when an uncrewed survey tether snapped and dragged his launch into the breakwater.",
           "unlockedBy": "told"
          }
         ],
         "postId": "anchor_0002",
-        "role": "resident"
+        "role": "patron"
        },
        {
-        "name": "Una Upton",
-        "personality": "She is in the kitchen, chopping vegetables with rhythmic precision. She does not look up when you enter, but she smells you. She wears an apron that has seen better days. She is always hungry, but she eats last.",
+        "name": "Elena Faulkner",
+        "personality": "Offers a polite, restrained nod, subtly angling her notebook away from view as you step close.",
         "knowledge": [
-         "The stove works, but the pilot light is temperamental.",
-         "Mara Ives keeps her stone in her pocket because it\u2019s the first thing she touched when she lost her job.",
-         "Jonas Jarett reads the same page of the newspaper because he doesn't want to see today's date.",
-         "The fridge is empty except for a jar of pickled jellyfish eggs."
+         "The outdoor junction box on the south conduit sparks every time the onshore wind brings the salt spray in.",
+         "The optical core in the lost probe uses a dual-frequency laser ping that standard basin hydrophones cannot read.",
+         "The top score on the pub Tetris machine belongs to an offshore surveyor who disappeared last winter."
         ],
         "life": {
-         "history": "I cook for the union hall. When the lights went out, I cooked over a campfire for three days. I know how to keep people warm when the world gets cold. I come here because the house is for sale, and if someone buys it, they need to know if the kitchen is worth keeping.",
-         "interests": "Heat. She talks about temperatures as if they were moods.",
-         "manner": "Direct and practical. She uses her hands to explain things.",
-         "cares": "Food. She will feed you if you have nothing.",
-         "avoids": "The dark. She keeps the kitchen lights on even during the day.",
-         "reason": "I'm making sure the kitchen is ready for whoever buys the place.",
-         "errand": "I need to find more salt. The local supply is running low, and the Aetheris stock is too expensive."
+         "history": "She moved to Sound Point four years ago on a Coreline technical contract, analyzing sub-sea acoustic data feeds. Over time she realized the deep telemetry arrays were picking up unexplained thermal anomalies along the trench shelf. When the scorched probe breached the surface, she refused to sign the company's non-disclosure annex and was quietly reassigned to graveyard desk shifts.",
+         "interests": "Acoustic telemetry waveforms, fiber-optic cable splicing, and signal decoding algorithms.",
+         "manner": "Quiet and precise, choosing her words carefully as if every sentence were being recorded by an auditor.",
+         "cares": "Uncovering why the deep-trench probe returned six months early with scorched plating.",
+         "avoids": "Direct questions about Coreline telemetry protocols, internal company audits, and company security officers.",
+         "reason": "I am taking my break where the company microphones cannot pick up the hum of my diagnostic kit.",
+         "errand": "I am going to check the signal amplifier on the roof mast to see if the shelf pings are drifting."
         },
         "background": [
          {
-          "fact": "Una Upton is the union cook.",
+          "fact": "Perches on a corner stool near the Tetris cabinet, nursing a cup of black tea with milk.",
           "unlockedBy": "met"
          },
          {
-          "fact": "She cooked for the entire street during the blackout.",
+          "fact": "Employed as a night technician monitoring the deep-water telemetry buoys anchored across the shelf.",
           "unlockedBy": "talked"
          },
          {
-          "fact": "She believes the old pipes are better than the new ones, because they run cooler.",
+          "fact": "Wants to secure the encrypted pings from the scorched probe before Coreline wipes the server logs.",
           "unlockedBy": "quest"
          },
          {
-          "fact": "She has a daughter who works at Aetheris and doesn't speak to her about it.",
+          "fact": "Her brother was a pilot on the uncrewed probe vessel that went missing six months before the casing resurfaced.",
           "unlockedBy": "told"
          }
         ],
         "postId": "anchor_0003",
-        "role": "cook"
-       }
-      ],
-      "things": [
-       {
-        "thingId": "interior_0001/thing/0",
-        "name": "The Ledger",
-        "description": "A leather-bound book on the kitchen counter. It is filled with the names of every house in the old sector and the date each one was sold to Aetheris. The ink is faded in some places, fresh in others. It is written in Mara Ives' hand, but she claims she didn't write the last entry. The last entry is "
+        "role": "patron"
        },
        {
-        "thingId": "interior_0001/thing/1",
-        "name": "The Glass Orchid",
-        "description": "A small, blue glass flower on the windowsill in the bedroom. It is not real, but it is fragile. It was given to Jonas Jarett by his sister. He keeps it there because it catches the light from the screen, and for a moment, the room looks less like a waiting room and more like a home."
-       },
-       {
-        "thingId": "interior_0001/thing/2",
-        "name": "The Static Box",
-        "description": "A old radio on the shelf in the living room. It doesn't play music. It just plays the hum of the pumps, amplified. When the pumps are working well, the sound is a low, steady drone. When there is a leak, the sound becomes a shriek. Una Upton listens to it to know when to start dinner."
-       }
-      ]
-     },
-     {
-      "name": "The Rusty Flange",
-      "character": "It is a bar that sells cheap beer and expensive secrets. The air smells of salt, stale beer, and the faint, metallic tang of ozone that never quite leaves Coolwater. The owner, Mara, runs the place with a quiet efficiency, her eyes always half-open, watching who comes in and who leaves. The Tetris game on the screen is always stuck on the same level, a silent monument to the town's stalled progress. The cellar door sticks, requiring a specific lift-and-pull motion known only to those who work here. It is a place where the Keepers and Aetheris employees sit at opposite ends of the bar, not speaking, but aware of each other.",
-      "people": [
-       {
-        "name": "Mara Quesada",
-        "personality": "She does not look up unless you speak first. She wipes the counter with a rag that is never quite clean, her movements rhythmic and tired. She listens more than she speaks, absorbing the room like a sponge. If you ask for a drink, she hands it over without comment. If you ask about the town, she points to the screen or the door.",
+        "name": "Marcus Young",
+        "personality": "Steps aside swiftly with a guarded look, keeping his hands jammed deep into his heavy woolen coat pockets.",
         "knowledge": [
-         "Who holds the keys to the cellar.",
-         "The Tetris code is reset every Sunday at 4 PM.",
-         "Aetheris bought the apartment above the bar, so the floor shakes when they move furniture."
+         "A Coreline security skiff patrols the kelp beds every four hours between midnight and dawn.",
+         "The high tide mark under the old crane pier is choked with derelict steel mooring cables.",
+         "The back room of the bar is booked every Thursday night by the Basin Salvage Pool committee."
         ],
         "life": {
-         "history": "She was a pipe fitter's daughter. Her father worked on the old intake lines. She remembers the burst, the heat, the smell of dead fish. She kept the bar open during the blackout, selling warm water and canned beans at triple price. She stayed because the rent is low and the views of the stack are good.",
-         "interests": "The price of ice. The sound of the pumps. Who is sleeping with whom.",
-         "manner": "Low voice. Direct eye contact. No wasted movement.",
-         "cares": "The integrity of the cellar. The loyalty of her regulars.",
-         "avoids": "Talk of expansion. The word 'efficiency'.",
-         "reason": "I'm here because I own the place and nobody else wants to deal with the landlord.",
-         "errand": "I need to go down to the cellar and check the seals on the kegs."
+         "history": "A lifelong coastal mariner who once ran cargo runs across the sound before corporate survey zones restricted open navigation. The sudden lockdown of the shoreline after the probe surfaced has choked off his livelihood, leaving him scrambling for freelance salvage work and scraps washed ashore along the bluffs.",
+         "interests": "Coastal weather patterns, shallow draft skiff engines, and hidden coves along the north headland.",
+         "manner": "Restless and gruff, constantly shifting his weight and glancing toward the street door.",
+         "cares": "Keeping his skiff fueled and finding salable debris before the company cleanup crews comb the shoreline.",
+         "avoids": "Harbor master inspections, patrol boats with searchlights, and paperwork from the marine registry.",
+         "reason": "I am waiting for the fog to thicken enough so I can run my skiff out to the north reef without being spotted.",
+         "errand": "I am walking down to the fuel jetty to see if the diesel barge has finished discharging its tanks."
         },
         "background": [
          {
-          "fact": "She knows which regulars are lying about why they are there.",
-          "unlockedBy": "talked"
-         },
-         {
-          "fact": "She has a spare key for the cellar, but she only gives it to people she trusts.",
+          "fact": "Paces between the bar and the entryway, checking the harbor fog through the frosted glass.",
           "unlockedBy": "met"
          },
          {
-          "fact": "She lost her brother in the burst accident, but she never talks about it.",
+          "fact": "Operates an independent skiff hauling mail, light supplies, and salvage scrap along the rocky coast.",
+          "unlockedBy": "talked"
+         },
+         {
+          "fact": "Found a buoyant titanium bracket from the exploded probe washed up on the gravel beach two miles north.",
           "unlockedBy": "quest"
          },
          {
-          "fact": "She is secretly saving money to buy out her lease from Aetheris.",
+          "fact": "Lost his coastal pilot license two years ago after refusing to give right of way to a Coreline survey barge.",
           "unlockedBy": "told"
          }
         ],
         "postId": "anchor_0004",
-        "role": "bartender"
+        "role": "wanderer"
        },
        {
-        "name": "Elias Kane",
-        "personality": "He sits in the corner, nursing a single beer for three hours. He stares at the Tetris screen as if it holds the secrets of the universe. He flinches when the pumps change pitch. He does not speak unless spoken to, and even then, his answers are monosyllabic.",
+        "name": "Clara Garrett",
+        "personality": "Looks up from her map, giving you a measuring look before asking if you know anything about sub-sea hydraulics.",
         "knowledge": [
-         "The water is warmer than it was last year.",
-         "The jellyfish are nesting under the intake grate.",
-         "Aetheris is hiding something in the ledger."
+         "The scorched probe plating was melted by intense heat that could not have come from electrical shorting.",
+         "The bar cellar contains three crates of discontinued deep-sea hydrophone parts from the old municipal yard.",
+         "The salvage pool mechanics meet at dawn near the slipway to swap tools before the security guards arrive."
         ],
         "life": {
-         "history": "He worked on the intake line for twenty years. He was there when the gasket blew. He saw the steam, the chaos, the fear. He quit the next day. He comes to the bar every day to remember what silence feels like.",
-         "interests": "The temperature of the water. The depth of the current. The sound of jellyfish.",
-         "manner": "Quiet. Observant. Still.",
-         "cares": "The past. The truth.",
-         "avoids": "Future plans. New technology.",
-         "reason": "I'm here because it's the only place where the noise feels familiar.",
-         "errand": "I need to go down to the shore and check the water temperature."
+         "history": "She trained as an industrial shipwright before taking a job refitting uncrewed exploration probes for Coreline. She grew disillusioned when the firm began concealing structural failure reports on deep-trench equipment. When the scorched canister drifted into the basin, she threw her support behind the local salvage pool to expose the truth.",
+         "interests": "High-temperature metallurgy, sub-sea pressure hulls, and precision gas cutting.",
+         "manner": "Direct and practical, speaking with the steady confidence of an experienced metalworker.",
+         "cares": "Proving that the probe's damage was caused by an external seabed event rather than mechanical failure.",
+         "avoids": "Company tool requisitions, corporate security checkpoints, and inquiries regarding missing torch tanks.",
+         "reason": "I am waiting for my shift partner to bring the torque specs for the probe's hatch assembly.",
+         "errand": "I am heading to the ironmonger to pick up a box of carbide drill bits and high-pressure hose clamps."
         },
         "background": [
          {
-          "fact": "He has a scar on his arm from the burst.",
+          "fact": "Leans against the timber pillar near the cellar door, studying a folded survey map.",
           "unlockedBy": "met"
          },
          {
-          "fact": "He knows the exact pressure reading when the pipe burst.",
+          "fact": "Works as a mechanical welder repairing seabed probe chassis at the drydock basin.",
           "unlockedBy": "talked"
          },
          {
-          "fact": "He blames himself for not sounding the alarm sooner.",
+          "fact": "Needs specialized ceramic cutting discs to breach the heat-tempered casing of a retrieved data canister.",
           "unlockedBy": "quest"
          },
          {
-          "fact": "He is writing a memoir, but he won't show it to anyone.",
+          "fact": "Secretly fabricated the unauthorized dredging rig currently hidden beneath the basin salvage launch.",
           "unlockedBy": "told"
          }
         ],
@@ -1506,37 +1525,37 @@
         "role": "patron"
        },
        {
-        "name": "Lena Frost",
-        "personality": "She is loud, laughing, and always moving. She leans over the bar, invading your space, demanding to know your story. She drinks fast, pays fast, and leaves fast. She wears her anger like a perfume, sweet and sharp.",
+        "name": "Nora Xavier",
+        "personality": "Tenses slightly when you approach her booth, subtly setting her bottle down and keeping her shoulders square.",
         "knowledge": [
-         "Who owes who money.",
-         "Which apartments are for sale.",
-         "The Keepers are meeting in the cellar tonight."
+         "Coreline's red-coverall dive teams are under strict orders not to discuss the probe's telemetry logs with locals.",
+         "The deep sonar hum increases in pitch right before the offshore testing buoys transmit their daily batch.",
+         "The bartender keeps a duplicate keycard to the company storage locker in a jar behind the cellar gin rack."
         ],
         "life": {
-         "history": "She is a Keeper. Her grandfather laid the first pipes. She lost her apartment to Aetheris last month. She is angry, but she masks it with charm and speed. She comes to the bar to drink away the shame of being pushed out.",
-         "interests": "Revenge. The price of beer. The Keepers' next move.",
-         "manner": "Fast talk. Big gestures. Intense eye contact.",
-         "cares": "Her family. The town's ownership.",
-         "avoids": "Aetheris. Quiet moments.",
-         "reason": "I'm here because I can't go home yet.",
-         "errand": "I need to go to the union hall and sign the petition."
+         "history": "Recruited from an offshore commercial diving outfit, she spent three years running line tenders for deep telemetry platforms. She witnessed the scorched probe being hauled onto the barge three weeks ago and recognized that the telemetry core held vital data Coreline was desperate to suppress. Now she quietly feeds clues to local contacts while planning her exit.",
+         "interests": "Sub-surface decompression tables, acoustic transponders, and maritime contract law.",
+         "manner": "Speaks in hushed, guarded tones, frequently pausing to scan the room whenever the front door opens.",
+         "cares": "Securing enough money to relocate out of Sound Point before Coreline discovers the leaked coordinates.",
+         "avoids": "Company debriefings, internal security interrogators, and being seen talking to basin salvage mechanics.",
+         "reason": "I am finishing my drink while waiting for the dockside surveillance drone to complete its scheduled sweep.",
+         "errand": "I am walking to the coastal post box to mail a sealed dispatch to an independent maritime surveyor."
         },
         "background": [
          {
-          "fact": "She lost her apartment to Aetheris.",
+          "fact": "Sits alone at a booth near the wall, methodically peeling the label off a cider bottle.",
           "unlockedBy": "met"
          },
          {
-          "fact": "She knows the Keepers' secret meeting spot.",
+          "fact": "Works as an offshore dive tender for Coreline Operations, assisting trench retrieval teams.",
           "unlockedBy": "talked"
          },
          {
-          "fact": "She is willing to do anything to get her home back.",
+          "fact": "Secretly copied the recovery coordinate overlay for the cable tangle under the old crane pier.",
           "unlockedBy": "quest"
          },
          {
-          "fact": "She has a secret crush on the bartender.",
+          "fact": "Is planning to resign from Coreline as soon as she sells her share of the salvage anomaly data.",
           "unlockedBy": "told"
          }
         ],
@@ -1544,37 +1563,37 @@
         "role": "patron"
        },
        {
-        "name": "Thomas Baker",
-        "personality": "He is a quiet man, wearing a grey suit that is slightly too big. He sits by the window, reading a newspaper from the city. He looks like an outsider, but he drinks the local beer and knows the names of the regulars. He is polite, but distant.",
+        "name": "Samuel Frost",
+        "personality": "Smiles faintly without taking his eyes off the board, casually tossing another dart into the triple ring as you speak.",
         "knowledge": [
-         "The official Aetheris stance on the lease.",
-         "The price of cooling contracts.",
-         "Who is on Aetheris's payroll."
+         "The south gate padlock has a worn tumbler that can be jimmied with a flat screwdriver.",
+         "A courier from Coreline headquarters arrives on the morning train every Tuesday to collect raw telemetry disks.",
+         "The crane operator was arguing with the dive supervisor in the alley behind the pub yesterday evening."
         ],
         "life": {
-         "history": "He is an Aetheris middle-manager. He was sent here to negotiate the lease renewal. He is not evil, just efficient. He likes the town, but he loves his job more. He comes to the bar to observe the locals, to understand the resistance.",
-         "interests": "Data. Efficiency. The lease terms.",
-         "manner": "Polite. Measured. Professional.",
-         "cares": "His career. The deal.",
-         "avoids": "Emotional appeals. Memories.",
-         "reason": "I'm here to watch the locals and drink a beer.",
-         "errand": "I need to go to the office and file the quarterly report."
+         "history": "A Sound Point native whose family worked the harbor docks for three generations. When the telemetry conglomerate took control of the municipal waterfront, he took a night watchman job to keep an eye on the drydocks. He uses his position to turn a blind eye when local salvage crews need to move equipment past the corporate perimeter.",
+         "interests": "Lock mechanisms, dartboard games, and tracking the schedules of visiting corporate executive launches.",
+         "manner": "Relaxed and worldly-wise, speaking with an easy drawl while retrieving his darts from the board.",
+         "cares": "Protecting his childhood friends in the salvage pool from facing corporate prosecution.",
+         "avoids": "Corporate incident reports, sobriety checks during night shifts, and daylight dock patrols.",
+         "reason": "I am getting in a few rounds of darts before my ten-hour watch on the cold gatehouse post begins.",
+         "errand": "I am walking over to the dock gatehouse to relieve the afternoon sentry and sign the gate manifest."
         },
         "background": [
          {
-          "fact": "He works for Aetheris.",
+          "fact": "Stands near the dartboard, tossing brass-tipped darts into the cork with methodical focus.",
           "unlockedBy": "met"
          },
          {
-          "fact": "He knows the exact wording of the lease proposal.",
+          "fact": "Works as a night watchman at the drydock gates, guarding the perimeter fence along the basin.",
           "unlockedBy": "talked"
          },
          {
-          "fact": "He is lonely, but he won't admit it.",
+          "fact": "Allows basin salvage divers to slip through the side gate after hours in exchange for a cut of the scrap value.",
           "unlockedBy": "quest"
          },
          {
-          "fact": "He plans to leave the town in six months.",
+          "fact": "Was formerly a sonar technician on the municipal survey vessel before Coreline dissolved the civic fleet.",
           "unlockedBy": "told"
          }
         ],
@@ -1582,411 +1601,306 @@
         "role": "patron"
        },
        {
-        "name": "Sarah Quinn",
-        "personality": "She walks in and out, never staying long. She carries a bag full of jellyfish samples. She is curious, energetic, and a bit crazy. She talks to the bartender, the patrons, and the Tetris screen. She is always looking for something.",
+        "name": "Owen Yates",
+        "personality": "Turns sharply with a firm grip on his work rag, evaluating you with a sharp, calculating stare.",
         "knowledge": [
-         "The jellyfish are changing.",
-         "The water temperature is rising.",
-         "Aetheris is dumping waste in the deep current."
+         "The physical telemetry core is still trapped in the old crane pier cable tangle six meters down.",
+         "The cellar beneath The Copper Buoy connects to an abandoned storm conduit leading straight to the basin shoreline.",
+         "Coreline's private security team is preparing to dredge the pier pilings within forty-eight hours."
         ],
         "life": {
-         "history": "She is a marine biologist. She came to Coolwater to study the effects of the cooling water on the local ecosystem. She found something strange, something big. She is obsessed with finding it. She comes to the bar to rest her feet and gather gossip.",
-         "interests": "Jellyfish. The current. Aetheris's waste.",
-         "manner": "Excitable. Inquisitive. Distracted.",
-         "cares": "Science. The truth.",
-         "avoids": "Bureaucracy. Silence.",
-         "reason": "I'm here because I need a break from the lab.",
-         "errand": "I need to go to the shore and collect more samples."
+         "history": "He spent twenty-five years maintaining deep-water dredges and recovery rigs for the municipal port. When Coreline Instruments bought the harbor leases and privatized the basin, he organized the independent salvage mechanics into a collective. Now leading the race to salvage the scorched telemetry core, he operates out of the back room of The Copper Buoy to keep one step ahead of corporate injunctions.",
+         "interests": "Underwater cutting torches, winch gear ratios, and deep-trench seafloor bathymetry.",
+         "manner": "Authoritative and urgent, speaking with the gravelly determination of a veteran dock rigger.",
+         "cares": "Recovering the scorched probe core before Coreline destroys the data and seizing the funds to save the basin docks.",
+         "avoids": "Company security patrols, daylight waterfront walks, and anyone asking for his formal ID papers.",
+         "reason": "I am waiting for my lead diver to report back on the cable tension under the old crane pier pilings.",
+         "errand": "I am walking down to the shoreline culvert to inspect the low-tide clearance before tonight's salvage dive."
         },
         "background": [
          {
-          "fact": "She is studying the jellyfish.",
+          "fact": "Wipes grease from his hands with a kerosene rag while standing by the taproom cellar entrance.",
           "unlockedBy": "met"
          },
          {
-          "fact": "She knows Aetheris is dumping waste.",
+          "fact": "Head maintenance rigger for the Basin Salvage Pool, coordinating underwater cable clearing under the piers.",
           "unlockedBy": "talked"
          },
          {
-          "fact": "She believes the jellyfish are intelligent.",
+          "fact": "Needs an encrypted telemetry decoder card brought to him to unlock the coordinates from the retrieved probe core.",
           "unlockedBy": "quest"
          },
          {
-          "fact": "She is afraid of the dark water.",
+          "fact": "Has an arrest warrant prepared against him by Coreline legal if he sets foot on the main quay pier.",
           "unlockedBy": "told"
          }
         ],
         "postId": "anchor_0008",
-        "role": "wanderer"
+        "role": "worker"
+       }
+      ],
+      "things": [
+       {
+        "thingId": "interior_0001/thing/0",
+        "name": "Faded harbor oil painting",
+        "description": "An oil painting in a salt-stained oak frame hanging behind the bar, depicting a three-masted schooner navigating the Sound Point reefs before the deep telemetry towers were installed."
        },
        {
-        "name": "John Finn",
-        "personality": "He is a big man, with a beard and a limp. He sits in the back, drinking whiskey. He does not talk to anyone. He just watches the door. He is a ex-union leader, but he is done with fighting. He is tired.",
+        "thingId": "interior_0001/thing/1",
+        "name": "Stained bar tab ledger",
+        "description": "A thick, cloth-bound bar ledger with warped parchment pages, recording thirty years of dock worker bar tabs and uncollected debts from the municipal fleet."
+       },
+       {
+        "thingId": "interior_0001/thing/2",
+        "name": "Chipped heavy pint glass",
+        "description": "A heavy, faceted pint glass chipped at the base, clouded from years of harsh salt-water washing and filled with dark ale."
+       },
+       {
+        "thingId": "interior_0001/thing/3",
+        "name": "Amber beach glass paperweight",
+        "description": "A polished piece of raw amber washed up on the north breakers, mounted into a brass paperweight sitting beside the till."
+       },
+       {
+        "thingId": "interior_0001/thing/4",
+        "name": "Smudged brown paper envelope",
+        "description": "A grease-smudged brown paper envelope tucked behind the till, containing handwritten shift rotations and patrol notes for the main quay gates."
+       },
+       {
+        "thingId": "interior_0001/thing/5",
+        "name": "Scuffed corporate telemetry keycard",
+        "description": "A scuffed Coreline Instruments electronic keycard with a lanyard loop, bearing a faded security clearance stamp for the coastal telemetry junction boxes."
+       }
+      ]
+     },
+     {
+      "name": "Crowell Freight",
+      "character": "Crowell Freight smells of salt damp, machine grease, and old creosote planks. Stacks of palletized telemetry cable reels and heavy marine battery casings sit in rows under buzzing halogen strips, while a closed-circuit monitor flickers behind the guard desk watching the main rolling bay. Since the trench probe surfaced scorched off the breakers, the warehouse has been taking in nocturnal deliveries of locked aluminum transit trunks from the Basin Salvage Pool, kept strictly apart from the Coreline survey hardware tagged for the north shelf.",
+      "people": [
+       {
+        "name": "Derek Ellis",
+        "personality": "Glances up from a flickering monitor with a squint, resting a calloused hand over his keys while sizing up whether you belong to Coreline or the salvage pool before speaking.",
         "knowledge": [
-         "The Keepers are divided.",
-         "Aetheris is offering bribes.",
-         "The old pipes are still working."
+         "The night door has been unlatched three times this week after the Coreline patrol vehicles finish their sweep of Conduit Street.",
+         "The camera pointed at the main floor has a bad ground wire that cuts the feed whenever the crane winch outside engages.",
+         "The heavy zinc trunks stacked in bay four aren't on the general freight manifest and came off a skiff without dock authority tags.",
+         "Acoustic telemetry buoys coming in from the north shelf have fresh burn marks along their seal gaskets."
         ],
         "life": {
-         "history": "He led the union for ten years. He fought for the water rights. He lost. He is tired of fighting. He comes to the bar to drink and forget. He still cares, but he has no energy left.",
-         "interests": "Whiskey. The past. The union.",
-         "manner": "Grumpy. Tired. Watchful.",
-         "cares": "The union. His pride.",
-         "avoids": "Hope. Optimism.",
-         "reason": "I'm here to drink and forget.",
-         "errand": "I need to go home and sleep."
+         "history": "Spent three decades working the winches on harbor salvage runs until a snapped hawser took his right knee out. When the survey boom started, Crowell took him on to watch the floor and manage the keys to the interior bays.",
+         "interests": "Tide tables, winch gearing ratios, and the exact patrol schedule of the red-coverall Coreline security details.",
+         "manner": "Speaks in a flat, gravelly drawl, keeping one hand resting on the heavy master key ring at his belt.",
+         "cares": "Keeping the yard secure so his former tug crewmates in the Basin Salvage Pool don't get raided by Coreline security.",
+         "avoids": "The exact serial numbers on the unmanifested zinc dive cases resting in bay four.",
+         "reason": "I'm keeping watch over the freight bays and checking the camera log for anyone sniffing around the unmanifested crates.",
+         "errand": "I'm carrying the night-gate key ring over to get a tooth filed down after it jammed in the foreman office padlock."
         },
         "background": [
          {
-          "fact": "He used to lead the union.",
+          "fact": "Sits behind the battered desk with a ring of brass deadbolt keys hooked over his belt, watching the camera feed of the floor.",
           "unlockedBy": "met"
          },
          {
-          "fact": "He knows the union is divided.",
+          "fact": "Worked thirty years as a winch engineer on the salvage tugs before a crushed knee put him on night watch at Crowell Freight.",
           "unlockedBy": "talked"
          },
          {
-          "fact": "He blames himself for losing.",
+          "fact": "Keeps the rear foreman's locker locked tight against Coreline auditors because it holds dredged recovery manifests belonging to his old tug crew.",
           "unlockedBy": "quest"
          },
          {
-          "fact": "He has a secret stash of union funds.",
+          "fact": "Took five hundred notes from the Basin Salvage Pool to look away whenever unmanifested dive bags come through the side bay at low water.",
           "unlockedBy": "told"
          }
         ],
         "postId": "anchor_0009",
-        "role": "wanderer"
-       },
-       {
-        "name": "Maggie Boyle",
-        "personality": "She is the bartender's friend, but not an employee. She sits at the bar, drinking coffee and reading books. She is smart, witty, and opinionated. She debates with the patrons, especially Thomas. She knows everyone's business.",
-        "knowledge": [
-         "Who is sleeping with whom.",
-         "The local gossip.",
-         "The history of the town."
-        ],
-        "life": {
-         "history": "She is a teacher. She has lived in Coolwater all her life. She remembers the town before Aetheris. She is worried about the future. She comes to the bar to read and argue.",
-         "interests": "Books. History. Gossip.",
-         "manner": "Chatty. Opinionated. Witty.",
-         "cares": "Education. The town's future.",
-         "avoids": "Ignorance. Apathy.",
-         "reason": "I'm here to read and argue.",
-         "errand": "I need to go to the school and grade papers."
-        },
-        "background": [
-         {
-          "fact": "She is a teacher.",
-          "unlockedBy": "met"
-         },
-         {
-          "fact": "She knows the town's history.",
-          "unlockedBy": "talked"
-         },
-         {
-          "fact": "She is worried about the future.",
-          "unlockedBy": "quest"
-         },
-         {
-          "fact": "She has a secret passion for poetry.",
-          "unlockedBy": "told"
-         }
-        ],
-        "postId": "anchor_0010",
-        "role": "patron"
-       },
-       {
-        "name": "Leo Kraft",
-        "personality": "He is young, energetic, and always on his phone. He stands by the Tetris screen, playing it when no one else is. He is an Aetheris intern, but he is curious about the town. He is friendly, but naive.",
-        "knowledge": [
-         "The new cooling units.",
-         "The tech jargon.",
-         "What the bosses think."
-        ],
-        "life": {
-         "history": "He is an intern at Aetheris. He was sent here to learn about the cooling process. He is fascinated by the town, even though he works for the company pushing it out. He comes to the bar to play Tetris and talk to the locals.",
-         "interests": "Tech. Games. The locals.",
-         "manner": "Enthusiastic. Naive. Friendly.",
-         "cares": "His internship. The tech.",
-         "avoids": "Complex politics. Boredom.",
-         "reason": "I'm here to play Tetris and learn about the town.",
-         "errand": "I need to go to the lab and check the servers."
-        },
-        "background": [
-         {
-          "fact": "He is an Aetheris intern.",
-          "unlockedBy": "met"
-         },
-         {
-          "fact": "He knows the tech jargon.",
-          "unlockedBy": "talked"
-         },
-         {
-          "fact": "He likes the locals more than his bosses.",
-          "unlockedBy": "quest"
-         },
-         {
-          "fact": "He wants to stay in Coolwater.",
-          "unlockedBy": "told"
-         }
-        ],
-        "postId": "anchor_0011",
-        "role": "worker"
+        "role": "guard"
        }
       ],
       "things": [
        {
         "thingId": "interior_0002/thing/0",
-        "name": "A waterlogged novel",
-        "description": "A paperback copy of 'The Great Gatsby', swollen and peeling from the humidity in the cellar. The pages are stuck together. It was left by a patron years ago and never reclaimed."
-       },
-       {
-        "thingId": "interior_0002/thing/1",
-        "name": "A shard of blue glass",
-        "description": "A piece of blue glass, possibly from a bottle, found in the sand outside the bar. It catches the light and looks like a gem. Mara keeps it on the bar as a paperweight."
-       },
-       {
-        "thingId": "interior_0002/thing/2",
-        "name": "A leather-bound ledger",
-        "description": "A thick, leather-bound book with the Aetheris logo on the cover. It contains the financial records of the bar's sales for the last five years. Thomas has seen it and knows it is important."
-       },
-       {
-        "thingId": "interior_0002/thing/3",
-        "name": "A bottle of whiskey",
-        "description": "A half-empty bottle of cheap whiskey, sitting on the counter. It is for John. He drinks from it every day. The label is faded."
-       },
-       {
-        "thingId": "interior_0002/thing/4",
-        "name": "A painting of the sea",
-        "description": "A painting of the sea, hanging behind the bar. It shows the intake stack, but the water is blue and calm. It was painted by a tourist years ago. Maggie likes to critique it."
+        "name": "stenciled freight crate",
+        "description": "A reinforced marine plywood cargo crate banded with galvanized steel straps, stenciled with faded Coreline transit markings and soaked around the base from leaking bilge runoff."
        }
       ]
      },
      {
-      "name": "The Gantry Office",
-      "character": "The air here smells of warm plastic and old dust, distinct from the salty ozone outside. The ledger screen on the reception desk scrolls through the daily pump flow rates, a rhythmic green crawl that never pauses. Behind the glass partition, the manager's office is sealed, containing the physical contracts that Aetheris claims are missing from the digital cloud. The open office is empty save for one desk, covered in blueprints of the old sector, waiting for a surveyor who hasn't arrived. The building lives off the dispute: it is the administrative front for The Keepers' claim to the old intake sector.",
+      "name": "7 Cable Street",
+      "character": "A damp, salt-scoured weatherboard house on the corner of Cable Street, officially listed for sale at 8223 credits while estate agents wait out the dock strikes. Inside, the floorboards vibrate faintly with the continuous hum of the north shelf sonar array, and salt mist creeps in through warped sash frames. While formally vacant, a handful of off-shift crane riggers and sub-sea survey hands from the Basin pool have quietly moved into the spare rooms to avoid company security dorms. An unconfigured display screen in the living room flickers with dead static, and the back bedroom remains padlocked where salvage recovery tools and dry acoustic telemetry loggers are stashed.",
       "people": [
        {
-        "name": "Elias Grove",
-        "personality": "He sits behind the glass, watching the door and the screen with equal suspicion. He does not look up unless spoken to, and when he does, he checks the time on his wristwatch before answering. He treats visitors as potential threats to the schedule.",
+        "name": "Arthur Latham",
+        "personality": "Sits on a salt-bleached stool by the entrance hall radiator, turning a brass latch key over his knuckles while sizing up everyone who steps across the threshold.",
         "knowledge": [
-         "The manager, Mr. Dorn, is in the sealed office drafting the appeal to the city council.",
-         "The phone in the manager's office has been dead since the burst three days ago.",
-         "Aetheris representatives visited yesterday and demanded the key to the archive room.",
-         "The green ledger on the screen shows the flow rates are stable, but the pressure logs are red."
+         "The estate agent only inspects the front porch on the second Tuesday of each month.",
+         "Coreline's private security van patrols Cable Street forty minutes after the evening tide turns.",
+         "The lock on the rear bedroom was replaced with a heavy brass deadbolt brought from the old boatyard."
         ],
         "life": {
-         "history": "My grandfather laid the rivets on the first pipe here, before Aetheris was a spreadsheet. I stayed when they bought the land, because someone had to watch the numbers. Now they say the numbers don't matter, only the ink.",
-         "interests": "Pump maintenance, the stability of the current, the cost of gaskets.",
-         "manner": "Short sentences. He looks at your hands to see if you are carrying anything.",
-         "cares": "The integrity of the physical records.",
-         "avoids": "Talk of 'progress' or 'efficiency' unless it is in the context of the pump failure.",
-         "reason": "I am the gate. If the manager isn't ready, you don't get in. I check the list.",
-         "errand": "I am going to the fish market to buy the lunch that usually comes, since the delivery driver hasn't been here today."
+         "history": "Came to Sound Point from the river ports when Coreline expanded the acoustic monitoring shelf. After his winch accident at the crane pier, he moved into the vacant properties on Cable Street and now manages informal lodging for independent salvage hands.",
+         "interests": "Tide tables, heavy wire splicing, and the sound of deep-water telemetry pings coming up through the floorboards.",
+         "manner": "Speaks in a dry, measured rasp, pausing whenever a heavy lorry rumbles past down toward the slipway.",
+         "cares": "Keeping the house unlocked for off-shift Basin divers who need a dry bed away from the quay guards.",
+         "avoids": "Any talk about corporate indemnity forms or the company dispensary on Marek Lane.",
+         "reason": "I keep the keys to this door and make sure nobody kicks the hallway wainscoting to splinters while the listing is open.",
+         "errand": "Checking the conduit junction box down the lane before the salt mist shorts the streetlamps again."
         },
         "background": [
          {
-          "fact": "Elias sits behind the glass partition, his eyes fixed on the green scrolling ledger.",
+          "fact": "Carries the full ring of brass keys to the house and keeps a tally of everyone coming through the front door.",
           "unlockedBy": "met"
          },
          {
-          "fact": "He speaks of the old pipes with the precision of an engineer, not a sentimentalist.",
+          "fact": "Worked six years as a crane tackle tender for Coreline until a snapped winch cable took his hearing in one ear.",
           "unlockedBy": "talked"
          },
          {
-          "fact": "He is afraid that the digital records are being edited while no one is looking.",
+          "fact": "Wants the Basin Salvage Pool to secure the sunken telemetry core so the local divers can pay off their drydock liens.",
           "unlockedBy": "quest"
          },
          {
-          "fact": "He is the only one who knows the manager has a heart condition, which is why he hasn't left the office.",
+          "fact": "Brokered the quiet squatting arrangement with the estate agent's junior clerk in exchange for fresh seabed survey coordinates.",
+          "unlockedBy": "told"
+         }
+        ],
+        "postId": "anchor_0010",
+        "role": "resident"
+       },
+       {
+        "name": "Ellen Upton",
+        "personality": "Glances up sharply from her logbook, tracking your movement with a calm, analytical gaze before speaking.",
+        "knowledge": [
+         "The living room monitor is wired into the municipal telemetry repeater, but it needs an active decryption key to show anything.",
+         "The neighbours two doors down argue every Thursday night over who left the outdoor conduit box unlatched.",
+         "Coreline divers in the red coveralls have been buying up spare oxygen scrubbers from independent chandlers."
+        ],
+        "life": {
+         "history": "Born and raised along the south reach of Sound Point. When the harbour authority folded into Coreline's operations, she refused a company badge and started logging offshore acoustic anomalies for the Basin Salvage Pool.",
+         "interests": "Digital hydrophone schematics, coastal weather shifts, and optical data encoding.",
+         "manner": "Quiet, watchful, and direct, keeping her eyes fixed on the door whenever voices raise in the corridor.",
+         "cares": "Preserving independent acoustic access to the shelf so local skiffs can navigate without corporate permits.",
+         "avoids": "Signing survey manifests or mentioning her family's dock debts to strangers.",
+         "reason": "I am waiting for the telemetry feed to clear up on this monitor so we can see where the surge carried the canister.",
+         "errand": "Fetching a fresh set of dry batteries for the telemetry receiver before nightfall."
+        },
+        "background": [
+         {
+          "fact": "Spends her afternoons sitting by the cold living room fireplace checking handwritten cable logs against the inactive wall screen.",
+          "unlockedBy": "met"
+         },
+         {
+          "fact": "Operated shallow survey drones for the municipal harbour authority before Coreline bought out the boatyard lease.",
+          "unlockedBy": "talked"
+         },
+         {
+          "fact": "Fears that corporate auditors will seize her father's old salvage skiff if the lost data canisters are tied to her family.",
+          "unlockedBy": "quest"
+         },
+         {
+          "fact": "Maintains a hidden copy of the living room screen's diagnostic firmware hidden inside an old oilcloth binder.",
+          "unlockedBy": "told"
+         }
+        ],
+        "postId": "anchor_0011",
+        "role": "resident"
+       },
+       {
+        "name": "Martin Walsh",
+        "personality": "Wipes flour and grease from his apron with a broad grin, immediately offering a warm mug of chicory brew before you can ask your question.",
+        "knowledge": [
+         "The tap water in the kitchen runs brackish whenever the deep pumps on the pier run at full pressure.",
+         "The crane crews on the pier will trade fresh cod for strong coffee and dry work gloves.",
+         "Coreline's shore patrol never checks the kitchen delivery door behind the coal bunker."
+        ],
+        "life": {
+         "history": "Worked galleys along the coast until the sub-sea survey boom brought industrial barges into Sound Point. He took up the kitchen at 7 Cable Street to cook communal meals for the displaced salvage crews.",
+         "interests": "Cast-iron cookware, preserving fish in sea salt, and old shanties from the coal-haul days.",
+         "manner": "Cheery and gruff, talking with his hands while wiping down grease off a tin mug with a checkered tea towel.",
+         "cares": "Making sure every diver and mechanic coming off the cold night water gets a hot meal and dry wool.",
+         "avoids": "Corporate salvage politics, company inspectors, and arguments over dock boundary lines.",
+         "reason": "Somebody has to keep the stove lit and feed the divers coming off the low tide before they freeze to the bone.",
+         "errand": "Carrying a thermos of broth and fresh bread down toward the breakwater workers."
+        },
+        "background": [
+         {
+          "fact": "Stands over the iron range in the kitchen, boiling salt beef and chicory coffee for the house occupants.",
+          "unlockedBy": "met"
+         },
+         {
+          "fact": "Ran the galley on an offshore acoustic cable-laying barge for eleven years before dock work slowed down.",
+          "unlockedBy": "talked"
+         },
+         {
+          "fact": "Is hoarding tins of dry rations in the pantry to support the salvage crews if the quay is fully sealed off.",
+          "unlockedBy": "quest"
+         },
+         {
+          "fact": "Owes forty credits to the fishmonger for a crate of smoked mackerel he gave to the crane riggers on credit.",
           "unlockedBy": "told"
          }
         ],
         "postId": "anchor_0012",
-        "role": "receptionist"
+        "role": "cook"
        },
        {
-        "name": "Sarah Wren",
-        "personality": "She leans against the back wall of the open office, arms crossed, watching the dust motes dance in the light from the street. She is bored but alert, waiting for something to break so she can fix it.",
+        "name": "Sarah Abbott",
+        "personality": "Stands stiffly beside her workbench, holding a wire brush mid-stroke while listening closely to your footsteps on the floorboards.",
         "knowledge": [
-         "The surveyor from the city is late by two hours.",
-         "The empty desk in the open office belongs to a temp who quit yesterday.",
-         "The phone in the manager's office is broken because the line was pulled.",
-         "Sarah has been reading the same page of the lease for an hour."
+         "The scorched probe suffered an external thermal surge at four thousand metres, not an internal battery blowout.",
+         "Two data canisters broke loose along the shallow kelp line near the old crane pier.",
+         "The locked back bedroom holds three acoustic locators salvaged from the breaker line."
         ],
         "life": {
-         "history": "I worked the intake valve for five years. When the burst happened, I was the one who had to shut the manual override. My hands still shake when I hear a hiss.",
-         "interests": "The taste of the water, the size of the jellyfish, the silence of the town.",
-         "manner": "She speaks slowly, as if testing the weight of each word.",
-         "cares": "The people who live in the old sector.",
-         "avoids": "The manager's decisions.",
-         "reason": "I am keeping watch. If the Aetheris men come back, I want to know before Elias sees them.",
-         "errand": "I am going to the shore to check the intake vents for debris."
+         "history": "Recruited straight out of technical school to maintain uncrewed seabed probes for Coreline. After inspecting the melted telemetry core from the trench probe, she realized the company planned to falsify the report and walked off the job.",
+         "interests": "Pressure seals, optical cabling, and thermal imaging of sub-sea trenches.",
+         "manner": "Tense, rapid-fire, and precise, frequently looking over her shoulder toward the window facing the quay.",
+         "cares": "Proving that the scorched seabed probe encountered an unmapped underwater power surge.",
+         "avoids": "Discussing company non-disclosure contracts or meeting anyone carrying a corporate security badge.",
+         "reason": "I am checking these optical couplers before the evening salvage skiff heads out under the crane pier.",
+         "errand": "Picking up a replacement optical lens gasket from the drydock workshop."
         },
         "background": [
          {
-          "fact": "Sarah stands by the window, watching the street with a quiet intensity.",
+          "fact": "Occupies the small upstairs bedroom, constantly cleaning salt grime off sub-sea camera housings.",
           "unlockedBy": "met"
          },
          {
-          "fact": "She remembers the smell of the ozone from the day the power went out.",
+          "fact": "Worked as a seabed probe mechanic for Coreline until the scorched probe resurfaced off the breakers three weeks ago.",
           "unlockedBy": "talked"
          },
          {
-          "fact": "She believes the Aetheris expansion will raise the water temperature further.",
+          "fact": "Wants to expose Coreline's unlawful deep-trench dredging before corporate auditors cover up the seabed anomaly.",
           "unlockedBy": "quest"
          },
          {
-          "fact": "Her brother is one of the tenants being pushed out of the old sector.",
+          "fact": "Left her company locker key with the mechanic on Marlin Lane when she slipped away from the quay.",
           "unlockedBy": "told"
          }
         ],
         "postId": "anchor_0013",
-        "role": "patron"
-       },
-       {
-        "name": "Tom Dale",
-        "personality": "He paces the small space between the desks, tapping his foot. He is anxious, constantly checking his pocket for a phone that isn't his, and glancing at the sealed office door.",
-        "knowledge": [
-         "The manager is hiding in the office because he is afraid to sign the temporary waiver.",
-         "The envelope in the lobby is from the bank, and it is overdue.",
-         "Tom has not slept properly since the burst.",
-         "The surveyor is not coming; the contract was cancelled."
-        ],
-        "life": {
-         "history": "I am the clerk. I file the papers that decide who eats. When the burst happened, the papers disappeared. I have been looking for them ever since.",
-         "interests": "Paperwork, signatures, deadlines, the sound of the printer.",
-         "manner": "He talks fast, interrupting himself to correct his own grammar.",
-         "cares": "The accuracy of the documents.",
-         "avoids": "The physical pipes.",
-         "reason": "I am waiting for the manager to come out so I can file the day's logs.",
-         "errand": "I am going to the post office to return a letter I wrote to the mayor."
-        },
-        "background": [
-         {
-          "fact": "Tom paces the room, his eyes darting between the door and the desk.",
-          "unlockedBy": "met"
-         },
-         {
-          "fact": "He is obsessed with the difference between a draft and a final copy.",
-          "unlockedBy": "talked"
-         },
-         {
-          "fact": "He believes the manager is keeping the envelope secret on purpose.",
-          "unlockedBy": "quest"
-         },
-         {
-          "fact": "Tom owes money to the local union for a loan he took to fix his house after the storm.",
-          "unlockedBy": "told"
-         }
-        ],
-        "postId": "anchor_0014",
-        "role": "patron"
-       },
-       {
-        "name": "Lena Chase",
-        "personality": "She sits at the front desk, not behind the glass, but in the lobby, cleaning her glasses with a handkerchief. She is calm, observing the interaction between Elias and the others with a detached curiosity.",
-        "knowledge": [
-         "Lena is not an employee, but a resident of the building who uses the lobby as a living room.",
-         "She knows who is in the office because she listens to the floorboards.",
-         "The envelope on the table is addressed to her neighbor.",
-         "Lena has seen the Aetheris lawyers visit three times this week."
-        ],
-        "life": {
-         "history": "I lived here before the office was built. When they took the ground floor, they let me stay in the back rooms. I watch the people come and go. They think I am invisible.",
-         "interests": "The moods of the tenants, the weather, the sound of the pumps.",
-         "manner": "She speaks softly, never raising her voice above a murmur.",
-         "cares": "The quiet of the town.",
-         "avoids": "Arguments.",
-         "reason": "I am waiting for the rain to stop so I can go to the market.",
-         "errand": "I am going to the pharmacy to pick up my prescription."
-        },
-        "background": [
-         {
-          "fact": "Lena sits in the lobby, polishing her glasses with slow, deliberate strokes.",
-          "unlockedBy": "met"
-         },
-         {
-          "fact": "She knows the history of the building better than the manager does.",
-          "unlockedBy": "talked"
-         },
-         {
-          "fact": "She is worried that the Aetheris expansion will bring too much noise.",
-          "unlockedBy": "quest"
-         },
-         {
-          "fact": "She is the manager's aunt, and she is the only one he tells the truth to.",
-          "unlockedBy": "told"
-         }
-        ],
-        "postId": "anchor_0015",
-        "role": "patron"
-       },
-       {
-        "name": "Arthur Cobb",
-        "personality": "He is the manager, locked in the back office. His voice can be heard through the door, arguing with himself or the phone. He is stressed, authoritative, and tired.",
-        "knowledge": [
-         "Arthur has the master key to the archive room.",
-         "He is hiding the fact that the pressure logs from the burst day were altered.",
-         "He is trying to decide whether to sell out to Aetheris or fight.",
-         "The flower in his office is wilting because he forgets to water it."
-        ],
-        "life": {
-         "history": "I took over this office when my father died. I signed the lease with Aetheris. I thought I could manage them. I was wrong. Now I have to decide if I will let them win or burn the town down to save it.",
-         "interests": "The lease, the pressure, the cost of legal fees.",
-         "manner": "His voice is strained, often cracking.",
-         "cares": "His legacy.",
-         "avoids": "The lobby.",
-         "reason": "I am deciding whether to sign the waiver. If I sign, we get money. If I don't, we get war.",
-         "errand": "I need to go to the bank to check our balance, but I cannot leave the office."
-        },
-        "background": [
-         {
-          "fact": "Arthur is locked in the manager's office, his voice raised in argument.",
-          "unlockedBy": "met"
-         },
-         {
-          "fact": "He is afraid that his father made a mistake in the original contract.",
-          "unlockedBy": "talked"
-         },
-         {
-          "fact": "He has been eating dinner in his office for a week.",
-          "unlockedBy": "quest"
-         },
-         {
-          "fact": "Arthur is secretly in love with Sarah Wren, but he never said anything.",
-          "unlockedBy": "told"
-         }
-        ],
-        "postId": "anchor_0016",
-        "role": "worker"
+        "role": "resident"
        }
       ],
       "things": [
        {
         "thingId": "interior_0003/thing/0",
-        "name": "the ledger",
-        "description": "A large, bound book with green covers. The pages are filled with handwritten numbers in neat, small script. The ink is fading in places where the sun hits the page directly."
+        "name": "Rigging canvas bag",
+        "description": "A waxed canvas duffel bag stained with motor grease and sea salt, packed with dry wool socks and brass winch pins."
        },
        {
         "thingId": "interior_0003/thing/1",
-        "name": "the phone",
-        "description": "A black rotary phone sitting on the manager's desk. The cord is frayed. It has no dial tone, only a faint hiss that matches the sound of the pumps outside."
+        "name": "Sealed telemetry briefcase",
+        "description": "A battered aluminium briefcase with scratched corner brackets, sealed with a strip of waterproof electrical tape across the latch."
        },
        {
         "thingId": "interior_0003/thing/2",
-        "name": "the flower",
-        "description": "A single, wilting daisy in a chipped mug. It is brown at the edges and leaning heavily to the left. It smells faintly of dust."
+        "name": "Potted sea aster",
+        "description": "A hardy sea aster in a chipped ceramic pot on the kitchen windowsill, coated in a fine layer of coastal salt dust."
        },
        {
         "thingId": "interior_0003/thing/3",
-        "name": "the briefcase",
-        "description": "A leather briefcase sitting on the floor by the door. It is locked. The leather is cracked and worn. It smells of old paper and sweat."
-       },
-       {
-        "thingId": "interior_0003/thing/4",
-        "name": "the envelope",
-        "description": "A white envelope on the reception desk. It is sealed with wax. The wax has a crest on it, but it is scratched and unrecognizable. It is addressed to 'The Keeper of the Sector'."
+        "name": "Tide and cable logbook",
+        "description": "A water-swollen clothbound ledger filled with handwritten tidal depths, cable coordinates, and sonar frequencies."
        }
       ]
      }

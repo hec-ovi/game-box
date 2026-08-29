@@ -102,17 +102,105 @@ export function describeNpcTool(letters: string): Tool<WrittenPerson> {
   }
 }
 
-/** The signs over a batch of buildings, each carrying the label it was asked under. */
-export interface WrittenSigns {
-  readonly signs: readonly { readonly building: string; readonly name: string }[]
+/** One thing the town needs behind its doors, as the model is asked to answer it. */
+export interface NeedSlot {
+  /** The label it answers under. */
+  readonly label: string
+  /** What the town needs, in the words the caller asked for it. */
+  readonly wants: string
+  /** How many of the town's doors have to be the kind that answers it. */
+  readonly count: number
+  /** The word that answers it, where the town's own history named one. */
+  readonly kind?: Word | undefined
 }
 
-export function signsTool(labels: readonly string[]): Tool<WrittenSigns> {
-  const sign = z.object({ building: oneOf(labels), name: z.string().min(2).max(80) })
+/** The kind of place that answers each of the town's needs, by the label the need was asked under. */
+export interface WrittenNeeds {
+  readonly needs: Readonly<Record<string, Word>>
+}
+
+/**
+ * Which kind of place answers each thing the town needs, asked before a door is
+ * filled in and before there is a schema for the doors at all.
+ *
+ * It is one word per need and nothing else: what the town needs is a kind of
+ * place, and which doors then hold it is picked from the architecture. Every
+ * answer is an enum of the charters the city carries, and a need the town's own
+ * history named is pinned to its word, so the model cannot answer "a jail" with
+ * anything else.
+ */
+export function needsTool(needs: readonly NeedSlot[], kinds: readonly Word[]): Tool<WrittenNeeds> {
+  const word = oneOf(kinds)
+  const answers = Object.fromEntries(
+    needs.map((need) => [
+      need.label,
+      (need.kind ? z.literal(need.kind) : word).describe(
+        `The kind of place that answers this: ${need.wants}. The town needs ${need.count} of its open doors to be one.`,
+      ),
+    ]),
+  )
+  return {
+    name: 'settle_needs',
+    description: prompt('tool-settle-needs'),
+    contract: contract('settle_needs', z.object({ needs: z.object(answers) }) as unknown as z.ZodType<WrittenNeeds>),
+  }
+}
+
+/** One of the town's doors as the tool is built around it: the label it is answered under, and the word it is pinned to where a need is answered behind it. */
+export interface DoorSlot {
+  readonly label: string
+  readonly kind?: Word | undefined
+}
+
+/** What every open door is, by the label the door was asked under. */
+export interface WrittenPlaces {
+  readonly places: Readonly<Record<string, Word>>
+}
+
+/**
+ * What each of the town's open doors is: the stage that decides a city's
+ * locations, so it is the one tool that cannot answer a word the city does not
+ * declare, and every door is an enum of the charters the city carries.
+ *
+ * One property per door, under the door's own label, so a building cannot be
+ * answered twice or left out and no answer has to be matched back to a label by
+ * repeating it. A door one of the town's needs has taken is a constant: the
+ * kind was settled before this call and is written back as it stands, which is
+ * how a town gets what it needs by construction rather than by counting the
+ * answer afterwards. The words repeat down every door, so the enum is hoisted
+ * once into `$defs` and the doors point at it.
+ */
+export function placesTool(doors: readonly DoorSlot[], kinds: readonly Word[]): Tool<WrittenPlaces> {
+  const word = oneOf(kinds)
+  const places = z.object(Object.fromEntries(doors.map((door) => [door.label, door.kind ? z.literal(door.kind) : word])))
+  const source = contract('write_places', z.object({ places }) as unknown as z.ZodType<WrittenPlaces>)
+  return {
+    name: 'write_places',
+    description: prompt('tool-write-places'),
+    contract: new ToolContract(source, compactSchema(source.jsonSchema() as JsonSchema)),
+  }
+}
+
+/** The signs over a batch of buildings, each carrying the label it was asked under, and what the building is where nobody has said yet. */
+export interface WrittenSigns {
+  readonly signs: readonly { readonly building: string; readonly name: string; readonly kind?: Word }[]
+}
+
+/**
+ * A batch of signs. `kinds` is the closed list a building nobody has said
+ * anything about is written as; a batch of doors whose kinds are already
+ * settled is asked for the signs alone, so no call writes a word its caller
+ * already has.
+ */
+export function signsTool(labels: readonly string[], kinds?: readonly Word[]): Tool<WrittenSigns> {
+  const name = z.string().min(2).max(80)
+  const sign = kinds
+    ? z.object({ building: oneOf(labels), kind: oneOf(kinds).describe('What this building is, as one of the words this city declares.'), name })
+    : z.object({ building: oneOf(labels), name })
   return {
     name: 'name_signs',
-    description: prompt('tool-name-signs'),
-    contract: contract('name_signs', z.object({ signs: exactly(sign, labels.length) })),
+    description: prompt(kinds ? 'tool-name-frontage' : 'tool-name-signs'),
+    contract: contract('name_signs', z.object({ signs: exactly(sign, labels.length) }) as unknown as z.ZodType<WrittenSigns>),
   }
 }
 
@@ -145,9 +233,8 @@ export function districtsTool(labels: readonly string[]): Tool<WrittenDistricts>
   }
 }
 
-/** One place and everybody in it, as one answer. */
-export interface WrittenPlace {
-  readonly name: string
+/** One place and everybody in it, as one answer. Its name is not in it: the sign over its door was written before this call and is handed in on the request. */
+export interface WrittenInstance {
   readonly character: string
   readonly people: readonly (WrittenPerson & { readonly postId: string })[]
   readonly things: readonly { readonly thingId: string; readonly name: string; readonly description: string }[]
@@ -172,7 +259,7 @@ export interface Shell {
  * limit, because nothing downstream holds it to one: measured, a bar's came
  * back at 430 characters against a 400 cap, and the cap cost the whole place.
  */
-export function instanceTool(shell: Shell): Tool<WrittenPlace> {
+export function instanceTool(shell: Shell): Tool<WrittenInstance> {
   const people = z.object({ postId: oneOf(shell.postIds), ...personSchema(shell.letters).shape })
   const things = z.object({
     thingId: oneOf(shell.thingIds),
@@ -185,7 +272,6 @@ export function instanceTool(shell: Shell): Tool<WrittenPlace> {
     contract: contract(
       'write_instance',
       z.object({
-        name: z.string().min(2).max(80),
         character: z.string().min(20),
         people: exactly(people, shell.postIds.length),
         things: exactly(things, shell.thingIds.length),

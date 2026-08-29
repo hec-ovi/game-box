@@ -206,14 +206,18 @@ describe('talking to somebody at their post in a room', () => {
     expect(her.resumed).toBe(1)
   })
 
-  it('talks with the hands of the body the room drew for them', async () => {
+  it('answers on the body the room drew for them, with no model in the room to speak', async () => {
     const { game, cast } = await intoTheShop()
     press('KeyE')
     game.frame(1 / 60)
     const her = cast.bodies('npc_0001')[0]!
 
+    // nothing is listening, so she says nothing and there is no line for her
+    // hands to mime. What is left is her answer: asked for something she has
+    // not got, the refusal is a shake of the head, on the body the room drew
     game.intent({ kind: 'say', text: 'what have you got for me?' })
-    await vi.waitFor(() => expect(cast.moved.map((arms) => arms.clip)).toContain('speaking'))
+    await vi.waitFor(() => expect(cast.moved.map((arms) => arms.clip)).toContain('Idle_No_Loop'))
+    expect(cast.moved.map((arms) => arms.clip)).not.toContain('speaking')
     expect(cast.moved.every((arms) => arms.object === her.object)).toBe(true)
   })
 })

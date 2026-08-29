@@ -6,6 +6,9 @@ export function charterOf(word: Word): Charter {
   return SHIPPED_CHARTERS.find((charter) => charter.word === word)!
 }
 
+/** The architecture every request about a building carries: how tall it stands, how big its floor is and whether it is on an avenue. */
+export const STANDING = { storeys: 2, floor: { frontage: 8, depth: 12 }, onAvenue: false } as const
+
 /** A plan that put nothing in the place: no lock, no screen, no camera, not for sale. */
 export const PLAIN: InstanceBrief = { locked: [], machines: [], camera: false }
 

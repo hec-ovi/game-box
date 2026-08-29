@@ -12,6 +12,7 @@ import { Sidecar } from '@gb/sidecar'
 import type { World } from '@gb/world'
 import * as THREE from 'three'
 import type { Ai } from './ai.ts'
+import { Arrivals } from './arrivals.ts'
 import { Attending, type Post } from './attending.ts'
 import { Buildings } from './buildings.ts'
 import { Chase } from './chase.ts'
@@ -108,6 +109,7 @@ export class Game {
   #street: Street
   #buildings: Buildings
   #companions: Companions
+  #arrivals: Arrivals
   #escorts: Escorts
   #stashing: Stashing
   #locks: Locks
@@ -118,6 +120,7 @@ export class Game {
   #driving: Driving
   #chase: Chase
   #attending: Attending
+  #gestures: Gestures
   #talking: Talking
   #report: Reporting
   #playthrough: Playthrough
@@ -230,6 +233,7 @@ export class Game {
         this.keep()
         this.#compass.dirty()
         this.#minimap.dirty()
+        this.#arrivals.dirty()
         this.#escorts.dirty()
         // the board moved: who is walking with the player is read off it
         this.#companions.sync()
@@ -273,6 +277,14 @@ export class Game {
       buildings: this.#buildings,
       riding: () => this.#driving.passengers(),
       note: (text) => this.#report.note(text),
+    })
+
+    // walking up to a place is arriving at it: a job that says to go somewhere
+    // is done once the player is standing there, door or no door
+    this.#arrivals = new Arrivals({
+      steps: () => this.#log.objectives(),
+      doorstep: (plotId) => this.#city.doorsteps.get(plotId),
+      arrived: (place) => this.#report.report(this.#log.handle({ kind: 'arrived', place })),
     })
 
     // an escort is credited when the person walking with the player gets
@@ -396,6 +408,9 @@ export class Game {
       },
     })
 
+    // the same lookup the person being talked to was found through, so the
+    // hands that talk are the body they are actually wearing
+    this.#gestures = new Gestures(members)
     this.#talking = new Talking({
       world: this.#world,
       log: this.#log,
@@ -404,9 +419,7 @@ export class Game {
       hud: this.#hud,
       body: this.#body,
       attending: this.#attending,
-      // the same lookup the person being talked to was found through, so the
-      // hands that talk are the body they are actually wearing
-      gestures: new Gestures(members),
+      gestures: this.#gestures,
       // naming their stock opens the counter they keep; a word, a key or a
       // door that changed hands is one the locks and the inventory read
       wares: (npcId) => this.#counters.open(npcId),
@@ -688,11 +701,17 @@ export class Game {
     if (this.#buildings.outdoors) {
       this.#street.update(seconds, this.#body.position)
       this.#escorts.update()
+      // and a building they have walked up to is one they have got to, which
+      // is what a step saying to go there is waiting on
+      this.#arrivals.update(this.#body.position)
     }
     mark('street')
     // whoever is being talked to keeps facing the player, indoors and out, and
-    // before the cast runs so the head turn lands on this frame's pose
+    // before the cast runs so the head turn lands on this frame's pose. A nod
+    // or a shake of the head left standing by a turn with no words in it is
+    // counted down in the same breath
     this.#attending.update(seconds)
+    this.#gestures.update(seconds)
     this.#cast?.update(seconds)
     mark('cast')
 

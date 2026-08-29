@@ -29,8 +29,13 @@ interface Handlers {
  *
  * Nothing here is named, because a plan is the architecture and every name in
  * a city is written by the model with the build. So a part of town reads as
- * whatever the plan calls it and a station reads as a station, and nothing on
- * the glass reads as a name somebody wrote.
+ * whatever the plan calls it, and nothing on the glass reads as a name somebody
+ * wrote.
+ *
+ * Nothing here says what the town has, either. What a building turns out to be
+ * is the writing's, so a plan cannot say whether the trains board in this town
+ * or how many places they board at, and a readout that answered nought would be
+ * this view claiming a town with no subway before anybody has written one.
  *
  * The look is the panel's, so this holds no colour of its own: the classes are
  * styled beside the rest of the front door in `index.html`.
@@ -150,7 +155,6 @@ export class Overlay {
     for (const [value, label] of [
       [String(plan.buildings.length), 'Buildings'],
       [String(plan.zones.length), 'Zones'],
-      [String(plan.stations.length), 'Stations'],
       [`${plan.tallest}`, 'Tallest, storeys'],
       [`${across} x ${down}`, 'Metres across'],
     ] as const) {
@@ -183,18 +187,14 @@ export class Overlay {
   }
 
   /**
-   * A label over every part of town and every station, the way the map writes
-   * them: a part of town under whatever the plan calls it, and a station under
-   * what it is, because a plan has no sign over any door.
+   * A label over every part of town, the way the map writes them: under
+   * whatever the plan calls it, because a plan has no sign over any door.
    */
   #labelAll(plan: Plan): void {
     for (const zone of plan.zones) this.#label(zone.id, 'zone', zone.name, { x: zone.heart.x, y: zone.top, z: zone.heart.z })
-    for (const station of plan.stations) {
-      this.#label(station.id, 'station', 'Station', { x: station.x + station.w / 2, y: station.top, z: station.z + station.d / 2 })
-    }
   }
 
-  #label(id: string, kind: 'zone' | 'station', words: string, at: { x: number; y: number; z: number }): void {
+  #label(id: string, kind: 'zone', words: string, at: { x: number; y: number; z: number }): void {
     const label = document.createElement('span')
     label.className = `gb-bp-name gb-bp-name-${kind} gb-t1`
     label.dataset.read = 'true'

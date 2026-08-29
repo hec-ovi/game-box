@@ -1,8 +1,8 @@
-import type { DistrictRequest, History, Instance, InstanceRequest, ItemProfile, Narrator, NpcProfile } from '@gb/forge'
+import type { DistrictRequest, History, Instance, InstanceRequest, ItemProfile, Narrator, NpcProfile, PlaceRequest, PlaceSign, WrittenPlace } from '@gb/forge'
 import { premiseLines } from '@gb/forge'
 import { err, ok, type Result } from '@gb/kit'
 import { Sidecar } from '@gb/sidecar'
-import type { Charter, ItemArchetype, NpcRole, Premise, Word } from '@gb/world'
+import { SHIPPED_CHARTERS, type Charter, type ItemArchetype, type NpcRole, type Premise, type Word } from '@gb/world'
 import { Asker, type ScribeProblem, type Violation } from './asker.ts'
 import { BRIEF_FIELDS, BRIEF_LABELS, type BriefDraft, type BriefField, type BriefSoFar } from './brief.ts'
 import { charterLines } from './charter-lines.ts'
@@ -11,6 +11,7 @@ import { FamilyClaims } from './claim.ts'
 import { DistrictNamer } from './districts.ts'
 import { addressOf, type ScribeFailure } from './failure.ts'
 import { InstanceWriter } from './instance.ts'
+import { PlaceWriter, type PlacesInput } from './places.ts'
 import { profileOf } from './person.ts'
 import { Pins } from './pins.ts'
 import { PremiseWriter, type PremiseInput } from './premise.ts'
@@ -18,7 +19,7 @@ import { Progress, type ProgressPort, type ScribeStage } from './progress.ts'
 import { bullets, prompt } from './prompts.ts'
 import { QuestWriter, type QuestInput } from './quests.ts'
 import { NameRegistry } from './registry.ts'
-import { OneSign, SignNamer, type PlaceRequest } from './signs.ts'
+import { OneSign, SignNamer } from './signs.ts'
 import { answered } from './stand-in.ts'
 import { DESCRIBE_ITEM, describeNpcTool, NAME_CITY, WRITE_BRIEF } from './tools.ts'
 import { Waves } from './waves.ts'
@@ -105,6 +106,13 @@ export class Scribe implements Narrator {
   #dropped: ScribeFailure[] = []
   #characters = new Map<string, string>()
   #oneSign: OneSign
+  /**
+   * The closed list of kinds this city declares, kept from the call that
+   * decided what its open doors are, because the call that names the rest of
+   * the street has to write them out of the same list. A growth that opens no
+   * doors makes no such call, and the presets are what every city declares.
+   */
+  #kinds: readonly Charter[] = SHIPPED_CHARTERS
 
   constructor(options: ScribeOptions = {}) {
     const sidecar = options.sidecar ?? new Sidecar()
@@ -215,22 +223,39 @@ export class Scribe implements Narrator {
     return spare === undefined ? err(answer.error) : ok(this.#named(spare))
   }
 
-  /** One sign on its own. A word already over a door is quoted back and drawn again. */
-  async namePlace(input: PlaceRequest): Promise<Result<string, ScribeFailure>> {
+  /**
+   * What each of the town's open doors is, before a word of work is written.
+   *
+   * This is the stage that decides a city's locations, so nothing here writes a
+   * word of its own: what the town needs is settled first, every answer decodes
+   * against the kinds the city declares, and the doors that answer a need are
+   * pinned to their word. A stage this box cannot get an answer for stops the
+   * build.
+   */
+  async writePlaces(input: PlacesInput): Promise<Result<Word[], ScribeFailure>> {
+    this.#kinds = input.kinds
+    return new PlaceWriter({ asker: this.#askers.places, progress: this.#progress, standIn: this.#standIn }).write(input)
+  }
+
+  /** One sign on its own, for a door whose kind is already settled. A word already over another door is quoted back and drawn again. */
+  async namePlace(input: WrittenPlace): Promise<Result<string, ScribeFailure>> {
     return this.#oneSign.write(input)
   }
 
   /**
-   * The signs over the buildings that do not open, twenty to a call, with the
-   * town's history in front of the model and each building's trade and street.
-   * Back in the order they were asked for, no word heading two of them.
+   * The sign over every door in the town, twenty to a call, with the town's
+   * history in front of the model and each building's trade, street and the
+   * work the town's quests do behind it. Back in the order they were asked for,
+   * no word heading two of them. A door nobody has said anything about is told
+   * what it is here as well, off the kinds the city declares.
    */
-  async namePlaces(requests: readonly PlaceRequest[]): Promise<Result<string[], ScribeFailure>> {
+  async namePlaces(requests: readonly PlaceRequest[]): Promise<Result<PlaceSign[], ScribeFailure>> {
     return new SignNamer({
       asker: this.#askers.city,
       waves: this.#waves,
       registry: this.#registry,
       progress: this.#progress,
+      kinds: this.#kinds,
       standIn: this.#standIn,
     }).write(requests)
   }

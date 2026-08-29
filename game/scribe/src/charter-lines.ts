@@ -29,15 +29,40 @@ const ACCESS: Record<AccessKind, string> = {
  * keeps, who gets in, its rooms, and what people say about such places.
  */
 export function charterLines(charter: Charter): string {
-  const work = charter.work.map((kind) => WORK[kind])
-  const rooms = [charter.rooms.hall, charter.rooms.main, ...charter.rooms.services].flatMap((room) => (room ? [room.name] : []))
   return prompt('charter', {
     label: charter.label,
     front: FRONT[charter.service],
-    work: work.length ? `people here do ${work.join(' and ')}` : 'nobody works past the front',
-    holding: charter.holding.length ? `it keeps ${charter.holding.join(', ')}` : 'it keeps nothing much',
+    work: workOf(charter),
+    holding: holdingOf(charter),
     access: ACCESS[charter.access],
-    rooms: rooms.join(', '),
+    rooms: roomsOf(charter).join(', '),
     rumours: bullets(charter.rumours, 'Nothing in particular.'),
   })
 }
+
+/**
+ * One kind of place on one line: the word an answer is written in, and enough
+ * of what it is to tell it from the others.
+ *
+ * The whole closed list a city declares goes into the call that decides what
+ * its doors are, so that call reads this rather than `charterLines`. What is
+ * left out is the rumours, which are about talking to somebody in such a place
+ * rather than about picking one.
+ */
+export function kindLine(charter: Charter): string {
+  const parts = [FRONT[charter.service], workOf(charter), holdingOf(charter), ACCESS[charter.access], `its rooms are ${roomsOf(charter).join(', ')}`]
+  if (charter.transit === 'subway') parts.push('the trains board here')
+  if (charter.residential) parts.push('people live here')
+  return `${charter.word}${charter.label === charter.word ? '' : ` (a ${charter.label})`}: ${parts.join('; ')}`
+}
+
+const workOf = (charter: Charter): string => {
+  const work = charter.work.map((kind) => WORK[kind])
+  return work.length ? `people here do ${work.join(' and ')}` : 'nobody works past the front'
+}
+
+const holdingOf = (charter: Charter): string =>
+  charter.holding.length ? `it keeps ${charter.holding.join(', ')}` : 'it keeps nothing much'
+
+const roomsOf = (charter: Charter): string[] =>
+  [charter.rooms.hall, charter.rooms.main, ...charter.rooms.services].flatMap((room) => (room ? [room.name] : []))

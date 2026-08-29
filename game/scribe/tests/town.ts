@@ -30,10 +30,9 @@ export const PREMISE = {
 const FAMILIES = ['orne', 'ellis', 'ax', 'underhill', 'ester', 'ombe', 'ade', 'ury', 'ansom', 'ovell', 'itt', 'ance']
 
 /** A place written to the shell the tool was built around: every post filled, every thing named, back to front. */
-export function writtenPlace(call: Sent, options: { name?: string; given?: string; stages?: readonly string[] } = {}) {
+export function writtenPlace(call: Sent, options: { given?: string; stages?: readonly string[] } = {}) {
   const shell = shellOf(call)
   return {
-    name: options.name ?? `The ${shell.letters} House`,
     character: 'A low room that smells of wet rope, with the radio left on.',
     // written back to front, so a caller that zips by position rather than by id gets it wrong
     people: shell.posts
@@ -50,6 +49,24 @@ export function writtenPlace(call: Sent, options: { name?: string; given?: strin
     things: shell.things.map((thingId) => ({ thingId, name: `Thing ${thingId}`, description: 'Worn and heavy.' })),
   }
 }
+
+/** What the town needs behind its doors: every need answered with the word the schema pinned it to, or the first word the city declares. */
+export function settledNeeds(call: Sent) {
+  return { needs: answers(fieldsOf(call, 'needs')) }
+}
+
+/**
+ * What every open door is, read off the tool the call was handed: a door one of
+ * the town's needs took keeps the word it was pinned to, and every other door
+ * is the first word the city declares.
+ */
+export function writtenPlaces(call: Sent) {
+  return { places: answers(fieldsOf(call, 'places')) }
+}
+
+/** One word per field, taken off the field's own schema: what it is pinned to, or the first word it allows. */
+const answers = (fields: Fields): Record<string, string> =>
+  Object.fromEntries(Object.entries(fields).map(([label, field]) => [label, field.const ?? field.enum![0]!]))
 
 /** A person for the single-person call, under a family name the letters it was dealt allow. */
 function writtenPerson(call: Sent, index: number) {
@@ -74,10 +91,21 @@ function idsOf(call: Sent, field: string): string[] {
 }
 
 /** The labels a batch tool was built around: one per building, or one per part of the city. */
-function labelsOf(call: Sent, list: string, field: string): string[] {
-  const properties = call.parameters['properties'] as Record<string, Record<string, Record<string, Record<string, Record<string, string[]>>>>>
-  return properties[list]!['items']!['properties']![field]!['enum']!
+const labelsOf = (call: Sent, list: string, field: string): string[] => fieldsOf(call, list)[field]!.enum!
+
+/** The fields one item of a tool's list is built from, as the schema the model was handed declares them. */
+type Fields = Record<string, { enum?: string[]; const?: string; description?: string; $ref?: string }>
+
+/** The fields of a list or a bag in a tool's parameters, with every repeat the schema hoisted put back. */
+function fieldsOf(call: Sent, list: string): Fields {
+  const properties = call.parameters['properties'] as Record<string, { items?: { properties: Fields }; properties?: Fields }>
+  const fields = properties[list]!.items?.properties ?? properties[list]!.properties!
+  const defs = (call.parameters['$defs'] ?? {}) as Fields
+  return Object.fromEntries(Object.entries(fields).map(([name, field]) => [name, field.$ref ? defs[field.$ref.split('/').pop()!]! : field]))
 }
+
+/** The words a batch of signs may say a building is, where the batch is the one that decides. */
+const kindsOf = (call: Sent): string[] | undefined => fieldsOf(call, 'signs')['kind']?.enum
 
 /** A quest as the writer tells it: one conversation with whoever the corner offered as its giver. */
 function writtenQuest(call: Sent) {
@@ -107,8 +135,20 @@ export function townModel() {
         return { name: 'Cold Harbour' }
       case 'name_districts':
         return { districts: labelsOf(call, 'districts', 'district').map((label) => ({ district: label, name: `Kiln ${label.slice(1)}` })) }
-      case 'name_signs':
-        return { signs: labelsOf(call, 'signs', 'building').map((label) => ({ building: label, name: `Head${label.slice(1)} Supply` })) }
+      case 'settle_needs':
+        return settledNeeds(call)
+      case 'write_places':
+        return writtenPlaces(call)
+      case 'name_signs': {
+        const kinds = kindsOf(call)
+        return {
+          signs: labelsOf(call, 'signs', 'building').map((label) => ({
+            building: label,
+            name: `Head${label.slice(1)} Supply`,
+            ...(kinds ? { kind: kinds[Number(label.slice(1)) % kinds.length]! } : {}),
+          })),
+        }
+      }
       case 'name_place':
         return { name: `Sign${index} Row` }
       case 'write_instance':

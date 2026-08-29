@@ -4,15 +4,16 @@ import type { InteriorPlan } from '../interior/plan.ts'
 import type { PlotSite } from '../layout/plots.ts'
 
 /**
- * A site the town has decided to build on, before anybody has looked inside it.
- * How the kind was picked is the caller's business: a whole town rolls it off
- * the mix, `extend` draws one at a time into the gaps, and a growth also offers
- * up the facades already standing so one of them can be opened.
+ * A site the town has decided to build on: a footprint, a door and a height,
+ * and nothing about what the building is. That is the architecture's whole
+ * answer, and what stands here is the writing's.
+ *
+ * Where the site came from is the caller's business: a whole town cuts them out
+ * of its blocks, `extend` drops one at a time into the gaps, and a growth also
+ * offers up the facades already standing so one of them can be opened.
  */
 export interface Chosen {
   readonly site: PlotSite
-  /** What kind of place goes up here. */
-  readonly charter: ResolvedCharter
   readonly storeys: number
   /** Whether its door is on one of the town's avenues. */
   readonly onAvenue: boolean
@@ -31,6 +32,8 @@ export interface Standing {
   readonly name: string
   /** Where it falls in the town's own count of plots, which is what its people and its things are drawn from. */
   readonly index: number
+  /** What the town already said it is. A growth never opens a door nobody ever said anything about, so there is always one. */
+  readonly charter: ResolvedCharter
 }
 
 /** A post inside a building that somebody is going to be written into. */
@@ -86,15 +89,27 @@ export interface PlannedInside {
   readonly forSale?: number
 }
 
-/** One building, planned end to end: everything about it that is arithmetic rather than invention. */
-export interface PlannedSite extends Chosen {
+/**
+ * A building as the architecture leaves it: a footprint, a door, a height, the
+ * street it stands on and its number in the town. Nothing about what it is,
+ * because that is what the writing is asked next.
+ */
+export interface Sited extends Chosen {
   /** Where it falls in the town's own count of plots. */
   readonly index: number
-  readonly style: string
-  /** The sign over its door, written in the box. A place that opens is renamed by whoever writes it, unless it was already standing. */
-  readonly sign: string
   /** The street its door is on. */
   readonly street?: string
+  /** Its footprint in metres, across the front then front to back. */
+  readonly floor: { readonly frontage: number; readonly depth: number }
+}
+
+/** One building, planned end to end: what the writing said it is, and everything about it that follows by arithmetic. */
+export interface PlannedSite extends Sited {
+  /** What kind of place it is: the writing's answer, or the architecture's own placeholder where nothing was written. */
+  readonly charter: ResolvedCharter
+  readonly style: string
+  /** The sign over its door. A door the writing left blank keeps the one composed in the box. */
+  readonly sign: string
   /** Present only for the doors that open. */
   readonly inside?: PlannedInside
 }

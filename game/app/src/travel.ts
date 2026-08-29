@@ -23,6 +23,12 @@ interface Station {
  * every plot whose charter runs a subway) and `@gb/kitbash` draws the entrance
  * on that plot's doorstep, so walking up to one is walking up to its doorstep.
  *
+ * How many there are is the writing's, not the layout's, so a town boards
+ * nowhere, in one place, or in several, and all three have to read honestly. A
+ * ride goes from one entrance to another, so a town with fewer than two of them
+ * has nowhere to ride: it offers no prompt on the entrance it does have and
+ * carries nobody, and the map says which of those situations the player is in.
+ *
  * A ride is the veil, the move, and the veil away. The move is the player and
  * everybody walking with them put down a step off the other station's doorstep,
  * and it happens on the frame after the veil goes up so the city catches up
@@ -50,14 +56,28 @@ export class Travel {
     })
   }
 
-  /** Every station in town, as the plan draws them. */
+  /**
+   * Every station in town, as the plan draws them, however many that is. A town
+   * that boards nowhere marks nothing, which is what the map reads to say so.
+   */
   get marks(): MapStation[] {
     return this.#stations.map((station) => ({ id: station.id, name: station.name, x: station.cell.x, y: station.cell.y }))
   }
 
-  /** Everything a player standing in the street could board, for the crosshair. */
+  /** Whether there is anywhere to ride at all: a train goes from one entrance to another. */
+  get #rideable(): boolean {
+    return this.#stations.length > 1
+  }
+
+  /**
+   * Everything a player standing in the street could board, for the crosshair.
+   * A town with nowhere to ride offers none of it: an entrance the player can
+   * walk up to and be told to take a subway from, when the only train there is
+   * boards where they are standing, is a prompt that promises a journey the
+   * game cannot make.
+   */
   entrances(): readonly { id: string; name: string; at: Vec2 }[] {
-    return this.#stations
+    return this.#rideable ? this.#stations : []
   }
 
   /** The station the player is standing at, while they are standing at one. */
@@ -68,7 +88,9 @@ export class Travel {
   /** Take the train. The veil goes up now and the ride lands on the next frame. */
   board(stationId: string): void {
     const station = this.#stations.find((each) => each.id === stationId)
-    if (!station || station.id === this.boarding(this.#body.position)) return
+    // nowhere to ride carries nobody, and nobody rides to where they already
+    // stand: a town with one entrance is both of those at once
+    if (!station || !this.#rideable || station.id === this.boarding(this.#body.position)) return
     this.#landing = station
     this.#veiled = true
     this.#hud.show({ loading: { title: `To ${station.name}`, veil: true } })

@@ -1,40 +1,36 @@
 /**
  * Where the signage `@gb/kitbash` writes for a plot lands on the building the
- * pack actually drew, measured headless in Node over a planned town: how far
- * every door lamp is from the drawn door it lights, and how far a plate laid
- * flat on a wall stands off the model's own face under it. Both sides of it are
- * arithmetic, the plot's and the model's, so a plan is the whole of what it
- * needs.
+ * pack actually drew, measured headless in Node: how far every door lamp is
+ * from the drawn door it lights, and how far a plate laid flat on a wall stands
+ * off the model's own face under it. Both sides of it are arithmetic, the
+ * plot's and the model's, so nothing here needs a city that has been written.
+ *
+ * The street is `tools/town.ts`: every model in the pack on a plot cut to its
+ * own shape, under the fourteen kinds of place a city ships. What a kind is
+ * decides how much signage the kit writes and of what sort, so a street of one
+ * kind carries a nameplate and two door lamps and measures none of the fixtures
+ * the seating exists for.
  *
  * Both columns come off one run. The kit's own signage is read against the same
  * drawn face the seated one is, so what separates the two is the seat and
  * nothing else, and a seating that did nothing would print two identical blocks.
  *
- *   node tools/measure-fixtures.ts [--seed metro] [--blocks 4]
+ *   node tools/measure-fixtures.ts
  */
-import { Forge } from '@gb/forge'
 import { DOORLAMP, KitDressing, SIGN, placeholderKit, signsFor, type Sign } from '@gb/kitbash'
-import { Greybox, storeyHeight } from '@gb/scene'
+import { Greybox } from '@gb/scene'
 import { PrefabDressing } from '../src/dressing.ts'
-import { designFor } from '../src/pin.ts'
-import { flag } from './args.ts'
 import { axesOf, type StreetFace } from '../src/face.ts'
 import { laidOn } from '../src/fixtures.ts'
 import { readPack } from './headless.ts'
 import { middleOf, seatedSigns, signPoints, type SeatedSign } from './signage.ts'
-
-const args = process.argv.slice(2)
-const seed = flag(args, '--seed') ?? 'metro'
-const blocks = Number(flag(args, '--blocks') ?? 4)
+import { packTown } from './town.ts'
 
 const library = await readPack()
 const catalogue = library.catalogue
 const kit = new KitDressing(placeholderKit('a neon port city'), new Greybox())
 const dressing = new PrefabDressing(library, kit)
-
-const plan = Forge.plan({ theme: 'a neon port city', seed, blocksX: blocks, blocksY: blocks, density: 1, maxStoreys: 4 })
-if (!plan.ok) throw new Error(`the forge refused the brief: ${JSON.stringify(plan.error)}`)
-const world = plan.value
+const town = packTown(catalogue)
 
 /** Where one town's fixtures ended up, on one dressing: everything a column of the table is read off. */
 class Landing {
@@ -97,16 +93,14 @@ let plots = 0
 let prefabs = 0
 let orphans = 0
 
-for (const plot of world.plots()) {
+for (const { plot, size, charter } of town) {
   plots++
-  const charter = world.charter(plot.kind)!
-  const size = { width: plot.rect.w * world.cellSize, depth: plot.rect.h * world.cellSize, height: storeyHeight(plot.storeys) }
-  if (!designFor(catalogue, plot, size, charter.suits)) continue
+  const face = dressing.face(plot, size, charter)
+  if (!face) continue
   prefabs++
   const signs = signsFor(plot, size, charter) as readonly Sign[]
   const wrote = signPoints(kit.building(plot, size, charter))
   const hung = signPoints(dressing.building(plot, size, charter))
-  const face = dressing.face(plot, size, charter)!
 
   const onTheFace = seatedSigns(wrote, hung, signs, face)
   orphans += onTheFace.orphans
@@ -132,7 +126,7 @@ function stat(name: string, values: readonly number[]): void {
   console.log(`${name}: n=${sorted.length} min ${sorted[0]!.toFixed(3)} p50 ${sorted[Math.floor(sorted.length / 2)]!.toFixed(3)} max ${sorted.at(-1)!.toFixed(3)}`)
 }
 
-console.log(`pack ${catalogue.version}, ${blocks} by ${blocks} blocks, seed ${seed}: ${plots} plots, ${prefabs} on the pack`)
+console.log(`pack ${catalogue.version}: ${plots} plots, ${prefabs} on the pack`)
 console.log(`sign vertices in no sign's patch: ${orphans}`)
 written.print('as the kit wrote it, against the plot')
 seated.print('seated on the face the model drew')

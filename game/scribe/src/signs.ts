@@ -1,10 +1,12 @@
-import type { Narrator } from '@gb/forge'
+import type { Narrator, PlaceRequest, PlaceSign, WrittenPlace } from '@gb/forge'
 import { err, ok, type Result } from '@gb/kit'
 import type { Charter, Word } from '@gb/world'
 import type { Asker, Violation } from './asker.ts'
-import { charterLines } from './charter-lines.ts'
+import { charterLines, kindLine } from './charter-lines.ts'
+import { doorLine } from './door-lines.ts'
 import type { ScribeFailure } from './failure.ts'
 import { headOf } from './head.ts'
+import { doorLabel } from './labels.ts'
 import type { Progress } from './progress.ts'
 import { bullets, lastFew, prompt } from './prompts.ts'
 import type { NameRegistry } from './registry.ts'
@@ -12,26 +14,13 @@ import { answered } from './stand-in.ts'
 import { NAME_PLACE, signsTool, type WrittenSigns } from './tools.ts'
 import type { Waves } from './waves.ts'
 
-/** A building that does not open: a facade, a door and a sign, and nothing behind it. */
-export interface PlaceRequest {
-  /** The word of the kind of place it is. */
-  readonly kind: Word
-  /** What that word means here: its label is what the sign is written for. */
-  readonly charter: Charter
-  readonly theme: string
-  /** Where this building falls in the town's own count of plots: its label in the batch, and the stand-in's draw. */
-  readonly index: number
-  /** The street its door is on, when the caller knows it. */
-  readonly street?: string | undefined
-  /** The city's own story, as `premiseLines` renders it. */
-  readonly premise?: string | undefined
-}
-
 export interface SignNamerOptions {
   readonly asker: Asker
   readonly waves: Waves
   readonly registry: NameRegistry
   readonly progress: Progress
+  /** The closed list a door nobody has said anything about is written as. Never empty: every city declares the presets. */
+  readonly kinds: readonly Charter[]
   /** Only where a caller handed one in. Nothing in the game does. */
   readonly standIn?: Narrator | undefined
 }
@@ -46,6 +35,9 @@ const ATTEMPTS = 40
  * One sign on its own: the single-place question, and the mend when the sign a
  * batch wrote for a building turns out to start with a word already over
  * another door.
+ *
+ * What the building is has always been settled by the time this runs, so this
+ * asks for the sign and nothing else.
  *
  * The head word is checked as part of the answer, so a repeat is quoted back to
  * the model and drawn again rather than swapped for something nobody asked for.
@@ -62,7 +54,7 @@ export class OneSign {
   }
 
   /** The model's sign for this building, hung, or why it could not be written. */
-  async write(request: PlaceRequest): Promise<Result<string, ScribeFailure>> {
+  async write(request: WrittenPlace): Promise<Result<string, ScribeFailure>> {
     const answer = await this.#ask(request, (value) => headProblem(value.name, this.#registry))
     if (answer.ok) return ok(this.#hang(answer.value.name))
 
@@ -78,7 +70,7 @@ export class OneSign {
     return anything.ok ? ok(this.#hang(anything.value.name)) : err(answer.error)
   }
 
-  #ask(request: PlaceRequest, check: (value: { name: string }) => readonly Violation[]) {
+  #ask(request: WrittenPlace, check: (value: { name: string }) => readonly Violation[]) {
     return this.#asker.ask(
       NAME_PLACE,
       prompt('name-place', {
@@ -95,15 +87,9 @@ export class OneSign {
   }
 
   /** A sign from the stand-in a caller handed in, asked again until its head is free. Nothing in the game passes one. */
-  async spare(request: PlaceRequest): Promise<string | undefined> {
+  async spare(request: WrittenPlace): Promise<string | undefined> {
     if (!this.#standIn) return undefined
-    const at = (attempt: number) => ({
-      kind: request.kind,
-      charter: request.charter,
-      theme: request.theme,
-      index: request.index * ATTEMPTS + attempt,
-      ...(request.premise === undefined ? {} : { premise: request.premise }),
-    })
+    const at = (attempt: number) => ({ ...request, index: request.index * ATTEMPTS + attempt })
     let name = answered(await this.#standIn.namePlace(at(0)))
     for (let attempt = 1; attempt <= ATTEMPTS && name !== undefined && this.#registry.signTaken(name); attempt++) {
       name = answered(await this.#standIn.namePlace(at(attempt)))
@@ -117,22 +103,48 @@ export class OneSign {
   }
 }
 
+/** One door waiting for its sign, and where it stands in the list the caller asked about. */
+interface Door {
+  readonly at: number
+  readonly request: PlaceRequest
+}
+
+/** One call's worth of doors. A batch of doors nobody has said anything about answers what each one is as well. */
+interface Batch {
+  readonly doors: readonly Door[]
+  readonly bare: boolean
+}
+
+/** A batch's answer: the sign, and the kind where the batch was the one that decided it. */
+type Batched = Result<ReadonlyMap<string, { name: string; kind?: Word }>, ScribeFailure>
+
 /**
- * Names the buildings nobody walks into, a batch at a time.
+ * Names every door in the town, a batch at a time, and says what the ones
+ * nobody has spoken about are.
  *
  * Most of a city is frontage, and a sign is five tokens, so the cost of naming
  * it all was never the tokens but the round trips. One call names twenty, with
- * the town's history in front of it and each building's trade and street, and
- * hands back the list. No word heads two signs: the call is told the heads
- * already hung and refused if it repeats one, then the answers are read in
- * index order and any head spent by then is asked for again on its own, so
- * which sign keeps a head never depends on which batch landed first.
+ * the town's history in front of it and each building's trade, street and the
+ * work the town's quests do behind it, and hands back the list.
+ *
+ * A door that opens was told what it is back when the architecture stood, so
+ * its batch is asked for the sign alone; a door that never opens is still a
+ * building, and its batch answers the kind as well, off the closed list the
+ * city declares. The two are batched apart so no call writes a word its caller
+ * already has.
+ *
+ * No word heads two signs: a batch is told the heads already hung and refused
+ * if it repeats one, then the answers are read in index order and any head
+ * spent by then is asked for again on its own, so which sign keeps a head never
+ * depends on which batch landed first.
  */
 export class SignNamer {
-  #asker: Asker
   #waves: Waves
+  #asker: Asker
   #registry: NameRegistry
   #progress: Progress
+  #kinds: readonly Charter[]
+  #standIn: Narrator | undefined
   #one: OneSign
   #counted = new Set<number>()
 
@@ -141,54 +153,104 @@ export class SignNamer {
     this.#waves = options.waves
     this.#registry = options.registry
     this.#progress = options.progress
+    this.#kinds = options.kinds
+    this.#standIn = options.standIn
     this.#one = new OneSign({ asker: options.asker, registry: options.registry, standIn: options.standIn })
   }
 
-  async write(requests: readonly PlaceRequest[]): Promise<Result<string[], ScribeFailure>> {
+  async write(requests: readonly PlaceRequest[]): Promise<Result<PlaceSign[], ScribeFailure>> {
     this.#counted.clear()
     this.#progress.open('city', requests.length, `${requests.length} signs`)
 
-    const batches: (readonly PlaceRequest[])[] = []
-    for (let start = 0; start < requests.length; start += BATCH) {
-      batches.push(requests.slice(start, start + BATCH))
-    }
+    const doors = requests.map((request, at) => ({ at, request }))
+    const batches = this.#batches(doors)
     const hung = this.#registry.heads()
-    type Batch = Result<ReadonlyMap<string, string>, ScribeFailure>
-    const answered = await this.#waves.run<readonly PlaceRequest[], Batch>(batches, (batch, b, earlier) =>
-      this.#ask(batch, b, lastFew([...hung, ...earlier.flatMap((names) => (names.ok ? [...names.value.values()].map(headOf) : []))])),
+    const answers = await this.#waves.run<Batch, Batched>(batches, (batch, b, earlier) =>
+      this.#ask(batch, b, lastFew([...hung, ...earlier.flatMap(headsOf)])),
     )
+    // a batch nobody answered is settled once, by the stand-in a caller handed
+    // in, rather than twenty times over
+    for (const [b, answer] of answers.entries()) {
+      if (answer.ok) continue
+      const spare = await this.#spare(batches[b]!)
+      if (spare) answers[b] = ok(spare)
+    }
+    const which = new Map(batches.flatMap((batch, b) => batch.doors.map((door) => [door.at, b] as const)))
 
-    const out: string[] = []
-    for (const [index, request] of requests.entries()) {
-      const settled = await this.#settle(request, answered[Math.floor(index / BATCH)]!)
+    const out: PlaceSign[] = []
+    for (const door of doors) {
+      const settled = await this.#settle(door, answers[which.get(door.at)!]!)
       if (!settled.ok) return err(settled.error)
-      this.#count(index, settled.value, request.charter.label)
       out.push(settled.value)
     }
     return ok(out)
   }
 
   /**
-   * The sign this building ends up with: the one its batch wrote, or, where the
-   * batch was lost or its head is spent by now, one more call for this building
-   * alone. A batch nobody answered is not asked again twenty times: only a
-   * stand-in can settle those, and without one the stage stops here.
+   * The doors cut into calls: the ones already settled first, then the ones
+   * that are still nothing. The split is a function of the requests alone, so
+   * the same town cuts the same batches every time.
    */
-  async #settle(request: PlaceRequest, batch: Result<ReadonlyMap<string, string>, ScribeFailure>): Promise<Result<string, ScribeFailure>> {
-    if (!batch.ok) {
-      const spare = await this.#one.spare(request)
-      if (spare === undefined) return err(batch.error)
-      this.#registry.hang(spare)
-      return ok(spare)
+  #batches(doors: readonly Door[]): Batch[] {
+    const batches: Batch[] = []
+    for (const bare of [false, true]) {
+      const group = doors.filter((door) => (door.request.charter === undefined) === bare)
+      for (let start = 0; start < group.length; start += BATCH) {
+        batches.push({ doors: group.slice(start, start + BATCH), bare })
+      }
     }
-    const written = batch.value.get(label(request))
-    if (written === undefined || this.#registry.signTaken(written)) return this.#one.write(request)
-    this.#registry.hang(written)
-    return ok(written)
+    return batches
   }
 
   /**
-   * One batch: the names by label.
+   * The sign this building ends up with: the one its batch wrote, or, where its
+   * head is spent by now, one more call for this building alone. A batch
+   * nobody answered is not asked again twenty times: only a stand-in can
+   * settle one, and without one the stage stops here.
+   */
+  async #settle(door: Door, batch: Batched): Promise<Result<PlaceSign, ScribeFailure>> {
+    if (!batch.ok) return err(batch.error)
+    // a batch that missed a building was refused, so every label it answered under is in here
+    const written = batch.value.get(doorLabel(door.request.index))!
+    const kind = door.request.kind ?? written.kind
+    const spent = this.#registry.signTaken(written.name)
+    // the word over this door is already over another one: one more call for
+    // this sign alone, against what the building turned out to be
+    const place = spent ? this.#settledPlace(door.request, kind) : undefined
+    if (place !== undefined) {
+      const again = await this.#one.write(place)
+      return again.ok ? ok(this.#kept(door, again.value, kind)) : err(again.error)
+    }
+    this.#registry.hang(written.name)
+    return ok(this.#kept(door, written.name, kind))
+  }
+
+  /** A whole batch from the stand-in a caller handed in, in one call. Nothing in the game hands one in. */
+  async #spare(batch: Batch): Promise<ReadonlyMap<string, PlaceSign> | undefined> {
+    const written = answered(await this.#standIn?.namePlaces?.(batch.doors.map((door) => door.request)))
+    return written?.length === batch.doors.length
+      ? new Map(batch.doors.map((door, at) => [doorLabel(door.request.index), written[at]!]))
+      : undefined
+  }
+
+  /** The same building with its kind settled, which is what a sign is written against. */
+  #settledPlace(request: PlaceRequest, kind: Word | undefined): WrittenPlace | undefined {
+    const charter = request.charter ?? this.#kinds.find((one) => one.word === kind)
+    return kind !== undefined && charter !== undefined ? { ...request, kind, charter } : undefined
+  }
+
+  /** One building counts once, whether it was named in its batch or asked for again afterwards. */
+  #kept(door: Door, name: string, kind: Word | undefined): PlaceSign {
+    if (!this.#counted.has(door.at)) {
+      this.#counted.add(door.at)
+      this.#progress.finished(`${name}, a ${labelOf(door.request, kind, this.#kinds)}`)
+    }
+    // a door that was already something keeps what it was: the caller has it
+    return door.request.kind !== undefined || kind === undefined ? { name } : { name, kind }
+  }
+
+  /**
+   * One batch: the signs by label.
    *
    * A repeated head is quoted back so the next draw is a better batch, but it
    * never costs the batch: the last answer that named every building once is
@@ -196,18 +258,19 @@ export class SignNamer {
    * Measured on one live 3x3 town: 2 of the 4 sign calls were refused for one
    * repeated head, which is a clash the mend settles one sign at a time.
    */
-  async #ask(batch: readonly PlaceRequest[], b: number, takenHeads: readonly string[]): Promise<Result<ReadonlyMap<string, string>, ScribeFailure>> {
-    const labels = batch.map(label)
-    const first = batch[0]
+  async #ask(batch: Batch, b: number, takenHeads: readonly string[]): Promise<Batched> {
+    const labels = batch.doors.map((door) => doorLabel(door.request.index))
+    const first = batch.doors[0]?.request
     let mendable: WrittenSigns | undefined
     const answer = await this.#asker.ask(
-      signsTool(labels),
+      signsTool(labels, batch.bare ? this.#kinds.map((charter) => charter.word) : undefined),
       prompt('name-signs', {
         cityName: this.#registry.cityName,
         theme: first?.theme ?? '',
         premise: first?.premise ?? prompt('no-history'),
+        kinds: batch.bare ? prompt('signs-kinds', { kinds: bullets(this.#kinds.map(kindLine), 'None.') }) : prompt('signs-settled'),
         buildings: bullets(
-          batch.map((request) => `${label(request)}: a ${request.charter.label}${request.street ? ` on ${request.street}` : ''}`),
+          batch.doors.map((door) => `${doorLabel(door.request.index)}: ${doorLine(door.request)}`),
           'None.',
         ),
         usedHeads: bullets(takenHeads, 'None yet.'),
@@ -219,29 +282,23 @@ export class SignNamer {
         return [...missed, ...headProblems(value, takenHeads)]
       },
     )
-    if (answer.ok) return ok(this.#zip(answer.value, batch, b))
-    if (mendable) return ok(this.#zip(mendable, batch, b))
+    if (answer.ok) return ok(zip(answer.value))
+    if (mendable) return ok(zip(mendable))
     return err(answer.error)
-  }
-
-  /** The batch's answer as a sign per label, counted off as it is read. */
-  #zip(written: WrittenSigns, batch: readonly PlaceRequest[], b: number): ReadonlyMap<string, string> {
-    for (const [k, sign] of written.signs.entries()) {
-      this.#count(b * BATCH + k, sign.name, batch[k]!.charter.label)
-    }
-    return new Map(written.signs.map((sign) => [sign.building, sign.name]))
-  }
-
-  /** One building counts once, whether it was named in its batch or asked for again afterwards. */
-  #count(index: number, name: string, label: string): void {
-    if (this.#counted.has(index)) return
-    this.#counted.add(index)
-    this.#progress.finished(`${name}, a ${label}`)
   }
 }
 
-function label(request: PlaceRequest): string {
-  return `b${request.index}`
+/** The batch's answer as a sign per label. */
+function zip(written: WrittenSigns): ReadonlyMap<string, { name: string; kind?: Word }> {
+  return new Map(written.signs.map((sign) => [sign.building, sign.kind === undefined ? { name: sign.name } : { name: sign.name, kind: sign.kind }]))
+}
+
+/** The heads a batch already spent, for the batches after it in the same pass. */
+const headsOf = (batch: Batched): string[] => (batch.ok ? [...batch.value.values()].map((sign) => headOf(sign.name)) : [])
+
+/** What a person calls this building, once there is a word for it. */
+function labelOf(request: PlaceRequest, kind: Word | undefined, kinds: readonly Charter[]): string {
+  return request.charter?.label ?? kinds.find((one) => one.word === kind)?.label ?? kind ?? 'building'
 }
 
 /** A batch with a building missed or named twice is a batch nothing can be zipped onto. */

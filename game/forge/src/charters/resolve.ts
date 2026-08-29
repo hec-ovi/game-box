@@ -1,6 +1,7 @@
 import { RECIPES } from '@gb/kitbash'
 import { MAX_CHARTERS, type Charter, type ResolvedCharter, type Word } from '@gb/world'
 import { drawOf } from '../interior/draw.ts'
+import { PLACEHOLDER_KIND } from '../naming/placeholders.ts'
 import { signageFor, suitsFor, tintFor } from './look.ts'
 
 /** A charter a city would not take, and why. Reported, never hidden. */
@@ -23,12 +24,18 @@ export interface Declared {
  * An invented charter goes through the gate before a plot can take its word:
  * its rooms have to plan into a walkable interior with somebody in it, or it
  * is dropped and the reason kept. One that names a preset's word replaces the
- * preset. The list is sorted by word, which is the order a mix draws it in.
+ * preset, and one that claims the architecture's own word is dropped, because
+ * a plot stands under that until the writing says what the building is. The
+ * list is sorted by word.
  */
 export function declareCharters(written: readonly Charter[], presets: readonly ResolvedCharter[]): Declared {
   const byWord = new Map(presets.map((charter) => [charter.word, charter]))
   const dropped: Dropped[] = []
   for (const charter of written) {
+    if (charter.word === PLACEHOLDER_KIND) {
+      dropped.push({ word: charter.word, reason: `${PLACEHOLDER_KIND} is what a plot is called before the writing says what it is` })
+      continue
+    }
     const resolved = resolve(charter)
     const reason = refused(resolved)
     if (reason) {
@@ -49,7 +56,7 @@ export function declareCharters(written: readonly Charter[], presets: readonly R
  * pieces are `@gb/kitbash`'s own row for the frontage and the openness, so
  * the file carries what the kit builds and no table of pieces lives here.
  */
-function resolve(charter: Charter): ResolvedCharter {
+export function resolve(charter: Charter): ResolvedCharter {
   return {
     ...charter,
     built: RECIPES[charter.street.frontage][charter.street.openness],

@@ -3,7 +3,7 @@ Write this place and everybody in it, all at once.
 City: {{cityName}}
 Theme: {{theme}}
 The city so far: {{premise}}
-The building: a {{label}}
+The building: {{name}}, a {{label}}
 The rooms it was built with: {{rooms}}
 {{charter}}
 
@@ -20,24 +20,32 @@ it out.
 
 ## What the place is
 
-Decide what this particular {{label}} is: who runs it, what it lives off, what
-somebody notices in the first ten seconds through the door, and what has been
-going on here lately. Put that in `character`, in the present tense, about this
-building and no other.
-
-Then give it its name, the way its owner would have named it. A bar and an
-office are named very differently: one is a sign hung over a door, the other is
-a family name and a trade. It is a name a signwriter would actually paint:
-everyday words and ordinary names, nothing invented or fanciful. Do not put the
-kind of building in the name unless that is really how such places are named
-around here. No word may head two
-signs in this city, the head being the first word after any "The".
+The sign over its door already reads {{name}}: it was painted before this call
+and it is not yours to change. What is yours is what this particular {{label}}
+is: who runs it, what it lives off, what somebody notices in the first ten
+seconds through the door, and what has been going on here lately. Put that in
+`character`, in the present tense, about this building and no other, and write
+it as the place that sign hangs over.
 
 ## The people
 
-One person for each post below, carrying the `postId` of the post they hold:
+How many people work here is already settled: the town cut this building for
+the posts below, one to a post and nobody else. Who each of them is, is this
+call's to decide. Write one person for each post, carrying the `postId` of the
+post they hold:
 
 {{posts}}
+
+Who ends up working a {{label}} is a question about this town in particular:
+what it lives on, what happened to it and who is arguing over it are what put
+each of these people at their post, and what tells one of them apart from the
+same job in any other city.
+
+Where a post carries work, the town's quests already send the player to this
+door to find whoever stands there. Those quests were written before anybody in
+this city was, so that post is that person: write them as somebody the job
+makes sense on, with what it asks of them in their life and in what the player
+can learn from them.
 
 They stand in the same rooms all day, so write them as people who know each
 other: who has been here longest, who covers for whom, who is owed something,
@@ -85,7 +93,6 @@ it. Keep the `thingId` it came with:
 
 ## Names already spoken for in this city
 
-None of these may be used again, for this place or for anybody in it, and no
-sign here may start with the same word as one of them:
+None of these may be used again for anybody in this place:
 
 {{usedNames}}

@@ -10,13 +10,21 @@
  * against the bare architecture reads as until `bindNames` puts the written
  * names in its place.
  *
- * Every one of them is unique in a town, because every one is a town-wide
+ * Every numbered one is unique in a town, because every one is a town-wide
  * index, and every one is whole-word matchable, so binding cannot turn
  * "Instance 1" into a slice of "Instance 12".
  */
 
 /** The city itself, before it is named. */
 export const PLACEHOLDER_CITY = 'City'
+
+/**
+ * What a building is before the writing says what it is: a building, and
+ * nothing more. Every plot goes up under it, and the ones the writing never
+ * reaches keep it, the way a door nobody wrote a sign for keeps the sign
+ * composed here. `src/charters/placeholder.ts` is the charter behind the word.
+ */
+export const PLACEHOLDER_KIND = 'building'
 
 /** A part of the city. */
 export const zoneName = (index: number): string => `Zone ${index + 1}`

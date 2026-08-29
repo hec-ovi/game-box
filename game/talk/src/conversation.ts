@@ -8,12 +8,12 @@ import { Brief } from './brief.ts'
 import { Credit } from './credit.ts'
 import { Decider } from './decide.ts'
 import type { Decision, Grant, Opening, TalkError, TalkEvent, Turn } from './events.ts'
+import { Listener } from './listen.ts'
 import { Memory } from './memory.ts'
-import { legalMoves, topicOf, type ActionName, type Move, type Situation, type Where } from './moves.ts'
+import { legalMoves, topicOf, type ActionName, type Situation, type Where } from './moves.ts'
 import { Payoffs } from './payoffs.ts'
 import { Performer } from './perform.ts'
 import { pickByKey, pickLabel, picks, type TalkMove } from './picks.ts'
-import { Script } from './script.ts'
 import { Sessions, type Transcript } from './sessions.ts'
 import { Speaker } from './speak.ts'
 
@@ -39,8 +39,10 @@ interface Input {
  * began, with doing nothing at the top of the list. What they can do is bounded
  * by the quest script, not by how the sentence was phrased. Nobody says
  * anything until the player does: walking up opens a menu, and the person
- * answers when spoken to. With no sidecar to reach, both tracks run off the
- * quest data, and the job can still be handed out, agreed to and delivered.
+ * answers when spoken to. Every word an NPC says is the model's: with no model
+ * to reach they say nothing, and the turn is published as silence. The action
+ * side stands on its own, so the player's words still hand a job over, take a
+ * delivery, raise a subject or end the conversation with nobody speaking.
  */
 export class Conversation {
   #situation: Situation
@@ -52,7 +54,7 @@ export class Conversation {
   #payoffs: Payoffs
   #speaker: Speaker
   #decider: Decider
-  #script: Script
+  #listener: Listener
   #performer: Performer
   #open = true
   #signal: AbortSignal | undefined
@@ -74,7 +76,7 @@ export class Conversation {
     this.#payoffs = new Payoffs(this.#situation)
     this.#speaker = new Speaker(input.sidecar)
     this.#decider = new Decider(input.sidecar)
-    this.#script = new Script(this.#situation, this.#background)
+    this.#listener = new Listener(this.#situation)
     this.#performer = new Performer(this.#situation)
   }
 
@@ -132,16 +134,14 @@ export class Conversation {
    * The player picked a move instead of typing one. The list is built again
    * here, so a move that has stopped being legal since it was drawn does
    * nothing at all and the caller reads the moves again. Nothing is asked of a
-   * model: the line and the move are both the game's own.
+   * model, so nobody speaks: the move is carried out and what it did is the
+   * whole of the turn.
    */
   async *choose(key: string): AsyncGenerator<TalkEvent> {
     const move = pickByKey(legalMoves(this.#situation), key)
     if (!move) return
 
-    const spoken = this.#script.acting(move)
     this.#transcript.push({ role: 'user', content: pickLabel(move) })
-    yield* this.#spoken(undefined, spoken.line)
-    yield* this.#learned(spoken.learned)
     yield* this.#act({ move })
   }
 
@@ -161,9 +161,11 @@ export class Conversation {
     })
     // Cut short is the player's own decision, so nothing stands in for the reply.
     if (this.#cut) return
-    // No reply at all is no reply: the game's own data speaks instead.
+    // No reply at all is no reply. Nobody writes words for them, so the turn is
+    // silence, and what the player asked for still decides what they do about it.
     if (!taken.ok || !taken.value.says) {
-      yield* this.#unattended(playerText, moves)
+      yield { kind: 'silent' }
+      yield* this.#act(this.#listener.decide(playerText, moves))
       return
     }
 
@@ -184,20 +186,12 @@ export class Conversation {
     // A call that never came back with a line off the menu (nothing running, a
     // busy model, an engine that died mid-reply, prose, a number off the menu) is
     // not a decision to do nothing: the player's own words decide, as with no model.
-    yield* this.#act(chosen.ok ? chosen.value : this.#script.decide(playerText, moves))
+    yield* this.#act(chosen.ok ? chosen.value : this.#listener.decide(playerText, moves))
   }
 
   /** The player pulled the plug: the turn stops where it is and nothing is decided. */
   get #cut(): boolean {
     return this.#signal?.aborted === true
-  }
-
-  /** No sidecar: the quest data speaks and the player's own words decide. */
-  *#unattended(playerText: string, moves: readonly Move[]): Generator<TalkEvent> {
-    const scripted = this.#script.turn(playerText, moves)
-    yield* this.#spoken(undefined, scripted.line)
-    yield* this.#learned(scripted.learned)
-    yield* this.#act(scripted)
   }
 
   /** One turn out loud, into the transcript and out to the caller: the body and the words apart. */

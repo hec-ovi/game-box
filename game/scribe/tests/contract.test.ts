@@ -3,7 +3,7 @@ import { Sidecar } from '@gb/sidecar'
 import { describe, expect, it } from 'vitest'
 import { Scribe } from '../src/index.ts'
 import { fakeModel } from './fake-model.ts'
-import { charterOf } from './places.ts'
+import { STANDING, charterOf } from './places.ts'
 import { townModel } from './town.ts'
 import { stopped, wrote } from './wrote.ts'
 
@@ -102,7 +102,7 @@ describe('Scribe', () => {
     const scribe = new Scribe({ sidecar })
 
     await wrote(scribe.nameCity({ theme: 'port', seed: 's' }))
-    await wrote(scribe.namePlace({ kind: 'bar', charter: charterOf('bar'), theme: 'port', index: 0 }))
+    await wrote(scribe.namePlace({ kind: 'bar', charter: charterOf('bar'), theme: 'port', index: 0, ...STANDING }))
     await scribe.describeNpc({ role: 'bartender', placeKind: 'bar', place: charterOf('bar'), placeName: 'The Anchor', theme: 'port', index: 0 })
 
     expect(sent[1]!.user).toContain('City: Cold Harbour')
@@ -131,8 +131,8 @@ describe('Scribe', () => {
       }) as unknown as typeof globalThis.fetch
       const scribe = new Scribe({ sidecar: new Sidecar({ base: 'http://127.0.0.1:8976', fetch }), seed, attempts: 2 })
       await scribe.nameCity({ theme: 'port', seed })
-      await scribe.namePlace({ kind: 'bar', charter: charterOf('bar'), theme: 'port', index: 3 })
-      await scribe.namePlace({ kind: 'bar', charter: charterOf('bar'), theme: 'port', index: 4 })
+      await scribe.namePlace({ kind: 'bar', charter: charterOf('bar'), theme: 'port', index: 3, ...STANDING })
+      await scribe.namePlace({ kind: 'bar', charter: charterOf('bar'), theme: 'port', index: 4, ...STANDING })
 
       return pins
     }
@@ -187,7 +187,7 @@ describe('Scribe', () => {
     const built = await new Forge(scribe).build({ theme: 'rain-soaked port', seed: 'scribe-city', blocksX: 1, blocksY: 1, blockCells: 16 })
     expect(built.ok).toBe(true)
     // and the calls a build does not make on its own
-    await scribe.namePlace({ kind: 'bar', charter: charterOf('bar'), theme: 'port', index: 0 })
+    await scribe.namePlace({ kind: 'bar', charter: charterOf('bar'), theme: 'port', index: 0, ...STANDING })
     await scribe.describeNpc({ role: 'bartender', placeKind: 'bar', place: charterOf('bar'), placeName: 'The Anchor', theme: 'port', index: 0 })
     await scribe.describeItem({ archetype: 'ledger', theme: 'port', index: 0 })
     await scribe.writeBrief({ want: ['theme'], seed: 's' })
@@ -200,9 +200,11 @@ describe('Scribe', () => {
       'name_districts -> city',
       'name_place -> city',
       'name_signs -> city',
+      'settle_needs -> places',
       'write_brief -> history',
       'write_charter -> history',
       'write_instance -> places',
+      'write_places -> places',
       'write_premise -> history',
       'write_quest -> quests',
     ])

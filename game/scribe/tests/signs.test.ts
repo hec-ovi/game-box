@@ -1,7 +1,10 @@
+import type { PlaceRequest } from '@gb/forge'
+import { SHIPPED_CHARTERS } from '@gb/world'
 import { describe, expect, it } from 'vitest'
-import { Scribe, type PlaceRequest } from '../src/index.ts'
+import { Scribe } from '../src/index.ts'
 import { fakeModel, type Sent } from './fake-model.ts'
-import { charterOf } from './places.ts'
+import { STANDING, charterOf } from './places.ts'
+import { writtenPlaces } from './town.ts'
 import { stopped, wrote } from './wrote.ts'
 
 const KINDS = ['bar', 'shop', 'office', 'warehouse', 'house'] as const
@@ -13,10 +16,20 @@ function frontage(count: number): PlaceRequest[] {
     kind: KINDS[i % KINDS.length]!,
     charter: charterOf(KINDS[i % KINDS.length]!),
     theme: 'rain-soaked port',
+    ...STANDING,
     street: i % 2 ? 'Kettle Row' : 'Wharf Lane',
     premise: 'Lives on: the freight line.',
   }))
 }
+
+/** The words a batch may say a building is, where the batch is the one that decides. */
+function kindsIn(call: Sent): string[] | undefined {
+  const properties = (call.parameters as Record<string, Record<string, Record<string, Record<string, Record<string, { enum?: string[] }>>>>>)['properties']!
+  return properties['signs']!['items']!['properties']!['kind']?.enum
+}
+
+/** Just the signs, in the order they were asked for. */
+const signsOf = (written: readonly { name: string }[]): string[] => written.map((sign) => sign.name)
 
 /** The labels the batch tool was built around. */
 function labelsOf(call: Sent): string[] {
@@ -35,7 +48,7 @@ describe('naming the buildings that do not open', () => {
     const scribe = new Scribe({ sidecar, seed: 'harbour', concurrency: 2 })
     await wrote(scribe.nameCity({ theme: 'rain-soaked port', seed: 'harbour' }))
 
-    const names = await wrote(scribe.namePlaces(frontage(45)))
+    const names = signsOf(await wrote(scribe.namePlaces(frontage(45))))
 
     expect(names).toHaveLength(45)
     expect(names.slice(0, 3)).toEqual(['Head0 Supply', 'Head1 Supply', 'Head2 Supply'])
@@ -60,7 +73,7 @@ describe('naming the buildings that do not open', () => {
     const scribe = new Scribe({ sidecar, seed: 'harbour', concurrency: 1 })
     await wrote(scribe.nameCity({ theme: 'rain-soaked port', seed: 'harbour' }))
 
-    const names = await wrote(scribe.namePlaces(frontage(25)))
+    const names = signsOf(await wrote(scribe.namePlaces(frontage(25))))
 
     // the second batch was told the first batch's heads, repeated one, and was asked again
     expect(sent[2]!.user).toContain('- head3')
@@ -75,7 +88,7 @@ describe('naming the buildings that do not open', () => {
     )
     const scribe = new Scribe({ sidecar, seed: 'harbour' })
 
-    const names = await wrote(scribe.namePlaces(frontage(5)))
+    const names = signsOf(await wrote(scribe.namePlaces(frontage(5))))
 
     expect(sent).toHaveLength(2)
     expect(sent[1]!.user).toContain('signs.2.name: The Head1 Supply starts with head1, which already heads another sign in this batch')
@@ -89,7 +102,7 @@ describe('naming the buildings that do not open', () => {
     )
     const scribe = new Scribe({ sidecar, seed: 'harbour' })
 
-    const names = await wrote(scribe.namePlaces(frontage(5)))
+    const names = signsOf(await wrote(scribe.namePlaces(frontage(5))))
 
     // two batch calls, then one call for the one building whose word was spent
     expect(sent.map((call) => call.toolName)).toEqual(['name_signs', 'name_signs', 'name_place'])
@@ -109,7 +122,7 @@ describe('naming the buildings that do not open', () => {
     )
     const scribe = new Scribe({ sidecar, seed: 'harbour', concurrency: 3, attempts: 1 })
 
-    const names = await wrote(scribe.namePlaces(frontage(45)))
+    const names = signsOf(await wrote(scribe.namePlaces(frontage(45))))
 
     expect(names[0]).toBe('Kettle Supply')
     const heads = names.map((name) => name.toLowerCase().replace(/^the /, '').split(' ')[0])
@@ -117,6 +130,45 @@ describe('naming the buildings that do not open', () => {
     // the lower index kept the word; the model was asked again for the other two
     expect(names[20]).not.toMatch(/^Kettle/)
     expect(names[40]).not.toMatch(/^Kettle/)
+  })
+
+  it('says what a door nobody has spoken about is as well as naming it, and asks nothing of the doors already settled', async () => {
+    const kinds = [charterOf('bar'), charterOf('shop')]
+    const { sent, sidecar } = fakeModel((call) =>
+      call.toolName === 'write_places'
+        ? writtenPlaces(call)
+        : { signs: labelsOf(call).map((label, at) => ({ building: label, name: `Head${label.slice(1)} Supply`, ...(kindsIn(call) ? { kind: kindsIn(call)![at % 2]! } : {}) })) },
+    )
+    const scribe = new Scribe({ sidecar, seed: 'harbour' })
+    await wrote(scribe.writePlaces({ theme: 'rain-soaked port', kinds, needs: [], places: [{ index: 9, theme: 'rain-soaked port', ...STANDING }] }))
+
+    // a settled door, a bare one, a settled one: the answers come back in the order they were asked for
+    const written = await wrote(
+      scribe.namePlaces([frontage(1)[0]!, { index: 1, theme: 'rain-soaked port', ...STANDING }, { ...frontage(4)[3]!, work: ['Hand the ledger over.'] }]),
+    )
+
+    expect(written).toEqual([{ name: 'Head0 Supply' }, { name: 'Head1 Supply', kind: 'bar' }, { name: 'Head3 Supply' }])
+    // two batches: the doors that already are something, then the one that is not
+    const batches = sent.filter((call) => call.toolName === 'name_signs')
+    expect(batches.map(labelsOf)).toEqual([['b0', 'b3'], ['b1']])
+    expect(kindsIn(batches[0]!)).toBeUndefined()
+    expect(kindsIn(batches[1]!)).toEqual(['bar', 'shop'])
+    // the settled batch is shown the trade and the work the town's quests do there; the bare one, what the architecture left
+    expect(batches[0]!.user).toContain('- b3: a warehouse on Kettle Row. What the town\'s work does here: Hand the ledger over.')
+    expect(batches[1]!.user).toContain('- b1: 2 storeys, 8 by 12 metres')
+    expect(batches[1]!.user).toContain('bar: a counter at the front with somebody behind it')
+  })
+
+  it('writes the frontage out of the presets where nothing has settled what this town declares', async () => {
+    // a growth that only puts up new land says nothing about what its doors are, and every city declares the presets
+    const { sent, sidecar } = fakeModel((call) => ({
+      signs: labelsOf(call).map((label) => ({ building: label, name: `Head${label.slice(1)} Supply`, kind: kindsIn(call)![0]! })),
+    }))
+
+    const written = await wrote(new Scribe({ sidecar, seed: 'harbour' }).namePlaces([{ index: 0, theme: 'rain-soaked port', ...STANDING }]))
+
+    expect(kindsIn(sent[0]!)).toEqual(SHIPPED_CHARTERS.map((charter) => charter.word))
+    expect(written).toEqual([{ name: 'Head0 Supply', kind: 'house' }])
   })
 
   it('stops the city stage when the model will not write the signs, rather than composing them', async () => {
@@ -139,7 +191,7 @@ describe('naming the buildings that do not open', () => {
           await new Promise((resolve) => setTimeout(resolve, (3 - index) * 4))
           return answer(call)
         })
-        const names = await wrote(new Scribe({ sidecar, seed: 'harbour', concurrency: 3 }).namePlaces(frontage(45)))
+        const names = signsOf(await wrote(new Scribe({ sidecar, seed: 'harbour', concurrency: 3 }).namePlaces(frontage(45))))
         return { asked: sent.map((call) => call.user).sort(), names }
       }),
     )

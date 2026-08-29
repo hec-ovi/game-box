@@ -1,7 +1,7 @@
 import { err, ok } from '@gb/kit'
 import { PlayerState } from '@gb/play'
 import { validateQuest, type QuestDoc } from '@gb/quest'
-import { isMachineProp, questView, ROOM_USES, World } from '@gb/world'
+import { isMachineProp, questView, ROOM_USES, World, type Item } from '@gb/world'
 import { describe, expect, it } from 'vitest'
 import { Forge, questTargets, summarise, type Instance, type InstanceRequest, type Narrator, type PlaceRequest, type DistrictRequest } from '../src/index.ts'
 import { GAMES } from '../src/interior/machines.ts'
@@ -48,6 +48,15 @@ function named(quest: QuestDoc): Set<string> {
     for (const effect of step.effects) if (effect.kind === 'companion-join') people.add(effect.npcId)
   }
   return people
+}
+
+/** Everything inside one place: what lies on its surfaces, and what the people standing in it carry. */
+function itemsIn(interiorId: string): Item[] {
+  const stationed = new Set(world.npcs().filter((npc) => npc.station?.interiorId === interiorId).map((npc) => npc.id))
+  return world
+    .placements()
+    .filter((placement) => (placement.at === 'anchor' ? placement.interiorId === interiorId : placement.at === 'npc' && stationed.has(placement.npcId)))
+    .map((placement) => world.item(placement.itemId)!)
 }
 
 /** Every written line in a quest, with the field it was written in. */
@@ -115,14 +124,27 @@ describe('a city somebody wrote', () => {
     const plan = Forge.plan(RECORDED_BRIEF, recordedHistory())
     expect(plan.ok).toBe(true)
     if (!plan.ok) return
+    // the geometry is arithmetic, so both sides are the same town down to the
+    // cell: one grid, one road graph, one cut of districts, and every building
+    // on the footprint the plan gave it, behind its door, at its height, in its
+    // part of town
     const architecture = (city: World) => ({
       grid: city.toJSON().grid,
       roads: city.toJSON().roads,
       districts: city.districts().map((district) => ({ id: district.id, blocks: district.blocks })),
-      stations: city.stations().map((plot) => plot.id),
-      plots: city.plots().map((plot) => ({ id: plot.id, kind: plot.kind, rect: plot.rect, entrance: plot.entrance, storeys: plot.storeys, district: plot.district, style: plot.style })),
+      plots: city.plots().map((plot) => ({ id: plot.id, rect: plot.rect, entrance: plot.entrance, storeys: plot.storeys, district: plot.district })),
     })
     expect(architecture(plan.value)).toEqual(architecture(world))
+
+    // what the writing adds over that is what each of those buildings turned
+    // out to be. A plan stands every plot up under the architecture's own word
+    // and boards nowhere; the town written over those same plots says which of
+    // them is a bar and which is a station, and the kit that dresses a plot
+    // follows the word
+    expect(new Set(plan.value.plots().map((plot) => plot.kind))).toEqual(new Set(['building']))
+    expect(plan.value.stations()).toEqual([])
+    expect(new Set(world.plots().map((plot) => plot.kind)).size).toBeGreaterThan(1)
+    expect(world.plots().every((plot) => plot.style.endsWith(plot.kind))).toBe(true)
   })
 
   it('exports a world that loads back identically', () => {
@@ -272,9 +294,17 @@ describe('what the plan puts in a place before anybody writes it', () => {
       expect(request.has.camera).toBe(interior.furniture.some((piece) => piece.prop === 'camera'))
       expect(request.has.machines.length).toBe(interior.furniture.filter((piece) => isMachineProp(piece.prop)).length)
       expect(request.has.forSale).toBe(interior.forSale)
-      // keys, cards and deeds are named here off what they open, never by the writer
-      expect(request.things.some((thing) => thing.archetype === 'key' || thing.archetype === 'keycard' || thing.archetype === 'deed')).toBe(false)
+      // the writer is handed the stock and nothing else: a thing that opens a
+      // door or owns a home is named here off what it opens or owns. What makes
+      // one of those is the field, never the archetype, which is why a card
+      // lying on a counter as stock is stock: `@gb/world` takes a card that
+      // opens nothing and refuses a deed that owns nothing
+      const held = itemsIn(interior.id)
+      const stock = held.filter((item) => item.opens === undefined && item.deedTo === undefined)
+      expect(request.things.length, `${request.name} was asked to name ${request.things.length} of its ${held.length} things`).toBe(stock.length)
     }
+    // and the town has something written that way for the brief to leave out
+    expect(world.items().filter((item) => item.opens !== undefined || item.deedTo !== undefined).length, 'nothing in this town opens a door or owns a home').toBeGreaterThan(0)
   })
 
   it('locks nothing in an open place, and puts the key to a shut room in a pocket in front of it', () => {
@@ -381,7 +411,13 @@ describe('what the narrator is asked', () => {
   it('asks for every door in the town in one call, each with its street and the town it is in', () => {
     const asked = narrator.requests<PlaceRequest>('namePlaces').flat()
     expect(narrator.asked.filter((one) => one.method === 'namePlaces').length).toBe(1)
-    expect(asked.map((request) => request.kind)).toEqual(world.plots().map((plot) => plot.kind))
+    // one request per door in the town, in the order the town put them up, and
+    // the question carries a kind only where one is settled: a door that opens
+    // was told what it is back at stage 3, and a door that never opens is a
+    // building until this answer's own kind makes it a bakery
+    const open = new Set(world.interiors().map((interior) => interior.plotId))
+    expect(asked.map((request) => request.kind)).toEqual(world.plots().map((plot) => (open.has(plot.id) ? plot.kind : undefined)))
+    expect(asked.filter((request) => request.kind === undefined).length, 'every door in this town was told what it is before it was named').toBeGreaterThan(0)
     for (const request of asked) {
       expect(request.street, `plot ${request.index} is on no street`).toBeTruthy()
       expect(request.premise, `plot ${request.index} was asked for knowing nothing about the town`).toBeTruthy()

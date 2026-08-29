@@ -80,7 +80,7 @@ export interface InstanceCasting {
 }
 
 /** One building's own shell: everything a narrator is shown to write the place whole. */
-export interface InstanceRequest extends PlaceRequest {
+export interface InstanceRequest extends WrittenPlace {
   /** What the place is called. It was named before this call, out of the town's story and the work in it. */
   readonly name: string
   readonly rooms: readonly RoomKind[]
@@ -118,21 +118,60 @@ export interface DistrictRequest {
   readonly premise?: string
 }
 
-/** One building as a narrator is shown it: what it is, where it stands, and what town it is in. */
+/**
+ * One building as a narrator is shown it: where it stands, how big it is, and
+ * what it was settled to be, when that has been settled.
+ *
+ * `kind` and `charter` are absent on a building nobody has said anything about
+ * yet, which is every building the architecture puts up. A door that opens is
+ * asked what it is before the work is written (`writePlaces`) and carries both
+ * from then on; a door that never opens carries neither, and what it is comes
+ * back beside its sign.
+ */
 export interface PlaceRequest {
-  /** The word of the kind of place it is. */
-  readonly kind: Word
+  /** The word of the kind of place it is, once that is settled. */
+  readonly kind?: Word
   /** What that word means: the charter behind it, with its label, its names and its rumours. */
-  readonly charter: Charter
+  readonly charter?: Charter
   readonly theme: string
   /** Where this building falls in the town's own count of plots. */
   readonly index: number
+  /** How many storeys it stands: the architecture's, and a fact about what can be in it. */
+  readonly storeys: number
+  /** Its footprint in metres, across the front then front to back. */
+  readonly floor: { readonly frontage: number; readonly depth: number }
+  /** Whether its door is on one of the town's avenues, where the traffic goes. */
+  readonly onAvenue: boolean
   /** The street its door is on. Absent when the door stands on no street band. */
   readonly street?: string
   /** What the city is about, in the few lines `premiseLines` renders it as. Absent when nobody wrote one. */
   readonly premise?: string
   /** What the town's work does here, a line per job, because a place is named for what happens in it. Empty where nothing does. */
   readonly work?: readonly string[]
+}
+
+/** A building whose kind the writing has settled: what a sign is written over, and what a place is written into. */
+export type WrittenPlace = PlaceRequest & { readonly kind: Word; readonly charter: Charter }
+
+/** The sign over one door, and what the place behind it is when nobody has said yet. */
+export interface PlaceSign {
+  /** What the sign reads. Blank keeps the one composed in the box. */
+  readonly name: string
+  /** What the place is, for a door that was never asked before. A word the city does not declare leaves the building a building. */
+  readonly kind?: Word
+}
+
+/**
+ * One thing a town needs behind one of its doors, in the words the writer is
+ * asked for it: a counter to buy across, a room to sit down in, a home, or a
+ * kind of place the town's own history says it has.
+ */
+export interface PlaceNeed {
+  readonly wants: string
+  /** How many of the town's doors have to answer it. */
+  readonly count: number
+  /** The word that answers it, where the town's own history named one. */
+  readonly kind?: Word
 }
 
 /** A place written whole: what it is, who is in it and what is lying about. */
@@ -252,18 +291,23 @@ export type Written<T> = Result<T, Unwritten>
  *
  * The calls come in a fixed order, and the order is the point:
  *
- * 1. `writePremise`, before a plot is placed. The town's history decides the
- *    mix of buildings, which doors open and what the main line is about, and it
- *    may declare kinds of place of its own beside the presets, as `charters`.
- * 2. `writeQuests`, against the bare architecture. The summary it is handed
- *    carries real ids and placeholder names (`Instance 7`, `Person 3`), because
- *    nothing has been named yet. What the quests name is what the town then has
- *    to hold.
- * 3. `nameCity`, `nameDistricts` and `namePlaces`, all asked once the work is
+ * 1. `writePremise`, before a plot is placed. The town's history decides what
+ *    kinds of place the town holds and what the main line is about, and it may
+ *    declare kinds of its own beside the presets, as `charters`.
+ * 2. `writePlaces`, once the architecture stands. The town is a grid of
+ *    buildings with no kind at all, a handful of them with doors that open, and
+ *    this says what each of those is: a house, an office, a station. Everything
+ *    inside them is built to the answer, so it comes before the work.
+ * 3. `writeQuests`, against that architecture. The summary it is handed carries
+ *    real ids and placeholder names (`Instance 7`, `Person 3`), because nothing
+ *    has been named yet. What the quests name is what the town then has to hold.
+ * 4. `nameCity`, `nameDistricts` and `namePlaces`, all asked once the work is
  *    written: the city, every part of it and every door in it are named out of
- *    the story and out of what the quests do there. A narrator without the
- *    plurals gets them composed here.
- * 4. `writeInstances`, last. Every place that opens goes out together, each one
+ *    the story and out of what the quests do there. `namePlaces` also says what
+ *    the buildings that never open are, which is the only word anybody writes
+ *    about them. A narrator without the plurals gets the signs composed here
+ *    and the frontage left as buildings.
+ * 5. `writeInstances`, last. Every place that opens goes out together, each one
  *    told its name and the `cast` the quests already need standing in it, and
  *    the answers come back one per request in request order. `describeNpc` and
  *    `describeItem` are the single-place shapes it is the plural of; a narrator
@@ -279,16 +323,42 @@ export interface Narrator {
    * town with no story, built from the presets.
    */
   writePremise?(input: { theme: string; seed: string; brief?: string; asks?: Asks }): Promise<Written<History>>
+  /**
+   * What each of the town's open buildings is, answered one word per request in
+   * request order. This is the stage that decides a city's locations: the
+   * architecture cut the doors and this says which of them is the bar, which is
+   * the station and which is somebody's home, and everything behind them is
+   * built to the answer.
+   *
+   * `kinds` is the closed list an answer comes from: every kind of place the
+   * city declares, the presets and whatever the history invented. `needs` is
+   * what the town needs its doors to be, in words. An answer naming a kind the
+   * city does not declare stops the build, because there is nobody else here to
+   * decide what a place is.
+   */
+  writePlaces(input: {
+    theme: string
+    premise?: string
+    kinds: readonly Charter[]
+    needs: readonly PlaceNeed[]
+    places: readonly PlaceRequest[]
+  }): Promise<Written<readonly Word[]>>
   nameCity(input: { theme: string; seed: string; premise?: Premise }): Promise<Written<string>>
-  /** A sign for one place: `street` is the one its door is on, `premise` the town's story as `premiseLines` renders it, when it has one. */
-  namePlace(input: { kind: Word; charter: Charter; theme: string; index: number; street?: string; premise?: string; work?: readonly string[] }): Promise<Written<string>>
+  /** A sign for one place, asked only for the doors that open, so what the place is is already settled. */
+  namePlace(input: WrittenPlace): Promise<Written<string>>
   /**
    * The sign over every door in the town, open or shut, one per request in
    * request order. It is asked once the quests are written, so a request for a
-   * place the work touches carries `work`. A blank keeps the sign composed
-   * here, and a narrator without this gets every door named that way.
+   * place the work touches carries `work`.
+   *
+   * It is also where the rest of the town becomes something. A door that opens
+   * was already told what it is; a door that never opens carries no kind at
+   * all, and the answer's `kind` is what makes it a bakery rather than a
+   * building. A blank name keeps the sign composed here, a blank or unknown
+   * kind leaves the building a building, and a narrator without this gets the
+   * whole street that way.
    */
-  namePlaces?(requests: readonly PlaceRequest[]): Promise<Written<readonly string[]>>
+  namePlaces?(requests: readonly PlaceRequest[]): Promise<Written<readonly PlaceSign[]>>
   /**
    * What the parts of the city are called, all asked for together, one per
    * request in request order. A blank keeps the name the box composed, and a

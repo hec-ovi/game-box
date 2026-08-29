@@ -38,6 +38,30 @@ A run of four to eight beats is an errand. Keep the order true: if the player
 carries something to somebody, the beat that picks it up comes before the beat
 that hands it over.
 
+## Whose hands it goes through
+
+An errand is a chain of people before it is a run of beats, so settle the chain
+first:
+
+- **Whose hands it starts in.** Say why the job falls to the giver rather than
+  to anybody else standing in their building, and put that in `summary`, in
+  their own words.
+- **Who it passes to, and who after that.** Name every person it goes through,
+  each one by their id off the list above, in the order the player meets them,
+  and say what each of them is to the one before: who sent the player to them,
+  and what they have that the errand needs.
+- **Same building, or another one.** The list says which building each person
+  stands in and how far its door is from {{home}}. Decide for every hand-over
+  whether the player turns to somebody standing in the same room, crosses the
+  street, or walks into another part of town.
+- **Whether anybody comes back.** An errand can return to somebody the player
+  has already met: carrying an answer back to the giver, or going back to the
+  first person once the second has said their piece. That is another beat
+  naming the same id.
+
+Most errands run through two or three people: the one who asks, the one who has
+the thing or knows the answer, and the one who wants it.
+
 ## The beats, and what each one makes the player do
 
 | kind | fields it needs | what the player does |

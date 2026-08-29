@@ -1842,6 +1842,7 @@ describe('a conversation you can click through', () => {
     const log = QuestLog.create([errand], player)
     const { pushed, announced, hud } = screenful()
     const arms = body(CLIPS.idle)
+    const gestures = new Gestures(new Members(() => new Map([[npcId, arms.member]])))
     let reached = 0
     const talking = new Talking({
       world,
@@ -1858,7 +1859,7 @@ describe('a conversation you can click through', () => {
       hud,
       body: { setTyping: () => {} } as unknown as Player,
       attending: { hold: () => {}, release: () => {} } as unknown as Attending,
-      gestures: new Gestures(new Members(() => new Map([[npcId, arms.member]]))),
+      gestures,
       report: new Reporting({ world, log, player, hud, conditions: new Conditions(player.clock) }),
       ...(portraits ? { portraits } : {}),
     })
@@ -1872,7 +1873,7 @@ describe('a conversation you can click through', () => {
     // cannot pile up inside one conversation the way an appended line would
     const does = () => pushed.flatMap((patch) => (patch.talk?.does !== undefined ? [patch.talk.does] : []))
     const codex = () => [...pushed].reverse().find((patch) => patch.codex)?.codex
-    return { world, npcId, itemId, player, log, talking, pushed, announced, menu, spoken, does, codex, moved: arms.moved, reached: () => reached }
+    return { world, npcId, itemId, player, log, talking, gestures, pushed, announced, menu, spoken, does, codex, moved: arms.moved, reached: () => reached }
   }
 
   it('draws the speaker their own face and puts it on the panel once it is up', async () => {
@@ -2002,7 +2003,7 @@ describe('a conversation you can click through', () => {
   })
 
   it('carries on where the two of them left off, so walking back up is not meeting a stranger', async () => {
-    const { npcId, talking, pushed } = chatting()
+    const { npcId, talking, pushed } = chatting({ does: 'wipes the counter', says: 'A fair cut of it.' })
     await talking.start(npcId)
     await talking.say('and what do I get for it?')
     talking.end()
@@ -2013,6 +2014,24 @@ describe('a conversation you can click through', () => {
     // what the player said and her answer, and nothing on top of them
     expect(again.turns!.map((turn) => turn.who)).toEqual(['you', 'them'])
     expect(again.turns![0]!.says).toBe('and what do I get for it?')
+  })
+
+  it('keeps the player\'s own line and nobody else\'s when nobody answered', async () => {
+    const { npcId, talking, pushed, menu } = chatting()
+    await talking.start(npcId)
+    await talking.say('and what do I get for it?')
+    await talking.choose(menu()[0]!.key)
+    talking.end()
+
+    // a model writes every word an NPC says, so a turn none answered leaves no
+    // turn of theirs behind: what is carried over is what the player said and
+    // what they clicked, and nothing is invented to sit under either
+    pushed.length = 0
+    await talking.start(npcId)
+    const again = pushed.find((patch) => patch.talk?.speaker !== undefined)!.talk!
+    expect(again.turns!.map((turn) => turn.who)).toEqual(['you', 'you'])
+    expect(again.turns![0]!.says).toBe('and what do I get for it?')
+    expect(again.turns![1]!.says).toMatch(/ledger/i)
   })
 
   it('reopens the transcript with what they did as well as what they said', async () => {
@@ -2056,8 +2075,8 @@ describe('a conversation you can click through', () => {
     expect(raw.ok && raw.value.conversation.moves().map((move) => move.action)).toContain('end_talk')
   })
 
-  it('takes the job on a click, with a line spoken and no model asked for it', async () => {
-    const { npcId, log, talking, menu, spoken, does, reached } = chatting()
+  it('takes the job on a click, with nothing said and no model asked for it', async () => {
+    const { npcId, log, talking, menu, spoken, does, pushed, announced, reached } = chatting()
     await talking.start(npcId)
     const taken = menu()[0]!
     const before = reached()
@@ -2066,18 +2085,23 @@ describe('a conversation you can click through', () => {
 
     // the point of the menu: the move is taken without asking anything
     expect(reached()).toBe(before)
-
     expect(log.status('quest_0002')).toBe('active')
-    expect(spoken().length).toBeGreaterThan(0)
-    // what she did is stage direction on this turn, in the panel the player is
-    // reading: the words came with no direction of their own, so the deed is it
-    expect(does()).toEqual([null, 'gives you a job'])
+
+    // and nobody speaks over a picked move, so no turn of hers is opened at
+    // all: an empty turn is how the panel draws a reply on its way, and none is
+    expect(spoken()).toBe('')
+    expect(does()).toEqual([])
+    expect(pushed.some((patch) => patch.talk?.reply !== undefined)).toBe(false)
+
+    // what she did is read under her own name instead, because the panel has no
+    // turn of hers to write a stage direction on
+    expect(announced).toContainEqual({ kind: 'note', text: 'Iris Vane gives you a job' })
     // and the move it just used is off the menu it publishes at the end
     expect(menu().map((move) => move.action)).not.toContain('give_quest')
   })
 
   it('carries the whole job through by clicking, and pays for it', async () => {
-    const { npcId, itemId, player, log, talking, menu, does } = chatting()
+    const { npcId, itemId, player, log, talking, menu, announced } = chatting()
     await talking.start(npcId)
     await talking.choose(menu()[0]!.key)
 
@@ -2093,12 +2117,14 @@ describe('a conversation you can click through', () => {
 
     expect(log.status('quest_0002')).toBe('complete')
     expect(player.money).toBeGreaterThan(0)
-    // a second panel, so the first turn's line is not still standing under it
-    expect(does().at(-1)).toBe('takes what you were carrying')
+    // each wordless turn says what it did, so the delivery is not read off the
+    // line the job was handed over on
+    expect(announced).toContainEqual({ kind: 'note', text: 'Iris Vane gives you a job' })
+    expect(announced).toContainEqual({ kind: 'note', text: 'Iris Vane takes what you were carrying' })
   })
 
   it('opens a line, beats to it and closes it, so a speaker visibly talks', async () => {
-    const { npcId, talking, moved } = chatting()
+    const { npcId, talking, moved } = chatting({ does: 'leans on the counter', says: 'Depends what you are asking.' })
     await talking.start(npcId)
 
     // nobody has spoken: walking up puts a menu on the panel and nothing else,
@@ -2116,18 +2142,42 @@ describe('a conversation you can click through', () => {
   })
 
   it('nods when they go along with what was put to them, and shakes its head when they will not', async () => {
-    const { npcId, talking, menu, moved } = chatting()
+    const { npcId, talking, gestures, menu, moved } = chatting()
     await talking.start(npcId)
 
-    // carrying a move out is a yes, so handing the job over is them agreeing.
-    // The nod goes over the open line, not instead of it
+    // carrying a move out is a yes, so handing the job over is her agreeing.
+    // Nobody spoke over it, so the nod is the whole of what her body does: the
+    // hands stay out of it, because there is no line for them to mime
     await talking.choose(menu()[0]!.key)
-    expect(moved).toEqual(['speaking', 'pulse', 'Idle_Yes_Loop', 'quiet', 'stop'])
+    expect(moved).toEqual(['Idle_Yes_Loop'])
 
-    // and asked for something she has not got, she says so and means it
+    // and no line ends to close it, so it stands for its own beat and the
+    // frame closes it. Closed with the turn it was faded in and out on the same
+    // tick, which is a body that never moved
+    gestures.update(0.5)
+    expect(moved).toEqual(['Idle_Yes_Loop'])
+    gestures.update(1.1)
+    expect(moved).toEqual(['Idle_Yes_Loop', 'stop'])
+
+    // and asked for something she has not got, the refusal is on her head
     await talking.say('what have you got for me?')
-    expect(moved.slice(5)).toEqual(['speaking', 'pulse', 'Idle_No_Loop', 'quiet', 'stop'])
+    expect(moved.slice(2)).toEqual(['Idle_No_Loop'])
     expect(GESTURES).toEqual(expect.arrayContaining(['Idle_Yes_Loop', 'Idle_No_Loop']))
+  })
+
+  it('lays the talking hands over words and never over a turn without any', async () => {
+    const speaking = chatting({ does: 'shrugs', says: 'Half up front.' })
+    await speaking.talking.start(speaking.npcId)
+    await speaking.talking.say('and what do I get for it?')
+    expect(speaking.moved).toContain('speaking')
+
+    // the talk layer mimics a line arriving. A turn no model answered has none,
+    // so hands going through it would be a body saying what nobody wrote
+    const silent = chatting()
+    await silent.talking.start(silent.npcId)
+    await silent.talking.say('and what do I get for it?')
+    expect(silent.moved).not.toContain('speaking')
+    expect(silent.moved).not.toContain('pulse')
   })
 
   it('finds a passer-by on the pavement before anybody standing in a room, and asks again every time', async () => {
@@ -2195,16 +2245,26 @@ describe('a conversation you can click through', () => {
     expect(log.status('quest_0003')).toBe('complete')
   })
 
-  it('still takes a typed line, which does go looking for a model, and ends on a menu', async () => {
-    const { npcId, talking, pushed, spoken, reached } = chatting()
+  it('still takes a typed line, which does go looking for a model, and takes the wait back off when none answers', async () => {
+    const { npcId, talking, pushed, spoken, announced, reached } = chatting()
     await talking.start(npcId)
     pushed.length = 0
     const before = reached()
 
     await talking.say('what have you got for me?')
 
+    // a typed line is the one turn something is on its way to, so it is the one
+    // turn opened empty: that is the wait the panel draws
     expect(reached()).toBeGreaterThan(before)
-    expect(spoken().length).toBeGreaterThan(0)
+    expect(pushed[0]!.talk!.reply).toBe('')
+
+    // nothing came back, so nobody speaks and the wait is taken off rather than
+    // left turning: what goes up is the transcript the box holds, which carries
+    // no turn for somebody who did not speak
+    expect(spoken()).toBe('')
+    expect(pushed.find((patch) => patch.talk?.turns)!.talk!.turns!.map((turn) => turn.who)).toEqual(['you'])
+    // she did nothing either, so the silence is the whole of what happened
+    expect(announced).toContainEqual({ kind: 'note', text: 'Iris Vane says nothing' })
     expect(pushed.at(-1)!.talk!.moves).toBeDefined()
   })
 })

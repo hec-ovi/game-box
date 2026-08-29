@@ -1,10 +1,12 @@
+import type { Decision } from './events.ts'
 import { Hearing } from './hearing.ts'
-import type { ActionName, Move } from './moves.ts'
+import { Home } from './home.ts'
+import type { ActionName, Move, Situation } from './moves.ts'
 
 /** How sure the words have to be before an NPC acts on them. */
 const ENOUGH = 3
 
-/** Words that asked for something. Heard with no move to match, they get an honest shrug. */
+/** Words that asked for something. Heard with no move to match, nothing on the menu answers them. */
 const DEMANDS = ['request', 'offering', 'accept', 'follow', 'stay']
 
 /** Words that asked for a thing a person may not have to give: what they sell, their door. Each is answered in kind. */
@@ -13,7 +15,7 @@ const WANTS: ReadonlyArray<{ readonly group: string; readonly action: ActionName
   { group: 'buying', action: 'show_wares', want: 'wares' },
 ]
 
-export type Want = 'home' | 'wares'
+type Want = 'home' | 'wares'
 
 /**
  * How much each move is worth given what was heard. Every rule reads the moves
@@ -54,8 +56,8 @@ const WEIGH: Record<ActionName, (heard: Hearing, move: Move) => number> = {
   end_talk: (heard) => (heard.has('farewell') ? 5 : 0),
 }
 
-/** What the player's words came to: a move, a want they cannot have, a refusal, a shrug, or just talk. */
-export type Reading =
+/** What the player's words came to: a move, a want they cannot have, a refusal, a demand with no move behind it, or just talk. */
+type Reading =
   | { readonly sense: 'move'; readonly move: Move }
   | { readonly sense: 'refused'; readonly want: Want }
   | { readonly sense: 'declined' }
@@ -63,14 +65,27 @@ export type Reading =
   | { readonly sense: 'chat' }
 
 /**
- * Reads plain English against the menu of moves that are legal this turn, with
- * no model in the loop. It weighs every legal move against what was heard and
- * takes the best of them, so the player says what they mean instead of guessing
- * a magic word; when nothing is clear enough, the NPC says so rather than
- * acting on a guess. Same words, same menu, same answer, every time.
+ * The action side of a turn when no model decided it: nothing running, a call
+ * that never came back, or one that answered with no line off the menu. It
+ * reads plain English against the moves that are legal this turn, weighs every
+ * one of them against what was heard and takes the best, so the player says
+ * what they mean instead of guessing a magic word; when nothing is clear
+ * enough, nothing is done rather than something the player did not ask for.
+ * It writes no words: what an NPC says is the model's, and only the model's.
  */
 export class Listener {
-  read(playerText: string, moves: readonly Move[]): Reading {
+  #home: Home
+
+  constructor(situation: Situation) {
+    this.#home = new Home(situation)
+  }
+
+  /** How the turn comes out on the player's words alone: the move, and how the reply reads. */
+  decide(playerText: string, moves: readonly Move[]): Decision {
+    return this.#settle(this.#read(playerText, moves))
+  }
+
+  #read(playerText: string, moves: readonly Move[]): Reading {
     const heard = Hearing.of(playerText)
     let best: Move | undefined
     let score = 0
@@ -86,5 +101,28 @@ export class Listener {
     if (refused) return { sense: 'refused', want: refused.want }
     if (heard.has('refuse')) return { sense: 'declined' }
     return heard.hasAny(DEMANDS) ? { sense: 'unclear' } : { sense: 'chat' }
+  }
+
+  /**
+   * How the turn came out, in the character's terms rather than the player's.
+   * What they were plainly asked for they do, and doing it is the yes. Asked
+   * outright for something they have no way to give, the answer is no: the
+   * request was made and nothing they can do answers it. A door already open to
+   * the player is not refused, only already theirs, so that is neither.
+   * Everything else, a refusal the player made included, leaves them neither
+   * way: they are hearing the other person out, and nothing about that reads as
+   * an answer.
+   */
+  #settle(reading: Reading): Decision {
+    switch (reading.sense) {
+      case 'move':
+        return { move: reading.move }
+      case 'unclear':
+        return { answer: 'no' }
+      case 'refused':
+        return reading.want === 'home' && this.#home.open() ? {} : { answer: 'no' }
+      default:
+        return {}
+    }
   }
 }

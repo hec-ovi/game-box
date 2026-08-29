@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { compileQuest, rewardFor, validateQuest, type QuestDoc } from '../src/index.ts'
-import { CRATES, HOLLIS, LEDGER, MARA, WITNESS, world } from './fixture.ts'
+import { compileQuest, rewardFor, validateQuest, type QuestDoc, type WorldView } from '../src/index.ts'
+import { BACK_DOOR, CRATES, HOLLIS, LEDGER, MARA, WITNESS, world } from './fixture.ts'
 
 /** A sheet as a writer hands it over: the story, and nothing about the flow. */
 function sheet(beats: readonly object[], overrides: Record<string, unknown> = {}): unknown {
@@ -16,8 +16,8 @@ function sheet(beats: readonly object[], overrides: Record<string, unknown> = {}
   }
 }
 
-function compiled(beats: readonly object[], overrides: Record<string, unknown> = {}): QuestDoc {
-  const result = compileQuest(sheet(beats, overrides), world)
+function compiled(beats: readonly object[], overrides: Record<string, unknown> = {}, view: WorldView = world): QuestDoc {
+  const result = compileQuest(sheet(beats, overrides), view)
   if (!result.ok) throw new Error(`the sheet was refused: ${JSON.stringify(result.error)}`)
   return result.value.quest
 }
@@ -109,5 +109,62 @@ describe('compiling beats into a flow', () => {
 
     expect(quest.difficulty).toBe('epic')
     expect(quest.reward.money).toBe(600)
+  })
+})
+
+describe('naming the marker', () => {
+  it('writes the name the city gives beside every step that points at something, and nothing beside the rest', () => {
+    const quest = compiled([
+      { kind: 'goto', where: { plotId: 'plot_0001' }, objective: 'Get down to the warehouse' },
+      { kind: 'unlock', doorId: BACK_DOOR, objective: 'Open the back door' },
+      { kind: 'collect', itemId: LEDGER, objective: 'Take the ledger off the desk' },
+      {
+        kind: 'choice',
+        prompt: 'Hollis is offering more than Mara did. Whose is it?',
+        objective: 'Decide who gets the ledger',
+        options: [
+          { label: 'Keep your word to Mara', beats: [{ kind: 'deliver', itemId: LEDGER, toNpcId: MARA, objective: 'Give Mara the ledger' }] },
+          { label: 'Sell it to Hollis', beats: [{ kind: 'deliver', itemId: LEDGER, toNpcId: HOLLIS, objective: 'Give Hollis the ledger' }] },
+        ],
+      },
+    ])
+
+    // a place names the building, a lock the building it is in, a thing itself,
+    // a hand-over whoever it goes to, and a decision sends the player nowhere
+    expect(quest.steps.map((step) => [step.kind, step.markerLabel])).toEqual([
+      ['goto', 'The warehouse'],
+      ['unlock', 'The warehouse'],
+      ['collect', 'The ledger'],
+      ['choice', undefined],
+      ['deliver', 'Mara'],
+      ['deliver', 'Hollis'],
+      ['complete', undefined],
+    ])
+  })
+
+  it('leaves the marker unnamed against a city that cannot name anything', () => {
+    // what a caller that has not widened its view yet hands in: the quest still
+    // compiles and plays, and no marker on it claims to be a place
+    const unnamed: WorldView = {
+      hasNpc: (id) => world.hasNpc(id),
+      hasPlot: (id) => world.hasPlot(id),
+      hasInterior: (id) => world.hasInterior(id),
+      hasItem: (id) => world.hasItem(id),
+      hasAnchor: (interiorId, anchorId) => world.hasAnchor(interiorId, anchorId),
+      hasDoor: (id) => world.hasDoor(id),
+      hasMachine: (id) => world.hasMachine(id),
+      opens: (id) => world.opens(id),
+    }
+    const quest = compiled([{ kind: 'talk', npcId: HOLLIS, objective: 'Hear Hollis out' }], {}, unnamed)
+
+    expect(quest.steps.every((step) => step.markerLabel === undefined)).toBe(true)
+  })
+
+  it('cuts a name too long for the marker, so a well named building never costs the quest', () => {
+    const long = 'The Old Ropewalk Rooms and Assembly Halls of the North Quarter'
+    const grand: WorldView = { ...world, nameOf: (id) => (id === 'plot_0001' ? long : world.nameOf?.(id)) }
+    const quest = compiled([{ kind: 'goto', where: { plotId: 'plot_0001' }, objective: 'Get down to the warehouse' }], {}, grand)
+
+    expect(quest.steps[0]?.markerLabel).toBe('The Old Ropewalk Rooms and Assembly Hal.')
   })
 })

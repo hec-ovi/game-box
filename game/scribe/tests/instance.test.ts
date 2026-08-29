@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { Scribe } from '../src/index.ts'
 import { fakeModel, type Sent } from './fake-model.ts'
 import { backgroundOf, lifeOf, shellOf } from './people.ts'
-import { PLAIN, charterOf } from './places.ts'
+import { PLAIN, STANDING, charterOf } from './places.ts'
 import { writtenPlace } from './town.ts'
 import { stopped, wrote } from './wrote.ts'
 
@@ -15,6 +15,7 @@ const bar: InstanceRequest = {
   cast: [],
   charter: charterOf('bar'),
   theme: 'rain-soaked port',
+  ...STANDING,
   rooms: ['main', 'storage'],
   posts: [
     { postId: 'anchor_0001', role: 'bartender', index: 0 },
@@ -34,6 +35,7 @@ function places(count: number): InstanceRequest[] {
     cast: [],
     charter: charterOf('shop'),
     theme: 'rain-soaked port',
+    ...STANDING,
     rooms: ['main' as const],
     posts: [
       { postId: `anchor_${i}_1`, role: 'clerk' as const, index: i * 2 },
@@ -64,6 +66,9 @@ describe('writing a place and its people in one call', () => {
 
     expect(sent).toHaveLength(2)
     expect(sent[1]!.toolName).toBe('write_instance')
+    // the sign was written in the naming pass and handed in: this call never wrote one
+    expect(written!.name).toBe('Place 0')
+    expect(sent[1]!.parameters).not.toHaveProperty('properties.name')
     expect(written!.character.length).toBeGreaterThan(0)
     expect(written!.people.map((person) => [person.postId, person.role])).toEqual([
       ['anchor_0001', 'bartender'],
@@ -79,7 +84,7 @@ describe('writing a place and its people in one call', () => {
     const asked = sent[1]!.user
     expect(asked).toContain('City: Cold Harbour')
     expect(asked).toContain('Lives on: the freight line.')
-    expect(asked).toContain('The building: a bar')
+    expect(asked).toContain('The building: Place 0, a bar')
     expect(asked).toContain('What a bar is here: a counter at the front with somebody behind it; nobody works past the front; it keeps drink, papers, valuables; anybody may walk in. Its\nrooms: Taproom, Cellar.')
     expect(asked).toContain('main, storage')
     expect(asked).toContain('anchor_0001: the bartender')
@@ -108,6 +113,26 @@ describe('writing a place and its people in one call', () => {
     expect(asked).toContain('A camera watches the front room.')
     expect(asked).toContain('for sale at 4200 credits')
     expect(asked).toContain('Never write the code itself')
+  })
+
+  it('tells the place which of its posts the town\'s work already sends the player to', async () => {
+    const { sent, sidecar } = fakeModel((call) => writtenPlace(call))
+    const wanted: InstanceRequest = {
+      ...bar,
+      cast: [
+        { postId: 'anchor_0001', part: 'giver', questId: 'quest_0001', questTitle: 'The Long Way Round', questKind: 'main', line: 'Ask about the freight.' },
+        { postId: 'anchor_0002', part: 'deliver-to', questId: 'quest_0003', questTitle: 'Short Change', questKind: 'side', line: 'Bring them the ledger.' },
+      ],
+    }
+
+    await wrote(new Scribe({ sidecar, seed: 'harbour' }).writeInstances([wanted]))
+
+    const asked = sent[0]!.user
+    expect(asked).toContain('anchor_0001: the bartender; hands the main job out')
+    expect(asked).toContain('anchor_0002: the patron; a side job has the player bring them something')
+    // the job is named by its kind, never by its title: a title is prose the
+    // model could hang over this very door
+    expect(asked).not.toContain('The Long Way Round')
   })
 
   it('writes every life and codex through the world\'s own schema, and hands them back on the person', async () => {
@@ -151,6 +176,7 @@ describe('writing a place and its people in one call', () => {
       cast: [],
       charter: charterOf('clinic'),
       theme: 'rain-soaked port',
+      ...STANDING,
       rooms: ['main'],
       posts: [{ postId: 'anchor_9999', role: 'receptionist', index: 2 }],
       things: [{ thingId: 'item_9999', archetype: 'medkit', index: 1 }],
@@ -182,35 +208,9 @@ describe('writing a place and its people in one call', () => {
     const people = written.flatMap((instance) => instance.people.map((person) => person.name))
     expect(people).toHaveLength(12)
     expect(new Set(people).size).toBe(12)
-    expect(new Set(written.map((instance) => instance.name)).size).toBe(6)
     // and nobody had to be asked twice: the letters made a collision unwritable
     expect(sent).toHaveLength(6)
     expect(scribe.problems()).toEqual([])
-  })
-
-  it('gives a sign two places both wanted to the one asked for first, and asks the other again', async () => {
-    const { sent, sidecar } = fakeModel((call) =>
-      writtenPlace(call, { name: call.user.includes('- The Anchor') ? 'The Second Mate' : 'The Anchor' }),
-    )
-    const scribe = new Scribe({ sidecar, seed: 'harbour', concurrency: 2 })
-
-    const written = await wrote(scribe.writeInstances(places(2)))
-
-    expect(written.map((instance) => instance.name)).toEqual(['The Anchor', 'The Second Mate'])
-    expect(sent).toHaveLength(3)
-    expect(sent[2]!.user).toContain('- The Anchor')
-  })
-
-  it('hangs a sign whose word is already over another door, rather than losing the city over it', async () => {
-    // the retry is what the rule is worth: a word on two doors is a blemish on
-    // a street, and the owner would rather have the town than the rule
-    const { sidecar } = fakeModel((call) => writtenPlace(call, { name: call.user.includes('- The Anchor') ? 'Anchor Supply' : 'The Anchor' }))
-    const scribe = new Scribe({ sidecar, seed: 'harbour', concurrency: 2 })
-
-    const written = await wrote(scribe.writeInstances(places(2)))
-
-    expect(written).toHaveLength(2)
-    expect(written.map((place) => place.name)).toEqual(['The Anchor', 'Anchor Supply'])
   })
 
   it('writes the same city on the same seed, whatever order the answers landed in', async () => {
@@ -230,7 +230,7 @@ describe('writing a place and its people in one call', () => {
     // every place and everybody in it named after its own post, so nothing
     // here is ever asked twice and the list is the only thing that grows
     const { sent, sidecar } = fakeModel((call) =>
-      writtenPlace(call, { name: `${shellOf(call).posts[0]} House`, given: shellOf(call).posts[0]! }),
+      writtenPlace(call, { given: shellOf(call).posts[0]! }),
     )
     await wrote(new Scribe({ sidecar, seed: 'harbour', concurrency: 4 }).writeInstances(places(60)))
 

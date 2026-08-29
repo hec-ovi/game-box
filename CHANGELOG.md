@@ -2,6 +2,41 @@
 
 What the project does now. Each entry is the present state, not a diff.
 
+## 2026-08-28
+
+**A model writes every word of a city.** The history, the city and zone names,
+the sign over every door, the people and the work all come from a model and
+from nowhere else. The writer that composed them by arithmetic is gone, with
+the thirty source files that fed it: the quest recipes, the people writer, the
+history composer and its wording tables. A stage the model will not write stops
+the build and names itself.
+
+**The architecture is arithmetic and takes no narrator.** `Forge.plan` is
+static and answers straight away: streets, roads, zones, plots and storeys,
+everything under placeholders (`Zone 1`, `Instance 1`). Every box that only
+wanted geometry asks for that instead of building a whole town. Forge's own
+tests of a written city replay a recorded model run and throw on any question
+the recording does not hold.
+
+**A quest step says where it sends you.** A step whose words name a building
+other than the one its ids point at is refused and rewritten, quoting the
+placeholder it should have used, and so is a step naming somebody who stands in
+a different instance. This is checked on the model's answer, because at the id
+level a person already belongs to exactly one place and the leak was only ever
+in the free text beside the ids.
+
+**A town boards nowhere, or in at least two places.** One station in a town is
+an entrance with nowhere to ride to, so the count is floored at two wherever a
+town boards at all. Standing at the only station there is, the map says so.
+
+**The marker counts the walk down as you walk it.** The whole route is kept
+between measurements, corners already passed are dropped each frame, and the
+distance is the metres left, which cannot rise at a corner.
+
+**`gb build` writes a city through the model.** There is no flag to ask for one
+written any other way. The blueprint preview shows the architecture with no name
+on it, and the pipeline sandbox runs its stages against the model alone.
+
 ## 2026-08-27
 
 **The model writes the story, the engine builds the flow.** A quest comes back
