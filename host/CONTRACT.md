@@ -11,6 +11,7 @@ Serve local text generation, speech recognition and speech synthesis to any clie
 ```
 pnpm -C host dev      # reads .env at the repository root
 pnpm -C host start    # reads nothing: export the variables yourself
+pnpm dev              # this, together with the game, from the repository root
 ```
 
 ```

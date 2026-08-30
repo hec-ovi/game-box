@@ -39,8 +39,10 @@ launch. If the console says `No available adapters` and
 
 ```
 pnpm install
-pnpm --filter @gb/app run dev        # http://localhost:5180
+pnpm dev
 ```
+
+That is the game at http://localhost:5180 and the sidecar at http://localhost:8976. One process, both of them; Ctrl-C stops both. The model behind the sidecar is whoever `.env` points at (a llama-server on 8080, or OpenRouter) and stays a process of its own.
 
 Click to take the mouse, WASD to walk, shift to run, hold the right button to look closer, E to act on whatever is in front of you, Escape to leave a conversation.
 
@@ -50,7 +52,7 @@ A seed and a theme in the address builds that city:
 http://localhost:5180/?seed=gulch&theme=dusty+western+town
 ```
 
-The sidecar has to be running, because the model writes the city. See below.
+The sidecar has to be running, because the model writes the city. `pnpm dev` starts it. To run the sidecar alone: `pnpm -C host dev`. See below.
 
 ## Building a city from the terminal
 

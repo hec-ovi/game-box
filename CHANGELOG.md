@@ -2,6 +2,12 @@
 
 What the project does now. Each entry is the present state, not a diff.
 
+## 2026-08-30
+
+**`pnpm dev` starts the game and the sidecar together.** The page at 5180 and
+the model endpoint at 8976, one process, Ctrl-C stops both. The engine behind
+the sidecar is still whoever `.env` points at.
+
 ## 2026-08-28
 
 **A model writes every word of a city.** The history, the city and zone names,

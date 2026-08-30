@@ -48,6 +48,7 @@ The repo is two sets of boxes: the game (TypeScript, `game/`) and the local AI s
 | Stack and architecture decisions with their rationale | `docs/DECISIONS.md` |
 | Which art we ship and under what licence | `assets/registry/sources.json` |
 | Getting the art and what we are allowed to ship, deriving the normal, roughness and occlusion a generated colour tile does not carry, measuring what a downloaded model would cost and fitting one to a budget, building the pack, proving it fits the skeleton | `tools/` |
+| Starting the game and the sidecar together (`pnpm dev`) | `tools/dev.mjs` |
 | Seeing inside a build: per stage, what it is told and what the engine settles, the prompt file it is handed, the schema its call is forced against, where each field of the answer ends up, the line the call is issued at, and a sandbox that runs that stage against the model and shows the request and the reply as they were (`pnpm lab`) | `tools/lab/` |
 
 ## Dependency edges
